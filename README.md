@@ -1,36 +1,55 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 1. **Focus on Functionality**
+- Target feature additions or bug fixes.
+- Avoid mixing in formatting or style changes—submit those separately.
 
-## Getting Started
+---
 
-First, run the development server:
+# 2. **Follow Code Style**
+- Match the project’s style (Next.js, TypeScript, Tailwind CSS).
+- Run `bun run lint` to enforce ESLint rules before submitting.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+---
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+# 4. **Write Clear Commits**
+- Use imperative mood (e.g., "Add feature" not "Added feature").
+- Link to issues if applicable (e.g., "Fixes #123").
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+# 5. **Detail Your Pull Request**
+- Provide a concise title and thorough description.
+- Add screenshots for UI changes and testing steps for reviewers.
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+# 6. **Keep Pull Requests Small**
+- Address one issue or feature per PR.
+- Split large changes into smaller, logical commits.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+# 7. **Rebase and Sync**
+- Rebase on the latest `main` branch before submitting.
+- Resolve conflicts and test thoroughly.
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+# 8. **Self-Review**
+- Check your code for errors or improvements.
+- Test changes with `bun dev` to ensure they work.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+
+# Example Workflow
+1. `git checkout -b feat/my-change`
+2. Make changes and run `bun run lint`
+3. Commit: `git commit -m "Add my change"`
+4. Rebase: `git pull --rebase origin main`
+5. Push: `git push origin feat/my-change`
+6. Submit a PR with a clear title, description, and testing instructions.
+
+---
+
+# Notes
+- **Dependencies:** Only add new ones if justified, ensuring compatibility with Next.js 15.2.3, React 19, and TypeScript 5.
+- **Tools:** Leverage ESLint, TypeScript, and Tailwind CSS as configured in `package.json`.
