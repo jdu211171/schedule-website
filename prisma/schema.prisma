@@ -1,0 +1,327 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model booths {
+  booth_id                String                    @id @db.VarChar(50)
+  name                    String                    @db.VarChar(100)
+  notes                   String?
+  class_sessions          class_sessions[]
+  regular_class_templates regular_class_templates[]
+}
+
+model class_sessions {
+  class_id                  String                      @id @db.VarChar(50)
+  date                      DateTime?                   @db.Date
+  start_time                DateTime?                   @db.Time(6)
+  end_time                  DateTime?                   @db.Time(6)
+  duration                  String?                     @db.VarChar(20)
+  teacher_id                String?                     @db.VarChar(50)
+  subject_id                String?                     @db.VarChar(50)
+  booth_id                  String?                     @db.VarChar(50)
+  class_type_id             String?                     @db.VarChar(50)
+  is_group_class            Boolean?                    @default(false)
+  max_students              Int?                        @default(1)
+  notes                     String?
+  booths                    booths?                     @relation(fields: [booth_id], references: [booth_id], onDelete: NoAction, onUpdate: NoAction)
+  class_types               class_types?                @relation(fields: [class_type_id], references: [class_type_id], onDelete: NoAction, onUpdate: NoAction)
+  subjects                  subjects?                   @relation(fields: [subject_id], references: [subject_id], onDelete: NoAction, onUpdate: NoAction)
+  teachers                  teachers?                   @relation(fields: [teacher_id], references: [teacher_id], onDelete: NoAction, onUpdate: NoAction)
+  student_class_enrollments student_class_enrollments[]
+}
+
+model class_types {
+  class_type_id               String                        @id @db.VarChar(50)
+  name                        String                        @db.VarChar(100)
+  notes                       String?
+  class_sessions              class_sessions[]
+  student_special_preferences student_special_preferences[]
+}
+
+model course_assignments {
+  teacher_id        String            @db.VarChar(50)
+  course_id         String            @db.VarChar(50)
+  assignment_date   DateTime?         @db.Date
+  status            String?           @db.VarChar(50)
+  notes             String?
+  intensive_courses intensive_courses @relation(fields: [course_id], references: [course_id], onDelete: NoAction, onUpdate: NoAction)
+  teachers          teachers          @relation(fields: [teacher_id], references: [teacher_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([teacher_id, course_id])
+}
+
+model course_enrollments {
+  student_id        String            @db.VarChar(50)
+  course_id         String            @db.VarChar(50)
+  enrollment_date   DateTime?         @db.Date
+  status            String?           @db.VarChar(50)
+  notes             String?
+  intensive_courses intensive_courses @relation(fields: [course_id], references: [course_id], onDelete: NoAction, onUpdate: NoAction)
+  students          students          @relation(fields: [student_id], references: [student_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([student_id, course_id])
+}
+
+model evaluations {
+  evaluation_id String     @id @db.VarChar(50)
+  name          String     @db.VarChar(100)
+  score         Int?
+  notes         String?
+  teachers      teachers[]
+}
+
+model grades {
+  grade_id          String              @id @db.VarChar(50)
+  name              String              @db.VarChar(100)
+  grade_type        String?             @db.VarChar(50)
+  grade_number      String?             @db.VarChar(20)
+  notes             String?
+  intensive_courses intensive_courses[]
+  students          students[]
+}
+
+model intensive_courses {
+  course_id          String               @id @db.VarChar(50)
+  name               String               @db.VarChar(100)
+  subject_id         String?              @db.VarChar(50)
+  grade_id           String?              @db.VarChar(50)
+  class_duration     String?              @db.VarChar(20)
+  class_sessions     String?              @db.VarChar(20)
+  session_type       String?              @db.VarChar(50)
+  course_assignments course_assignments[]
+  course_enrollments course_enrollments[]
+  grades             grades?              @relation(fields: [grade_id], references: [grade_id], onDelete: NoAction, onUpdate: NoAction)
+  subjects           subjects?            @relation(fields: [subject_id], references: [subject_id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model notifications {
+  notification_id   String    @id @db.VarChar(50)
+  recipient_type    String?   @db.VarChar(20)
+  recipient_id      String?   @db.VarChar(50)
+  notification_type String?   @db.VarChar(50)
+  message           String?
+  related_class_id  String?   @db.VarChar(50)
+  sent_via          String?   @db.VarChar(20)
+  sent_at           DateTime? @db.Timestamp(6)
+  read_at           DateTime? @db.Timestamp(6)
+  status            String?   @db.VarChar(20)
+  notes             String?
+}
+
+model regular_class_templates {
+  template_id                  String                         @id @db.VarChar(50)
+  day_of_week                  String?                        @db.VarChar(20)
+  subject_id                   String?                        @db.VarChar(50)
+  booth_id                     String?                        @db.VarChar(50)
+  teacher_id                   String?                        @db.VarChar(50)
+  start_time                   DateTime?                      @db.Time(6)
+  end_time                     DateTime?                      @db.Time(6)
+  notes                        String?
+  booths                       booths?                        @relation(fields: [booth_id], references: [booth_id], onDelete: NoAction, onUpdate: NoAction)
+  subjects                     subjects?                      @relation(fields: [subject_id], references: [subject_id], onDelete: NoAction, onUpdate: NoAction)
+  teachers                     teachers?                      @relation(fields: [teacher_id], references: [teacher_id], onDelete: NoAction, onUpdate: NoAction)
+  template_student_assignments template_student_assignments[]
+}
+
+model student_class_enrollments {
+  enrollment_id  String          @id @db.VarChar(50)
+  class_id       String?         @db.VarChar(50)
+  student_id     String?         @db.VarChar(50)
+  status         String?         @db.VarChar(50)
+  notes          String?
+  class_sessions class_sessions? @relation(fields: [class_id], references: [class_id], onDelete: NoAction, onUpdate: NoAction)
+  students       students?       @relation(fields: [student_id], references: [student_id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model student_regular_preferences {
+  preference_id String    @id @db.VarChar(50)
+  student_id    String?   @db.VarChar(50)
+  subject_id    String?   @db.VarChar(50)
+  day_of_week   String?   @db.VarChar(20)
+  start_time    DateTime? @db.Time(6)
+  end_time      DateTime? @db.Time(6)
+  notes         String?
+  students      students? @relation(fields: [student_id], references: [student_id], onDelete: NoAction, onUpdate: NoAction)
+  subjects      subjects? @relation(fields: [subject_id], references: [subject_id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model student_special_preferences {
+  preference_id String       @id @db.VarChar(50)
+  student_id    String?      @db.VarChar(50)
+  class_type_id String?      @db.VarChar(50)
+  subject_id    String?      @db.VarChar(50)
+  date          DateTime?    @db.Date
+  start_time    DateTime?    @db.Time(6)
+  end_time      DateTime?    @db.Time(6)
+  notes         String?
+  class_types   class_types? @relation(fields: [class_type_id], references: [class_type_id], onDelete: NoAction, onUpdate: NoAction)
+  students      students?    @relation(fields: [student_id], references: [student_id], onDelete: NoAction, onUpdate: NoAction)
+  subjects      subjects?    @relation(fields: [subject_id], references: [subject_id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model student_subjects {
+  student_id String   @db.VarChar(50)
+  subject_id String   @db.VarChar(50)
+  notes      String?
+  students   students @relation(fields: [student_id], references: [student_id], onDelete: NoAction, onUpdate: NoAction)
+  subjects   subjects @relation(fields: [subject_id], references: [subject_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([student_id, subject_id])
+}
+
+model student_types {
+  student_type_id String  @id @db.VarChar(50)
+  name            String  @db.VarChar(100)
+  description     String?
+}
+
+model students {
+  student_id                   String                         @id @db.VarChar(50)
+  name                         String                         @db.VarChar(100)
+  kana_name                    String?                        @db.VarChar(100)
+  grade_id                     String?                        @db.VarChar(50)
+  school_name                  String?                        @db.VarChar(100)
+  school_type                  String?                        @db.VarChar(20)
+  exam_category                String?                        @db.VarChar(50)
+  first_choice_school          String?                        @db.VarChar(100)
+  second_choice_school         String?                        @db.VarChar(100)
+  enrollment_date              DateTime?                      @db.Date
+  birth_date                   DateTime?                      @db.Date
+  home_phone                   String?                        @db.VarChar(20)
+  parent_mobile                String?                        @db.VarChar(20)
+  student_mobile               String?                        @db.VarChar(20)
+  parent_email                 String?                        @db.VarChar(100)
+  notes                        String?
+  course_enrollments           course_enrollments[]
+  student_class_enrollments    student_class_enrollments[]
+  student_regular_preferences  student_regular_preferences[]
+  student_special_preferences  student_special_preferences[]
+  student_subjects             student_subjects[]
+  grades                       grades?                        @relation(fields: [grade_id], references: [grade_id], onDelete: NoAction, onUpdate: NoAction)
+  template_student_assignments template_student_assignments[]
+}
+
+model subject_types {
+  subject_type_id String     @id @db.VarChar(50)
+  name            String     @db.VarChar(100)
+  notes           String?
+  subjects        subjects[]
+}
+
+model subjects {
+  subject_id                  String                        @id @db.VarChar(50)
+  name                        String                        @db.VarChar(100)
+  subject_type_id             String?                       @db.VarChar(50)
+  notes                       String?
+  class_sessions              class_sessions[]
+  intensive_courses           intensive_courses[]
+  regular_class_templates     regular_class_templates[]
+  student_regular_preferences student_regular_preferences[]
+  student_special_preferences student_special_preferences[]
+  student_subjects            student_subjects[]
+  subject_types               subject_types?                @relation(fields: [subject_type_id], references: [subject_type_id], onDelete: NoAction, onUpdate: NoAction)
+  teacher_subjects            teacher_subjects[]
+}
+
+model teacher_regular_shifts {
+  shift_id    String    @id @db.VarChar(50)
+  teacher_id  String?   @db.VarChar(50)
+  day_of_week String?   @db.VarChar(20)
+  start_time  DateTime? @db.Time(6)
+  end_time    DateTime? @db.Time(6)
+  notes       String?
+  teachers    teachers? @relation(fields: [teacher_id], references: [teacher_id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model teacher_special_shifts {
+  shift_id   String    @id @db.VarChar(50)
+  teacher_id String?   @db.VarChar(50)
+  date       DateTime? @db.Date
+  start_time DateTime? @db.Time(6)
+  end_time   DateTime? @db.Time(6)
+  notes      String?
+  teachers   teachers? @relation(fields: [teacher_id], references: [teacher_id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model teacher_subjects {
+  teacher_id String   @db.VarChar(50)
+  subject_id String   @db.VarChar(50)
+  notes      String?
+  subjects   subjects @relation(fields: [subject_id], references: [subject_id], onDelete: NoAction, onUpdate: NoAction)
+  teachers   teachers @relation(fields: [teacher_id], references: [teacher_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([teacher_id, subject_id])
+}
+
+model teachers {
+  teacher_id              String                    @id @db.VarChar(50)
+  name                    String                    @db.VarChar(100)
+  evaluation_id           String?                   @db.VarChar(50)
+  birth_date              DateTime?                 @db.Date
+  mobile_number           String?                   @db.VarChar(20)
+  email                   String?                   @db.VarChar(100)
+  high_school             String?                   @db.VarChar(100)
+  university              String?                   @db.VarChar(100)
+  faculty                 String?                   @db.VarChar(100)
+  department              String?                   @db.VarChar(100)
+  enrollment_status       String?                   @db.VarChar(50)
+  other_universities      String?
+  english_proficiency     String?                   @db.VarChar(50)
+  toeic                   Int?
+  toefl                   Int?
+  math_certification      String?                   @db.VarChar(50)
+  kanji_certification     String?                   @db.VarChar(50)
+  other_certifications    String?
+  notes                   String?
+  class_sessions          class_sessions[]
+  course_assignments      course_assignments[]
+  regular_class_templates regular_class_templates[]
+  teacher_regular_shifts  teacher_regular_shifts[]
+  teacher_special_shifts  teacher_special_shifts[]
+  teacher_subjects        teacher_subjects[]
+  evaluations             evaluations?              @relation(fields: [evaluation_id], references: [evaluation_id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model template_student_assignments {
+  assignment_id           String                   @id @db.VarChar(50)
+  template_id             String?                  @db.VarChar(50)
+  student_id              String?                  @db.VarChar(50)
+  notes                   String?
+  students                students?                @relation(fields: [student_id], references: [student_id], onDelete: NoAction, onUpdate: NoAction)
+  regular_class_templates regular_class_templates? @relation(fields: [template_id], references: [template_id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model time_slots {
+  time_slot_id String   @id @db.VarChar(50)
+  start_time   DateTime @db.Time(6)
+  end_time     DateTime @db.Time(6)
+  notes        String?
+}
+
+model user_permissions {
+  permission_id String    @id @db.VarChar(50)
+  role          String    @db.VarChar(20)
+  resource      String    @db.VarChar(50)
+  action        String    @db.VarChar(20)
+  created_at    DateTime? @default(now()) @db.Timestamp(6)
+  updated_at    DateTime? @default(now()) @db.Timestamp(6)
+
+  @@unique([role, resource, action])
+}
+
+model users {
+  user_id       String    @id @db.VarChar(50)
+  username      String    @unique @db.VarChar(50)
+  password_hash String    @db.VarChar(255)
+  role          String    @db.VarChar(20)
+  related_id    String?   @db.VarChar(50)
+  is_active     Boolean?  @default(true)
+  last_login    DateTime? @db.Timestamp(6)
+  created_at    DateTime? @default(now()) @db.Timestamp(6)
+  updated_at    DateTime? @default(now()) @db.Timestamp(6)
+}
