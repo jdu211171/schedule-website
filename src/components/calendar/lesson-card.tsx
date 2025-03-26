@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { getSubjectName, getTeacherName, getStudentName } from './subjectUtils';
 
 // Определение типа для временного слота
@@ -29,9 +29,7 @@ type LessonCardProps = {
   selectedRooms: string[];
   onClick: (lesson: Lesson) => void;
   timeSlotHeight?: number; // высота строки комнаты в пикселях
-  horizontalLayout?: boolean; // флаг для горизонтального отображения
   timeSlots?: TimeSlot[]; // массив временных слотов
-  scrollLeft?: number; // информация о текущей прокрутке
 };
 
 export default function LessonCard({ 
@@ -39,116 +37,122 @@ export default function LessonCard({
   selectedRooms, 
   onClick,
   timeSlotHeight = 40, // значение по умолчанию для высоты строки
-  horizontalLayout = true, // по умолчанию используем горизонтальное отображение
-  timeSlots = [],
-  scrollLeft = 0 // значение прокрутки по умолчанию
+  timeSlots = []
 }: LessonCardProps) {
-  // Позиционирование карточки
+  // Состояние для позиционирования карточки
   const [position, setPosition] = useState<{
     top: number;
     left: number;
     width: number;
     height: number;
   } | null>(null);
+  
+  // Состояние для видимости карточки
+  const [isVisible, setIsVisible] = useState(true);
+  
+  // Ссылка на DOM-элемент карточки
+  const cardRef = useRef<HTMLDivElement>(null);
+  
+  // Константа для ширины столбца комнаты
+  const ROOM_COLUMN_WIDTH = 100;
+  const COLUMN_WIDTH = 40; // Ширина временной колонки
 
-  // Вычисление позиции карточки на основе времени и комнаты
+  // Эффект для вычисления начальной позиции карточки
   useEffect(() => {
-    // Нам нужно определить позицию в зависимости от layoutа
-    if (horizontalLayout) {
-      // Горизонтальное отображение (время по горизонтали)
+    // Находим индекс комнаты в массиве выбранных комнат
+    const roomIndex = selectedRooms.indexOf(lesson.room);
+    if (roomIndex === -1) return; // Комната не найдена
+    
+    // Получаем индексы времени начала и конца
+    const startHour = lesson.startTime.getHours();
+    const startMinute = lesson.startTime.getMinutes();
+    const endHour = lesson.endTime.getHours();
+    const endMinute = lesson.endTime.getMinutes();
+    
+    const startTimeIndex = (startHour - 8) * 4 + Math.floor(startMinute / 15);
+    const endTimeIndex = (endHour - 8) * 4 + (endMinute === 0 ? 0 : Math.ceil(endMinute / 15));
+    
+    // Находим соответствующие ячейки в DOM по атрибуту data-time-col
+    const timeCols = document.querySelectorAll('[data-time-col]');
+    if (!timeCols || timeCols.length === 0) return;
+    
+    // Проверяем, что индексы находятся в пределах доступных ячеек
+    if (startTimeIndex >= timeCols.length || endTimeIndex - 1 >= timeCols.length) return;
+    
+    const startCol = timeCols[startTimeIndex];
+    const endCol = timeCols[endTimeIndex - 1]; // -1 так как endTimeIndex указывает на следующий слот
+    if (!startCol || !endCol) return;
+    
+    // Получаем позиции ячеек относительно контейнера
+    const containerRect = document.querySelector('[data-time-grid-container]')?.getBoundingClientRect();
+    if (!containerRect) return;
+    
+    const startRect = startCol.getBoundingClientRect();
+    const endRect = endCol.getBoundingClientRect();
+    
+    // Рассчитываем точную левую позицию с учетом ширины комнаты
+    const left = ROOM_COLUMN_WIDTH + (startTimeIndex * COLUMN_WIDTH);
+    
+    // Рассчитываем точную ширину в пикселях на основе количества временных слотов
+    const width = (endTimeIndex - startTimeIndex) * COLUMN_WIDTH;
+    
+    // Рассчитываем верхнюю позицию на основе индекса комнаты
+    // 40px - высота заголовка с временем
+    const top = 40 + roomIndex * timeSlotHeight;
+    
+    // Устанавливаем позицию карточки
+    setPosition({
+      top,
+      left,
+      width,
+      height: timeSlotHeight - 2 // Небольшой отступ для визуального разделения
+    });
+  }, [lesson, selectedRooms, timeSlotHeight]);
+
+  // Эффект для отслеживания видимости при прокрутке
+  useEffect(() => {
+    if (!position) return;
+    
+    const handleScroll = () => {
+      if (!cardRef.current) return;
       
-      // Находим индекс комнаты в массиве выбранных комнат
-      const roomIndex = selectedRooms.indexOf(lesson.room);
-      if (roomIndex === -1) return; // Комната не найдена
+      const tableContainer = document.querySelector('[data-time-grid-container]')?.parentElement;
+      if (!tableContainer) return;
       
-      // Получаем индексы времени начала и конца
-      const startHour = lesson.startTime.getHours();
-      const startMinute = lesson.startTime.getMinutes();
-      const endHour = lesson.endTime.getHours();
-      const endMinute = lesson.endTime.getMinutes();
+      // Находим колонку комнат
+      const roomColumn = document.querySelector('.sticky.left-0.w-\\[100px\\]');
+      if (!roomColumn) return;
       
-      const startTimeIndex = (startHour - 8) * 4 + Math.floor(startMinute / 15);
-      const endTimeIndex = (endHour - 8) * 4 + (endMinute === 0 ? 0 : Math.ceil(endMinute / 15));
+      // Получаем размеры и позиции элементов
+      const roomRect = roomColumn.getBoundingClientRect();
+      const cardRect = cardRef.current.getBoundingClientRect();
       
-      // Находим соответствующие ячейки в DOM по атрибуту data-time-col
-      const timeCols = document.querySelectorAll('[data-time-col]');
-      if (!timeCols || timeCols.length === 0) return;
+      // Карточка должна быть скрыта, если её левый край находится внутри колонки комнат
+      // Добавляем буфер в 5px для плавного перехода
+      const shouldBeVisible = cardRect.left > roomRect.right - 5;
       
-      const startCol = timeCols[startTimeIndex];
-      const endCol = timeCols[endTimeIndex - 1]; // -1 так как endTimeIndex указывает на следующий слот
-      if (!startCol || !endCol) return;
+      // Обновляем видимость
+      setIsVisible(shouldBeVisible);
+    };
+    
+    // Получаем контейнер с прокруткой
+    const tableContainer = document.querySelector('[data-time-grid-container]')?.parentElement;
+    if (tableContainer) {
+      // Добавляем обработчик события прокрутки
+      tableContainer.addEventListener('scroll', handleScroll);
       
-      // Получаем позиции ячеек относительно контейнера
-      const containerRect = document.querySelector('[data-time-grid-container]')?.getBoundingClientRect();
-      if (!containerRect) return;
+      // Выполняем проверку видимости при первой отрисовке
+      setTimeout(handleScroll, 0);
       
-      const startRect = startCol.getBoundingClientRect();
-      const endRect = endCol.getBoundingClientRect();
-      
-      // Рассчитываем позицию и размеры карточки
-      const left = startRect.left - containerRect.left;
-      // Добавляем ширину последней ячейки для получения правильной ширины
-      const width = (endRect.right - startRect.left);
-      
-      // Устанавливаем позицию карточки
-      setPosition({
-        top: 40 + roomIndex * timeSlotHeight, // 40px - высота заголовка с временем
-        left,
-        width,
-        height: timeSlotHeight - 2 // небольшой отступ для визуального разделения
-      });
-    } else {
-      // Вертикальное отображение (время по вертикали) - оригинальная логика
-      const startHour = lesson.startTime.getHours();
-      const startMinute = lesson.startTime.getMinutes();
-      const endHour = lesson.endTime.getHours();
-      const endMinute = lesson.endTime.getMinutes();
-      
-      const startTimeIndex = (startHour - 8) * 4 + Math.floor(startMinute / 15);
-      const endTimeIndex = (endHour - 8) * 4 + (endMinute === 0 ? -1 : Math.ceil(endMinute / 15) - 1);
-      
-      // Находим индекс комнаты в массиве выбранных комнат
-      const roomIndex = selectedRooms.indexOf(lesson.room);
-      if (roomIndex === -1) return; // Комната не найдена
-      
-      // Находим соответствующие строки в DOM для начала и конца урока
-      const rows = document.querySelectorAll('[data-time-row]');
-      if (!rows || rows.length === 0) return;
-      
-      const startRow = rows[startTimeIndex];
-      const endRow = rows[endTimeIndex];
-      if (!startRow || !endRow) return;
-      
-      // Получаем позиции строк относительно контейнера
-      const containerRect = document.querySelector('[data-time-grid-container]')?.getBoundingClientRect();
-      if (!containerRect) return;
-      
-      const startRect = startRow.getBoundingClientRect();
-      const endRect = endRow.getBoundingClientRect();
-      
-      const top = startRect.top - containerRect.top;
-      // Используем высоту до конца выбранного слота
-      const height = (endRect.top - startRect.top) + (endMinute === 0 ? 0 : timeSlotHeight);
-      
-      // Ширина ячейки комнаты (стандартно 100px, но оставляем немного места для отступов)
-      const cardWidth = 98;
-      
-      // Устанавливаем позицию карточки
-      setPosition({
-        top,
-        left: 100 + roomIndex * 100, // 100px - ширина первого столбца с временем
-        width: cardWidth,
-        height
-      });
+      // Удаляем обработчик при размонтировании
+      return () => {
+        tableContainer.removeEventListener('scroll', handleScroll);
+      };
     }
-  }, [lesson, selectedRooms, timeSlotHeight, horizontalLayout]);
+  }, [position]);
 
   // Если позиция не вычислена, не отображаем карточку
   if (!position) return null;
-  
-  // Проверяем видимость карточки относительно прокрутки
-  // Если левый край карточки меньше 100px (ширина колонки комнат) + прокрутка, скрываем карточку
-  const isVisible = position.left - scrollLeft >= 100;
   
   // Форматирование времени для отображения
   const formatTime = (date: Date) => {
@@ -157,81 +161,45 @@ export default function LessonCard({
     return `${hours}:${minutes.toString().padStart(2, '0')}`;
   };
 
-  // Получаем имена учителя и ученика из утилит
-  const teacherName = getTeacherName(lesson.teacher);
-  const studentName = getStudentName(lesson.student);
-  
-  // Содержимое карточки зависит от ориентации
-  const renderContent = () => {
-    if (horizontalLayout) {
-      // Для горизонтального отображения (компактный вид)
-      return (
-        <>
-          <div className="flex items-center justify-between h-full text-xs">
-            <div className="truncate font-bold">{getSubjectName(lesson.subject)}</div>
-            <div className="truncate ml-1">
-              {formatTime(lesson.startTime)}-{formatTime(lesson.endTime)}
-            </div>
-          </div>
-          
-          {/* Иконка просмотра - появляется при наведении */}
-          <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-70 bg-white rounded-full p-0.5 transform scale-0 group-hover:scale-100 transition-all shadow-sm">
-            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
-              <circle cx="12" cy="12" r="3" />
-            </svg>
-          </div>
-        </>
-      );
-    } else {
-      // Для вертикального отображения (полный вид)
-      return (
-        <>
-          {/* Визуальный индикатор наведения */}
-          <div className="absolute inset-0 bg-black opacity-0 group-hover:opacity-5 transition-opacity" />
-          
-          {/* Иконка просмотра - появляется при наведении */}
-          <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-70 bg-white rounded-full p-0.5 transform scale-0 group-hover:scale-100 transition-all shadow-sm">
-            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
-              <circle cx="12" cy="12" r="3" />
-            </svg>
-          </div>
-          
-          {/* Содержимое карточки */}
-          <div className="font-bold truncate">{getSubjectName(lesson.subject)}</div>
-          <div className="truncate">講師: {teacherName}</div>
-          <div className="truncate">生徒: {studentName}</div>
-          <div className="text-xs opacity-75 truncate">
-            {formatTime(lesson.startTime)} - {formatTime(lesson.endTime)}
-          </div>
-        </>
-      );
-    }
-  };
-
   return (
-    <div 
-      className={`${lesson.color} border rounded-md p-1 text-xs shadow overflow-hidden absolute 
+    <div
+      ref={cardRef}
+      className={`${lesson.color} border-0 rounded-md p-1 text-xs shadow-sm overflow-hidden absolute 
         transition-all duration-150 group hover:shadow-md hover:brightness-95 active:brightness-90`}
       style={{
         top: `${position.top}px`,
         left: `${position.left}px`, 
         width: `${position.width}px`,
         height: `${position.height}px`,
-        zIndex: 20, // Устанавливаем z-index ниже, чем у фиксированной колонки комнат (40)
+        zIndex: isVisible ? 20 : -1, // Меняем z-index в зависимости от видимости
         cursor: 'pointer',
-        // При перекрытии с колонкой комнат скрываем карточку
+        // Плавное исчезновение при пересечении с колонкой комнат
         opacity: isVisible ? 1 : 0,
         pointerEvents: isVisible ? 'auto' : 'none',
-        transition: 'opacity 0.1s ease-out'
+        transition: 'opacity 0.15s ease-out, z-index 0s',
+        margin: 0,
+        padding: '2px 4px',
+        boxSizing: 'border-box'
       }}
       onClick={(e) => {
         e.stopPropagation(); // Останавливаем всплытие события
         onClick(lesson);
       }}
     >
-      {renderContent()}
+      <div className="flex items-center justify-between h-full text-xs">
+        <div className="truncate font-bold">{getSubjectName(lesson.subject)}</div>
+        <div className="truncate ml-1">
+          {formatTime(lesson.startTime)}-{formatTime(lesson.endTime)}
+        </div>
+      </div>
+      
+      {/* Иконка просмотра - появляется при наведении */}
+      <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-70 bg-white rounded-full p-0.5 transform scale-0 group-hover:scale-100 transition-all shadow-sm">
+        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+          <circle cx="12" cy="12" r="3" />
+        </svg>
+      </div>
     </div>
   );
 }
