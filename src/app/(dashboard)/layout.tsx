@@ -37,7 +37,7 @@ export default function DashboardLayout({
       roles: ['admin']
     },
     { 
-      href: '/master-data', 
+      href: '/masterData',
       label: 'マスタ登録管理', 
       icon: <Database className="h-5 w-5" />,
       roles: ['admin']
