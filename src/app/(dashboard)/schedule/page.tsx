@@ -14,6 +14,7 @@ export default function SchedulePage() {
             スケジュールがここに表示されます
           </div>
         </CardContent>
+        
       </Card>
     </div>
   );

@@ -43,8 +43,8 @@ export default function DashboardLayout({
       roles: ['admin']
     },
     { 
-      href: '/preferences', 
-      label: '希望日程/シフト登録', 
+      href: '/teachers', 
+      label: '教師', 
       icon: <Clock className="h-5 w-5" />,
       roles: ['teacher', 'admin']
     },
@@ -62,7 +62,7 @@ export default function DashboardLayout({
       <header className="bg-card text-card-foreground shadow-md">
         <div className="max-w-7xl mx-auto px-4">
         <div className="flex justify-between items-center">
-  <div className="py-4 text-xl font-bold">LifeHouse</div>
+  <div className="py-4 text-xl font-bold">LightHouse</div>
   <div className="flex items-center overflow-x-auto">
     <nav className="mr-4">
       <ul className="flex space-x-1">

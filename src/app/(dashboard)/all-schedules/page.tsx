@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import AdminCalendarDay from '@/components/calendar/AdminCalendarDay';
+import AdminCalendarDay from '@/components/calendar/admin-calendar-day';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 

@@ -14,6 +14,7 @@ import { format } from 'date-fns';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ja } from 'date-fns/locale';
+import { SUBJECTS_LIST, TEACHERS_LIST, STUDENTS_LIST, getSubjectColor } from './subjectUtils';
 
 // Тип данных для занятия
 type Lesson = {
@@ -27,36 +28,16 @@ type Lesson = {
   color: string;
 };
 
-type LessonDialogProps = {
+type EditLessonDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   lesson: Lesson | null;
   mode: 'view' | 'edit';
-  onSave?: (updatedLesson: Lesson) => void;
-  onDelete?: (lessonId: string) => void;
+  onSave: (updatedLesson: Lesson) => void;
+  onDelete: (lessonId: string) => void;
 };
 
-// Временные данные для выпадающих списков
-const subjects = [
-  { id: 'math', name: '数学' },
-  { id: 'physics', name: '物理' },
-  { id: 'english', name: '英語' },
-  { id: 'chemistry', name: '化学' },
-  { id: 'biology', name: '生物' }
-];
-
-const teachers = [
-  { id: '1', name: 'ペトロフ I.I.' },
-  { id: '2', name: 'シドロワ E.V.' },
-  { id: '3', name: 'コズロワ M.A.' }
-];
-
-const students = [
-  { id: '1', name: 'イワノフ A.' },
-  { id: '2', name: 'スミルノフ K.' },
-  { id: '3', name: 'ペトロワ S.' }
-];
-
+// Создаем массив комнат для выбора
 const rooms = Array.from({ length: 15 }, (_, i) => ({
   id: `${i + 101}`,
   name: `教室 ${i + 101}`
@@ -82,14 +63,14 @@ const getItemName = (id: string, items: { id: string; name: string }[]) => {
   return item ? item.name : id;
 };
 
-export default function LessonDialog({ 
+export default function EditLessonDialog({ 
   open, 
   onOpenChange, 
   lesson, 
   mode,
   onSave,
   onDelete 
-}: LessonDialogProps) {
+}: EditLessonDialogProps) {
   // Хуки всегда вызываются в начале функции, до всяких условий
   const [editedLesson, setEditedLesson] = useState<Lesson | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -108,15 +89,25 @@ export default function LessonDialog({
   }
   
   // Получаем отображаемые имена
-  const subjectName = getItemName(editedLesson.subject, subjects);
-  const teacherName = getItemName(editedLesson.teacher, teachers);
-  const studentName = getItemName(editedLesson.student, students);
+  const subjectName = getItemName(editedLesson.subject, SUBJECTS_LIST);
+  const teacherName = getItemName(editedLesson.teacher, TEACHERS_LIST);
+  const studentName = getItemName(editedLesson.student, STUDENTS_LIST);
   const roomName = getItemName(editedLesson.room, rooms);
 
   // Обработчик изменения полей
   const handleChange = (field: keyof Lesson, value: string) => {
     setEditedLesson(prev => {
       if (!prev) return null;
+      
+      // Если поле - subject, обновляем также color
+      if (field === 'subject') {
+        return {
+          ...prev,
+          [field]: value,
+          color: getSubjectColor(value)
+        };
+      }
+      
       return {
         ...prev,
         [field]: value
@@ -284,7 +275,6 @@ export default function LessonDialog({
             </div>
           </div>
           
-          {/* Остальной код без изменений */}
           {/* Предмет - улучшенный дизайн */}
           <div>
             <Label className="text-sm font-medium">科目</Label>
@@ -297,7 +287,7 @@ export default function LessonDialog({
                   <SelectValue placeholder="科目を選択" />
                 </SelectTrigger>
                 <SelectContent>
-                  {subjects.map(subject => (
+                  {SUBJECTS_LIST.map(subject => (
                     <SelectItem key={subject.id} value={subject.id}>
                       <div className="flex items-center">
                         <span>{subject.name}</span>
@@ -318,17 +308,17 @@ export default function LessonDialog({
           
           {/* Преподаватель - улучшенный дизайн */}
           <div>
-            <Label className="text-sm font-medium">先生</Label>
+            <Label className="text-sm font-medium">講師</Label>
             {isEditing ? (
               <Select
                 value={editedLesson.teacher}
                 onValueChange={(value) => handleChange('teacher', value)}
               >
                 <SelectTrigger className="mt-1 w-full">
-                  <SelectValue placeholder="先生を選択" />
+                  <SelectValue placeholder="講師を選択" />
                 </SelectTrigger>
                 <SelectContent>
-                  {teachers.map(teacher => (
+                  {TEACHERS_LIST.map(teacher => (
                     <SelectItem key={teacher.id} value={teacher.id}>
                       <div className="flex items-center">
                         <span>{teacher.name}</span>
@@ -349,17 +339,17 @@ export default function LessonDialog({
           
           {/* Ученик - улучшенный дизайн */}
           <div>
-            <Label className="text-sm font-medium">学生</Label>
+            <Label className="text-sm font-medium">生徒</Label>
             {isEditing ? (
               <Select
                 value={editedLesson.student}
                 onValueChange={(value) => handleChange('student', value)}
               >
                 <SelectTrigger className="mt-1 w-full">
-                  <SelectValue placeholder="学生を選択" />
+                  <SelectValue placeholder="生徒を選択" />
                 </SelectTrigger>
                 <SelectContent>
-                  {students.map(student => (
+                  {STUDENTS_LIST.map(student => (
                     <SelectItem key={student.id} value={student.id}>
                       <div className="flex items-center">
                         <span>{student.name}</span>

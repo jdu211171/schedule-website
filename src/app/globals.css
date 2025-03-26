@@ -112,6 +112,50 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+.no-select {
+  -webkit-user-select: none; /* Safari */
+  -ms-user-select: none; /* IE 10 and IE 11 */
+  user-select: none; /* Standard syntax */
+}
+
+/* Улучшенный стиль для выделенных ячеек */
+.selected-cell {
+  background-color: rgba(59, 130, 246, 0.3) !important; /* blue-500 с прозрачностью */
+  position: relative;
+}
+
+.selected-cell::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border: 2px solid rgba(59, 130, 246, 0.6); /* blue-500 более тёмный для границы */
+  pointer-events: none;
+}
+
+/* Стиль для первой ячейки выделения */
+.selection-start {
+  background-color: rgba(59, 130, 246, 0.4) !important;
+}
+.selection-start::after {
+  border-top: 2px solid rgba(59, 130, 246, 0.8);
+}
+
+/* Стиль для последней ячейки выделения */
+.selection-end {
+  background-color: rgba(59, 130, 246, 0.4) !important;
+}
+.selection-end::after {
+  border-bottom: 2px solid rgba(59, 130, 246, 0.8);
+}
+
+/* Стиль для подсвеченного столбца */
+.highlighted-column {
+  background-color: rgba(59, 130, 246, 0.1);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -120,3 +164,5 @@
     @apply bg-background text-foreground;
   }
 }
+
+
