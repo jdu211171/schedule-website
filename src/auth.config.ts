@@ -2,6 +2,7 @@ import type { NextAuthConfig } from "next-auth"
 import Credentials from "next-auth/providers/credentials"
 import { prisma } from "./lib/prisma";
 import bcrypt from "bcrypt-edge"
+import { NextResponse } from "next/server";
 
 const protectedRoutes = [
     "/dashboard",
@@ -54,11 +55,11 @@ export default {
             const isAuthRoute = nextUrl.pathname.startsWith("/auth")
 
             if (isProtectedRoute && !isLoggedIn) {
-                return NextResponse.redirect(nextUrl.origin + "/login")
+                return NextResponse.redirect(nextUrl.origin + "/auth/login")
             }
 
             if (isAuthRoute && isLoggedIn) {
-                return Response.redirect(nextUrl.origin + "/dashboard")
+                return NextResponse.redirect(nextUrl.origin + "/")
             }
 
             return true;
