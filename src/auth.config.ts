@@ -54,7 +54,7 @@ export default {
             const isAuthRoute = nextUrl.pathname.startsWith("/auth")
 
             if (isProtectedRoute && !isLoggedIn) {
-                return Response.redirect(nextUrl.origin + "/login")
+                return NextResponse.redirect(nextUrl.origin + "/login")
             }
 
             if (isAuthRoute && isLoggedIn) {
