@@ -34,7 +34,7 @@ setInterval(cleanupRateLimitStore, 300000);
  */
 export function rateLimiter(request: NextRequest, limit = 100): NextResponse | undefined {
     // Only apply to API routes
-    if (!request.nextUrl.pathname.startsWith('/api')) {
+    if (!request.nextUrl.pathname.startsWith('/actions')) {
         return;
     }
 

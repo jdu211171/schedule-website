@@ -1,6 +1,8 @@
+'use server';
+
 import { subjectCreateSchema, subjectUpdateSchema } from '@/lib/validation-schemas';
-import { createCrudHandlers } from '@/lib/api-factory';
-import prisma from "@/lib/prisma";
+import prisma from '@/lib/prisma';
+import { createCrudActions } from '@/lib/actions-factory';
 
 const relatedModels = [
     { model: 'class_sessions' as keyof typeof prisma, field: 'subject_id' },
@@ -12,7 +14,7 @@ const relatedModels = [
     { model: 'teacher_subjects' as keyof typeof prisma, field: 'subject_id' }
 ];
 
-const { getOne, update, remove } = createCrudHandlers(
+const { getAll, create, getById, update, remove } = createCrudActions(
     'subjects',
     'subject_id',
     subjectCreateSchema,
@@ -20,6 +22,22 @@ const { getOne, update, remove } = createCrudHandlers(
     relatedModels
 );
 
-export const GET = getOne;
-export const PATCH = update;
-export const DELETE = remove;
+export async function getSubjects() {
+    return getAll();
+}
+
+export async function createSubject(data: { name: string; notes?: string | null | undefined; subject_type_id?: string | null | undefined; }) {
+    return create(data);
+}
+
+export async function getSubjectById(id: string) {
+    return getById(id);
+}
+
+export async function updateSubject(id: string, data: { [x: string]: never; }) {
+    return update(id, data);
+}
+
+export async function deleteSubject(id: string) {
+    return remove(id);
+}

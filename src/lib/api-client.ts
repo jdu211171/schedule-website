@@ -1,4 +1,4 @@
-// src/lib/api-client.ts
+// src/lib/actions-client.ts
 /**
  * Client-side API utilities for making requests to our backend
  */
@@ -127,15 +127,15 @@ export function createApiClient<T = unknown, CreateInput = Record<string, unknow
 
 // Create API clients for each entity
 export const api = {
-    grades: createApiClient('/api/grades'),
-    studentTypes: createApiClient('/api/student-types'),
-    subjectTypes: createApiClient('/api/subject-types'),
-    classTypes: createApiClient('/api/class-types'),
-    timeSlots: createApiClient('/api/time-slots'),
-    evaluations: createApiClient('/api/evaluations'),
-    booths: createApiClient('/api/booths'),
-    subjects: createApiClient('/api/subjects'),
-    students: createApiClient('/api/students'),
-    courses: createApiClient('/api/courses'),
-    teachers: createApiClient('/api/teachers'),
+    grades: createApiClient('/actions/grades'),
+    studentTypes: createApiClient('/actions/student-types'),
+    subjectTypes: createApiClient('/actions/subject-types'),
+    classTypes: createApiClient('/actions/class-types'),
+    timeSlots: createApiClient('/actions/time-slots'),
+    evaluations: createApiClient('/actions/evaluations'),
+    booths: createApiClient('/actions/booths'),
+    subjects: createApiClient('/actions/subjects'),
+    students: createApiClient('/actions/students'),
+    courses: createApiClient('/actions/courses'),
+    teachers: createApiClient('/actions/teachers'),
 };

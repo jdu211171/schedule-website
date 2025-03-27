@@ -5,7 +5,7 @@ import type {NextRequest} from 'next/server';
  * API middleware for logging, error handling, and security
  */
 export function apiMiddleware(request: NextRequest) {
-    if (!request.nextUrl.pathname.startsWith('/api')) {
+    if (!request.nextUrl.pathname.startsWith('/actions')) {
         return;
     }
 
