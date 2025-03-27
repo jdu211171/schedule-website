@@ -1,0 +1,478 @@
+# API Documentation for School Management System
+# Use this file with REST Client extension in VS Code
+# Format: https://github.com/Huachao/vscode-restclient
+
+@baseUrl = http://localhost:3000/api
+@contentType = application/json
+
+###############################################################
+# TEACHERS API
+###############################################################
+
+### Get all teachers
+GET {{baseUrl}}/teachers
+Content-Type: {{contentType}}
+
+### Get teacher by ID
+# Replace :id with an existing teacher ID, e.g., 't1'
+GET {{baseUrl}}/teachers/:id
+Content-Type: {{contentType}}
+
+### Create a new teacher
+POST {{baseUrl}}/teachers
+Content-Type: {{contentType}}
+
+{
+  "teacher_id": "t4",
+  "name": "John Doe",
+  "evaluation_id": "excellent",
+  "birth_date": "1980-01-01T00:00:00Z",
+  "email": "john.doe@example.com",
+  "mobile_number": "+1234567890",
+  "high_school": "Springfield High",
+  "university": "State University",
+  "faculty": "Science",
+  "department": "Mathematics",
+  "enrollment_status": "Graduate",
+  "notes": "Experienced mathematics teacher"
+}
+
+### Update a teacher
+# Replace :id with an existing teacher ID, e.g., 't1'
+PATCH {{baseUrl}}/teachers/:id
+Content-Type: {{contentType}}
+
+{
+  "name": "John Doe",
+  "evaluation_id": "excellent",
+  "birth_date": "1980-01-01T00:00:00Z",
+  "mobile_number": "+1234567890",
+  "email": "john@example.com",
+  "high_school": null,
+  "university": null,
+  "faculty": null,
+  "department": null,
+  "enrollment_status": null,
+  "other_universities": null,
+  "english_proficiency": null,
+  "toeic": null,
+  "toefl": null,
+  "math_certification": null,
+  "kanji_certification": null,
+  "other_certifications": null,
+  "notes": "Experienced mathematics teacher"
+}
+
+### Delete a teacher
+# Replace :id with an existing teacher ID, e.g., 't1'
+DELETE {{baseUrl}}/teachers/:id
+Content-Type: {{contentType}}
+
+###############################################################
+# SUBJECTS API
+###############################################################
+
+### Get all subjects
+GET {{baseUrl}}/subjects
+Content-Type: {{contentType}}
+
+### Get subject by ID
+# Replace :id with an existing subject ID, e.g., 'math'
+GET {{baseUrl}}/subjects/:id
+Content-Type: {{contentType}}
+
+### Create a new subject
+POST {{baseUrl}}/subjects
+Content-Type: {{contentType}}
+
+{
+  "subject_id": "hist",
+  "name": "History",
+  "subject_type_id": "core",
+  "notes": "Study of historical events"
+}
+
+### Update a subject
+# Replace :id with an existing subject ID, e.g., 'math'
+PATCH {{baseUrl}}/subjects/:id
+Content-Type: {{contentType}}
+
+{
+  "name": "Advanced Mathematics",
+  "notes": "Updated description for advanced mathematics",
+  "subject_type_id": "core"  # Must reference an existing subject type: 'core', 'elective'
+}
+
+### Delete a subject
+# Replace :id with an existing subject ID, e.g., 'math'
+DELETE {{baseUrl}}/subjects/:id
+Content-Type: {{contentType}}
+
+###############################################################
+# GRADES API
+###############################################################
+
+### Get all grades
+GET {{baseUrl}}/grades
+Content-Type: {{contentType}}
+
+### Get grade by ID
+# Replace :id with an existing grade ID, e.g., 'elem6'
+GET {{baseUrl}}/grades/:id
+Content-Type: {{contentType}}
+
+### Create a new grade
+POST {{baseUrl}}/grades
+Content-Type: {{contentType}}
+
+{
+  "grade_id": "hs3",
+  "name": "High School Year 3",
+  "grade_number": "3",
+  "grade_type": "high_school",
+  "notes": "Third year in high school"
+}
+
+### Update a grade
+# Replace :id with an existing grade ID, e.g., 'elem6'
+PATCH {{baseUrl}}/grades/:id
+Content-Type: {{contentType}}
+
+{
+  "name": "Elementary Year 6 Advanced",
+  "grade_number": "6",
+  "grade_type": "elementary",
+  "notes": "Advanced track for sixth grade students"
+}
+
+### Delete a grade
+# Replace :id with an existing grade ID, e.g., 'elem6'
+DELETE {{baseUrl}}/grades/:id
+Content-Type: {{contentType}}
+
+###############################################################
+# EVALUATIONS API
+###############################################################
+
+### Get all evaluations
+GET {{baseUrl}}/evaluations
+Content-Type: {{contentType}}
+
+### Get evaluation by ID
+# Replace :id with an existing evaluation ID, e.g., 'excellent'
+GET {{baseUrl}}/evaluations/:id
+Content-Type: {{contentType}}
+
+### Create a new evaluation
+POST {{baseUrl}}/evaluations
+Content-Type: {{contentType}}
+
+{
+  "evaluation_id": "great",
+  "name": "Great",
+  "score": 85,
+  "notes": "Above average performance"
+}
+
+### Update an evaluation
+# Replace :id with an existing evaluation ID, e.g., 'excellent'
+PATCH {{baseUrl}}/evaluations/:id
+Content-Type: {{contentType}}
+
+{
+  "name": "Outstanding",
+  "score": 95,
+  "notes": "Exceptional performance"
+}
+
+### Delete an evaluation
+# Replace :id with an existing evaluation ID, e.g., 'excellent'
+DELETE {{baseUrl}}/evaluations/:id
+Content-Type: {{contentType}}
+
+###############################################################
+# COURSES API
+###############################################################
+
+### Get all courses
+GET {{baseUrl}}/courses
+Content-Type: {{contentType}}
+
+### Get course by ID
+# Replace :id with an existing course ID, e.g., 'c1'
+GET {{baseUrl}}/courses/:id
+Content-Type: {{contentType}}
+
+### Create a new course
+POST {{baseUrl}}/courses
+Content-Type: {{contentType}}
+
+{
+  "course_id": "c4",
+  "name": "Computer Science 101",
+  "subject_id": "sci",
+  "grade_id": "hs2",
+  "class_duration": "90 min",
+  "class_sessions": "15",
+  "session_type": "Weekly"
+}
+
+### Update a course
+# Replace :id with an existing course ID, e.g., 'c1'
+PATCH {{baseUrl}}/courses/c4
+Content-Type: {{contentType}}
+
+{
+  "name": "Science Advanced Plus",
+  "subject_id": "sci",
+  "class_duration": "120 min",
+  "class_sessions": "12",
+  "session_type": "Intensive"
+}
+
+### Delete a course
+# Replace :id with an existing course ID, e.g., 'c1'
+DELETE {{baseUrl}}/courses/:id
+Content-Type: {{contentType}}
+
+###############################################################
+# TIME-SLOTS API
+###############################################################
+
+### Get all time slots
+GET {{baseUrl}}/time-slots
+Content-Type: {{contentType}}
+
+### Get time slot by ID
+# Replace :id with an existing time slot ID, e.g., 'ts1'
+GET {{baseUrl}}/time-slots/:id
+Content-Type: {{contentType}}
+
+### Create a new time slot
+POST {{baseUrl}}/time-slots
+Content-Type: {{contentType}}
+
+{
+  "time_slot_id": "ts4",
+  "start_time": "2023-09-04T09:00:00Z",
+  "end_time": "2023-09-04T10:30:00Z",
+  "notes": "Monday morning session"
+}
+
+### Update a time slot
+# Replace :id with an existing time slot ID, e.g., 'ts1'
+PATCH {{baseUrl}}/time-slots/:id
+Content-Type: {{contentType}}
+
+{
+  "start_time": "2023-09-04T09:30:00Z",
+  "end_time": "2023-09-04T11:00:00Z",
+  "notes": "Extended Monday morning session"
+}
+
+### Delete a time slot
+# Replace :id with an existing time slot ID, e.g., 'ts1'
+DELETE {{baseUrl}}/time-slots/:id
+Content-Type: {{contentType}}
+
+###############################################################
+# STUDENTS API
+###############################################################
+
+### Get all students
+GET {{baseUrl}}/students
+Content-Type: {{contentType}}
+
+### Get student by ID
+# Replace :id with an existing student ID, e.g., 's1'
+GET {{baseUrl}}/students/:id
+Content-Type: {{contentType}}
+
+### Create a new student
+POST {{baseUrl}}/students
+Content-Type: {{contentType}}
+
+{
+  "student_id": "s4",
+  "name": "Jane Smith",
+  "birth_date": "2005-05-15T00:00:00Z",
+  "enrollment_date": "2023-08-20T00:00:00Z",
+  "grade_id": "hs2",
+  "school_name": "Springfield High",
+  "parent_mobile": "+1987654321",
+  "parent_email": "parent.smith@example.com",
+  "notes": "New student enrollment"
+}
+
+### Update a student
+# Replace :id with an existing student ID, e.g., 's1'
+PATCH {{baseUrl}}/students/:id
+Content-Type: {{contentType}}
+
+{
+  "name": "Jane A. Smith",
+  "birth_date": "2005-05-15T00:00:00Z",
+  "enrollment_date": "2023-08-20T00:00:00Z",
+  "grade_id": "hs2",
+  "school_name": "Springfield High",
+  "parent_mobile": "+1987654321",
+  "parent_email": "parent.updated@example.com",
+  "notes": "Updated student information"
+}
+
+### Delete a student
+# Replace :id with an existing student ID, e.g., 's1'
+DELETE {{baseUrl}}/students/:id
+Content-Type: {{contentType}}
+
+###############################################################
+# STUDENT-TYPES API
+###############################################################
+
+### Get all student types
+GET {{baseUrl}}/student-types
+Content-Type: {{contentType}}
+
+### Get student type by ID
+# Replace :id with an existing student type ID if seeded; none in seeder yet
+GET {{baseUrl}}/student-types/:id
+Content-Type: {{contentType}}
+
+### Create a new student type
+POST {{baseUrl}}/student-types
+Content-Type: {{contentType}}
+
+{
+  "student_type_id": "st1",
+  "name": "Full-time",
+  "description": "Students attending all regular classes"
+}
+
+### Update a student type
+# Replace :id with an existing student type ID, e.g., 'st1' after creation
+PATCH {{baseUrl}}/student-types/:id
+Content-Type: {{contentType}}
+
+{
+  "name": "Full-time Advanced",
+  "description": "Students in accelerated learning programs"
+}
+
+### Delete a student type
+# Replace :id with an existing student type ID, e.g., 'st1' after creation
+DELETE {{baseUrl}}/student-types/:id
+Content-Type: {{contentType}}
+
+###############################################################
+# BOOTHS API
+###############################################################
+
+### Get all booths
+GET {{baseUrl}}/booths
+Content-Type: {{contentType}}
+
+### Get booth by ID
+# Replace :id with an existing booth ID, e.g., 'booth1'
+GET {{baseUrl}}/booths/:id
+Content-Type: {{contentType}}
+
+### Create a new booth
+POST {{baseUrl}}/booths
+Content-Type: {{contentType}}
+
+{
+  "booth_id": "booth4",
+  "name": "Room 101",
+  "notes": "Standard classroom with basic equipment"
+}
+
+### Update a booth
+# Replace :id with an existing booth ID, e.g., 'booth1'
+PATCH {{baseUrl}}/booths/:id
+Content-Type: {{contentType}}
+
+{
+  "name": "Room 101A",
+  "notes": "Upgraded classroom with enhanced equipment"
+}
+
+### Delete a booth
+# Replace :id with an existing booth ID, e.g., 'booth1'
+DELETE {{baseUrl}}/booths/:id
+Content-Type: {{contentType}}
+
+###############################################################
+# CLASS-TYPES API
+###############################################################
+
+### Get all class types
+GET {{baseUrl}}/class-types
+Content-Type: {{contentType}}
+
+### Get class type by ID
+# Replace :id with an existing class type ID, e.g., 'regular'
+GET {{baseUrl}}/class-types/:id
+Content-Type: {{contentType}}
+
+### Create a new class type
+POST {{baseUrl}}/class-types
+Content-Type: {{contentType}}
+
+{
+  "class_type_id": "hybrid",
+  "name": "Hybrid",
+  "notes": "Combination of in-person and online instruction"
+}
+
+### Update a class type
+# Replace :id with an existing class type ID, e.g., 'regular'
+PATCH {{baseUrl}}/class-types/:id
+Content-Type: {{contentType}}
+
+{
+  "name": "Regular Plus",
+  "notes": "Enhanced standard classroom instruction"
+}
+
+### Delete a class type
+# Replace :id with an existing class type ID, e.g., 'regular'
+DELETE {{baseUrl}}/class-types/:id
+Content-Type: {{contentType}}
+
+###############################################################
+# SUBJECT-TYPES API
+###############################################################
+
+### Get all subject types
+GET {{baseUrl}}/subject-types
+Content-Type: {{contentType}}
+
+### Get subject type by ID
+# Replace :id with an existing subject type ID, e.g., 'core'
+GET {{baseUrl}}/subject-types/:id
+Content-Type: {{contentType}}
+
+### Create a new subject type
+POST {{baseUrl}}/subject-types
+Content-Type: {{contentType}}
+
+{
+  "subject_type_id": "special",
+  "name": "Special",
+  "notes": "Specialized subjects"
+}
+
+### Update a subject type
+# Replace :id with an existing subject type ID, e.g., 'core'
+PATCH {{baseUrl}}/subject-types/:id
+Content-Type: {{contentType}}
+
+{
+  "name": "Core Advanced",
+  "notes": "Advanced core subjects"
+}
+
+### Delete a subject type
+# Replace :id with an existing subject type ID, e.g., 'core'
+DELETE {{baseUrl}}/subject-types/:id
+Content-Type: {{contentType}}
