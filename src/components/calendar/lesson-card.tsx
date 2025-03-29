@@ -59,9 +59,21 @@ export default function LessonCard({
 
   // Эффект для вычисления начальной позиции карточки
   useEffect(() => {
-    // Находим индекс комнаты в массиве выбранных комнат
-    const roomIndex = selectedRooms.indexOf(lesson.room);
-    if (roomIndex === -1) return; // Комната не найдена
+    // Преобразуем идентификатор комнаты в строку для надежности
+    const roomId = String(lesson.room);
+    
+    // Отладочный вывод
+    console.log('LessonCard - room ID:', roomId, 'тип:', typeof roomId);
+    console.log('LessonCard - selectedRooms:', selectedRooms);
+    
+    // Ищем индекс комнаты в массиве выбранных комнат
+    const roomIndex = selectedRooms.findIndex(room => String(room) === roomId);
+    console.log('LessonCard - roomIndex:', roomIndex);
+    
+    if (roomIndex === -1) {
+      console.warn(`Комната ${roomId} не найдена в списке выбранных комнат!`);
+      return; // Комната не найдена, не отображаем карточку
+    }
     
     // Получаем индексы времени начала и конца
     const startHour = lesson.startTime.getHours();
@@ -69,26 +81,32 @@ export default function LessonCard({
     const endHour = lesson.endTime.getHours();
     const endMinute = lesson.endTime.getMinutes();
     
+    console.log('LessonCard - время:', `${startHour}:${startMinute} - ${endHour}:${endMinute}`);
+    
     const startTimeIndex = (startHour - 8) * 4 + Math.floor(startMinute / 15);
     const endTimeIndex = (endHour - 8) * 4 + (endMinute === 0 ? 0 : Math.ceil(endMinute / 15));
     
+    console.log('LessonCard - индексы времени:', startTimeIndex, endTimeIndex);
+    
     // Находим соответствующие ячейки в DOM по атрибуту data-time-col
     const timeCols = document.querySelectorAll('[data-time-col]');
-    if (!timeCols || timeCols.length === 0) return;
+    if (!timeCols || timeCols.length === 0) {
+      console.warn('LessonCard - не найдены временные колонки в DOM');
+      return;
+    }
     
     // Проверяем, что индексы находятся в пределах доступных ячеек
-    if (startTimeIndex >= timeCols.length || endTimeIndex - 1 >= timeCols.length) return;
+    if (startTimeIndex >= timeCols.length || endTimeIndex - 1 >= timeCols.length) {
+      console.warn('LessonCard - индексы времени вне диапазона доступных колонок');
+      return;
+    }
     
-    const startCol = timeCols[startTimeIndex];
-    const endCol = timeCols[endTimeIndex - 1]; // -1 так как endTimeIndex указывает на следующий слот
-    if (!startCol || !endCol) return;
-    
-    // Получаем позиции ячеек относительно контейнера
-    const containerRect = document.querySelector('[data-time-grid-container]')?.getBoundingClientRect();
-    if (!containerRect) return;
-    
-    const startRect = startCol.getBoundingClientRect();
-    const endRect = endCol.getBoundingClientRect();
+    // Получаем контейнер сетки расписания
+    const gridContainer = document.querySelector('[data-time-grid-container]');
+    if (!gridContainer) {
+      console.warn('LessonCard - не найден контейнер сетки');
+      return;
+    }
     
     // Рассчитываем точную левую позицию с учетом ширины комнаты
     const left = ROOM_COLUMN_WIDTH + (startTimeIndex * COLUMN_WIDTH);
@@ -97,8 +115,10 @@ export default function LessonCard({
     const width = (endTimeIndex - startTimeIndex) * COLUMN_WIDTH;
     
     // Рассчитываем верхнюю позицию на основе индекса комнаты
-    // 40px - высота заголовка с временем
-    const top = 40 + roomIndex * timeSlotHeight;
+    // 25px - высота заголовка с временем (изменено с 40px)
+    const top = 25 + roomIndex * timeSlotHeight;
+    
+    console.log('LessonCard - позиция:', { top, left, width, height: timeSlotHeight - 2 });
     
     // Устанавливаем позицию карточки
     setPosition({

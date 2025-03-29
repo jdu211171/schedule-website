@@ -24,6 +24,7 @@ type CreateLessonDialogProps = {
     roomId: string;
   } | null;
   selectedDate: Date;
+  selectedRooms: string[]; // Добавлен список выбранных комнат
   onSave: (lessonData: any) => void; // В реальном приложении стоит уточнить тип
 };
 
@@ -32,6 +33,7 @@ export default function CreateLessonDialog({
   onOpenChange,
   lessonData,
   selectedDate,
+  selectedRooms, // Получаем список комнат из props
   onSave
 }: CreateLessonDialogProps) {
   
@@ -58,21 +60,33 @@ export default function CreateLessonDialog({
   
   // Обработчик отправки формы
   const handleSubmit = () => {
+    // Проверяем, существует ли roomId и есть ли он в списке выбранных комнат
+    const roomId = lessonData?.roomId;
+    const validRoomId = roomId && selectedRooms.includes(roomId) 
+      ? roomId 
+      : selectedRooms[0]; // Используем первую комнату, если roomId недействителен
+    
+    // Логирование для отладки
+    console.log('CreateLessonDialog - выбранная комната:', roomId);
+    console.log('CreateLessonDialog - проверенная комната:', validRoomId);
+    console.log('CreateLessonDialog - список комнат:', selectedRooms);
+    
     // Получаем текущий цвет для выбранного предмета напрямую из функции
     const color = getSubjectColor(subject);
     
     // Создание объекта данных урока с цветом, соответствующим предмету
     const newLesson = {
-      id: Date.now().toString(), // Добавляем уникальный ID для урока
+      id: Date.now().toString(), 
       subject,
       teacher,
       student,
-      room: lessonData?.roomId,
+      room: validRoomId,
       startTime: new Date(`${format(selectedDate, 'yyyy-MM-dd')}T${lessonData?.startTime}`),
       endTime: new Date(`${format(selectedDate, 'yyyy-MM-dd')}T${lessonData?.endTime}`),
-      color // Используем полученный цвет 
+      color  
     };
     
+    // Сохраняем урок
     onSave(newLesson);
     
     // Сброс полей формы

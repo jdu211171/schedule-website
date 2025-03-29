@@ -410,7 +410,7 @@ export default function AdminCalendarDay({ mode = 'view' }: AdminCalendarDayProp
       subject: newLessonData.subject,
       teacher: newLessonData.teacher || 'Не указан',
       student: newLessonData.student || 'Не указан',
-      room: newLessonData.roomId || selectedRooms[0], // Используем первую комнату, если не указана
+      room: newLessonData.room || selectedRooms[0], // Используем первую комнату, если не указана
       startTime: new Date(
         selectedDate.getFullYear(),
         selectedDate.getMonth(),
@@ -656,6 +656,7 @@ export default function AdminCalendarDay({ mode = 'view' }: AdminCalendarDayProp
         onOpenChange={setShowCreateDialog}
         lessonData={newLessonData}
         selectedDate={selectedDate}
+        selectedRooms={selectedRooms}
         onSave={handleSaveNewLesson}
       />
       
