@@ -1,6 +1,14 @@
 "use server";
-import { signIn } from "@/auth";
+import { auth, signIn } from "@/auth";
 import { AuthError } from "next-auth";
+
+export async function requireAuth() {
+    const session = await auth();
+    if (!session) {
+        throw new Error("You must be logged in to access this resource.");
+    }
+    return session;
+}
 
 export async function loginUser(email: string, password: string) {
     try {
