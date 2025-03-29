@@ -1,6 +1,11 @@
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { useState } from "react";
+"use client";
 
+import { useState } from "react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { MasterDataTable } from "./components/master-data-table";
+import { tableData } from "./data"; // Импортируем все данные для таблиц
+
+// Таблица табов
 const tabItems = [
   { key: "studentTypes", label: "学生タイプ一覧" },
   { key: "subjectTypes", label: "科目タイプ一覧" },
@@ -19,7 +24,8 @@ export default function MasterDataPage() {
   return (
     <div className="p-6">
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="flex space-x-2">
+        {/* Таб-лист */}
+        <TabsList className="flex space-x-2 overflow-x-auto">
           {tabItems.map((tab) => (
             <TabsTrigger key={tab.key} value={tab.key}>
               {tab.label}
@@ -27,14 +33,17 @@ export default function MasterDataPage() {
           ))}
         </TabsList>
 
-        {tabItems.map((tab) => (
-          <TabsContent key={tab.key} value={tab.key}>
-            <div className="mt-4">
-              {/* Здесь будет таблица */}
-              <p>Таблица для {tab.label}</p>
-            </div>
-          </TabsContent>
-        ))}
+        {/* Контент табов */}
+        {tabItems.map((tab) => {
+          const table = tableData[tab.key]; // Получаем данные для текущего таба
+          if (!table) return null; // Если данных нет, не рендерим
+
+          return (
+            <TabsContent key={tab.key} value={tab.key}>
+              <MasterDataTable columns={table.columns} data={table.data} />
+            </TabsContent>
+          );
+        })}
       </Tabs>
     </div>
   );
