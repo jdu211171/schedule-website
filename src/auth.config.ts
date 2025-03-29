@@ -32,7 +32,10 @@ export default {
                     throw new Error("Invalid credentials.")
                 }
 
-                const isValid = bcrypt.compareSync(credentials.password as string, user.password_hash as string);
+                const isValid = bcrypt.compareSync(credentials.password as string, user.passwordHash as string);
+                console.log("isValid", isValid)
+                console.log("user", user)
+                console.log("credentials", credentials)
                 if (!isValid) {
                     throw new Error("Invalid credentials.")
                 }
