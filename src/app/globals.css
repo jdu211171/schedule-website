@@ -156,6 +156,10 @@
   background-color: rgba(59, 130, 246, 0.1);
 }
 
+.cursor-default { cursor: default !important; }
+.cursor-pointer { cursor: pointer !important; }
+.cursor-move { cursor: move !important; }
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

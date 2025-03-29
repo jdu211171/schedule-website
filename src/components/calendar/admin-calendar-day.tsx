@@ -11,7 +11,7 @@ import CreateLessonDialog from './create-lesson-dialog';
 import LessonCard from './lesson-card';
 import { getSubjectColor } from './subjectUtils';
 
-// Временный тип данных для занятия
+// Типы данных
 type Lesson = {
   id: string;
   subject: string;
@@ -23,7 +23,6 @@ type Lesson = {
   color: string;
 };
 
-// Временный тип данных для комнаты
 type Room = {
   id: string;
   name: string;
@@ -33,6 +32,21 @@ type AdminCalendarDayProps = {
   mode?: 'view' | 'create';
 };
 
+// Добавляем стили для курсоров
+const styles = `
+.cursor-default {
+  cursor: default !important;
+}
+
+.cursor-pointer {
+  cursor: pointer !important;
+}
+
+.cursor-move {
+  cursor: move !important;
+}
+`;
+
 export default function AdminCalendarDay({ mode = 'view' }: AdminCalendarDayProps) {
   // Состояния
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -40,10 +54,14 @@ export default function AdminCalendarDay({ mode = 'view' }: AdminCalendarDayProp
   const [rooms, setRooms] = useState<Room[]>([]);
   const [selectedRooms, setSelectedRooms] = useState<string[]>([]);
   const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [containerWidth, setContainerWidth] = useState<number>(1200);
+  const timeSlotHeight = 40; // Высота строки комнаты
+  
+  // Состояния для выделения ячеек
   const [selectionStart, setSelectionStart] = useState<{row: number, col: number} | null>(null);
   const [selectionEnd, setSelectionEnd] = useState<{row: number, col: number} | null>(null);
-  const [containerWidth, setContainerWidth] = useState<number>(1200); // Значение по умолчанию
-  const timeSlotHeight = 40; // Определяем высоту строки комнаты
+  const [isSelecting, setIsSelecting] = useState(false);
+  const [lastHoveredCell, setLastHoveredCell] = useState<{ row: number, col: number } | null>(null);
   
   // Состояние для диалога создания занятия
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -58,8 +76,27 @@ export default function AdminCalendarDay({ mode = 'view' }: AdminCalendarDayProp
   const [showLessonDialog, setShowLessonDialog] = useState(false);
   const [lessonDialogMode, setLessonDialogMode] = useState<'view' | 'edit'>('view');
   
+  // Рендерим компонент после монтирования для доступа к DOM
+  const [mounted, setMounted] = useState(false);
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
+  // Инъекция стилей при монтировании
+  useEffect(() => {
+    const styleElement = document.createElement('style');
+    styleElement.textContent = styles;
+    document.head.appendChild(styleElement);
+    
+    return () => {
+      document.head.removeChild(styleElement);
+    };
+  }, []);
+
+  // Установка mounted после рендеринга
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+  
+  // Обновление ширины контейнера при изменении размера окна
   useEffect(() => {
     const updateContainerWidth = () => {
       if (tableContainerRef.current) {
@@ -68,12 +105,13 @@ export default function AdminCalendarDay({ mode = 'view' }: AdminCalendarDayProp
     };
     updateContainerWidth();
     window.addEventListener('resize', updateContainerWidth);
+    
     return () => {
       window.removeEventListener('resize', updateContainerWidth);
     };
   }, []);
 
-  // Временный массив временных интервалов (каждые 15 минут с 8:00 до 22:00)
+  // Создание временных слотов (каждые 15 минут с 8:00 до 22:00)
   const timeSlots = Array.from({ length: 57 }, (_, i) => {
     const hours = Math.floor(i / 4) + 8;
     const startMinutes = (i % 4) * 15;
@@ -97,7 +135,7 @@ export default function AdminCalendarDay({ mode = 'view' }: AdminCalendarDayProp
     };
   });
 
-  // Временный массив комнат
+  // Загрузка списка комнат
   useEffect(() => {
     // В реальном приложении здесь будет API запрос
     setRooms(Array.from({ length: 15 }, (_, i) => ({
@@ -107,7 +145,7 @@ export default function AdminCalendarDay({ mode = 'view' }: AdminCalendarDayProp
     setSelectedRooms(Array.from({ length: 15 }, (_, i) => `${i + 101}`));
   }, []);
 
-  // Временная функция для получения занятий
+  // Загрузка занятий
   useEffect(() => {
     // В реальном приложении здесь будет API запрос с учетом выбранной даты и фильтров
     const fakeData: Lesson[] = [
@@ -155,7 +193,7 @@ export default function AdminCalendarDay({ mode = 'view' }: AdminCalendarDayProp
     setLessons(fakeData);
   }, [selectedDate, selectedRooms]);
 
-  // Функция для обновления линии текущего времени
+  // Функция обновления линии текущего времени
   const updateTimeLine = useCallback(() => {
     const currentTime = new Date();
     const today = new Date();
@@ -166,7 +204,7 @@ export default function AdminCalendarDay({ mode = 'view' }: AdminCalendarDayProp
     if (tableContainerRef.current && isSameDay) {
       const hours = currentTime.getHours();
       const minutes = currentTime.getMinutes();
-      if (hours >= 8 && hours <= 22) { // Изменено условие включения 22:00
+      if (hours >= 8 && hours <= 22) {
         const hourIndex = hours - 8;
         const quarterIndex = Math.floor(minutes / 15);
         const columnIndex = hourIndex * 4 + quarterIndex;
@@ -232,7 +270,7 @@ export default function AdminCalendarDay({ mode = 'view' }: AdminCalendarDayProp
     }
   }, [lessons, tableContainerRef]);
   
-  // Функция для отображения текущего времени и прокрутки к текущему уроку
+  // Отображение текущего времени и прокрутка к текущему уроку
   useEffect(() => {
     // Обновляем линию текущего времени
     setTimeout(updateTimeLine, 100); 
@@ -277,69 +315,150 @@ export default function AdminCalendarDay({ mode = 'view' }: AdminCalendarDayProp
     return () => clearInterval(interval);
   }, [updateTimeLine, scrollToEarliestLesson, lessons, selectedDate]);
 
-  // Обработчики выбора ячеек - активны только в режиме создания
-  const handleCellMouseDown = (roomIndex: number, timeIndex: number) => {
-    if (mode === 'create') {
-      setSelectionStart({ row: roomIndex, col: timeIndex });
-      setSelectionEnd({ row: roomIndex, col: timeIndex });
-    }
+  // УЛУЧШЕННЫЕ ФУНКЦИИ ВЫДЕЛЕНИЯ ЯЧЕЕК
+  
+  // Функция для запуска выделения
+  const startSelection = (roomIndex: number, timeIndex: number, e: React.MouseEvent) => {
+    if (mode !== 'create') return;
+    
+    e.preventDefault();
+    e.stopPropagation();
+    
+    setIsSelecting(true);
+    setSelectionStart({ row: roomIndex, col: timeIndex });
+    setSelectionEnd({ row: roomIndex, col: timeIndex });
+    setLastHoveredCell({ row: roomIndex, col: timeIndex });
+    
+    // Добавляем класс для стиля курсора
+    document.body.classList.add('cursor-move');
   };
 
-  const handleCellMouseMove = (roomIndex: number, timeIndex: number) => {
-    if (mode === 'create' && selectionStart) {
-      // Используем только начальную строку (комнату), но обновляем столбец (время)
+  // Обработчик движения мыши для плавного выделения
+  const handleCellHover = (roomIndex: number, timeIndex: number, e: React.MouseEvent) => {
+    if (!isSelecting || !selectionStart) return;
+    
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Обновляем только если ячейка изменилась
+    if (!lastHoveredCell || lastHoveredCell.row !== roomIndex || lastHoveredCell.col !== timeIndex) {
+      setLastHoveredCell({ row: roomIndex, col: timeIndex });
+      
+      // Используем только начальную комнату
       setSelectionEnd({ row: selectionStart.row, col: timeIndex });
     }
   };
 
-  const handleCellMouseUp = () => {
-    if (mode === 'create' && selectionStart && selectionEnd) {
-      handleSelectionComplete();
-    }
-  };
-
   // Функция для завершения выделения и обработки результата
-  const handleSelectionComplete = () => {
-    if (selectionStart && selectionEnd) {
-      const isValidSelection = (
-        selectionStart.row !== selectionEnd.row || 
-        selectionStart.col !== selectionEnd.col
-      );
-
-      if (isValidSelection) {
-        const startTimeIndex = Math.min(selectionStart.col, selectionEnd.col);
-        const endTimeIndex = Math.max(selectionStart.col, selectionEnd.col);
-        const roomIndex = selectionStart.row; // Используем только начальную комнату
-        
+  const finishSelection = () => {
+    if (!selectionStart || !selectionEnd) {
+      cancelSelection();
+      return;
+    }
+    
+    setIsSelecting(false);
+    document.body.classList.remove('cursor-move');
+    
+    // Проверяем, есть ли реальное выделение (не просто клик)
+    const isValidSelection = Math.abs(selectionEnd.col - selectionStart.col) > 0;
+    
+    if (isValidSelection) {
+      console.log('Обработка выделения...');
+      console.log('selectionStart:', selectionStart);
+      console.log('selectionEnd:', selectionEnd);
+      
+      const startTimeIndex = Math.min(selectionStart.col, selectionEnd.col);
+      const endTimeIndex = Math.max(selectionStart.col, selectionEnd.col);
+      const roomIndex = selectionStart.row; // Используем только начальную комнату
+      
+      // Проверка границ
+      if (startTimeIndex >= 0 && startTimeIndex < timeSlots.length && 
+          endTimeIndex >= 0 && endTimeIndex < timeSlots.length) {
         const startTime = timeSlots[startTimeIndex].start;
         const endTime = timeSlots[endTimeIndex].end;
         const roomId = selectedRooms[roomIndex];
 
-        setNewLessonData({
+        console.log('Создание нового урока:');
+        console.log('- Комната:', roomId, '(индекс:', roomIndex, ')');
+        console.log('- Время:', startTime, '-', endTime);
+        
+        // Сохраняем данные для нового урока
+        const newData = {
           startTime,
           endTime,
           roomId
-        });
-        setShowCreateDialog(true);
+        };
+        
+        // Очищаем выделение перед открытием диалога
+        setSelectionStart(null);
+        setSelectionEnd(null);
+        setIsSelecting(false);
+        setLastHoveredCell(null);
+        
+        // Устанавливаем данные и открываем диалог
+        setNewLessonData(newData);
+        setTimeout(() => {
+          setShowCreateDialog(true);
+        }, 50);
+        
+        return; // Важно: прерываем выполнение, чтобы избежать вызова cancelSelection()
       }
-      cancelSelection();
     }
+    
+    // Если выделения нет, или оно невалидное, просто отменяем
+    cancelSelection();
   };
 
   // Функция для отмены выделения
   const cancelSelection = () => {
     setSelectionStart(null);
     setSelectionEnd(null);
+    setIsSelecting(false);
+    setLastHoveredCell(null);
+    document.body.classList.remove('cursor-move');
   };
 
-  // Функция для отображения подсказки об отмене
-  const getSelectionHintText = () => {
-    if (mode === 'create') {
-      return "Выделите слоты для создания урока. Нажмите правую кнопку мыши для отмены.";
+  // Обработчик для правой кнопки мыши (отмена выделения)
+  const handleRightClick = (e: React.MouseEvent) => {
+    if (selectionStart || isSelecting) {
+      e.preventDefault();
+      cancelSelection();
     }
-    return "";
   };
 
+  // Обработчик для глобальных событий мыши
+  useEffect(() => {
+    // Функция для обработки отпускания кнопки мыши в любом месте документа
+    const handleGlobalMouseUp = (e: MouseEvent) => {
+      if (isSelecting && selectionStart && selectionEnd) {
+        e.preventDefault();
+        console.log('Глобальный mouseUp: завершение выделения');
+        finishSelection();
+      }
+    };
+  
+    // Функция для обработки правой кнопки мыши для отмены выделения
+    const handleGlobalRightClick = (e: MouseEvent) => {
+      if (isSelecting || selectionStart) {
+        e.preventDefault();
+        console.log('Правый клик: отмена выделения');
+        cancelSelection();
+      }
+    };
+  
+    // Добавляем обработчики событий
+    document.addEventListener('mouseup', handleGlobalMouseUp);
+    document.addEventListener('contextmenu', handleGlobalRightClick);
+  
+    // Удаляем обработчики при размонтировании
+    return () => {
+      document.removeEventListener('mouseup', handleGlobalMouseUp);
+      document.removeEventListener('contextmenu', handleGlobalRightClick);
+      document.body.classList.remove('cursor-move');
+    };
+  }, [isSelecting, selectionStart, selectionEnd]);
+
+  // Определение, выбрана ли ячейка
   const isCellSelected = (roomIndex: number, timeIndex: number) => {
     if (!selectionStart || !selectionEnd) return false;
     const minCol = Math.min(selectionStart.col, selectionEnd.col);
@@ -347,7 +466,7 @@ export default function AdminCalendarDay({ mode = 'view' }: AdminCalendarDayProp
     return roomIndex === selectionStart.row && timeIndex >= minCol && timeIndex <= maxCol;
   };
 
-  // Функция для определения, нужно ли подсвечивать всю строку
+  // Определение, подсвечивается ли строка
   const isRowHighlighted = (roomIndex: number) => {
     return mode === 'create' && selectionStart && roomIndex === selectionStart.row;
   };
@@ -357,7 +476,7 @@ export default function AdminCalendarDay({ mode = 'view' }: AdminCalendarDayProp
     return format(date, 'yyyy年MM月dd日', { locale: ja });
   };
 
-  // Функция для навигации по датам
+  // Функции для навигации по датам
   const goToNextDay = () => {
     const nextDay = new Date(selectedDate);
     nextDay.setDate(nextDay.getDate() + 1);
@@ -401,6 +520,8 @@ export default function AdminCalendarDay({ mode = 'view' }: AdminCalendarDayProp
       return;
     }
 
+    console.log('handleSaveNewLesson - данные урока:', newLessonData);
+    
     // Получаем цвет для выбранного предмета
     const color = getSubjectColor(newLessonData.subject);
     
@@ -410,7 +531,7 @@ export default function AdminCalendarDay({ mode = 'view' }: AdminCalendarDayProp
       subject: newLessonData.subject,
       teacher: newLessonData.teacher || 'Не указан',
       student: newLessonData.student || 'Не указан',
-      room: newLessonData.room || selectedRooms[0], // Используем первую комнату, если не указана
+      room: newLessonData.room, // Используем room из данных нового урока
       startTime: new Date(
         selectedDate.getFullYear(),
         selectedDate.getMonth(),
@@ -436,10 +557,12 @@ export default function AdminCalendarDay({ mode = 'view' }: AdminCalendarDayProp
       color: color // Используем полученный цвет на основе предмета
     };
     
-    console.log(`Создан новый урок: Предмет=${newLesson.subject}, Цвет=${color}`);
+    console.log(`Создан новый урок: Предмет=${newLesson.subject}, Комната=${newLesson.room}, Цвет=${color}`);
     
     // Добавляем новый урок в список
-    setLessons([...lessons, newLesson]);
+    const newLessonsArray = [...lessons, newLesson];
+    console.log('Массив уроков после добавления:', newLessonsArray);
+    setLessons(newLessonsArray);
     
     // В реальном приложении здесь был бы API-запрос
     setShowCreateDialog(false);
@@ -450,50 +573,6 @@ export default function AdminCalendarDay({ mode = 'view' }: AdminCalendarDayProp
     setSelectedLesson(lesson);
     setLessonDialogMode('view');
     setShowLessonDialog(true);
-  };
-  
-  // Рендерим компонент после монтирования для доступа к DOM
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    // Функция для обработки отпускания кнопки мыши в любом месте документа
-    const handleGlobalMouseUp = (e: MouseEvent) => {
-      if (selectionStart && selectionEnd) {
-        handleSelectionComplete();
-      }
-    };
-  
-    // Функция для обработки правой кнопки мыши для отмены выделения
-    const handleRightClick = (e: MouseEvent) => {
-      if (selectionStart) {
-        e.preventDefault();
-        cancelSelection();
-      }
-    };
-  
-    document.addEventListener('mouseup', handleGlobalMouseUp);
-    document.addEventListener('contextmenu', handleRightClick);
-  
-    return () => {
-      document.removeEventListener('mouseup', handleGlobalMouseUp);
-      document.removeEventListener('contextmenu', handleRightClick);
-    };
-  }, [selectionStart, selectionEnd]);
-
-  // Функция для отображения временных интервалов с верхними индексами
-  const renderTimeSlotLabel = (timeSlot: typeof timeSlots[0]) => {
-    return (
-      <div className="text-sm">
-        {timeSlot.index % 4 === 0 ? (
-          <span dangerouslySetInnerHTML={{ __html: timeSlot.display }} />
-        ) : (
-          <span className="text-gray-400 text-xs" dangerouslySetInnerHTML={{ __html: timeSlot.shortDisplay }} />
-        )}
-      </div>
-    );
   };
 
   return (
@@ -539,14 +618,16 @@ export default function AdminCalendarDay({ mode = 'view' }: AdminCalendarDayProp
           }} 
           ref={tableContainerRef}
         >
-          <div className="relative w-full" data-time-grid-container style={{ 
-  minWidth: `${Math.max(timeSlots.length * 40, containerWidth)}px`,
-  height: `${selectedRooms.length * timeSlotHeight + 40}px`, // Высота заголовка плюс высота комнат
-}}>
+          <div 
+            className="relative w-full" 
+            data-time-grid-container 
+            style={{ 
+              minWidth: `${Math.max(timeSlots.length * 40, containerWidth)}px`,
+              height: `${selectedRooms.length * timeSlotHeight + 40}px`, // Высота заголовка плюс высота комнат
+            }}
+          >
             {/* Заголовок с временными интервалами */}
-                          <div 
-              className="sticky top-0 flex z-40 bg-card shadow" 
-            >
+            <div className="sticky top-0 flex z-40 bg-card shadow">
               <div className="w-[100px] min-w-[100px] flex items-center justify-center font-semibold border-b border-r">
                 教室
               </div>
@@ -586,29 +667,24 @@ export default function AdminCalendarDay({ mode = 'view' }: AdminCalendarDayProp
                   {timeSlots.map((timeSlot, timeIndex) => (
                     <div 
                       key={`${roomId}-${timeSlot.start}`}
+                      data-time-index={timeSlot.index}
                       className={`w-[40px] min-w-[40px] border-r border-b
                         ${timeSlot.index % 4 === 0 ? "bg-gray-50" : ""}
                         ${isCellSelected(roomIndex, timeIndex) ? "bg-green-100" : ""}
                         ${isRowHighlighted(roomIndex) && !isCellSelected(roomIndex, timeIndex) ? "bg-blue-50" : ""}
-                        ${mode === 'create' ? "cursor-pointer" : ""}`}
+                        ${mode === 'create' ? "cursor-default" : ""}
+                        ${isSelecting ? "cursor-move" : ""}`}
                       onMouseDown={(e) => {
                         if (mode === 'create') {
-                          e.stopPropagation();
-                          handleCellMouseDown(roomIndex, timeIndex);
+                          startSelection(roomIndex, timeIndex, e);
                         }
                       }}
-                      onMouseMove={(e) => {
-                        if (mode === 'create' && selectionStart) {
-                          e.stopPropagation();
-                          handleCellMouseMove(roomIndex, timeIndex);
+                      onMouseEnter={(e) => {
+                        if (mode === 'create' && isSelecting) {
+                          handleCellHover(roomIndex, timeIndex, e);
                         }
                       }}
-                      onMouseUp={(e) => {
-                        if (mode === 'create' && selectionStart) {
-                          e.stopPropagation();
-                          handleCellMouseUp();
-                        }
-                      }}
+                      onContextMenu={handleRightClick}
                     />
                   ))}
                 </div>
@@ -650,7 +726,7 @@ export default function AdminCalendarDay({ mode = 'view' }: AdminCalendarDayProp
         />
       )}
 
-      {/* Используем новый компонент CreateLessonDialog */}
+      {/* Используем компонент CreateLessonDialog */}
       <CreateLessonDialog
         open={showCreateDialog}
         onOpenChange={setShowCreateDialog}
@@ -660,7 +736,7 @@ export default function AdminCalendarDay({ mode = 'view' }: AdminCalendarDayProp
         onSave={handleSaveNewLesson}
       />
       
-      {/* Используем новый компонент EditLessonDialog */}
+      {/* Используем компонент EditLessonDialog */}
       <EditLessonDialog
         open={showLessonDialog}
         onOpenChange={setShowLessonDialog}
