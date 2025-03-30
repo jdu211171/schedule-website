@@ -4,7 +4,7 @@ import prisma from "@/lib/prisma";
 import { requireAuth } from "../auth-actions";
 
 export async function getBooth(id: string) {
-    requireAuth();
+    await requireAuth();
 
     const booth = await prisma.booth.findUnique({
         where: {

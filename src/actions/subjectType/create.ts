@@ -1,18 +1,18 @@
 "use server";
 
-import { BoothCreateInput, boothCreateSchema } from "@/schemas/booth.schema";
+import { subjectTypeCreateSchema, SubjectTypeCreateInput } from "@/schemas/subjectType.schema";
 import { requireAuth } from "../auth-actions";
 import prisma from "@/lib/prisma";
 
-export async function updateBooth(data: BoothCreateInput) {
+export async function createSubjectType(data: SubjectTypeCreateInput) {
     await requireAuth();
 
-    const parsed = boothCreateSchema.safeParse(data);
+    const parsed = subjectTypeCreateSchema.safeParse(data);
     if (!parsed.success) {
         throw new Error("Invalid data provided");
     }
 
-    await prisma.booth.create({
+    await prisma.subjectType.create({
         data: parsed.data,
     });
 

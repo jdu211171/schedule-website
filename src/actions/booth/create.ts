@@ -5,7 +5,7 @@ import { requireAuth } from "../auth-actions";
 import prisma from "@/lib/prisma";
 
 export async function createBooth(data: BoothCreateInput) {
-    requireAuth();
+    await requireAuth();
 
     const parsed = boothCreateSchema.safeParse(data);
     if (!parsed.success) {

@@ -4,8 +4,7 @@ import prisma from "@/lib/prisma";
 import { requireAuth } from "../auth-actions";
 
 export async function deleteBooth(id: string) {
-    console.log("Deleting booth with ID:", id);
-    requireAuth();
+    await requireAuth();
 
     const booth = await prisma.booth.findUnique({
         where: {
