@@ -1,5 +1,5 @@
 "use server";
-import { auth, signIn } from "@/auth";
+import { auth, signIn, signOut } from "@/auth";
 import { AuthError } from "next-auth";
 
 export async function requireAuth() {
@@ -24,6 +24,19 @@ export async function loginUser(email: string, password: string) {
             throw new Error(error.cause?.err?.message || "Authentication failed");
         }
         console.error("Error logging in:", error);
+        throw error;
+    }
+}
+
+export async function logoutUser() {
+    try {
+        await signOut();
+    } catch (error) {
+        if (error instanceof AuthError) {
+            console.error("Authentication error:", error.message);
+            throw new Error(error.cause?.err?.message || "Logout failed");
+        }
+        console.error("Error logging out:", error);
         throw error;
     }
 }
