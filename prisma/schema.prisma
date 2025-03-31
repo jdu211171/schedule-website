@@ -54,7 +54,6 @@ model User {
   updatedAt     DateTime?        @default(now()) @map("updated_at") @db.Timestamp(6)
   accounts      Account[]
   sessions      Session[]
-  permissions   UserPermission[]
 
   @@map("users")
 }
@@ -68,22 +67,10 @@ model VerificationToken {
   @@map("verification_tokens")
 }
 
-model UserPermission {
-  id        String    @id @default(cuid()) @map("permission_id")
-  userId    String    @map("user_id")
-  resource  String    @db.VarChar(50)
-  action    String    @db.VarChar(20)
-  createdAt DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt DateTime? @default(now()) @map("updated_at") @db.Timestamp(6)
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, resource, action])
-  @@map("user_permissions")
-}
-
 model Booth {
-  boothId               String                 @id @map("booth_id") @db.VarChar(50)
+  boothId               String                 @id @default(cuid()) @map("booth_id")
   name                  String                 @db.VarChar(100)
+  status                Boolean?               @default(true)
   notes                 String?
   classSessions         ClassSession[]
   regularClassTemplates RegularClassTemplate[]
@@ -92,17 +79,15 @@ model Booth {
 }
 
 model ClassSession {
-  classId                 String                   @id @map("class_id") @db.VarChar(50)
+  classId                 String                   @id @default(cuid()) @map("class_id")
   date                    DateTime?                @db.Date
   startTime               DateTime?                @map("start_time") @db.Time(6)
   endTime                 DateTime?                @map("end_time") @db.Time(6)
-  duration                String?                  @db.VarChar(20)
+  duration                DateTime?                @map("duration") @db.Time(6)
   teacherId               String?                  @map("teacher_id") @db.VarChar(50)
   subjectId               String?                  @map("subject_id") @db.VarChar(50)
   boothId                 String?                  @map("booth_id") @db.VarChar(50)
   classTypeId             String?                  @map("class_type_id") @db.VarChar(50)
-  isGroupClass            Boolean?                 @default(false) @map("is_group_class")
-  maxStudents             Int?                     @default(1) @map("max_students")
   notes                   String?
   booth                   Booth?                   @relation(fields: [boothId], references: [boothId], onDelete: NoAction, onUpdate: NoAction)
   classType               ClassType?               @relation(fields: [classTypeId], references: [classTypeId], onDelete: NoAction, onUpdate: NoAction)
@@ -114,7 +99,7 @@ model ClassSession {
 }
 
 model ClassType {
-  classTypeId               String                     @id @map("class_type_id") @db.VarChar(50)
+  classTypeId               String                     @id @default(cuid()) @map("class_type_id")
   name                      String                     @db.VarChar(100)
   notes                     String?
   classSessions             ClassSession[]
@@ -137,7 +122,7 @@ model CourseAssignment {
 }
 
 model CourseEnrollment {
-  studentId       String          @map("student_id") @db.VarChar(50)
+  studentId       String          @map("student_id")
   courseId        String          @map("course_id") @db.VarChar(50)
   enrollmentDate  DateTime?       @map("enrollment_date") @db.Date
   status          String?         @db.VarChar(50)
@@ -150,7 +135,7 @@ model CourseEnrollment {
 }
 
 model Evaluation {
-  evaluationId String    @id @map("evaluation_id") @db.VarChar(50)
+  evaluationId String    @id @default(cuid()) @map("evaluation_id")
   name         String    @db.VarChar(100)
   score        Int?
   notes        String?
@@ -160,7 +145,7 @@ model Evaluation {
 }
 
 model Grade {
-  gradeId          String            @id @map("grade_id") @db.VarChar(50)
+  gradeId          String            @id @default(cuid()) @map("grade_id")
   name             String            @db.VarChar(100)
   gradeType        String?           @map("grade_type") @db.VarChar(50)
   gradeNumber      String?           @map("grade_number") @db.VarChar(20)
@@ -171,14 +156,21 @@ model Grade {
   @@map("grades")
 }
 
+enum IntensiveSessionType {
+  SUMMER
+  SPRING
+  WINTER
+  AUTUMN
+}
+
 model IntensiveCourse {
-  courseId          String             @id @map("course_id") @db.VarChar(50)
+  courseId          String             @id @map("course_id")
   name              String             @db.VarChar(100)
   subjectId         String?            @map("subject_id") @db.VarChar(50)
   gradeId           String?            @map("grade_id") @db.VarChar(50)
   classDuration     String?            @map("class_duration") @db.VarChar(20)
   classSessions     String?            @map("class_sessions") @db.VarChar(20)
-  sessionType       String?            @map("session_type") @db.VarChar(50)
+  sessionType       IntensiveSessionType? @map("session_type")
   courseAssignments CourseAssignment[]
   courseEnrollments CourseEnrollment[]
   grade             Grade?             @relation(fields: [gradeId], references: [gradeId], onDelete: NoAction, onUpdate: NoAction)
@@ -188,7 +180,7 @@ model IntensiveCourse {
 }
 
 model Notification {
-  notificationId   String    @id @map("notification_id") @db.VarChar(50)
+  notificationId   String    @id @default(cuid()) @map("notification_id")
   recipientType    String?   @map("recipient_type") @db.VarChar(20)
   recipientId      String?   @map("recipient_id") @db.VarChar(50)
   notificationType String?   @map("notification_type") @db.VarChar(50)
@@ -204,7 +196,7 @@ model Notification {
 }
 
 model RegularClassTemplate {
-  templateId                 String                      @id @map("template_id") @db.VarChar(50)
+  templateId                 String                      @id @default(cuid()) @map("template_id")
   dayOfWeek                  String?                     @map("day_of_week") @db.VarChar(20)
   subjectId                  String?                     @map("subject_id") @db.VarChar(50)
   boothId                    String?                     @map("booth_id") @db.VarChar(50)
@@ -221,7 +213,7 @@ model RegularClassTemplate {
 }
 
 model StudentClassEnrollment {
-  enrollmentId String        @id @map("enrollment_id") @db.VarChar(50)
+  enrollmentId String        @id @default(cuid()) @map("enrollment_id")
   classId      String?       @map("class_id") @db.VarChar(50)
   studentId    String?       @map("student_id") @db.VarChar(50)
   status       String?       @db.VarChar(50)
@@ -233,7 +225,7 @@ model StudentClassEnrollment {
 }
 
 model StudentRegularPreference {
-  preferenceId String    @id @map("preference_id") @db.VarChar(50)
+  preferenceId String    @id @default(cuid()) @map("preference_id")
   studentId    String?   @map("student_id") @db.VarChar(50)
   subjectId    String?   @map("subject_id") @db.VarChar(50)
   dayOfWeek    String?   @map("day_of_week") @db.VarChar(20)
@@ -247,7 +239,7 @@ model StudentRegularPreference {
 }
 
 model StudentSpecialPreference {
-  preferenceId String     @id @map("preference_id") @db.VarChar(50)
+  preferenceId String     @id @default(cuid()) @map("preference_id")
   studentId    String?    @map("student_id") @db.VarChar(50)
   classTypeId  String?    @map("class_type_id") @db.VarChar(50)
   subjectId    String?    @map("subject_id") @db.VarChar(50)
@@ -274,7 +266,7 @@ model StudentSubject {
 }
 
 model StudentType {
-  studentTypeId String  @id @map("student_type_id") @db.VarChar(50)
+  studentTypeId String  @id @default(cuid()) @map("student_type_id")
   name          String  @db.VarChar(100)
   description   String?
 
@@ -282,7 +274,7 @@ model StudentType {
 }
 
 model Student {
-  studentId                  String                      @id @map("student_id") @db.VarChar(50)
+  studentId                  String                      @id @default(cuid()) @map("student_id")
   name                       String                      @db.VarChar(100)
   kanaName                   String?                     @map("kana_name") @db.VarChar(100)
   gradeId                    String?                     @map("grade_id") @db.VarChar(50)
@@ -292,7 +284,7 @@ model Student {
   firstChoiceSchool          String?                     @map("first_choice_school") @db.VarChar(100)
   secondChoiceSchool         String?                     @map("second_choice_school") @db.VarChar(100)
   enrollmentDate             DateTime?                   @map("enrollment_date") @db.Date
-  birthDate                  DateTime?                   @map("birth_date") @db.Date
+  birthDate                  DateTime?                   @db.Date
   homePhone                  String?                     @map("home_phone") @db.VarChar(20)
   parentMobile               String?                     @map("parent_mobile") @db.VarChar(20)
   studentMobile              String?                     @map("student_mobile") @db.VarChar(20)
@@ -310,7 +302,7 @@ model Student {
 }
 
 model SubjectType {
-  subjectTypeId String    @id @map("subject_type_id") @db.VarChar(50)
+  subjectTypeId String    @id @default(cuid()) @map("subject_type_id")
   name          String    @db.VarChar(100)
   notes         String?
   subjects      Subject[]
@@ -319,7 +311,7 @@ model SubjectType {
 }
 
 model Subject {
-  subjectId                 String                     @id @map("subject_id") @db.VarChar(50)
+  subjectId                 String                     @id @default(cuid()) @map("subject_id")
   name                      String                     @db.VarChar(100)
   subjectTypeId             String?                    @map("subject_type_id") @db.VarChar(50)
   notes                     String?
@@ -336,7 +328,7 @@ model Subject {
 }
 
 model TeacherRegularShift {
-  shiftId   String    @id @map("shift_id") @db.VarChar(50)
+  shiftId   String    @id @default(cuid()) @map("shift_id")
   teacherId String?   @map("teacher_id") @db.VarChar(50)
   dayOfWeek String?   @map("day_of_week") @db.VarChar(20)
   startTime DateTime? @map("start_time") @db.Time(6)
@@ -348,7 +340,7 @@ model TeacherRegularShift {
 }
 
 model TeacherSpecialShift {
-  shiftId   String    @id @map("shift_id") @db.VarChar(50)
+  shiftId   String    @id @default(cuid()) @map("shift_id")
   teacherId String?   @map("teacher_id") @db.VarChar(50)
   date      DateTime? @db.Date
   startTime DateTime? @map("start_time") @db.Time(6)
@@ -371,7 +363,7 @@ model TeacherSubject {
 }
 
 model Teacher {
-  teacherId             String                 @id @map("teacher_id") @db.VarChar(50)
+  teacherId             String                 @id @default(cuid()) @map("teacher_id")
   name                  String                 @db.VarChar(100)
   evaluationId          String?                @map("evaluation_id") @db.VarChar(50)
   birthDate             DateTime?              @map("birth_date") @db.Date
@@ -402,7 +394,7 @@ model Teacher {
 }
 
 model TemplateStudentAssignment {
-  assignmentId         String                @id @map("assignment_id") @db.VarChar(50)
+  assignmentId         String                @id @default(cuid()) @map("assignment_id")
   templateId           String?               @map("template_id") @db.VarChar(50)
   studentId            String?               @map("student_id") @db.VarChar(50)
   notes                String?
@@ -410,13 +402,4 @@ model TemplateStudentAssignment {
   regularClassTemplate RegularClassTemplate? @relation(fields: [templateId], references: [templateId], onDelete: NoAction, onUpdate: NoAction)
 
   @@map("template_student_assignments")
-}
-
-model TimeSlot {
-  timeSlotId String   @id @map("time_slot_id") @db.VarChar(50)
-  startTime  DateTime @map("start_time") @db.Time(6)
-  endTime    DateTime @map("end_time") @db.Time(6)
-  notes      String?
-
-  @@map("time_slots")
 }
