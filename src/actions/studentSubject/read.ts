@@ -13,6 +13,10 @@ export async function getStudentSubject(studentId: string, subjectId: string) {
                 subjectId,
             },
         },
+        include: {
+            student: true,
+            subject: true,
+        },
     });
 
     if (!record) {
