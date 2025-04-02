@@ -12,9 +12,9 @@ export async function createBooth(data: BoothCreateInput) {
         throw new Error("Invalid data provided");
     }
 
-    await prisma.booth.create({
+    const newBooth = await prisma.booth.create({
         data: parsed.data,
     });
 
-    return parsed.data;
+    return newBooth;
 }
