@@ -1,19 +1,28 @@
 "use server";
 
-import { GradeCreateInput, gradeCreateSchema } from "@/schemas/grade.schema";
+import { GradeUpdateInput, gradeUpdateSchema } from "@/schemas/grade.schema";
 import { requireAuth } from "../auth-actions";
 import prisma from "@/lib/prisma";
 
-export async function updateGrade(data: GradeCreateInput) {
+export async function updateGrade(data: GradeUpdateInput) {
     await requireAuth();
 
-    const parsed = gradeCreateSchema.safeParse(data);
+    if (!data.gradeId) {
+        throw new Error("Grade ID is required for updates");
+    }
+
+    const parsed = gradeUpdateSchema.safeParse(data);
     if (!parsed.success) {
         throw new Error("Invalid data provided");
     }
 
-    await prisma.grade.create({
-        data: parsed.data,
+    const { gradeId, ...updateData } = parsed.data;
+
+    await prisma.grade.update({
+        where: {
+            gradeId: gradeId,
+        },
+        data: updateData,
     });
 
     return parsed.data;

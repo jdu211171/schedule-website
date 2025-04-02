@@ -1,11 +1,11 @@
 import { z } from "zod";
 
 export const gradeCreateSchema = z.object({
-    name: z.string(),
-    gradeId: z.string().uuid({ message: "Invalid ID" }),
-    gradeType: z.string().optional(),
-    gradeNumber: z.string().optional(),
-    notes: z.string().optional(),
+    name: z.string().max(100, { message: "Name must be 100 characters or less" }),
+    gradeId: z.string().cuid({ message: "Invalid ID" }).optional(),
+    studentTypeId: z.string().nullable().optional(),
+    gradeYear: z.number().int().nullable().optional(),
+    notes: z.string().nullable().optional(),
 });
 
 export const gradeUpdateSchema = gradeCreateSchema.partial()
