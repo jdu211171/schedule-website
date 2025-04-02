@@ -387,17 +387,17 @@ enum IntensiveCourseType {
 }
 
 model IntensiveCourse {
-  courseId          String                @id @map("course_id")
-  name              String                @db.VarChar(100)
-  subjectId         String?               @map("subject_id") @db.VarChar(50)
-  gradeId           String?               @map("grade_id") @db.VarChar(50)
-  classDuration     DateTime?             @map("class_duration") @db.Time(6)
-  classSessions     String?               @map("class_sessions") @db.VarChar(20)
+  courseId          String               @id @map("course_id")
+  name              String               @db.VarChar(100)
+  subjectId         String?              @map("subject_id") @db.VarChar(50)
+  gradeId           String?              @map("grade_id") @db.VarChar(50)
+  classDuration     DateTime?            @map("class_duration") @db.Time(6)
+  classSessions     String?              @map("class_sessions") @db.VarChar(20)
   sessionType       IntensiveCourseType? @map("session_type")
   courseAssignments CourseAssignment[]
   courseEnrollments CourseEnrollment[]
-  grade             Grade?                @relation(fields: [gradeId], references: [gradeId], onDelete: NoAction, onUpdate: NoAction)
-  subject           Subject?              @relation(fields: [subjectId], references: [subjectId], onDelete: NoAction, onUpdate: NoAction)
+  grade             Grade?               @relation(fields: [gradeId], references: [gradeId], onDelete: NoAction, onUpdate: NoAction)
+  subject           Subject?             @relation(fields: [subjectId], references: [subjectId], onDelete: NoAction, onUpdate: NoAction)
 
   @@map("intensive_courses")
 }
@@ -451,11 +451,11 @@ model Notification {
  * Vacation -> 休暇
  */
 model Event {
-  id           String    @id @default(uuid())
-  name         String
-  startDate    DateTime
-  endDate      DateTime
-  isRecurring  Boolean   @default(false)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id          String   @id @default(uuid())
+  name        String
+  startDate   DateTime
+  endDate     DateTime
+  isRecurring Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
