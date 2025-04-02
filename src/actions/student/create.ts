@@ -12,9 +12,10 @@ export async function createStudent(data: StudentCreateInput) {
         throw new Error("Invalid data provided");
     }
 
-    await prisma.student.create({
+    // Let Prisma handle ID generation with cuid() if not provided
+    const student = await prisma.student.create({
         data: parsed.data,
     });
 
-    return parsed.data;
+    return student;
 }

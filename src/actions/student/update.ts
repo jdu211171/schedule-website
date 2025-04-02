@@ -1,20 +1,23 @@
 "use server";
 
-import { StudentCreateInput, studentCreateSchema } from "@/schemas/student.schema";
+import { StudentUpdateInput, studentUpdateSchema } from "@/schemas/student.schema";
 import { requireAuth } from "../auth-actions";
 import prisma from "@/lib/prisma";
 
-export async function updateStudent(data: StudentCreateInput) {
+export async function updateStudent(data: StudentUpdateInput) {
     await requireAuth();
 
-    const parsed = studentCreateSchema.safeParse(data);
+    const parsed = studentUpdateSchema.safeParse(data);
     if (!parsed.success) {
         throw new Error("Invalid data provided");
     }
 
-    await prisma.student.create({
-        data: parsed.data,
+    const { studentId, ...updateData } = parsed.data;
+    
+    const student = await prisma.student.update({
+        where: { studentId },
+        data: updateData,
     });
 
-    return parsed.data;
+    return student;
 }
