@@ -6,6 +6,8 @@ import { NextResponse } from "next/server";
 
 const protectedRoutes = [
     "/dashboard",
+    "/student",
+    "/teacher",
 ]
 
 // Notice this is only an object, not a full Auth.js instance
@@ -52,11 +54,11 @@ export default {
     callbacks: {
         authorized: ({ request, auth }) => {
             const { nextUrl } = request;
-
+            
             const isLoggedIn = !!auth?.user;
-            const isProtectedRoute = protectedRoutes.includes(nextUrl.pathname);
+            const isProtectedRoute = protectedRoutes.filter((route) => nextUrl.pathname.startsWith(route)).length > 0;
             const isAuthRoute = nextUrl.pathname.startsWith("/auth")
-
+            
             if (isProtectedRoute && !isLoggedIn) {
                 return NextResponse.redirect(nextUrl.origin + "/auth/login")
             }
