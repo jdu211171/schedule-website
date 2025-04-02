@@ -122,7 +122,7 @@ model ClassType {
  */
 enum SchoolType {
   PUBLIC
-  PRIIVATE
+  PRIVATE
 }
 
 enum examSchoolType {
@@ -155,7 +155,6 @@ model Student {
   studentClassEnrollments    StudentClassEnrollment[]
   studentRegularPreferences  StudentRegularPreference[]
   studentSpecialPreferences  StudentSpecialPreference[]
-  studentSubjects            StudentSubject[]
   grade                      Grade?                      @relation(fields: [gradeId], references: [gradeId], onDelete: NoAction, onUpdate: NoAction)
   templateStudentAssignments TemplateStudentAssignment[]
 
@@ -211,17 +210,6 @@ model StudentSpecialPreference {
   subject      Subject?   @relation(fields: [subjectId], references: [subjectId], onDelete: NoAction, onUpdate: NoAction)
 
   @@map("student_special_preferences")
-}
-
-model StudentSubject {
-  studentId String  @map("student_id") @db.VarChar(50)
-  subjectId String  @map("subject_id") @db.VarChar(50)
-  notes     String?
-  student   Student @relation(fields: [studentId], references: [studentId], onDelete: NoAction, onUpdate: NoAction)
-  subject   Subject @relation(fields: [subjectId], references: [subjectId], onDelete: NoAction, onUpdate: NoAction)
-
-  @@id([studentId, subjectId])
-  @@map("student_subjects")
 }
 
 model TemplateStudentAssignment {
@@ -353,7 +341,6 @@ model Subject {
   regularClassTemplates     RegularClassTemplate[]
   studentRegularPreferences StudentRegularPreference[]
   studentSpecialPreferences StudentSpecialPreference[]
-  studentSubjects           StudentSubject[]
   subjectType               SubjectType?               @relation(fields: [subjectTypeId], references: [subjectTypeId], onDelete: NoAction, onUpdate: NoAction)
   teacherSubjects           TeacherSubject[]
 

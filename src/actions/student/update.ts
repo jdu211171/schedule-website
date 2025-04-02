@@ -13,7 +13,7 @@ export async function updateStudent(data: StudentUpdateInput) {
     }
 
     const { studentId, ...updateData } = parsed.data;
-    
+
     const student = await prisma.student.update({
         where: { studentId },
         data: updateData,

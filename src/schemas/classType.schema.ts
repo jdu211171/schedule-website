@@ -3,7 +3,6 @@ import { z } from "zod";
 export const classTypeCreateSchema = z.object({
     name: z.string(),
     notes: z.string().optional(),
-    classTypeId: z.string().optional(), // Allow auto-generation by Prisma
 });
 
 export const classTypeUpdateSchema = classTypeCreateSchema.partial().extend({
