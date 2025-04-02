@@ -1,20 +1,35 @@
 "use server";
 
-import { ClassTypeCreateInput, classTypeCreateSchema } from "@/schemas/classType.schema";
+import { ClassTypeUpdateInput, classTypeUpdateSchema } from "@/schemas/classType.schema";
 import { requireAuth } from "../auth-actions";
 import prisma from "@/lib/prisma";
 
-export async function updateClassType(data: ClassTypeCreateInput) {
+export async function updateClassType(data: ClassTypeUpdateInput) {
     await requireAuth();
 
-    const parsed = classTypeCreateSchema.safeParse(data);
+    const parsed = classTypeUpdateSchema.safeParse(data);
     if (!parsed.success) {
         throw new Error("Invalid data provided");
     }
 
-    await prisma.classType.create({
-        data: parsed.data,
+    const { classTypeId, ...updateData } = parsed.data;
+
+    const classType = await prisma.classType.findUnique({
+        where: {
+            classTypeId,
+        },
     });
 
-    return parsed.data;
+    if (!classType) {
+        throw new Error("ClassType not found");
+    }
+
+    const result = await prisma.classType.update({
+        where: {
+            classTypeId,
+        },
+        data: updateData,
+    });
+
+    return result;
 }

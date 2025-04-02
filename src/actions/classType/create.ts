@@ -12,9 +12,9 @@ export async function createClassType(data: ClassTypeCreateInput) {
         throw new Error("Invalid data provided");
     }
 
-    await prisma.classType.create({
+    const result = await prisma.classType.create({
         data: parsed.data,
     });
 
-    return parsed.data;
+    return result;
 }
