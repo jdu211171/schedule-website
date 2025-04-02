@@ -2,10 +2,10 @@ import React from "react";
 import { Edit, Trash } from "lucide-react";
 
 interface TableProps {
-    data: any[];
+    data: Record<string, unknown>[];
     columns: { [key: string]: string };
-    onEdit: (item: any) => void;
-    onDelete: (item: any) => void;
+    onEdit: (item: Record<string, unknown>) => void;
+    onDelete: (item: Record<string, unknown>) => void;
 }
 
 export default function Table({ data, columns, onEdit, onDelete }: TableProps) {

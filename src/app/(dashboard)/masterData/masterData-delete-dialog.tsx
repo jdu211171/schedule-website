@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
-type MasterData = Record<string, any>;
+type MasterData = Record<string, string | number | boolean | null | undefined>;
 
 type MasterDataDeleteDialogProps = {
     open: boolean;
@@ -26,7 +26,7 @@ export function MasterDataDeleteDialog({ open, onOpenChange, data, columns, onDa
         } else {
             setValidatedColumns(null);
         }
-    }, [columns, open]);
+    }, [columns, open, data]);
 
     const handleDelete = () => {
         console.log("handleDelete の data:", data);
@@ -35,7 +35,7 @@ export function MasterDataDeleteDialog({ open, onOpenChange, data, columns, onDa
             return;
         }
         console.log("削除する ID:", data.id);
-        onDataDeleted(data.id);
+        onDataDeleted(Number(data.id));
         onOpenChange(false);
     };
 

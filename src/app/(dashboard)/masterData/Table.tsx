@@ -8,15 +8,15 @@ interface ColumnConfig {
 }
 
 interface TableProps {
-    data: any[];
+    data: Record<string, unknown>[];
     columns: { [key: string]: string | ColumnConfig };
-    onEdit: (item: any) => void;
+    onEdit: (item: Record<string, unknown>) => void;
     onDelete: (id: number) => void;
 }
 
 export default class Table extends React.Component<TableProps> {
     render() {
-        let { data, columns, onEdit, onDelete } = this.props;
+        const { data, columns, onEdit, onDelete } = this.props;
         if (!data || data.length === 0) {
             return <p className="text-gray-500 text-center py-4">データがありません</p>;
         }
@@ -41,14 +41,14 @@ export default class Table extends React.Component<TableProps> {
                         <tr key={index} className="border border-gray-300 hover:bg-gray-50">
                             {headers.map((key) => (
                                 <td key={key} className="border border-gray-300 px-4 py-2">
-                                    {row[key] ?? "-"}
+                                    {String(row[key] ?? "-")}
                                 </td>
                             ))}
                             <td className="border border-gray-300 px-4 py-2 flex items-center space-x-3">
                                 <button onClick={() => onEdit(row)} className="text-gray-500 hover:text-gray-700">
                                     <Edit size={18} />
                                 </button>
-                                <button onClick={() => onDelete(row.id)} className="text-red-500 hover:text-red-700">
+                                <button onClick={() => onDelete(row.id as number)} className="text-red-500 hover:text-red-700">
                                     <Trash size={18} />
                                 </button>
                             </td>

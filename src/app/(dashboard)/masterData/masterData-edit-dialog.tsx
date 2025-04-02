@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-type MasterData = Record<string, any>;
+type MasterData = Record<string, string>;
 
 type MasterDataEditDialogProps = {
     open: boolean;

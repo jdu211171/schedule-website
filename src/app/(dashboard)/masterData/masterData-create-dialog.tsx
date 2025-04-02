@@ -9,12 +9,12 @@ import { Label } from "@/components/ui/label";
 type MasterDataCreateDialogProps = {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    onDataCreated: (data: Record<string, any>) => void;
+    onDataCreated: (data: Record<string, string>) => void;
     columns?: Record<string, string>;
 };
 
 export function MasterDataCreateDialog({ open, onOpenChange, onDataCreated, columns }: MasterDataCreateDialogProps) {
-    const [formData, setFormData] = useState<Record<string, any>>({});
+    const [formData, setFormData] = useState<Record<string, string>>({});
 
     useEffect(() => {
         console.log("MasterDataCreateDialog の columns:", columns);
