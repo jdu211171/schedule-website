@@ -29,7 +29,7 @@ async function main() {
             prisma.booth.create({
                 data: {
                     boothId: faker.string.uuid(),
-                    name: faker.company.name(),
+                    name: faker.location.buildingNumber(),
                     notes: faker.lorem.sentence(),
                 },
             })
