@@ -446,3 +446,16 @@ model Notification {
 
   @@map("notifications")
 }
+
+/**
+ * Vacation -> 休暇
+ */
+model Event {
+  id           String    @id @default(uuid())
+  name         String
+  startDate    DateTime
+  endDate      DateTime
+  isRecurring  Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
