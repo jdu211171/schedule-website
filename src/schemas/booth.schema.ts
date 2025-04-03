@@ -1,4 +1,4 @@
-import {z} from "zod";
+import { z } from "zod";
 
 export const boothCreateSchema = z.object({
     name: z.string().min(1, { message: "Name is required" }),
@@ -15,6 +15,8 @@ export const boothSchema = z.object({
     name: z.string(),
     status: z.boolean().nullable(),
     notes: z.string().nullable(),
+    createdAt: z.date(),
+    updatedAt: z.date(),
 });
 
 export type BoothCreateInput = z.infer<typeof boothCreateSchema>;
