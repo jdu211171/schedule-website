@@ -5,18 +5,21 @@ import type { ColumnDef } from "@tanstack/react-table"
 import { Pencil, Trash2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { DataTable } from "@/components/data-table"
 import { useBooths } from "@/hooks/useBoothQuery"
 import { useBoothDelete } from "@/hooks/useBoothMutation"
-import { BoothFormDialog } from "./booth-form-dialog"
-import { DataTable } from "@/components/data-table"
 import {
-    AlertDialog, AlertDialogAction, AlertDialogCancel,
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
     AlertDialogContent,
-    AlertDialogDescription, AlertDialogFooter,
+    AlertDialogDescription,
+    AlertDialogFooter,
     AlertDialogHeader,
-    AlertDialogTitle
+    AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import {Booth} from "@prisma/client";
+import {BoothFormDialog} from "@/components/booth/booth-form-dialog";
 
 export function BoothTable() {
     const [searchTerm, setSearchTerm] = useState("")

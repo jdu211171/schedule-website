@@ -1,15 +1,19 @@
+"use client"
+
 import { useState } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
+
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle} from "@/components/ui/dialog"
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage} from "@/components/ui/form"
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
-import { useBoothCreate, useBoothUpdate} from "@/hooks/useBoothMutation"
-import {boothCreateSchema, Booth, BoothCreateInput} from "@/schemas/booth.schema"
+import { useBoothCreate, useBoothUpdate } from "@/hooks/useBoothMutation"
+import { boothCreateSchema } from "@/schemas/booth.schema"
+import {Booth} from "@prisma/client";
 
 interface BoothFormDialogProps {
     open: boolean
@@ -21,10 +25,17 @@ export function BoothFormDialog({ open, onOpenChange, booth }: BoothFormDialogPr
     const [isSubmitting, setIsSubmitting] = useState(false)
     const createBoothMutation = useBoothCreate()
     const updateBoothMutation = useBoothUpdate()
+
     const isEditing = !!booth
 
-    // Use boothCreateSchema.partial() for editing to make all fields optional
-    const formSchema = isEditing ? boothCreateSchema.partial() : boothCreateSchema
+    // Create a form schema based on our Zod schema
+    const formSchema = isEditing
+        ? z.object({
+            name: z.string().min(1, { message: "Name is required" }),
+            status: z.boolean().default(true),
+            notes: z.string().optional(),
+        })
+        : boothCreateSchema
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
@@ -40,11 +51,11 @@ export function BoothFormDialog({ open, onOpenChange, booth }: BoothFormDialogPr
         try {
             if (isEditing && booth) {
                 await updateBoothMutation.mutateAsync({
-                    boothId: booth.boothId, // boothId is added here, not in the form
+                    boothId: booth.boothId,
                     ...values,
                 })
             } else {
-                await createBoothMutation.mutateAsync(values as BoothCreateInput)
+                await createBoothMutation.mutateAsync(values)
             }
             onOpenChange(false)
             form.reset()
@@ -66,26 +77,26 @@ export function BoothFormDialog({ open, onOpenChange, booth }: BoothFormDialogPr
                         <FormField
                             control={form.control}
                             name="name"
-                            render={({field}) => (
+                            render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Name</FormLabel>
                                     <FormControl>
                                         <Input placeholder="Enter booth name" {...field} />
                                     </FormControl>
-                                    <FormMessage/>
+                                    <FormMessage />
                                 </FormItem>
                             )}
                         />
                         <FormField
                             control={form.control}
                             name="status"
-                            render={({field}) => (
+                            render={({ field }) => (
                                 <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
                                     <div className="space-y-0.5">
                                         <FormLabel>Status</FormLabel>
                                     </div>
                                     <FormControl>
-                                        <Switch checked={field.value} onCheckedChange={field.onChange}/>
+                                        <Switch checked={field.value} onCheckedChange={field.onChange} />
                                     </FormControl>
                                 </FormItem>
                             )}
@@ -93,14 +104,13 @@ export function BoothFormDialog({ open, onOpenChange, booth }: BoothFormDialogPr
                         <FormField
                             control={form.control}
                             name="notes"
-                            render={({field}) => (
+                            render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Notes</FormLabel>
                                     <FormControl>
-                                        <Textarea placeholder="Enter notes (optional)" {...field}
-                                                  value={field.value || ""}/>
+                                        <Textarea placeholder="Enter notes (optional)" {...field} value={field.value || ""} />
                                     </FormControl>
-                                    <FormMessage/>
+                                    <FormMessage />
                                 </FormItem>
                             )}
                         />
@@ -115,4 +125,3 @@ export function BoothFormDialog({ open, onOpenChange, booth }: BoothFormDialogPr
         </Dialog>
     )
 }
-
