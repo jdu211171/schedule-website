@@ -1,23 +1,25 @@
 "use server";
 
-import { subjectCreateSchema, SubjectCreateInput } from "@/schemas/subject.schema";
+import { subjectUpdateSchema, SubjectUpdateInput } from "@/schemas/subject.schema";
 import { requireAuth } from "../auth-actions";
 import prisma from "@/lib/prisma";
 
-export async function updateSubject(data: SubjectCreateInput) {
+export async function updateSubject(data: SubjectUpdateInput) {
     await requireAuth();
 
-    const parsed = subjectCreateSchema.safeParse(data);
+    const parsed = subjectUpdateSchema.safeParse(data);
     if (!parsed.success) {
         throw new Error("Invalid data provided");
     }
 
-    const { subjectId } = parsed.data;
+    const { subjectId, ...updateData } = parsed.data;
 
     await prisma.subject.update({
         where: { subjectId },
-        data: parsed.data,
+        data: updateData,
     });
 
-    return parsed.data;
+    return prisma.subject.findUnique({
+        where: {subjectId},
+    });
 }

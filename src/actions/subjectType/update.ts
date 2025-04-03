@@ -1,23 +1,25 @@
 "use server";
 
-import { subjectTypeCreateSchema, SubjectTypeCreateInput } from "@/schemas/subjectType.schema";
+import { subjectTypeUpdateSchema, SubjectTypeUpdateInput } from "@/schemas/subjectType.schema";
 import { requireAuth } from "../auth-actions";
 import prisma from "@/lib/prisma";
 
-export async function updateSubjectType(data: SubjectTypeCreateInput) {
+export async function updateSubjectType(data: SubjectTypeUpdateInput) {
     await requireAuth();
 
-    const parsed = subjectTypeCreateSchema.safeParse(data);
+    const parsed = subjectTypeUpdateSchema.safeParse(data);
     if (!parsed.success) {
         throw new Error("Invalid data provided");
     }
 
-    const { subjectTypeId } = parsed.data;
+    const { subjectTypeId, ...updateData } = parsed.data;
 
     await prisma.subjectType.update({
         where: { subjectTypeId },
-        data: parsed.data,
+        data: updateData,
     });
 
-    return parsed.data;
+    return prisma.subjectType.findUnique({
+        where: {subjectTypeId},
+    });
 }
