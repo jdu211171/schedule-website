@@ -3,384 +3,498 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
+/**
+ * Authentication -> 認証
+ */
 model Account {
-  id                 String  @id @default(cuid())
-  userId             String  @map("user_id")
-  type               String
-  provider           String
-  providerAccountId  String  @map("provider_account_id")
-  refresh_token      String? @db.Text
-  access_token       String? @db.Text
-  expires_at         Int?
-  token_type         String?
-  scope              String?
-  id_token           String? @db.Text
-  session_state      String?
- 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
- 
+  id                String  @id @default(cuid())
+  userId            String  @map("user_id")
+  type              String
+  provider          String
+  providerAccountId String  @map("provider_account_id")
+  refreshToken      String? @map("refresh_token") @db.Text
+  accessToken       String? @map("access_token") @db.Text
+  expiresAt         Int?    @map("expires_at")
+  tokenType         String? @map("token_type")
+  scope             String?
+  idToken           String? @map("id_token") @db.Text
+  sessionState      String? @map("session_state")
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
   @@unique([provider, providerAccountId])
   @@map("accounts")
 }
- 
+
 model Session {
   id           String   @id @default(cuid())
   sessionToken String   @unique @map("session_token")
   userId       String   @map("user_id")
   expires      DateTime
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
- 
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
   @@map("sessions")
 }
- 
+
 model User {
   id            String    @id @default(cuid())
   name          String?
   email         String?   @unique
   emailVerified DateTime? @map("email_verified")
   image         String?
-  
-  // Fields from existing users model
   username      String?   @unique @db.VarChar(50)
-  password_hash String?   @db.VarChar(255)
+  passwordHash  String?   @map("password_hash") @db.VarChar(255)
   role          String?   @db.VarChar(20)
-  related_id    String?   @db.VarChar(50)
-  is_active     Boolean?  @default(true)
-  last_login    DateTime? @db.Timestamp(6)
-  created_at    DateTime? @default(now()) @db.Timestamp(6)
-  updated_at    DateTime? @default(now()) @db.Timestamp(6)
-  
-  // Relations
+  relatedId     String?   @map("related_id") @db.VarChar(50)
+  isActive      Boolean?  @default(true) @map("is_active")
+  lastLogin     DateTime? @map("last_login") @db.Timestamp(6)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt     DateTime  @default(now()) @map("updated_at") @db.Timestamp(6) @updatedAt
   accounts      Account[]
   sessions      Session[]
-  permissions   UserPermission[]
- 
+
   @@map("users")
+  @@index([role])
+  @@index([isActive])
 }
- 
+
 model VerificationToken {
   identifier String
   token      String
   expires    DateTime
- 
+
   @@unique([identifier, token])
   @@map("verification_tokens")
 }
 
-// Modified from existing user_permissions model
-model UserPermission {
-  id           String    @id @default(cuid()) @map("permission_id")
-  userId       String    @map("user_id")
-  resource     String    @db.VarChar(50)
-  action       String    @db.VarChar(20)
-  created_at   DateTime? @default(now()) @db.Timestamp(6)
-  updated_at   DateTime? @default(now()) @db.Timestamp(6)
-  
-  // Relation to User
-  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  @@unique([userId, resource, action])
-  @@map("user_permissions")
+/**
+ * Booth -> ブース
+ */
+model Booth {
+  boothId               String                 @id @default(cuid()) @map("booth_id")
+  name                  String                 @db.VarChar(100)
+  status                Boolean?               @default(true)
+  notes                 String?                @db.VarChar(255)
+  classSessions         ClassSession[]
+  regularClassTemplates RegularClassTemplate[]
+  createdAt             DateTime               @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt             DateTime               @default(now()) @map("updated_at") @db.Timestamp(6) @updatedAt
+
+  @@map("booths")
 }
 
-model booths {
-  booth_id                String                    @id @db.VarChar(50)
-  name                    String                    @db.VarChar(100)
-  notes                   String?
-  class_sessions          class_sessions[]
-  regular_class_templates regular_class_templates[]
+/**
+ * Class -> 個別授業スケジュール (特別授業)
+ */
+model ClassSession {
+  classId                 String                   @id @default(cuid()) @map("class_id")
+  date                    DateTime?                @db.Date
+  startTime               DateTime?                @map("start_time") @db.Time(6)
+  endTime                 DateTime?                @map("end_time") @db.Time(6)
+  duration                DateTime?                @map("duration") @db.Time(6)
+  teacherId               String?                  @map("teacher_id") @db.VarChar(50)
+  subjectId               String?                  @map("subject_id") @db.VarChar(50)
+  boothId                 String?                  @map("booth_id") @db.VarChar(50)
+  classTypeId             String?                  @map("class_type_id") @db.VarChar(50)
+  notes                   String?                  @db.VarChar(255)
+  booth                   Booth?                   @relation(fields: [boothId], references: [boothId], onDelete: SetNull, onUpdate: Cascade)
+  classType               ClassType?               @relation(fields: [classTypeId], references: [classTypeId], onDelete: SetNull, onUpdate: Cascade)
+  subject                 Subject?                 @relation(fields: [subjectId], references: [subjectId], onDelete: SetNull, onUpdate: Cascade)
+  teacher                 Teacher?                 @relation(fields: [teacherId], references: [teacherId], onDelete: SetNull, onUpdate: Cascade)
+  studentClassEnrollments StudentClassEnrollment[]
+  createdAt               DateTime                 @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt               DateTime                 @default(now()) @map("updated_at") @db.Timestamp(6) @updatedAt
+
+  @@map("class_sessions")
+  @@index([date])
+  @@index([startTime])
+  @@index([teacherId])
 }
 
-model class_sessions {
-  class_id                  String                      @id @db.VarChar(50)
-  date                      DateTime?                   @db.Date
-  start_time                DateTime?                   @db.Time(6)
-  end_time                  DateTime?                   @db.Time(6)
-  duration                  String?                     @db.VarChar(20)
-  teacher_id                String?                     @db.VarChar(50)
-  subject_id                String?                     @db.VarChar(50)
-  booth_id                  String?                     @db.VarChar(50)
-  class_type_id             String?                     @db.VarChar(50)
-  is_group_class            Boolean?                    @default(false)
-  max_students              Int?                        @default(1)
-  notes                     String?
-  booths                    booths?                     @relation(fields: [booth_id], references: [booth_id], onDelete: NoAction, onUpdate: NoAction)
-  class_types               class_types?                @relation(fields: [class_type_id], references: [class_type_id], onDelete: NoAction, onUpdate: NoAction)
-  subjects                  subjects?                   @relation(fields: [subject_id], references: [subject_id], onDelete: NoAction, onUpdate: NoAction)
-  teachers                  teachers?                   @relation(fields: [teacher_id], references: [teacher_id], onDelete: NoAction, onUpdate: NoAction)
-  student_class_enrollments student_class_enrollments[]
+model ClassType {
+  classTypeId               String                     @id @default(cuid()) @map("class_type_id")
+  name                      String                     @db.VarChar(100)
+  notes                     String?                    @db.VarChar(255)
+  classSessions             ClassSession[]
+  studentSpecialPreferences StudentSpecialPreference[]
+  createdAt                 DateTime                   @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt                 DateTime                   @default(now()) @map("updated_at") @db.Timestamp(6) @updatedAt
+
+  @@map("class_types")
 }
 
-model class_types {
-  class_type_id               String                        @id @db.VarChar(50)
-  name                        String                        @db.VarChar(100)
-  notes                       String?
-  class_sessions              class_sessions[]
-  student_special_preferences student_special_preferences[]
+/**
+ * Student -> 生徒
+ */
+enum SchoolType {
+  PUBLIC
+  PRIVATE
 }
 
-model course_assignments {
-  teacher_id        String            @db.VarChar(50)
-  course_id         String            @db.VarChar(50)
-  assignment_date   DateTime?         @db.Date
-  status            String?           @db.VarChar(50)
-  notes             String?
-  intensive_courses intensive_courses @relation(fields: [course_id], references: [course_id], onDelete: NoAction, onUpdate: NoAction)
-  teachers          teachers          @relation(fields: [teacher_id], references: [teacher_id], onDelete: NoAction, onUpdate: NoAction)
-
-  @@id([teacher_id, course_id])
+enum examSchoolType {
+  ELEMENTARY
+  MIDDLE
+  HIGH
+  UNIVERSITY
+  OTHER
 }
 
-model course_enrollments {
-  student_id        String            @db.VarChar(50)
-  course_id         String            @db.VarChar(50)
-  enrollment_date   DateTime?         @db.Date
-  status            String?           @db.VarChar(50)
-  notes             String?
-  intensive_courses intensive_courses @relation(fields: [course_id], references: [course_id], onDelete: NoAction, onUpdate: NoAction)
-  students          students          @relation(fields: [student_id], references: [student_id], onDelete: NoAction, onUpdate: NoAction)
+model Student {
+  studentId                  String                      @id @default(cuid()) @map("student_id")
+  name                       String                      @db.VarChar(100)
+  kanaName                   String?                     @map("kana_name") @db.VarChar(100)
+  gradeId                    String?                     @map("grade_id") @db.VarChar(50)
+  schoolName                 String?                     @map("school_name") @db.VarChar(100)
+  schoolType                 SchoolType?                 @map("school_type")
+  examSchoolType             SchoolType?                 @map("exam_school_type")
+  examSchoolCategoryType     examSchoolType?             @map("exam_school_category_type")
+  firstChoiceSchool          String?                     @map("first_choice_school") @db.VarChar(100)
+  secondChoiceSchool         String?                     @map("second_choice_school") @db.VarChar(100)
+  enrollmentDate             DateTime?                   @map("enrollment_date") @db.Date
+  birthDate                  DateTime?                   @db.Date
+  homePhone                  String?                     @map("home_phone") @db.VarChar(20)
+  parentMobile               String?                     @map("parent_mobile") @db.VarChar(20)
+  studentMobile              String?                     @map("student_mobile") @db.VarChar(20)
+  parentEmail                String?                     @map("parent_email") @db.VarChar(100)
+  notes                      String?                     @db.VarChar(255)
+  courseEnrollments          CourseEnrollment[]
+  studentClassEnrollments    StudentClassEnrollment[]
+  studentRegularPreferences  StudentRegularPreference[]
+  studentSpecialPreferences  StudentSpecialPreference[]
+  grade                      Grade?                      @relation(fields: [gradeId], references: [gradeId], onDelete: SetNull, onUpdate: Cascade)
+  templateStudentAssignments TemplateStudentAssignment[]
+  createdAt                  DateTime                    @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt                  DateTime                    @default(now()) @map("updated_at") @db.Timestamp(6) @updatedAt
 
-  @@id([student_id, course_id])
+  @@map("students")
+  @@index([gradeId])
+  @@index([schoolName])
 }
 
-model evaluations {
-  evaluation_id String     @id @db.VarChar(50)
-  name          String     @db.VarChar(100)
-  score         Int?
-  notes         String?
-  teachers      teachers[]
+model StudentType {
+  studentTypeId String    @id @default(cuid()) @map("student_type_id")
+  name          String    @db.VarChar(100)
+  description   String?   @db.VarChar(255)
+  Grade         Grade[]
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt     DateTime  @default(now()) @map("updated_at") @db.Timestamp(6) @updatedAt
+
+  @@map("student_types")
 }
 
-model grades {
-  grade_id          String              @id @db.VarChar(50)
-  name              String              @db.VarChar(100)
-  grade_type        String?             @db.VarChar(50)
-  grade_number      String?             @db.VarChar(20)
-  notes             String?
-  intensive_courses intensive_courses[]
-  students          students[]
+model StudentClassEnrollment {
+  enrollmentId String        @id @default(cuid()) @map("enrollment_id")
+  classId      String?       @map("class_id") @db.VarChar(50)
+  studentId    String?       @map("student_id") @db.VarChar(50)
+  status       String?       @db.VarChar(50)
+  notes        String?       @db.VarChar(255)
+  classSession ClassSession? @relation(fields: [classId], references: [classId], onDelete: Cascade, onUpdate: Cascade)
+  student      Student?      @relation(fields: [studentId], references: [studentId], onDelete: Cascade, onUpdate: Cascade)
+  createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt    DateTime      @default(now()) @map("updated_at") @db.Timestamp(6) @updatedAt
+
+  @@map("student_class_enrollments")
 }
 
-model intensive_courses {
-  course_id          String               @id @db.VarChar(50)
-  name               String               @db.VarChar(100)
-  subject_id         String?              @db.VarChar(50)
-  grade_id           String?              @db.VarChar(50)
-  class_duration     String?              @db.VarChar(20)
-  class_sessions     String?              @db.VarChar(20)
-  session_type       String?              @db.VarChar(50)
-  course_assignments course_assignments[]
-  course_enrollments course_enrollments[]
-  grades             grades?              @relation(fields: [grade_id], references: [grade_id], onDelete: NoAction, onUpdate: NoAction)
-  subjects           subjects?            @relation(fields: [subject_id], references: [subject_id], onDelete: NoAction, onUpdate: NoAction)
+model StudentRegularPreference {
+  preferenceId String    @id @default(cuid()) @map("preference_id")
+  studentId    String?   @map("student_id") @db.VarChar(50)
+  subjectId    String?   @map("subject_id") @db.VarChar(50)
+  dayOfWeek    String?   @map("day_of_week") @db.VarChar(20)
+  startTime    DateTime? @map("start_time") @db.Time(6)
+  endTime      DateTime? @map("end_time") @db.Time(6)
+  notes        String?   @db.VarChar(255)
+  student      Student?  @relation(fields: [studentId], references: [studentId], onDelete: Cascade, onUpdate: Cascade)
+  subject      Subject?  @relation(fields: [subjectId], references: [subjectId], onDelete: SetNull, onUpdate: Cascade)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt    DateTime  @default(now()) @map("updated_at") @db.Timestamp(6) @updatedAt
+
+  @@map("student_regular_preferences")
 }
 
-model notifications {
-  notification_id   String    @id @db.VarChar(50)
-  recipient_type    String?   @db.VarChar(20)
-  recipient_id      String?   @db.VarChar(50)
-  notification_type String?   @db.VarChar(50)
-  message           String?
-  related_class_id  String?   @db.VarChar(50)
-  sent_via          String?   @db.VarChar(20)
-  sent_at           DateTime? @db.Timestamp(6)
-  read_at           DateTime? @db.Timestamp(6)
-  status            String?   @db.VarChar(20)
-  notes             String?
+model StudentSpecialPreference {
+  preferenceId String     @id @default(cuid()) @map("preference_id")
+  studentId    String?    @map("student_id") @db.VarChar(50)
+  classTypeId  String?    @map("class_type_id") @db.VarChar(50)
+  subjectId    String?    @map("subject_id") @db.VarChar(50)
+  date         DateTime?  @db.Date
+  startTime    DateTime?  @map("start_time") @db.Time(6)
+  endTime      DateTime?  @map("end_time") @db.Time(6)
+  notes        String?    @db.VarChar(255)
+  classType    ClassType? @relation(fields: [classTypeId], references: [classTypeId], onDelete: SetNull, onUpdate: Cascade)
+  student      Student?   @relation(fields: [studentId], references: [studentId], onDelete: Cascade, onUpdate: Cascade)
+  subject      Subject?   @relation(fields: [subjectId], references: [subjectId], onDelete: SetNull, onUpdate: Cascade)
+  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt    DateTime   @default(now()) @map("updated_at") @db.Timestamp(6) @updatedAt
+
+  @@map("student_special_preferences")
 }
 
-model regular_class_templates {
-  template_id                  String                         @id @db.VarChar(50)
-  day_of_week                  String?                        @db.VarChar(20)
-  subject_id                   String?                        @db.VarChar(50)
-  booth_id                     String?                        @db.VarChar(50)
-  teacher_id                   String?                        @db.VarChar(50)
-  start_time                   DateTime?                      @db.Time(6)
-  end_time                     DateTime?                      @db.Time(6)
-  notes                        String?
-  booths                       booths?                        @relation(fields: [booth_id], references: [booth_id], onDelete: NoAction, onUpdate: NoAction)
-  subjects                     subjects?                      @relation(fields: [subject_id], references: [subject_id], onDelete: NoAction, onUpdate: NoAction)
-  teachers                     teachers?                      @relation(fields: [teacher_id], references: [teacher_id], onDelete: NoAction, onUpdate: NoAction)
-  template_student_assignments template_student_assignments[]
+model TemplateStudentAssignment {
+  assignmentId         String                @id @default(cuid()) @map("assignment_id")
+  templateId           String?               @map("template_id") @db.VarChar(50)
+  studentId            String?               @map("student_id") @db.VarChar(50)
+  notes                String?               @db.VarChar(255)
+  student              Student?              @relation(fields: [studentId], references: [studentId], onDelete: Cascade, onUpdate: Cascade)
+  regularClassTemplate RegularClassTemplate? @relation(fields: [templateId], references: [templateId], onDelete: Cascade, onUpdate: Cascade)
+  createdAt            DateTime              @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt            DateTime              @default(now()) @map("updated_at") @db.Timestamp(6) @updatedAt
+
+  @@map("template_student_assignments")
 }
 
-model student_class_enrollments {
-  enrollment_id  String          @id @db.VarChar(50)
-  class_id       String?         @db.VarChar(50)
-  student_id     String?         @db.VarChar(50)
-  status         String?         @db.VarChar(50)
-  notes          String?
-  class_sessions class_sessions? @relation(fields: [class_id], references: [class_id], onDelete: NoAction, onUpdate: NoAction)
-  students       students?       @relation(fields: [student_id], references: [student_id], onDelete: NoAction, onUpdate: NoAction)
+model RegularClassTemplate {
+  templateId                 String                @id @default(cuid()) @map("template_id")
+  dayOfWeek                  String?               @map("day_of_week") @db.VarChar(20)
+  subjectId                  String?               @map("subject_id") @db.VarChar(50)
+  boothId                    String?               @map("booth_id") @db.VarChar(50)
+  teacherId                  String?               @map("teacher_id") @db.VarChar(50)
+  startTime                  DateTime?             @map("start_time") @db.Time(6)
+  endTime                    DateTime?             @map("end_time") @db.Time(6)
+  notes                      String?               @db.VarChar(255)
+  booth                      Booth?                @relation(fields: [boothId], references: [boothId], onDelete: SetNull, onUpdate: Cascade)
+  subject                    Subject?              @relation(fields: [subjectId], references: [subjectId], onDelete: SetNull, onUpdate: Cascade)
+  teacher                    Teacher?              @relation(fields: [teacherId], references: [teacherId], onDelete: SetNull, onUpdate: Cascade)
+  templateStudentAssignments TemplateStudentAssignment[]
+  createdAt                  DateTime              @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt                  DateTime              @default(now()) @map("updated_at") @db.Timestamp(6) @updatedAt
+
+  @@map("regular_class_templates")
 }
 
-model student_regular_preferences {
-  preference_id String    @id @db.VarChar(50)
-  student_id    String?   @db.VarChar(50)
-  subject_id    String?   @db.VarChar(50)
-  day_of_week   String?   @db.VarChar(20)
-  start_time    DateTime? @db.Time(6)
-  end_time      DateTime? @db.Time(6)
-  notes         String?
-  students      students? @relation(fields: [student_id], references: [student_id], onDelete: NoAction, onUpdate: NoAction)
-  subjects      subjects? @relation(fields: [subject_id], references: [subject_id], onDelete: NoAction, onUpdate: NoAction)
+/**
+ * Teacher -> 講師
+ */
+model TeacherRegularShift {
+  shiftId   String    @id @default(cuid()) @map("shift_id")
+  teacherId String?   @map("teacher_id") @db.VarChar(50)
+  dayOfWeek String?   @map("day_of_week") @db.VarChar(20)
+  startTime DateTime? @map("start_time") @db.Time(6)
+  endTime   DateTime? @map("end_time") @db.Time(6)
+  notes     String?   @db.VarChar(255)
+  teacher   Teacher?  @relation(fields: [teacherId], references: [teacherId], onDelete: Cascade, onUpdate: Cascade)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt DateTime  @default(now()) @map("updated_at") @db.Timestamp(6) @updatedAt
+
+  @@map("teacher_regular_shifts")
 }
 
-model student_special_preferences {
-  preference_id String       @id @db.VarChar(50)
-  student_id    String?      @db.VarChar(50)
-  class_type_id String?      @db.VarChar(50)
-  subject_id    String?      @db.VarChar(50)
-  date          DateTime?    @db.Date
-  start_time    DateTime?    @db.Time(6)
-  end_time      DateTime?    @db.Time(6)
-  notes         String?
-  class_types   class_types? @relation(fields: [class_type_id], references: [class_type_id], onDelete: NoAction, onUpdate: NoAction)
-  students      students?    @relation(fields: [student_id], references: [student_id], onDelete: NoAction, onUpdate: NoAction)
-  subjects      subjects?    @relation(fields: [subject_id], references: [subject_id], onDelete: NoAction, onUpdate: NoAction)
+model TeacherSpecialShift {
+  shiftId   String    @id @default(cuid()) @map("shift_id")
+  teacherId String?   @map("teacher_id") @db.VarChar(50)
+  date      DateTime? @db.Date
+  startTime DateTime? @map("start_time") @db.Time(6)
+  endTime   DateTime? @map("end_time") @db.Time(6)
+  notes     String?   @db.VarChar(255)
+  teacher   Teacher?  @relation(fields: [teacherId], references: [teacherId], onDelete: Cascade, onUpdate: Cascade)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt DateTime  @default(now()) @map("updated_at") @db.Timestamp(6) @updatedAt
+
+  @@map("teacher_special_shifts")
 }
 
-model student_subjects {
-  student_id String   @db.VarChar(50)
-  subject_id String   @db.VarChar(50)
-  notes      String?
-  students   students @relation(fields: [student_id], references: [student_id], onDelete: NoAction, onUpdate: NoAction)
-  subjects   subjects @relation(fields: [subject_id], references: [subject_id], onDelete: NoAction, onUpdate: NoAction)
+model TeacherSubject {
+  teacherId String  @map("teacher_id") @db.VarChar(50)
+  subjectId String  @map("subject_id") @db.VarChar(50)
+  notes     String? @db.VarChar(255)
+  subject   Subject @relation(fields: [subjectId], references: [subjectId], onDelete: Cascade, onUpdate: Cascade)
+  teacher   Teacher @relation(fields: [teacherId], references: [teacherId], onDelete: Cascade, onUpdate: Cascade)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamp(6) @updatedAt
 
-  @@id([student_id, subject_id])
+  @@id([teacherId, subjectId])
+  @@map("teacher_subjects")
 }
 
-model student_types {
-  student_type_id String  @id @db.VarChar(50)
-  name            String  @db.VarChar(100)
-  description     String?
+model Teacher {
+  teacherId             String                 @id @default(cuid()) @map("teacher_id")
+  name                  String                 @db.VarChar(100)
+  evaluationId          String?                @map("evaluation_id") @db.VarChar(50)
+  birthDate             DateTime?              @map("birth_date") @db.Date
+  mobileNumber          String?                @map("mobile_number") @db.VarChar(20)
+  email                 String?                @db.VarChar(100)
+  highSchool            String?                @map("high_school") @db.VarChar(100)
+  university            String?                @db.VarChar(100)
+  faculty               String?                @db.VarChar(100)
+  department            String?                @db.VarChar(100)
+  enrollmentStatus      String?                @map("enrollment_status") @db.VarChar(50)
+  otherUniversities     String?                @map("other_universities") @db.VarChar(255)
+  englishProficiency    String?                @map("english_proficiency") @db.VarChar(50)
+  toeic                 Int?
+  toefl                 Int?
+  mathCertification     String?                @map("math_certification") @db.VarChar(50)
+  kanjiCertification    String?                @map("kanji_certification") @db.VarChar(50)
+  otherCertifications   String?                @map("other_certifications") @db.VarChar(255)
+  notes                 String?                @db.VarChar(255)
+  classSessions         ClassSession[]
+  courseAssignments     CourseAssignment[]
+  regularClassTemplates RegularClassTemplate[]
+  teacherRegularShifts  TeacherRegularShift[]
+  teacherSpecialShifts  TeacherSpecialShift[]
+  teacherSubjects       TeacherSubject[]
+  evaluation            Evaluation?            @relation(fields: [evaluationId], references: [evaluationId], onDelete: SetNull, onUpdate: Cascade)
+  createdAt             DateTime               @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt             DateTime               @default(now()) @map("updated_at") @db.Timestamp(6) @updatedAt
+
+  @@map("teachers")
 }
 
-model students {
-  student_id                   String                         @id @db.VarChar(50)
-  name                         String                         @db.VarChar(100)
-  kana_name                    String?                        @db.VarChar(100)
-  grade_id                     String?                        @db.VarChar(50)
-  school_name                  String?                        @db.VarChar(100)
-  school_type                  String?                        @db.VarChar(20)
-  exam_category                String?                        @db.VarChar(50)
-  first_choice_school          String?                        @db.VarChar(100)
-  second_choice_school         String?                        @db.VarChar(100)
-  enrollment_date              DateTime?                      @db.Date
-  birth_date                   DateTime?                      @db.Date
-  home_phone                   String?                        @db.VarChar(20)
-  parent_mobile                String?                        @db.VarChar(20)
-  student_mobile               String?                        @db.VarChar(20)
-  parent_email                 String?                        @db.VarChar(100)
-  notes                        String?
-  course_enrollments           course_enrollments[]
-  student_class_enrollments    student_class_enrollments[]
-  student_regular_preferences  student_regular_preferences[]
-  student_special_preferences  student_special_preferences[]
-  student_subjects             student_subjects[]
-  grades                       grades?                        @relation(fields: [grade_id], references: [grade_id], onDelete: NoAction, onUpdate: NoAction)
-  template_student_assignments template_student_assignments[]
+model Evaluation {
+  evaluationId String    @id @default(cuid()) @map("evaluation_id")
+  name         String    @db.VarChar(100)
+  score        Int?
+  notes        String?   @db.VarChar(255)
+  teachers     Teacher[]
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt    DateTime  @default(now()) @map("updated_at") @db.Timestamp(6) @updatedAt
+
+  @@map("evaluations")
 }
 
-model subject_types {
-  subject_type_id String     @id @db.VarChar(50)
-  name            String     @db.VarChar(100)
-  notes           String?
-  subjects        subjects[]
+/**
+ * Subject -> 科目
+ */
+model SubjectType {
+  subjectTypeId String    @id @default(cuid()) @map("subject_type_id")
+  name          String    @db.VarChar(100)
+  notes         String?   @db.VarChar(255)
+  subjects      Subject[]
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt     DateTime  @default(now()) @map("updated_at") @db.Timestamp(6) @updatedAt
+
+  @@map("subject_types")
 }
 
-model subjects {
-  subject_id                  String                        @id @db.VarChar(50)
-  name                        String                        @db.VarChar(100)
-  subject_type_id             String?                       @db.VarChar(50)
-  notes                       String?
-  class_sessions              class_sessions[]
-  intensive_courses           intensive_courses[]
-  regular_class_templates     regular_class_templates[]
-  student_regular_preferences student_regular_preferences[]
-  student_special_preferences student_special_preferences[]
-  student_subjects            student_subjects[]
-  subject_types               subject_types?                @relation(fields: [subject_type_id], references: [subject_type_id], onDelete: NoAction, onUpdate: NoAction)
-  teacher_subjects            teacher_subjects[]
+model Subject {
+  subjectId                 String                     @id @default(cuid()) @map("subject_id")
+  name                      String                     @db.VarChar(100)
+  subjectTypeId             String?                    @map("subject_type_id") @db.VarChar(50)
+  notes                     String?                    @db.VarChar(255)
+  classSessions             ClassSession[]
+  intensiveCourses          IntensiveCourse[]
+  regularClassTemplates     RegularClassTemplate[]
+  studentRegularPreferences StudentRegularPreference[]
+  studentSpecialPreferences StudentSpecialPreference[]
+  subjectType               SubjectType?               @relation(fields: [subjectTypeId], references: [subjectTypeId], onDelete: SetNull, onUpdate: Cascade)
+  teacherSubjects           TeacherSubject[]
+  createdAt                 DateTime                   @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt                 DateTime                   @default(now()) @map("updated_at") @db.Timestamp(6) @updatedAt
+
+  @@map("subjects")
 }
 
-model teacher_regular_shifts {
-  shift_id    String    @id @db.VarChar(50)
-  teacher_id  String?   @db.VarChar(50)
-  day_of_week String?   @db.VarChar(20)
-  start_time  DateTime? @db.Time(6)
-  end_time    DateTime? @db.Time(6)
-  notes       String?
-  teachers    teachers? @relation(fields: [teacher_id], references: [teacher_id], onDelete: NoAction, onUpdate: NoAction)
+/**
+ * Grade -> 学年
+ */
+model Grade {
+  gradeId          String            @id @default(cuid()) @map("grade_id")
+  name             String            @db.VarChar(100)
+  studentTypeId    String?           @map("student_type_id") @db.VarChar(50)
+  gradeYear        Int?
+  notes            String?           @db.VarChar(255)
+  intensiveCourses IntensiveCourse[]
+  students         Student[]
+  studentType      StudentType?      @relation(fields: [studentTypeId], references: [studentTypeId], onDelete: SetNull, onUpdate: Cascade)
+  createdAt        DateTime          @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt        DateTime          @default(now()) @map("updated_at") @db.Timestamp(6) @updatedAt
+
+  @@map("grades")
 }
 
-model teacher_special_shifts {
-  shift_id   String    @id @db.VarChar(50)
-  teacher_id String?   @db.VarChar(50)
-  date       DateTime? @db.Date
-  start_time DateTime? @db.Time(6)
-  end_time   DateTime? @db.Time(6)
-  notes      String?
-  teachers   teachers? @relation(fields: [teacher_id], references: [teacher_id], onDelete: NoAction, onUpdate: NoAction)
+/**
+ * Course -> Think about this
+ */
+enum IntensiveCourseType {
+  SUMMER
+  SPRING
+  WINTER
+  AUTUMN
 }
 
-model teacher_subjects {
-  teacher_id String   @db.VarChar(50)
-  subject_id String   @db.VarChar(50)
-  notes      String?
-  subjects   subjects @relation(fields: [subject_id], references: [subject_id], onDelete: NoAction, onUpdate: NoAction)
-  teachers   teachers @relation(fields: [teacher_id], references: [teacher_id], onDelete: NoAction, onUpdate: NoAction)
+model IntensiveCourse {
+  courseId          String               @id @map("course_id")
+  name              String               @db.VarChar(100)
+  subjectId         String?              @map("subject_id") @db.VarChar(50)
+  gradeId           String?              @map("grade_id") @db.VarChar(50)
+  classDuration     DateTime?            @map("class_duration") @db.Time(6)
+  classSessions     String?              @map("class_sessions") @db.VarChar(20)
+  sessionType       IntensiveCourseType? @map("session_type")
+  courseAssignments CourseAssignment[]
+  courseEnrollments CourseEnrollment[]
+  grade             Grade?               @relation(fields: [gradeId], references: [gradeId], onDelete: SetNull, onUpdate: Cascade)
+  subject           Subject?             @relation(fields: [subjectId], references: [subjectId], onDelete: SetNull, onUpdate: Cascade)
+  createdAt         DateTime             @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt         DateTime             @default(now()) @map("updated_at") @db.Timestamp(6) @updatedAt
 
-  @@id([teacher_id, subject_id])
+  @@map("intensive_courses")
 }
 
-model teachers {
-  teacher_id              String                    @id @db.VarChar(50)
-  name                    String                    @db.VarChar(100)
-  evaluation_id           String?                   @db.VarChar(50)
-  birth_date              DateTime?                 @db.Date
-  mobile_number           String?                   @db.VarChar(20)
-  email                   String?                   @db.VarChar(100)
-  high_school             String?                   @db.VarChar(100)
-  university              String?                   @db.VarChar(100)
-  faculty                 String?                   @db.VarChar(100)
-  department              String?                   @db.VarChar(100)
-  enrollment_status       String?                   @db.VarChar(50)
-  other_universities      String?
-  english_proficiency     String?                   @db.VarChar(50)
-  toeic                   Int?
-  toefl                   Int?
-  math_certification      String?                   @db.VarChar(50)
-  kanji_certification     String?                   @db.VarChar(50)
-  other_certifications    String?
-  notes                   String?
-  class_sessions          class_sessions[]
-  course_assignments      course_assignments[]
-  regular_class_templates regular_class_templates[]
-  teacher_regular_shifts  teacher_regular_shifts[]
-  teacher_special_shifts  teacher_special_shifts[]
-  teacher_subjects        teacher_subjects[]
-  evaluations             evaluations?              @relation(fields: [evaluation_id], references: [evaluation_id], onDelete: NoAction, onUpdate: NoAction)
+model CourseAssignment {
+  teacherId       String          @map("teacher_id") @db.VarChar(50)
+  courseId        String          @map("course_id") @db.VarChar(50)
+  assignmentDate  DateTime?       @map("assignment_date") @db.Date
+  status          String?         @db.VarChar(50)
+  notes           String?         @db.VarChar(255)
+  intensiveCourse IntensiveCourse @relation(fields: [courseId], references: [courseId], onDelete: Cascade, onUpdate: Cascade)
+  teacher         Teacher         @relation(fields: [teacherId], references: [teacherId], onDelete: Cascade, onUpdate: Cascade)
+  createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt       DateTime        @default(now()) @map("updated_at") @db.Timestamp(6) @updatedAt
+
+  @@id([teacherId, courseId])
+  @@map("course_assignments")
 }
 
-model template_student_assignments {
-  assignment_id           String                   @id @db.VarChar(50)
-  template_id             String?                  @db.VarChar(50)
-  student_id              String?                  @db.VarChar(50)
-  notes                   String?
-  students                students?                @relation(fields: [student_id], references: [student_id], onDelete: NoAction, onUpdate: NoAction)
-  regular_class_templates regular_class_templates? @relation(fields: [template_id], references: [template_id], onDelete: NoAction, onUpdate: NoAction)
+model CourseEnrollment {
+  studentId       String          @map("student_id")
+  courseId        String          @map("course_id") @db.VarChar(50)
+  enrollmentDate  DateTime?       @map("enrollment_date") @db.Date
+  status          String?         @db.VarChar(50)
+  notes           String?         @db.VarChar(255)
+  intensiveCourse IntensiveCourse @relation(fields: [courseId], references: [courseId], onDelete: Cascade, onUpdate: Cascade)
+  student         Student         @relation(fields: [studentId], references: [studentId], onDelete: Cascade, onUpdate: Cascade)
+  createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt       DateTime        @default(now()) @map("updated_at") @db.Timestamp(6) @updatedAt
+
+  @@id([studentId, courseId])
+  @@map("course_enrollments")
 }
 
-model time_slots {
-  time_slot_id String   @id @db.VarChar(50)
-  start_time   DateTime @db.Time(6)
-  end_time     DateTime @db.Time(6)
-  notes        String?
+/**
+ * Notification -> 通知
+ */
+model Notification {
+  notificationId   String    @id @default(cuid()) @map("notification_id")
+  recipientType    String?   @map("recipient_type") @db.VarChar(20)
+  recipientId      String?   @map("recipient_id") @db.VarChar(50)
+  notificationType String?   @map("notification_type") @db.VarChar(50)
+  message          String?   @db.VarChar(255)
+  relatedClassId   String?   @map("related_class_id") @db.VarChar(50)
+  sentVia          String?   @map("sent_via") @db.VarChar(20)
+  sentAt           DateTime? @map("sent_at") @db.Timestamp(6)
+  readAt           DateTime? @map("read_at") @db.Timestamp(6)
+  status           String?   @db.VarChar(20)
+  notes            String?   @db.VarChar(255)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt        DateTime  @default(now()) @map("updated_at") @db.Timestamp(6) @updatedAt
+
+  @@map("notifications")
 }
 
+/**
+ * Vacation -> 休暇
+ */
+model Event {
+  id          String   @id @default(uuid())
+  name        String   @db.VarChar(100)
+  startDate   DateTime
+  endDate     DateTime
+  isRecurring Boolean  @default(false)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt   DateTime @default(now()) @map("updated_at") @db.Timestamp(6) @updatedAt
+
+  @@map("events")
+}

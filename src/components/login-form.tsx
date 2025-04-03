@@ -3,13 +3,21 @@
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { signIn } from "next-auth/react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation } from "@tanstack/react-query";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { useRouter } from "next/navigation";
+import { loginUser } from "@/actions/auth-actions";
+import { toast } from "sonner";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -32,15 +40,14 @@ export function LoginForm({
   });
 
   const loginMutation = useMutation({
-    mutationFn: async (values: LoginFormValues) => {
-      return await signIn("credentials", {
-        email: values.email,
-        password: values.password,
-        redirect: false,
-      });
-    },
+    mutationFn: async (values: LoginFormValues) =>
+      await loginUser(values.email, values.password),
     onSuccess: () => {
+      toast.success("Login successful");
       router.push("/");
+    },
+    onError: (error) => {
+      toast.error(error.message || "Login failed");
     },
   });
 
@@ -65,11 +72,7 @@ export function LoginForm({
               <FormItem>
                 <FormLabel>Email</FormLabel>
                 <FormControl>
-                  <Input
-                    type="email"
-                    placeholder="m@example.com"
-                    {...field}
-                  />
+                  <Input type="email" placeholder="m@example.com" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
