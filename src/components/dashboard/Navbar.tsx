@@ -1,5 +1,6 @@
 "use client";
 
+import { memo, useCallback } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { usePathname } from "next/navigation";
@@ -10,7 +11,8 @@ import {
   CalendarDays, 
   LayoutDashboard,
   MapPin,
-  LogOut
+  LogOut,
+  LucideIcon
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -21,11 +23,19 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useSession, signOut } from "next-auth/react";
 
-const navItems = [
+interface NavItemType {
+  title: string;
+  href: string;
+  icon: LucideIcon;
+  exact?: boolean;
+}
+
+const navItems: NavItemType[] = [
   {
     title: "個人スケジュール",
     href: "/dashboard",
     icon: CalendarIcon,
+    exact: true 
   },
   {
     title: "総合スケジュール",
@@ -49,9 +59,44 @@ const navItems = [
   },
 ];
 
+interface NavItemProps {
+  item: NavItemType;
+  isActive: boolean;
+}
+
+const NavItem = memo(({ item, isActive }: NavItemProps) => {
+  return (
+    <Button 
+      variant="ghost" 
+      size="sm" 
+      asChild
+      className={cn(
+        isActive ? "bg-accent text-accent-foreground" : "hover:bg-muted"
+      )}
+    >
+      <Link href={item.href} className="flex items-center">
+        <item.icon className="mr-2 h-4 w-4" />
+        <span>{item.title}</span>
+      </Link>
+    </Button>
+  );
+});
+NavItem.displayName = "NavItem";
+
 const Navbar = () => {
   const pathname = usePathname();
   const { data: session } = useSession();
+
+  const isActive = useCallback((item: NavItemType): boolean => {
+    if (item.exact) {
+      return pathname === item.href;
+    }
+    return pathname === item.href || pathname.startsWith(`${item.href}/`);
+  }, [pathname]);
+
+  const handleSignOut = useCallback(() => {
+    signOut();
+  }, []);
 
   return (
     <header className="border-b">
@@ -62,22 +107,11 @@ const Navbar = () => {
 
         <nav className="flex flex-1 items-center space-x-1 lg:space-x-2">
           {navItems.map((item) => (
-            <Button 
+            <NavItem 
               key={item.href}
-              variant="ghost" 
-              size="sm" 
-              asChild
-              className={cn(
-                pathname === item.href || pathname.startsWith(`${item.href}/`)
-                  ? "bg-accent"
-                  : ""
-              )}
-            >
-              <Link href={item.href} className="flex items-center">
-                <item.icon className="mr-2 h-4 w-4" />
-                <span>{item.title}</span>
-              </Link>
-            </Button>
+              item={item}
+              isActive={isActive(item)}
+            />
           ))}
         </nav>
         
@@ -91,7 +125,7 @@ const Navbar = () => {
                     alt={session.user?.name ?? ""}
                   />
                   <AvatarFallback>
-                    {session.user?.name?.slice(0, 2).toUpperCase()}
+                    {session.user?.name ? session.user.name.slice(0, 2).toUpperCase() : "U"}
                   </AvatarFallback>
                 </Avatar>
               </DropdownMenuTrigger>
@@ -101,7 +135,7 @@ const Navbar = () => {
                     プロフィール
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => signOut()}>
+                <DropdownMenuItem onClick={handleSignOut}>
                   <span className="flex items-center">
                     <LogOut className="mr-2 h-4 w-4" />
                     ログアウト
