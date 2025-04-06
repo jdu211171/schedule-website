@@ -163,6 +163,7 @@ model Student {
   notes                      String?                     @db.VarChar(255)
   courseEnrollments          CourseEnrollment[]
   studentClassEnrollments    StudentClassEnrollment[]
+  studentSubjectEnrollments  StudentSubjectEnrollment[]
   studentRegularPreferences  StudentRegularPreference[]
   studentSpecialPreferences  StudentSpecialPreference[]
   grade                      Grade?                      @relation(fields: [gradeId], references: [gradeId], onDelete: SetNull, onUpdate: Cascade)
@@ -200,36 +201,54 @@ model StudentClassEnrollment {
   @@map("student_class_enrollments")
 }
 
-model StudentRegularPreference {
-  preferenceId String    @id @default(cuid()) @map("preference_id")
-  studentId    String?   @map("student_id") @db.VarChar(50)
+model StudentSubjectEnrollment {
+  enrollmentId String    @id @default(cuid()) @map("enrollment_id")
+  studentId    String    @map("student_id") @db.VarChar(50)
   subjectId    String?   @map("subject_id") @db.VarChar(50)
-  dayOfWeek    String?   @map("day_of_week") @db.VarChar(20)
-  startTime    DateTime? @map("start_time") @db.Time(6)
-  endTime      DateTime? @map("end_time") @db.Time(6)
+  startDate    DateTime? @map("start_date") @db.Date
+  endDate      DateTime? @map("end_date") @db.Date
+  status       String?   @db.VarChar(20)
   notes        String?   @db.VarChar(255)
-  student      Student?  @relation(fields: [studentId], references: [studentId], onDelete: Cascade, onUpdate: Cascade)
+  student      Student   @relation(fields: [studentId], references: [studentId], onDelete: Cascade, onUpdate: Cascade)
   subject      Subject?  @relation(fields: [subjectId], references: [subjectId], onDelete: SetNull, onUpdate: Cascade)
   createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt    DateTime  @default(now()) @map("updated_at") @db.Timestamp(6) @updatedAt
+
+  @@map("student_subject_enrollments")
+}
+
+model StudentRegularPreference {
+  preferenceId       String    @id @default(cuid()) @map("preference_id")
+  studentId          String?   @map("student_id") @db.VarChar(50)
+  subjectId          String?   @map("subject_id") @db.VarChar(50)
+  dayOfWeek          String?   @map("day_of_week") @db.VarChar(20)
+  startTime          DateTime? @map("start_time") @db.Time(6)
+  endTime            DateTime? @map("end_time") @db.Time(6)
+  preferencePriority Int?      @map("preference_priority")
+  notes              String?   @db.VarChar(255)
+  student            Student?  @relation(fields: [studentId], references: [studentId], onDelete: Cascade, onUpdate: Cascade)
+  subject            Subject?  @relation(fields: [subjectId], references: [subjectId], onDelete: SetNull, onUpdate: Cascade)
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt          DateTime  @default(now()) @map("updated_at") @db.Timestamp(6) @updatedAt
 
   @@map("student_regular_preferences")
 }
 
 model StudentSpecialPreference {
-  preferenceId String     @id @default(cuid()) @map("preference_id")
-  studentId    String?    @map("student_id") @db.VarChar(50)
-  classTypeId  String?    @map("class_type_id") @db.VarChar(50)
-  subjectId    String?    @map("subject_id") @db.VarChar(50)
-  date         DateTime?  @db.Date
-  startTime    DateTime?  @map("start_time") @db.Time(6)
-  endTime      DateTime?  @map("end_time") @db.Time(6)
-  notes        String?    @db.VarChar(255)
-  classType    ClassType? @relation(fields: [classTypeId], references: [classTypeId], onDelete: SetNull, onUpdate: Cascade)
-  student      Student?   @relation(fields: [studentId], references: [studentId], onDelete: Cascade, onUpdate: Cascade)
-  subject      Subject?   @relation(fields: [subjectId], references: [subjectId], onDelete: SetNull, onUpdate: Cascade)
-  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt    DateTime   @default(now()) @map("updated_at") @db.Timestamp(6) @updatedAt
+  preferenceId       String     @id @default(cuid()) @map("preference_id")
+  studentId          String?    @map("student_id") @db.VarChar(50)
+  classTypeId        String?    @map("class_type_id") @db.VarChar(50)
+  subjectId          String?    @map("subject_id") @db.VarChar(50)
+  date               DateTime?  @db.Date
+  startTime          DateTime?  @map("start_time") @db.Time(6)
+  endTime            DateTime?  @map("end_time") @db.Time(6)
+  preferencePriority Int?       @map("preference_priority")
+  notes              String?    @db.VarChar(255)
+  classType          ClassType? @relation(fields: [classTypeId], references: [classTypeId], onDelete: SetNull, onUpdate: Cascade)
+  student            Student?   @relation(fields: [studentId], references: [studentId], onDelete: Cascade, onUpdate: Cascade)
+  subject            Subject?   @relation(fields: [subjectId], references: [subjectId], onDelete: SetNull, onUpdate: Cascade)
+  createdAt          DateTime   @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt          DateTime   @default(now()) @map("updated_at") @db.Timestamp(6) @updatedAt
 
   @@map("student_special_preferences")
 }
@@ -255,6 +274,8 @@ model RegularClassTemplate {
   teacherId                  String?               @map("teacher_id") @db.VarChar(50)
   startTime                  DateTime?             @map("start_time") @db.Time(6)
   endTime                    DateTime?             @map("end_time") @db.Time(6)
+  duration                   DateTime?             @map("duration") @db.Time(6)
+  isActive                   Boolean               @default(true) @map("is_active")
   notes                      String?               @db.VarChar(255)
   booth                      Booth?                @relation(fields: [boothId], references: [boothId], onDelete: SetNull, onUpdate: Cascade)
   subject                    Subject?              @relation(fields: [subjectId], references: [subjectId], onDelete: SetNull, onUpdate: Cascade)
@@ -313,6 +334,7 @@ model TeacherSubject {
 model Teacher {
   teacherId             String                 @id @default(cuid()) @map("teacher_id")
   name                  String                 @db.VarChar(100)
+  kanaName              String?                @map("kana_name") @db.VarChar(100)
   evaluationId          String?                @map("evaluation_id") @db.VarChar(50)
   birthDate             DateTime?              @map("birth_date") @db.Date
   mobileNumber          String?                @map("mobile_number") @db.VarChar(20)
@@ -323,6 +345,10 @@ model Teacher {
   department            String?                @db.VarChar(100)
   enrollmentStatus      String?                @map("enrollment_status") @db.VarChar(50)
   otherUniversities     String?                @map("other_universities") @db.VarChar(255)
+  examSubjects          String?                @map("exam_subjects") @db.VarChar(255)
+  commonTestScore       Int?                   @map("common_test_score")
+  middleSchoolExamExp   Boolean?               @map("middle_school_exam_exp")
+  appliedMiddleSchools  String?                @map("applied_middle_schools") @db.VarChar(255)
   englishProficiency    String?                @map("english_proficiency") @db.VarChar(50)
   toeic                 Int?
   toefl                 Int?
@@ -379,6 +405,7 @@ model Subject {
   regularClassTemplates     RegularClassTemplate[]
   studentRegularPreferences StudentRegularPreference[]
   studentSpecialPreferences StudentSpecialPreference[]
+  studentSubjectEnrollments StudentSubjectEnrollment[]
   subjectType               SubjectType?               @relation(fields: [subjectTypeId], references: [subjectTypeId], onDelete: SetNull, onUpdate: Cascade)
   teacherSubjects           TeacherSubject[]
   createdAt                 DateTime                   @default(now()) @map("created_at") @db.Timestamp(6)
@@ -394,6 +421,7 @@ model Grade {
   gradeId          String            @id @default(cuid()) @map("grade_id")
   name             String            @db.VarChar(100)
   studentTypeId    String?           @map("student_type_id") @db.VarChar(50)
+  gradeTypeName    String?           @map("grade_type_name") @db.VarChar(100)
   gradeYear        Int?
   notes            String?           @db.VarChar(255)
   intensiveCourses IntensiveCourse[]
@@ -423,6 +451,7 @@ model IntensiveCourse {
   classDuration     DateTime?            @map("class_duration") @db.Time(6)
   classSessions     String?              @map("class_sessions") @db.VarChar(20)
   sessionType       IntensiveCourseType? @map("session_type")
+  sessionCategory   String?              @map("session_category") @db.VarChar(50)
   courseAssignments CourseAssignment[]
   courseEnrollments CourseEnrollment[]
   grade             Grade?               @relation(fields: [gradeId], references: [gradeId], onDelete: SetNull, onUpdate: Cascade)
@@ -497,4 +526,49 @@ model Event {
   updatedAt   DateTime @default(now()) @map("updated_at") @db.Timestamp(6) @updatedAt
 
   @@map("events")
+}
+
+model ScheduleConflict {
+  conflictId         String    @id @default(cuid()) @map("conflict_id")
+  entityType1        String    @map("entity_type_1") @db.VarChar(50)
+  entityId1          String    @map("entity_id_1") @db.VarChar(50)
+  entityType2        String    @map("entity_type_2") @db.VarChar(50)
+  entityId2          String    @map("entity_id_2") @db.VarChar(50)
+  conflictDate       DateTime? @map("conflict_date") @db.Date
+  startTime          DateTime? @map("start_time") @db.Time(6)
+  endTime            DateTime? @map("end_time") @db.Time(6)
+  status             String    @db.VarChar(50)
+  resolutionStrategy String?   @map("resolution_strategy") @db.VarChar(50)
+  resolvedBy         String?   @map("resolved_by") @db.VarChar(50)
+  resolutionNotes    String?   @map("resolution_notes") @db.VarChar(255)
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt          DateTime  @default(now()) @map("updated_at") @db.Timestamp(6) @updatedAt
+
+  @@map("schedule_conflicts")
+  @@index([entityType1, entityId1])
+  @@index([entityType2, entityId2])
+  @@index([conflictDate])
+  @@index([status])
+}
+
+model ScheduleView {
+  id               String    @id @default(cuid())
+  entityType       String    @map("entity_type") @db.VarChar(50)
+  sourceId         String    @map("source_id") @db.VarChar(50)
+  date             DateTime  @db.Date
+  dayOfWeek        String?   @map("day_of_week") @db.VarChar(20)
+  startTime        DateTime  @map("start_time") @db.Time(6)
+  endTime          DateTime  @map("end_time") @db.Time(6)
+  teacherId        String?   @map("teacher_id") @db.VarChar(50)
+  studentIds       String[]  @map("student_ids")
+  subjectId        String?   @map("subject_id") @db.VarChar(50)
+  boothId          String?   @map("booth_id") @db.VarChar(50)
+
+  @@map("schedule_views")
+  @@index([date])
+  @@index([teacherId])
+  @@index([entityType, sourceId])
+
+  // Note: This would be a view or a materialized view in PostgreSQL
+  // and would need to be refreshed regularly via application logic
 }
