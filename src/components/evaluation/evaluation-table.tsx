@@ -40,24 +40,20 @@ export function EvaluationTable() {
 
     const columns: ColumnDef<Evaluation>[] = [
         {
-            accessorKey: "evaluationId",
-            header: "ID",
-        },
-        {
             accessorKey: "name",
-            header: "Name",
+            header: "名前",
         },
         {
             accessorKey: "score",
-            header: "Score",
+            header: "スコア",
         },
         {
             accessorKey: "notes",
-            header: "Notes",
+            header: "メモ",
         },
         {
             id: "actions",
-            header: "Operations",
+            header: "操作",
             cell: ({row}) => {
                 return (
                     <div className="flex gap-2">
@@ -79,7 +75,7 @@ export function EvaluationTable() {
                 await deleteEvaluationMutation.mutateAsync(evaluationToDelete.evaluationId)
                 setEvaluationToDelete(null)
             } catch (error) {
-                console.error("Failed to delete evaluation:", error)
+                console.error("評価の削除に失敗しました:", error)
             }
         }
     }
@@ -90,11 +86,11 @@ export function EvaluationTable() {
                 columns={columns}
                 data={filteredEvaluations}
                 isLoading={isLoading}
-                searchPlaceholder="Search evaluations..."
+                searchPlaceholder="評価を検索..."
                 onSearch={setSearchTerm}
                 searchValue={searchTerm}
                 onCreateNew={() => setIsCreateDialogOpen(true)}
-                createNewLabel="New Evaluation"
+                createNewLabel="新しい評価"
             />
 
             {/* Edit Evaluation Dialog */}
@@ -113,15 +109,14 @@ export function EvaluationTable() {
             <AlertDialog open={!!evaluationToDelete} onOpenChange={(open) => !open && setEvaluationToDelete(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogTitle>本当に削除しますか？</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This action cannot be undone. This will permanently delete the
-                            evaluation &#34;{evaluationToDelete?.name}&#34;.
+                            この操作は元に戻せません。評価「{evaluationToDelete?.name}」を永久に削除します。
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDeleteEvaluation}>Delete</AlertDialogAction>
+                        <AlertDialogCancel>キャンセル</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeleteEvaluation}>削除</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

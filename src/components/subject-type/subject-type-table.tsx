@@ -1,13 +1,13 @@
 "use client"
 
-import {useState} from "react"
-import type {ColumnDef} from "@tanstack/react-table"
-import {Pencil, Trash2} from "lucide-react"
+import { useState } from "react"
+import type { ColumnDef } from "@tanstack/react-table"
+import { Pencil, Trash2 } from "lucide-react"
 
-import {Button} from "@/components/ui/button"
-import {DataTable} from "@/components/data-table"
-import {useSubjectTypes} from "@/hooks/useSubjectTypeQuery"
-import {useSubjectTypeDelete} from "@/hooks/useSubjectTypeMutation"
+import { Button } from "@/components/ui/button"
+import { DataTable } from "@/components/data-table"
+import { useSubjectTypes } from "@/hooks/useSubjectTypeQuery"
+import { useSubjectTypeDelete } from "@/hooks/useSubjectTypeMutation"
 import {
     AlertDialog,
     AlertDialogAction,
@@ -18,12 +18,12 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import {SubjectType} from "@prisma/client"
-import {SubjectTypeFormDialog} from "@/components/subject-type/subject-type-form-dialog"
+import { SubjectType } from "@prisma/client"
+import { SubjectTypeFormDialog } from "@/components/subject-type/subject-type-form-dialog"
 
 export function SubjectTypeTable() {
     const [searchTerm, setSearchTerm] = useState("")
-    const {data: subjectTypes = [], isLoading} = useSubjectTypes()
+    const { data: subjectTypes = [], isLoading } = useSubjectTypes()
     const deleteSubjectTypeMutation = useSubjectTypeDelete()
 
     const [subjectTypeToEdit, setSubjectTypeToEdit] = useState<SubjectType | null>(null)
@@ -34,38 +34,36 @@ export function SubjectTypeTable() {
         ? subjectTypes.filter(
             (subjectType) =>
                 subjectType.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                (subjectType.notes && subjectType.notes.toLowerCase().includes(searchTerm.toLowerCase())),
+                (subjectType.notes && subjectType.notes.toLowerCase().includes(searchTerm.toLowerCase()))
         )
         : subjectTypes
 
     const columns: ColumnDef<SubjectType>[] = [
         {
             accessorKey: "subjectTypeId",
-            header: "ID",
+            header: "subjectTypeId",
         },
         {
             accessorKey: "name",
-            header: "Name",
+            header: "名前",
         },
         {
             accessorKey: "notes",
-            header: "Notes",
+            header: "メモ",
         },
         {
             id: "actions",
-            header: "Operations",
-            cell: ({row}) => {
-                return (
-                    <div className="flex gap-2">
-                        <Button variant="ghost" size="icon" onClick={() => setSubjectTypeToEdit(row.original)}>
-                            <Pencil className="h-4 w-4"/>
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => setSubjectTypeToDelete(row.original)}>
-                            <Trash2 className="h-4 w-4 text-destructive"/>
-                        </Button>
-                    </div>
-                )
-            },
+            header: "操作",
+            cell: ({ row }) => (
+                <div className="flex gap-2">
+                    <Button variant="ghost" size="icon" onClick={() => setSubjectTypeToEdit(row.original)}>
+                        <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => setSubjectTypeToDelete(row.original)}>
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                </div>
+            ),
         },
     ]
 
@@ -75,7 +73,7 @@ export function SubjectTypeTable() {
                 await deleteSubjectTypeMutation.mutateAsync(subjectTypeToDelete.subjectTypeId)
                 setSubjectTypeToDelete(null)
             } catch (error) {
-                console.error("Failed to delete subject type:", error)
+                console.error("科目タイプの削除に失敗しました:", error)
             }
         }
     }
@@ -86,11 +84,11 @@ export function SubjectTypeTable() {
                 columns={columns}
                 data={filteredSubjectTypes}
                 isLoading={isLoading}
-                searchPlaceholder="Search subject types..."
+                searchPlaceholder="科目タイプを検索..."
                 onSearch={setSearchTerm}
                 searchValue={searchTerm}
                 onCreateNew={() => setIsCreateDialogOpen(true)}
-                createNewLabel="New Subject Type"
+                createNewLabel="新しい科目タイプ"
             />
 
             {/* Edit Subject Type Dialog */}
@@ -110,14 +108,14 @@ export function SubjectTypeTable() {
             <AlertDialog open={!!subjectTypeToDelete} onOpenChange={(open) => !open && setSubjectTypeToDelete(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Subject Type</AlertDialogTitle>
+                        <AlertDialogTitle>科目タイプの削除</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Are you sure you want to delete this subject type? This action cannot be undone.
+                            この科目タイプを削除してもよろしいですか？ この操作は取り消せません。
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setSubjectTypeToDelete(null)}>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDeleteSubjectType}>Delete</AlertDialogAction>
+                        <AlertDialogCancel onClick={() => setSubjectTypeToDelete(null)}>キャンセル</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeleteSubjectType}>削除</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

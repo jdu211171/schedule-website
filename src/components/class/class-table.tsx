@@ -1,13 +1,13 @@
 "use client"
 
-import {useState} from "react"
-import type {ColumnDef} from "@tanstack/react-table"
-import {Pencil, Trash2} from "lucide-react"
+import { useState } from "react"
+import type { ColumnDef } from "@tanstack/react-table"
+import { Pencil, Trash2 } from "lucide-react"
 
-import {Button} from "@/components/ui/button"
-import {DataTable} from "@/components/data-table"
-import {useClassTypes} from "@/hooks/useClassTypeQuery"
-import {useClassTypeDelete} from "@/hooks/useClassTypeMutation"
+import { Button } from "@/components/ui/button"
+import { DataTable } from "@/components/data-table"
+import { useClassTypes } from "@/hooks/useClassTypeQuery"
+import { useClassTypeDelete } from "@/hooks/useClassTypeMutation"
 import {
     AlertDialog,
     AlertDialogAction,
@@ -18,12 +18,12 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import {ClassType} from "@prisma/client"
-import {ClassFormDialog} from "@/components/class/class-form-dialog"
+import { ClassType } from "@prisma/client"
+import { ClassFormDialog } from "@/components/class/class-form-dialog"
 
 export function ClassTable() {
     const [searchTerm, setSearchTerm] = useState("")
-    const {data: classTypes = [], isLoading} = useClassTypes()
+    const { data: classTypes = [], isLoading } = useClassTypes()
     const deleteClassTypeMutation = useClassTypeDelete()
 
     const [classTypeToEdit, setClassTypeToEdit] = useState<ClassType | null>(null)
@@ -40,28 +40,24 @@ export function ClassTable() {
 
     const columns: ColumnDef<ClassType>[] = [
         {
-            accessorKey: "classTypeId",
-            header: "ID",
-        },
-        {
             accessorKey: "name",
-            header: "Name",
+            header: "名前",
         },
         {
             accessorKey: "notes",
-            header: "Notes",
+            header: "メモ",
         },
         {
             id: "actions",
-            header: "Operations",
-            cell: ({row}) => {
+            header: "操作",
+            cell: ({ row }) => {
                 return (
                     <div className="flex gap-2">
                         <Button variant="ghost" size="icon" onClick={() => setClassTypeToEdit(row.original)}>
-                            <Pencil className="h-4 w-4"/>
+                            <Pencil className="h-4 w-4" />
                         </Button>
                         <Button variant="ghost" size="icon" onClick={() => setClassTypeToDelete(row.original)}>
-                            <Trash2 className="h-4 w-4 text-destructive"/>
+                            <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
                     </div>
                 )
@@ -75,7 +71,7 @@ export function ClassTable() {
                 await deleteClassTypeMutation.mutateAsync(classTypeToDelete.classTypeId)
                 setClassTypeToDelete(null)
             } catch (error) {
-                console.error("Failed to delete class type:", error)
+                console.error("クラスの種類の削除に失敗しました:", error)
             }
         }
     }
@@ -86,11 +82,11 @@ export function ClassTable() {
                 columns={columns}
                 data={filteredClassTypes}
                 isLoading={isLoading}
-                searchPlaceholder="Search class types..."
+                searchPlaceholder="クラスの種類を検索..."
                 onSearch={setSearchTerm}
                 searchValue={searchTerm}
                 onCreateNew={() => setIsCreateDialogOpen(true)}
-                createNewLabel="New Class Type"
+                createNewLabel="新しいクラスの種類"
             />
 
             {/* Edit Class Type Dialog */}
@@ -103,21 +99,20 @@ export function ClassTable() {
             )}
 
             {/* Create Class Type Dialog */}
-            <ClassFormDialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}/>
+            <ClassFormDialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen} />
 
             {/* Delete Confirmation Dialog */}
             <AlertDialog open={!!classTypeToDelete} onOpenChange={(open) => !open && setClassTypeToDelete(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogTitle>本当に削除してもよろしいですか？</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This action cannot be undone. This will permanently delete the class
-                            type &#34;{classTypeToDelete?.name}&#34;.
+                            この操作は元に戻せません。このクラスの種類「{classTypeToDelete?.name}」を完全に削除します。
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDeleteClassType}>Delete</AlertDialogAction>
+                        <AlertDialogCancel>キャンセル</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeleteClassType}>削除</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

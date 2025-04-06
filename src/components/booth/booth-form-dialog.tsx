@@ -13,7 +13,7 @@ import {Textarea} from "@/components/ui/textarea"
 import {Switch} from "@/components/ui/switch"
 import {useBoothCreate, useBoothUpdate} from "@/hooks/useBoothMutation"
 import {boothCreateSchema} from "@/schemas/booth.schema"
-import {Booth} from "@prisma/client";
+import {Booth} from "@prisma/client"
 
 interface BoothFormDialogProps {
     open: boolean
@@ -28,10 +28,9 @@ export function BoothFormDialog({open, onOpenChange, booth}: BoothFormDialogProp
 
     const isEditing = !!booth
 
-    // Create a form schema based on our Zod schema
     const formSchema = isEditing
         ? z.object({
-            name: z.string().min(1, {message: "Name is required"}),
+            name: z.string().min(1, {message: "名前は必須です"}),
             status: z.boolean().default(true),
             notes: z.string().optional(),
         })
@@ -60,7 +59,7 @@ export function BoothFormDialog({open, onOpenChange, booth}: BoothFormDialogProp
             onOpenChange(false)
             form.reset()
         } catch (error) {
-            console.error("Failed to save booth:", error)
+            console.error("ブースの保存に失敗しました:", error)
         } finally {
             setIsSubmitting(false)
         }
@@ -70,7 +69,7 @@ export function BoothFormDialog({open, onOpenChange, booth}: BoothFormDialogProp
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                    <DialogTitle>{isEditing ? "Edit Booth" : "Create Booth"}</DialogTitle>
+                    <DialogTitle>{isEditing ? "ブースの編集" : "ブースの作成"}</DialogTitle>
                 </DialogHeader>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -79,9 +78,9 @@ export function BoothFormDialog({open, onOpenChange, booth}: BoothFormDialogProp
                             name="name"
                             render={({field}) => (
                                 <FormItem>
-                                    <FormLabel>Name</FormLabel>
+                                    <FormLabel>名前</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="Enter booth name" {...field} />
+                                        <Input placeholder="ブース名を入力してください" {...field} />
                                     </FormControl>
                                     <FormMessage/>
                                 </FormItem>
@@ -93,7 +92,7 @@ export function BoothFormDialog({open, onOpenChange, booth}: BoothFormDialogProp
                             render={({field}) => (
                                 <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
                                     <div className="space-y-0.5">
-                                        <FormLabel>Status</FormLabel>
+                                        <FormLabel>ステータス</FormLabel>
                                     </div>
                                     <FormControl>
                                         <Switch checked={field.value} onCheckedChange={field.onChange}/>
@@ -106,9 +105,9 @@ export function BoothFormDialog({open, onOpenChange, booth}: BoothFormDialogProp
                             name="notes"
                             render={({field}) => (
                                 <FormItem>
-                                    <FormLabel>Notes</FormLabel>
+                                    <FormLabel>メモ</FormLabel>
                                     <FormControl>
-                                        <Textarea placeholder="Enter notes (optional)" {...field}
+                                        <Textarea placeholder="メモを入力してください（任意）" {...field}
                                                   value={field.value || ""}/>
                                     </FormControl>
                                     <FormMessage/>
@@ -117,7 +116,7 @@ export function BoothFormDialog({open, onOpenChange, booth}: BoothFormDialogProp
                         />
                         <DialogFooter>
                             <Button type="submit" disabled={isSubmitting}>
-                                {isSubmitting ? "Saving..." : isEditing ? "Save Changes" : "Create"}
+                                {isSubmitting ? "保存中..." : isEditing ? "変更を保存" : "作成"}
                             </Button>
                         </DialogFooter>
                     </form>

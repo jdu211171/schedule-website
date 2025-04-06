@@ -1,18 +1,18 @@
 "use client"
 
-import {useState} from "react"
-import {zodResolver} from "@hookform/resolvers/zod"
-import {useForm} from "react-hook-form"
-import {z} from "zod"
+import { useState } from "react"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { useForm } from "react-hook-form"
+import { z } from "zod"
 
-import {Button} from "@/components/ui/button"
-import {Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle} from "@/components/ui/dialog"
-import {Form, FormControl, FormField, FormItem, FormLabel, FormMessage} from "@/components/ui/form"
-import {Input} from "@/components/ui/input"
-import {Textarea} from "@/components/ui/textarea"
-import {useStudentCreate, useStudentUpdate} from "@/hooks/useStudentMutation"
-import {studentCreateSchema} from "@/schemas/student.schema"
-import {Student} from "@prisma/client"
+import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { useStudentCreate, useStudentUpdate } from "@/hooks/useStudentMutation"
+import { studentCreateSchema } from "@/schemas/student.schema"
+import { Student } from "@prisma/client"
 
 interface StudentFormDialogProps {
     open: boolean
@@ -20,7 +20,7 @@ interface StudentFormDialogProps {
     student?: Student | null
 }
 
-export function StudentFormDialog({open, onOpenChange, student}: StudentFormDialogProps) {
+export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDialogProps) {
     const [isSubmitting, setIsSubmitting] = useState(false)
     const createStudentMutation = useStudentCreate()
     const updateStudentMutation = useStudentUpdate()
@@ -84,7 +84,7 @@ export function StudentFormDialog({open, onOpenChange, student}: StudentFormDial
             onOpenChange(false)
             form.reset()
         } catch (error) {
-            console.error("Failed to save student:", error)
+            console.error("学生の保存に失敗しました:", error)
         } finally {
             setIsSubmitting(false)
         }
@@ -92,68 +92,167 @@ export function StudentFormDialog({open, onOpenChange, student}: StudentFormDial
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[600px]">
+            <DialogContent
+                className="sm:max-w-[600px] max-h-[80vh] overflow-auto"
+                style={{
+                    overflowY: "auto",
+                    height: "80vh",
+                    maxHeight: "80vh",
+                    paddingRight: "10px"
+                }}
+            >
                 <DialogHeader>
-                    <DialogTitle>{isEditing ? "Edit Student" : "Create Student"}</DialogTitle>
+                    <DialogTitle>{isEditing ? "学生の編集" : "学生の作成"}</DialogTitle>
                 </DialogHeader>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                        <FormField
-                            control={form.control}
-                            name="name"
-                            render={({field}) => (
-                                <FormItem>
-                                    <FormLabel>Name</FormLabel>
-                                    <FormControl>
-                                        <Input placeholder="Enter student name" {...field} />
-                                    </FormControl>
-                                    <FormMessage/>
-                                </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="kanaName"
-                            render={({field}) => (
-                                <FormItem>
-                                    <FormLabel>Kana Name</FormLabel>
-                                    <FormControl>
-                                        <Input placeholder="Enter kana name" {...field} value={field.value || ""}/>
-                                    </FormControl>
-                                    <FormMessage/>
-                                </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="schoolName"
-                            render={({field}) => (
-                                <FormItem>
-                                    <FormLabel>School Name</FormLabel>
-                                    <FormControl>
-                                        <Input placeholder="Enter school name" {...field} value={field.value || ""}/>
-                                    </FormControl>
-                                    <FormMessage/>
-                                </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="notes"
-                            render={({field}) => (
-                                <FormItem>
-                                    <FormLabel>Notes</FormLabel>
-                                    <FormControl>
-                                        <Textarea placeholder="Enter additional notes" {...field}
-                                                  value={field.value || ""}/>
-                                    </FormControl>
-                                    <FormMessage/>
-                                </FormItem>
-                            )}
-                        />
+                        <FormField control={form.control} name="name" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>名前</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="学生の名前を入力" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+                        <FormField control={form.control} name="kanaName" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>カナ名</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="カナ名を入力" {...field} value={field.value || ""} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+                        <FormField control={form.control} name="gradeId" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>学年ID</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="学年IDを入力" {...field} value={field.value || ""} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+                        <FormField control={form.control} name="schoolName" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>学校名</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="学校名を入力" {...field} value={field.value || ""} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+                        <FormField control={form.control} name="schoolType" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>学校タイプ</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="学校タイプを入力" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+                        <FormField control={form.control} name="examSchoolType" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>受験校タイプ</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="受験校タイプを入力" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+                        <FormField control={form.control} name="examSchoolCategoryType" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>受験校カテゴリータイプ</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="受験校カテゴリーを入力" {...field} value={field.value || ""} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+                        <FormField control={form.control} name="firstChoiceSchool" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>第一志望校</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="第一志望校を入力" {...field} value={field.value || ""} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+                        <FormField control={form.control} name="secondChoiceSchool" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>第二志望校</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="第二志望校を入力" {...field} value={field.value || ""} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+                        <FormField control={form.control} name="enrollmentDate" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>入学日</FormLabel>
+                                <FormControl>
+                                    <Input type="date" {...field} value={field.value ? field.value.toISOString().split('T')[0] : ""} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+                        <FormField control={form.control} name="birthDate" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>生年月日</FormLabel>
+                                <FormControl>
+                                    <Input type="date" {...field} value={field.value ? field.value.toISOString().split('T')[0] : ""} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+                        <FormField control={form.control} name="homePhone" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>自宅電話</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="自宅電話を入力" {...field} value={field.value || ""} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+                        <FormField control={form.control} name="parentMobile" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>保護者携帯電話</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="保護者携帯電話を入力" {...field} value={field.value || ""} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+                        <FormField control={form.control} name="studentMobile" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>学生携帯電話</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="学生携帯電話を入力" {...field} value={field.value || ""} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+                        <FormField control={form.control} name="parentEmail" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>保護者メール</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="保護者メールを入力" {...field} value={field.value || ""} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+                        <FormField control={form.control} name="notes" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>メモ</FormLabel>
+                                <FormControl>
+                                    <Textarea placeholder="メモを入力" {...field} value={field.value || ""} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
                         <DialogFooter>
                             <Button type="submit" disabled={isSubmitting}>
-                                {isSubmitting ? "Saving..." : isEditing ? "Save Changes" : "Create"}
+                                {isSubmitting ? "保存中..." : isEditing ? "変更を保存" : "作成"}
                             </Button>
                         </DialogFooter>
                     </form>

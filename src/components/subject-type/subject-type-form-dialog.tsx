@@ -1,18 +1,18 @@
 "use client"
 
-import {useState} from "react"
-import {zodResolver} from "@hookform/resolvers/zod"
-import {useForm} from "react-hook-form"
-import {z} from "zod"
+import { useState } from "react"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { useForm } from "react-hook-form"
+import { z } from "zod"
 
-import {Button} from "@/components/ui/button"
-import {Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle} from "@/components/ui/dialog"
-import {Form, FormControl, FormField, FormItem, FormLabel, FormMessage} from "@/components/ui/form"
-import {Input} from "@/components/ui/input"
-import {Textarea} from "@/components/ui/textarea"
-import {useSubjectTypeCreate, useSubjectTypeUpdate} from "@/hooks/useSubjectTypeMutation"
-import {subjectTypeCreateSchema} from "@/schemas/subjectType.schema"
-import {SubjectType} from "@prisma/client"
+import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { useSubjectTypeCreate, useSubjectTypeUpdate } from "@/hooks/useSubjectTypeMutation"
+import { subjectTypeCreateSchema } from "@/schemas/subjectType.schema"
+import { SubjectType } from "@prisma/client"
 
 interface SubjectTypeFormDialogProps {
     open: boolean
@@ -20,7 +20,7 @@ interface SubjectTypeFormDialogProps {
     subjectType?: SubjectType | null
 }
 
-export function SubjectTypeFormDialog({open, onOpenChange, subjectType}: SubjectTypeFormDialogProps) {
+export function SubjectTypeFormDialog({ open, onOpenChange, subjectType }: SubjectTypeFormDialogProps) {
     const [isSubmitting, setIsSubmitting] = useState(false)
     const createSubjectTypeMutation = useSubjectTypeCreate()
     const updateSubjectTypeMutation = useSubjectTypeUpdate()
@@ -29,7 +29,7 @@ export function SubjectTypeFormDialog({open, onOpenChange, subjectType}: Subject
 
     const formSchema = isEditing
         ? z.object({
-            name: z.string().min(1, {message: "Name is required"}),
+            name: z.string().min(1, { message: "名前は必須です" }),
             notes: z.string().optional(),
         })
         : subjectTypeCreateSchema
@@ -57,7 +57,7 @@ export function SubjectTypeFormDialog({open, onOpenChange, subjectType}: Subject
             onOpenChange(false)
             form.reset()
         } catch (error) {
-            console.error("Failed to save subject type:", error)
+            console.error("科目タイプの保存に失敗しました:", error)
         } finally {
             setIsSubmitting(false)
         }
@@ -67,40 +67,39 @@ export function SubjectTypeFormDialog({open, onOpenChange, subjectType}: Subject
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[600px]">
                 <DialogHeader>
-                    <DialogTitle>{isEditing ? "Edit Subject Type" : "Create Subject Type"}</DialogTitle>
+                    <DialogTitle>{isEditing ? "科目タイプの編集" : "新しい科目タイプを作成"}</DialogTitle>
                 </DialogHeader>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                         <FormField
                             control={form.control}
                             name="name"
-                            render={({field}) => (
+                            render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Name</FormLabel>
+                                    <FormLabel>名前</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="Enter subject type name" {...field} />
+                                        <Input placeholder="科目タイプ名を入力" {...field} />
                                     </FormControl>
-                                    <FormMessage/>
+                                    <FormMessage />
                                 </FormItem>
                             )}
                         />
                         <FormField
                             control={form.control}
                             name="notes"
-                            render={({field}) => (
+                            render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Notes</FormLabel>
+                                    <FormLabel>メモ</FormLabel>
                                     <FormControl>
-                                        <Textarea placeholder="Enter additional notes" {...field}
-                                                  value={field.value ?? ""}/>
+                                        <Textarea placeholder="追加のメモを入力" {...field} value={field.value ?? ""} />
                                     </FormControl>
-                                    <FormMessage/>
+                                    <FormMessage />
                                 </FormItem>
                             )}
                         />
                         <DialogFooter>
                             <Button type="submit" disabled={isSubmitting}>
-                                {isSubmitting ? "Saving..." : isEditing ? "Save Changes" : "Create"}
+                                {isSubmitting ? "保存中..." : isEditing ? "変更を保存" : "作成"}
                             </Button>
                         </DialogFooter>
                     </form>

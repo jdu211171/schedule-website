@@ -1,18 +1,18 @@
 "use client"
 
-import {useState} from "react"
-import {zodResolver} from "@hookform/resolvers/zod"
-import {useForm} from "react-hook-form"
-import {z} from "zod"
+import { useState } from "react"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { useForm } from "react-hook-form"
+import { z } from "zod"
 
-import {Button} from "@/components/ui/button"
-import {Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle} from "@/components/ui/dialog"
-import {Form, FormControl, FormField, FormItem, FormLabel, FormMessage} from "@/components/ui/form"
-import {Input} from "@/components/ui/input"
-import {Textarea} from "@/components/ui/textarea"
-import {useEvaluationCreate, useEvaluationUpdate} from "@/hooks/useEvaluationMutation"
-import {evaluationCreateSchema} from "@/schemas/evaluation.schema"
-import {Evaluation} from "@prisma/client"
+import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { useEvaluationCreate, useEvaluationUpdate } from "@/hooks/useEvaluationMutation"
+import { evaluationCreateSchema } from "@/schemas/evaluation.schema"
+import { Evaluation } from "@prisma/client"
 
 interface EvaluationFormDialogProps {
     open: boolean
@@ -20,7 +20,7 @@ interface EvaluationFormDialogProps {
     evaluation?: Evaluation | null
 }
 
-export function EvaluationFormDialog({open, onOpenChange, evaluation}: EvaluationFormDialogProps) {
+export function EvaluationFormDialog({ open, onOpenChange, evaluation }: EvaluationFormDialogProps) {
     const [isSubmitting, setIsSubmitting] = useState(false)
     const createEvaluationMutation = useEvaluationCreate()
     const updateEvaluationMutation = useEvaluationUpdate()
@@ -29,7 +29,7 @@ export function EvaluationFormDialog({open, onOpenChange, evaluation}: Evaluatio
 
     const formSchema = isEditing
         ? z.object({
-            name: z.string().min(1, {message: "Name is required"}),
+            name: z.string().min(1, { message: "名前は必須です" }),
             score: z.number().int().optional(),
             notes: z.string().optional(),
         })
@@ -58,7 +58,7 @@ export function EvaluationFormDialog({open, onOpenChange, evaluation}: Evaluatio
             onOpenChange(false)
             form.reset()
         } catch (error) {
-            console.error("Failed to save evaluation:", error)
+            console.error("評価の保存に失敗しました:", error)
         } finally {
             setIsSubmitting(false)
         }
@@ -68,53 +68,52 @@ export function EvaluationFormDialog({open, onOpenChange, evaluation}: Evaluatio
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                    <DialogTitle>{isEditing ? "Edit Evaluation" : "Create Evaluation"}</DialogTitle>
+                    <DialogTitle>{isEditing ? "評価の編集" : "評価の作成"}</DialogTitle>
                 </DialogHeader>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                         <FormField
                             control={form.control}
                             name="name"
-                            render={({field}) => (
+                            render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Name</FormLabel>
+                                    <FormLabel>名前</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="Enter evaluation name" {...field} />
+                                        <Input placeholder="評価の名前を入力" {...field} />
                                     </FormControl>
-                                    <FormMessage/>
+                                    <FormMessage />
                                 </FormItem>
                             )}
                         />
                         <FormField
                             control={form.control}
                             name="score"
-                            render={({field}) => (
+                            render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Score</FormLabel>
+                                    <FormLabel>スコア</FormLabel>
                                     <FormControl>
-                                        <Input type="number" placeholder="Enter score" {...field} />
+                                        <Input type="number" placeholder="スコアを入力" {...field} />
                                     </FormControl>
-                                    <FormMessage/>
+                                    <FormMessage />
                                 </FormItem>
                             )}
                         />
                         <FormField
                             control={form.control}
                             name="notes"
-                            render={({field}) => (
+                            render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Notes</FormLabel>
+                                    <FormLabel>メモ</FormLabel>
                                     <FormControl>
-                                        <Textarea placeholder="Enter notes (optional)" {...field}
-                                                  value={field.value || ""}/>
+                                        <Textarea placeholder="メモを入力（任意）" {...field} value={field.value || ""} />
                                     </FormControl>
-                                    <FormMessage/>
+                                    <FormMessage />
                                 </FormItem>
                             )}
                         />
                         <DialogFooter>
                             <Button type="submit" disabled={isSubmitting}>
-                                {isSubmitting ? "Saving..." : isEditing ? "Save Changes" : "Create"}
+                                {isSubmitting ? "保存中..." : isEditing ? "変更を保存" : "作成"}
                             </Button>
                         </DialogFooter>
                     </form>

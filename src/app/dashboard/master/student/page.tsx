@@ -1,9 +1,12 @@
+import TabsNav from "@/app/dashboard/master/tabs-nav"
 import {StudentTabs} from "@/components/student/student-tabs"
 
 export default function StudentsPage() {
     return (
-        <div className="container mx-auto py-6">
-            <StudentTabs/>
+        <div className="space-y-6">
+            <h1 className="text-4xl font-bold">学生</h1>
+            <TabsNav />
+            <StudentTabs />
         </div>
     )
 }

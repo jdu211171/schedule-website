@@ -1,18 +1,18 @@
 'use client'
 
 import Link from 'next/link'
-import {Tabs, TabsList, TabsTrigger} from '@/components/ui/tabs'
-import {cn} from '@/lib/utils'
-import {usePathname} from 'next/navigation'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { cn } from '@/lib/utils'
+import { usePathname } from 'next/navigation'
 
 const tabs = [
-    {name: 'Booths', href: '/dashboard/master/booths'},
-    {name: 'Class', href: '/dashboard/master/class'},
-    {name: 'Evaluation', href: '/dashboard/master/evaluation'},
-    {name: 'Grade', href: '/dashboard/master/grade'},
-    {name: 'Student', href: '/dashboard/master/student'},
-    {name: 'Subject Type', href: '/dashboard/master/subject-type'},
-    {name: 'Subject', href: '/dashboard/master/subject'},
+    { name: 'ブース', href: '/dashboard/master/booths' },
+    { name: 'クラス', href: '/dashboard/master/class' },
+    { name: '評価', href: '/dashboard/master/evaluation' },
+    { name: '成績', href: '/dashboard/master/grade' },
+    { name: '学生', href: '/dashboard/master/student' },
+    { name: '科目', href: '/dashboard/master/subject' },
+    { name: '科目タイプ', href: '/dashboard/master/subject-type' },
 ]
 
 export default function TabsNav() {

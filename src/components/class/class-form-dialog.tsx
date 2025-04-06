@@ -30,7 +30,7 @@ export function ClassFormDialog({open, onOpenChange, classType}: ClassFormDialog
     // Create a form schema based on our Zod schema
     const formSchema = isEditing
         ? z.object({
-            name: z.string().min(1, {message: "Name is required"}),
+            name: z.string().min(1, {message: "名前は必須です"}),
             notes: z.string().optional(),
         })
         : classTypeCreateSchema
@@ -57,7 +57,7 @@ export function ClassFormDialog({open, onOpenChange, classType}: ClassFormDialog
             onOpenChange(false)
             form.reset()
         } catch (error) {
-            console.error("Failed to save class:", error)
+            console.error("クラスの種類の保存に失敗しました:", error)
         } finally {
             setIsSubmitting(false)
         }
@@ -67,7 +67,7 @@ export function ClassFormDialog({open, onOpenChange, classType}: ClassFormDialog
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                    <DialogTitle>{isEditing ? "Edit Class Type" : "Create Class Type"}</DialogTitle>
+                    <DialogTitle>{isEditing ? "クラスの種類の編集" : "クラスの種類の作成"}</DialogTitle>
                 </DialogHeader>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -76,9 +76,9 @@ export function ClassFormDialog({open, onOpenChange, classType}: ClassFormDialog
                             name="name"
                             render={({field}) => (
                                 <FormItem>
-                                    <FormLabel>Name</FormLabel>
+                                    <FormLabel>名前</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="Enter class type name" {...field} />
+                                        <Input placeholder="クラスの種類の名前を入力してください" {...field} />
                                     </FormControl>
                                     <FormMessage/>
                                 </FormItem>
@@ -89,10 +89,9 @@ export function ClassFormDialog({open, onOpenChange, classType}: ClassFormDialog
                             name="notes"
                             render={({field}) => (
                                 <FormItem>
-                                    <FormLabel>Notes</FormLabel>
+                                    <FormLabel>メモ</FormLabel>
                                     <FormControl>
-                                        <Textarea placeholder="Enter notes (optional)" {...field}
-                                                  value={field.value || ""}/>
+                                        <Textarea placeholder="メモ（任意）" {...field} value={field.value || ""}/>
                                     </FormControl>
                                     <FormMessage/>
                                 </FormItem>
@@ -100,7 +99,7 @@ export function ClassFormDialog({open, onOpenChange, classType}: ClassFormDialog
                         />
                         <DialogFooter>
                             <Button type="submit" disabled={isSubmitting}>
-                                {isSubmitting ? "Saving..." : isEditing ? "Save Changes" : "Create"}
+                                {isSubmitting ? "保存中..." : isEditing ? "変更を保存" : "作成"}
                             </Button>
                         </DialogFooter>
                     </form>
