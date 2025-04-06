@@ -59,6 +59,34 @@ const navItems: NavItemType[] = [
   },
 ];
 
+const studentNavItems: NavItemType[] = [
+  {
+    title: "設定",
+    href: "/student/settings",
+    icon: Settings,
+    exact: true
+  },
+  {
+    title: "プリファレンス",
+    href: "/student/preferences",
+    icon: LayoutDashboard,
+  },
+];
+
+const teacherNavItems: NavItemType[] = [
+  {
+    title: "設定",
+    href: "/teacher/settings",
+    icon: Settings,
+    exact: true
+  },
+  {
+    title: "プリファレンス",
+    href: "/teacher/preferences",
+    icon: LayoutDashboard,
+  },
+];
+
 interface NavItemProps {
   item: NavItemType;
   isActive: boolean;
@@ -83,9 +111,18 @@ const NavItem = memo(({ item, isActive }: NavItemProps) => {
 });
 NavItem.displayName = "NavItem";
 
-const Navbar = () => {
+interface NavbarProps {
+  type?: 'dashboard' | 'student' | 'teacher';
+}
+
+const Navbar = ({ type = 'dashboard' }: NavbarProps) => {
   const pathname = usePathname();
   const { data: session } = useSession();
+
+  const currentNavItems = 
+    type === 'student' ? studentNavItems : 
+    type === 'teacher' ? teacherNavItems : 
+    navItems;
 
   const isActive = useCallback((item: NavItemType): boolean => {
     if (item.exact) {
@@ -102,11 +139,11 @@ const Navbar = () => {
     <header className="border-b">
       <div className="max-w-6xl mx-auto px-4 flex h-16 items-center">
         <div className="mr-8 font-semibold text-xl">
-          <Link href="/dashboard">LightHouse</Link>
+          <Link href={type === 'dashboard' ? "/dashboard" : `/${type}`}>LightHouse</Link>
         </div>
 
         <nav className="flex flex-1 items-center space-x-1 lg:space-x-2">
-          {navItems.map((item) => (
+          {currentNavItems.map((item) => (
             <NavItem 
               key={item.href}
               item={item}
