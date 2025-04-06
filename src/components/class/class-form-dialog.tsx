@@ -10,57 +10,54 @@ import {Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle} from "@/
 import {Form, FormControl, FormField, FormItem, FormLabel, FormMessage} from "@/components/ui/form"
 import {Input} from "@/components/ui/input"
 import {Textarea} from "@/components/ui/textarea"
-import {Switch} from "@/components/ui/switch"
-import {useBoothCreate, useBoothUpdate} from "@/hooks/useBoothMutation"
-import {boothCreateSchema} from "@/schemas/booth.schema"
-import {Booth} from "@prisma/client";
+import {useClassTypeCreate, useClassTypeUpdate} from "@/hooks/useClassTypeMutation"
+import {classTypeCreateSchema} from "@/schemas/classType.schema"
+import {ClassType} from "@prisma/client"
 
-interface BoothFormDialogProps {
+interface ClassFormDialogProps {
     open: boolean
     onOpenChange: (open: boolean) => void
-    booth?: Booth | null
+    classType?: ClassType | null
 }
 
-export function BoothFormDialog({open, onOpenChange, booth}: BoothFormDialogProps) {
+export function ClassFormDialog({open, onOpenChange, classType}: ClassFormDialogProps) {
     const [isSubmitting, setIsSubmitting] = useState(false)
-    const createBoothMutation = useBoothCreate()
-    const updateBoothMutation = useBoothUpdate()
+    const createClassTypeMutation = useClassTypeCreate()
+    const updateClassTypeMutation = useClassTypeUpdate()
 
-    const isEditing = !!booth
+    const isEditing = !!classType
 
     // Create a form schema based on our Zod schema
     const formSchema = isEditing
         ? z.object({
             name: z.string().min(1, {message: "Name is required"}),
-            status: z.boolean().default(true),
             notes: z.string().optional(),
         })
-        : boothCreateSchema
+        : classTypeCreateSchema
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: {
-            name: booth?.name || "",
-            status: booth?.status ?? true,
-            notes: booth?.notes || "",
+            name: classType?.name || "",
+            notes: classType?.notes || "",
         },
     })
 
     async function onSubmit(values: z.infer<typeof formSchema>) {
         setIsSubmitting(true)
         try {
-            if (isEditing && booth) {
-                await updateBoothMutation.mutateAsync({
-                    boothId: booth.boothId,
+            if (isEditing && classType) {
+                await updateClassTypeMutation.mutateAsync({
+                    classTypeId: classType.classTypeId,
                     ...values,
                 })
             } else {
-                await createBoothMutation.mutateAsync(values)
+                await createClassTypeMutation.mutateAsync(values)
             }
             onOpenChange(false)
             form.reset()
         } catch (error) {
-            console.error("Failed to save booth:", error)
+            console.error("Failed to save class:", error)
         } finally {
             setIsSubmitting(false)
         }
@@ -70,7 +67,7 @@ export function BoothFormDialog({open, onOpenChange, booth}: BoothFormDialogProp
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                    <DialogTitle>{isEditing ? "Edit Booth" : "Create Booth"}</DialogTitle>
+                    <DialogTitle>{isEditing ? "Edit Class Type" : "Create Class Type"}</DialogTitle>
                 </DialogHeader>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -81,23 +78,9 @@ export function BoothFormDialog({open, onOpenChange, booth}: BoothFormDialogProp
                                 <FormItem>
                                     <FormLabel>Name</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="Enter booth name" {...field} />
+                                        <Input placeholder="Enter class type name" {...field} />
                                     </FormControl>
                                     <FormMessage/>
-                                </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="status"
-                            render={({field}) => (
-                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
-                                    <div className="space-y-0.5">
-                                        <FormLabel>Status</FormLabel>
-                                    </div>
-                                    <FormControl>
-                                        <Switch checked={field.value} onCheckedChange={field.onChange}/>
-                                    </FormControl>
                                 </FormItem>
                             )}
                         />

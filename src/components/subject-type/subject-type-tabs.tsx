@@ -1,17 +1,17 @@
 "use client"
 
 import {useState} from "react"
-import {BoothTable} from "@/components/booth/booth-table"
-import {BoothFormDialog} from "./booth-form-dialog"
 import {Tabs, TabsContent, TabsList, TabsTrigger} from "@/components/ui/tabs"
+import {SubjectTypeTable} from "@/components/subject-type/subject-type-table"
+import {SubjectTypeFormDialog} from "@/components/subject-type/subject-type-form-dialog"
 
-export function BoothTabs() {
+export function SubjectTypeTabs() {
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
 
     return (
         <Tabs defaultValue="list" className="w-full">
             <div className="flex justify-between items-center mb-4">
-                <h1 className="text-2xl font-bold">Booths</h1>
+                <h1 className="text-2xl font-bold">Subject Types</h1>
                 <TabsList>
                     <TabsTrigger value="list">List View</TabsTrigger>
                     <TabsTrigger value="create" onClick={() => setIsCreateDialogOpen(true)}>
@@ -21,14 +21,14 @@ export function BoothTabs() {
             </div>
 
             <TabsContent value="list" className="mt-0">
-                <BoothTable/>
+                <SubjectTypeTable/>
             </TabsContent>
 
             <TabsContent value="create" className="mt-0">
                 {/* This tab just opens the dialog */}
             </TabsContent>
 
-            <BoothFormDialog
+            <SubjectTypeFormDialog
                 open={isCreateDialogOpen}
                 onOpenChange={(open) => {
                     setIsCreateDialogOpen(open)

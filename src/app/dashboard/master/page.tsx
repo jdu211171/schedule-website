@@ -1,9 +1,5 @@
-import React from 'react'
+import {redirect} from 'next/navigation'
 
-const DashboardMasterPage = () => {
-  return (
-    <div>DashboardMasterPage</div>
-  )
+export default function DashboardRedirectPage() {
+    redirect('/dashboard/master/booths')
 }
-
-export default DashboardMasterPage

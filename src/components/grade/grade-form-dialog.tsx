@@ -10,57 +10,57 @@ import {Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle} from "@/
 import {Form, FormControl, FormField, FormItem, FormLabel, FormMessage} from "@/components/ui/form"
 import {Input} from "@/components/ui/input"
 import {Textarea} from "@/components/ui/textarea"
-import {Switch} from "@/components/ui/switch"
-import {useBoothCreate, useBoothUpdate} from "@/hooks/useBoothMutation"
-import {boothCreateSchema} from "@/schemas/booth.schema"
-import {Booth} from "@prisma/client";
+import {useGradeCreate, useGradeUpdate} from "@/hooks/useGradeMutation"
+import {gradeCreateSchema} from "@/schemas/grade.schema"
+import {Grade} from "@prisma/client"
 
-interface BoothFormDialogProps {
+interface GradeFormDialogProps {
     open: boolean
     onOpenChange: (open: boolean) => void
-    booth?: Booth | null
+    grade?: Grade | null
 }
 
-export function BoothFormDialog({open, onOpenChange, booth}: BoothFormDialogProps) {
+export function GradeFormDialog({open, onOpenChange, grade}: GradeFormDialogProps) {
     const [isSubmitting, setIsSubmitting] = useState(false)
-    const createBoothMutation = useBoothCreate()
-    const updateBoothMutation = useBoothUpdate()
+    const createGradeMutation = useGradeCreate()
+    const updateGradeMutation = useGradeUpdate()
 
-    const isEditing = !!booth
+    const isEditing = !!grade
 
-    // Create a form schema based on our Zod schema
     const formSchema = isEditing
         ? z.object({
-            name: z.string().min(1, {message: "Name is required"}),
-            status: z.boolean().default(true),
-            notes: z.string().optional(),
+            name: z.string().max(100, {message: "Name must be 100 characters or less"}),
+            studentTypeId: z.string().nullable().optional(),
+            gradeYear: z.number().int().nullable().optional(),
+            notes: z.string().nullable().optional(),
         })
-        : boothCreateSchema
+        : gradeCreateSchema
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: {
-            name: booth?.name || "",
-            status: booth?.status ?? true,
-            notes: booth?.notes || "",
+            name: grade?.name || "",
+            studentTypeId: grade?.studentTypeId || null,
+            gradeYear: grade?.gradeYear || null,
+            notes: grade?.notes || "",
         },
     })
 
     async function onSubmit(values: z.infer<typeof formSchema>) {
         setIsSubmitting(true)
         try {
-            if (isEditing && booth) {
-                await updateBoothMutation.mutateAsync({
-                    boothId: booth.boothId,
+            if (isEditing && grade) {
+                await updateGradeMutation.mutateAsync({
+                    gradeId: grade.gradeId,
                     ...values,
                 })
             } else {
-                await createBoothMutation.mutateAsync(values)
+                await createGradeMutation.mutateAsync(values)
             }
             onOpenChange(false)
             form.reset()
         } catch (error) {
-            console.error("Failed to save booth:", error)
+            console.error("Failed to save grade:", error)
         } finally {
             setIsSubmitting(false)
         }
@@ -70,7 +70,7 @@ export function BoothFormDialog({open, onOpenChange, booth}: BoothFormDialogProp
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                    <DialogTitle>{isEditing ? "Edit Booth" : "Create Booth"}</DialogTitle>
+                    <DialogTitle>{isEditing ? "Edit Grade" : "Create Grade"}</DialogTitle>
                 </DialogHeader>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -81,7 +81,7 @@ export function BoothFormDialog({open, onOpenChange, booth}: BoothFormDialogProp
                                 <FormItem>
                                     <FormLabel>Name</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="Enter booth name" {...field} />
+                                        <Input placeholder="Enter grade name" {...field} />
                                     </FormControl>
                                     <FormMessage/>
                                 </FormItem>
@@ -89,15 +89,29 @@ export function BoothFormDialog({open, onOpenChange, booth}: BoothFormDialogProp
                         />
                         <FormField
                             control={form.control}
-                            name="status"
+                            name="studentTypeId"
                             render={({field}) => (
-                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
-                                    <div className="space-y-0.5">
-                                        <FormLabel>Status</FormLabel>
-                                    </div>
+                                <FormItem>
+                                    <FormLabel>Student Type ID</FormLabel>
                                     <FormControl>
-                                        <Switch checked={field.value} onCheckedChange={field.onChange}/>
+                                        <Input placeholder="Enter student type ID" {...field}
+                                               value={field.value || ""}/>
                                     </FormControl>
+                                    <FormMessage/>
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="gradeYear"
+                            render={({field}) => (
+                                <FormItem>
+                                    <FormLabel>Grade Year</FormLabel>
+                                    <FormControl>
+                                        <Input type="number" placeholder="Enter grade year" {...field}
+                                               value={field.value ?? ""}/>
+                                    </FormControl>
+                                    <FormMessage/>
                                 </FormItem>
                             )}
                         />

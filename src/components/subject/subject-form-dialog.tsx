@@ -10,57 +10,57 @@ import {Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle} from "@/
 import {Form, FormControl, FormField, FormItem, FormLabel, FormMessage} from "@/components/ui/form"
 import {Input} from "@/components/ui/input"
 import {Textarea} from "@/components/ui/textarea"
-import {Switch} from "@/components/ui/switch"
-import {useBoothCreate, useBoothUpdate} from "@/hooks/useBoothMutation"
-import {boothCreateSchema} from "@/schemas/booth.schema"
-import {Booth} from "@prisma/client";
+import {useSubjectCreate, useSubjectUpdate} from "@/hooks/useSubjectMutation"
+import {subjectCreateSchema} from "@/schemas/subject.schema"
+import {Subject} from "@prisma/client"
 
-interface BoothFormDialogProps {
+interface SubjectFormDialogProps {
     open: boolean
     onOpenChange: (open: boolean) => void
-    booth?: Booth | null
+    subject?: Subject | null
 }
 
-export function BoothFormDialog({open, onOpenChange, booth}: BoothFormDialogProps) {
+export function SubjectFormDialog({open, onOpenChange, subject}: SubjectFormDialogProps) {
     const [isSubmitting, setIsSubmitting] = useState(false)
-    const createBoothMutation = useBoothCreate()
-    const updateBoothMutation = useBoothUpdate()
+    const createSubjectMutation = useSubjectCreate()
+    const updateSubjectMutation = useSubjectUpdate()
 
-    const isEditing = !!booth
+    const isEditing = !!subject
 
-    // Create a form schema based on our Zod schema
     const formSchema = isEditing
         ? z.object({
             name: z.string().min(1, {message: "Name is required"}),
-            status: z.boolean().default(true),
+            subjectTypeId: z.string().optional(),
             notes: z.string().optional(),
         })
-        : boothCreateSchema
+        : subjectCreateSchema
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: {
-            name: booth?.name || "",
-            status: booth?.status ?? true,
-            notes: booth?.notes || "",
+            name: subject?.name || "",
+            subjectTypeId: subject?.subjectTypeId || "",
+            notes: subject?.notes || "",
         },
     })
 
     async function onSubmit(values: z.infer<typeof formSchema>) {
         setIsSubmitting(true)
         try {
-            if (isEditing && booth) {
-                await updateBoothMutation.mutateAsync({
-                    boothId: booth.boothId,
+            if (isEditing && subject) {
+                await updateSubjectMutation.mutateAsync({
+                    subjectId: subject.subjectId,
                     ...values,
+                    subjectTypeId: values.subjectTypeId ?? undefined,
+                    notes: values.notes ?? undefined,
                 })
             } else {
-                await createBoothMutation.mutateAsync(values)
+                await createSubjectMutation.mutateAsync(values)
             }
             onOpenChange(false)
             form.reset()
         } catch (error) {
-            console.error("Failed to save booth:", error)
+            console.error("Failed to save subject:", error)
         } finally {
             setIsSubmitting(false)
         }
@@ -68,9 +68,9 @@ export function BoothFormDialog({open, onOpenChange, booth}: BoothFormDialogProp
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent className="sm:max-w-[600px]">
                 <DialogHeader>
-                    <DialogTitle>{isEditing ? "Edit Booth" : "Create Booth"}</DialogTitle>
+                    <DialogTitle>{isEditing ? "Edit Subject" : "Create Subject"}</DialogTitle>
                 </DialogHeader>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -81,7 +81,7 @@ export function BoothFormDialog({open, onOpenChange, booth}: BoothFormDialogProp
                                 <FormItem>
                                     <FormLabel>Name</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="Enter booth name" {...field} />
+                                        <Input placeholder="Enter subject name" {...field} />
                                     </FormControl>
                                     <FormMessage/>
                                 </FormItem>
@@ -89,15 +89,14 @@ export function BoothFormDialog({open, onOpenChange, booth}: BoothFormDialogProp
                         />
                         <FormField
                             control={form.control}
-                            name="status"
+                            name="subjectTypeId"
                             render={({field}) => (
-                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
-                                    <div className="space-y-0.5">
-                                        <FormLabel>Status</FormLabel>
-                                    </div>
+                                <FormItem>
+                                    <FormLabel>Subject Type</FormLabel>
                                     <FormControl>
-                                        <Switch checked={field.value} onCheckedChange={field.onChange}/>
+                                        <Input placeholder="Enter subject type" {...field} value={field.value || ""}/>
                                     </FormControl>
+                                    <FormMessage/>
                                 </FormItem>
                             )}
                         />
@@ -108,7 +107,7 @@ export function BoothFormDialog({open, onOpenChange, booth}: BoothFormDialogProp
                                 <FormItem>
                                     <FormLabel>Notes</FormLabel>
                                     <FormControl>
-                                        <Textarea placeholder="Enter notes (optional)" {...field}
+                                        <Textarea placeholder="Enter additional notes" {...field}
                                                   value={field.value || ""}/>
                                     </FormControl>
                                     <FormMessage/>
