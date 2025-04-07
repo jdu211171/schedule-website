@@ -1,6 +1,5 @@
 import { Card } from '@/components/ui/card'
 import { format } from 'date-fns'
-import { Button } from '@/components/ui/button'
 
 // Типы для уроков
 export type Lesson = {
@@ -10,13 +9,7 @@ export type Lesson = {
   location: string
   teacher: string
   subject: string // параметр для определения цвета
-}
-
-const subjectColors: Record<string, string> = {
-  math: 'bg-blue-500',
-  english: 'bg-green-500',
-  physics: 'bg-red-500',
-  chemistry: 'bg-yellow-500',
+  reason?: string
 }
 
 interface LessonCardProps {

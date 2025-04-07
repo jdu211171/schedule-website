@@ -5,6 +5,7 @@ import { addWeeks, subWeeks, startOfWeek, format, addDays, isSameDay } from 'dat
 import { ja as jaLocale } from 'date-fns/locale'
 import { Button } from '@/components/ui/button'
 import { LessonCard } from '@/components/client/calendar/lesson-card'
+import { LessonModal } from '@/components/client/calendar/lesson-modal'
 
 export type Lesson = {
   title: string
@@ -12,7 +13,7 @@ export type Lesson = {
   end: string
   location: string
   teacher: string
-  subject: string // параметр для определения цвета карточки
+  subject: string 
 }
 
 const mockLessons: Lesson[] = [
@@ -54,6 +55,9 @@ const dayLabels = ['月', '火', '水', '木', '金', '土', '日'] // Пн-Вс
 
 export default function CalendarSchedule() {
   const [currentDate, setCurrentDate] = useState(new Date())
+  const [lessons, setLessons] = useState(mockLessons)
+  const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
 
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 })
   const daysOfWeek = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
@@ -72,14 +76,36 @@ export default function CalendarSchedule() {
   const isToday = (date: Date) => isSameDay(date, new Date()) // Проверка на сегодня
 
   // Стиль для белых кнопок с черными границами
-  const buttonStyle = "bg-white border border-black hover:bg-gray-100"
+  const buttonStyle = "bg-white border border-black hover:bg-gray-100 font-bold"
+
+  const handleOpenModal = (lesson: Lesson) => {
+    console.log(lessons);
+    setSelectedLesson(lesson)
+    setIsModalOpen(true)
+  }
+  
+  const handleCloseModal = () => {
+    setIsModalOpen(false)
+    setSelectedLesson(null)
+  }
+  
+  const handleSaveChanges = (updatedLesson: Lesson) => {
+    // Update the lesson in your state
+    setLessons(prevLessons => 
+      prevLessons.map(lesson => 
+        lesson.start === selectedLesson?.start ? updatedLesson : lesson
+      )
+    )
+    setIsModalOpen(false)
+    setSelectedLesson(null)
+  }
 
   return (
     <div className="p-4 space-y-4">
       {/* Навигация по неделям с кнопкой today в центре */}
       <div className="flex items-center justify-between mb-4">
         <Button onClick={goPrevWeek} variant="outline" className={buttonStyle}>＜</Button>
-        <Button onClick={goToToday} variant="outline" className={buttonStyle}>today</Button>
+        <Button onClick={goToToday} variant="outline" className={buttonStyle}>今日</Button>
         <Button onClick={goNextWeek} variant="outline" className={buttonStyle}>＞</Button>
       </div>
 
@@ -115,16 +141,19 @@ export default function CalendarSchedule() {
               <LessonCard
                 key={idx}
                 lesson={lesson}
-                onClick={() => {
-                  // Логика открытия карточки как модального окна
-                  alert(`${lesson.title} の詳細`);
-                }}
+                onClick={() => handleOpenModal(lesson)}
                 subjectColor={getSubjectColor(lesson.subject)}
               />
             ))}
           </div>
         ))}
       </div>
+      <LessonModal 
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        lesson={selectedLesson}
+        onSaveChanges={handleSaveChanges}
+      />
     </div>
   )
 }
