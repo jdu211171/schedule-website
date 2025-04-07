@@ -1,24 +1,24 @@
 "use client"
 
 import {useState} from "react"
-import {BoothTable} from "@/components/booth/booth-table"
-import {BoothFormDialog} from "./booth-form-dialog"
+import {EvaluationTable} from "@/components/evaluation/evaluation-table"
+import {EvaluationFormDialog} from "@/components/evaluation/evaluation-form-dialog"
 import {Tabs, TabsContent} from "@/components/ui/tabs"
 
-export function BoothTabs() {
+export function EvaluationTabs() {
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
 
     return (
         <Tabs defaultValue="list" className="w-full">
             <TabsContent value="list" className="mt-0">
-                <BoothTable/>
+                <EvaluationTable/>
             </TabsContent>
 
             <TabsContent value="create" className="mt-0">
                 {/* This tab just opens the dialog */}
             </TabsContent>
 
-            <BoothFormDialog
+            <EvaluationFormDialog
                 open={isCreateDialogOpen}
                 onOpenChange={(open) => {
                     setIsCreateDialogOpen(open)

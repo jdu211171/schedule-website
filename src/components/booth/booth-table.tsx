@@ -1,13 +1,13 @@
 "use client"
 
-import { useState } from "react"
-import type { ColumnDef } from "@tanstack/react-table"
-import { Pencil, Trash2 } from "lucide-react"
+import {useState} from "react"
+import type {ColumnDef} from "@tanstack/react-table"
+import {Pencil, Trash2} from "lucide-react"
 
-import { Button } from "@/components/ui/button"
-import { DataTable } from "@/components/data-table"
-import { useBooths } from "@/hooks/useBoothQuery"
-import { useBoothDelete } from "@/hooks/useBoothMutation"
+import {Button} from "@/components/ui/button"
+import {DataTable} from "@/components/data-table"
+import {useBooths} from "@/hooks/useBoothQuery"
+import {useBoothDelete} from "@/hooks/useBoothMutation"
 import {
     AlertDialog,
     AlertDialogAction,
@@ -18,12 +18,12 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import {Booth} from "@prisma/client";
-import {BoothFormDialog} from "@/components/booth/booth-form-dialog";
+import {Booth} from "@prisma/client"
+import {BoothFormDialog} from "@/components/booth/booth-form-dialog"
 
 export function BoothTable() {
     const [searchTerm, setSearchTerm] = useState("")
-    const { data: booths = [], isLoading } = useBooths()
+    const {data: booths = [], isLoading} = useBooths()
     const deleteBoothMutation = useBoothDelete()
 
     const [boothToEdit, setBoothToEdit] = useState<Booth | null>(null)
@@ -40,33 +40,29 @@ export function BoothTable() {
 
     const columns: ColumnDef<Booth>[] = [
         {
-            accessorKey: "id",
-            header: "ID",
-        },
-        {
             accessorKey: "name",
-            header: "Name",
+            header: "名前",
         },
         {
             accessorKey: "status",
-            header: "Status",
-            cell: ({ row }) => <div>{row.original.status ? "Active" : "Inactive"}</div>,
+            header: "ステータス",
+            cell: ({row}) => <div>{row.original.status ? "アクティブ" : "非アクティブ"}</div>,
         },
         {
             accessorKey: "notes",
-            header: "Notes",
+            header: "メモ",
         },
         {
             id: "actions",
-            header: "Operations",
-            cell: ({ row }) => {
+            header: "操作",
+            cell: ({row}) => {
                 return (
                     <div className="flex gap-2">
                         <Button variant="ghost" size="icon" onClick={() => setBoothToEdit(row.original)}>
-                            <Pencil className="h-4 w-4" />
+                            <Pencil className="h-4 w-4"/>
                         </Button>
                         <Button variant="ghost" size="icon" onClick={() => setBoothToDelete(row.original)}>
-                            <Trash2 className="h-4 w-4 text-destructive" />
+                            <Trash2 className="h-4 w-4 text-destructive"/>
                         </Button>
                     </div>
                 )
@@ -80,7 +76,7 @@ export function BoothTable() {
                 await deleteBoothMutation.mutateAsync(boothToDelete.boothId)
                 setBoothToDelete(null)
             } catch (error) {
-                console.error("Failed to delete booth:", error)
+                console.error("ブースの削除に失敗しました:", error)
             }
         }
     }
@@ -91,11 +87,11 @@ export function BoothTable() {
                 columns={columns}
                 data={filteredBooths}
                 isLoading={isLoading}
-                searchPlaceholder="Search booths..."
+                searchPlaceholder="ブースを検索..."
                 onSearch={setSearchTerm}
                 searchValue={searchTerm}
                 onCreateNew={() => setIsCreateDialogOpen(true)}
-                createNewLabel="New Creation"
+                createNewLabel="新規作成"
             />
 
             {/* Edit Booth Dialog */}
@@ -108,20 +104,20 @@ export function BoothTable() {
             )}
 
             {/* Create Booth Dialog */}
-            <BoothFormDialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen} />
+            <BoothFormDialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}/>
 
             {/* Delete Confirmation Dialog */}
             <AlertDialog open={!!boothToDelete} onOpenChange={(open) => !open && setBoothToDelete(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogTitle>本当に削除しますか？</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This action cannot be undone. This will permanently delete the booth &#34;{boothToDelete?.name}&#34;.
+                            この操作は元に戻せません。ブース「{boothToDelete?.name}」を完全に削除します。
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDeleteBooth}>Delete</AlertDialogAction>
+                        <AlertDialogCancel>キャンセル</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeleteBooth}>削除</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
