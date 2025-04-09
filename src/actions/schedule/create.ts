@@ -13,7 +13,7 @@ export async function createSchedule(data: ScheduleCreateInput) {
 
     const { date, startTime, endTime, teacherId, boothId, subjectId, classTypeId, notes, studentIds } = parsed.data;
 
-    const newStartTime = `${startTime}:00`; // Convert 'HH:mm' to 'HH:mm:ss'
+    const newStartTime = `${startTime}:00`;
     const newEndTime = `${endTime}:00`;
 
     // Check teacher availability
@@ -35,6 +35,25 @@ export async function createSchedule(data: ScheduleCreateInput) {
             endTime: { gt: newStartTime },
         },
     });
+
+    // Check student availability
+    if (studentIds && studentIds.length > 0) {
+        for (const studentId of studentIds) {
+            const studentConflicts = await prisma.studentClassEnrollment.findMany({
+                where: {
+                    studentId,
+                    classSession: {
+                        date,
+                        startTime: { lt: newEndTime },
+                        endTime: { gt: newStartTime },
+                    },
+                },
+            });
+            if (studentConflicts.length > 0) {
+                throw new Error(`Student ${studentId} is not available at the selected time`);
+            }
+        }
+    }
 
     if (teacherConflicts.length > 0) {
         throw new Error("Teacher is not available at the selected time");

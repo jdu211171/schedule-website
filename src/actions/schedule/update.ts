@@ -13,30 +13,50 @@ export async function updateSchedule(data: ScheduleUpdateInput) {
 
     const { classId, date, startTime, endTime, teacherId, boothId, subjectId, classTypeId, notes, studentIds } = parsed.data;
 
-    const newStartTime = `${startTime}:00`; // Convert 'HH:mm' to 'HH:mm:ss'
+    const newStartTime = `${startTime}:00`;
     const newEndTime = `${endTime}:00`;
 
-    // Check teacher availability, excluding the current schedule
+    // Check teacher availability, excluding current schedule
     const teacherConflicts = await prisma.classSession.findMany({
         where: {
             teacherId,
             date,
             startTime: { lt: newEndTime },
             endTime: { gt: newStartTime },
-            classId: { not: classId }, // Exclude the current schedule
+            classId: { not: classId },
         },
     });
 
-    // Check booth availability, excluding the current schedule
+    // Check booth availability, excluding current schedule
     const boothConflicts = await prisma.classSession.findMany({
         where: {
             boothId,
             date,
             startTime: { lt: newEndTime },
             endTime: { gt: newStartTime },
-            classId: { not: classId }, // Exclude the current schedule
+            classId: { not: classId },
         },
     });
+
+    // Check student availability, excluding current schedule
+    if (studentIds && studentIds.length > 0) {
+        for (const studentId of studentIds) {
+            const studentConflicts = await prisma.studentClassEnrollment.findMany({
+                where: {
+                    studentId,
+                    classId: { not: classId },
+                    classSession: {
+                        date,
+                        startTime: { lt: newEndTime },
+                        endTime: { gt: newStartTime },
+                    },
+                },
+            });
+            if (studentConflicts.length > 0) {
+                throw new Error(`Student ${studentId} is not available at the selected time`);
+            }
+        }
+    }
 
     if (teacherConflicts.length > 0) {
         throw new Error("Teacher is not available at the selected time");
