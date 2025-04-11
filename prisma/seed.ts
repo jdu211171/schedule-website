@@ -6,15 +6,14 @@ const prisma = new PrismaClient();
 async function main() {
     console.log('Seeding started...');
 
-
-    // Create Users
+    // **Create Users**
     const users = await Promise.all(
         Array.from({ length: 30 }).map(() =>
             prisma.user.create({
                 data: {
                     name: faker.person.fullName(),
                     email: faker.internet.email(),
-                    username: faker.internet.username(), // Updated here!
+                    username: faker.internet.username(),
                     passwordHash: faker.internet.password(),
                     role: 'user',
                 },
@@ -23,7 +22,20 @@ async function main() {
     );
     console.log(`Seeded ${users.length} users.`);
 
-    // Create Booths
+    // **Create StudentTypes** (before Grades due to reference)
+    const studentTypes = await Promise.all(
+        ['Elementary School', 'Middle School', 'High School', 'University', 'Other'].map(name =>
+            prisma.studentType.create({
+                data: {
+                    name,
+                    description: faker.lorem.sentence(),
+                },
+            })
+        )
+    );
+    console.log(`Seeded ${studentTypes.length} student types.`);
+
+    // **Create Booths**
     const booths = await Promise.all(
         Array.from({ length: 25 }).map(() =>
             prisma.booth.create({
@@ -37,7 +49,7 @@ async function main() {
     );
     console.log(`Seeded ${booths.length} booths.`);
 
-    // Create Class Types
+    // **Create Class Types**
     const classTypes = await Promise.all(
         Array.from({ length: 20 }).map(() =>
             prisma.classType.create({
@@ -51,7 +63,7 @@ async function main() {
     );
     console.log(`Seeded ${classTypes.length} class types.`);
 
-    // Create Subject Types
+    // **Create Subject Types**
     const subjectTypes = await Promise.all(
         Array.from({ length: 15 }).map(() =>
             prisma.subjectType.create({
@@ -65,7 +77,7 @@ async function main() {
     );
     console.log(`Seeded ${subjectTypes.length} subject types.`);
 
-    // Create Subjects
+    // **Create Subjects**
     const subjects = await Promise.all(
         Array.from({ length: 30 }).map(() =>
             prisma.subject.create({
@@ -80,13 +92,14 @@ async function main() {
     );
     console.log(`Seeded ${subjects.length} subjects.`);
 
-    // Create Grades
+    // **Create Grades** (with studentTypeId)
     const grades = await Promise.all(
         Array.from({ length: 20 }).map(() =>
             prisma.grade.create({
                 data: {
                     gradeId: faker.string.uuid(),
                     name: faker.lorem.word(),
+                    studentTypeId: faker.helpers.arrayElement(studentTypes).studentTypeId,
                     gradeYear: faker.number.int({ min: 1, max: 12 }),
                     notes: faker.lorem.sentence(),
                 },
@@ -95,9 +108,10 @@ async function main() {
     );
     console.log(`Seeded ${grades.length} grades.`);
 
+    // **Create Students**
     const students = await Promise.all(
         Array.from({ length: 50 }).map(() => {
-            let kanaName = faker.person.lastName().slice(0, 100); // Simplified truncation
+            const kanaName = faker.person.lastName().slice(0, 100);
             const name = faker.person.fullName().slice(0, 100);
             const schoolName = faker.company.name().slice(0, 100);
             const homePhone = faker.phone.number().slice(0, 20);
@@ -124,7 +138,21 @@ async function main() {
     );
     console.log(`Seeded ${students.length} students.`);
 
-    // Create Teachers
+    // **Create Evaluations** (before Teachers due to reference)
+    const evaluations = await Promise.all(
+        Array.from({ length: 10 }).map(() =>
+            prisma.evaluation.create({
+                data: {
+                    name: faker.lorem.word(),
+                    score: faker.number.int({ min: 1, max: 100 }),
+                    notes: faker.lorem.sentence(),
+                },
+            })
+        )
+    );
+    console.log(`Seeded ${evaluations.length} evaluations.`);
+
+    // **Create Teachers** (with evaluationId)
     const teachers = await Promise.all(
         Array.from({ length: 30 }).map(() => {
             const name = faker.person.fullName().slice(0, 100);
@@ -132,12 +160,13 @@ async function main() {
             const email = faker.internet.email().slice(0, 100);
             const highSchool = faker.company.name().slice(0, 100);
             const university = faker.company.name().slice(0, 100);
-            const faculty = faker.lorem.word().slice(0, 100); // Unlikely to exceed, but included for safety
-            const department = faker.lorem.word().slice(0, 100); // Unlikely to exceed, but included for safety
+            const faculty = faker.lorem.word().slice(0, 100);
+            const department = faker.lorem.word().slice(0, 100);
             return prisma.teacher.create({
                 data: {
                     teacherId: faker.string.uuid(),
                     name,
+                    evaluationId: faker.helpers.arrayElement(evaluations).evaluationId,
                     birthDate: faker.date.birthdate(),
                     mobileNumber,
                     email,
@@ -152,7 +181,7 @@ async function main() {
     );
     console.log(`Seeded ${teachers.length} teachers.`);
 
-    // Create Class Sessions
+    // **Create Class Sessions**
     const classSessions = await Promise.all(
         Array.from({ length: 60 }).map(() =>
             prisma.classSession.create({
@@ -172,7 +201,7 @@ async function main() {
     );
     console.log(`Seeded ${classSessions.length} class sessions.`);
 
-    // Create Student Class Enrollments
+    // **Create Student Class Enrollments**
     await Promise.all(
         Array.from({ length: 120 }).map(() =>
             prisma.studentClassEnrollment.create({
@@ -188,7 +217,7 @@ async function main() {
     );
     console.log(`Seeded 120 student class enrollments.`);
 
-    // Create Regular Class Templates
+    // **Create Regular Class Templates**
     const regularClassTemplates = await Promise.all(
         Array.from({ length: 30 }).map(() =>
             prisma.regularClassTemplate.create({
@@ -207,7 +236,7 @@ async function main() {
     );
     console.log(`Seeded ${regularClassTemplates.length} regular class templates.`);
 
-    // Create Template Student Assignments
+    // **Create Template Student Assignments**
     await Promise.all(
         Array.from({ length: 60 }).map(() =>
             prisma.templateStudentAssignment.create({
@@ -222,7 +251,7 @@ async function main() {
     );
     console.log(`Seeded 60 template student assignments.`);
 
-    // Create Intensive Courses
+    // **Create Intensive Courses**
     const intensiveCourses = await Promise.all(
         Array.from({ length: 30 }).map(() =>
             prisma.intensiveCourse.create({
@@ -240,16 +269,12 @@ async function main() {
     );
     console.log(`Seeded ${intensiveCourses.length} intensive courses.`);
 
-    // Create Course Assignments
+    // **Create Course Assignments**
     const teacherIds = teachers.map(t => t.teacherId);
     const courseIds = intensiveCourses.map(c => c.courseId);
-
-    // Shuffle courses for random assignments
-    const shuffledCourses = faker.helpers.shuffle([...courseIds]); // Copy to avoid modifying original
-
+    const shuffledCourses = faker.helpers.shuffle([...courseIds]);
     await Promise.all(
         teacherIds.flatMap((teacherId, index) => {
-            // Assign two unique courses per teacher
             const startIndex = index * 2;
             const assignedCourses = shuffledCourses.slice(startIndex, startIndex + 2);
             return assignedCourses.map(courseId =>
@@ -267,7 +292,7 @@ async function main() {
     );
     console.log(`Seeded 60 course assignments.`);
 
-    // Create Notifications
+    // **Create Notifications**
     await Promise.all(
         Array.from({ length: 50 }).map(() =>
             prisma.notification.create({
@@ -289,7 +314,7 @@ async function main() {
     );
     console.log(`Seeded 50 notifications.`);
 
-    // Create Events
+    // **Create Events**
     await Promise.all(
         Array.from({ length: 30 }).map(() =>
             prisma.event.create({
@@ -303,7 +328,155 @@ async function main() {
             })
         )
     );
-    console.log(`Seeded ${30} events.`);
+    console.log(`Seeded 30 events.`);
+
+    // **Create StudentRegularPreferences**
+    await Promise.all(
+        Array.from({ length: 50 }).map(() =>
+            prisma.studentRegularPreference.create({
+                data: {
+                    studentId: faker.helpers.arrayElement(students).studentId,
+                    subjectId: faker.helpers.arrayElement(subjects).subjectId,
+                    dayOfWeek: faker.date.weekday(),
+                    startTime: faker.date.recent(),
+                    endTime: faker.date.future(),
+                    notes: faker.lorem.sentence(),
+                },
+            })
+        )
+    );
+    console.log(`Seeded 50 student regular preferences.`);
+
+    // **Create StudentSpecialPreferences**
+    await Promise.all(
+        Array.from({ length: 50 }).map(() =>
+            prisma.studentSpecialPreference.create({
+                data: {
+                    studentId: faker.helpers.arrayElement(students).studentId,
+                    classTypeId: faker.helpers.arrayElement(classTypes).classTypeId,
+                    subjectId: faker.helpers.arrayElement(subjects).subjectId,
+                    date: faker.date.future(),
+                    startTime: faker.date.recent(),
+                    endTime: faker.date.future(),
+                    notes: faker.lorem.sentence(),
+                },
+            })
+        )
+    );
+    console.log(`Seeded 50 student special preferences.`);
+
+    // **Create TeacherRegularShifts**
+    await Promise.all(
+        Array.from({ length: 50 }).map(() =>
+            prisma.teacherRegularShift.create({
+                data: {
+                    teacherId: faker.helpers.arrayElement(teachers).teacherId,
+                    dayOfWeek: faker.date.weekday(),
+                    startTime: faker.date.recent(),
+                    endTime: faker.date.future(),
+                    notes: faker.lorem.sentence(),
+                },
+            })
+        )
+    );
+    console.log(`Seeded 50 teacher regular shifts.`);
+
+    // **Create TeacherSpecialShifts**
+    await Promise.all(
+        Array.from({ length: 50 }).map(() =>
+            prisma.teacherSpecialShift.create({
+                data: {
+                    teacherId: faker.helpers.arrayElement(teachers).teacherId,
+                    date: faker.date.future(),
+                    startTime: faker.date.recent(),
+                    endTime: faker.date.future(),
+                    notes: faker.lorem.sentence(),
+                },
+            })
+        )
+    );
+    console.log(`Seeded 50 teacher special shifts.`);
+
+    // **Create TeacherSubjects**
+    await Promise.all(
+        teachers.flatMap(teacher =>
+            faker.helpers.arrayElements(subjects, { min: 2, max: 3 }).map(subject =>
+                prisma.teacherSubject.create({
+                    data: {
+                        teacherId: teacher.teacherId,
+                        subjectId: subject.subjectId,
+                        notes: faker.lorem.sentence(),
+                    },
+                })
+            )
+        )
+    );
+    console.log(`Seeded teacher subjects.`);
+
+    // **Create CourseEnrollments**
+    await Promise.all(
+        students.flatMap(student =>
+            faker.helpers.arrayElements(intensiveCourses, { min: 1, max: 2 }).map(course =>
+                prisma.courseEnrollment.create({
+                    data: {
+                        studentId: student.studentId,
+                        courseId: course.courseId,
+                        enrollmentDate: faker.date.past(),
+                        status: faker.lorem.word(),
+                        notes: faker.lorem.sentence(),
+                    },
+                })
+            )
+        )
+    );
+    console.log(`Seeded course enrollments.`);
+
+    // **Create Accounts**
+    await Promise.all(
+        users.map(user =>
+            prisma.account.create({
+                data: {
+                    userId: user.id,
+                    type: 'oauth',
+                    provider: 'google',
+                    providerAccountId: faker.string.uuid(), // Unique per account
+                    accessToken: faker.string.alphanumeric(32),
+                    expiresAt: Math.floor(Date.now() / 1000) + 3600, // 1 hour from now
+                    tokenType: 'Bearer',
+                    scope: 'profile email',
+                },
+            })
+        )
+    );
+    console.log(`Seeded accounts for users.`);
+
+    // **Create Sessions**
+    await Promise.all(
+        users.map(user =>
+            prisma.session.create({
+                data: {
+                    userId: user.id,
+                    sessionToken: faker.string.uuid(),
+                    expires: faker.date.future(),
+                },
+            })
+        )
+    );
+    console.log(`Seeded sessions for users.`);
+
+    // **Create VerificationTokens** (for some users)
+    await Promise.all(
+        users.slice(0, 10).map(user =>
+            prisma.verificationToken.create({
+                data: {
+                    identifier: user.email || user.id,
+                    token: faker.string.uuid(),
+                    expires: faker.date.future(),
+                },
+            })
+        )
+    );
+    console.log(`Seeded verification tokens for some users.`);
 
     console.log('Seeding complete');
 }
