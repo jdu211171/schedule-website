@@ -1,13 +1,14 @@
 "use client"
 
-import {useState} from "react"
-import type {ColumnDef} from "@tanstack/react-table"
-import {Pencil, Trash2} from "lucide-react"
+import { useState } from "react"
+import type { ColumnDef } from "@tanstack/react-table"
+import { Pencil, Trash2 } from "lucide-react"
 
-import {Button} from "@/components/ui/button"
-import {DataTable} from "@/components/data-table"
-import {useBooths} from "@/hooks/useBoothQuery"
-import {useBoothDelete} from "@/hooks/useBoothMutation"
+import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
+import { DataTable } from "@/components/data-table"
+import { useBooths } from "@/hooks/useBoothQuery"
+import { useBoothDelete } from "@/hooks/useBoothMutation"
 import {
     AlertDialog,
     AlertDialogAction,
@@ -18,12 +19,12 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import {Booth} from "@prisma/client"
-import {BoothFormDialog} from "@/components/booth/booth-form-dialog"
+import { Booth } from "@prisma/client"
+import { BoothFormDialog } from "@/components/booth/booth-form-dialog"
 
 export function BoothTable() {
     const [searchTerm, setSearchTerm] = useState("")
-    const {data: booths = [], isLoading} = useBooths()
+    const { data: booths = [], isLoading } = useBooths()
     const deleteBoothMutation = useBoothDelete()
 
     const [boothToEdit, setBoothToEdit] = useState<Booth | null>(null)
@@ -34,7 +35,7 @@ export function BoothTable() {
         ? booths.filter(
             (booth) =>
                 booth.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                (booth.notes && booth.notes.toLowerCase().includes(searchTerm.toLowerCase())),
+                (booth.notes && booth.notes.toLowerCase().includes(searchTerm.toLowerCase()))
         )
         : booths
 
@@ -46,7 +47,7 @@ export function BoothTable() {
         {
             accessorKey: "status",
             header: "ステータス",
-            cell: ({row}) => <div>{row.original.status ? "アクティブ" : "非アクティブ"}</div>,
+            cell: ({ row }) => <div>{row.original.status ? "アクティブ" : "非アクティブ"}</div>,
         },
         {
             accessorKey: "notes",
@@ -55,14 +56,14 @@ export function BoothTable() {
         {
             id: "actions",
             header: "操作",
-            cell: ({row}) => {
+            cell: ({ row }) => {
                 return (
                     <div className="flex gap-2">
                         <Button variant="ghost" size="icon" onClick={() => setBoothToEdit(row.original)}>
-                            <Pencil className="h-4 w-4"/>
+                            <Pencil className="h-4 w-4" />
                         </Button>
                         <Button variant="ghost" size="icon" onClick={() => setBoothToDelete(row.original)}>
-                            <Trash2 className="h-4 w-4 text-destructive"/>
+                            <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
                     </div>
                 )
@@ -83,18 +84,30 @@ export function BoothTable() {
 
     return (
         <>
-            <DataTable
-                columns={columns}
-                data={filteredBooths}
-                isLoading={isLoading}
-                searchPlaceholder="ブースを検索..."
-                onSearch={setSearchTerm}
-                searchValue={searchTerm}
-                onCreateNew={() => setIsCreateDialogOpen(true)}
-                createNewLabel="新規作成"
-            />
+            {isLoading ? (
+                <div className="border rounded-md p-4 space-y-4">
+                    {[...Array(5)].map((_, i) => (
+                        <div key={i} className="flex items-center justify-between gap-4">
+                            <Skeleton className="h-6 w-1/4" />
+                            <Skeleton className="h-6 w-1/6" />
+                            <Skeleton className="h-6 w-1/3" />
+                            <Skeleton className="h-6 w-20" />
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <DataTable
+                    columns={columns}
+                    data={filteredBooths}
+                    isLoading={isLoading}
+                    searchPlaceholder="ブースを検索..."
+                    onSearch={setSearchTerm}
+                    searchValue={searchTerm}
+                    onCreateNew={() => setIsCreateDialogOpen(true)}
+                    createNewLabel="新規作成"
+                />
+            )}
 
-            {/* Edit Booth Dialog */}
             {boothToEdit && (
                 <BoothFormDialog
                     open={!!boothToEdit}
@@ -103,10 +116,8 @@ export function BoothTable() {
                 />
             )}
 
-            {/* Create Booth Dialog */}
-            <BoothFormDialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}/>
+            <BoothFormDialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen} />
 
-            {/* Delete Confirmation Dialog */}
             <AlertDialog open={!!boothToDelete} onOpenChange={(open) => !open && setBoothToDelete(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>

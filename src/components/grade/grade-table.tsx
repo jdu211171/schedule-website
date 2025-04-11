@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Grade } from "@prisma/client"
 import { GradeFormDialog } from "@/components/grade/grade-form-dialog"
+import { Skeleton } from "@/components/ui/skeleton" // Путь к Skeleton компоненту
 
 export function GradeTable() {
     const [searchTerm, setSearchTerm] = useState("")
@@ -86,16 +87,30 @@ export function GradeTable() {
 
     return (
         <>
-            <DataTable
-                columns={columns}
-                data={filteredGrades}
-                isLoading={isLoading}
-                searchPlaceholder="成績を検索..."
-                onSearch={setSearchTerm}
-                searchValue={searchTerm}
-                onCreateNew={() => setIsCreateDialogOpen(true)}
-                createNewLabel="新しい成績"
-            />
+            {/* Если данные загружаются, показываем скелетоны */}
+            {isLoading ? (
+                <div className="border rounded-md p-4 space-y-4">
+                    {[...Array(5)].map((_, i) => (
+                        <div key={i} className="flex items-center justify-between gap-4">
+                            <Skeleton className="h-6 w-1/4" />
+                            <Skeleton className="h-6 w-1/6" />
+                            <Skeleton className="h-6 w-1/3" />
+                            <Skeleton className="h-6 w-20" />
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <DataTable
+                    columns={columns}
+                    data={filteredGrades}
+                    isLoading={isLoading}
+                    searchPlaceholder="成績を検索..."
+                    onSearch={setSearchTerm}
+                    searchValue={searchTerm}
+                    onCreateNew={() => setIsCreateDialogOpen(true)}
+                    createNewLabel="新しい成績"
+                />
+            )}
 
             {/* 編集ダイアログ */}
             {gradeToEdit && (

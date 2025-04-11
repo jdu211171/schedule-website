@@ -5,6 +5,7 @@ import type { ColumnDef } from "@tanstack/react-table"
 import { Pencil, Trash2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
 import { DataTable } from "@/components/data-table"
 import { useClassTypes } from "@/hooks/useClassTypeQuery"
 import { useClassTypeDelete } from "@/hooks/useClassTypeMutation"
@@ -34,7 +35,7 @@ export function ClassTable() {
         ? classTypes.filter(
             (classType) =>
                 classType.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                (classType.notes && classType.notes.toLowerCase().includes(searchTerm.toLowerCase())),
+                (classType.notes && classType.notes.toLowerCase().includes(searchTerm.toLowerCase()))
         )
         : classTypes
 
@@ -78,18 +79,29 @@ export function ClassTable() {
 
     return (
         <>
-            <DataTable
-                columns={columns}
-                data={filteredClassTypes}
-                isLoading={isLoading}
-                searchPlaceholder="クラスの種類を検索..."
-                onSearch={setSearchTerm}
-                searchValue={searchTerm}
-                onCreateNew={() => setIsCreateDialogOpen(true)}
-                createNewLabel="新しいクラスの種類"
-            />
+            {isLoading ? (
+                <div className="border rounded-md p-4 space-y-4">
+                    {[...Array(5)].map((_, i) => (
+                        <div key={i} className="flex items-center justify-between gap-4">
+                            <Skeleton className="h-6 w-1/4" />
+                            <Skeleton className="h-6 w-1/3" />
+                            <Skeleton className="h-6 w-20" />
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <DataTable
+                    columns={columns}
+                    data={filteredClassTypes}
+                    isLoading={isLoading}
+                    searchPlaceholder="クラスの種類を検索..."
+                    onSearch={setSearchTerm}
+                    searchValue={searchTerm}
+                    onCreateNew={() => setIsCreateDialogOpen(true)}
+                    createNewLabel="新しいクラスの種類"
+                />
+            )}
 
-            {/* Edit Class Type Dialog */}
             {classTypeToEdit && (
                 <ClassFormDialog
                     open={!!classTypeToEdit}
@@ -98,10 +110,8 @@ export function ClassTable() {
                 />
             )}
 
-            {/* Create Class Type Dialog */}
             <ClassFormDialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen} />
 
-            {/* Delete Confirmation Dialog */}
             <AlertDialog open={!!classTypeToDelete} onOpenChange={(open) => !open && setClassTypeToDelete(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>

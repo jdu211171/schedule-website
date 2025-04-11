@@ -1,13 +1,13 @@
 "use client"
 
-import {useState} from "react"
-import type {ColumnDef} from "@tanstack/react-table"
-import {Pencil, Trash2} from "lucide-react"
+import { useState } from "react"
+import type { ColumnDef } from "@tanstack/react-table"
+import { Pencil, Trash2 } from "lucide-react"
 
-import {Button} from "@/components/ui/button"
-import {DataTable} from "@/components/data-table"
-import {useEvaluations} from "@/hooks/useEvaluationQuery"
-import {useEvaluationDelete} from "@/hooks/useEvaluationMutation"
+import { Button } from "@/components/ui/button"
+import { DataTable } from "@/components/data-table"
+import { useEvaluations } from "@/hooks/useEvaluationQuery"
+import { useEvaluationDelete } from "@/hooks/useEvaluationMutation"
 import {
     AlertDialog,
     AlertDialogAction,
@@ -18,12 +18,13 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import {Evaluation} from "@prisma/client"
-import {EvaluationFormDialog} from "@/components/evaluation/evaluation-form-dialog"
+import { Evaluation } from "@prisma/client"
+import { EvaluationFormDialog } from "@/components/evaluation/evaluation-form-dialog"
+import { Skeleton } from "@/components/ui/skeleton" // Путь к Skeleton компоненту
 
 export function EvaluationTable() {
     const [searchTerm, setSearchTerm] = useState("")
-    const {data: evaluations = [], isLoading} = useEvaluations()
+    const { data: evaluations = [], isLoading } = useEvaluations()
     const deleteEvaluationMutation = useEvaluationDelete()
 
     const [evaluationToEdit, setEvaluationToEdit] = useState<Evaluation | null>(null)
@@ -54,14 +55,14 @@ export function EvaluationTable() {
         {
             id: "actions",
             header: "操作",
-            cell: ({row}) => {
+            cell: ({ row }) => {
                 return (
                     <div className="flex gap-2">
                         <Button variant="ghost" size="icon" onClick={() => setEvaluationToEdit(row.original)}>
-                            <Pencil className="h-4 w-4"/>
+                            <Pencil className="h-4 w-4" />
                         </Button>
                         <Button variant="ghost" size="icon" onClick={() => setEvaluationToDelete(row.original)}>
-                            <Trash2 className="h-4 w-4 text-destructive"/>
+                            <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
                     </div>
                 )
@@ -82,16 +83,30 @@ export function EvaluationTable() {
 
     return (
         <>
-            <DataTable
-                columns={columns}
-                data={filteredEvaluations}
-                isLoading={isLoading}
-                searchPlaceholder="評価を検索..."
-                onSearch={setSearchTerm}
-                searchValue={searchTerm}
-                onCreateNew={() => setIsCreateDialogOpen(true)}
-                createNewLabel="新しい評価"
-            />
+            {/* Если данные загружаются, показываем скелетоны */}
+            {isLoading ? (
+                <div className="border rounded-md p-4 space-y-4">
+                    {[...Array(5)].map((_, i) => (
+                        <div key={i} className="flex items-center justify-between gap-4">
+                            <Skeleton className="h-6 w-1/4" />
+                            <Skeleton className="h-6 w-1/4" />
+                            <Skeleton className="h-6 w-1/3" />
+                            <Skeleton className="h-6 w-20" />
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <DataTable
+                    columns={columns}
+                    data={filteredEvaluations}
+                    isLoading={isLoading}
+                    searchPlaceholder="評価を検索..."
+                    onSearch={setSearchTerm}
+                    searchValue={searchTerm}
+                    onCreateNew={() => setIsCreateDialogOpen(true)}
+                    createNewLabel="新しい評価"
+                />
+            )}
 
             {/* Edit Evaluation Dialog */}
             {evaluationToEdit && (
@@ -103,7 +118,7 @@ export function EvaluationTable() {
             )}
 
             {/* Create Evaluation Dialog */}
-            <EvaluationFormDialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}/>
+            <EvaluationFormDialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen} />
 
             {/* Delete Confirmation Dialog */}
             <AlertDialog open={!!evaluationToDelete} onOpenChange={(open) => !open && setEvaluationToDelete(null)}>

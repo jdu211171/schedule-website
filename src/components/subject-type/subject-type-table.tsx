@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { SubjectType } from "@prisma/client"
 import { SubjectTypeFormDialog } from "@/components/subject-type/subject-type-form-dialog"
+import { Skeleton } from "@/components/ui/skeleton" // Путь к компоненту Skeleton
 
 export function SubjectTypeTable() {
     const [searchTerm, setSearchTerm] = useState("")
@@ -80,16 +81,30 @@ export function SubjectTypeTable() {
 
     return (
         <>
-            <DataTable
-                columns={columns}
-                data={filteredSubjectTypes}
-                isLoading={isLoading}
-                searchPlaceholder="科目タイプを検索..."
-                onSearch={setSearchTerm}
-                searchValue={searchTerm}
-                onCreateNew={() => setIsCreateDialogOpen(true)}
-                createNewLabel="新しい科目タイプ"
-            />
+            {/* Если данные загружаются, показываем скелетоны */}
+            {isLoading ? (
+                <div className="border rounded-md p-4 space-y-4">
+                    {[...Array(5)].map((_, i) => (
+                        <div key={i} className="flex items-center justify-between gap-4">
+                            <Skeleton className="h-6 w-1/4" />
+                            <Skeleton className="h-6 w-1/4" />
+                            <Skeleton className="h-6 w-1/3" />
+                            <Skeleton className="h-6 w-20" />
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <DataTable
+                    columns={columns}
+                    data={filteredSubjectTypes}
+                    isLoading={isLoading}
+                    searchPlaceholder="科目タイプを検索..."
+                    onSearch={setSearchTerm}
+                    searchValue={searchTerm}
+                    onCreateNew={() => setIsCreateDialogOpen(true)}
+                    createNewLabel="新しい科目タイプ"
+                />
+            )}
 
             {/* Edit Subject Type Dialog */}
             {subjectTypeToEdit && (
@@ -101,8 +116,7 @@ export function SubjectTypeTable() {
             )}
 
             {/* Create Subject Type Dialog */}
-            <SubjectTypeFormDialog open={isCreateDialogOpen} onOpenChange={(open) => setIsCreateDialogOpen(open)}
-                                   subjectType={null}/>
+            <SubjectTypeFormDialog open={isCreateDialogOpen} onOpenChange={(open) => setIsCreateDialogOpen(open)} subjectType={null} />
 
             {/* Delete Subject Type Confirmation Dialog */}
             <AlertDialog open={!!subjectTypeToDelete} onOpenChange={(open) => !open && setSubjectTypeToDelete(null)}>

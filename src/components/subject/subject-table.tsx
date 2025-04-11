@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Subject } from "@prisma/client"
 import { SubjectFormDialog } from "@/components/subject/subject-form-dialog"
+import { Skeleton } from "@/components/ui/skeleton" // Путь к Skeleton компоненту
 
 export function SubjectTable() {
     const [searchTerm, setSearchTerm] = useState("")
@@ -84,16 +85,30 @@ export function SubjectTable() {
 
     return (
         <>
-            <DataTable
-                columns={columns}
-                data={filteredSubjects}
-                isLoading={isLoading}
-                searchPlaceholder="科目を検索..."
-                onSearch={setSearchTerm}
-                searchValue={searchTerm}
-                onCreateNew={() => setIsCreateDialogOpen(true)}
-                createNewLabel="新しい科目"
-            />
+            {/* Если данные загружаются, показываем скелетоны */}
+            {isLoading ? (
+                <div className="border rounded-md p-4 space-y-4">
+                    {[...Array(5)].map((_, i) => (
+                        <div key={i} className="flex items-center justify-between gap-4">
+                            <Skeleton className="h-6 w-1/4" />
+                            <Skeleton className="h-6 w-1/4" />
+                            <Skeleton className="h-6 w-1/3" />
+                            <Skeleton className="h-6 w-20" />
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <DataTable
+                    columns={columns}
+                    data={filteredSubjects}
+                    isLoading={isLoading}
+                    searchPlaceholder="科目を検索..."
+                    onSearch={setSearchTerm}
+                    searchValue={searchTerm}
+                    onCreateNew={() => setIsCreateDialogOpen(true)}
+                    createNewLabel="新しい科目"
+                />
+            )}
 
             {/* Edit Subject Dialog */}
             {subjectToEdit && (
@@ -105,8 +120,7 @@ export function SubjectTable() {
             )}
 
             {/* Create Subject Dialog */}
-            <SubjectFormDialog open={isCreateDialogOpen} onOpenChange={(open) => setIsCreateDialogOpen(open)}
-                               subject={null}/>
+            <SubjectFormDialog open={isCreateDialogOpen} onOpenChange={(open) => setIsCreateDialogOpen(open)} subject={null} />
 
             {/* Delete Subject Confirmation Dialog */}
             <AlertDialog open={!!subjectToDelete} onOpenChange={(open) => !open && setSubjectToDelete(null)}>

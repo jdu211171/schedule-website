@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Student } from "@prisma/client"
 import { StudentFormDialog } from "@/components/student/student-form-dialog"
+import { Skeleton } from "@/components/ui/skeleton" // Путь к Skeleton компоненту
 
 export function StudentTable() {
     const [searchTerm, setSearchTerm] = useState("")
@@ -124,10 +125,10 @@ export function StudentTable() {
                 return (
                     <div className="flex gap-2">
                         <Button variant="ghost" size="icon" onClick={() => setStudentToEdit(row.original)}>
-                            <Pencil className="h-4 w-4"/>
+                            <Pencil className="h-4 w-4" />
                         </Button>
                         <Button variant="ghost" size="icon" onClick={() => setStudentToDelete(row.original)}>
-                            <Trash2 className="h-4 w-4 text-destructive"/>
+                            <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
                     </div>
                 );
@@ -148,16 +149,30 @@ export function StudentTable() {
 
     return (
         <>
-            <DataTable
-                columns={columns}
-                data={filteredStudents}
-                isLoading={isLoading}
-                searchPlaceholder="学生を検索..."
-                onSearch={setSearchTerm}
-                searchValue={searchTerm}
-                onCreateNew={() => setIsCreateDialogOpen(true)}
-                createNewLabel="新しい学生"
-            />
+            {/* Если данные загружаются, показываем скелетоны */}
+            {isLoading ? (
+                <div className="border rounded-md p-4 space-y-4">
+                    {[...Array(5)].map((_, i) => (
+                        <div key={i} className="flex items-center justify-between gap-4">
+                            <Skeleton className="h-6 w-1/4" />
+                            <Skeleton className="h-6 w-1/4" />
+                            <Skeleton className="h-6 w-1/3" />
+                            <Skeleton className="h-6 w-20" />
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <DataTable
+                    columns={columns}
+                    data={filteredStudents}
+                    isLoading={isLoading}
+                    searchPlaceholder="学生を検索..."
+                    onSearch={setSearchTerm}
+                    searchValue={searchTerm}
+                    onCreateNew={() => setIsCreateDialogOpen(true)}
+                    createNewLabel="新しい学生"
+                />
+            )}
 
             {/* 編集ダイアログ */}
             {studentToEdit && (
@@ -169,7 +184,7 @@ export function StudentTable() {
             )}
 
             {/* 学生作成ダイアログ */}
-            <StudentFormDialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen} student={null}/>
+            <StudentFormDialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen} student={null} />
 
             {/* 削除確認ダイアログ */}
             <AlertDialog open={!!studentToDelete} onOpenChange={(open) => !open && setStudentToDelete(null)}>
