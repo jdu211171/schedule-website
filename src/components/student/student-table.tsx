@@ -20,18 +20,10 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Student } from "@prisma/client"
 import { StudentFormDialog } from "@/components/student/student-form-dialog"
-import {
-    Pagination,
-    PaginationContent,
-    PaginationItem,
-    PaginationLink,
-    PaginationNext,
-    PaginationPrevious
-} from "@/components/ui/pagination"
 
 export function StudentTable() {
     const [searchTerm, setSearchTerm] = useState("")
-    const [page, setPage] = useState(1)
+    const [page] = useState(1)
     const pageSize = 15
     const { data: students = [] as StudentWithGrade[], isLoading } = useStudents(page, pageSize)
     const deleteStudentMutation = useStudentDelete()
@@ -173,10 +165,6 @@ export function StudentTable() {
             }
         }
     }
-
-    const handlePrevious = () => setPage((prev) => Math.max(prev - 1, 1))
-    const handleNext = () => setPage((prev) => prev + 1)
-
     return (
         <>
             <DataTable
@@ -191,20 +179,6 @@ export function StudentTable() {
             />
 
             {/* 編集ダイアログ */}
-            <Pagination className="mt-4">
-                <PaginationContent>
-                    <PaginationItem>
-                        <PaginationPrevious onClick={handlePrevious} aria-disabled={page === 1}/>
-                    </PaginationItem>
-                    <PaginationItem>
-                        <PaginationLink>{page}</PaginationLink>
-                    </PaginationItem>
-                    <PaginationItem>
-                        <PaginationNext onClick={handleNext} aria-disabled={students.length < pageSize}/>
-                    </PaginationItem>
-                </PaginationContent>
-            </Pagination>
-
             {studentToEdit && (
                 <StudentFormDialog
                     open={!!studentToEdit}

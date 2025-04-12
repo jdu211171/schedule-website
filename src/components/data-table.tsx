@@ -131,7 +131,7 @@ export function DataTable<TData, TValue>({
                 </Button>
                 <div className="flex items-center gap-1">
                     <p className="text-sm font-medium">
-                        Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
+                        {table.getState().pagination.pageIndex + 1}ページ目 (全{table.getPageCount()}ページ)
                     </p>
                 </div>
                 <Button variant="outline" size="sm" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>
