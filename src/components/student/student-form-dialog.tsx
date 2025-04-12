@@ -73,6 +73,13 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
         },
     })
 
+    const formatDate = (date: Date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+
     async function onSubmit(values: z.infer<typeof formSchema>) {
         setIsSubmitting(true)
         try {
@@ -127,26 +134,30 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
                                 <FormMessage />
                             </FormItem>
                         )} />
-                        <FormField control={form.control} name="gradeId" render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>学年</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                    <FormControl>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="学年を選択" />
-                                        </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                        {grades.map((grade) => (
-                                            <SelectItem key={grade.gradeId} value={grade.gradeId}>
-                                                {grade.name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                                <FormMessage />
-                            </FormItem>
-                        )} />
+                        <FormField
+                            control={form.control}
+                            name="gradeId"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>学年</FormLabel>
+                                    <Select onValueChange={field.onChange} defaultValue={field.value as string}>
+                                        <FormControl>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="学年を選択" />
+                                            </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            {grades.map((grade) => (
+                                                <SelectItem key={grade.gradeId} value={grade.gradeId}>
+                                                    {grade.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
                         <FormField control={form.control} name="schoolName" render={({ field }) => (
                             <FormItem>
                                 <FormLabel>学校名</FormLabel>
@@ -244,7 +255,15 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
                             <FormItem>
                                 <FormLabel>入学日</FormLabel>
                                 <FormControl>
-                                    <Input type="date" {...field} value={field.value ? field.value.toISOString().split('T')[0] : ""} />
+                                    <Input
+                                        type="date"
+                                        {...field}
+                                        value={field.value instanceof Date ? formatDate(field.value) : ""}
+                                        onChange={(e) => {
+                                            const dateValue = e.target.value ? new Date(e.target.value) : null;
+                                            field.onChange(dateValue);
+                                        }}
+                                    />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -253,8 +272,15 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
                             <FormItem>
                                 <FormLabel>生年月日</FormLabel>
                                 <FormControl>
-                                    <Input type="date" {...field} value={field.value ? field.value.toISOString().split('T')[0] : ""} />
-                                </FormControl>
+                                    <Input
+                                        type="date"
+                                        {...field}
+                                        value={field.value instanceof Date ? formatDate(field.value) : ""}
+                                        onChange={(e) => {
+                                            const dateValue = e.target.value ? new Date(e.target.value) : null;
+                                            field.onChange(dateValue);
+                                        }}
+                                    />                                </FormControl>
                                 <FormMessage />
                             </FormItem>
                         )} />
