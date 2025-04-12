@@ -7,37 +7,35 @@ import { useState, type ReactNode } from "react";
 import { Toaster } from "sonner";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
-import { SessionProvider } from "next-auth/react";
+import { AuthProvider } from "@/lib/supabase/context/AuthContext";
 
 export function Providers({ children }: { children: ReactNode }) {
-    const [queryClient] = useState(
-        () =>
-            new QueryClient({
-                defaultOptions: {
-                    queries: {
-                        staleTime: 5 * 60 * 1000,
-                        retry: false,
-                    },
-                },
-            })
-    );
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            staleTime: 5 * 60 * 1000,
+            retry: false,
+          },
+        },
+      })
+  );
 
-    return (
-        <QueryClientProvider client={queryClient}>
-            <ThemeProvider
-                attribute="class"
-                defaultTheme="light"
-                enableSystem
-                disableTransitionOnChange
-            >
-                <SessionProvider>
-                    {children}
-                </SessionProvider>
-            </ThemeProvider>
-            <ReactQueryDevtools initialIsOpen={false} />
-            <Toaster />
-            <Analytics />
-            <SpeedInsights />
-        </QueryClientProvider>
-    );
+  return (
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider
+        attribute="class"
+        defaultTheme="light"
+        enableSystem
+        disableTransitionOnChange
+      >
+        <AuthProvider>{children}</AuthProvider>
+      </ThemeProvider>
+      <ReactQueryDevtools initialIsOpen={false} />
+      <Toaster />
+      <Analytics />
+      <SpeedInsights />
+    </QueryClientProvider>
+  );
 }

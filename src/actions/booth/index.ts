@@ -1,7 +1,7 @@
 "use server";
 
 import prisma from "@/lib/prisma";
-import {requireAuth} from "../auth-actions";
+import { requireAuth } from "../auth-actions";
 
 export async function getBooths() {
     await requireAuth();
