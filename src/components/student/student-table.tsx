@@ -70,17 +70,35 @@ export function StudentTable() {
         {
             accessorKey: "schoolType",
             header: "学校タイプ",
-            cell: ({ row }) => row.original.schoolType || "N/A",
+            cell: ({ row }) => {
+                const value = row.original.schoolType
+                if (value === "PRIVATE") return "私立"
+                if (value === "PUBLIC") return "公立"
+                return "N/A"
+            },
         },
         {
             accessorKey: "examSchoolType",
             header: "受験校タイプ",
-            cell: ({ row }) => row.original.examSchoolType || "N/A",
+            cell: ({ row }) => {
+                const value = row.original.examSchoolType
+                if (value === "PRIVATE") return "私立"
+                if (value === "PUBLIC") return "公立"
+                return "N/A"
+            },
         },
         {
             accessorKey: "examSchoolCategoryType",
             header: "受験校カテゴリータイプ",
-            cell: ({ row }) => row.original.examSchoolCategoryType || "N/A",
+            cell: ({ row }) => {
+                const value = row.original.examSchoolCategoryType
+                if (value === "ELEMENTARY") return "小学校"
+                if (value === "MIDDLE") return "中学校"
+                if (value === "HIGH") return "高校"
+                if (value === "UNIVERSITY") return "大学"
+                if (value === "OTHER") return "その他"
+                return "N/A"
+            },
         },
         {
             accessorKey: "firstChoiceSchool",

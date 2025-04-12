@@ -140,20 +140,20 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>学年</FormLabel>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value as string}>
-                                        <FormControl>
+                                    <FormControl>
+                                        <Select onValueChange={field.onChange} value={field.value as string}>
                                             <SelectTrigger>
                                                 <SelectValue placeholder="学年を選択" />
                                             </SelectTrigger>
-                                        </FormControl>
-                                        <SelectContent>
-                                            {grades.map((grade) => (
-                                                <SelectItem key={grade.gradeId} value={grade.gradeId}>
-                                                    {grade.name}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                                            <SelectContent>
+                                                {grades.map((grade) => (
+                                                    <SelectItem key={grade.gradeId} value={grade.gradeId}>
+                                                        {grade.name}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )}
@@ -170,66 +170,54 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
                         <FormField control={form.control} name="schoolType" render={({ field }) => (
                             <FormItem>
                                 <FormLabel>学校タイプ</FormLabel>
-                                <Select
-                                    onValueChange={field.onChange}
-                                    value={field.value || ""}
-                                    defaultValue={field.value || ""}
-                                >
-                                    <FormControl>
+                                <FormControl>
+                                    <Select onValueChange={field.onChange} value={field.value || ""}>
                                         <SelectTrigger>
                                             <SelectValue placeholder="学校タイプを選択" />
                                         </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                        <SelectItem value="PUBLIC">公立</SelectItem>
-                                        <SelectItem value="PRIVATE">私立</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                                        <SelectContent>
+                                            <SelectItem value="PUBLIC">公立</SelectItem>
+                                            <SelectItem value="PRIVATE">私立</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </FormControl>
                                 <FormMessage />
                             </FormItem>
                         )} />
                         <FormField control={form.control} name="examSchoolType" render={({ field }) => (
                             <FormItem>
                                 <FormLabel>受験校タイプ</FormLabel>
-                                <Select
-                                    onValueChange={field.onChange}
-                                    value={field.value || ""}
-                                    defaultValue={field.value || ""}
-                                >
-                                    <FormControl>
+                                <FormControl>
+                                    <Select onValueChange={field.onChange} value={field.value || ""}>
                                         <SelectTrigger>
                                             <SelectValue placeholder="受験校タイプを選択" />
                                         </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                        <SelectItem value="PUBLIC">公立</SelectItem>
-                                        <SelectItem value="PRIVATE">私立</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                                        <SelectContent>
+                                            <SelectItem value="PUBLIC">公立</SelectItem>
+                                            <SelectItem value="PRIVATE">私立</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </FormControl>
                                 <FormMessage />
                             </FormItem>
                         )} />
                         <FormField control={form.control} name="examSchoolCategoryType" render={({ field }) => (
                             <FormItem>
                                 <FormLabel>受験校カテゴリータイプ</FormLabel>
-                                <Select
-                                    onValueChange={(value: never) => field.onChange(value || null)}
-                                    value={field.value || ""}
-                                    defaultValue={field.value || ""}
-                                >
-                                    <FormControl>
+                                <FormControl>
+                                    <Select onValueChange={(value) => field.onChange(value || null)} value={field.value || ""}>
                                         <SelectTrigger>
                                             <SelectValue placeholder="受験校カテゴリーを選択" />
                                         </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                        <SelectItem value="ELEMENTARY">小学校</SelectItem>
-                                        <SelectItem value="MIDDLE">中学校</SelectItem>
-                                        <SelectItem value="HIGH">高校</SelectItem>
-                                        <SelectItem value="UNIVERSITY">大学</SelectItem>
-                                        <SelectItem value="OTHER">その他</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                                        <SelectContent>
+                                            <SelectItem value="ELEMENTARY">小学校</SelectItem>
+                                            <SelectItem value="MIDDLE">中学校</SelectItem>
+                                            <SelectItem value="HIGH">高校</SelectItem>
+                                            <SelectItem value="UNIVERSITY">大学</SelectItem>
+                                            <SelectItem value="OTHER">その他</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </FormControl>
                                 <FormMessage />
                             </FormItem>
                         )} />
@@ -280,7 +268,8 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
                                             const dateValue = e.target.value ? new Date(e.target.value) : null;
                                             field.onChange(dateValue);
                                         }}
-                                    />                                </FormControl>
+                                    />
+                                </FormControl>
                                 <FormMessage />
                             </FormItem>
                         )} />
