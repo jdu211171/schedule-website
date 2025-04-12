@@ -1,12 +1,12 @@
 import { getStudents } from "@/actions/student";
 import { getStudent } from "@/actions/student/read";
+import { StudentWithGrade } from "@/schemas/student.schema";
 import { useQuery } from "@tanstack/react-query";
 
-
-export function useStudents() {
+export function useStudents(page: number = 1, pageSize: number = 15) {
     return useQuery({
-        queryKey: ["students"],
-        queryFn: getStudents,
+        queryKey: ["students", page, pageSize],
+        queryFn: () => getStudents({ page, pageSize }) as Promise<StudentWithGrade[]>,
     });
 }
 

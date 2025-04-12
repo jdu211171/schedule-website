@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { Grade } from "@prisma/client";
 
 const ExamSchoolTypeEnum = z.enum(["ELEMENTARY", "MIDDLE", "HIGH", "UNIVERSITY", "OTHER"]);
 
@@ -49,4 +50,5 @@ export const studentSchema = z.object({
 
 export type StudentCreateInput = z.infer<typeof studentCreateSchema>;
 export type StudentUpdateInput = z.infer<typeof studentUpdateSchema>;
+export type StudentWithGrade = Student & { grade: Grade | null };
 export type Student = z.infer<typeof studentSchema>;

@@ -3,11 +3,11 @@
 import { useState } from "react"
 import type { ColumnDef } from "@tanstack/react-table"
 import { Pencil, Trash2 } from "lucide-react"
-
 import { Button } from "@/components/ui/button"
 import { DataTable } from "@/components/data-table"
 import { useStudents } from "@/hooks/useStudentQuery"
 import { useStudentDelete } from "@/hooks/useStudentMutation"
+import { StudentWithGrade } from "@/schemas/student.schema"
 import {
     AlertDialog,
     AlertDialogAction,
@@ -20,10 +20,20 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Student } from "@prisma/client"
 import { StudentFormDialog } from "@/components/student/student-form-dialog"
+import {
+    Pagination,
+    PaginationContent,
+    PaginationItem,
+    PaginationLink,
+    PaginationNext,
+    PaginationPrevious
+} from "@/components/ui/pagination"
 
 export function StudentTable() {
     const [searchTerm, setSearchTerm] = useState("")
-    const { data: students = [], isLoading } = useStudents()
+    const [page, setPage] = useState(1)
+    const pageSize = 15
+    const { data: students = [] as StudentWithGrade[], isLoading } = useStudents(page, pageSize)
     const deleteStudentMutation = useStudentDelete()
 
     const [studentToEdit, setStudentToEdit] = useState<Student | null>(null)
@@ -38,20 +48,20 @@ export function StudentTable() {
         )
         : students
 
-    const columns: ColumnDef<Student>[] = [
+    const columns: ColumnDef<StudentWithGrade>[] = [
         {
             accessorKey: "name",
             header: "名前",
         },
         {
-            accessorKey: "kanaName",
-            header: "カナ名",
-            cell: ({ row }) => row.original.kanaName || "N/A", // Показываем N/A, если kanaName пустое
+            accessorKey: "grade.name",
+            header: "学年",
+            cell: ({ row }) => row.original.grade?.name || "N/A",
         },
         {
-            accessorKey: "gradeId",
-            header: "学年ID",
-            cell: ({ row }) => row.original.gradeId || "N/A",
+            accessorKey: "kanaName",
+            header: "カナ名",
+            cell: ({ row }) => row.original.kanaName || "N/A",
         },
         {
             accessorKey: "schoolName",
@@ -146,6 +156,9 @@ export function StudentTable() {
         }
     }
 
+    const handlePrevious = () => setPage((prev) => Math.max(prev - 1, 1))
+    const handleNext = () => setPage((prev) => prev + 1)
+
     return (
         <>
             <DataTable
@@ -160,6 +173,20 @@ export function StudentTable() {
             />
 
             {/* 編集ダイアログ */}
+            <Pagination className="mt-4">
+                <PaginationContent>
+                    <PaginationItem>
+                        <PaginationPrevious onClick={handlePrevious} aria-disabled={page === 1}/>
+                    </PaginationItem>
+                    <PaginationItem>
+                        <PaginationLink>{page}</PaginationLink>
+                    </PaginationItem>
+                    <PaginationItem>
+                        <PaginationNext onClick={handleNext} aria-disabled={students.length < pageSize}/>
+                    </PaginationItem>
+                </PaginationContent>
+            </Pagination>
+
             {studentToEdit && (
                 <StudentFormDialog
                     open={!!studentToEdit}
