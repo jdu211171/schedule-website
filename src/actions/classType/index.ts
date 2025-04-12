@@ -3,10 +3,21 @@
 import prisma from "@/lib/prisma";
 import { requireAuth } from "../auth-actions";
 
-export async function getClassTypes() {
+interface GetClassTypesParams {
+    page?: number;
+    pageSize?: number;
+}
+
+export async function getClassTypes({
+                                        page = 1,
+                                        pageSize = 15,
+                                    }: GetClassTypesParams = {}) {
     await requireAuth();
+    const skip = (page - 1) * pageSize;
 
     return prisma.classType.findMany({
+        skip,
+        take: pageSize,
         orderBy: {
             name: 'asc',
         },
