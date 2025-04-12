@@ -9,69 +9,6 @@ datasource db {
 }
 
 /**
- * Authentication -> 認証
- */
-model Account {
-  id                String  @id @default(cuid())
-  userId            String  @map("user_id")
-  type              String
-  provider          String
-  providerAccountId String  @map("provider_account_id")
-  refreshToken      String? @map("refresh_token") @db.Text
-  accessToken       String? @map("access_token") @db.Text
-  expiresAt         Int?    @map("expires_at")
-  tokenType         String? @map("token_type")
-  scope             String?
-  idToken           String? @map("id_token") @db.Text
-  sessionState      String? @map("session_state")
-  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-
-  @@unique([provider, providerAccountId])
-  @@map("accounts")
-}
-
-model Session {
-  id           String   @id @default(cuid())
-  sessionToken String   @unique @map("session_token")
-  userId       String   @map("user_id")
-  expires      DateTime
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-
-  @@map("sessions")
-}
-
-model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String?   @unique
-  emailVerified DateTime? @map("email_verified")
-  image         String?
-  username      String?   @unique @db.VarChar(50)
-  passwordHash  String?   @map("password_hash") @db.VarChar(255)
-  role          String?   @db.VarChar(20)
-  relatedId     String?   @map("related_id") @db.VarChar(50)
-  isActive      Boolean?  @default(true) @map("is_active")
-  lastLogin     DateTime? @map("last_login") @db.Timestamp(6)
-  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt     DateTime  @default(now()) @map("updated_at") @db.Timestamp(6) @updatedAt
-  accounts      Account[]
-  sessions      Session[]
-
-  @@map("users")
-  @@index([role])
-  @@index([isActive])
-}
-
-model VerificationToken {
-  identifier String
-  token      String
-  expires    DateTime
-
-  @@unique([identifier, token])
-  @@map("verification_tokens")
-}
-
-/**
  * Booth -> ブース
  */
 model Booth {
@@ -82,7 +19,7 @@ model Booth {
   classSessions         ClassSession[]
   regularClassTemplates RegularClassTemplate[]
   createdAt             DateTime               @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt             DateTime               @default(now()) @map("updated_at") @db.Timestamp(6) @updatedAt
+  updatedAt             DateTime               @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
   @@map("booths")
 }
@@ -107,12 +44,12 @@ model ClassSession {
   teacher                 Teacher?                 @relation(fields: [teacherId], references: [teacherId], onDelete: SetNull, onUpdate: Cascade)
   studentClassEnrollments StudentClassEnrollment[]
   createdAt               DateTime                 @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt               DateTime                 @default(now()) @map("updated_at") @db.Timestamp(6) @updatedAt
+  updatedAt               DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
-  @@map("class_sessions")
   @@index([date])
   @@index([startTime])
   @@index([teacherId])
+  @@map("class_sessions")
 }
 
 model ClassType {
@@ -122,7 +59,7 @@ model ClassType {
   classSessions             ClassSession[]
   studentSpecialPreferences StudentSpecialPreference[]
   createdAt                 DateTime                   @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt                 DateTime                   @default(now()) @map("updated_at") @db.Timestamp(6) @updatedAt
+  updatedAt                 DateTime                   @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
   @@map("class_types")
 }
@@ -165,23 +102,24 @@ model Student {
   studentClassEnrollments    StudentClassEnrollment[]
   studentRegularPreferences  StudentRegularPreference[]
   studentSpecialPreferences  StudentSpecialPreference[]
-  grade                      Grade?                      @relation(fields: [gradeId], references: [gradeId], onDelete: SetNull, onUpdate: Cascade)
   templateStudentAssignments TemplateStudentAssignment[]
+  grade                      Grade?                      @relation(fields: [gradeId], references: [gradeId], onDelete: SetNull, onUpdate: Cascade)
+  userId                     String?                     @unique @map("user_id")
   createdAt                  DateTime                    @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt                  DateTime                    @default(now()) @map("updated_at") @db.Timestamp(6) @updatedAt
+  updatedAt                  DateTime                    @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
-  @@map("students")
   @@index([gradeId])
   @@index([schoolName])
+  @@map("students")
 }
 
 model StudentType {
-  studentTypeId String    @id @default(cuid()) @map("student_type_id")
-  name          String    @db.VarChar(100)
-  description   String?   @db.VarChar(255)
+  studentTypeId String   @id @default(cuid()) @map("student_type_id")
+  name          String   @db.VarChar(100)
+  description   String?  @db.VarChar(255)
   Grade         Grade[]
-  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt     DateTime  @default(now()) @map("updated_at") @db.Timestamp(6) @updatedAt
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
   @@map("student_types")
 }
@@ -195,7 +133,7 @@ model StudentClassEnrollment {
   classSession ClassSession? @relation(fields: [classId], references: [classId], onDelete: Cascade, onUpdate: Cascade)
   student      Student?      @relation(fields: [studentId], references: [studentId], onDelete: Cascade, onUpdate: Cascade)
   createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt    DateTime      @default(now()) @map("updated_at") @db.Timestamp(6) @updatedAt
+  updatedAt    DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
   @@map("student_class_enrollments")
 }
@@ -211,7 +149,7 @@ model StudentRegularPreference {
   student      Student?  @relation(fields: [studentId], references: [studentId], onDelete: Cascade, onUpdate: Cascade)
   subject      Subject?  @relation(fields: [subjectId], references: [subjectId], onDelete: SetNull, onUpdate: Cascade)
   createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt    DateTime  @default(now()) @map("updated_at") @db.Timestamp(6) @updatedAt
+  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
   @@map("student_regular_preferences")
 }
@@ -229,7 +167,7 @@ model StudentSpecialPreference {
   student      Student?   @relation(fields: [studentId], references: [studentId], onDelete: Cascade, onUpdate: Cascade)
   subject      Subject?   @relation(fields: [subjectId], references: [subjectId], onDelete: SetNull, onUpdate: Cascade)
   createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt    DateTime   @default(now()) @map("updated_at") @db.Timestamp(6) @updatedAt
+  updatedAt    DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
   @@map("student_special_preferences")
 }
@@ -242,26 +180,26 @@ model TemplateStudentAssignment {
   student              Student?              @relation(fields: [studentId], references: [studentId], onDelete: Cascade, onUpdate: Cascade)
   regularClassTemplate RegularClassTemplate? @relation(fields: [templateId], references: [templateId], onDelete: Cascade, onUpdate: Cascade)
   createdAt            DateTime              @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt            DateTime              @default(now()) @map("updated_at") @db.Timestamp(6) @updatedAt
+  updatedAt            DateTime              @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
   @@map("template_student_assignments")
 }
 
 model RegularClassTemplate {
-  templateId                 String                @id @default(cuid()) @map("template_id")
-  dayOfWeek                  String?               @map("day_of_week") @db.VarChar(20)
-  subjectId                  String?               @map("subject_id") @db.VarChar(50)
-  boothId                    String?               @map("booth_id") @db.VarChar(50)
-  teacherId                  String?               @map("teacher_id") @db.VarChar(50)
-  startTime                  DateTime?             @map("start_time") @db.Time(6)
-  endTime                    DateTime?             @map("end_time") @db.Time(6)
-  notes                      String?               @db.VarChar(255)
-  booth                      Booth?                @relation(fields: [boothId], references: [boothId], onDelete: SetNull, onUpdate: Cascade)
-  subject                    Subject?              @relation(fields: [subjectId], references: [subjectId], onDelete: SetNull, onUpdate: Cascade)
-  teacher                    Teacher?              @relation(fields: [teacherId], references: [teacherId], onDelete: SetNull, onUpdate: Cascade)
+  templateId                 String                      @id @default(cuid()) @map("template_id")
+  dayOfWeek                  String?                     @map("day_of_week") @db.VarChar(20)
+  subjectId                  String?                     @map("subject_id") @db.VarChar(50)
+  boothId                    String?                     @map("booth_id") @db.VarChar(50)
+  teacherId                  String?                     @map("teacher_id") @db.VarChar(50)
+  startTime                  DateTime?                   @map("start_time") @db.Time(6)
+  endTime                    DateTime?                   @map("end_time") @db.Time(6)
+  notes                      String?                     @db.VarChar(255)
+  booth                      Booth?                      @relation(fields: [boothId], references: [boothId], onDelete: SetNull, onUpdate: Cascade)
+  subject                    Subject?                    @relation(fields: [subjectId], references: [subjectId], onDelete: SetNull, onUpdate: Cascade)
+  teacher                    Teacher?                    @relation(fields: [teacherId], references: [teacherId], onDelete: SetNull, onUpdate: Cascade)
   templateStudentAssignments TemplateStudentAssignment[]
-  createdAt                  DateTime              @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt                  DateTime              @default(now()) @map("updated_at") @db.Timestamp(6) @updatedAt
+  createdAt                  DateTime                    @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt                  DateTime                    @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
   @@map("regular_class_templates")
 }
@@ -278,7 +216,7 @@ model TeacherRegularShift {
   notes     String?   @db.VarChar(255)
   teacher   Teacher?  @relation(fields: [teacherId], references: [teacherId], onDelete: Cascade, onUpdate: Cascade)
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt DateTime  @default(now()) @map("updated_at") @db.Timestamp(6) @updatedAt
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
   @@map("teacher_regular_shifts")
 }
@@ -292,19 +230,19 @@ model TeacherSpecialShift {
   notes     String?   @db.VarChar(255)
   teacher   Teacher?  @relation(fields: [teacherId], references: [teacherId], onDelete: Cascade, onUpdate: Cascade)
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt DateTime  @default(now()) @map("updated_at") @db.Timestamp(6) @updatedAt
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
   @@map("teacher_special_shifts")
 }
 
 model TeacherSubject {
-  teacherId String  @map("teacher_id") @db.VarChar(50)
-  subjectId String  @map("subject_id") @db.VarChar(50)
-  notes     String? @db.VarChar(255)
-  subject   Subject @relation(fields: [subjectId], references: [subjectId], onDelete: Cascade, onUpdate: Cascade)
-  teacher   Teacher @relation(fields: [teacherId], references: [teacherId], onDelete: Cascade, onUpdate: Cascade)
+  teacherId String   @map("teacher_id") @db.VarChar(50)
+  subjectId String   @map("subject_id") @db.VarChar(50)
+  notes     String?  @db.VarChar(255)
+  subject   Subject  @relation(fields: [subjectId], references: [subjectId], onDelete: Cascade, onUpdate: Cascade)
+  teacher   Teacher  @relation(fields: [teacherId], references: [teacherId], onDelete: Cascade, onUpdate: Cascade)
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamp(6) @updatedAt
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
   @@id([teacherId, subjectId])
   @@map("teacher_subjects")
@@ -337,8 +275,9 @@ model Teacher {
   teacherSpecialShifts  TeacherSpecialShift[]
   teacherSubjects       TeacherSubject[]
   evaluation            Evaluation?            @relation(fields: [evaluationId], references: [evaluationId], onDelete: SetNull, onUpdate: Cascade)
+  userId                String?                @unique @map("user_id")
   createdAt             DateTime               @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt             DateTime               @default(now()) @map("updated_at") @db.Timestamp(6) @updatedAt
+  updatedAt             DateTime               @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
   @@map("teachers")
 }
@@ -350,7 +289,7 @@ model Evaluation {
   notes        String?   @db.VarChar(255)
   teachers     Teacher[]
   createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt    DateTime  @default(now()) @map("updated_at") @db.Timestamp(6) @updatedAt
+  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
   @@map("evaluations")
 }
@@ -364,7 +303,7 @@ model SubjectType {
   notes         String?   @db.VarChar(255)
   subjects      Subject[]
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt     DateTime  @default(now()) @map("updated_at") @db.Timestamp(6) @updatedAt
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
   @@map("subject_types")
 }
@@ -382,7 +321,7 @@ model Subject {
   subjectType               SubjectType?               @relation(fields: [subjectTypeId], references: [subjectTypeId], onDelete: SetNull, onUpdate: Cascade)
   teacherSubjects           TeacherSubject[]
   createdAt                 DateTime                   @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt                 DateTime                   @default(now()) @map("updated_at") @db.Timestamp(6) @updatedAt
+  updatedAt                 DateTime                   @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
   @@map("subjects")
 }
@@ -400,7 +339,7 @@ model Grade {
   students         Student[]
   studentType      StudentType?      @relation(fields: [studentTypeId], references: [studentTypeId], onDelete: SetNull, onUpdate: Cascade)
   createdAt        DateTime          @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt        DateTime          @default(now()) @map("updated_at") @db.Timestamp(6) @updatedAt
+  updatedAt        DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
   @@map("grades")
 }
@@ -428,7 +367,7 @@ model IntensiveCourse {
   grade             Grade?               @relation(fields: [gradeId], references: [gradeId], onDelete: SetNull, onUpdate: Cascade)
   subject           Subject?             @relation(fields: [subjectId], references: [subjectId], onDelete: SetNull, onUpdate: Cascade)
   createdAt         DateTime             @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt         DateTime             @default(now()) @map("updated_at") @db.Timestamp(6) @updatedAt
+  updatedAt         DateTime             @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
   @@map("intensive_courses")
 }
@@ -442,7 +381,7 @@ model CourseAssignment {
   intensiveCourse IntensiveCourse @relation(fields: [courseId], references: [courseId], onDelete: Cascade, onUpdate: Cascade)
   teacher         Teacher         @relation(fields: [teacherId], references: [teacherId], onDelete: Cascade, onUpdate: Cascade)
   createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt       DateTime        @default(now()) @map("updated_at") @db.Timestamp(6) @updatedAt
+  updatedAt       DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
   @@id([teacherId, courseId])
   @@map("course_assignments")
@@ -457,7 +396,7 @@ model CourseEnrollment {
   intensiveCourse IntensiveCourse @relation(fields: [courseId], references: [courseId], onDelete: Cascade, onUpdate: Cascade)
   student         Student         @relation(fields: [studentId], references: [studentId], onDelete: Cascade, onUpdate: Cascade)
   createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt       DateTime        @default(now()) @map("updated_at") @db.Timestamp(6) @updatedAt
+  updatedAt       DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
   @@id([studentId, courseId])
   @@map("course_enrollments")
@@ -479,7 +418,7 @@ model Notification {
   status           String?   @db.VarChar(20)
   notes            String?   @db.VarChar(255)
   createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt        DateTime  @default(now()) @map("updated_at") @db.Timestamp(6) @updatedAt
+  updatedAt        DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
   @@map("notifications")
 }
@@ -494,7 +433,7 @@ model Event {
   endDate     DateTime
   isRecurring Boolean  @default(false)
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt   DateTime @default(now()) @map("updated_at") @db.Timestamp(6) @updatedAt
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
   @@map("events")
 }

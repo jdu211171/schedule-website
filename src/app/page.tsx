@@ -1,4 +1,4 @@
-import { auth, signOut } from "@/auth";
+import { logoutUser } from "@/actions/auth-actions";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -7,11 +7,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 
 export default async function Home() {
-  const session = await auth();
+  const supabase = await createClient();
+  const { data: session } = await supabase.auth.getUser();
+
   return (
     <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
       <div className="w-full flex justify-between items-center row-start-1">
@@ -20,11 +24,11 @@ export default async function Home() {
             <DropdownMenuTrigger>
               <Avatar>
                 <AvatarImage
-                  src={session.user?.image ?? ""}
-                  alt={session.user?.name ?? ""}
+                  src={session.user?.user_metadata.image ?? ""}
+                  alt={session.user?.email ?? ""}
                 />
                 <AvatarFallback>
-                  {session.user?.name?.toUpperCase().slice(0, 2)}
+                  {session.user?.email?.toUpperCase().slice(0, 2)}
                 </AvatarFallback>
               </Avatar>
             </DropdownMenuTrigger>
@@ -32,7 +36,8 @@ export default async function Home() {
               <DropdownMenuItem
                 onClick={async () => {
                   "use server";
-                  await signOut();
+                  await logoutUser();
+                  redirect("/login");
                 }}
               >
                 Logout
@@ -41,7 +46,7 @@ export default async function Home() {
           </DropdownMenu>
         ) : (
           <Button>
-            <Link href="/auth/login">Login</Link>
+            <Link href="/sign-in">Sign in</Link>
           </Button>
         )}
       </div>
