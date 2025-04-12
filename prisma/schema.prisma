@@ -105,6 +105,7 @@ model Student {
   templateStudentAssignments TemplateStudentAssignment[]
   grade                      Grade?                      @relation(fields: [gradeId], references: [gradeId], onDelete: SetNull, onUpdate: Cascade)
   userId                     String?                     @unique @map("user_id")
+  user                        User?                       @relation(fields: [userId], references: [id], onDelete: SetNull)
   createdAt                  DateTime                    @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt                  DateTime                    @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
@@ -276,6 +277,7 @@ model Teacher {
   teacherSubjects       TeacherSubject[]
   evaluation            Evaluation?            @relation(fields: [evaluationId], references: [evaluationId], onDelete: SetNull, onUpdate: Cascade)
   userId                String?                @unique @map("user_id")
+  user                   User?                  @relation(fields: [userId], references: [id], onDelete: SetNull)
   createdAt             DateTime               @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt             DateTime               @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
@@ -436,4 +438,65 @@ model Event {
   updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
   @@map("events")
+}
+
+/**
+ * User -> Authentication and authorization
+ */
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  username      String?   @unique
+  passwordHash  String?
+  role          String    @default("user")
+  accounts      Account[]
+  sessions      Session[]
+  student       Student?
+  teacher       Teacher?
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String  @map("user_id")
+  type              String
+  provider          String
+  providerAccountId String  @map("provider_account_id")
+  accessToken       String? @db.Text
+  expiresAt         Int?
+  tokenType         String?
+  scope             String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt         DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id")
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  @@id([identifier, token])
+  @@map("verification_tokens")
 }

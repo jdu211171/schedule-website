@@ -6,22 +6,6 @@ const prisma = new PrismaClient();
 async function main() {
     console.log('Seeding started...');
 
-    // **Create Users**
-    const users = await Promise.all(
-        Array.from({ length: 30 }).map(() =>
-            prisma.user.create({
-                data: {
-                    name: faker.person.fullName(),
-                    email: faker.internet.email(),
-                    username: faker.internet.username(),
-                    passwordHash: faker.internet.password(),
-                    role: 'user',
-                },
-            })
-        )
-    );
-    console.log(`Seeded ${users.length} users.`);
-
     // **Create StudentTypes** (before Grades due to reference)
     const studentTypes = await Promise.all(
         ['Elementary School', 'Middle School', 'High School', 'University', 'Other'].map(name =>
@@ -429,53 +413,6 @@ async function main() {
         )
     );
     console.log(`Seeded course enrollments.`);
-
-    // **Create Accounts**
-    await Promise.all(
-        users.map(user =>
-            prisma.account.create({
-                data: {
-                    userId: user.id,
-                    type: 'oauth',
-                    provider: 'google',
-                    providerAccountId: faker.string.uuid(), // Unique per account
-                    accessToken: faker.string.alphanumeric(32),
-                    expiresAt: Math.floor(Date.now() / 1000) + 3600, // 1 hour from now
-                    tokenType: 'Bearer',
-                    scope: 'profile email',
-                },
-            })
-        )
-    );
-    console.log(`Seeded accounts for users.`);
-
-    // **Create Sessions**
-    await Promise.all(
-        users.map(user =>
-            prisma.session.create({
-                data: {
-                    userId: user.id,
-                    sessionToken: faker.string.uuid(),
-                    expires: faker.date.future(),
-                },
-            })
-        )
-    );
-    console.log(`Seeded sessions for users.`);
-
-    // **Create VerificationTokens** (for some users)
-    await Promise.all(
-        users.slice(0, 10).map(user =>
-            prisma.verificationToken.create({
-                data: {
-                    identifier: user.email || user.id,
-                    token: faker.string.uuid(),
-                    expires: faker.date.future(),
-                },
-            })
-        )
-    );
-    console.log(`Seeded verification tokens for some users.`);
 
     console.log('Seeding complete');
 }
