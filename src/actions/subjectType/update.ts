@@ -20,6 +20,6 @@ export async function updateSubjectType(data: SubjectTypeUpdateInput) {
     });
 
     return prisma.subjectType.findUnique({
-        where: {subjectTypeId},
+        where: { subjectTypeId },
     });
 }

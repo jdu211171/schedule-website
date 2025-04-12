@@ -1,6 +1,6 @@
 "use server";
 
-import { teacherUpdateSchema, TeacherUpdateInput} from '@/schemas/teacher.schema';
+import { teacherUpdateSchema, TeacherUpdateInput } from '@/schemas/teacher.schema';
 import { requireAuth } from '../auth-actions';
 import prisma from '@/lib/prisma';
 
@@ -20,6 +20,6 @@ export async function updateTeacher(data: TeacherUpdateInput) {
     });
 
     return prisma.teacher.findUnique({
-        where: {teacherId},
+        where: { teacherId },
     });
 }

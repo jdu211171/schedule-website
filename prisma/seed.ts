@@ -6,23 +6,6 @@ const prisma = new PrismaClient();
 async function main() {
     console.log('Seeding started...');
 
-
-    // Create Users
-    const users = await Promise.all(
-        Array.from({ length: 30 }).map(() =>
-            prisma.user.create({
-                data: {
-                    name: faker.person.fullName(),
-                    email: faker.internet.email(),
-                    username: faker.internet.username(), // Updated here!
-                    passwordHash: faker.internet.password(),
-                    role: 'user',
-                },
-            })
-        )
-    );
-    console.log(`Seeded ${users.length} users.`);
-
     // Create Booths
     const booths = await Promise.all(
         Array.from({ length: 25 }).map(() =>
@@ -97,7 +80,7 @@ async function main() {
 
     const students = await Promise.all(
         Array.from({ length: 50 }).map(() => {
-            let kanaName = faker.person.lastName().slice(0, 100); // Simplified truncation
+            const kanaName = faker.person.lastName().slice(0, 100); // Simplified truncation
             const name = faker.person.fullName().slice(0, 100);
             const schoolName = faker.company.name().slice(0, 100);
             const homePhone = faker.phone.number().slice(0, 20);
