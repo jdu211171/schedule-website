@@ -10,7 +10,7 @@ interface GetBoothsParams {
 
 export async function getBooths({
                                     page = 1,
-                                    pageSize = 15,
+                                    pageSize = 10,
                                 }: GetBoothsParams = {}) {
     await requireAuth();
     const skip = (page - 1) * pageSize;

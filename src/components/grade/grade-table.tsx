@@ -20,10 +20,14 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Grade } from "@prisma/client"
 import { GradeFormDialog } from "@/components/grade/grade-form-dialog"
+import { useGradesCount } from "@/hooks/useGradeQuery"
 
 export function GradeTable() {
     const [searchTerm, setSearchTerm] = useState("")
-    const { data: grades = [], isLoading } = useGrades()
+    const [page, setPage] = useState(1)
+    const pageSize = 10
+    const { data: grades = [], isLoading, isFetching } = useGrades(page, pageSize)
+    const { data: totalCount = 0 } = useGradesCount()
     const deleteGradeMutation = useGradeDelete()
 
     const [gradeToEdit, setGradeToEdit] = useState<Grade | null>(null)
@@ -84,17 +88,28 @@ export function GradeTable() {
         }
     }
 
+    const handlePageChange = (newPage: number) => {
+        setPage(newPage + 1)
+    }
+
+    const totalPages = Math.ceil(totalCount / pageSize)
+
     return (
         <>
             <DataTable
                 columns={columns}
                 data={filteredGrades}
-                isLoading={isLoading}
+                isLoading={isLoading || isFetching}
                 searchPlaceholder="成績を検索..."
                 onSearch={setSearchTerm}
                 searchValue={searchTerm}
                 onCreateNew={() => setIsCreateDialogOpen(true)}
                 createNewLabel="新しい成績"
+                pageIndex={page - 1}
+                pageCount={totalPages || 1}
+                onPageChange={handlePageChange}
+                pageSize={pageSize}
+                totalItems={totalCount}
             />
 
             {/* 編集ダイアログ */}

@@ -10,7 +10,7 @@ interface GetEvaluationsParams {
 
 export async function getEvaluations({
                                          page = 1,
-                                         pageSize = 15,
+                                         pageSize = 10,
                                      }: GetEvaluationsParams = {}) {
     await requireAuth();
     const skip = (page - 1) * pageSize;

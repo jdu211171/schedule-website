@@ -27,6 +27,12 @@ interface DataTableProps<TData, TValue> {
     isLoading?: boolean
     onCreateNew?: () => void
     createNewLabel?: string
+    pageCount?: number
+    pageIndex?: number
+    onPageChange?: (page: number) => void
+    pageSize?: number
+    onPageSizeChange?: (pageSize: number) => void
+    totalItems?: number
 }
 
 export function DataTable<TData, TValue>({
@@ -38,26 +44,47 @@ export function DataTable<TData, TValue>({
                                              isLoading = false,
                                              onCreateNew,
                                              createNewLabel = "New Creation",
+                                             pageCount = 1,
+                                             pageIndex = 0,
+                                             onPageChange,
+                                             pageSize = 15,
+                                             totalItems,
                                          }: DataTableProps<TData, TValue>) {
     const [sorting, setSorting] = useState<SortingState>([])
     const [localSearchValue, setLocalSearchValue] = useState(searchValue)
+
+    const isServerSidePagination = !!onPageChange;
 
     const table = useReactTable({
         data,
         columns,
         getCoreRowModel: getCoreRowModel(),
-        getPaginationRowModel: getPaginationRowModel(),
+        getPaginationRowModel: isServerSidePagination ? undefined : getPaginationRowModel(),
         onSortingChange: setSorting,
         getSortedRowModel: getSortedRowModel(),
         state: {
             sorting,
+            pagination: {
+                pageIndex,
+                pageSize,
+            },
         },
+        manualPagination: isServerSidePagination,
+        pageCount: pageCount,
     })
 
     const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value
         setLocalSearchValue(value)
         onSearch?.(value)
+    }
+
+    const handlePageChange = (newPage: number) => {
+        if (onPageChange) {
+            onPageChange(newPage);
+        } else {
+            table.setPageIndex(newPage);
+        }
     }
 
     return (
@@ -121,27 +148,42 @@ export function DataTable<TData, TValue>({
                 <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => table.setPageIndex(0)}
-                    disabled={!table.getCanPreviousPage()}
+                    onClick={() => handlePageChange(0)}
+                    disabled={pageIndex === 0}
                 >
                     <ChevronsLeft className="h-4 w-4" />
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(pageIndex - 1)}
+                    disabled={pageIndex === 0}
+                >
                     <ChevronLeft className="h-4 w-4" />
                 </Button>
                 <div className="flex items-center gap-1">
                     <p className="text-sm font-medium">
-                        {table.getState().pagination.pageIndex + 1}ページ目 (全{table.getPageCount()}ページ)
+                        {pageIndex + 1}ページ目 (全{pageCount}ページ)
                     </p>
+                    {totalItems !== undefined && (
+                        <p className="text-sm text-muted-foreground ml-2">
+                            全{totalItems}件
+                        </p>
+                    )}
                 </div>
-                <Button variant="outline" size="sm" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(pageIndex + 1)}
+                    disabled={pageIndex >= pageCount - 1}
+                >
                     <ChevronRight className="h-4 w-4" />
                 </Button>
                 <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-                    disabled={!table.getCanNextPage()}
+                    onClick={() => handlePageChange(pageCount - 1)}
+                    disabled={pageIndex >= pageCount - 1}
                 >
                     <ChevronsRight className="h-4 w-4" />
                 </Button>

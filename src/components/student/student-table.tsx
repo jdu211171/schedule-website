@@ -20,12 +20,14 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Student } from "@prisma/client"
 import { StudentFormDialog } from "@/components/student/student-form-dialog"
+import { useStudentsCount } from "@/hooks/useStudentQuery"
 
 export function StudentTable() {
     const [searchTerm, setSearchTerm] = useState("")
-    const [page] = useState(1)
-    const pageSize = 15
-    const { data: students = [] as StudentWithGrade[], isLoading } = useStudents(page, pageSize)
+    const [page, setPage] = useState(1)
+    const pageSize = 10
+    const { data: students = [] as StudentWithGrade[], isLoading, isFetching } = useStudents(page, pageSize)
+    const { data: totalCount = 0 } = useStudentsCount()
     const deleteStudentMutation = useStudentDelete()
 
     const [studentToEdit, setStudentToEdit] = useState<Student | null>(null)
@@ -165,17 +167,29 @@ export function StudentTable() {
             }
         }
     }
+
+    const handlePageChange = (newPage: number) => {
+        setPage(newPage + 1)
+    }
+
+    const totalPages = Math.ceil(totalCount / pageSize)
+
     return (
         <>
             <DataTable
                 columns={columns}
                 data={filteredStudents}
-                isLoading={isLoading}
+                isLoading={isLoading || isFetching}
                 searchPlaceholder="学生を検索..."
                 onSearch={setSearchTerm}
                 searchValue={searchTerm}
                 onCreateNew={() => setIsCreateDialogOpen(true)}
                 createNewLabel="新しい学生"
+                pageIndex={page - 1}
+                pageCount={totalPages || 1}
+                onPageChange={handlePageChange}
+                pageSize={pageSize}
+                totalItems={totalCount}
             />
 
             {/* 編集ダイアログ */}

@@ -10,7 +10,7 @@ interface GetSubjectTypesParams {
 
 export async function getSubjectTypes({
                                           page = 1,
-                                          pageSize = 15,
+                                          pageSize = 10,
                                       }: GetSubjectTypesParams = {}) {
     await requireAuth();
     const skip = (page - 1) * pageSize;

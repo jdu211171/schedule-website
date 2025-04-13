@@ -10,7 +10,7 @@ interface GetClassTypesParams {
 
 export async function getClassTypes({
                                         page = 1,
-                                        pageSize = 15,
+                                        pageSize = 10,
                                     }: GetClassTypesParams = {}) {
     await requireAuth();
     const skip = (page - 1) * pageSize;

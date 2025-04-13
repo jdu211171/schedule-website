@@ -20,10 +20,14 @@ import {
 } from "@/components/ui/alert-dialog"
 import {Evaluation} from "@prisma/client"
 import {EvaluationFormDialog} from "@/components/evaluation/evaluation-form-dialog"
+import {useEvaluationsCount} from "@/hooks/useEvaluationQuery"
 
 export function EvaluationTable() {
     const [searchTerm, setSearchTerm] = useState("")
-    const {data: evaluations = [], isLoading} = useEvaluations()
+    const [page, setPage] = useState(1)
+    const pageSize = 10
+    const {data: evaluations = [], isLoading, isFetching} = useEvaluations(page, pageSize)
+    const {data: totalCount = 0} = useEvaluationsCount()
     const deleteEvaluationMutation = useEvaluationDelete()
 
     const [evaluationToEdit, setEvaluationToEdit] = useState<Evaluation | null>(null)
@@ -80,17 +84,28 @@ export function EvaluationTable() {
         }
     }
 
+    const handlePageChange = (newPage: number) => {
+        setPage(newPage + 1)
+    }
+
+    const totalPages = Math.ceil(totalCount / pageSize)
+
     return (
         <>
             <DataTable
                 columns={columns}
                 data={filteredEvaluations}
-                isLoading={isLoading}
+                isLoading={isLoading || isFetching}
                 searchPlaceholder="評価を検索..."
                 onSearch={setSearchTerm}
                 searchValue={searchTerm}
                 onCreateNew={() => setIsCreateDialogOpen(true)}
                 createNewLabel="新しい評価"
+                pageIndex={page - 1}
+                pageCount={totalPages || 1}
+                onPageChange={handlePageChange}
+                pageSize={pageSize}
+                totalItems={totalCount}
             />
 
             {/* Edit Evaluation Dialog */}

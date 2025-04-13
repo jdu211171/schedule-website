@@ -20,10 +20,14 @@ import {
 } from "@/components/ui/alert-dialog"
 import { ClassType } from "@prisma/client"
 import { ClassFormDialog } from "@/components/class/class-form-dialog"
+import { useClassTypesCount } from "@/hooks/useClassTypeQuery"
 
 export function ClassTable() {
     const [searchTerm, setSearchTerm] = useState("")
-    const { data: classTypes = [], isLoading } = useClassTypes()
+    const [page, setPage] = useState(1)
+    const pageSize = 10
+    const { data: classTypes = [], isLoading, isFetching } = useClassTypes(page, pageSize)
+    const { data: totalCount = 0 } = useClassTypesCount()
     const deleteClassTypeMutation = useClassTypeDelete()
 
     const [classTypeToEdit, setClassTypeToEdit] = useState<ClassType | null>(null)
@@ -76,17 +80,28 @@ export function ClassTable() {
         }
     }
 
+    const handlePageChange = (newPage: number) => {
+        setPage(newPage + 1)
+    }
+
+    const totalPages = Math.ceil(totalCount / pageSize)
+
     return (
         <>
             <DataTable
                 columns={columns}
                 data={filteredClassTypes}
-                isLoading={isLoading}
+                isLoading={isLoading || isFetching}
                 searchPlaceholder="クラスの種類を検索..."
                 onSearch={setSearchTerm}
                 searchValue={searchTerm}
                 onCreateNew={() => setIsCreateDialogOpen(true)}
                 createNewLabel="新しいクラスの種類"
+                pageIndex={page - 1}
+                pageCount={totalPages || 1}
+                onPageChange={handlePageChange}
+                pageSize={pageSize}
+                totalItems={totalCount}
             />
 
             {/* Edit Class Type Dialog */}

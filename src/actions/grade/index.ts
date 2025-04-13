@@ -10,7 +10,7 @@ interface GetGradesParams {
 
 export async function getGrades({
                                     page = 1,
-                                    pageSize = 15,
+                                    pageSize = 10,
                                 }: GetGradesParams = {}) {
     await requireAuth();
     const skip = (page - 1) * pageSize;

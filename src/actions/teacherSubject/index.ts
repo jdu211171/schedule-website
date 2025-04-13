@@ -10,7 +10,7 @@ interface GetTeacherSubjectsParams {
 
 export async function getTeacherSubjects({
                                              page = 1,
-                                             pageSize = 15,
+                                             pageSize = 10,
                                          }: GetTeacherSubjectsParams = {}) {
     await requireAuth();
     const skip = (page - 1) * pageSize;

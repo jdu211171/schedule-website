@@ -10,7 +10,7 @@ interface GetTeachersParams {
 
 export async function getTeachers({
                                       page = 1,
-                                      pageSize = 15,
+                                      pageSize = 10,
                                   }: GetTeachersParams = {}) {
     await requireAuth();
     const skip = (page - 1) * pageSize;
