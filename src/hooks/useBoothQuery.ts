@@ -3,10 +3,10 @@ import { getBooth } from "@/actions/booth/read";
 import { useQuery } from "@tanstack/react-query";
 
 
-export function useBooths() {
+export function useBooths(page: number = 1, pageSize: number = 15) {
     return useQuery({
-        queryKey: ["booths"],
-        queryFn: getBooths,
+        queryKey: ["booths", page, pageSize],
+        queryFn: () => getBooths({ page, pageSize }),
     });
 }
 

@@ -2,10 +2,10 @@ import { useQuery } from "@tanstack/react-query";
 import { getSubjectTypes } from "@/actions/subjectType";
 import { getSubjectType } from "@/actions/subjectType/read";
 
-export function useSubjectTypes() {
+export function useSubjectTypes(page: number = 1, pageSize: number = 15) {
     return useQuery({
-        queryKey: ["subjectTypes"],
-        queryFn: getSubjectTypes,
+        queryKey: ["subjectTypes", page, pageSize],
+        queryFn: () => getSubjectTypes({ page, pageSize }),
     });
 }
 

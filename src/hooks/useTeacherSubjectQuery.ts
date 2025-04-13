@@ -2,10 +2,10 @@ import { useQuery } from "@tanstack/react-query";
 import { getTeacherSubjects } from "@/actions/teacherSubject";
 import { getTeacherSubject } from "@/actions/teacherSubject/read";
 
-export function useTeacherSubjects() {
+export function useTeacherSubjects(page: number = 1, pageSize: number = 15) {
     return useQuery({
-        queryKey: ["teacherSubjects"],
-        queryFn: getTeacherSubjects,
+        queryKey: ["teacherSubjects", page, pageSize],
+        queryFn: () => getTeacherSubjects({ page, pageSize }),
     });
 }
 

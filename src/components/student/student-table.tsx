@@ -48,12 +48,12 @@ export function StudentTable() {
         {
             accessorKey: "grade.name",
             header: "学年",
-            cell: ({ row }) => row.original.grade?.name || "N/A",
+            cell: ({ row }) => row.original.grade?.name || "-",
         },
         {
             accessorKey: "kanaName",
             header: "カナ名",
-            cell: ({ row }) => row.original.kanaName || "N/A",
+            cell: ({ row }) => row.original.kanaName || "-",
         },
         {
             accessorKey: "schoolName",
@@ -66,7 +66,7 @@ export function StudentTable() {
                 const value = row.original.schoolType
                 if (value === "PRIVATE") return "私立"
                 if (value === "PUBLIC") return "公立"
-                return "N/A"
+                return "-"
             },
         },
         {
@@ -76,7 +76,7 @@ export function StudentTable() {
                 const value = row.original.examSchoolType
                 if (value === "PRIVATE") return "私立"
                 if (value === "PUBLIC") return "公立"
-                return "N/A"
+                return "-"
             },
         },
         {
@@ -89,53 +89,53 @@ export function StudentTable() {
                 if (value === "HIGH") return "高校"
                 if (value === "UNIVERSITY") return "大学"
                 if (value === "OTHER") return "その他"
-                return "N/A"
+                return "-"
             },
         },
         {
             accessorKey: "firstChoiceSchool",
             header: "第一志望校",
-            cell: ({ row }) => row.original.firstChoiceSchool || "N/A",
+            cell: ({ row }) => row.original.firstChoiceSchool || "-",
         },
         {
             accessorKey: "secondChoiceSchool",
             header: "第二志望校",
-            cell: ({ row }) => row.original.secondChoiceSchool || "N/A",
+            cell: ({ row }) => row.original.secondChoiceSchool || "-",
         },
         {
             accessorKey: "enrollmentDate",
             header: "入学日",
-            cell: ({ row }) => row.original.enrollmentDate ? row.original.enrollmentDate.toLocaleDateString() : "N/A",
+            cell: ({ row }) => row.original.enrollmentDate ? row.original.enrollmentDate.toLocaleDateString() : "-",
         },
         {
             accessorKey: "birthDate",
             header: "生年月日",
-            cell: ({ row }) => row.original.birthDate ? row.original.birthDate.toLocaleDateString() : "N/A",
+            cell: ({ row }) => row.original.birthDate ? row.original.birthDate.toLocaleDateString() : "-",
         },
         {
             accessorKey: "homePhone",
             header: "自宅電話",
-            cell: ({ row }) => row.original.homePhone || "N/A",
+            cell: ({ row }) => row.original.homePhone || "-",
         },
         {
             accessorKey: "parentMobile",
             header: "保護者携帯電話",
-            cell: ({ row }) => row.original.parentMobile || "N/A",
+            cell: ({ row }) => row.original.parentMobile || "-",
         },
         {
             accessorKey: "studentMobile",
             header: "学生携帯電話",
-            cell: ({ row }) => row.original.studentMobile || "N/A",
+            cell: ({ row }) => row.original.studentMobile || "-",
         },
         {
             accessorKey: "parentEmail",
             header: "保護者メール",
-            cell: ({ row }) => row.original.parentEmail || "N/A",
+            cell: ({ row }) => row.original.parentEmail || "-",
         },
         {
             accessorKey: "notes",
             header: "メモ",
-            cell: ({ row }) => row.original.notes || "N/A",
+            cell: ({ row }) => row.original.notes || "-",
         },
         {
             id: "actions",

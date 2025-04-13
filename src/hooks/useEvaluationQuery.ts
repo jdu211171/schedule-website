@@ -2,10 +2,10 @@ import { useQuery } from "@tanstack/react-query";
 import { getEvaluations } from "@/actions/evaluation";
 import { getEvaluation } from "@/actions/evaluation/read";
 
-export function useEvaluations() {
+export function useEvaluations(page: number = 1, pageSize: number = 15) {
     return useQuery({
-        queryKey: ["evaluations"],
-        queryFn: getEvaluations,
+        queryKey: ["evaluations", page, pageSize],
+        queryFn: () => getEvaluations({ page, pageSize }),
     });
 }
 
