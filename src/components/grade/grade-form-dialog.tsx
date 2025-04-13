@@ -98,14 +98,14 @@ export function GradeFormDialog({ open, onOpenChange, grade }: GradeFormDialogPr
                                     <FormLabel>学生タイプ</FormLabel>
                                     <FormControl>
                                         <Select
-                                            onValueChange={(value) => field.onChange(value === "null" ? null : value)}
-                                            value={field.value || "null"}
+                                            onValueChange={(value) => field.onChange(value === "none" ? null : value)}
+                                            value={field.value || "none"}
                                         >
                                             <SelectTrigger>
                                                 <SelectValue placeholder="学生タイプを選択" />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="null">未選択</SelectItem>
+                                                <SelectItem value="none">未選択</SelectItem>
                                                 {studentTypes.map((type) => (
                                                     <SelectItem key={type.studentTypeId} value={type.studentTypeId}>
                                                         {type.name}
@@ -126,15 +126,15 @@ export function GradeFormDialog({ open, onOpenChange, grade }: GradeFormDialogPr
                                     <FormLabel>学年</FormLabel>
                                     <FormControl>
                                         <Select
-                                            onValueChange={(value) => field.onChange(value === "null" ? null : parseInt(value))}
-                                            value={field.value?.toString() || "null"}
+                                            onValueChange={(value) => field.onChange(value === "none" ? null : parseInt(value))}
+                                            value={field.value?.toString() || "none"}
                                         >
                                             <SelectTrigger>
                                                 <SelectValue placeholder="学年を選択" />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="null">未選択</SelectItem>
-                                                {Array.from({ length: 12 }, (_, i) => i + 1).map((year) => (
+                                                <SelectItem value="none">未選択</SelectItem>
+                                                {Array.from({ length: 6 }, (_, i) => i + 1).map((year) => (
                                                     <SelectItem key={year} value={year.toString()}>
                                                         {year}年生
                                                     </SelectItem>
