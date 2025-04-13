@@ -16,8 +16,8 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { useRouter } from "next/navigation";
-import { loginUser } from "@/actions/auth-actions";
 import { toast } from "sonner";
+import { useAuth } from "@/lib/supabase/context/AuthContext";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -38,16 +38,21 @@ export function LoginForm({
       password: "",
     },
   });
+  const { signIn } = useAuth();
 
   const loginMutation = useMutation({
     mutationFn: async (values: LoginFormValues) =>
-      await loginUser(values.email, values.password),
+      signIn(values.email, values.password),
     onSuccess: () => {
-      toast.success("Login successful");
+      toast.success("Login successful", {
+        description: "Welcome back!",
+      });
       router.push("/");
     },
     onError: (error) => {
-      toast.error(error.message || "Login failed");
+      toast.error("Login failed", {
+        description: error.message,
+      });
     },
   });
 

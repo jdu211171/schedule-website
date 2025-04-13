@@ -23,7 +23,7 @@ export const studentCreateSchema = z.object({
 });
 
 export const studentUpdateSchema = studentCreateSchema.partial().extend({
-    studentId: z.string().cuid({message: "Invalid ID"}), // Required for updates
+    studentId: z.string().cuid({ message: "Invalid ID" }), // Required for updates
 });
 
 export const studentSchema = z.object({
