@@ -18,7 +18,7 @@ export async function getSubjects({
     return prisma.subject.findMany({
         skip,
         take: pageSize,
-        orderBy: { name: "asc" },
+        orderBy: { createdAt: "desc" },
         include: {
             subjectType: true
         }

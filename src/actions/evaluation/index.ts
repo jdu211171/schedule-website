@@ -18,6 +18,6 @@ export async function getEvaluations({
     return prisma.evaluation.findMany({
         skip,
         take: pageSize,
-        orderBy: { name: "asc" },
+        orderBy: { createdAt: "desc" },
     });
 }

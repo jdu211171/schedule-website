@@ -18,6 +18,6 @@ export async function getTeacherSubjects({
     return prisma.teacherSubject.findMany({
         skip,
         take: pageSize,
-        orderBy: [{ teacherId: "asc" }, { subjectId: "asc" }],
+        orderBy: { createdAt: "desc" },
     });
 }

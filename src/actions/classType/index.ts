@@ -19,7 +19,7 @@ export async function getClassTypes({
         skip,
         take: pageSize,
         orderBy: {
-            name: 'asc',
+            createdAt: 'desc',
         },
     });
 }
