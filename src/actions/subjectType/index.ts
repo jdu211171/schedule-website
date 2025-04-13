@@ -18,6 +18,6 @@ export async function getSubjectTypes({
     return prisma.subjectType.findMany({
         skip,
         take: pageSize,
-        orderBy: { name: "asc" },
+        orderBy: { createdAt: "desc" },
     });
 }

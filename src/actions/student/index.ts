@@ -19,6 +19,9 @@ export async function getStudents({
   return prisma.student.findMany({
     skip,
     take: pageSize,
+    orderBy: {
+      createdAt: 'desc',
+    },
     include: {
       grade: true,
     },

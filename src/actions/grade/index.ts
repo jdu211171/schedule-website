@@ -19,7 +19,7 @@ export async function getGrades({
         skip,
         take: pageSize,
         orderBy: {
-            name: 'asc',
+            createdAt: 'desc',
         },
     });
 }

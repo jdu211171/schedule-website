@@ -18,6 +18,6 @@ export async function getTeachers({
     return prisma.teacher.findMany({
         skip,
         take: pageSize,
-        orderBy: { name: "asc" },
+        orderBy: { createdAt: "desc" },
     });
 }
