@@ -44,10 +44,6 @@ export function SubjectTable() {
 
     const columns: ColumnDef<Subject>[] = [
         {
-            accessorKey: "subjectId",
-            header: "科目ID",
-        },
-        {
             accessorKey: "name",
             header: "名前",
         },

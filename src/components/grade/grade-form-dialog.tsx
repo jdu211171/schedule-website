@@ -10,9 +10,11 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useGradeCreate, useGradeUpdate } from "@/hooks/useGradeMutation"
 import { gradeCreateSchema } from "@/schemas/grade.schema"
 import { Grade } from "@prisma/client"
+import { useStudentTypes } from "@/hooks/useStudentTypeQuery"
 
 interface GradeFormDialogProps {
     open: boolean
@@ -24,6 +26,7 @@ export function GradeFormDialog({ open, onOpenChange, grade }: GradeFormDialogPr
     const [isSubmitting, setIsSubmitting] = useState(false)
     const createGradeMutation = useGradeCreate()
     const updateGradeMutation = useGradeUpdate()
+    const { data: studentTypes = [] } = useStudentTypes()
 
     const isEditing = !!grade
 
@@ -92,9 +95,24 @@ export function GradeFormDialog({ open, onOpenChange, grade }: GradeFormDialogPr
                             name="studentTypeId"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>学生タイプID</FormLabel>
+                                    <FormLabel>学生タイプ</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="学生タイプIDを入力" {...field} value={field.value || ""} />
+                                        <Select
+                                            onValueChange={(value) => field.onChange(value === "null" ? null : value)}
+                                            value={field.value || "null"}
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="学生タイプを選択" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="null">未選択</SelectItem>
+                                                {studentTypes.map((type) => (
+                                                    <SelectItem key={type.studentTypeId} value={type.studentTypeId}>
+                                                        {type.name}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -107,7 +125,22 @@ export function GradeFormDialog({ open, onOpenChange, grade }: GradeFormDialogPr
                                 <FormItem>
                                     <FormLabel>学年</FormLabel>
                                     <FormControl>
-                                        <Input type="number" placeholder="学年を入力" {...field} value={field.value ?? ""} />
+                                        <Select
+                                            onValueChange={(value) => field.onChange(value === "null" ? null : parseInt(value))}
+                                            value={field.value?.toString() || "null"}
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="学年を選択" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="null">未選択</SelectItem>
+                                                {Array.from({ length: 12 }, (_, i) => i + 1).map((year) => (
+                                                    <SelectItem key={year} value={year.toString()}>
+                                                        {year}年生
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>

@@ -39,7 +39,7 @@ export function EvaluationFormDialog({ open, onOpenChange, evaluation }: Evaluat
         resolver: zodResolver(formSchema),
         defaultValues: {
             name: evaluation?.name || "",
-            score: evaluation?.score || undefined,
+            score: evaluation?.score ?? undefined,
             notes: evaluation?.notes || "",
         },
     })
@@ -92,7 +92,17 @@ export function EvaluationFormDialog({ open, onOpenChange, evaluation }: Evaluat
                                 <FormItem>
                                     <FormLabel>スコア</FormLabel>
                                     <FormControl>
-                                        <Input type="number" placeholder="スコアを入力" {...field} />
+                                        <Input
+                                            type="number"
+                                            placeholder="スコアを入力"
+                                            value={field.value === undefined ? "" : field.value}
+                                            onChange={e => {
+                                                const value = e.target.value === ""
+                                                    ? undefined
+                                                    : parseInt(e.target.value, 10);
+                                                field.onChange(value);
+                                            }}
+                                        />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>

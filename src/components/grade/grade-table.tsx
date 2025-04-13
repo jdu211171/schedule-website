@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import type { ColumnDef } from "@tanstack/react-table"
 import { Pencil, Trash2 } from "lucide-react"
 
@@ -21,6 +21,7 @@ import {
 import { Grade } from "@prisma/client"
 import { GradeFormDialog } from "@/components/grade/grade-form-dialog"
 import { useGradesCount } from "@/hooks/useGradeQuery"
+import { useStudentTypes } from "@/hooks/useStudentTypeQuery"
 
 export function GradeTable() {
     const [searchTerm, setSearchTerm] = useState("")
@@ -28,11 +29,20 @@ export function GradeTable() {
     const pageSize = 10
     const { data: grades = [], isLoading, isFetching } = useGrades(page, pageSize)
     const { data: totalCount = 0 } = useGradesCount()
+    const { data: studentTypes = [] } = useStudentTypes()
     const deleteGradeMutation = useGradeDelete()
 
     const [gradeToEdit, setGradeToEdit] = useState<Grade | null>(null)
     const [gradeToDelete, setGradeToDelete] = useState<Grade | null>(null)
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+
+    const studentTypeMap = useMemo(() => {
+        const map = new Map<string, string>();
+        studentTypes.forEach(type => {
+            map.set(type.studentTypeId, type.name);
+        });
+        return map;
+    }, [studentTypes]);
 
     const filteredGrades = searchTerm
         ? grades.filter(
@@ -50,10 +60,15 @@ export function GradeTable() {
         {
             accessorKey: "studentTypeId",
             header: "学生タイプ",
+            cell: ({ row }) => {
+                const studentTypeId = row.original.studentTypeId;
+                return studentTypeId ? studentTypeMap.get(studentTypeId) || "-" : "-";
+            }
         },
         {
             accessorKey: "gradeYear",
             header: "学年",
+            cell: ({ row }) => row.original.gradeYear ? `${row.original.gradeYear}年生` : "-"
         },
         {
             accessorKey: "notes",
