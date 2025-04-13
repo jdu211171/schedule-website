@@ -1,12 +1,19 @@
 import { getClassTypes } from "@/actions/classType";
 import { getClassType } from "@/actions/classType/read";
+import { getClassTypesCount } from "@/actions/count";
 import { useQuery } from "@tanstack/react-query";
 
-
-export function useClassTypes() {
+export function useClassTypesCount() {
     return useQuery({
-        queryKey: ["classTypes"],
-        queryFn: getClassTypes,
+        queryKey: ["classTypes", "count"],
+        queryFn: () => getClassTypesCount(),
+    });
+}
+
+export function useClassTypes(page: number = 1, pageSize: number = 15) {
+    return useQuery({
+        queryKey: ["classTypes", page, pageSize],
+        queryFn: () => getClassTypes({ page, pageSize }),
     });
 }
 

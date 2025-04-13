@@ -10,6 +10,8 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useGrades } from "@/hooks/useGradeQuery"
 import { useStudentCreate, useStudentUpdate } from "@/hooks/useStudentMutation"
 import { studentCreateSchema } from "@/schemas/student.schema"
 import { Student } from "@prisma/client"
@@ -26,6 +28,7 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
     const updateStudentMutation = useStudentUpdate()
 
     const isEditing = !!student
+    const { data: grades = [] } = useGrades()
 
     const formSchema = isEditing
         ? z.object({
@@ -69,6 +72,13 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
             notes: student?.notes || "",
         },
     })
+
+    const formatDate = (date: Date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
 
     async function onSubmit(values: z.infer<typeof formSchema>) {
         setIsSubmitting(true)
@@ -124,15 +134,30 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
                                 <FormMessage />
                             </FormItem>
                         )} />
-                        <FormField control={form.control} name="gradeId" render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>学年ID</FormLabel>
-                                <FormControl>
-                                    <Input placeholder="学年IDを入力" {...field} value={field.value || ""} />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )} />
+                        <FormField
+                            control={form.control}
+                            name="gradeId"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>学年</FormLabel>
+                                    <FormControl>
+                                        <Select onValueChange={field.onChange} value={field.value as string}>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="学年を選択" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {grades.map((grade) => (
+                                                    <SelectItem key={grade.gradeId} value={grade.gradeId}>
+                                                        {grade.name}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
                         <FormField control={form.control} name="schoolName" render={({ field }) => (
                             <FormItem>
                                 <FormLabel>学校名</FormLabel>
@@ -146,7 +171,15 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
                             <FormItem>
                                 <FormLabel>学校タイプ</FormLabel>
                                 <FormControl>
-                                    <Input placeholder="学校タイプを入力" {...field} />
+                                    <Select onValueChange={field.onChange} value={field.value || ""}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="学校タイプを選択" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="PUBLIC">公立</SelectItem>
+                                            <SelectItem value="PRIVATE">私立</SelectItem>
+                                        </SelectContent>
+                                    </Select>
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -155,7 +188,15 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
                             <FormItem>
                                 <FormLabel>受験校タイプ</FormLabel>
                                 <FormControl>
-                                    <Input placeholder="受験校タイプを入力" {...field} />
+                                    <Select onValueChange={field.onChange} value={field.value || ""}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="受験校タイプを選択" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="PUBLIC">公立</SelectItem>
+                                            <SelectItem value="PRIVATE">私立</SelectItem>
+                                        </SelectContent>
+                                    </Select>
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -164,7 +205,18 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
                             <FormItem>
                                 <FormLabel>受験校カテゴリータイプ</FormLabel>
                                 <FormControl>
-                                    <Input placeholder="受験校カテゴリーを入力" {...field} value={field.value || ""} />
+                                    <Select onValueChange={(value) => field.onChange(value || null)} value={field.value || ""}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="受験校カテゴリーを選択" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="ELEMENTARY">小学校</SelectItem>
+                                            <SelectItem value="MIDDLE">中学校</SelectItem>
+                                            <SelectItem value="HIGH">高校</SelectItem>
+                                            <SelectItem value="UNIVERSITY">大学</SelectItem>
+                                            <SelectItem value="OTHER">その他</SelectItem>
+                                        </SelectContent>
+                                    </Select>
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -191,7 +243,15 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
                             <FormItem>
                                 <FormLabel>入学日</FormLabel>
                                 <FormControl>
-                                    <Input type="date" {...field} value={field.value ? field.value.toISOString().split('T')[0] : ""} />
+                                    <Input
+                                        type="date"
+                                        {...field}
+                                        value={field.value instanceof Date ? formatDate(field.value) : ""}
+                                        onChange={(e) => {
+                                            const dateValue = e.target.value ? new Date(e.target.value) : null;
+                                            field.onChange(dateValue);
+                                        }}
+                                    />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -200,7 +260,15 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
                             <FormItem>
                                 <FormLabel>生年月日</FormLabel>
                                 <FormControl>
-                                    <Input type="date" {...field} value={field.value ? field.value.toISOString().split('T')[0] : ""} />
+                                    <Input
+                                        type="date"
+                                        {...field}
+                                        value={field.value instanceof Date ? formatDate(field.value) : ""}
+                                        onChange={(e) => {
+                                            const dateValue = e.target.value ? new Date(e.target.value) : null;
+                                            field.onChange(dateValue);
+                                        }}
+                                    />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>

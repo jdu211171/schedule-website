@@ -6,7 +6,7 @@ import { Pencil, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/data-table";
-import { useBooths } from "@/hooks/useBoothQuery";
+import { useBooths, useBoothsCount } from "@/hooks/useBoothQuery";
 import { useBoothDelete } from "@/hooks/useBoothMutation";
 import {
   AlertDialog,
@@ -23,7 +23,10 @@ import { BoothFormDialog } from "@/components/booth/booth-form-dialog";
 
 export function BoothTable() {
   const [searchTerm, setSearchTerm] = useState("");
-  const { data: booths = [], isLoading } = useBooths();
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+  const { data: booths = [], isLoading, isFetching } = useBooths(page, pageSize);
+  const { data: totalCount = 0 } = useBoothsCount();
   const deleteBoothMutation = useBoothDelete();
 
   const [boothToEdit, setBoothToEdit] = useState<Booth | null>(null);
@@ -47,9 +50,7 @@ export function BoothTable() {
     {
       accessorKey: "status",
       header: "ステータス",
-      cell: ({ row }) => (
-        <div>{row.original.status ? "アクティブ" : "非アクティブ"}</div>
-      ),
+      cell: ({ row }) => <div>{row.original.status ? "使用可" : "使用不可"}</div>,
     },
     {
       accessorKey: "notes",
@@ -92,17 +93,28 @@ export function BoothTable() {
     }
   };
 
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage + 1);
+  };
+
+  const totalPages = Math.ceil(totalCount / pageSize);
+
   return (
     <>
       <DataTable
         columns={columns}
         data={filteredBooths}
-        isLoading={isLoading}
+        isLoading={isLoading || isFetching}
         searchPlaceholder="ブースを検索..."
         onSearch={setSearchTerm}
         searchValue={searchTerm}
         onCreateNew={() => setIsCreateDialogOpen(true)}
         createNewLabel="新規作成"
+        pageIndex={page - 1}
+        pageCount={totalPages || 1}
+        onPageChange={handlePageChange}
+        pageSize={pageSize}
+        totalItems={totalCount}
       />
 
       {/* Edit Booth Dialog */}

@@ -1,12 +1,20 @@
 import { getStudents } from "@/actions/student";
 import { getStudent } from "@/actions/student/read";
+import { getStudentsCount } from "@/actions/count";
+import { StudentWithGrade } from "@/schemas/student.schema";
 import { useQuery } from "@tanstack/react-query";
 
-
-export function useStudents() {
+export function useStudentsCount() {
     return useQuery({
-        queryKey: ["students"],
-        queryFn: getStudents,
+        queryKey: ["students", "count"],
+        queryFn: () => getStudentsCount(),
+    });
+}
+
+export function useStudents(page: number = 1, pageSize: number = 15) {
+    return useQuery({
+        queryKey: ["students", page, pageSize],
+        queryFn: () => getStudents({ page, pageSize }) as Promise<StudentWithGrade[]>,
     });
 }
 

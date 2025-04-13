@@ -1,11 +1,19 @@
 import { useQuery } from "@tanstack/react-query";
 import { getEvaluations } from "@/actions/evaluation";
 import { getEvaluation } from "@/actions/evaluation/read";
+import { getEvaluationsCount } from "@/actions/count";
 
-export function useEvaluations() {
+export function useEvaluationsCount() {
     return useQuery({
-        queryKey: ["evaluations"],
-        queryFn: getEvaluations,
+        queryKey: ["evaluations", "count"],
+        queryFn: () => getEvaluationsCount(),
+    });
+}
+
+export function useEvaluations(page: number = 1, pageSize: number = 15) {
+    return useQuery({
+        queryKey: ["evaluations", page, pageSize],
+        queryFn: () => getEvaluations({ page, pageSize }),
     });
 }
 

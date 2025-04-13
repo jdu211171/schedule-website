@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { Grade } from "@prisma/client";
 
 const ExamSchoolTypeEnum = z.enum(["ELEMENTARY", "MIDDLE", "HIGH", "UNIVERSITY", "OTHER"]);
 
@@ -19,10 +20,11 @@ export const studentCreateSchema = z.object({
     studentMobile: z.string().max(20).nullable(),
     parentEmail: z.string().max(100).nullable(),
     notes: z.string().nullable(),
+    userId: z.string().nullable().optional(),
 });
 
 export const studentUpdateSchema = studentCreateSchema.partial().extend({
-    studentId: z.string().cuid({ message: "Invalid ID" }), // Required for updates
+    studentId: z.string().cuid({ message: "Invalid ID" }),
 });
 
 export const studentSchema = z.object({
@@ -43,10 +45,12 @@ export const studentSchema = z.object({
     studentMobile: z.string().nullable(),
     parentEmail: z.string().nullable(),
     notes: z.string().nullable(),
+    userId: z.string().nullable(),
     createdAt: z.date(),
     updatedAt: z.date(),
 });
 
 export type StudentCreateInput = z.infer<typeof studentCreateSchema>;
 export type StudentUpdateInput = z.infer<typeof studentUpdateSchema>;
+export type StudentWithGrade = Student & { grade: Grade | null };
 export type Student = z.infer<typeof studentSchema>;

@@ -20,10 +20,14 @@ import {
 } from "@/components/ui/alert-dialog"
 import { SubjectType } from "@prisma/client"
 import { SubjectTypeFormDialog } from "@/components/subject-type/subject-type-form-dialog"
+import { useSubjectTypesCount } from "@/hooks/useSubjectTypeQuery"
 
 export function SubjectTypeTable() {
     const [searchTerm, setSearchTerm] = useState("")
-    const { data: subjectTypes = [], isLoading } = useSubjectTypes()
+    const [page, setPage] = useState(1)
+    const pageSize = 10
+    const { data: subjectTypes = [], isLoading, isFetching } = useSubjectTypes(page, pageSize)
+    const { data: totalCount = 0 } = useSubjectTypesCount()
     const deleteSubjectTypeMutation = useSubjectTypeDelete()
 
     const [subjectTypeToEdit, setSubjectTypeToEdit] = useState<SubjectType | null>(null)
@@ -78,17 +82,28 @@ export function SubjectTypeTable() {
         }
     }
 
+    const handlePageChange = (newPage: number) => {
+        setPage(newPage + 1)
+    }
+
+    const totalPages = Math.ceil(totalCount / pageSize)
+
     return (
         <>
             <DataTable
                 columns={columns}
                 data={filteredSubjectTypes}
-                isLoading={isLoading}
+                isLoading={isLoading || isFetching}
                 searchPlaceholder="科目タイプを検索..."
                 onSearch={setSearchTerm}
                 searchValue={searchTerm}
                 onCreateNew={() => setIsCreateDialogOpen(true)}
                 createNewLabel="新しい科目タイプ"
+                pageIndex={page - 1}
+                pageCount={totalPages || 1}
+                onPageChange={handlePageChange}
+                pageSize={pageSize}
+                totalItems={totalCount}
             />
 
             {/* Edit Subject Type Dialog */}
