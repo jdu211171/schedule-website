@@ -1,11 +1,30 @@
 import { useState } from "react";
 import { Lesson } from "./types";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface LessonScheduleModalProps {
   lessons: Lesson[];
   onClose: () => void;
   teacherName: string;
   studentName: string;
+  open?: boolean; 
 }
 
 export default function LessonScheduleModal({
@@ -13,23 +32,120 @@ export default function LessonScheduleModal({
   onClose,
   teacherName,
   studentName,
+  open = true, 
 }: LessonScheduleModalProps) {
   const [editingLessonId, setEditingLessonId] = useState<string | null>(null);
 
   const formatStatus = (status: string) => {
-    switch (status.toLowerCase()) {
-      case "активен":
-        return <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs">アクティブ</span>;
-      case "отменен":
-        return <span className="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs">キャンセル</span>;
-      case "перенесен":
-        return <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs">移籍</span>;
+    switch (status) {
+      case "有効":
+        return <Badge variant="outline" className="bg-green-100 text-green-800 hover:bg-green-200">アクティブ</Badge>;
+      case "キャンセル":
+        return <Badge variant="outline" className="bg-red-100 text-red-800 hover:bg-red-200">キャンセル</Badge>;
+      case "移動":
+        return <Badge variant="outline" className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200">移籍</Badge>;
       default:
-        return <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded-full text-xs">{status}</span>;
+        return <Badge variant="outline" className="bg-gray-100 text-gray-800 hover:bg-gray-200">{status}</Badge>;
     }
   };
 
-  return (
+  // Для обратной совместимости оставляем оба варианта:
+  // - Использование Dialog из shadcn если передан параметр open
+  // - Использование старого подхода с полноэкранным div иначе
+  return open !== undefined ? (
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
+      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle className="text-xl font-bold">スケジュール</DialogTitle>
+          <div className="mt-2">
+            <p className="text-gray-600">
+              <span className="font-semibold">先生:</span> {teacherName}
+            </p>
+            <p className="text-gray-600">
+              <span className="font-semibold">生徒:</span> {studentName}
+            </p>
+          </div>
+        </DialogHeader>
+
+        <ScrollArea className="flex-grow">
+          {lessons.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-16">ID</TableHead>
+                  <TableHead>授業名</TableHead>
+                  <TableHead>曜日</TableHead>
+                  <TableHead>開始時間</TableHead>
+                  <TableHead>終了時間</TableHead>
+                  <TableHead>ステータス</TableHead>
+                  <TableHead>行動</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {lessons.map((lesson) => (
+                  <TableRow key={lesson.id}>
+                    <TableCell className="text-gray-500">
+                      {lesson.id}
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {lesson.name}
+                    </TableCell>
+                    <TableCell className="text-gray-500">
+                      {lesson.dayOfWeek}
+                    </TableCell>
+                    <TableCell className="text-gray-500">
+                      {lesson.startTime}
+                    </TableCell>
+                    <TableCell className="text-gray-500">
+                      {lesson.endTime}
+                    </TableCell>
+                    <TableCell>
+                      {formatStatus(lesson.status)}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex space-x-2">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => setEditingLessonId(lesson.id)}
+                          className="text-blue-600 hover:text-blue-800 hover:bg-blue-100"
+                        >
+                          編集
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="text-red-600 hover:text-red-800 hover:bg-red-100"
+                        >
+                          削除
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <div className="text-center py-10">
+              <p className="text-gray-500">
+                この教師と生徒のペアのレッスンは見つかりませんでした。
+              </p>
+            </div>
+          )}
+        </ScrollArea>
+
+        <DialogFooter className="flex justify-between mt-4 pt-4 border-t">
+          <Button variant="outline" onClick={onClose}>
+            閉じる
+          </Button>
+          <Button className="bg-green-600 text-white hover:bg-green-700">
+            新しい授業を追加する
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  ) : (
+    // Старая реализация для обратной совместимости
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         <div className="p-6 border-b border-gray-200">
@@ -54,91 +170,78 @@ export default function LessonScheduleModal({
 
         <div className="overflow-auto p-6 flex-grow">
           {lessons.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      ID
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    授業名
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    曜日
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    開始時間
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    終了時間
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    ステータス
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    行動
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {lessons.map((lesson) => (
-                    <tr key={lesson.id}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {lesson.id}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {lesson.name}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {lesson.dayOfWeek}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {lesson.startTime}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {lesson.endTime}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {formatStatus(lesson.status)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={() => setEditingLessonId(lesson.id)}
-                            className="text-blue-600 hover:text-blue-800"
-                          >
-                            編集
-                          </button>
-                          <button className="text-red-600 hover:text-red-800">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-16">ID</TableHead>
+                  <TableHead>授業名</TableHead>
+                  <TableHead>曜日</TableHead>
+                  <TableHead>開始時間</TableHead>
+                  <TableHead>終了時間</TableHead>
+                  <TableHead>ステータス</TableHead>
+                  <TableHead>行動</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {lessons.map((lesson) => (
+                  <TableRow key={lesson.id}>
+                    <TableCell className="text-gray-500">
+                      {lesson.id}
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {lesson.name}
+                    </TableCell>
+                    <TableCell className="text-gray-500">
+                      {lesson.dayOfWeek}
+                    </TableCell>
+                    <TableCell className="text-gray-500">
+                      {lesson.startTime}
+                    </TableCell>
+                    <TableCell className="text-gray-500">
+                      {lesson.endTime}
+                    </TableCell>
+                    <TableCell>
+                      {formatStatus(lesson.status)}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex space-x-2">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => setEditingLessonId(lesson.id)}
+                          className="text-blue-600 hover:text-blue-800 hover:bg-blue-100"
+                        >
+                          編集
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="text-red-600 hover:text-red-800 hover:bg-red-100"
+                        >
                           削除
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           ) : (
             <div className="text-center py-10">
               <p className="text-gray-500">
-              この教師と生徒のペアのレッスンは見つかりませんでした。
+                この教師と生徒のペアのレッスンは見つかりませんでした。
               </p>
             </div>
           )}
         </div>
 
         <div className="p-6 border-t border-gray-200 flex justify-between">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
-          >
+          <Button variant="outline" onClick={onClose}>
             閉じる
-          </button>
-          <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
-          新しい授業を追加する
-          </button>
+          </Button>
+          <Button className="bg-green-600 hover:bg-green-700">
+            新しい授業を追加する
+          </Button>
         </div>
       </div>
     </div>
