@@ -47,3 +47,8 @@ export async function getTeacherSubjectsCount() {
     await requireAuth();
     return prisma.teacherSubject.count();
 }
+
+export async function getStudentTypesCount() {
+    await requireAuth();
+    return prisma.studentType.count();
+}

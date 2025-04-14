@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import type { ColumnDef } from "@tanstack/react-table"
 import { Pencil, Trash2 } from "lucide-react"
 
@@ -21,6 +21,7 @@ import {
 import { Grade } from "@prisma/client"
 import { GradeFormDialog } from "@/components/grade/grade-form-dialog"
 import { useGradesCount } from "@/hooks/useGradeQuery"
+import { useStudentTypes } from "@/hooks/useStudentTypeQuery"
 
 export function GradeTable() {
     const [searchTerm, setSearchTerm] = useState("")
@@ -28,11 +29,20 @@ export function GradeTable() {
     const pageSize = 10
     const { data: grades = [], isLoading, isFetching } = useGrades(page, pageSize)
     const { data: totalCount = 0 } = useGradesCount()
+    const { data: studentTypes = [] } = useStudentTypes()
     const deleteGradeMutation = useGradeDelete()
 
     const [gradeToEdit, setGradeToEdit] = useState<Grade | null>(null)
     const [gradeToDelete, setGradeToDelete] = useState<Grade | null>(null)
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+
+    const studentTypeMap = useMemo(() => {
+        const map = new Map<string, string>();
+        studentTypes.forEach(type => {
+            map.set(type.studentTypeId, type.name);
+        });
+        return map;
+    }, [studentTypes]);
 
     const filteredGrades = searchTerm
         ? grades.filter(
@@ -50,10 +60,15 @@ export function GradeTable() {
         {
             accessorKey: "studentTypeId",
             header: "学生タイプ",
+            cell: ({ row }) => {
+                const studentTypeId = row.original.studentTypeId;
+                return studentTypeId ? studentTypeMap.get(studentTypeId) || "-" : "-";
+            }
         },
         {
             accessorKey: "gradeYear",
             header: "学年",
+            cell: ({ row }) => row.original.gradeYear ? `${row.original.gradeYear}年生` : "-"
         },
         {
             accessorKey: "notes",
@@ -83,7 +98,7 @@ export function GradeTable() {
                 await deleteGradeMutation.mutateAsync(gradeToDelete.gradeId)
                 setGradeToDelete(null)
             } catch (error) {
-                console.error("成績の削除に失敗しました:", error)
+                console.error("学年の削除に失敗しました:", error)
             }
         }
     }
@@ -100,11 +115,11 @@ export function GradeTable() {
                 columns={columns}
                 data={filteredGrades}
                 isLoading={isLoading || isFetching}
-                searchPlaceholder="成績を検索..."
+                searchPlaceholder="学年を検索..."
                 onSearch={setSearchTerm}
                 searchValue={searchTerm}
                 onCreateNew={() => setIsCreateDialogOpen(true)}
-                createNewLabel="新しい成績"
+                createNewLabel="新しい学年"
                 pageIndex={page - 1}
                 pageCount={totalPages || 1}
                 onPageChange={handlePageChange}
@@ -130,7 +145,7 @@ export function GradeTable() {
                     <AlertDialogHeader>
                         <AlertDialogTitle>本当に削除しますか？</AlertDialogTitle>
                         <AlertDialogDescription>
-                            この操作は元に戻せません。成績「{gradeToDelete?.name}」を完全に削除します。
+                            この操作は元に戻せません。学年「{gradeToDelete?.name}」を完全に削除します。
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>

@@ -10,55 +10,53 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { useEvaluationCreate, useEvaluationUpdate } from "@/hooks/useEvaluationMutation"
-import { evaluationCreateSchema } from "@/schemas/evaluation.schema"
-import { Evaluation } from "@prisma/client"
+import { useStudentTypeCreate, useStudentTypeUpdate } from "@/hooks/useStudentTypeMutation"
+import { studentTypeCreateSchema } from "@/schemas/studentType.schema"
+import { StudentType } from "@prisma/client"
 
-interface EvaluationFormDialogProps {
+interface StudentTypeFormDialogProps {
     open: boolean
     onOpenChange: (open: boolean) => void
-    evaluation?: Evaluation | null
+    studentType?: StudentType | null
 }
 
-export function EvaluationFormDialog({ open, onOpenChange, evaluation }: EvaluationFormDialogProps) {
+export function StudentTypeFormDialog({ open, onOpenChange, studentType }: StudentTypeFormDialogProps) {
     const [isSubmitting, setIsSubmitting] = useState(false)
-    const createEvaluationMutation = useEvaluationCreate()
-    const updateEvaluationMutation = useEvaluationUpdate()
+    const createStudentTypeMutation = useStudentTypeCreate()
+    const updateStudentTypeMutation = useStudentTypeUpdate()
 
-    const isEditing = !!evaluation
+    const isEditing = !!studentType
 
     const formSchema = isEditing
         ? z.object({
             name: z.string().min(1, { message: "名前は必須です" }),
-            score: z.number().int().optional(),
-            notes: z.string().optional(),
+            description: z.string().optional(),
         })
-        : evaluationCreateSchema
+        : studentTypeCreateSchema
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: {
-            name: evaluation?.name || "",
-            score: evaluation?.score ?? undefined,
-            notes: evaluation?.notes || "",
+            name: studentType?.name || "",
+            description: studentType?.description || "",
         },
     })
 
     async function onSubmit(values: z.infer<typeof formSchema>) {
         setIsSubmitting(true)
         try {
-            if (isEditing && evaluation) {
-                await updateEvaluationMutation.mutateAsync({
-                    evaluationId: evaluation.evaluationId,
+            if (isEditing && studentType) {
+                await updateStudentTypeMutation.mutateAsync({
+                    studentTypeId: studentType.studentTypeId,
                     ...values,
                 })
             } else {
-                await createEvaluationMutation.mutateAsync(values)
+                await createStudentTypeMutation.mutateAsync(values)
             }
             onOpenChange(false)
             form.reset()
         } catch (error) {
-            console.error("評価の保存に失敗しました:", error)
+            console.error("学生タイプの保存に失敗しました:", error)
         } finally {
             setIsSubmitting(false)
         }
@@ -68,7 +66,7 @@ export function EvaluationFormDialog({ open, onOpenChange, evaluation }: Evaluat
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                    <DialogTitle>{isEditing ? "評価の編集" : "評価の作成"}</DialogTitle>
+                    <DialogTitle>{isEditing ? "学生タイプの編集" : "学生タイプの作成"}</DialogTitle>
                 </DialogHeader>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -79,7 +77,7 @@ export function EvaluationFormDialog({ open, onOpenChange, evaluation }: Evaluat
                                 <FormItem>
                                     <FormLabel>名前</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="評価の名前を入力" {...field} />
+                                        <Input placeholder="学生タイプ名を入力" {...field} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -87,35 +85,12 @@ export function EvaluationFormDialog({ open, onOpenChange, evaluation }: Evaluat
                         />
                         <FormField
                             control={form.control}
-                            name="score"
+                            name="description"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>スコア</FormLabel>
+                                    <FormLabel>説明</FormLabel>
                                     <FormControl>
-                                        <Input
-                                            type="number"
-                                            placeholder="スコアを入力"
-                                            value={field.value === undefined ? "" : field.value}
-                                            onChange={e => {
-                                                const value = e.target.value === ""
-                                                    ? undefined
-                                                    : parseInt(e.target.value, 10);
-                                                field.onChange(value);
-                                            }}
-                                        />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="notes"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>メモ</FormLabel>
-                                    <FormControl>
-                                        <Textarea placeholder="メモを入力（任意）" {...field} value={field.value || ""} />
+                                        <Textarea placeholder="説明を入力（任意）" {...field} value={field.value || ""} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>

@@ -10,9 +10,11 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useSubjectCreate, useSubjectUpdate } from "@/hooks/useSubjectMutation"
 import { subjectCreateSchema } from "@/schemas/subject.schema"
 import { Subject } from "@prisma/client"
+import { useSubjectTypes } from "@/hooks/useSubjectTypeQuery"
 
 interface SubjectFormDialogProps {
     open: boolean
@@ -24,13 +26,14 @@ export function SubjectFormDialog({ open, onOpenChange, subject }: SubjectFormDi
     const [isSubmitting, setIsSubmitting] = useState(false)
     const createSubjectMutation = useSubjectCreate()
     const updateSubjectMutation = useSubjectUpdate()
+    const { data: subjectTypes = [] } = useSubjectTypes()
 
     const isEditing = !!subject
 
     const formSchema = isEditing
         ? z.object({
             name: z.string().min(1, { message: "名前は必須です" }),
-            subjectTypeId: z.string().optional(),
+            subjectTypeId: z.string().nullable().optional(),
             notes: z.string().optional(),
         })
         : subjectCreateSchema
@@ -39,7 +42,7 @@ export function SubjectFormDialog({ open, onOpenChange, subject }: SubjectFormDi
         resolver: zodResolver(formSchema),
         defaultValues: {
             name: subject?.name || "",
-            subjectTypeId: subject?.subjectTypeId || "",
+            subjectTypeId: subject?.subjectTypeId || null,
             notes: subject?.notes || "",
         },
     })
@@ -55,7 +58,11 @@ export function SubjectFormDialog({ open, onOpenChange, subject }: SubjectFormDi
                     notes: values.notes ?? undefined,
                 })
             } else {
-                await createSubjectMutation.mutateAsync(values)
+                await createSubjectMutation.mutateAsync({
+                    ...values,
+                    subjectTypeId: values.subjectTypeId ?? undefined,
+                    notes: values.notes ?? undefined,
+                })
             }
             onOpenChange(false)
             form.reset()
@@ -94,7 +101,22 @@ export function SubjectFormDialog({ open, onOpenChange, subject }: SubjectFormDi
                                 <FormItem>
                                     <FormLabel>科目タイプ</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="科目タイプを入力" {...field} value={field.value || ""} />
+                                        <Select
+                                            onValueChange={(value) => field.onChange(value === "none" ? null : value)}
+                                            value={field.value || "none"}
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="科目タイプを選択" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="none">未選択</SelectItem>
+                                                {subjectTypes.map((type) => (
+                                                    <SelectItem key={type.subjectTypeId} value={type.subjectTypeId}>
+                                                        {type.name}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
