@@ -98,7 +98,7 @@ export function GradeTable() {
                 await deleteGradeMutation.mutateAsync(gradeToDelete.gradeId)
                 setGradeToDelete(null)
             } catch (error) {
-                console.error("成績の削除に失敗しました:", error)
+                console.error("学年の削除に失敗しました:", error)
             }
         }
     }
@@ -115,11 +115,11 @@ export function GradeTable() {
                 columns={columns}
                 data={filteredGrades}
                 isLoading={isLoading || isFetching}
-                searchPlaceholder="成績を検索..."
+                searchPlaceholder="学年を検索..."
                 onSearch={setSearchTerm}
                 searchValue={searchTerm}
                 onCreateNew={() => setIsCreateDialogOpen(true)}
-                createNewLabel="新しい成績"
+                createNewLabel="新しい学年"
                 pageIndex={page - 1}
                 pageCount={totalPages || 1}
                 onPageChange={handlePageChange}
@@ -145,7 +145,7 @@ export function GradeTable() {
                     <AlertDialogHeader>
                         <AlertDialogTitle>本当に削除しますか？</AlertDialogTitle>
                         <AlertDialogDescription>
-                            この操作は元に戻せません。成績「{gradeToDelete?.name}」を完全に削除します。
+                            この操作は元に戻せません。学年「{gradeToDelete?.name}」を完全に削除します。
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>

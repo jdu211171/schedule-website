@@ -9,7 +9,7 @@ const tabs = [
     { name: 'ブース', href: '/dashboard/master/booths' },
     { name: 'クラス', href: '/dashboard/master/class' },
     { name: '評価', href: '/dashboard/master/evaluation' },
-    { name: '成績', href: '/dashboard/master/grade' },
+    { name: '学年', href: '/dashboard/master/grade' },
     { name: '学生', href: '/dashboard/master/student' },
     { name: '科目', href: '/dashboard/master/subject' },
     { name: '科目タイプ', href: '/dashboard/master/subject-type' },
