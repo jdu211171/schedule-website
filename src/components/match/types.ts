@@ -114,7 +114,7 @@ export interface ClassType {
 export interface Lesson {
   id: string;
   name: string;
-  dayOfWeek: string;
+  dayOfWeek: string | number;
   startTime: string;
   endTime: string;
   status: string;
@@ -124,4 +124,16 @@ export interface Lesson {
   subject?: Subject;
   classTypeId?: string;
   classType?: ClassType;
+  room?: string;
+}
+
+export interface ScheduleLesson {
+  id: string;
+  subject: string; 
+  teacherName: string; 
+  studentName: string; 
+  dayOfWeek: number; 
+  startTime: string;
+  endTime: string; 
+  room?: string; 
 }
