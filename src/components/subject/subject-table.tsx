@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import type { ColumnDef } from "@tanstack/react-table"
 import { Pencil, Trash2 } from "lucide-react"
 
@@ -21,6 +21,7 @@ import {
 import { Subject } from "@prisma/client"
 import { SubjectFormDialog } from "@/components/subject/subject-form-dialog"
 import { useSubjectsCount } from "@/hooks/useSubjectQuery"
+import { useSubjectTypes } from "@/hooks/useSubjectTypeQuery"
 
 export function SubjectTable() {
     const [searchTerm, setSearchTerm] = useState("")
@@ -28,11 +29,21 @@ export function SubjectTable() {
     const pageSize = 10
     const { data: subjects = [], isLoading, isFetching } = useSubjects(page, pageSize)
     const { data: totalCount = 0 } = useSubjectsCount()
+    const { data: subjectTypes = [] } = useSubjectTypes()
     const deleteSubjectMutation = useSubjectDelete()
 
     const [subjectToEdit, setSubjectToEdit] = useState<Subject | null>(null)
     const [subjectToDelete, setSubjectToDelete] = useState<Subject | null>(null)
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+
+    // Create a mapping from subject type ID to name
+    const subjectTypeMap = useMemo(() => {
+        const map = new Map<string, string>();
+        subjectTypes.forEach(type => {
+            map.set(type.subjectTypeId, type.name);
+        });
+        return map;
+    }, [subjectTypes]);
 
     const filteredSubjects = searchTerm
         ? subjects.filter(
@@ -50,6 +61,10 @@ export function SubjectTable() {
         {
             accessorKey: "subjectTypeId",
             header: "科目タイプ",
+            cell: ({ row }) => {
+                const subjectTypeId = row.original.subjectTypeId;
+                return subjectTypeId ? subjectTypeMap.get(subjectTypeId) || "-" : "-";
+            }
         },
         {
             accessorKey: "notes",
