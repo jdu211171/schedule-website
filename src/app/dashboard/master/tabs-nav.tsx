@@ -13,6 +13,7 @@ const tabs = [
     { name: '学生', href: '/dashboard/master/student' },
     { name: '科目', href: '/dashboard/master/subject' },
     { name: '科目タイプ', href: '/dashboard/master/subject-type' },
+    { name: '学生タイプ', href: '/dashboard/master/student-type' },
 ]
 
 export default function TabsNav() {
