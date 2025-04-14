@@ -101,7 +101,7 @@ export function GradeFormDialog({ open, onOpenChange, grade }: GradeFormDialogPr
             form.reset()
             setIsNameManuallyEdited(false) // Reset for next time dialog opens
         } catch (error) {
-            console.error("成績の保存に失敗しました:", error)
+            console.error("学年の保存に失敗しました:", error)
         } finally {
             setIsSubmitting(false)
         }
@@ -111,7 +111,7 @@ export function GradeFormDialog({ open, onOpenChange, grade }: GradeFormDialogPr
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                    <DialogTitle>{isEditing ? "成績の編集" : "成績の作成"}</DialogTitle>
+                    <DialogTitle>{isEditing ? "学年の編集" : "学年の作成"}</DialogTitle>
                 </DialogHeader>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -123,7 +123,7 @@ export function GradeFormDialog({ open, onOpenChange, grade }: GradeFormDialogPr
                                     <FormLabel>名前</FormLabel>
                                     <FormControl>
                                         <Input
-                                            placeholder="成績名を入力"
+                                            placeholder="学年名を入力"
                                             {...field}
                                             onChange={(e) => {
                                                 field.onChange(e);
