@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import SubjectBadge from "./subject-badge";
 import SchoolTypeBadge from "./school-type-badge";
+import { Mail, Phone, Bookmark, School, BookOpen, Award, Calendar, User, GraduationCap, MessageSquare } from "lucide-react";
 
 interface DetailDialogProps {
   entity: Teacher | Student;
@@ -46,46 +47,44 @@ export default function DetailDialog({
   const teacher = isTeacher ? entity as Teacher : null;
   const student = isStudent ? entity as Student : null;
 
+  // Функция для определения статуса (для цветовой схемы)
+  const getStatusBadge = () => {
+    const status = isStudent ? "活躍" : "活性";
+    return (
+      <Badge className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-medium">
+        {status}
+      </Badge>
+    );
+  };
+
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent className="sm:max-w-[600px]">
-        <DialogHeader>
-          <DialogTitle className="text-xl">{entity.name}</DialogTitle>
-          {isStudent && (student as Student).kanaName && (
-            <p className="text-gray-500 text-sm">{(student as Student).kanaName}</p>
-          )}
-          {isTeacher && (evaluation || (teacher as Teacher).evaluation) && (
-            <div className="mt-1">
-              {(() => {
-                const teacherEvaluation = evaluation || (teacher as Teacher).evaluation;
-                return (
-                  <Badge 
-                    className={`
-                      ${teacherEvaluation?.score && teacherEvaluation.score >= 4 ? 'bg-green-100 text-green-800' : 
-                      teacherEvaluation?.score && teacherEvaluation.score >= 3 ? 'bg-blue-100 text-blue-800' : 
-                      teacherEvaluation?.score && teacherEvaluation.score >= 2 ? 'bg-yellow-100 text-yellow-800' : 
-                      'bg-gray-100 text-gray-800'}
-                      px-2 py-1 rounded-full text-xs
-                    `}
-                  >
-                    {teacherEvaluation?.name}
-                  </Badge>
-                );
-              })()}
+      <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden" hideCloseButton>
+        <DialogHeader className="px-6 pt-6 pb-2">
+          <div className="flex items-center justify-between">
+            <div>
+              <DialogTitle className="text-xl font-bold">{entity.name}</DialogTitle>
+              {isStudent && (student as Student).kanaName && (
+                <p className="text-gray-500 text-sm mt-1">{(student as Student).kanaName}</p>
+              )}
             </div>
-          )}
+            {getStatusBadge()}
+          </div>
         </DialogHeader>
         
-        <div className="grid gap-4 py-4">
+        <div className="px-6 py-4 space-y-5 max-h-[70vh] overflow-y-auto">
           {/* Содержимое для учителя */}
           {isTeacher && teacher && (
             <>
               {/* Образование */}
-              <div className="grid grid-cols-4 gap-4">
-                <div className="text-sm font-medium">教育</div>
-                <div className="col-span-3 space-y-1">
+              <div className="flex group">
+                <div className="w-1/4 flex items-start">
+                  <GraduationCap className="h-5 w-5 text-blue-500 mr-2" />
+                  <span className="text-sm font-medium text-gray-700">教育</span>
+                </div>
+                <div className="w-3/4 space-y-1 pl-2 border-l-2 border-gray-100 ">
                   {teacher.university ? (
-                    <p className="text-sm">{teacher.university}</p>
+                    <p className="text-sm font-medium">{teacher.university}</p>
                   ) : (
                     <p className="text-sm text-gray-500">未入力</p>
                   )}
@@ -99,9 +98,12 @@ export default function DetailDialog({
               </div>
               
               {/* Предметы */}
-              <div className="grid grid-cols-4 gap-4">
-                <div className="text-sm font-medium">科目</div>
-                <div className="col-span-3">
+              <div className="flex group">
+                <div className="w-1/4 flex items-start">
+                  <BookOpen className="h-5 w-5 text-green-500 mr-2" />
+                  <span className="text-sm font-medium text-gray-700">科目</span>
+                </div>
+                <div className="w-3/4 pl-2 border-l-2 border-gray-100 ">
                   <div className="flex flex-wrap gap-1">
                     {subjects.length > 0 ? (
                       subjects.map((subject) => (
@@ -119,26 +121,32 @@ export default function DetailDialog({
               </div>
               
               {/* Языковые навыки */}
-              <div className="grid grid-cols-4 gap-4">
-                <div className="text-sm font-medium">言語スキル</div>
-                <div className="col-span-3 space-y-1">
+              <div className="flex group">
+                <div className="w-1/4 flex items-start">
+                  <MessageSquare className="h-5 w-5 text-yellow-500 mr-2" />
+                  <span className="text-sm font-medium text-gray-700">言語スキル</span>
+                </div>
+                <div className="w-3/4 space-y-1 pl-2 border-l-2 border-gray-100 ">
                   {teacher.englishProficiency ? (
-                    <p className="text-sm">英語: {teacher.englishProficiency}</p>
+                    <p className="text-sm">英語: <span className="font-medium">{teacher.englishProficiency}</span></p>
                   ) : (
                     <p className="text-sm text-gray-500">未入力</p>
                   )}
-                  {teacher.toeic && <p className="text-sm">TOEIC: {teacher.toeic}</p>}
-                  {teacher.toefl && <p className="text-sm">TOEFL: {teacher.toefl}</p>}
+                  {teacher.toeic && <p className="text-sm">TOEIC: <span className="font-medium">{teacher.toeic}</span></p>}
+                  {teacher.toefl && <p className="text-sm">TOEFL: <span className="font-medium">{teacher.toefl}</span></p>}
                 </div>
               </div>
               
               {/* Сертификаты */}
-              <div className="grid grid-cols-4 gap-4">
-                <div className="text-sm font-medium">証明書</div>
-                <div className="col-span-3 space-y-1">
-                  {teacher.mathCertification && <p className="text-sm">数学: {teacher.mathCertification}</p>}
-                  {teacher.kanjiCertification && <p className="text-sm">漢字: {teacher.kanjiCertification}</p>}
-                  {teacher.otherCertifications && <p className="text-sm">その他: {teacher.otherCertifications}</p>}
+              <div className="flex group">
+                <div className="w-1/4 flex items-start">
+                  <Award className="h-5 w-5 text-purple-500 mr-2" />
+                  <span className="text-sm font-medium text-gray-700">証明書</span>
+                </div>
+                <div className="w-3/4 space-y-1 pl-2 border-l-2 border-gray-100">
+                  {teacher.mathCertification && <p className="text-sm">数学: <span className="font-medium">{teacher.mathCertification}</span></p>}
+                  {teacher.kanjiCertification && <p className="text-sm">漢字: <span className="font-medium">{teacher.kanjiCertification}</span></p>}
+                  {teacher.otherCertifications && <p className="text-sm">その他: <span className="font-medium">{teacher.otherCertifications}</span></p>}
                   {!teacher.mathCertification && !teacher.kanjiCertification && !teacher.otherCertifications && (
                     <p className="text-sm text-gray-500">未入力</p>
                   )}
@@ -146,11 +154,14 @@ export default function DetailDialog({
               </div>
               
               {/* Контактная информация */}
-              <div className="grid grid-cols-4 gap-4">
-                <div className="text-sm font-medium">連絡先</div>
-                <div className="col-span-3 space-y-1">
-                  {teacher.email && <p className="text-sm">メール: {teacher.email}</p>}
-                  {teacher.mobileNumber && <p className="text-sm">電話: {teacher.mobileNumber}</p>}
+              <div className="flex group">
+                <div className="w-1/4 flex items-start">
+                  <Phone className="h-5 w-5 text-red-500 mr-2" />
+                  <span className="text-sm font-medium text-gray-700">連絡先</span>
+                </div>
+                <div className="w-3/4 space-y-1 pl-2 border-l-2 border-gray-100 ">
+                  {teacher.email && <p className="text-sm">メール: <span className="font-medium">{teacher.email}</span></p>}
+                  {teacher.mobileNumber && <p className="text-sm">電話: <span className="font-medium">{teacher.mobileNumber}</span></p>}
                   {!teacher.email && !teacher.mobileNumber && (
                     <p className="text-sm text-gray-500">未入力</p>
                   )}
@@ -163,9 +174,12 @@ export default function DetailDialog({
           {isStudent && student && (
             <>
               {/* Школа и класс */}
-              <div className="grid grid-cols-4 gap-4">
-                <div className="text-sm font-medium">学校と学年</div>
-                <div className="col-span-3 space-y-2">
+              <div className="flex group">
+                <div className="w-1/4 flex items-start">
+                  <School className="h-5 w-5 text-blue-500 mr-2" />
+                  <span className="text-sm font-medium text-gray-700">学校と学年</span>
+                </div>
+                <div className="w-3/4 space-y-2 pl-2 border-l-2 border-gray-100 ">
                   {student.examSchoolCategoryType && (
                     <div>
                       <SchoolTypeBadge type={student.examSchoolCategoryType} />
@@ -178,7 +192,7 @@ export default function DetailDialog({
                   )}
                   
                   {student.schoolName && (
-                    <p className="text-sm">{student.schoolName}</p>
+                    <p className="text-sm font-medium">{student.schoolName}</p>
                   )}
                   
                   {(grade || student.grade) && (
@@ -200,9 +214,12 @@ export default function DetailDialog({
               </div>
               
               {/* Предметы */}
-              <div className="grid grid-cols-4 gap-4">
-                <div className="text-sm font-medium">希望科目</div>
-                <div className="col-span-3">
+              <div className="flex group">
+                <div className="w-1/4 flex items-start">
+                  <BookOpen className="h-5 w-5 text-green-500 mr-2" />
+                  <span className="text-sm font-medium text-gray-700">希望科目</span>
+                </div>
+                <div className="w-3/4 pl-2 border-l-2 border-gray-100 ">
                   <div className="flex flex-wrap gap-1">
                     {subjects.length > 0 ? (
                       subjects.map((subject) => (
@@ -220,14 +237,17 @@ export default function DetailDialog({
               </div>
               
               {/* Предпочтения по школам */}
-              <div className="grid grid-cols-4 gap-4">
-                <div className="text-sm font-medium">希望学校</div>
-                <div className="col-span-3 space-y-1">
+              <div className="flex group">
+                <div className="w-1/4 flex items-start">
+                  <Bookmark className="h-5 w-5 text-yellow-500 mr-2" />
+                  <span className="text-sm font-medium text-gray-700">希望学校</span>
+                </div>
+                <div className="w-3/4 space-y-1 pl-2 border-l-2 border-gray-100 group-hover:border-yellow-100">
                   {student.firstChoiceSchool && (
-                    <p className="text-sm">第一志望: {student.firstChoiceSchool}</p>
+                    <p className="text-sm">第一志望: <span className="font-medium">{student.firstChoiceSchool}</span></p>
                   )}
                   {student.secondChoiceSchool && (
-                    <p className="text-sm">第二志望: {student.secondChoiceSchool}</p>
+                    <p className="text-sm">第二志望: <span className="font-medium">{student.secondChoiceSchool}</span></p>
                   )}
                   {!student.firstChoiceSchool && !student.secondChoiceSchool && (
                     <p className="text-sm text-gray-500">未入力</p>
@@ -236,14 +256,17 @@ export default function DetailDialog({
               </div>
               
               {/* Даты */}
-              <div className="grid grid-cols-4 gap-4">
-                <div className="text-sm font-medium">日付</div>
-                <div className="col-span-3 space-y-1">
+              <div className="flex group">
+                <div className="w-1/4 flex items-start">
+                  <Calendar className="h-5 w-5 text-purple-500 mr-2" />
+                  <span className="text-sm font-medium text-gray-700">日付</span>
+                </div>
+                <div className="w-3/4 space-y-1 pl-2 border-l-2 border-gray-100 group-hover:border-purple-100">
                   {student.birthDate && (
-                    <p className="text-sm">誕生日: {formatDate(student.birthDate)}</p>
+                    <p className="text-sm">誕生日: <span className="font-medium">{formatDate(student.birthDate)}</span></p>
                   )}
                   {student.enrollmentDate && (
-                    <p className="text-sm">入学日: {formatDate(student.enrollmentDate)}</p>
+                    <p className="text-sm">入学日: <span className="font-medium">{formatDate(student.enrollmentDate)}</span></p>
                   )}
                   {!student.birthDate && !student.enrollmentDate && (
                     <p className="text-sm text-gray-500">未入力</p>
@@ -252,13 +275,16 @@ export default function DetailDialog({
               </div>
               
               {/* Контактная информация */}
-              <div className="grid grid-cols-4 gap-4">
-                <div className="text-sm font-medium">連絡先</div>
-                <div className="col-span-3 space-y-1">
-                  {student.parentEmail && <p className="text-sm">親のメール: {student.parentEmail}</p>}
-                  {student.homePhone && <p className="text-sm">自宅電話: {student.homePhone}</p>}
-                  {student.parentMobile && <p className="text-sm">親の携帯: {student.parentMobile}</p>}
-                  {student.studentMobile && <p className="text-sm">生徒の携帯: {student.studentMobile}</p>}
+              <div className="flex group">
+                <div className="w-1/4 flex items-start">
+                  <Phone className="h-5 w-5 text-red-500 mr-2" />
+                  <span className="text-sm font-medium text-gray-700">連絡先</span>
+                </div>
+                <div className="w-3/4 space-y-1 pl-2 border-l-2 border-gray-100 group-hover:border-red-100">
+                  {student.parentEmail && <p className="text-sm">親のメール: <span className="font-medium">{student.parentEmail}</span></p>}
+                  {student.homePhone && <p className="text-sm">自宅電話: <span className="font-medium">{student.homePhone}</span></p>}
+                  {student.parentMobile && <p className="text-sm">親の携帯: <span className="font-medium">{student.parentMobile}</span></p>}
+                  {student.studentMobile && <p className="text-sm">生徒の携帯: <span className="font-medium">{student.studentMobile}</span></p>}
                   {!student.parentEmail && !student.homePhone && !student.parentMobile && !student.studentMobile && (
                     <p className="text-sm text-gray-500">未入力</p>
                   )}
@@ -269,17 +295,20 @@ export default function DetailDialog({
           
           {/* Заметки (общие для обоих типов) */}
           {entity.notes && (
-            <div className="grid grid-cols-4 gap-4">
-              <div className="text-sm font-medium">メモ</div>
-              <div className="col-span-3">
+            <div className="flex group">
+              <div className="w-1/4 flex items-start">
+                <MessageSquare className="h-5 w-5 text-pink-500 mr-2" />
+                <span className="text-sm font-medium text-gray-700">メモ</span>
+              </div>
+              <div className="w-3/4 pl-2 border-l-2 border-gray-100">
                 <p className="text-sm whitespace-pre-wrap">{entity.notes}</p>
               </div>
             </div>
           )}
         </div>
         
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>閉じる</Button>
+        <DialogFooter className="px-6 py-4 border-t">
+          <Button onClick={onClose}>閉じる</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

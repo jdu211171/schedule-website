@@ -63,20 +63,29 @@ export default function CustomLessonModal({
   // Преобразуем уроки из пропсов в формат ExtendedLesson и поддерживаем синхронизацию
   useEffect(() => {
     // Преобразуем уроки из пропсов в формат ExtendedLesson
-    const formattedLessons: ExtendedLesson[] = propsLessons.map(lesson => ({
-      id: lesson.id,
-      name: lesson.name,
-      subject: lesson.name, // Используем имя урока как название предмета
-      teacherName: teacherName,
-      studentName: studentName,
-      dayOfWeek: typeof lesson.dayOfWeek === 'string' ? parseInt(lesson.dayOfWeek) : lesson.dayOfWeek || 0,
-      startTime: lesson.startTime,
-      endTime: lesson.endTime,
-      status: lesson.status,
-      teacherId: lesson.teacherId,
-      studentId: lesson.studentId,
-      room: selectedRoom || "未設定"
-    }));
+    const formattedLessons: ExtendedLesson[] = propsLessons.map(lesson => {
+      // Определяем предмет из имени урока
+      const subjectKey = Object.keys({
+        "physics": "物理",
+        "chemistry": "化学",
+        "math": "数学"
+      }).find(key => lesson.name === key || lesson.name === getSubjectNameJapanese(key)) || lesson.name;
+      
+      return {
+        id: lesson.id,
+        name: getSubjectNameJapanese(subjectKey), // Используем японское название
+        subject: subjectKey, // Сохраняем ключ для внутреннего использования
+        teacherName: teacherName,
+        studentName: studentName,
+        dayOfWeek: typeof lesson.dayOfWeek === 'string' ? parseInt(lesson.dayOfWeek) : lesson.dayOfWeek || 0,
+        startTime: lesson.startTime,
+        endTime: lesson.endTime,
+        status: lesson.status,
+        teacherId: lesson.teacherId,
+        studentId: lesson.studentId,
+        room: selectedRoom || "未設定"
+      };
+    });
 
     // Обновляем локальное состояние, но сохраняем временные уроки
     setLessons(prevLessons => {
@@ -192,6 +201,30 @@ export default function CustomLessonModal({
     return dayMap[day] || 0;
   };
 
+  // Получение японского названия предмета
+  const getSubjectNameJapanese = (subject: string): string => {
+    const subjectMap: { [key: string]: string } = {
+      "physics": "物理",
+      "chemistry": "化学",
+      "math": "数学"
+    };
+    return subjectMap[subject] || subject;
+  };
+
+  // Получение японского названия дня недели
+  const getDayOfWeekJapanese = (dayNumber: number): string => {
+    const dayMap: { [key: number]: string } = {
+      0: "日曜日",
+      1: "月曜日",
+      2: "火曜日",
+      3: "水曜日",
+      4: "木曜日", 
+      5: "金曜日",
+      6: "土曜日"
+    };
+    return dayMap[dayNumber] || "";
+  };
+
   // Обработчик клика по уроку для редактирования
   const handleLessonClick = (lesson: ExtendedLesson) => {
     setEditMode(true);
@@ -247,12 +280,26 @@ export default function CustomLessonModal({
       return;
     }
 
+    const now = new Date();
+    const today = now.getDay(); 
+    const currentTime = now.getHours() * 60 + now.getMinutes();  // текущее время в минутах
+    
+    const selectedDayNumber = getDayOfWeekNumber(selectedDay);
+    const [startHours, startMinutes] = startTime.split(':').map(Number);
+    const lessonStartTimeInMinutes = startHours * 60 + startMinutes;
+
+    if (selectedDayNumber < today || 
+        (selectedDayNumber === today && lessonStartTimeInMinutes <= currentTime)) {
+      alert("過去の時間に授業を追加することはできません。");
+      return;
+    }
+
     if (editMode && editingLesson) {
       // Режим редактирования - обновляем существующий урок
       const updatedLesson: ExtendedLesson = {
         ...editingLesson,
         subject: selectedSubject,
-        name: selectedSubject,
+        name: getSubjectNameJapanese(selectedSubject),
         dayOfWeek: getDayOfWeekNumber(selectedDay),
         startTime,
         endTime,
@@ -270,7 +317,7 @@ export default function CustomLessonModal({
       if (onAddLesson) {
         onAddLesson({
           id: editingLesson.id,
-          name: selectedSubject,
+          name: getSubjectNameJapanese(selectedSubject),
           dayOfWeek: getDayOfWeekNumber(selectedDay).toString(),
           startTime,
           endTime,
@@ -281,7 +328,7 @@ export default function CustomLessonModal({
       // Режим создания - добавляем новый урок
       const newLesson: ExtendedLesson = {
         id: `temp-${Date.now()}`, // Временный ID с префиксом для идентификации
-        name: selectedSubject,
+        name: getSubjectNameJapanese(selectedSubject),
         subject: selectedSubject,
         teacherName: teacherName,
         studentName: studentName,
@@ -298,7 +345,7 @@ export default function CustomLessonModal({
       // Также передаем урок во внешний обработчик, если он есть
       if (onAddLesson) {
         onAddLesson({
-          name: selectedSubject,
+          name: getSubjectNameJapanese(selectedSubject),
           dayOfWeek: getDayOfWeekNumber(selectedDay).toString(),
           startTime,
           endTime,
@@ -326,7 +373,7 @@ export default function CustomLessonModal({
     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
       <div className="bg-white w-[85%] max-w-[1200px] max-h-[95vh] rounded-lg shadow-lg flex flex-col">
         {/* Заголовок */}
-        <div className="p-6 border-b flex justify-between items-center">
+        <div className="px-6 py-3 border-b flex justify-between items-center">
           <div>
             <h2 className="flex items-center text-xl font-bold">
               <BookOpen className="mr-2 h-5 w-5" />
@@ -346,9 +393,9 @@ export default function CustomLessonModal({
 
         {/* Основное содержимое */}
         <div className="px-6 overflow-y-auto flex-grow">
-          <div className="grid grid-cols-3 gap-8 py-6">
+          <div className="grid grid-cols-3 gap-8 py-3">
             <div>
-              <Label className="block text-sm font-medium mb-2">科目</Label>
+              <Label className="block text-sm font-medium mb-1">科目</Label>
               <Select 
                 value={selectedSubject} 
                 onValueChange={setSelectedSubject}
@@ -365,7 +412,7 @@ export default function CustomLessonModal({
             </div>
             
             <div>
-              <Label className="block text-sm font-medium mb-2">曜日</Label>
+              <Label className="block text-sm font-medium mb-1">曜日</Label>
               <Select 
                 value={selectedDay} 
                 onValueChange={setSelectedDay}
@@ -386,7 +433,7 @@ export default function CustomLessonModal({
             </div>
             
             <div>
-              <Label className="block text-sm font-medium mb-2">授業時間</Label>
+              <Label className="block text-sm font-medium mb-1">授業時間</Label>
               <div className="flex space-x-3">
                 <Button 
                   variant={selectedDuration === "60分" ? "default" : "outline"} 
@@ -413,7 +460,7 @@ export default function CustomLessonModal({
             </div>
             
             <div>
-              <Label className="block text-sm font-medium mb-2">開始時刻</Label>
+              <Label className="block text-sm font-medium mb-1">開始時刻</Label>
               <div className="relative">
                 <div className="flex">
                   <Input
@@ -449,7 +496,7 @@ export default function CustomLessonModal({
             </div>
             
             <div>
-              <Label className="block text-sm font-medium mb-2">終了時刻</Label>
+              <Label className="block text-sm font-medium mb-1">終了時刻</Label>
               <Input
                 type="text"
                 placeholder="自動計算"
@@ -460,7 +507,7 @@ export default function CustomLessonModal({
             </div>
             
             <div>
-              <Label className="block text-sm font-medium mb-2">ブース</Label>
+              <Label className="block text-sm font-medium mb-1">ブース</Label>
               <Select 
                 value={selectedRoom} 
                 onValueChange={setSelectedRoom}
@@ -479,7 +526,7 @@ export default function CustomLessonModal({
           </div>
 
           <Button 
-            className={`w-full py-6 cursor-pointer my-6 ${
+            className={`w-full py-6 cursor-pointer my-5 ${
               editMode 
                 ? 'bg-blue-500 hover:bg-blue-600 text-white' 
                 : 'bg-gray-400 hover:bg-gray-500 text-white'
@@ -490,7 +537,7 @@ export default function CustomLessonModal({
           </Button>
 
           {/* Компонент расписания */}
-          <div className="mt-4 border-t pt-4">
+          <div className="mt-2 border-t pt-2">
             <WeeklySchedule 
               lessons={lessons} 
               onLessonClick={(lesson) => {
@@ -499,18 +546,10 @@ export default function CustomLessonModal({
               }}
             />
           </div>
-
-          {lessons.length === 0 && (
-            <div className="text-center py-6 my-6 border-t border-b">
-              <p className="text-gray-500 py-4">
-                この教師と生徒のペアのレッスンは見つかりませんでした。
-              </p>
-            </div>
-          )}
         </div>
 
         {/* Футер */}
-        <div className="p-6 border-t flex justify-between">
+        <div className="px-6 py-3 border-t flex justify-between">
           {editMode && (
             <Button 
               variant="destructive" 

@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { format } from "date-fns";
 import { ja } from "date-fns/locale";
+import { UserRound, Calendar, Clock, MapPin } from "lucide-react";
 
 
 interface Lesson {
@@ -40,27 +41,53 @@ const isLessonPassed = (lesson: Lesson): boolean => {
 const LessonCard = ({ lesson, onLessonClick, viewMode }: { lesson: Lesson, onLessonClick?: (lesson: Lesson) => void, viewMode: "teacher" | "student" }) => {
   const isPassed = isLessonPassed(lesson);
   const displayName = viewMode === "teacher" ? lesson.studentName : lesson.teacherName;
+  const dayOfWeekNames = ["日曜日", "月曜日", "火曜日", "水曜日", "木曜日", "金曜日", "土曜日"];
+  const dayOfWeekName = dayOfWeekNames[lesson.dayOfWeek];
 
   return (
     <Card 
-      className={`mb-2 cursor-pointer hover:shadow-md transition-shadow overflow-hidden ${isPassed ? 'bg-gray-100' : ''}`}
+    className={`mb-2 cursor-pointer hover:shadow-md transition-shadow overflow-hidden ${isPassed ? 'bg-gray-100' : ''}`}
+
       onClick={() => onLessonClick?.(lesson)}
     >
-      <CardContent className="p-2 pb-2">
-        <div className={`font-medium leading-tight ${isPassed ? 'text-gray-500' : 'text-black'}`}>
-          {lesson.subject}
-        </div>
-        <div className={`text-sm leading-tight mt-0.5 ${isPassed ? 'text-gray-400' : 'text-gray-600'}`}>
-          {displayName}
-        </div>
-        <div className={`text-sm leading-tight mt-0.5 ${isPassed ? 'text-gray-400' : 'text-gray-600'}`}>
-          {lesson.startTime} - {lesson.endTime}
-        </div>
-        {lesson.room && (
-          <div className={`text-sm leading-tight mt-0.5 ${isPassed ? 'text-gray-400' : 'text-gray-600'}`}>
-            {lesson.room}
+      <CardContent className="pl-4">
+          <div className="border-b pb-1 mb-1">
+          <div className="text-lg font-bold text-black text-center">
+            {lesson.subject}
           </div>
-        )}
+        </div>
+
+        <div className="flex flex-col space-y-1">
+          <div className="flex items-center">
+            <UserRound className="h-4 w-4 mr-2 text-gray-500" />
+            <div className="text-sm text-gray-700">
+              {displayName}
+            </div>
+          </div>
+
+          <div className="flex items-center">
+            <Calendar className="h-4 w-4 mr-2 text-gray-500" />
+            <div className="text-sm text-gray-700">
+              {dayOfWeekName}
+            </div>
+          </div>
+
+          <div className="flex items-center">
+            <Clock className="h-4 w-4 mr-2 text-gray-500" />
+            <div className="text-sm text-gray-700">
+              {lesson.startTime}〜{lesson.endTime}
+            </div>
+          </div>
+
+          {lesson.room && (
+            <div className="flex items-center">
+              <MapPin className="h-4 w-4 mr-2 text-gray-500" />
+              <div className="text-sm text-gray-700">
+                {lesson.room}
+              </div>
+            </div>
+          )}
+        </div>
       </CardContent>
     </Card>
   );
@@ -87,7 +114,7 @@ export default function WeeklySchedule({ lessons, onLessonClick }: WeeklySchedul
   return (
     <div className="w-full">
       <Tabs defaultValue="teacher" onValueChange={(value) => setActiveTab(value as "teacher" | "student")}>
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-2">
           <h2 className="text-xl font-bold">授業スケジュール</h2>
           <TabsList>
             <TabsTrigger value="teacher">先生</TabsTrigger>

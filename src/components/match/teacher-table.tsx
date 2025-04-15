@@ -249,7 +249,7 @@ export default function TeacherTable({
                     <Button 
                       variant="ghost" 
                       size="sm" 
-                      className="h-8 w-8 p-0 hover:bg-gray-100 rounded-full"
+                      className="h-8 w-8 p-0 hover:bg-gray-200 "
                       onClick={(e) => {
                         e.stopPropagation(); // Предотвращаем срабатывание onClick строки
                         setDetailsTeacher(teacher);
