@@ -7,12 +7,14 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useAuth } from "@/lib/supabase/context/AuthContext";
+import { signOut, useSession } from "next-auth/react";
 
 export default function UserProfileMenu() {
-  const { session, signOut } = useAuth();
+  const { data: session } = useSession();
 
   if (!session) {
     return (
@@ -25,23 +27,36 @@ export default function UserProfileMenu() {
     );
   }
 
-  const getUserInitials = () => {
-    const email = session.user.email ?? "";
-    return email.slice(0, 2).toUpperCase();
-  };
+  const userInitials =
+    session.user?.name
+      ?.split(" ")
+      .map((n) => n[0])
+      .join("") ?? "";
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger>
         <Avatar>
           <AvatarImage
-            src={session.user?.user_metadata?.avatar_url ?? ""}
-            alt={session.user?.user_metadata?.name ?? ""}
+            src={session.user?.image ?? ""}
+            alt={session.user?.name ?? ""}
           />
-          <AvatarFallback>{getUserInitials()}</AvatarFallback>
+          <AvatarFallback>{userInitials}</AvatarFallback>
         </Avatar>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
+        <DropdownMenuLabel className="font-semibold">
+          {session.user?.name}
+          <DropdownMenuSeparator />
+          {session.user?.email}
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <Link href="/dashboard" className="flex items-center w-full">
+            ダッシュボード
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
           {/* TODO: make profile page */}
           <Link href="/profile" className="flex items-center w-full">
