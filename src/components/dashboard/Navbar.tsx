@@ -19,7 +19,7 @@ import {
   MapPin,
   LucideIcon,
 } from "lucide-react";
-import UserProfileMenu from "@/components/user-profile-menu"; // Import the new component
+import UserProfileMenu from "@/components/user-profile-menu"; 
 import { ThemeToggle } from "../theme-toggle";
 
 interface NavItemType {
