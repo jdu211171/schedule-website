@@ -52,3 +52,6 @@ next-env.d.ts
 .vscode
 .idea
 /.idea/
+
+# test actions
+/src/app/dev-action/
