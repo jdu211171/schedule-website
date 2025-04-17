@@ -1,54 +1,11 @@
-import { logoutUser } from "@/actions/auth-actions";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { createClient } from "@/lib/supabase/server";
-import { redirect } from "next/navigation";
+import UserProfileMenu from "@/components/user-profile-menu";
 import Image from "next/image";
-import Link from "next/link";
 
 export default async function Home() {
-  const supabase = await createClient();
-  const { data: session } = await supabase.auth.getUser();
-
   return (
     <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
       <div className="w-full flex justify-between items-center row-start-1">
-        {session ? (
-          <DropdownMenu>
-            <DropdownMenuTrigger>
-              <Avatar>
-                <AvatarImage
-                  src={session.user?.user_metadata.image ?? ""}
-                  alt={session.user?.email ?? ""}
-                />
-                <AvatarFallback>
-                  {session.user?.email?.toUpperCase().slice(0, 2)}
-                </AvatarFallback>
-              </Avatar>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem
-                onClick={async () => {
-                  "use server";
-                  await logoutUser();
-                  redirect("/login");
-                }}
-              >
-                Logout
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        ) : (
-          <Button>
-            <Link href="/sign-in">Sign in</Link>
-          </Button>
-        )}
+        <UserProfileMenu />
       </div>
       <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
         <Image

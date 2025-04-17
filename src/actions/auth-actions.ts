@@ -1,46 +1,30 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { auth, signIn } from "@/auth";
+import { AuthError } from "next-auth";
 
 export async function requireAuth() {
-    const supabase = await createClient();
-    const { data, error } = await supabase.auth.getUser();
+    const session = await auth();
 
-    if (error) {
-        console.error("Error fetching session:", error);
-        throw new Error("Failed to fetch session");
-    }
-
-    if (!data.user) {
+    if (!session) {
         throw new Error("You must be logged in to access this resource.");
     }
 
-    return data.user;
+    return session;
 }
 
 export async function loginUser(email: string, password: string) {
-    const supabase = await createClient();
+    try {
+        const res = await signIn("credentials", { email, password, redirect: false, });
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-    });
+        console.log("Login response:", res);
+    } catch (error) {
+        if (error instanceof AuthError) {
+            console.error("Authentication error:", error.message);
+            throw new Error(error.cause?.err?.message || "Authentication failed");
+        }
 
-    if (error) {
+        console.error("Error logging in:", error);
         throw error;
     }
-
-    return data;
-}
-
-export async function logoutUser() {
-    const supabase = await createClient();
-
-    const { error } = await supabase.auth.signOut();
-
-    if (error) {
-        throw error;
-    }
-
-    return null;
 }
