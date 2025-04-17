@@ -10,6 +10,9 @@ datasource db {
 
 /**
  * Booth -> ブース
+ * CSV: 'マスタ情報  ブース'
+ * This model stores information about physical booths or rooms used for classes.
+ * Maps the ブースID, ブース名, and status fields from the CSV.
  */
 model Booth {
   boothId               String                 @id @default(cuid()) @map("booth_id")
@@ -26,6 +29,9 @@ model Booth {
 
 /**
  * Class -> 個別授業スケジュール (特別授業)
+ * CSV: '個別授業スケジュール 特別授業'
+ * This model represents individual class sessions, particularly special classes.
+ * It captures date, time, teacher, subject, and booth information for each class.
  */
 model ClassSession {
   classId                 String                   @id @default(cuid()) @map("class_id")
@@ -52,6 +58,12 @@ model ClassSession {
   @@map("class_sessions")
 }
 
+/**
+ * ClassType -> 授業タイプ
+ * CSV: 'マスタ情報  授業タイプ'
+ * This model defines different types of classes offered by the school.
+ * Used for categorizing class sessions and student preferences.
+ */
 model ClassType {
   classTypeId               String                     @id @default(cuid()) @map("class_type_id")
   name                      String                     @db.VarChar(100)
@@ -66,6 +78,10 @@ model ClassType {
 
 /**
  * Student -> 生徒
+ * CSV: 'マスタ情報  生徒'
+ * This model stores comprehensive student information including personal details,
+ * educational background, contact information, and enrollment data.
+ * Central to many relationships throughout the system.
  */
 enum SchoolType {
   PUBLIC
@@ -114,6 +130,12 @@ model Student {
   @@map("students")
 }
 
+/**
+ * StudentType -> 学生タイプ
+ * CSV: 'マスタ情報  学生タイプ'
+ * This model defines categories of students, such as elementary, middle, or high school.
+ * Used to group students and relates to the Grade model.
+ */
 model StudentType {
   studentTypeId String   @id @default(cuid()) @map("student_type_id")
   name          String   @db.VarChar(100)
@@ -125,6 +147,12 @@ model StudentType {
   @@map("student_types")
 }
 
+/**
+ * StudentClassEnrollment
+ * This model tracks which students are enrolled in which class sessions.
+ * It's a junction table connecting students to class sessions with additional metadata.
+ * No direct corresponding CSV, but relates to both student and class session data.
+ */
 model StudentClassEnrollment {
   enrollmentId String        @id @default(cuid()) @map("enrollment_id")
   classId      String?       @map("class_id") @db.VarChar(50)
@@ -139,6 +167,12 @@ model StudentClassEnrollment {
   @@map("student_class_enrollments")
 }
 
+/**
+ * StudentRegularPreference
+ * CSV: '生徒希望日程（通常授業）'
+ * This model stores student preferences for regular class schedules,
+ * including preferred day of week, time slots, and subjects.
+ */
 model StudentRegularPreference {
   preferenceId String    @id @default(cuid()) @map("preference_id")
   studentId    String?   @map("student_id") @db.VarChar(50)
@@ -155,6 +189,12 @@ model StudentRegularPreference {
   @@map("student_regular_preferences")
 }
 
+/**
+ * StudentSpecialPreference
+ * CSV: '生徒希望日程（特別授業）'
+ * This model captures student preferences for special or one-off classes,
+ * including specific dates, times, subjects, and class types.
+ */
 model StudentSpecialPreference {
   preferenceId String     @id @default(cuid()) @map("preference_id")
   studentId    String?    @map("student_id") @db.VarChar(50)
@@ -173,6 +213,12 @@ model StudentSpecialPreference {
   @@map("student_special_preferences")
 }
 
+/**
+ * TemplateStudentAssignment
+ * This junction model links students to regular class templates,
+ * defining which students are assigned to which recurring class templates.
+ * Works with RegularClassTemplate and Student models to establish recurring schedules.
+ */
 model TemplateStudentAssignment {
   assignmentId         String                @id @default(cuid()) @map("assignment_id")
   templateId           String?               @map("template_id") @db.VarChar(50)
@@ -186,6 +232,12 @@ model TemplateStudentAssignment {
   @@map("template_student_assignments")
 }
 
+/**
+ * RegularClassTemplate
+ * CSV: '通常授業日程テンプレート'
+ * This model defines recurring class templates with fixed day of week, time,
+ * teacher, subject, and booth. Used to generate regular class schedules.
+ */
 model RegularClassTemplate {
   templateId                 String                      @id @default(cuid()) @map("template_id")
   dayOfWeek                  String?                     @map("day_of_week") @db.VarChar(20)
@@ -206,7 +258,10 @@ model RegularClassTemplate {
 }
 
 /**
- * Teacher -> 講師
+ * TeacherRegularShift
+ * CSV: '講師シフト（通常授業）'
+ * This model tracks when teachers are available for regular classes on a weekly basis.
+ * Contains day of week and time slot information for teacher availability.
  */
 model TeacherRegularShift {
   shiftId   String    @id @default(cuid()) @map("shift_id")
@@ -222,6 +277,12 @@ model TeacherRegularShift {
   @@map("teacher_regular_shifts")
 }
 
+/**
+ * TeacherSpecialShift
+ * CSV: '講師シフト（特別授業）'
+ * This model records one-off availability for teachers on specific dates,
+ * used for planning special classes or courses during vacation periods.
+ */
 model TeacherSpecialShift {
   shiftId   String    @id @default(cuid()) @map("shift_id")
   teacherId String?   @map("teacher_id") @db.VarChar(50)
@@ -236,6 +297,12 @@ model TeacherSpecialShift {
   @@map("teacher_special_shifts")
 }
 
+/**
+ * TeacherSubject
+ * CSV: 'マスタ情報  講師対応科目'
+ * This junction model maps which subjects each teacher can teach.
+ * Essential for scheduling and teacher assignment to classes.
+ */
 model TeacherSubject {
   teacherId String   @map("teacher_id") @db.VarChar(50)
   subjectId String   @map("subject_id") @db.VarChar(50)
@@ -249,6 +316,13 @@ model TeacherSubject {
   @@map("teacher_subjects")
 }
 
+/**
+ * Teacher -> 講師
+ * CSV: 'マスタ情報  講師'
+ * This model stores comprehensive teacher information including personal details,
+ * educational background, contact information, and certification data.
+ * Central to class scheduling and assignment.
+ */
 model Teacher {
   teacherId             String                 @id @default(cuid()) @map("teacher_id")
   name                  String                 @db.VarChar(100)
@@ -284,6 +358,12 @@ model Teacher {
   @@map("teachers")
 }
 
+/**
+ * Evaluation -> 評価
+ * CSV: 'マスタ情報  評価'
+ * This model defines performance evaluation metrics for teachers,
+ * storing ratings and evaluation criteria.
+ */
 model Evaluation {
   evaluationId String    @id @default(cuid()) @map("evaluation_id")
   name         String    @db.VarChar(100)
@@ -297,7 +377,10 @@ model Evaluation {
 }
 
 /**
- * Subject -> 科目
+ * SubjectType -> 科目タイプ
+ * CSV: 'マスタ情報  科目タイプ'
+ * This model categorizes subjects into types (e.g., languages, sciences, humanities).
+ * Used to group related subjects.
  */
 model SubjectType {
   subjectTypeId String    @id @default(cuid()) @map("subject_type_id")
@@ -310,6 +393,12 @@ model SubjectType {
   @@map("subject_types")
 }
 
+/**
+ * Subject -> 科目
+ * CSV: 'マスタ情報  科目'
+ * This model defines the academic subjects taught at the school.
+ * Core entity related to classes, preferences, and teacher assignments.
+ */
 model Subject {
   subjectId                 String                     @id @default(cuid()) @map("subject_id")
   name                      String                     @db.VarChar(100)
@@ -330,6 +419,9 @@ model Subject {
 
 /**
  * Grade -> 学年
+ * CSV: 'マスタ情報  学年'
+ * This model defines school grade levels/years.
+ * Related to student categorization and course offerings.
  */
 model Grade {
   gradeId          String            @id @default(cuid()) @map("grade_id")
@@ -347,7 +439,10 @@ model Grade {
 }
 
 /**
- * Course -> Think about this
+ * IntensiveCourse -> 講習講座
+ * CSV: 'マスタ情報  講習講座'
+ * This model represents intensive courses offered during vacation periods.
+ * Contains information about courses, subjects, target grades, and session types.
  */
 enum IntensiveCourseType {
   SUMMER
@@ -374,6 +469,11 @@ model IntensiveCourse {
   @@map("intensive_courses")
 }
 
+/**
+ * CourseAssignment
+ * This junction model assigns teachers to intensive courses.
+ * Links teachers to specific intensive courses with status tracking.
+ */
 model CourseAssignment {
   teacherId       String          @map("teacher_id") @db.VarChar(50)
   courseId        String          @map("course_id") @db.VarChar(50)
@@ -389,6 +489,12 @@ model CourseAssignment {
   @@map("course_assignments")
 }
 
+/**
+ * CourseEnrollment
+ * CSV: 'マスタ情報  生徒受講科目'
+ * This junction model tracks student enrollments in intensive courses.
+ * Links students to courses with enrollment status tracking.
+ */
 model CourseEnrollment {
   studentId       String          @map("student_id")
   courseId        String          @map("course_id") @db.VarChar(50)
@@ -406,6 +512,9 @@ model CourseEnrollment {
 
 /**
  * Notification -> 通知
+ * This model stores notification records for system communications.
+ * Handles message delivery to students and teachers.
+ * No direct corresponding CSV file.
  */
 model Notification {
   notificationId   String    @id @default(cuid()) @map("notification_id")
@@ -426,7 +535,10 @@ model Notification {
 }
 
 /**
- * Vacation -> 休暇
+ * Event -> 定休日
+ * CSV: 'マスタ情報  定休日'
+ * This model stores holidays, vacations, and other non-class days.
+ * Used for scheduling and availability calculations.
  */
 model Event {
   id          String   @id @default(uuid())
@@ -442,6 +554,9 @@ model Event {
 
 /**
  * User -> Authentication and authorization
+ * This model handles user authentication and access control.
+ * Links to both Student and Teacher models for role-based access.
+ * No direct corresponding CSV file.
  */
 model User {
   id            String    @id @default(cuid())
@@ -460,6 +575,11 @@ model User {
   @@map("users")
 }
 
+/**
+ * Account
+ * Authentication-related model for external provider connections.
+ * Part of the authentication system, no direct corresponding CSV.
+ */
 model Account {
   id                String  @id @default(cuid())
   userId            String  @map("user_id")
@@ -478,6 +598,11 @@ model Account {
   @@map("accounts")
 }
 
+/**
+ * Session
+ * Authentication session management model.
+ * Part of the authentication system, no direct corresponding CSV.
+ */
 model Session {
   id           String   @id @default(cuid())
   sessionToken String   @unique @map("session_token")
@@ -490,6 +615,11 @@ model Session {
   @@map("sessions")
 }
 
+/**
+ * VerificationToken
+ * Email verification token model for authentication.
+ * Part of the authentication system, no direct corresponding CSV.
+ */
 model VerificationToken {
   identifier String
   token      String
