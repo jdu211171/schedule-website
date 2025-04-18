@@ -23,6 +23,7 @@ export function StudentTabs() {
         onOpenChange={(open) => {
           setIsCreateDialogOpen(open);
         }}
+          student={null}
       />
     </Tabs>
   );

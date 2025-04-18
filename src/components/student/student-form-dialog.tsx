@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
@@ -14,14 +14,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useGrades } from "@/hooks/useGradeQuery"
 import { useStudentCreate, useStudentUpdate } from "@/hooks/useStudentMutation"
-import { studentCreateSchema } from "@/schemas/student.schema"
-import { Student } from "@prisma/client"
-import { studentPreferencesSchema } from "@/schemas/student-preferences.schema";
+import { studentCreateSchema, StudentCreateInput, StudentUpdateInput, type StudentWithPreference } from "@/schemas/student.schema"
+import type { Student } from "@prisma/client"
+import { studentPreferencesSchema, type StudentPreferencesInput } from "@/schemas/student-preferences.schema"
+import { useTeachers } from "@/hooks/useTeacherQuery"
+import { useSubjects } from "@/hooks/useSubjectQuery"
+import { useTeacherSubjects } from "@/hooks/useTeacherSubjectQuery"
 
 interface StudentFormDialogProps {
     open: boolean
     onOpenChange: (open: boolean) => void
-    student?: Student | null
+    student?: Student | StudentWithPreference | null
 }
 
 export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDialogProps) {
@@ -32,6 +35,17 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
 
     const isEditing = !!student
     const { data: grades = [] } = useGrades()
+    const { data: teachers = [] } = useTeachers()
+    const { data: subjects = [] } = useSubjects()
+    const { data: teacherSubjects = [] } = useTeacherSubjects()
+
+    const [subjectSearchTerm, setSubjectSearchTerm] = useState("")
+    const [teacherSearchTerm, setTeacherSearchTerm] = useState("")
+    const [showSubjectDropdown, setShowSubjectDropdown] = useState(false)
+    const [showTeacherDropdown, setShowTeacherDropdown] = useState(false)
+
+    // Check if student has preference property to determine if it's StudentWithPreference
+    const hasPreference = student && "preference" in student
 
     const formSchema = isEditing
         ? z.object({
@@ -76,41 +90,103 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
         },
     })
 
+    // Get preference data safely
+    const studentPreference = hasPreference ? (student as StudentWithPreference).preference : null
+
     // Preferences form
-    const preferencesForm = useForm<z.infer<typeof studentPreferencesSchema>>({
+    const preferencesForm = useForm<StudentPreferencesInput>({
         resolver: zodResolver(studentPreferencesSchema),
         defaultValues: {
-            preferredSubjects: [],
-            preferredTeachers: [],
-            preferredWeekdays: [],
-            preferredHours: [],
-            additionalNotes: "",
+            preferredSubjects: studentPreference?.preferredSubjects || [],
+            preferredTeachers: studentPreference?.preferredTeachers || [],
+            preferredWeekdays: studentPreference?.preferredWeekdays || [],
+            preferredHours: studentPreference?.preferredHours || [],
+            additionalNotes: studentPreference?.additionalNotes || "",
         },
     })
 
+    // Watch selected subjects and teachers
+    const selectedSubjects = preferencesForm.watch("preferredSubjects")
+    const selectedTeachers = preferencesForm.watch("preferredTeachers")
+
+    // Create a mapping of teacherId to the subjects they teach using useMemo
+    const teacherToSubjectsMap = useMemo(() => {
+        const map = new Map<string, string[]>()
+        teacherSubjects.forEach(ts => {
+            if (!map.has(ts.teacherId)) {
+                map.set(ts.teacherId, [])
+            }
+            const subjectsForTeacher = map.get(ts.teacherId)
+            if (subjectsForTeacher) {
+                subjectsForTeacher.push(ts.subjectId)
+            }
+        })
+        return map
+    }, [teacherSubjects])
+
+    // Create a mapping of subjectId to the teachers who teach it using useMemo
+    const subjectToTeachersMap = useMemo(() => {
+        const map = new Map<string, string[]>()
+        teacherSubjects.forEach(ts => {
+            if (!map.has(ts.subjectId)) {
+                map.set(ts.subjectId, [])
+            }
+            const teachersForSubject = map.get(ts.subjectId)
+            if (teachersForSubject) {
+                teachersForSubject.push(ts.teacherId)
+            }
+        })
+        return map
+    }, [teacherSubjects])
+
+    // Compute filtered teachers based on selected subjects
+    const filteredTeachers = useMemo(() => {
+        if (!selectedSubjects.length) {
+            return teachers
+        }
+        return teachers.filter((teacher) => {
+            const teacherSubjects = teacherToSubjectsMap.get(teacher.teacherId) || []
+            return selectedSubjects.some(subjectId => teacherSubjects.includes(subjectId))
+        })
+    }, [teachers, teacherToSubjectsMap, selectedSubjects])
+
+    // Compute filtered subjects based on selected teachers
+    const filteredSubjects = useMemo(() => {
+        if (!selectedTeachers.length) {
+            return subjects
+        }
+        return subjects.filter((subject) => {
+            const subjectTeachers = subjectToTeachersMap.get(subject.subjectId) || []
+            return selectedTeachers.some(teacherId => subjectTeachers.includes(teacherId))
+        })
+    }, [subjects, subjectToTeachersMap, selectedTeachers])
+
     const formatDate = (date: Date) => {
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
+        const year = date.getFullYear()
+        const month = String(date.getMonth() + 1).padStart(2, "0")
+        const day = String(date.getDate()).padStart(2, "0")
+        return `${year}-${month}-${day}`
     }
 
     async function onSubmit(values: z.infer<typeof formSchema>) {
         setIsSubmitting(true)
         try {
-            // Combine values from both forms
-            const combinedValues = {
-                ...values,
-                ...preferencesForm.getValues(),
-            };
-
+            // Format data for server functions
             if (isEditing && student) {
-                await updateStudentMutation.mutateAsync({
-                    studentId: student.studentId,
-                    ...combinedValues,
-                })
+                const updateData = {
+                    student: {
+                        studentId: student.studentId,
+                        ...values
+                    } as StudentUpdateInput,
+                    preferences: preferencesForm.getValues()
+                }
+                await updateStudentMutation.mutateAsync(updateData)
             } else {
-                await createStudentMutation.mutateAsync(combinedValues)
+                const createData = {
+                    student: values as StudentCreateInput,
+                    preferences: preferencesForm.getValues()
+                }
+                await createStudentMutation.mutateAsync(createData)
             }
             onOpenChange(false)
             form.reset()
@@ -123,21 +199,23 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
     }
 
     return (
-        <Dialog open={open} onOpenChange={(open) => {
-            if (!open) {
-                // Reset forms only when dialog is properly closed
-                form.reset()
-                preferencesForm.reset()
-            }
-            onOpenChange(open)
-        }}>
+        <Dialog
+            open={open}
+            onOpenChange={(open) => {
+                if (!open) {
+                    form.reset()
+                    preferencesForm.reset()
+                }
+                onOpenChange(open)
+            }}
+        >
             <DialogContent
                 className="sm:max-w-[600px] max-h-[80vh] overflow-auto"
                 style={{
                     overflowY: "auto",
                     height: "80vh",
                     maxHeight: "80vh",
-                    paddingRight: "10px"
+                    paddingRight: "10px",
                 }}
             >
                 <DialogHeader>
@@ -153,24 +231,32 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
                     <TabsContent value="basic">
                         <Form {...form}>
                             <form className="space-y-4">
-                                <FormField control={form.control} name="name" render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>名前</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="学生の名前を入力" {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )} />
-                                <FormField control={form.control} name="kanaName" render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>カナ名</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="カナ名を入力" {...field} value={field.value || ""} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )} />
+                                <FormField
+                                    control={form.control}
+                                    name="name"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>名前</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="学生の名前を入力" {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="kanaName"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>カナ名</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="カナ名を入力" {...field} value={field.value || ""} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
                                 <FormField
                                     control={form.control}
                                     name="gradeId"
@@ -178,7 +264,7 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
                                         <FormItem>
                                             <FormLabel>学年</FormLabel>
                                             <FormControl>
-                                                <Select onValueChange={field.onChange} value={field.value as string}>
+                                                <Select onValueChange={field.onChange} value={field.value || ""}>
                                                     <SelectTrigger>
                                                         <SelectValue placeholder="学年を選択" />
                                                     </SelectTrigger>
@@ -195,166 +281,218 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
                                         </FormItem>
                                     )}
                                 />
-                                <FormField control={form.control} name="schoolName" render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>学校名</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="学校名を入力" {...field} value={field.value || ""} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )} />
-                                <FormField control={form.control} name="schoolType" render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>学校タイプ</FormLabel>
-                                        <FormControl>
-                                            <Select onValueChange={field.onChange} value={field.value || ""}>
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="学校タイプを選択" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="PUBLIC">公立</SelectItem>
-                                                    <SelectItem value="PRIVATE">私立</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )} />
-                                <FormField control={form.control} name="examSchoolType" render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>受験校タイプ</FormLabel>
-                                        <FormControl>
-                                            <Select onValueChange={field.onChange} value={field.value || ""}>
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="受験校タイプを選択" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="PUBLIC">公立</SelectItem>
-                                                    <SelectItem value="PRIVATE">私立</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )} />
-                                <FormField control={form.control} name="examSchoolCategoryType" render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>受験校カテゴリータイプ</FormLabel>
-                                        <FormControl>
-                                            <Select onValueChange={(value) => field.onChange(value || null)} value={field.value || ""}>
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="受験校カテゴリーを選択" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="ELEMENTARY">小学校</SelectItem>
-                                                    <SelectItem value="MIDDLE">中学校</SelectItem>
-                                                    <SelectItem value="HIGH">高校</SelectItem>
-                                                    <SelectItem value="UNIVERSITY">大学</SelectItem>
-                                                    <SelectItem value="OTHER">その他</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )} />
-                                <FormField control={form.control} name="firstChoiceSchool" render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>第一志望校</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="第一志望校を入力" {...field} value={field.value || ""} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )} />
-                                <FormField control={form.control} name="secondChoiceSchool" render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>第二志望校</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="第二志望校を入力" {...field} value={field.value || ""} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )} />
-                                <FormField control={form.control} name="enrollmentDate" render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>入学日</FormLabel>
-                                        <FormControl>
-                                            <Input
-                                                type="date"
-                                                {...field}
-                                                value={field.value instanceof Date ? formatDate(field.value) : ""}
-                                                onChange={(e) => {
-                                                    const dateValue = e.target.value ? new Date(e.target.value) : null;
-                                                    field.onChange(dateValue);
-                                                }}
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )} />
-                                <FormField control={form.control} name="birthDate" render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>生年月日</FormLabel>
-                                        <FormControl>
-                                            <Input
-                                                type="date"
-                                                {...field}
-                                                value={field.value instanceof Date ? formatDate(field.value) : ""}
-                                                onChange={(e) => {
-                                                    const dateValue = e.target.value ? new Date(e.target.value) : null;
-                                                    field.onChange(dateValue);
-                                                }}
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )} />
-                                <FormField control={form.control} name="homePhone" render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>自宅電話</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="自宅電話を入力" {...field} value={field.value || ""} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )} />
-                                <FormField control={form.control} name="parentMobile" render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>保護者携帯電話</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="保護者携帯電話を入力" {...field} value={field.value || ""} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )} />
-                                <FormField control={form.control} name="studentMobile" render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>学生携帯電話</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="学生携帯電話を入力" {...field} value={field.value || ""} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )} />
-                                <FormField control={form.control} name="parentEmail" render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>保護者メール</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="保護者メールを入力" {...field} value={field.value || ""} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )} />
-                                <FormField control={form.control} name="notes" render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>メモ</FormLabel>
-                                        <FormControl>
-                                            <Textarea placeholder="メモを入力" {...field} value={field.value || ""} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )} />
+                                <FormField
+                                    control={form.control}
+                                    name="schoolName"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>学校名</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="学校名を入力" {...field} value={field.value || ""} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="schoolType"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>学校タイプ</FormLabel>
+                                            <FormControl>
+                                                <Select onValueChange={field.onChange} value={field.value || ""}>
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="学校タイプを選択" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="PUBLIC">公立</SelectItem>
+                                                        <SelectItem value="PRIVATE">私立</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="examSchoolType"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>受験校タイプ</FormLabel>
+                                            <FormControl>
+                                                <Select onValueChange={field.onChange} value={field.value || ""}>
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="受験校タイプを選択" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="PUBLIC">公立</SelectItem>
+                                                        <SelectItem value="PRIVATE">私立</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="examSchoolCategoryType"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>受験校カテゴリータイプ</FormLabel>
+                                            <FormControl>
+                                                <Select onValueChange={(value) => field.onChange(value || null)} value={field.value || ""}>
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="受験校カテゴリーを選択" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="ELEMENTARY">小学校</SelectItem>
+                                                        <SelectItem value="MIDDLE">中学校</SelectItem>
+                                                        <SelectItem value="HIGH">高校</SelectItem>
+                                                        <SelectItem value="UNIVERSITY">大学</SelectItem>
+                                                        <SelectItem value="OTHER">その他</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="firstChoiceSchool"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>第一志望校</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="第一志望校を入力" {...field} value={field.value || ""} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="secondChoiceSchool"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>第二志望校</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="第二志望校を入力" {...field} value={field.value || ""} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="enrollmentDate"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>入学日</FormLabel>
+                                            <FormControl>
+                                                <Input
+                                                    type="date"
+                                                    {...field}
+                                                    value={field.value instanceof Date ? formatDate(field.value) : ""}
+                                                    onChange={(e) => {
+                                                        const dateValue = e.target.value ? new Date(e.target.value) : null
+                                                        field.onChange(dateValue)
+                                                    }}
+                                                />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="birthDate"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>生年月日</FormLabel>
+                                            <FormControl>
+                                                <Input
+                                                    type="date"
+                                                    {...field}
+                                                    value={field.value instanceof Date ? formatDate(field.value) : ""}
+                                                    onChange={(e) => {
+                                                        const dateValue = e.target.value ? new Date(e.target.value) : null
+                                                        field.onChange(dateValue)
+                                                    }}
+                                                />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="homePhone"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>自宅電話</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="自宅電話を入力" {...field} value={field.value || ""} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="parentMobile"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>保護者携帯電話</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="保護者携帯電話を入力" {...field} value={field.value || ""} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="studentMobile"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>学生携帯電話</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="学生携帯電話を入力" {...field} value={field.value || ""} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="parentEmail"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>保護者メール</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="保護者メールを入力" {...field} value={field.value || ""} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="notes"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>メモ</FormLabel>
+                                            <FormControl>
+                                                <Textarea placeholder="メモを入力" {...field} value={field.value || ""} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
                             </form>
                         </Form>
                     </TabsContent>
@@ -368,58 +506,73 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
                                     render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>希望科目</FormLabel>
-                                            <FormControl>
-                                                <Select
-                                                    onValueChange={(value) => {
-                                                        const currentValues = field.value || []
-                                                        if (!currentValues.includes(value)) {
-                                                            field.onChange([...currentValues, value])
-                                                        }
-                                                    }}
-                                                >
-                                                    <SelectTrigger>
-                                                        <SelectValue placeholder="科目を選択" />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="math">数学</SelectItem>
-                                                        <SelectItem value="japanese">国語</SelectItem>
-                                                        <SelectItem value="english">英語</SelectItem>
-                                                        <SelectItem value="science">理科</SelectItem>
-                                                        <SelectItem value="social">社会</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                            </FormControl>
-                                            <div className="flex flex-wrap gap-2 mt-2">
-                                                {(field.value || []).map((subject, index) => (
-                                                    <div key={index} className="flex items-center bg-accent rounded-md px-2 py-1">
-                                                        <span>
-                                                            {subject === "math"
-                                                                ? "数学"
-                                                                : subject === "japanese"
-                                                                    ? "国語"
-                                                                    : subject === "english"
-                                                                        ? "英語"
-                                                                        : subject === "science"
-                                                                            ? "理科"
-                                                                            : subject === "social"
-                                                                                ? "社会"
-                                                                                : subject}
-                                                        </span>
-                                                        <Button
-                                                            type="button"
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            className="h-4 w-4 p-0 ml-1"
-                                                            onClick={() => {
-                                                                const newValues = [...(field.value || [])]
-                                                                newValues.splice(index, 1)
-                                                                field.onChange(newValues)
-                                                            }}
-                                                        >
-                                                            ×
-                                                        </Button>
+                                            <div className="relative">
+                                                <FormControl>
+                                                    <Input
+                                                        placeholder="科目を検索..."
+                                                        className="w-full"
+                                                        value={subjectSearchTerm}
+                                                        onChange={(e) => {
+                                                            setSubjectSearchTerm(e.target.value)
+                                                            setShowSubjectDropdown(e.target.value.trim() !== "")
+                                                        }}
+                                                        onFocus={() => {
+                                                            if (subjectSearchTerm.trim() !== "") {
+                                                                setShowSubjectDropdown(true)
+                                                            }
+                                                        }}
+                                                        onBlur={() => {
+                                                            setTimeout(() => setShowSubjectDropdown(false), 200)
+                                                        }}
+                                                    />
+                                                </FormControl>
+                                                {showSubjectDropdown && (
+                                                    <div className="absolute z-10 w-full mt-1 bg-background border rounded-md shadow-lg max-h-60 overflow-auto">
+                                                        {filteredSubjects
+                                                            .filter((subject) =>
+                                                                subject.name.toLowerCase().includes(subjectSearchTerm.toLowerCase())
+                                                            )
+                                                            .map((subject) => (
+                                                                <div
+                                                                    key={subject.subjectId}
+                                                                    className="p-2 hover:bg-accent cursor-pointer"
+                                                                    onClick={() => {
+                                                                        const currentValues = field.value || []
+                                                                        if (!currentValues.includes(subject.subjectId)) {
+                                                                            field.onChange([...currentValues, subject.subjectId])
+                                                                        }
+                                                                        setSubjectSearchTerm("")
+                                                                        setShowSubjectDropdown(false)
+                                                                    }}
+                                                                >
+                                                                    {subject.name}
+                                                                </div>
+                                                            ))}
                                                     </div>
-                                                ))}
+                                                )}
+                                            </div>
+                                            <div className="flex flex-wrap gap-2 mt-2">
+                                                {(field.value || []).map((subjectId, index) => {
+                                                    const subject = subjects.find((s) => s.subjectId === subjectId)
+                                                    return (
+                                                        <div key={index} className="flex items-center bg-accent rounded-md px-2 py-1">
+                                                            <span>{subject ? subject.name : subjectId}</span>
+                                                            <Button
+                                                                type="button"
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                className="h-4 w-4 p-0 ml-1"
+                                                                onClick={() => {
+                                                                    const newValues = [...(field.value || [])]
+                                                                    newValues.splice(index, 1)
+                                                                    field.onChange(newValues)
+                                                                }}
+                                                            >
+                                                                ×
+                                                            </Button>
+                                                        </div>
+                                                    )
+                                                })}
                                             </div>
                                             <FormMessage />
                                         </FormItem>
@@ -432,41 +585,71 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
                                     render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>希望講師</FormLabel>
-                                            <FormControl>
-                                                <Input
-                                                    placeholder="講師名を入力して Enter キーを押す"
-                                                    onKeyDown={(e) => {
-                                                        if (e.key === "Enter" && e.currentTarget.value.trim()) {
-                                                            e.preventDefault()
-                                                            const newValue = e.currentTarget.value.trim()
-                                                            const currentValues = field.value || []
-                                                            if (!currentValues.includes(newValue)) {
-                                                                field.onChange([...currentValues, newValue])
-                                                                e.currentTarget.value = ""
+                                            <div className="relative">
+                                                <FormControl>
+                                                    <Input
+                                                        placeholder="講師名を検索..."
+                                                        className="w-full"
+                                                        value={teacherSearchTerm}
+                                                        onChange={(e) => {
+                                                            setTeacherSearchTerm(e.target.value)
+                                                            setShowTeacherDropdown(e.target.value.trim() !== "")
+                                                        }}
+                                                        onFocus={() => {
+                                                            if (teacherSearchTerm.trim() !== "") {
+                                                                setShowTeacherDropdown(true)
                                                             }
-                                                        }
-                                                    }}
-                                                />
-                                            </FormControl>
-                                            <div className="flex flex-wrap gap-2 mt-2">
-                                                {(field.value || []).map((teacher, index) => (
-                                                    <div key={index} className="flex items-center bg-accent rounded-md px-2 py-1">
-                                                        <span>{teacher}</span>
-                                                        <Button
-                                                            type="button"
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            className="h-4 w-4 p-0 ml-1"
-                                                            onClick={() => {
-                                                                const newValues = [...(field.value || [])]
-                                                                newValues.splice(index, 1)
-                                                                field.onChange(newValues)
-                                                            }}
-                                                        >
-                                                            ×
-                                                        </Button>
+                                                        }}
+                                                        onBlur={() => {
+                                                            setTimeout(() => setShowTeacherDropdown(false), 200)
+                                                        }}
+                                                    />
+                                                </FormControl>
+                                                {showTeacherDropdown && (
+                                                    <div className="absolute z-10 w-full mt-1 bg-background border rounded-md shadow-lg max-h-60 overflow-auto">
+                                                        {filteredTeachers
+                                                            .filter((teacher) => teacher.name.toLowerCase().includes(teacherSearchTerm.toLowerCase()))
+                                                            .map((teacher) => (
+                                                                <div
+                                                                    key={teacher.teacherId}
+                                                                    className="p-2 hover:bg-accent cursor-pointer"
+                                                                    onClick={() => {
+                                                                        const currentValues = field.value || []
+                                                                        if (!currentValues.includes(teacher.teacherId)) {
+                                                                            field.onChange([...currentValues, teacher.teacherId])
+                                                                        }
+                                                                        setTeacherSearchTerm("")
+                                                                        setShowTeacherDropdown(false)
+                                                                    }}
+                                                                >
+                                                                    {teacher.name}
+                                                                </div>
+                                                            ))}
                                                     </div>
-                                                ))}
+                                                )}
+                                            </div>
+                                            <div className="flex flex-wrap gap-2 mt-2">
+                                                {(field.value || []).map((teacherId, index) => {
+                                                    const teacher = teachers.find((t) => t.teacherId === teacherId)
+                                                    return (
+                                                        <div key={index} className="flex items-center bg-accent rounded-md px-2 py-1">
+                                                            <span>{teacher ? teacher.name : teacherId}</span>
+                                                            <Button
+                                                                type="button"
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                className="h-4 w-4 p-0 ml-1"
+                                                                onClick={() => {
+                                                                    const newValues = [...(field.value || [])]
+                                                                    newValues.splice(index, 1)
+                                                                    field.onChange(newValues)
+                                                                }}
+                                                            >
+                                                                ×
+                                                            </Button>
+                                                        </div>
+                                                    )
+                                                })}
                                             </div>
                                             <FormMessage />
                                         </FormItem>
@@ -549,7 +732,7 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
                                     render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>希望時間帯</FormLabel>
-                                            <FormControl>
+                                            <div className="flex space-x-2">
                                                 <Select
                                                     onValueChange={(value) => {
                                                         const currentValues = field.value || []
@@ -558,7 +741,7 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
                                                         }
                                                     }}
                                                 >
-                                                    <SelectTrigger>
+                                                    <SelectTrigger className="w-[180px]">
                                                         <SelectValue placeholder="時間帯を選択" />
                                                     </SelectTrigger>
                                                     <SelectContent>
@@ -568,7 +751,23 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
                                                         <SelectItem value="night">夜間 (19:00-21:00)</SelectItem>
                                                     </SelectContent>
                                                 </Select>
-                                            </FormControl>
+                                                <div className="flex-1">
+                                                    <Input
+                                                        placeholder="カスタム時間帯を入力..."
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === "Enter" && e.currentTarget.value.trim()) {
+                                                                e.preventDefault()
+                                                                const customTime = e.currentTarget.value.trim()
+                                                                const currentValues = field.value || []
+                                                                if (!currentValues.includes(customTime)) {
+                                                                    field.onChange([...currentValues, customTime])
+                                                                }
+                                                                e.currentTarget.value = ""
+                                                            }
+                                                        }}
+                                                    />
+                                                </div>
+                                            </div>
                                             <div className="flex flex-wrap gap-2 mt-2">
                                                 {(field.value || []).map((time, index) => (
                                                     <div key={index} className="flex items-center bg-accent rounded-md px-2 py-1">

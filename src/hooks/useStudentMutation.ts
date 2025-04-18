@@ -1,13 +1,31 @@
-import { createStudent } from "@/actions/student/create";
+import { createStudentWithPreference } from "@/actions/student/create";
 import { deleteStudent } from "@/actions/student/delete";
-import { updateStudent } from "@/actions/student/update";
+import { updateStudentWithPreference } from "@/actions/student/update";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { z } from "zod";
+import { studentCreateSchema, studentUpdateSchema } from "@/schemas/student.schema";
+import { studentPreferencesSchema } from "@/schemas/student-preferences.schema";
 
+// Define the combined input type for create
+const createStudentWithPreferenceSchema = z.object({
+    student: studentCreateSchema,
+    preferences: studentPreferencesSchema.optional()
+});
+
+type CreateStudentWithPreferenceInput = z.infer<typeof createStudentWithPreferenceSchema>;
+
+// Define the combined input type for update
+const updateStudentWithPreferenceSchema = z.object({
+    student: studentUpdateSchema,
+    preferences: studentPreferencesSchema.optional()
+});
+
+type UpdateStudentWithPreferenceInput = z.infer<typeof updateStudentWithPreferenceSchema>;
 
 export function useStudentCreate() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: createStudent,
+        mutationFn: (data: CreateStudentWithPreferenceInput) => createStudentWithPreference(data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["students"] });
         }
@@ -17,12 +35,13 @@ export function useStudentCreate() {
 export function useStudentUpdate() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: updateStudent,
+        mutationFn: (data: UpdateStudentWithPreferenceInput) => updateStudentWithPreference(data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["students"] });
         }
     });
 }
+
 export function useStudentDelete() {
     const queryClient = useQueryClient();
     return useMutation({

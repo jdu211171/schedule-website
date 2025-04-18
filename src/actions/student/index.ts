@@ -1,7 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { Student } from "@prisma/client";
+import { Student, StudentPreference } from "@prisma/client";
 import { Grade } from "@prisma/client";
 import { requireAuth } from "../auth-actions";
 
@@ -13,7 +13,7 @@ interface GetStudentsParams {
 export async function getStudents({
   page = 1,
   pageSize = 10,
-}: GetStudentsParams = {}): Promise<(Student & { grade: Grade | null })[]> {
+}: GetStudentsParams = {}): Promise<(Student & { grade: Grade | null, preference: StudentPreference | null })[]> {
   await requireAuth();
   const skip = (page - 1) * pageSize;
   return prisma.student.findMany({
@@ -24,6 +24,7 @@ export async function getStudents({
     },
     include: {
       grade: true,
+      preference: true,
     },
   });
 }

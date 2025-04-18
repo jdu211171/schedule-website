@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { DataTable } from "@/components/data-table"
 import { useStudents } from "@/hooks/useStudentQuery"
 import { useStudentDelete } from "@/hooks/useStudentMutation"
-import { StudentWithGrade } from "@/schemas/student.schema"
+import { StudentWithGrade, StudentWithPreference } from "@/schemas/student.schema"
 import {
     AlertDialog,
     AlertDialogAction,
@@ -30,7 +30,7 @@ export function StudentTable() {
     const { data: totalCount = 0 } = useStudentsCount()
     const deleteStudentMutation = useStudentDelete()
 
-    const [studentToEdit, setStudentToEdit] = useState<Student | null>(null)
+    const [studentToEdit, setStudentToEdit] = useState<Student | StudentWithPreference | null>(null)
     const [studentToDelete, setStudentToDelete] = useState<Student | null>(null)
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
 
