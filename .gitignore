@@ -53,6 +53,9 @@ next-env.d.ts
 .idea
 /.idea/
 
+# test actions
+/src/app/dev-action/
+
 # lock files
 /yarn.lock
 /package-lock.json
