@@ -52,3 +52,8 @@ next-env.d.ts
 .vscode
 .idea
 /.idea/
+
+# lock files
+/yarn.lock
+/package-lock.json
+/pnpm-lock.yaml
