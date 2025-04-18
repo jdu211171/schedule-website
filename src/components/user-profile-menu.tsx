@@ -32,7 +32,7 @@ export default function UserProfileMenu() {
       ?.split(" ")
       .map((n) => n[0])
       .join("")
-      .toUpperCase() ?? "";
+      .toUpperCase();
 
   return (
     <DropdownMenu>
