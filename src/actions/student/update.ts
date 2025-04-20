@@ -27,7 +27,7 @@ export async function updateStudentWithPreference(data: UpdateStudentWithPrefere
     // Use a transaction to ensure both student and preferences are updated atomically
     return prisma.$transaction(async (tx) => {
         // Update the student
-        const student = await tx.student.update({
+        await tx.student.update({
             where: { studentId },
             data: studentData,
         });
