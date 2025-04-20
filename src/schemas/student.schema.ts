@@ -27,6 +27,17 @@ export const studentUpdateSchema = studentCreateSchema.partial().extend({
     studentId: z.string().cuid({ message: "Invalid ID" }),
 });
 
+export const studentPreferenceSchema = z.object({
+    studentId: z.string(),
+    preferredSubjects: z.array(z.string()),
+    preferredTeachers: z.array(z.string()),
+    preferredWeekdays: z.array(z.string()),
+    preferredHours: z.array(z.string()),
+    additionalNotes: z.string().nullable(),
+    createdAt: z.date(),
+    updatedAt: z.date(),
+});
+
 export const studentSchema = z.object({
     studentId: z.string(),
     name: z.string(),
@@ -53,4 +64,14 @@ export const studentSchema = z.object({
 export type StudentCreateInput = z.infer<typeof studentCreateSchema>;
 export type StudentUpdateInput = z.infer<typeof studentUpdateSchema>;
 export type StudentWithGrade = Student & { grade: Grade | null };
+export type StudentPreference = z.infer<typeof studentPreferenceSchema>;
+export type StudentWithPreference = Student & {
+    preference: {
+        preferredSubjects: string[];
+        preferredTeachers: string[];
+        preferredWeekdays: string[];
+        preferredHours: string[];
+        additionalNotes: string | null;
+    } | null
+};
 export type Student = z.infer<typeof studentSchema>;

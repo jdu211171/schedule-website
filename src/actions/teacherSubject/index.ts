@@ -19,5 +19,9 @@ export async function getTeacherSubjects({
         skip,
         take: pageSize,
         orderBy: { createdAt: "desc" },
+        include: {
+            teacher: true,
+            subject: true,
+        }
     });
 }

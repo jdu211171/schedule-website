@@ -119,6 +119,7 @@ model Student {
   studentRegularPreferences  StudentRegularPreference[]
   studentSpecialPreferences  StudentSpecialPreference[]
   templateStudentAssignments TemplateStudentAssignment[]
+  preference                 StudentPreference?
   grade                      Grade?                      @relation(fields: [gradeId], references: [gradeId], onDelete: SetNull, onUpdate: Cascade)
   userId                     String?                     @unique @map("user_id")
   user                       User?                       @relation(fields: [userId], references: [id], onDelete: SetNull)
@@ -128,6 +129,20 @@ model Student {
   @@index([gradeId])
   @@index([schoolName])
   @@map("students")
+}
+
+model StudentPreference {
+  studentId         String   @id @map("student_id")
+  student           Student  @relation(fields: [studentId], references: [studentId], onDelete: Cascade)
+  preferredSubjects String[]
+  preferredTeachers String[]
+  preferredWeekdays String[]
+  preferredHours    String[]
+  additionalNotes   String?  @db.Text
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt         DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  @@map("student_preferences")
 }
 
 /**

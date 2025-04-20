@@ -1,16 +1,47 @@
 "use server";
 
-import { studentCreateSchema, StudentCreateInput } from "@/schemas/student.schema";
+import { studentCreateSchema } from "@/schemas/student.schema";
 import prisma from "@/lib/prisma";
 import { requireAuth } from "../auth-actions";
+import { z } from "zod";
+import { studentPreferencesSchema } from "@/schemas/student-preferences.schema";
 
-export async function createStudent(data: StudentCreateInput) {
+const createStudentWithPreferenceSchema = z.object({
+  student: studentCreateSchema,
+  preferences: studentPreferencesSchema.optional()
+});
+
+type CreateStudentWithPreferenceInput = z.infer<typeof createStudentWithPreferenceSchema>;
+
+export async function createStudentWithPreference(data: CreateStudentWithPreferenceInput) {
   await requireAuth();
-  const parsed = studentCreateSchema.safeParse(data);
+
+  const parsed = createStudentWithPreferenceSchema.safeParse(data);
   if (!parsed.success) {
     throw new Error("Invalid data provided");
   }
-  return prisma.student.create({
-    data: parsed.data,
+
+  const { student: studentData, preferences } = parsed.data;
+
+  return prisma.$transaction(async (tx) => {
+    const student = await tx.student.create({
+      data: {
+        ...studentData,
+        preference: preferences ? {
+          create: {
+            preferredSubjects: preferences.preferredSubjects || [],
+            preferredTeachers: preferences.preferredTeachers || [],
+            preferredWeekdays: preferences.preferredWeekdays || [],
+            preferredHours: preferences.preferredHours || [],
+            additionalNotes: preferences.additionalNotes || null,
+          }
+        } : undefined
+      },
+      include: {
+        preference: true
+      }
+    });
+
+    return student;
   });
 }
