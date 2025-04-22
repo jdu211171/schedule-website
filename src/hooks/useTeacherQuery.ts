@@ -4,22 +4,22 @@ import { getTeacher } from '@/actions/teacher/read';
 import { getTeachersCount } from '@/actions/count';
 
 export function useTeachersCount() {
-    return useQuery({
-        queryKey: ["teachers", "count"],
-        queryFn: () => getTeachersCount(),
-    });
+  return useQuery({
+    queryKey: ["teachers", "count"],
+    queryFn: () => getTeachersCount(),
+  });
 }
 
-export function useTeachers(page: number = 1, pageSize: number = 15) {
-    return useQuery({
-        queryKey: ["teachers", page, pageSize],
-        queryFn: () => getTeachers({ page, pageSize }),
-    });
+export function useTeachers({ page = 1, pageSize = 15, studentId }: { page?: number; pageSize?: number; studentId?: string }) {
+  return useQuery({
+    queryKey: ["teachers", page, pageSize, studentId],
+    queryFn: () => getTeachers({ page, pageSize, studentId }),
+  });
 }
 
 export function useTeacher(teacherId: string) {
-    return useQuery({
-        queryKey: ["teachers", teacherId],
-        queryFn: () => getTeacher(teacherId),
-    });
+  return useQuery({
+    queryKey: ["teachers", teacherId],
+    queryFn: () => getTeacher(teacherId),
+  });
 }

@@ -12,10 +12,10 @@ export function useStudentsCount() {
     });
 }
 
-export function useStudents(page: number = 1, pageSize: number = 15) {
+export function useStudents({ page = 1, pageSize = 10, teacherId }: { page?: number; pageSize?: number; teacherId?: string }) {
     return useQuery({
-        queryKey: ["students", page, pageSize],
-        queryFn: () => getStudents({ page, pageSize }) as Promise<(Student & { grade: Grade | null, preference: StudentPreference | null })[]>,
+        queryKey: ["students", page, pageSize, teacherId],
+        queryFn: () => getStudents({ page, pageSize, teacherId }) as Promise<(Student & { grade: Grade | null, preference: StudentPreference | null })[]>,
     });
 }
 
