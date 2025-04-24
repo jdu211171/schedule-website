@@ -10,13 +10,17 @@ export function useBoothsCount() {
   });
 }
 
-export function useBooths(
-  weekday: string,
-  startTime: string,
-  endTime: string,
-  page: number = 1,
-  pageSize: number = 15
-) {
+type UseBoothsParams = {
+  weekday?: string;
+  startTime?: string;
+  endTime?: string;
+  page?: number;
+  pageSize?: number;
+};
+
+export function useBooths(params: UseBoothsParams = {}) {
+  const { weekday, startTime, endTime, page = 1, pageSize = 10 } = params;
+
   return useQuery({
     queryKey: ["booths", weekday, startTime, endTime, page, pageSize],
     queryFn: () => getBooths({ weekday, startTime, endTime, page, pageSize }),

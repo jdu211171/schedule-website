@@ -13,14 +13,15 @@ import { requireAuth } from "../auth-actions";
  * @param pageSize  1 ページあたりの件数
  */
 interface GetBoothsParams {
-  weekday: string;
-  startTime: string;
-  endTime: string;
+  weekday?: string;
+  startTime?: string;
+  endTime?: string;
   page?: number;
   pageSize?: number;
 }
 
-function timeStringToDate(time: string): Date {
+function timeStringToDate(time?: string): Date | undefined {
+  if (!time) return undefined;
   const [h, m] = time.split(":").map(Number);
   const d = new Date(0);
   d.setUTCHours(h, m, 0, 0);
@@ -33,26 +34,38 @@ export async function getBooths({
   endTime,
   page = 1,
   pageSize = 10,
-}: GetBoothsParams) {
+}: GetBoothsParams = {}) {
   await requireAuth();
 
   const skip = (page - 1) * pageSize;
   const startTimeDate = timeStringToDate(startTime);
   const endTimeDate = timeStringToDate(endTime);
 
-  return prisma.booth.findMany({
-    where: {
-      status: true,
-      regularClassTemplates: {
-        none: {
-          dayOfWeek: weekday,
-          AND: [
-            { startTime: { lt: endTimeDate } },
-            { endTime: { gt: startTimeDate } },
-          ],
-        },
+  // Build dynamic where clause
+  const where: {
+    status: boolean;
+    regularClassTemplates?: {
+      none: {
+        dayOfWeek: string;
+        AND: { startTime: { lt: Date }; endTime: { gt: Date } }[];
+      };
+    };
+  } = { status: true };
+
+  if (weekday && startTimeDate && endTimeDate) {
+    where.regularClassTemplates = {
+      none: {
+        dayOfWeek: weekday,
+        AND: [
+          { startTime: { lt: endTimeDate }, endTime: { gt: startTimeDate } },
+          { startTime: { lt: endTimeDate }, endTime: { gt: startTimeDate } },
+        ],
       },
-    },
+    };
+  }
+
+  return prisma.booth.findMany({
+    where,
     skip,
     take: pageSize,
     orderBy: {
