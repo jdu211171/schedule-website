@@ -1004,4 +1004,3 @@ export function StudentFormDialog({
     </Dialog>
   );
 }
-
