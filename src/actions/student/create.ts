@@ -24,6 +24,7 @@ export async function createStudentWithPreference(
   const { student: studentData, preferences } = parsed.data;
 
   return prisma.$transaction(async (tx) => {
+    const { gradeId } = studentData;
     const user = await tx.user.create({
       data: {
         username: studentData.username,
@@ -32,31 +33,31 @@ export async function createStudentWithPreference(
       }
     });
 
+    console.log(gradeId)
+
     const student = await tx.student.create({
       data: {
         ...studentData,
-
+        userId: user.id,
+        gradeId,
         studentRegularPreferences: preferences
           ? {
-              create: {
-                preferredSubjects: preferences.preferredSubjects ?? [],
-                preferredTeachers: preferences.preferredTeachers ?? [],
-                preferredWeekdaysTimes: {
-                  weekdays: preferences.preferredWeekdays ?? [],
-                  hours: preferences.preferredHours ?? [],
-                },
-                notes: preferences.additionalNotes ?? null,
+            create: {
+              preferredSubjects: preferences.preferredSubjects ?? [],
+              preferredTeachers: preferences.preferredTeachers ?? [],
+              preferredWeekdaysTimes: {
+                weekdays: preferences.preferredWeekdays ?? [],
+                hours: preferences.preferredHours ?? [],
               },
-            }
+              notes: preferences.additionalNotes ?? null,
+            },
+          }
           : undefined,
       },
       include: {
         studentRegularPreferences: true,
       },
     });
-
-    console.log("Student created with preference:", student);
-    console.log("User created:", user);
 
     return student;
   });
