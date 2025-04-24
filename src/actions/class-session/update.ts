@@ -28,7 +28,16 @@ export async function updateClassSession(
     studentId,
   } = parsed.data;
 
-  const updateData: any = {};
+  const updateData: Partial<{
+    date: Date;
+    teacherId: string;
+    subjectId: string;
+    boothId: string;
+    classTypeId: string;
+    notes: string;
+    startTime: Date;
+    endTime: Date;
+  }> = {};
   if (date) updateData.date = date;
   if (teacherId) updateData.teacherId = teacherId;
   if (subjectId) updateData.subjectId = subjectId;
