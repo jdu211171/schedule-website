@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { Teacher, Subject, Lesson, Evaluation } from "./types";
 import { Input } from "@/components/ui/input";
 import {
@@ -18,7 +18,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import DetailDialog from "./detail-dialog";
 
-// Определяем интерфейс для teacherSubjects вместо any
 interface TeacherSubject {
   teacherId: string;
   subjectId: string;
@@ -26,12 +25,15 @@ interface TeacherSubject {
 
 interface TeacherTableProps {
   teachers: Teacher[];
-  selectedTeacherId: string | undefined;
+  selectedTeacherId: string | null;
   onTeacherSelect: (teacherId: string) => void;
   lessons: Lesson[];
   subjects: Subject[];
   evaluations: Evaluation[];
   teacherSubjects: TeacherSubject[];
+  selectedStudentId: string | null;
+  filteredTeachers?: Teacher[];
+  kibouSubjects?: Subject[];
 }
 
 export default function TeacherTable({
@@ -42,6 +44,9 @@ export default function TeacherTable({
   subjects,
   evaluations,
   teacherSubjects,
+  selectedStudentId,
+  filteredTeachers,
+  kibouSubjects = [],
 }: TeacherTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -51,35 +56,37 @@ export default function TeacherTable({
   const [evaluationFilter, setEvaluationFilter] = useState<string | null>(null);
   const [detailsTeacher, setDetailsTeacher] = useState<Teacher | null>(null);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
-
+  
   const allSubjects = useMemo(() => subjects, [subjects]);
 
-  // Обработчик изменения фильтров
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedStudentId]);
+
   const handleFilterChange = (newSubjectFilters: string[], newHasLessonsFilter: boolean | null) => {
     setSubjectFilters(newSubjectFilters);
     setHasLessonsFilter(newHasLessonsFilter);
-    setCurrentPage(1); // Сбрасываем на первую страницу при изменении фильтров
+    setCurrentPage(1);
   };
 
-  // Обработчик изменения фильтра по оценке
   const handleEvaluationFilterChange = (evaluationId: string | null) => {
     setEvaluationFilter(evaluationId);
     setCurrentPage(1);
   };
 
-  // Функция для проверки, есть ли у учителя уроки (мемоизируем с useCallback)
   const teacherHasLessons = useCallback((teacherId: string) => {
     return lessons.some((lesson) => lesson.teacherId === teacherId);
   }, [lessons]);
 
-  // Обогащаем данные учителей (добавляем оценки и предметы)
   const enrichedTeachers = useMemo(() => {
-    return teachers.map(teacher => {
+    const baseTeachers = filteredTeachers || teachers;
+    
+    return baseTeachers.map(teacher => {
       const evaluation = evaluations.find(e => e.evaluationId === teacher.evaluationId) || null;
       const teacherSubjectsData = teacherSubjects.filter(ts => ts.teacherId === teacher.teacherId);
       const subjectIds = new Set<string>();
       const teacherSubjectsList: Subject[] = [];
-
+      
       teacherSubjectsData.forEach(ts => {
         const subject = subjects.find(s => s.subjectId === ts.subjectId);
         if (subject && !subjectIds.has(subject.subjectId)) {
@@ -87,9 +94,9 @@ export default function TeacherTable({
           teacherSubjectsList.push(subject);
         }
       });
-
+      
       const teacherLessons = lessons.filter(lesson => lesson.teacherId === teacher.teacherId);
-
+      
       teacherLessons.forEach(lesson => {
         if (lesson.subject && !subjectIds.has(lesson.subject.subjectId)) {
           subjectIds.add(lesson.subject.subjectId);
@@ -102,63 +109,75 @@ export default function TeacherTable({
           }
         }
       });
-
+      
       return {
         ...teacher,
         evaluation,
         subjects: teacherSubjectsList
       };
     });
-  }, [teachers, evaluations, lessons, subjects, teacherSubjects]);
+  }, [teachers, filteredTeachers, evaluations, lessons, subjects, teacherSubjects]);
 
-  // Фильтрация учителей
-  const filteredTeachers = useMemo(() => {
+  const filteredTeachersWithUI = useMemo(() => {
     return enrichedTeachers.filter((teacher) => {
-      // Фильтр по поисковому запросу
-      const matchesSearch =
+      const matchesSearch = 
         teacher.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (teacher.university || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
         (teacher.faculty || "").toLowerCase().includes(searchTerm.toLowerCase());
-
-      // Фильтр по предметам
+      
       const teacherSubjects = teacher.subjects || [];
-      const matchesSubjects =
-        subjectFilters.length === 0 ||
+      const matchesSubjects = 
+        subjectFilters.length === 0 || 
         teacherSubjects.some(subject => subjectFilters.includes(subject.subjectId));
-
-      // Фильтр по наличию уроков
-      const matchesHasLessons =
-        hasLessonsFilter === null ||
+      
+      const matchesHasLessons = 
+        hasLessonsFilter === null || 
         (hasLessonsFilter === true && teacherHasLessons(teacher.teacherId)) ||
         (hasLessonsFilter === false && !teacherHasLessons(teacher.teacherId));
-
-      // Фильтр по оценке учителя
-      const matchesEvaluation =
-        evaluationFilter === null ||
+      
+      const matchesEvaluation = 
+        evaluationFilter === null || 
         teacher.evaluationId === evaluationFilter;
-
+      
       return matchesSearch && matchesSubjects && matchesHasLessons && matchesEvaluation;
     });
   }, [
-    enrichedTeachers,
-    searchTerm,
-    subjectFilters,
-    hasLessonsFilter,
+    enrichedTeachers, 
+    searchTerm, 
+    subjectFilters, 
+    hasLessonsFilter, 
     evaluationFilter,
-    teacherHasLessons // Добавляем функцию в зависимости
+    teacherHasLessons
   ]);
 
-  // Расчет общего количества страниц
-  const totalPages = Math.ceil(filteredTeachers.length / itemsPerPage);
-
-  // Получение учителей для текущей страницы
-  const paginatedTeachers = filteredTeachers.slice(
+  const totalPages = Math.ceil(filteredTeachersWithUI.length / itemsPerPage);
+  
+  const paginatedTeachers = filteredTeachersWithUI.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
 
+  const isKibouSubject = useCallback((teacherSubject: Subject) => {
+    return kibouSubjects.some(
+      kibouSubject => kibouSubject.subjectId === teacherSubject.subjectId
+    );
+  }, [kibouSubjects]);
+
   return (
     <div className="rounded-md border h-full flex flex-col bg-white">
+      {selectedStudentId && kibouSubjects.length > 0 && (
+        <div className="bg-green-50 p-2 border-b flex flex-wrap items-center gap-2">
+          <span className="text-green-800 text-sm font-medium">希望科目：</span>
+          {kibouSubjects.map((subject) => (
+            <SubjectBadge 
+              key={subject.subjectId} 
+              subject={subject} 
+              size="sm" 
+            />
+          ))}
+        </div>
+      )}
+
       <div className="p-4 border-b flex justify-between items-center space-x-2">
         <div className="flex-1 relative">
           <Input
@@ -166,16 +185,16 @@ export default function TeacherTable({
             value={searchTerm}
             onChange={(e) => {
               setSearchTerm(e.target.value);
-              setCurrentPage(1); // Сбрасываем на первую страницу при поиске
+              setCurrentPage(1);
             }}
             placeholder="先生を検索..."
             className="w-full"
           />
           {searchTerm && (
-            <button
+            <button 
               onClick={() => {
                 setSearchTerm("");
-                setCurrentPage(1); // Сбрасываем на первую страницу при очистке поиска
+                setCurrentPage(1);
               }}
               className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
             >
@@ -183,8 +202,8 @@ export default function TeacherTable({
             </button>
           )}
         </div>
-
-        <FilterPopover
+        
+        <FilterPopover 
           subjects={allSubjects}
           evaluations={evaluations}
           onFilterChange={handleFilterChange}
@@ -194,7 +213,7 @@ export default function TeacherTable({
           initialEvaluationFilter={evaluationFilter}
         />
       </div>
-
+      
       <ScrollArea className="flex-grow">
         <Table>
           <TableHeader className="bg-gray-50 sticky top-0 z-10">
@@ -208,14 +227,14 @@ export default function TeacherTable({
           <TableBody>
             {paginatedTeachers.map((teacher) => {
               const teacherSubjects = teacher.subjects || [];
-
+              
               return (
                 <TableRow
                   key={teacher.teacherId}
                   onClick={() => onTeacherSelect(teacher.teacherId)}
                   className={`cursor-pointer ${
                     selectedTeacherId === teacher.teacherId
-                      ? "bg-green-100 hover:bg-green-200" // Зеленое выделение для выбранного учителя
+                      ? "bg-green-100 hover:bg-green-200"
                       : "hover:bg-gray-100"
                   }`}
                 >
@@ -225,7 +244,12 @@ export default function TeacherTable({
                   <TableCell>
                     <div className="flex flex-wrap gap-1">
                       {teacherSubjects.slice(0, 3).map((subject) => (
-                        <SubjectBadge key={subject.subjectId} subject={subject} size="sm" />
+                        <SubjectBadge 
+                          key={subject.subjectId} 
+                          subject={subject} 
+                          size="sm" 
+                          highlight={selectedStudentId ? isKibouSubject(subject) : false}
+                        />
                       ))}
                       {teacherSubjects.length > 3 && (
                         <Badge variant="outline" className="bg-gray-100 text-gray-800 px-1.5 py-0.5 text-xs rounded-full">
@@ -236,11 +260,11 @@ export default function TeacherTable({
                   </TableCell>
                   <TableCell>
                     {teacher.evaluation ? (
-                      <Badge
+                      <Badge 
                         className={`
-                          ${teacher.evaluation.score && teacher.evaluation.score >= 4 ? 'bg-green-100 text-green-800' :
-                          teacher.evaluation.score && teacher.evaluation.score >= 3 ? 'bg-blue-100 text-blue-800' :
-                          teacher.evaluation.score && teacher.evaluation.score >= 2 ? 'bg-yellow-100 text-yellow-800' :
+                          ${teacher.evaluation.score && teacher.evaluation.score >= 4 ? 'bg-green-100 text-green-800' : 
+                          teacher.evaluation.score && teacher.evaluation.score >= 3 ? 'bg-blue-100 text-blue-800' : 
+                          teacher.evaluation.score && teacher.evaluation.score >= 2 ? 'bg-yellow-100 text-yellow-800' : 
                           'bg-gray-100 text-gray-800'}
                           px-2 py-1 rounded-full text-xs
                         `}
@@ -252,12 +276,12 @@ export default function TeacherTable({
                     )}
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="sm"
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
                       className="h-8 w-8 p-0 hover:bg-gray-200 "
                       onClick={(e) => {
-                        e.stopPropagation(); // Предотвращаем срабатывание onClick строки
+                        e.stopPropagation();
                         setDetailsTeacher(teacher);
                         setIsDetailDialogOpen(true);
                       }}
@@ -274,25 +298,23 @@ export default function TeacherTable({
             })}
           </TableBody>
         </Table>
-
-        {filteredTeachers.length === 0 && (
+        
+        {filteredTeachersWithUI.length === 0 && (
           <div className="p-6 text-center text-gray-500">
             検索結果はありません
           </div>
         )}
       </ScrollArea>
-
-      {/* Пагинация */}
-      <Pagination
+      
+      <Pagination 
         currentPage={currentPage}
         totalPages={totalPages}
-        totalItems={filteredTeachers.length}
+        totalItems={filteredTeachersWithUI.length}
         itemsPerPage={itemsPerPage}
         onPageChange={setCurrentPage}
         onItemsPerPageChange={setItemsPerPage}
       />
-
-      {/* Диалог с подробной информацией */}
+      
       {detailsTeacher && (
         <DetailDialog
           entity={detailsTeacher}

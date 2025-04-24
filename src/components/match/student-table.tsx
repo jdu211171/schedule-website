@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { Student, Subject, Lesson, Grade, StudentType } from "./types";
 import { Input } from "@/components/ui/input";
 import {
@@ -21,12 +21,15 @@ import DetailDialog from "./detail-dialog";
 
 interface StudentTableProps {
   students: Student[];
-  selectedStudentId: string | undefined;
+  selectedStudentId: string | null;
   onStudentSelect: (studentId: string) => void;
   lessons: Lesson[];
   subjects: Subject[];
   grades: Grade[];
   studentTypes: StudentType[];
+  selectedTeacherId: string | null;
+  filteredStudents?: Student[];
+  kibouSubjects?: Subject[];
 }
 
 export default function StudentTable({
@@ -37,6 +40,9 @@ export default function StudentTable({
   subjects,
   grades,
   studentTypes,
+  selectedTeacherId,
+  filteredStudents,
+  kibouSubjects = [],
 }: StudentTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -47,20 +53,37 @@ export default function StudentTable({
   const [schoolTypeFilter, setSchoolTypeFilter] = useState<string | null>(null);
   const [detailsStudent, setDetailsStudent] = useState<Student | null>(null);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
-
+  
   const allSubjects = useMemo(() => subjects, [subjects]);
 
-  // Функция для проверки, есть ли у студента уроки (переносим в useCallback)
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedTeacherId]);
+
   const studentHasLessons = useCallback((studentId: string) => {
     return lessons.some((lesson) => lesson.studentId === studentId);
   }, [lessons]);
 
-  // Функция для получения предметов студента (переносим в useCallback)
   const getStudentSubjects = useCallback((student: Student) => {
-    const studentLessons = lessons.filter(lesson => lesson.studentId === student.studentId);
     const subjectIds = new Set<string>();
     const studentSubjectsList: Subject[] = [];
-
+    
+    // Добавляем предметы из preference, если они есть
+    if (student.preference?.preferredSubjects) {
+      student.preference.preferredSubjects.forEach(subjectId => {
+        if (!subjectIds.has(subjectId)) {
+          const subject = subjects.find(s => s.subjectId === subjectId);
+          if (subject) {
+            subjectIds.add(subjectId);
+            studentSubjectsList.push(subject);
+          }
+        }
+      });
+    }
+    
+    // Затем добавляем предметы из уроков
+    const studentLessons = lessons.filter(lesson => lesson.studentId === student.studentId);
+    
     studentLessons.forEach(lesson => {
       if (lesson.subject && !subjectIds.has(lesson.subject.subjectId)) {
         subjectIds.add(lesson.subject.subjectId);
@@ -73,38 +96,36 @@ export default function StudentTable({
         }
       }
     });
-
+    
     return studentSubjectsList;
   }, [lessons, subjects]);
 
-  // Обработчик изменения фильтров
   const handleFilterChange = (newSubjectFilters: string[], newHasLessonsFilter: boolean | null) => {
     setSubjectFilters(newSubjectFilters);
     setHasLessonsFilter(newHasLessonsFilter);
-    setCurrentPage(1); // Сбрасываем на первую страницу при изменении фильтров
+    setCurrentPage(1);
   };
 
-  // Обработчик изменения фильтра по классу
   const handleGradeFilterChange = (gradeId: string | null) => {
     setGradeFilter(gradeId);
     setCurrentPage(1);
   };
 
-  // Обработчик изменения фильтра по типу школы
   const handleSchoolTypeFilterChange = (schoolType: string | null) => {
     setSchoolTypeFilter(schoolType);
     setCurrentPage(1);
   };
 
-  // Обогащаем данные студентов (добавляем классы и тип студента)
   const enrichedStudents = useMemo(() => {
-    return students.map(student => {
+    const baseStudents = filteredStudents || students;
+    
+    return baseStudents.map(student => {
       const grade = grades.find(g => g.gradeId === student.gradeId) || null;
       const studentType = (grade?.studentTypeId && studentTypes.length > 0)
         ? studentTypes.find(st => st.studentTypeId === grade.studentTypeId) || null
         : null;
       const studentSubjects = getStudentSubjects(student);
-
+      
       return {
         ...student,
         grade,
@@ -112,40 +133,34 @@ export default function StudentTable({
         subjects: studentSubjects
       };
     });
-  }, [students, grades, studentTypes, getStudentSubjects]);
+  }, [students, filteredStudents, grades, studentTypes, getStudentSubjects]);
 
-  // Фильтрация студентов
-  const filteredStudents = useMemo(() => {
+  const filteredStudentsWithUI = useMemo(() => {
     return enrichedStudents.filter((student) => {
-      // Фильтр по поисковому запросу
-      const matchesSearch =
+      const matchesSearch = 
         student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (student.kanaName || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
         (student.schoolName || "").toLowerCase().includes(searchTerm.toLowerCase());
-
-      // Фильтр по предметам
+      
       const studentSubjects = student.subjects || [];
-      const matchesSubjects =
-        subjectFilters.length === 0 ||
+      const matchesSubjects = 
+        subjectFilters.length === 0 || 
         studentSubjects.some(subject => subjectFilters.includes(subject.subjectId));
-
-      // Фильтр по наличию уроков
-      const matchesHasLessons =
-        hasLessonsFilter === null ||
+      
+      const matchesHasLessons = 
+        hasLessonsFilter === null || 
         (hasLessonsFilter === true && studentHasLessons(student.studentId)) ||
         (hasLessonsFilter === false && !studentHasLessons(student.studentId));
-
-      // Фильтр по классу
-      const matchesGrade =
-        gradeFilter === null ||
+      
+      const matchesGrade = 
+        gradeFilter === null || 
         student.gradeId === gradeFilter;
-
-      // Фильтр по типу школы
-      const matchesSchoolType =
-        schoolTypeFilter === null ||
+      
+      const matchesSchoolType = 
+        schoolTypeFilter === null || 
         student.examSchoolCategoryType === schoolTypeFilter;
-
-      return matchesSearch && matchesSubjects && matchesHasLessons &&
+      
+      return matchesSearch && matchesSubjects && matchesHasLessons && 
              matchesGrade && matchesSchoolType;
     });
   }, [
@@ -158,16 +173,34 @@ export default function StudentTable({
     studentHasLessons
   ]);
 
-  const totalPages = Math.ceil(filteredStudents.length / itemsPerPage);
-
-  // Получение студентов для текущей страницы
-  const paginatedStudents = filteredStudents.slice(
+  const totalPages = Math.ceil(filteredStudentsWithUI.length / itemsPerPage);
+  
+  const paginatedStudents = filteredStudentsWithUI.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
 
+  const isKibouSubject = useCallback((studentSubject: Subject) => {
+    return kibouSubjects.some(
+      kibouSubject => kibouSubject.subjectId === studentSubject.subjectId
+    );
+  }, [kibouSubjects]);
+
   return (
     <div className="rounded-md border h-full flex flex-col bg-white">
+      {selectedTeacherId && kibouSubjects.length > 0 && (
+        <div className="bg-blue-50 p-2 border-b flex flex-wrap items-center gap-2">
+          <span className="text-blue-800 text-sm font-medium">担当可能科目：</span>
+          {kibouSubjects.map((subject) => (
+            <SubjectBadge 
+              key={subject.subjectId} 
+              subject={subject} 
+              size="sm" 
+            />
+          ))}
+        </div>
+      )}
+
       <div className="p-4 border-b flex justify-between items-center space-x-2">
         <div className="flex-1 relative">
           <Input
@@ -175,16 +208,16 @@ export default function StudentTable({
             value={searchTerm}
             onChange={(e) => {
               setSearchTerm(e.target.value);
-              setCurrentPage(1); // Сбрасываем на первую страницу при поиске
+              setCurrentPage(1);
             }}
             placeholder="生徒を検索..."
             className="w-full"
           />
           {searchTerm && (
-            <button
+            <button 
               onClick={() => {
                 setSearchTerm("");
-                setCurrentPage(1); // Сбрасываем на первую страницу при очистке поиска
+                setCurrentPage(1);
               }}
               className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
             >
@@ -192,8 +225,8 @@ export default function StudentTable({
             </button>
           )}
         </div>
-
-        <FilterPopover
+        
+        <FilterPopover 
           subjects={allSubjects}
           grades={grades}
           examSchoolTypes={["ELEMENTARY", "MIDDLE", "HIGH", "UNIVERSITY", "OTHER"]}
@@ -206,7 +239,7 @@ export default function StudentTable({
           initialSchoolTypeFilter={schoolTypeFilter}
         />
       </div>
-
+      
       <ScrollArea className="flex-grow">
         <Table>
           <TableHeader className="bg-gray-50 sticky top-0 z-10">
@@ -220,14 +253,14 @@ export default function StudentTable({
           <TableBody>
             {paginatedStudents.map((student) => {
               const studentSubjects = student.subjects || [];
-
+              
               return (
                 <TableRow
                   key={student.studentId}
                   onClick={() => onStudentSelect(student.studentId)}
                   className={`cursor-pointer ${
                     selectedStudentId === student.studentId
-                      ? "bg-blue-100 hover:bg-blue-200" // Синее выделение для выбранного студента
+                      ? "bg-blue-100 hover:bg-blue-200"
                       : "hover:bg-gray-100"
                   }`}
                 >
@@ -252,7 +285,12 @@ export default function StudentTable({
                   <TableCell>
                     <div className="flex flex-wrap gap-1">
                       {studentSubjects.slice(0, 3).map((subject) => (
-                        <SubjectBadge key={subject.subjectId} subject={subject} size="sm" />
+                        <SubjectBadge 
+                          key={subject.subjectId} 
+                          subject={subject} 
+                          size="sm" 
+                          highlight={selectedTeacherId ? isKibouSubject(subject) : false}
+                        />
                       ))}
                       {studentSubjects.length > 3 && (
                         <Badge variant="outline" className="bg-gray-100 text-gray-800 px-1.5 py-0.5 text-xs rounded-full">
@@ -262,12 +300,12 @@ export default function StudentTable({
                     </div>
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="sm"
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
                       className="h-8 w-8 p-0 hover:bg-gray-100 rounded-full"
                       onClick={(e) => {
-                        e.stopPropagation(); // Предотвращаем срабатывание onClick строки
+                        e.stopPropagation();
                         setDetailsStudent(student);
                         setIsDetailDialogOpen(true);
                       }}
@@ -284,25 +322,23 @@ export default function StudentTable({
             })}
           </TableBody>
         </Table>
-
-        {filteredStudents.length === 0 && (
+        
+        {filteredStudentsWithUI.length === 0 && (
           <div className="p-6 text-center text-gray-500">
             検索結果はありません
           </div>
         )}
       </ScrollArea>
-
-      {/* Пагинация */}
-      <Pagination
+      
+      <Pagination 
         currentPage={currentPage}
         totalPages={totalPages}
-        totalItems={filteredStudents.length}
+        totalItems={filteredStudentsWithUI.length}
         itemsPerPage={itemsPerPage}
         onPageChange={setCurrentPage}
         onItemsPerPageChange={setItemsPerPage}
       />
-
-      {/* Диалог с подробной информацией */}
+      
       {detailsStudent && (
         <DetailDialog
           entity={detailsStudent}
