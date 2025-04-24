@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { Grade } from "@prisma/client";
+import { desiredTimeSchema, DesiredTimeInput } from "./desiredTime.schema";
 
 const ExamSchoolTypeEnum = z.enum(["ELEMENTARY", "MIDDLE", "HIGH", "UNIVERSITY", "OTHER"]);
 
@@ -27,12 +28,14 @@ export const studentUpdateSchema = studentCreateSchema.partial().extend({
     studentId: z.string().cuid({ message: "Invalid ID" }),
 });
 
+// Update student preferences schema to include desiredTimes
 export const studentPreferenceSchema = z.object({
     studentId: z.string(),
     preferredSubjects: z.array(z.string()),
     preferredTeachers: z.array(z.string()),
     preferredWeekdays: z.array(z.string()),
     preferredHours: z.array(z.string()),
+    desiredTimes: z.array(desiredTimeSchema).default([]), // new
     additionalNotes: z.string().nullable(),
     createdAt: z.date(),
     updatedAt: z.date(),
@@ -63,7 +66,17 @@ export const studentSchema = z.object({
 
 export type StudentCreateInput = z.infer<typeof studentCreateSchema>;
 export type StudentUpdateInput = z.infer<typeof studentUpdateSchema>;
-export type StudentWithGrade = Student & { grade: Grade | null };
+export type StudentWithGrade = Student & { 
+    grade: Grade | null,
+    preference?: { // Added preference type for StudentWithGrade
+        preferredSubjects: string[];
+        preferredTeachers: string[];
+        preferredWeekdays: string[];
+        preferredHours: string[];
+        desiredTimes: DesiredTimeInput[]; // new
+        additionalNotes: string | null;
+    } | null
+};
 export type StudentPreference = z.infer<typeof studentPreferenceSchema>;
 export type StudentWithPreference = Student & {
     preference: {
@@ -71,6 +84,7 @@ export type StudentWithPreference = Student & {
         preferredTeachers: string[];
         preferredWeekdays: string[];
         preferredHours: string[];
+        desiredTimes: DesiredTimeInput[]; // new
         additionalNotes: string | null;
     } | null
 };

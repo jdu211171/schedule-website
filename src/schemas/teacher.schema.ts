@@ -19,6 +19,7 @@ export const teacherCreateSchema = z.object({
     kanjiCertification: z.string().max(50).nullable().optional(),
     otherCertifications: z.string().max(255).nullable().optional(),
     notes: z.string().optional(),
+    userId: z.string().nullable().optional(),
 });
 
 export const teacherUpdateSchema = teacherCreateSchema.partial().extend({
@@ -45,6 +46,7 @@ export const teacherSchema = z.object({
     kanjiCertification: z.string().nullable(),
     otherCertifications: z.string().nullable(),
     notes: z.string().nullable(),
+    userId: z.string().nullable(),
     createdAt: z.date(),
     updatedAt: z.date(),
 });

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { DataTable } from "@/components/data-table"
 import { useTeacherSubjects } from "@/hooks/useTeacherSubjectQuery"
 import { useTeacherSubjectDelete } from "@/hooks/useTeacherSubjectMutation"
-import { TeacherSubject as PrismaTeacherSubject } from "@prisma/client"
+import { TeacherSubject } from "@prisma/client"
 import {
     AlertDialog,
     AlertDialogAction,
@@ -18,35 +18,62 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { TeacherSubjectFormDialog } from "@/components/teacher-subject/teacher-subject-form-dialog"
+import { TeacherSubjectFormDialog } from "./teacher-subject-form-dialog"
 import { useTeacherSubjectsCount } from "@/hooks/useTeacherSubjectQuery"
 
-// Define the type with related teacher and subject
-type TeacherSubjectWithRelations = PrismaTeacherSubject & {
+// Extended type for TeacherSubject with teacher, subject and desired time data
+type TeacherSubjectWithDetails = TeacherSubject & {
     teacher: { name: string }
     subject: { name: string }
+    desiredTimes?: Array<{
+        dayOfWeek: string
+        startTime: string
+        endTime: string
+    }>
 }
 
 export function TeacherSubjectTable() {
     const [searchTerm, setSearchTerm] = useState("")
     const [page, setPage] = useState(1)
     const pageSize = 10
-    const { data: teacherSubjects = [] as TeacherSubjectWithRelations[], isLoading, isFetching } = useTeacherSubjects(page, pageSize)
+    const { data: teacherSubjects = [] as TeacherSubjectWithDetails[], isLoading, isFetching } = useTeacherSubjects(page, pageSize)
     const { data: totalCount = 0 } = useTeacherSubjectsCount()
     const deleteTeacherSubjectMutation = useTeacherSubjectDelete()
 
-    const [teacherSubjectToEdit, setTeacherSubjectToEdit] = useState<TeacherSubjectWithRelations | null>(null)
-    const [teacherSubjectToDelete, setTeacherSubjectToDelete] = useState<TeacherSubjectWithRelations | null>(null)
+    const [teacherSubjectToEdit, setTeacherSubjectToEdit] = useState<TeacherSubjectWithDetails | null>(null)
+    const [teacherSubjectToDelete, setTeacherSubjectToDelete] = useState<TeacherSubjectWithDetails | null>(null)
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
 
     const filteredTeacherSubjects = (searchTerm
         ? teacherSubjects.filter((ts) =>
             ts.teacher.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            ts.subject.name.toLowerCase().includes(searchTerm.toLowerCase())
+            ts.subject.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (ts.notes && ts.notes.toLowerCase().includes(searchTerm.toLowerCase()))
         )
-        : teacherSubjects) as TeacherSubjectWithRelations[];
+        : teacherSubjects) as TeacherSubjectWithDetails[];
 
-    const columns: ColumnDef<TeacherSubjectWithRelations>[] = [
+    const formatWeekday = (weekday: string) => {
+        switch(weekday) {
+            case "Monday": return "月曜日"
+            case "Tuesday": return "火曜日"
+            case "Wednesday": return "水曜日"
+            case "Thursday": return "木曜日"
+            case "Friday": return "金曜日"
+            default: return weekday
+        }
+    }
+    
+    const formatDesiredTimes = (teacherSubject: TeacherSubjectWithDetails) => {
+        if (!teacherSubject.desiredTimes || teacherSubject.desiredTimes.length === 0) {
+            return "-"
+        }
+        
+        return teacherSubject.desiredTimes.map(time => 
+            `${formatWeekday(time.dayOfWeek)}: ${time.startTime}〜${time.endTime}`
+        ).join(", ")
+    }
+
+    const columns: ColumnDef<TeacherSubjectWithDetails>[] = [
         {
             accessorKey: "teacher.name",
             header: "講師",
@@ -54,6 +81,11 @@ export function TeacherSubjectTable() {
         {
             accessorKey: "subject.name",
             header: "科目",
+        },
+        {
+            accessorKey: "desiredTimes",
+            header: "希望時間",
+            cell: ({ row }) => formatDesiredTimes(row.original),
         },
         {
             accessorKey: "notes",

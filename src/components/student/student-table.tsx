@@ -27,7 +27,6 @@ export function StudentTable() {
     const [page, setPage] = useState(1)
     const pageSize = 10
     const { data: students = [] as StudentWithGrade[], isLoading, isFetching } = useStudents({ page, pageSize })
-    console.log(students)
     const { data: totalCount = 0 } = useStudentsCount()
     const deleteStudentMutation = useStudentDelete()
 
@@ -43,6 +42,27 @@ export function StudentTable() {
         )
         : students
 
+    const formatWeekday = (weekday: string) => {
+        switch(weekday) {
+            case "Monday": return "月曜日"
+            case "Tuesday": return "火曜日"
+            case "Wednesday": return "水曜日"
+            case "Thursday": return "木曜日"
+            case "Friday": return "金曜日"
+            default: return weekday
+        }
+    }
+    
+    const formatDesiredTimes = (student: StudentWithGrade) => {
+        if (!student.preference || !student.preference.desiredTimes || student.preference.desiredTimes.length === 0) {
+            return "-"
+        }
+        
+        return student.preference.desiredTimes.map(time => 
+            `${formatWeekday(time.dayOfWeek)}: ${time.startTime} 〜 ${time.endTime}`
+        ).join(", ")
+    }
+
     const columns: ColumnDef<StudentWithGrade>[] = [
         {
             accessorKey: "name",
@@ -57,6 +77,28 @@ export function StudentTable() {
             accessorKey: "kanaName",
             header: "カナ名",
             cell: ({ row }) => row.original.kanaName || "-",
+        },
+        {
+            accessorKey: "preferredWeekdays",
+            header: "希望曜日",
+            cell: ({ row }) => {
+                if (!row.original.preference || !row.original.preference.preferredWeekdays || 
+                    row.original.preference.preferredWeekdays.length === 0) {
+                    return "-"
+                }
+                return row.original.preference.preferredWeekdays.map(day => formatWeekday(day)).join(", ")
+            },
+        },
+        {
+            accessorKey: "preferredSubjects",
+            header: "希望科目",
+            cell: ({ row }) => {
+                if (!row.original.preference || !row.original.preference.preferredSubjects || 
+                    row.original.preference.preferredSubjects.length === 0) {
+                    return "-"
+                }
+                return row.original.preference.preferredSubjects.join(", ")
+            },
         },
         {
             accessorKey: "schoolName",
@@ -94,6 +136,11 @@ export function StudentTable() {
                 if (value === "OTHER") return "その他"
                 return "-"
             },
+        },
+        {
+            accessorKey: "desiredTimes",
+            header: "希望時間",
+            cell: ({ row }) => formatDesiredTimes(row.original),
         },
         {
             accessorKey: "firstChoiceSchool",
@@ -193,7 +240,6 @@ export function StudentTable() {
                 totalItems={totalCount}
             />
 
-            {/* 編集ダイアログ */}
             {studentToEdit && (
                 <StudentFormDialog
                     open={!!studentToEdit}
@@ -202,10 +248,8 @@ export function StudentTable() {
                 />
             )}
 
-            {/* 学生作成ダイアログ */}
             <StudentFormDialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen} student={null}/>
 
-            {/* 削除確認ダイアログ */}
             <AlertDialog open={!!studentToDelete} onOpenChange={(open) => !open && setStudentToDelete(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>

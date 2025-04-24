@@ -33,6 +33,10 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
     const createStudentMutation = useStudentCreate()
     const updateStudentMutation = useStudentUpdate()
 
+    const [selectedWeekday, setSelectedWeekday] = useState<string>("")
+    const [startTime, setStartTime] = useState<string>("")
+    const [endTime, setEndTime] = useState<string>("")
+
     const isEditing = !!student
     const { data: grades = [] } = useGrades()
     const { data: teachers = [] } = useTeachers({})
@@ -44,7 +48,6 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
     const [showSubjectDropdown, setShowSubjectDropdown] = useState(false)
     const [showTeacherDropdown, setShowTeacherDropdown] = useState(false)
 
-    // Check if student has preference property to determine if it's StudentWithPreference
     const hasPreference = student && "preference" in student
 
     const formSchema = isEditing
@@ -90,10 +93,8 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
         },
     })
 
-    // Get preference data safely
     const studentPreference = hasPreference ? (student as StudentWithPreference).preference : null
 
-    // Preferences form
     const preferencesForm = useForm<StudentPreferencesInput>({
         resolver: zodResolver(studentPreferencesSchema),
         defaultValues: {
@@ -101,15 +102,14 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
             preferredTeachers: studentPreference?.preferredTeachers || [],
             preferredWeekdays: studentPreference?.preferredWeekdays || [],
             preferredHours: studentPreference?.preferredHours || [],
+            desiredTimes: studentPreference?.desiredTimes || [],
             additionalNotes: studentPreference?.additionalNotes || "",
         },
     })
 
-    // Watch selected subjects and teachers
     const selectedSubjects = preferencesForm.watch("preferredSubjects")
     const selectedTeachers = preferencesForm.watch("preferredTeachers")
 
-    // Create a mapping of teacherId to the subjects they teach using useMemo
     const teacherToSubjectsMap = useMemo(() => {
         const map = new Map<string, string[]>()
         teacherSubjects.forEach(ts => {
@@ -124,7 +124,6 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
         return map
     }, [teacherSubjects])
 
-    // Create a mapping of subjectId to the teachers who teach it using useMemo
     const subjectToTeachersMap = useMemo(() => {
         const map = new Map<string, string[]>()
         teacherSubjects.forEach(ts => {
@@ -139,7 +138,6 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
         return map
     }, [teacherSubjects])
 
-    // Compute filtered teachers based on selected subjects
     const filteredTeachers = useMemo(() => {
         if (!selectedSubjects.length) {
             return teachers
@@ -150,7 +148,6 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
         })
     }, [teachers, teacherToSubjectsMap, selectedSubjects])
 
-    // Compute filtered subjects based on selected teachers
     const filteredSubjects = useMemo(() => {
         if (!selectedTeachers.length) {
             return subjects
@@ -171,7 +168,6 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
     async function onSubmit(values: z.infer<typeof formSchema>) {
         setIsSubmitting(true)
         try {
-            // Format data for server functions
             if (isEditing && student) {
                 const updateData = {
                     student: {
@@ -192,7 +188,7 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
             form.reset()
             preferencesForm.reset()
         } catch (error) {
-            console.error("学生の保存に失敗しました:", error)
+            console.error("Failed to save student:", error)
         } finally {
             setIsSubmitting(false)
         }
@@ -561,7 +557,7 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
                                                                 type="button"
                                                                 variant="ghost"
                                                                 size="sm"
-                                                                className="h-4 w-4 p-0 ml-1"
+                                                                className="h-4 w-4 p-0 ml-1 cursor-pointer"
                                                                 onClick={() => {
                                                                     const newValues = [...(field.value || [])]
                                                                     newValues.splice(index, 1)
@@ -638,7 +634,7 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
                                                                 type="button"
                                                                 variant="ghost"
                                                                 size="sm"
-                                                                className="h-4 w-4 p-0 ml-1"
+                                                                className="h-4 w-4 p-0 ml-1 cursor-pointer"
                                                                 onClick={() => {
                                                                     const newValues = [...(field.value || [])]
                                                                     newValues.splice(index, 1)
@@ -650,6 +646,131 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
                                                         </div>
                                                     )
                                                 })}
+                                            </div>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+
+                                <FormField
+                                    control={preferencesForm.control}
+                                    name="desiredTimes"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>希望時間</FormLabel>
+                                            <div className="space-y-4">
+                                                <div className="flex items-end gap-2">
+                                                    <div className="flex-1">
+                                                        <Select 
+                                                            onValueChange={(value) => setSelectedWeekday(value)}
+                                                            value={selectedWeekday}
+                                                        >
+                                                            <SelectTrigger>
+                                                                <SelectValue placeholder="曜日を選択" />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+                                                                    .filter(day => !(field.value || []).some(time => time.dayOfWeek === day))
+                                                                    .map(day => (
+                                                                        <SelectItem key={day} value={day}>
+                                                                            {day === "Monday" 
+                                                                                ? "月曜日" 
+                                                                                : day === "Tuesday" 
+                                                                                    ? "火曜日" 
+                                                                                    : day === "Wednesday" 
+                                                                                        ? "水曜日" 
+                                                                                        : day === "Thursday" 
+                                                                                            ? "木曜日" 
+                                                                                            : "金曜日"}
+                                                                        </SelectItem>
+                                                                    ))
+                                                                }
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+                                                    
+                                                    <div className="flex items-center">
+                                                        <Input
+                                                            type="time"
+                                                            value={startTime}
+                                                            onChange={(e) => setStartTime(e.target.value)}
+                                                            className="w-28"
+                                                            style={{ appearance: "none", WebkitAppearance: "none" }}
+                                                        />
+                                                        
+                                                        <span className="mx-2 text-sm font-medium">〜</span>
+                                                        
+                                                        <Input
+                                                            type="time"
+                                                            value={endTime}
+                                                            onChange={(e) => setEndTime(e.target.value)}
+                                                            className="w-28"
+                                                            style={{ appearance: "none", WebkitAppearance: "none" }}
+                                                        />
+                                                    </div>
+                                                    
+                                                    <Button 
+                                                        type="button"
+                                                        onClick={() => {
+                                                            if (!selectedWeekday || !startTime || !endTime) return;
+                                                            
+                                                            if (startTime >= endTime) {
+                                                                alert("開始時間は終了時間より前にしてください");
+                                                                return;
+                                                            }
+                                                            
+                                                            const newTime = {
+                                                                dayOfWeek: selectedWeekday,
+                                                                startTime,
+                                                                endTime
+                                                            };
+                                                            
+                                                            const updatedTimes = [...field.value || [], newTime];
+                                                            field.onChange(updatedTimes);
+                                                            
+                                                            setSelectedWeekday("");
+                                                            setStartTime("");
+                                                            setEndTime("");
+                                                        }}
+                                                        disabled={!selectedWeekday || !startTime || !endTime}
+                                                    >
+                                                        追加
+                                                    </Button>
+                                                </div>
+                                                
+                                                <div className="flex flex-wrap gap-2 mt-2">
+                                                    {(field.value || []).map((time, index) => (
+                                                        <div key={index} className="flex items-center bg-accent rounded-md px-3 py-1">
+                                                            <span>
+                                                                {time.dayOfWeek === "Monday"
+                                                                    ? "月曜日"
+                                                                    : time.dayOfWeek === "Tuesday"
+                                                                        ? "火曜日"
+                                                                        : time.dayOfWeek === "Wednesday"
+                                                                            ? "水曜日"
+                                                                            : time.dayOfWeek === "Thursday"
+                                                                                ? "木曜日"
+                                                                                : time.dayOfWeek === "Friday"
+                                                                                    ? "金曜日"
+                                                                                    : time.dayOfWeek}: {time.startTime} 〜 {time.endTime}
+                                                            </span>
+                                                            <Button
+                                                                type="button"
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                className="h-4 w-4 p-0 ml-1 cursor-pointer hover:bg-muted"
+                                                                aria-label="削除"
+                                                                onClick={() => {
+                                                                    const newValues = [...(field.value || [])];
+                                                                    newValues.splice(index, 1);
+                                                                    field.onChange(newValues);
+                                                                }}
+                                                            >
+                                                                ×
+                                                            </Button>
+                                                        </div>
+                                                    ))}
+                                                </div>
                                             </div>
                                             <FormMessage />
                                         </FormItem>
@@ -675,13 +796,11 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
                                                         <SelectValue placeholder="曜日を選択" />
                                                     </SelectTrigger>
                                                     <SelectContent>
-                                                        <SelectItem value="monday">月曜日</SelectItem>
-                                                        <SelectItem value="tuesday">火曜日</SelectItem>
-                                                        <SelectItem value="wednesday">水曜日</SelectItem>
-                                                        <SelectItem value="thursday">木曜日</SelectItem>
-                                                        <SelectItem value="friday">金曜日</SelectItem>
-                                                        <SelectItem value="saturday">土曜日</SelectItem>
-                                                        <SelectItem value="sunday">日曜日</SelectItem>
+                                                        <SelectItem value="Monday">月曜日</SelectItem>
+                                                        <SelectItem value="Tuesday">火曜日</SelectItem>
+                                                        <SelectItem value="Wednesday">水曜日</SelectItem>
+                                                        <SelectItem value="Thursday">木曜日</SelectItem>
+                                                        <SelectItem value="Friday">金曜日</SelectItem>
                                                     </SelectContent>
                                                 </Select>
                                             </FormControl>
@@ -689,27 +808,23 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
                                                 {(field.value || []).map((day, index) => (
                                                     <div key={index} className="flex items-center bg-accent rounded-md px-2 py-1">
                                                         <span>
-                                                            {day === "monday"
+                                                            {day === "Monday"
                                                                 ? "月曜日"
-                                                                : day === "tuesday"
+                                                                : day === "Tuesday"
                                                                     ? "火曜日"
-                                                                    : day === "wednesday"
+                                                                    : day === "Wednesday"
                                                                         ? "水曜日"
-                                                                        : day === "thursday"
+                                                                        : day === "Thursday"
                                                                             ? "木曜日"
-                                                                            : day === "friday"
+                                                                            : day === "Friday"
                                                                                 ? "金曜日"
-                                                                                : day === "saturday"
-                                                                                    ? "土曜日"
-                                                                                    : day === "sunday"
-                                                                                        ? "日曜日"
-                                                                                        : day}
+                                                                                : day}
                                                         </span>
                                                         <Button
                                                             type="button"
                                                             variant="ghost"
                                                             size="sm"
-                                                            className="h-4 w-4 p-0 ml-1"
+                                                            className="h-4 w-4 p-0 ml-1 cursor-pointer"
                                                             onClick={() => {
                                                                 const newValues = [...(field.value || [])]
                                                                 newValues.splice(index, 1)
@@ -786,7 +901,7 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
                                                             type="button"
                                                             variant="ghost"
                                                             size="sm"
-                                                            className="h-4 w-4 p-0 ml-1"
+                                                            className="h-4 w-4 p-0 ml-1 cursor-pointer"
                                                             onClick={() => {
                                                                 const newValues = [...(field.value || [])]
                                                                 newValues.splice(index, 1)
