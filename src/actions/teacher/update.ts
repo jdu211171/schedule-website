@@ -12,14 +12,29 @@ export async function updateTeacher(data: TeacherUpdateInput) {
         throw new Error("Invalid data provided");
     }
 
-    const { teacherId, ...updateData } = parsed.data;
+    const { teacherId, username, password, ...updateData } = parsed.data;
 
-    await prisma.teacher.update({
-        where: { teacherId },
-        data: updateData,
-    });
+    return prisma.$transaction(async (tx) => {
+        // Update the teacher
+        await tx.teacher.update({
+            where: { teacherId },
+            data: updateData,
+        });
 
-    return prisma.teacher.findUnique({
-        where: { teacherId },
+        // Update the user credentials if provided
+        if (username || password) {
+            await tx.user.update({
+                where: { id: teacherId },
+                data: {
+                    ...(username && { username }),
+                    ...(password && { passwordHash: password }),
+                },
+            });
+        }
+
+        // Fetch and return the updated teacher
+        return tx.teacher.findUnique({
+            where: { teacherId },
+        });
     });
 }

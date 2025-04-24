@@ -22,7 +22,7 @@ export async function updateStudentWithPreference(data: UpdateStudentWithPrefere
     }
 
     const { student: studentData, preferences } = parsed.data;
-    const { studentId } = studentData;
+    const { studentId, username, password } = studentData;
 
     // Use a transaction to ensure both student and preferences are updated atomically
     return prisma.$transaction(async (tx) => {
@@ -31,6 +31,17 @@ export async function updateStudentWithPreference(data: UpdateStudentWithPrefere
             where: { studentId },
             data: studentData,
         });
+
+        // Update the user credentials if provided
+        if (username || password) {
+            await tx.user.update({
+                where: { id: studentId },
+                data: {
+                    ...(username && { username }),
+                    ...(password && { passwordHash: password }),
+                },
+            });
+        }
 
         // Update or create preference record
         if (preferences) {

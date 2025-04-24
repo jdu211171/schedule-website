@@ -15,6 +15,7 @@ async function main() {
             email: 'admin@admin.com',
             passwordHash: hashSync('admin123'),
             role: 'ADMIN',
+            username: "ADMIN01",
         },
     });
     console.log(`Seeded admin user: ${adminUser.email}`);
@@ -23,8 +24,9 @@ async function main() {
         data: {
             name: 'Teacher User',
             email: 'teacher@teacher.com',
-            passwordHash: hashSync('teacher123'),
+            passwordHash: ('teacher123'),
             role: 'TEACHER',
+            username: "TEACHER01",
         },
     });
     console.log(`Seeded teacher user: ${teacherUser.email}`);
@@ -33,8 +35,9 @@ async function main() {
         data: {
             name: 'Student User',
             email: 'student@student.com',
-            passwordHash: hashSync('student123'),
+            passwordHash: ('student123'),
             role: 'STUDENT',
+            username: "STUDENT01",
         },
     });
     console.log(`Seeded student user: ${studentUser.email}`);

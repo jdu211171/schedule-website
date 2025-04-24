@@ -12,9 +12,24 @@ export async function createTeacher(data: TeacherCreateInput) {
         throw new Error("Invalid data provided");
     }
 
-    await prisma.teacher.create({
-        data: parsed.data,
-    });
+    const { username, password, ...teacherData } = parsed.data;
 
-    return parsed.data;
+    return prisma.$transaction(async (tx) => {
+        const user = await tx.user.create({
+            data: {
+                username,
+                passwordHash: password,
+                role: "TEACHER",
+            },
+        });
+
+        const teacher = await tx.teacher.create({
+            data: {
+                ...teacherData,
+                userId: user.id,
+            },
+        });
+
+        return teacher;
+    });
 }

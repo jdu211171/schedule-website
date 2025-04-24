@@ -24,9 +24,18 @@ export async function createStudentWithPreference(data: CreateStudentWithPrefere
   const { student: studentData, preferences } = parsed.data;
 
   return prisma.$transaction(async (tx) => {
+    const user = await tx.user.create({
+      data: {
+        username: studentData.username,
+        passwordHash: studentData.password,
+        role: "STUDENT",
+      }
+    });
+
     const student = await tx.student.create({
       data: {
         ...studentData,
+        userId: user.id,
         preference: preferences ? {
           create: {
             preferredSubjects: preferences.preferredSubjects || [],
@@ -41,6 +50,9 @@ export async function createStudentWithPreference(data: CreateStudentWithPrefere
         preference: true
       }
     });
+
+    console.log("Student created with preference:", student);
+    console.log("User created:", user);
 
     return student;
   });

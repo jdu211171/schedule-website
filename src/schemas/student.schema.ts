@@ -21,6 +21,9 @@ export const studentCreateSchema = z.object({
     parentEmail: z.string().max(100).nullable(),
     notes: z.string().nullable(),
     userId: z.string().nullable().optional(),
+
+    username: z.string().max(50).optional(),
+    password: z.string().max(100).optional(),
 });
 
 export const studentUpdateSchema = studentCreateSchema.partial().extend({
