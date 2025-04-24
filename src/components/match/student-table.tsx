@@ -21,7 +21,7 @@ import DetailDialog from "./detail-dialog";
 
 interface StudentTableProps {
   students: Student[];
-  selectedStudentId: string | null;
+  selectedStudentId: string | undefined;
   onStudentSelect: (studentId: string) => void;
   lessons: Lesson[];
   subjects: Subject[];
@@ -47,7 +47,7 @@ export default function StudentTable({
   const [schoolTypeFilter, setSchoolTypeFilter] = useState<string | null>(null);
   const [detailsStudent, setDetailsStudent] = useState<Student | null>(null);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
-  
+
   const allSubjects = useMemo(() => subjects, [subjects]);
 
   // Функция для проверки, есть ли у студента уроки (переносим в useCallback)
@@ -60,7 +60,7 @@ export default function StudentTable({
     const studentLessons = lessons.filter(lesson => lesson.studentId === student.studentId);
     const subjectIds = new Set<string>();
     const studentSubjectsList: Subject[] = [];
-    
+
     studentLessons.forEach(lesson => {
       if (lesson.subject && !subjectIds.has(lesson.subject.subjectId)) {
         subjectIds.add(lesson.subject.subjectId);
@@ -73,7 +73,7 @@ export default function StudentTable({
         }
       }
     });
-    
+
     return studentSubjectsList;
   }, [lessons, subjects]);
 
@@ -104,7 +104,7 @@ export default function StudentTable({
         ? studentTypes.find(st => st.studentTypeId === grade.studentTypeId) || null
         : null;
       const studentSubjects = getStudentSubjects(student);
-      
+
       return {
         ...student,
         grade,
@@ -118,34 +118,34 @@ export default function StudentTable({
   const filteredStudents = useMemo(() => {
     return enrichedStudents.filter((student) => {
       // Фильтр по поисковому запросу
-      const matchesSearch = 
+      const matchesSearch =
         student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (student.kanaName || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
         (student.schoolName || "").toLowerCase().includes(searchTerm.toLowerCase());
-      
+
       // Фильтр по предметам
       const studentSubjects = student.subjects || [];
-      const matchesSubjects = 
-        subjectFilters.length === 0 || 
+      const matchesSubjects =
+        subjectFilters.length === 0 ||
         studentSubjects.some(subject => subjectFilters.includes(subject.subjectId));
-      
+
       // Фильтр по наличию уроков
-      const matchesHasLessons = 
-        hasLessonsFilter === null || 
+      const matchesHasLessons =
+        hasLessonsFilter === null ||
         (hasLessonsFilter === true && studentHasLessons(student.studentId)) ||
         (hasLessonsFilter === false && !studentHasLessons(student.studentId));
-      
+
       // Фильтр по классу
-      const matchesGrade = 
-        gradeFilter === null || 
+      const matchesGrade =
+        gradeFilter === null ||
         student.gradeId === gradeFilter;
-      
+
       // Фильтр по типу школы
-      const matchesSchoolType = 
-        schoolTypeFilter === null || 
+      const matchesSchoolType =
+        schoolTypeFilter === null ||
         student.examSchoolCategoryType === schoolTypeFilter;
-      
-      return matchesSearch && matchesSubjects && matchesHasLessons && 
+
+      return matchesSearch && matchesSubjects && matchesHasLessons &&
              matchesGrade && matchesSchoolType;
     });
   }, [
@@ -159,7 +159,7 @@ export default function StudentTable({
   ]);
 
   const totalPages = Math.ceil(filteredStudents.length / itemsPerPage);
-  
+
   // Получение студентов для текущей страницы
   const paginatedStudents = filteredStudents.slice(
     (currentPage - 1) * itemsPerPage,
@@ -181,7 +181,7 @@ export default function StudentTable({
             className="w-full"
           />
           {searchTerm && (
-            <button 
+            <button
               onClick={() => {
                 setSearchTerm("");
                 setCurrentPage(1); // Сбрасываем на первую страницу при очистке поиска
@@ -192,8 +192,8 @@ export default function StudentTable({
             </button>
           )}
         </div>
-        
-        <FilterPopover 
+
+        <FilterPopover
           subjects={allSubjects}
           grades={grades}
           examSchoolTypes={["ELEMENTARY", "MIDDLE", "HIGH", "UNIVERSITY", "OTHER"]}
@@ -206,7 +206,7 @@ export default function StudentTable({
           initialSchoolTypeFilter={schoolTypeFilter}
         />
       </div>
-      
+
       <ScrollArea className="flex-grow">
         <Table>
           <TableHeader className="bg-gray-50 sticky top-0 z-10">
@@ -220,7 +220,7 @@ export default function StudentTable({
           <TableBody>
             {paginatedStudents.map((student) => {
               const studentSubjects = student.subjects || [];
-              
+
               return (
                 <TableRow
                   key={student.studentId}
@@ -262,9 +262,9 @@ export default function StudentTable({
                     </div>
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       className="h-8 w-8 p-0 hover:bg-gray-100 rounded-full"
                       onClick={(e) => {
                         e.stopPropagation(); // Предотвращаем срабатывание onClick строки
@@ -284,16 +284,16 @@ export default function StudentTable({
             })}
           </TableBody>
         </Table>
-        
+
         {filteredStudents.length === 0 && (
           <div className="p-6 text-center text-gray-500">
             検索結果はありません
           </div>
         )}
       </ScrollArea>
-      
+
       {/* Пагинация */}
-      <Pagination 
+      <Pagination
         currentPage={currentPage}
         totalPages={totalPages}
         totalItems={filteredStudents.length}
@@ -301,7 +301,7 @@ export default function StudentTable({
         onPageChange={setCurrentPage}
         onItemsPerPageChange={setItemsPerPage}
       />
-      
+
       {/* Диалог с подробной информацией */}
       {detailsStudent && (
         <DetailDialog

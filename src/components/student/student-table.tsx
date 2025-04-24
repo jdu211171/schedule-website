@@ -26,7 +26,8 @@ export function StudentTable() {
     const [searchTerm, setSearchTerm] = useState("")
     const [page, setPage] = useState(1)
     const pageSize = 10
-    const { data: students = [] as StudentWithGrade[], isLoading, isFetching } = useStudents(page, pageSize)
+    const { data: students = [] as StudentWithGrade[], isLoading, isFetching } = useStudents({ page, pageSize })
+    console.log(students)
     const { data: totalCount = 0 } = useStudentsCount()
     const deleteStudentMutation = useStudentDelete()
 

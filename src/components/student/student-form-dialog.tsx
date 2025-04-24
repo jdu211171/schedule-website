@@ -35,7 +35,7 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
 
     const isEditing = !!student
     const { data: grades = [] } = useGrades()
-    const { data: teachers = [] } = useTeachers()
+    const { data: teachers = [] } = useTeachers({})
     const { data: subjects = [] } = useSubjects()
     const { data: teacherSubjects = [] } = useTeacherSubjects()
 

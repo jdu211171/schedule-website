@@ -7,10 +7,8 @@ export async function getStudent(studentId: string) {
   await requireAuth();
   const student = await prisma.student.findUnique({
     where: { studentId },
-    include: { preference: true }
+    include: { studentRegularPreferences: true },
   });
-  if (!student) {
-    throw new Error("Student not found");
-  }
+  if (!student) throw new Error("Student not found");
   return student;
 }

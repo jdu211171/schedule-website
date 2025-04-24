@@ -43,11 +43,13 @@ model ClassSession {
   subjectId               String?                  @map("subject_id") @db.VarChar(50)
   boothId                 String?                  @map("booth_id") @db.VarChar(50)
   classTypeId             String?                  @map("class_type_id") @db.VarChar(50)
+  templateId              String?                  @map("template_id") @db.VarChar(50)
   notes                   String?                  @db.VarChar(255)
   booth                   Booth?                   @relation(fields: [boothId], references: [boothId], onDelete: SetNull, onUpdate: Cascade)
   classType               ClassType?               @relation(fields: [classTypeId], references: [classTypeId], onDelete: SetNull, onUpdate: Cascade)
   subject                 Subject?                 @relation(fields: [subjectId], references: [subjectId], onDelete: SetNull, onUpdate: Cascade)
   teacher                 Teacher?                 @relation(fields: [teacherId], references: [teacherId], onDelete: SetNull, onUpdate: Cascade)
+  regularClassTemplate    RegularClassTemplate?    @relation(fields: [templateId], references: [templateId], onDelete: SetNull, onUpdate: Cascade) // Added relation
   studentClassEnrollments StudentClassEnrollment[]
   createdAt               DateTime                 @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt               DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
@@ -119,7 +121,6 @@ model Student {
   studentRegularPreferences  StudentRegularPreference[]
   studentSpecialPreferences  StudentSpecialPreference[]
   templateStudentAssignments TemplateStudentAssignment[]
-  preference                 StudentPreference?
   grade                      Grade?                      @relation(fields: [gradeId], references: [gradeId], onDelete: SetNull, onUpdate: Cascade)
   userId                     String?                     @unique @map("user_id")
   user                       User?                       @relation(fields: [userId], references: [id], onDelete: SetNull)
@@ -129,20 +130,6 @@ model Student {
   @@index([gradeId])
   @@index([schoolName])
   @@map("students")
-}
-
-model StudentPreference {
-  studentId         String   @id @map("student_id")
-  student           Student  @relation(fields: [studentId], references: [studentId], onDelete: Cascade)
-  preferredSubjects String[]
-  preferredTeachers String[]
-  preferredWeekdays String[]
-  preferredHours    String[]
-  additionalNotes   String?  @db.Text
-  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt         DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
-
-  @@map("student_preferences")
 }
 
 /**
@@ -179,6 +166,7 @@ model StudentClassEnrollment {
   createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt    DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
+  @@unique([classId, studentId])
   @@map("student_class_enrollments")
 }
 
@@ -189,17 +177,17 @@ model StudentClassEnrollment {
  * including preferred day of week, time slots, and subjects.
  */
 model StudentRegularPreference {
-  preferenceId String    @id @default(cuid()) @map("preference_id")
-  studentId    String?   @map("student_id") @db.VarChar(50)
-  subjectId    String?   @map("subject_id") @db.VarChar(50)
-  dayOfWeek    String?   @map("day_of_week") @db.VarChar(20)
-  startTime    DateTime? @map("start_time") @db.Time(6)
-  endTime      DateTime? @map("end_time") @db.Time(6)
-  notes        String?   @db.VarChar(255)
-  student      Student?  @relation(fields: [studentId], references: [studentId], onDelete: Cascade, onUpdate: Cascade)
-  subject      Subject?  @relation(fields: [subjectId], references: [subjectId], onDelete: SetNull, onUpdate: Cascade)
-  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  preferenceId           String   @id @default(cuid()) @map("preference_id")
+  studentId              String?  @map("student_id") @db.VarChar(50)
+  subjectId              String?  @map("subject_id") @db.VarChar(50)
+  preferredWeekdaysTimes Json?    @map("preferred_weekdays_times")
+  preferredSubjects      String[]
+  preferredTeachers      String[]
+  notes                  String?  @db.VarChar(255)
+  student                Student? @relation(fields: [studentId], references: [studentId], onDelete: Cascade, onUpdate: Cascade)
+  subject                Subject? @relation(fields: [subjectId], references: [subjectId], onDelete: SetNull, onUpdate: Cascade)
+  createdAt              DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt              DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
   @@map("student_regular_preferences")
 }
@@ -261,11 +249,14 @@ model RegularClassTemplate {
   teacherId                  String?                     @map("teacher_id") @db.VarChar(50)
   startTime                  DateTime?                   @map("start_time") @db.Time(6)
   endTime                    DateTime?                   @map("end_time") @db.Time(6)
+  startDate                  DateTime?                   @map("start_date") @db.Date
+  endDate                    DateTime?                   @map("end_date") @db.Date
   notes                      String?                     @db.VarChar(255)
   booth                      Booth?                      @relation(fields: [boothId], references: [boothId], onDelete: SetNull, onUpdate: Cascade)
   subject                    Subject?                    @relation(fields: [subjectId], references: [subjectId], onDelete: SetNull, onUpdate: Cascade)
   teacher                    Teacher?                    @relation(fields: [teacherId], references: [teacherId], onDelete: SetNull, onUpdate: Cascade)
   templateStudentAssignments TemplateStudentAssignment[]
+  classSessions              ClassSession[]
   createdAt                  DateTime                    @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt                  DateTime                    @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
