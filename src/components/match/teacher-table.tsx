@@ -26,7 +26,7 @@ interface TeacherSubject {
 
 interface TeacherTableProps {
   teachers: Teacher[];
-  selectedTeacherId: string | null;
+  selectedTeacherId: string | undefined;
   onTeacherSelect: (teacherId: string) => void;
   lessons: Lesson[];
   subjects: Subject[];
@@ -51,7 +51,7 @@ export default function TeacherTable({
   const [evaluationFilter, setEvaluationFilter] = useState<string | null>(null);
   const [detailsTeacher, setDetailsTeacher] = useState<Teacher | null>(null);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
-  
+
   const allSubjects = useMemo(() => subjects, [subjects]);
 
   // Обработчик изменения фильтров
@@ -79,7 +79,7 @@ export default function TeacherTable({
       const teacherSubjectsData = teacherSubjects.filter(ts => ts.teacherId === teacher.teacherId);
       const subjectIds = new Set<string>();
       const teacherSubjectsList: Subject[] = [];
-      
+
       teacherSubjectsData.forEach(ts => {
         const subject = subjects.find(s => s.subjectId === ts.subjectId);
         if (subject && !subjectIds.has(subject.subjectId)) {
@@ -87,9 +87,9 @@ export default function TeacherTable({
           teacherSubjectsList.push(subject);
         }
       });
-      
+
       const teacherLessons = lessons.filter(lesson => lesson.teacherId === teacher.teacherId);
-      
+
       teacherLessons.forEach(lesson => {
         if (lesson.subject && !subjectIds.has(lesson.subject.subjectId)) {
           subjectIds.add(lesson.subject.subjectId);
@@ -102,7 +102,7 @@ export default function TeacherTable({
           }
         }
       });
-      
+
       return {
         ...teacher,
         evaluation,
@@ -115,42 +115,42 @@ export default function TeacherTable({
   const filteredTeachers = useMemo(() => {
     return enrichedTeachers.filter((teacher) => {
       // Фильтр по поисковому запросу
-      const matchesSearch = 
+      const matchesSearch =
         teacher.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (teacher.university || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
         (teacher.faculty || "").toLowerCase().includes(searchTerm.toLowerCase());
-      
+
       // Фильтр по предметам
       const teacherSubjects = teacher.subjects || [];
-      const matchesSubjects = 
-        subjectFilters.length === 0 || 
+      const matchesSubjects =
+        subjectFilters.length === 0 ||
         teacherSubjects.some(subject => subjectFilters.includes(subject.subjectId));
-      
+
       // Фильтр по наличию уроков
-      const matchesHasLessons = 
-        hasLessonsFilter === null || 
+      const matchesHasLessons =
+        hasLessonsFilter === null ||
         (hasLessonsFilter === true && teacherHasLessons(teacher.teacherId)) ||
         (hasLessonsFilter === false && !teacherHasLessons(teacher.teacherId));
-      
+
       // Фильтр по оценке учителя
-      const matchesEvaluation = 
-        evaluationFilter === null || 
+      const matchesEvaluation =
+        evaluationFilter === null ||
         teacher.evaluationId === evaluationFilter;
-      
+
       return matchesSearch && matchesSubjects && matchesHasLessons && matchesEvaluation;
     });
   }, [
-    enrichedTeachers, 
-    searchTerm, 
-    subjectFilters, 
-    hasLessonsFilter, 
+    enrichedTeachers,
+    searchTerm,
+    subjectFilters,
+    hasLessonsFilter,
     evaluationFilter,
     teacherHasLessons // Добавляем функцию в зависимости
   ]);
 
   // Расчет общего количества страниц
   const totalPages = Math.ceil(filteredTeachers.length / itemsPerPage);
-  
+
   // Получение учителей для текущей страницы
   const paginatedTeachers = filteredTeachers.slice(
     (currentPage - 1) * itemsPerPage,
@@ -172,7 +172,7 @@ export default function TeacherTable({
             className="w-full"
           />
           {searchTerm && (
-            <button 
+            <button
               onClick={() => {
                 setSearchTerm("");
                 setCurrentPage(1); // Сбрасываем на первую страницу при очистке поиска
@@ -183,8 +183,8 @@ export default function TeacherTable({
             </button>
           )}
         </div>
-        
-        <FilterPopover 
+
+        <FilterPopover
           subjects={allSubjects}
           evaluations={evaluations}
           onFilterChange={handleFilterChange}
@@ -194,7 +194,7 @@ export default function TeacherTable({
           initialEvaluationFilter={evaluationFilter}
         />
       </div>
-      
+
       <ScrollArea className="flex-grow">
         <Table>
           <TableHeader className="bg-gray-50 sticky top-0 z-10">
@@ -208,7 +208,7 @@ export default function TeacherTable({
           <TableBody>
             {paginatedTeachers.map((teacher) => {
               const teacherSubjects = teacher.subjects || [];
-              
+
               return (
                 <TableRow
                   key={teacher.teacherId}
@@ -236,11 +236,11 @@ export default function TeacherTable({
                   </TableCell>
                   <TableCell>
                     {teacher.evaluation ? (
-                      <Badge 
+                      <Badge
                         className={`
-                          ${teacher.evaluation.score && teacher.evaluation.score >= 4 ? 'bg-green-100 text-green-800' : 
-                          teacher.evaluation.score && teacher.evaluation.score >= 3 ? 'bg-blue-100 text-blue-800' : 
-                          teacher.evaluation.score && teacher.evaluation.score >= 2 ? 'bg-yellow-100 text-yellow-800' : 
+                          ${teacher.evaluation.score && teacher.evaluation.score >= 4 ? 'bg-green-100 text-green-800' :
+                          teacher.evaluation.score && teacher.evaluation.score >= 3 ? 'bg-blue-100 text-blue-800' :
+                          teacher.evaluation.score && teacher.evaluation.score >= 2 ? 'bg-yellow-100 text-yellow-800' :
                           'bg-gray-100 text-gray-800'}
                           px-2 py-1 rounded-full text-xs
                         `}
@@ -252,9 +252,9 @@ export default function TeacherTable({
                     )}
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       className="h-8 w-8 p-0 hover:bg-gray-200 "
                       onClick={(e) => {
                         e.stopPropagation(); // Предотвращаем срабатывание onClick строки
@@ -274,16 +274,16 @@ export default function TeacherTable({
             })}
           </TableBody>
         </Table>
-        
+
         {filteredTeachers.length === 0 && (
           <div className="p-6 text-center text-gray-500">
             検索結果はありません
           </div>
         )}
       </ScrollArea>
-      
+
       {/* Пагинация */}
-      <Pagination 
+      <Pagination
         currentPage={currentPage}
         totalPages={totalPages}
         totalItems={filteredTeachers.length}
@@ -291,7 +291,7 @@ export default function TeacherTable({
         onPageChange={setCurrentPage}
         onItemsPerPageChange={setItemsPerPage}
       />
-      
+
       {/* Диалог с подробной информацией */}
       {detailsTeacher && (
         <DetailDialog

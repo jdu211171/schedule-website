@@ -27,7 +27,7 @@ export function TeacherSubjectFormDialog({ open, onOpenChange, teacherSubject }:
     const updateTeacherSubjectMutation = useTeacherSubjectUpdate()
 
     const isEditing = !!teacherSubject
-    const { data: teachers = [] } = useTeachers()
+    const { data: teachers = [] } = useTeachers({})
     const { data: subjects = [] } = useSubjects()
 
     const formSchema = z.object({

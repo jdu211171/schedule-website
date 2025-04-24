@@ -26,7 +26,7 @@ export function TeacherTable() {
     const [searchTerm, setSearchTerm] = useState("")
     const [page, setPage] = useState(1)
     const pageSize = 10
-    const { data: teachers = [], isLoading, isFetching } = useTeachers(page, pageSize)
+    const { data: teachers = [], isLoading, isFetching } = useTeachers({ page, pageSize })
     const { data: totalCount = 0 } = useTeachersCount()
     const { data: evaluations = [] } = useEvaluations()
     const deleteTeacherMutation = useTeacherDelete()

@@ -7,19 +7,19 @@ import { z } from "zod";
 import { studentPreferencesSchema } from "@/schemas/student-preferences.schema";
 
 const updateStudentWithPreferenceSchema = z.object({
-    student: studentUpdateSchema,
-    preferences: studentPreferencesSchema.optional()
+  student: studentUpdateSchema,
+  preferences: studentPreferencesSchema.optional(),
 });
+type UpdateStudentWithPreferenceInput = z.infer<
+  typeof updateStudentWithPreferenceSchema
+>;
 
-type UpdateStudentWithPreferenceInput = z.infer<typeof updateStudentWithPreferenceSchema>;
-
-export async function updateStudentWithPreference(data: UpdateStudentWithPreferenceInput) {
-    await requireAuth();
-
-    const parsed = updateStudentWithPreferenceSchema.safeParse(data);
-    if (!parsed.success) {
-        throw new Error("Invalid data provided");
-    }
+export async function updateStudentWithPreference(
+  data: UpdateStudentWithPreferenceInput
+) {
+  await requireAuth();
+  const parsed = updateStudentWithPreferenceSchema.safeParse(data);
+  if (!parsed.success) throw new Error("Invalid data provided");
 
     const { student: studentData, preferences } = parsed.data;
     const { studentId, username, password } = studentData;
@@ -43,32 +43,27 @@ export async function updateStudentWithPreference(data: UpdateStudentWithPrefere
             });
         }
 
-        // Update or create preference record
-        if (preferences) {
-            await tx.studentPreference.upsert({
-                where: { studentId },
-                update: {
-                    preferredSubjects: preferences.preferredSubjects || [],
-                    preferredTeachers: preferences.preferredTeachers || [],
-                    preferredWeekdays: preferences.preferredWeekdays || [],
-                    preferredHours: preferences.preferredHours || [],
-                    additionalNotes: preferences.additionalNotes || null,
-                },
-                create: {
-                    studentId,
-                    preferredSubjects: preferences.preferredSubjects || [],
-                    preferredTeachers: preferences.preferredTeachers || [],
-                    preferredWeekdays: preferences.preferredWeekdays || [],
-                    preferredHours: preferences.preferredHours || [],
-                    additionalNotes: preferences.additionalNotes || null,
-                }
-            });
-        }
+    if (preferences) {
+      await tx.studentRegularPreference.deleteMany({ where: { studentId } });
 
-        // Fetch and return the updated student with preferences
-        return tx.student.findUnique({
-            where: { studentId },
-            include: { preference: true },
-        });
+      await tx.studentRegularPreference.create({
+        data: {
+          studentId,
+          preferredSubjects: preferences.preferredSubjects ?? [],
+          preferredTeachers: preferences.preferredTeachers ?? [],
+          preferredWeekdaysTimes: {
+            weekdays: preferences.preferredWeekdays ?? [],
+            hours: preferences.preferredHours ?? [],
+          },
+          notes: preferences.additionalNotes ?? null,
+        },
+      });
+    }
+
+    // 最新データを返す
+    return tx.student.findUnique({
+      where: { studentId },
+      include: { studentRegularPreferences: true },
     });
+  });
 }

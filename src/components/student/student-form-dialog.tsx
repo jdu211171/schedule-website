@@ -67,7 +67,7 @@ export function StudentFormDialog({
 
   const isEditing = !!student;
   const { data: grades = [] } = useGrades();
-  const { data: teachers = [] } = useTeachers();
+  const { data: teachers = [] } = useTeachers({});
   const { data: subjects = [] } = useSubjects();
   const { data: teacherSubjects = [] } = useTeacherSubjects();
 
@@ -1004,3 +1004,4 @@ export function StudentFormDialog({
     </Dialog>
   );
 }
+

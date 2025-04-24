@@ -8,18 +8,18 @@ import { studentPreferencesSchema } from "@/schemas/student-preferences.schema";
 
 const createStudentWithPreferenceSchema = z.object({
   student: studentCreateSchema,
-  preferences: studentPreferencesSchema.optional()
+  preferences: studentPreferencesSchema.optional(),
 });
+type CreateStudentWithPreferenceInput = z.infer<
+  typeof createStudentWithPreferenceSchema
+>;
 
-type CreateStudentWithPreferenceInput = z.infer<typeof createStudentWithPreferenceSchema>;
-
-export async function createStudentWithPreference(data: CreateStudentWithPreferenceInput) {
+export async function createStudentWithPreference(
+  data: CreateStudentWithPreferenceInput
+) {
   await requireAuth();
-
   const parsed = createStudentWithPreferenceSchema.safeParse(data);
-  if (!parsed.success) {
-    throw new Error("Invalid data provided");
-  }
+  if (!parsed.success) throw new Error("Invalid data provided");
 
   const { student: studentData, preferences } = parsed.data;
 
@@ -35,20 +35,24 @@ export async function createStudentWithPreference(data: CreateStudentWithPrefere
     const student = await tx.student.create({
       data: {
         ...studentData,
-        userId: user.id,
-        preference: preferences ? {
-          create: {
-            preferredSubjects: preferences.preferredSubjects || [],
-            preferredTeachers: preferences.preferredTeachers || [],
-            preferredWeekdays: preferences.preferredWeekdays || [],
-            preferredHours: preferences.preferredHours || [],
-            additionalNotes: preferences.additionalNotes || null,
-          }
-        } : undefined
+
+        studentRegularPreferences: preferences
+          ? {
+              create: {
+                preferredSubjects: preferences.preferredSubjects ?? [],
+                preferredTeachers: preferences.preferredTeachers ?? [],
+                preferredWeekdaysTimes: {
+                  weekdays: preferences.preferredWeekdays ?? [],
+                  hours: preferences.preferredHours ?? [],
+                },
+                notes: preferences.additionalNotes ?? null,
+              },
+            }
+          : undefined,
       },
       include: {
-        preference: true
-      }
+        studentRegularPreferences: true,
+      },
     });
 
     console.log("Student created with preference:", student);

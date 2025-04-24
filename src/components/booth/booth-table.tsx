@@ -25,7 +25,7 @@ export function BoothTable() {
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
   const pageSize = 10;
-  const { data: booths = [], isLoading, isFetching } = useBooths(page, pageSize);
+  const { data: booths = [], isLoading, isFetching } = useBooths({ page, pageSize });
   const { data: totalCount = 0 } = useBoothsCount();
   const deleteBoothMutation = useBoothDelete();
 
