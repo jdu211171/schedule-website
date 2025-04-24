@@ -1,7 +1,7 @@
-import { useQuery } from '@tanstack/react-query';
-import { getTeachers } from '@/actions/teacher';
-import { getTeacher } from '@/actions/teacher/read';
-import { getTeachersCount } from '@/actions/count';
+import { useQuery } from "@tanstack/react-query";
+import { getTeachers } from "@/actions/teacher";
+import { getTeacher } from "@/actions/teacher/read";
+import { getTeachersCount } from "@/actions/count";
 
 export function useTeachersCount() {
   return useQuery({
@@ -10,7 +10,15 @@ export function useTeachersCount() {
   });
 }
 
-export function useTeachers({ page = 1, pageSize = 15, studentId }: { page?: number; pageSize?: number; studentId?: string }) {
+export function useTeachers({
+  page = 1,
+  pageSize = 10,
+  studentId,
+}: {
+  page?: number;
+  pageSize?: number;
+  studentId?: string;
+}) {
   return useQuery({
     queryKey: ["teachers", page, pageSize, studentId],
     queryFn: () => getTeachers({ page, pageSize, studentId }),

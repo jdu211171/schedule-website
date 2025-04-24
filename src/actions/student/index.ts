@@ -1,21 +1,25 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { Student, StudentPreference, Grade, Subject } from "@prisma/client";
+import {
+  Student,
+  Grade,
+  Subject,
+  StudentRegularPreference,
+} from "@prisma/client";
 import { requireAuth } from "../auth-actions";
 
 // Define the base type
 type StudentWithDetails = Student & {
   grade: Grade | null;
-  preference: StudentPreference | null;
+  studentRegularPreferences: StudentRegularPreference[];
 };
 
-// Define the return type with subject details
 type StudentWithDetailsAndSubjects = Student & {
   grade: Grade | null;
-  preference: (StudentPreference & {
+  studentRegularPreferences: (StudentRegularPreference & {
     preferredSubjectsDetails: Subject[];
-  }) | null;
+  })[];
 };
 
 interface GetStudentsParams {
@@ -25,10 +29,10 @@ interface GetStudentsParams {
 }
 
 export async function getStudents({
-                                    page = 1,
-                                    pageSize = 10,
-                                    teacherId,
-                                  }: GetStudentsParams = {}): Promise<StudentWithDetailsAndSubjects[]> {
+  page = 1,
+  pageSize = 10,
+  teacherId,
+}: GetStudentsParams = {}): Promise<StudentWithDetailsAndSubjects[]> {
   await requireAuth();
 
   let paginatedStudents: StudentWithDetails[];
@@ -39,11 +43,11 @@ export async function getStudents({
       skip,
       take: pageSize,
       orderBy: {
-        createdAt: 'desc',
+        createdAt: "desc",
       },
       include: {
         grade: true,
-        preference: true,
+        studentRegularPreferences: true,
       },
     });
   } else {
@@ -54,7 +58,7 @@ export async function getStudents({
         where: { teacherId: teacherId },
         select: { subjectId: true },
       });
-      teacherSubjectIds = new Set(teacherSubjects.map(ts => ts.subjectId));
+      teacherSubjectIds = new Set(teacherSubjects.map((ts) => ts.subjectId));
     } catch (error) {
       console.error("Error fetching teacher subjects:", error);
       return [];
@@ -65,11 +69,11 @@ export async function getStudents({
     try {
       allStudents = await prisma.student.findMany({
         orderBy: {
-          createdAt: 'desc',
+          createdAt: "desc",
         },
         include: {
           grade: true,
-          preference: true,
+          studentRegularPreferences: true,
         },
       });
     } catch (error) {
@@ -83,16 +87,25 @@ export async function getStudents({
     const otherStudents: StudentWithDetails[] = [];
 
     for (const student of allStudents) {
-      const preference = student.preference;
+      const preferences = student.studentRegularPreferences;
       let isPreferredTeacher = false;
       let hasSubjectMatch = false;
 
-      if (preference) {
-        if (preference.preferredTeachers?.includes(teacherId)) {
-          isPreferredTeacher = true;
-        }
-        if (!isPreferredTeacher && preference.preferredSubjects && preference.preferredSubjects.length > 0) {
-          hasSubjectMatch = preference.preferredSubjects.some(subId => teacherSubjectIds.has(subId));
+      if (preferences && preferences.length > 0) {
+        for (const pref of preferences) {
+          if (pref.preferredTeachers?.includes(teacherId)) {
+            isPreferredTeacher = true;
+            break;
+          }
+          if (
+            !isPreferredTeacher &&
+            pref.preferredSubjects &&
+            pref.preferredSubjects.length > 0
+          ) {
+            hasSubjectMatch = pref.preferredSubjects.some((subId) =>
+              teacherSubjectIds.has(subId)
+            );
+          }
         }
       }
 
@@ -118,9 +131,9 @@ export async function getStudents({
   // Fetch subject details for all preferred subjects in paginated students
   const subjectIdsSet = new Set<string>();
   for (const student of paginatedStudents) {
-    if (student.preference?.preferredSubjects) {
-      student.preference.preferredSubjects.forEach(subId => subjectIdsSet.add(subId));
-    }
+    student.studentRegularPreferences.forEach((pref) =>
+      pref.preferredSubjects.forEach((id) => subjectIdsSet.add(id))
+    );
   }
   const subjectIds = Array.from(subjectIdsSet);
 
@@ -129,24 +142,19 @@ export async function getStudents({
   });
 
   const subjectMap = new Map<string, Subject>();
-  subjects.forEach(subject => subjectMap.set(subject.subjectId, subject));
+  subjects.forEach((subject) => subjectMap.set(subject.subjectId, subject));
 
   // Attach subject details to each student's preference
-  const studentsWithSubjects: StudentWithDetailsAndSubjects[] = paginatedStudents.map(student => {
-    if (student.preference) {
-      const preferredSubjectsDetails = student.preference.preferredSubjects
-        .map(subId => subjectMap.get(subId))
-        .filter((sub): sub is Subject => sub !== undefined);
-      return {
-        ...student,
-        preference: {
-          ...student.preference,
-          preferredSubjectsDetails,
-        },
-      };
-    }
-    return { ...student, preference: null };
-  });
+  const studentsWithSubjects: StudentWithDetailsAndSubjects[] =
+    paginatedStudents.map((student) => {
+      const enrichedPrefs = student.studentRegularPreferences.map((pref) => ({
+        ...pref,
+        preferredSubjectsDetails: pref.preferredSubjects
+          .map((id) => subjectMap.get(id))
+          .filter((s): s is Subject => !!s),
+      }));
+      return { ...student, studentRegularPreferences: enrichedPrefs };
+    });
 
   return studentsWithSubjects;
 }

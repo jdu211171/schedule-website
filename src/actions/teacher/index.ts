@@ -1,8 +1,8 @@
 "use server";
 
-import prisma from '@/lib/prisma';
-import { requireAuth } from '../auth-actions';
-import { Teacher, Subject } from '@prisma/client';
+import prisma from "@/lib/prisma";
+import { requireAuth } from "../auth-actions";
+import { Teacher, Subject } from "@prisma/client";
 
 // Define the return type to include subjects
 type TeacherWithSubjects = Teacher & {
@@ -18,10 +18,10 @@ interface GetTeachersParams {
 }
 
 export async function getTeachers({
-                                    page = 1,
-                                    pageSize = 10,
-                                    studentId,
-                                  }: GetTeachersParams = {}): Promise<TeacherWithSubjects[]> {
+  page = 1,
+  pageSize = 10,
+  studentId,
+}: GetTeachersParams = {}): Promise<TeacherWithSubjects[]> {
   await requireAuth();
 
   // If no studentId is provided, fetch teachers with subjects and pagination
@@ -42,7 +42,7 @@ export async function getTeachers({
   }
 
   // Fetch the student's preferences
-  const studentPreference = await prisma.studentPreference.findUnique({
+  const studentPreference = await prisma.studentRegularPreference.findFirst({
     where: { studentId },
   });
 
@@ -68,7 +68,7 @@ export async function getTeachers({
 
   // Fetch all teachers with their subjects
   const allTeachers = await prisma.teacher.findMany({
-    orderBy: { createdAt: 'desc' },
+    orderBy: { createdAt: "desc" },
     include: {
       teacherSubjects: {
         include: {
@@ -86,7 +86,11 @@ export async function getTeachers({
   for (const teacher of allTeachers) {
     if (preferredTeachers.includes(teacher.teacherId)) {
       preferredTeachersList.push(teacher);
-    } else if (teacher.teacherSubjects.some(ts => preferredSubjects.includes(ts.subject.subjectId))) {
+    } else if (
+      teacher.teacherSubjects.some((ts) =>
+        preferredSubjects.includes(ts.subject.subjectId)
+      )
+    ) {
       subjectPreferredTeachersList.push(teacher);
     } else {
       otherTeachersList.push(teacher);
