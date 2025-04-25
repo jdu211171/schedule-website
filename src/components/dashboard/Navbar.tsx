@@ -18,6 +18,7 @@ import {
   LayoutDashboard,
   MapPin,
   LucideIcon,
+  GraduationCap,
 } from "lucide-react";
 import UserProfileMenu from "@/components/user-profile-menu"; 
 import { ThemeToggle } from "../theme-toggle";
@@ -29,7 +30,7 @@ interface NavItemType {
   exact?: boolean;
 }
 
-const navItems: NavItemType[] = [
+const dashboardNavItems: NavItemType[] = [
   {
     title: "個人スケジュール",
     href: "/dashboard",
@@ -58,8 +59,62 @@ const navItems: NavItemType[] = [
   },
 ];
 
+const teacherNavItems: NavItemType[] = [
+  {
+    title: "先生",
+    href: "/teacher",
+    icon: LayoutDashboard,
+    exact: true,
+  },
+  {
+    title: "環境設定",
+    href: "/teacher/preferences",
+    icon: CalendarIcon,
+  },
+  {
+    title: "設定",
+    href: "/teacher/settings",
+    icon: Settings,
+  },
+];
+
+
+const studentNavItems: NavItemType[] = [
+  {
+    title: "学生",
+    href: "/student",
+    icon: GraduationCap,
+    exact: true,
+  },
+  {
+    title: "環境設定",
+    href: "/student/preferences",
+    icon: CalendarIcon,
+  },
+  {
+    title: "設定",
+    href: "/student/settings",
+    icon: Settings,
+  },
+];
+
 export default function Navbar() {
   const pathname = usePathname();
+  const isTeacherRoute = pathname.startsWith('/teacher');
+  const isStudentRoute = pathname.startsWith('/student');
+  
+  let navItems = dashboardNavItems;
+  if (isTeacherRoute) {
+    navItems = teacherNavItems;
+  } else if (isStudentRoute) {
+    navItems = studentNavItems;
+  }
+  let homeLink = '/dashboard';
+  if (isTeacherRoute) {
+    homeLink = '/teacher';
+  } else if (isStudentRoute) {
+    homeLink = '/student';
+  }
 
   const isActive = (item: NavItemType): boolean => {
     if (item.exact) {
@@ -72,7 +127,7 @@ export default function Navbar() {
     <header className="border-b">
       <div className="max-w-6xl mx-auto px-4 flex h-16 items-center">
         <div className="mr-8 font-semibold text-xl">
-          <Link href="/dashboard">LightHouse</Link>
+          <Link href={homeLink}>LightHouse</Link>
         </div>
 
         <NavigationMenu>

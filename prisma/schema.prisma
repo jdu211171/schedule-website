@@ -40,6 +40,7 @@ model ClassSession {
   endTime                 DateTime?                @map("end_time") @db.Time(6)
   duration                DateTime?                @map("duration") @db.Time(6)
   teacherId               String?                  @map("teacher_id") @db.VarChar(50)
+  studentId               String?                  @map("student_id") @db.VarChar(50)
   subjectId               String?                  @map("subject_id") @db.VarChar(50)
   boothId                 String?                  @map("booth_id") @db.VarChar(50)
   classTypeId             String?                  @map("class_type_id") @db.VarChar(50)
@@ -49,6 +50,7 @@ model ClassSession {
   classType               ClassType?               @relation(fields: [classTypeId], references: [classTypeId], onDelete: SetNull, onUpdate: Cascade)
   subject                 Subject?                 @relation(fields: [subjectId], references: [subjectId], onDelete: SetNull, onUpdate: Cascade)
   teacher                 Teacher?                 @relation(fields: [teacherId], references: [teacherId], onDelete: SetNull, onUpdate: Cascade)
+  student                 Student?                 @relation(fields: [studentId], references: [studentId], onDelete: SetNull, onUpdate: Cascade)
   regularClassTemplate    RegularClassTemplate?    @relation(fields: [templateId], references: [templateId], onDelete: SetNull, onUpdate: Cascade) // Added relation
   studentClassEnrollments StudentClassEnrollment[]
   createdAt               DateTime                 @default(now()) @map("created_at") @db.Timestamp(6)
@@ -126,6 +128,7 @@ model Student {
   user                       User?                       @relation(fields: [userId], references: [id], onDelete: SetNull)
   createdAt                  DateTime                    @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt                  DateTime                    @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  ClassSession               ClassSession[]
 
   @@index([gradeId])
   @@index([schoolName])
@@ -199,19 +202,22 @@ model StudentRegularPreference {
  * including specific dates, times, subjects, and class types.
  */
 model StudentSpecialPreference {
-  preferenceId String     @id @default(cuid()) @map("preference_id")
-  studentId    String?    @map("student_id") @db.VarChar(50)
-  classTypeId  String?    @map("class_type_id") @db.VarChar(50)
-  subjectId    String?    @map("subject_id") @db.VarChar(50)
-  date         DateTime?  @db.Date
-  startTime    DateTime?  @map("start_time") @db.Time(6)
-  endTime      DateTime?  @map("end_time") @db.Time(6)
-  notes        String?    @db.VarChar(255)
-  classType    ClassType? @relation(fields: [classTypeId], references: [classTypeId], onDelete: SetNull, onUpdate: Cascade)
-  student      Student?   @relation(fields: [studentId], references: [studentId], onDelete: Cascade, onUpdate: Cascade)
-  subject      Subject?   @relation(fields: [subjectId], references: [subjectId], onDelete: SetNull, onUpdate: Cascade)
-  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt    DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  preferenceId           String     @id @default(cuid()) @map("preference_id")
+  studentId              String?    @map("student_id") @db.VarChar(50)
+  classTypeId            String?    @map("class_type_id") @db.VarChar(50)
+  subjectId              String?    @map("subject_id") @db.VarChar(50)
+  date                   DateTime?  @db.Date
+  startTime              DateTime?  @map("start_time") @db.Time(6)
+  endTime                DateTime?  @map("end_time") @db.Time(6)
+  notes                  String?    @db.VarChar(255)
+  preferredWeekdaysTimes Json?      @map("preferred_weekdays_times")
+  preferredSubjects      String[]
+  preferredTeachers      String[]
+  classType              ClassType? @relation(fields: [classTypeId], references: [classTypeId], onDelete: SetNull, onUpdate: Cascade)
+  student                Student?   @relation(fields: [studentId], references: [studentId], onDelete: Cascade, onUpdate: Cascade)
+  subject                Subject?   @relation(fields: [subjectId], references: [subjectId], onDelete: SetNull, onUpdate: Cascade)
+  createdAt              DateTime   @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt              DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
   @@map("student_special_preferences")
 }
@@ -270,15 +276,18 @@ model RegularClassTemplate {
  * Contains day of week and time slot information for teacher availability.
  */
 model TeacherRegularShift {
-  shiftId   String    @id @default(cuid()) @map("shift_id")
-  teacherId String?   @map("teacher_id") @db.VarChar(50)
-  dayOfWeek String?   @map("day_of_week") @db.VarChar(20)
-  startTime DateTime? @map("start_time") @db.Time(6)
-  endTime   DateTime? @map("end_time") @db.Time(6)
-  notes     String?   @db.VarChar(255)
-  teacher   Teacher?  @relation(fields: [teacherId], references: [teacherId], onDelete: Cascade, onUpdate: Cascade)
-  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  shiftId                String    @id @default(cuid()) @map("shift_id")
+  teacherId              String?   @map("teacher_id") @db.VarChar(50)
+  dayOfWeek              String?   @map("day_of_week") @db.VarChar(20)
+  startTime              DateTime? @map("start_time") @db.Time(6)
+  endTime                DateTime? @map("end_time") @db.Time(6)
+  notes                  String?   @db.VarChar(255)
+  preferredWeekdaysTimes Json?     @map("preferred_weekdays_times")
+  preferredSubjects      String[]
+  preferredTeachers      String[]
+  teacher                Teacher?  @relation(fields: [teacherId], references: [teacherId], onDelete: Cascade, onUpdate: Cascade)
+  createdAt              DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt              DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
   @@map("teacher_regular_shifts")
 }
@@ -290,15 +299,18 @@ model TeacherRegularShift {
  * used for planning special classes or courses during vacation periods.
  */
 model TeacherSpecialShift {
-  shiftId   String    @id @default(cuid()) @map("shift_id")
-  teacherId String?   @map("teacher_id") @db.VarChar(50)
-  date      DateTime? @db.Date
-  startTime DateTime? @map("start_time") @db.Time(6)
-  endTime   DateTime? @map("end_time") @db.Time(6)
-  notes     String?   @db.VarChar(255)
-  teacher   Teacher?  @relation(fields: [teacherId], references: [teacherId], onDelete: Cascade, onUpdate: Cascade)
-  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  shiftId                String    @id @default(cuid()) @map("shift_id")
+  teacherId              String?   @map("teacher_id") @db.VarChar(50)
+  date                   DateTime? @db.Date
+  startTime              DateTime? @map("start_time") @db.Time(6)
+  endTime                DateTime? @map("end_time") @db.Time(6)
+  notes                  String?   @db.VarChar(255)
+  preferredWeekdaysTimes Json?     @map("preferred_weekdays_times")
+  preferredSubjects      String[]
+  preferredTeachers      String[]
+  teacher                Teacher?  @relation(fields: [teacherId], references: [teacherId], onDelete: Cascade, onUpdate: Cascade)
+  createdAt              DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt              DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
   @@map("teacher_special_shifts")
 }

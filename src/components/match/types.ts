@@ -48,7 +48,10 @@ export interface Student {
   notes: string | null;
   createdAt: Date;
   updatedAt: Date;
-  
+  preference?: {
+    preferredSubjects: string[];
+    preferredTeachers: string[];
+  } | null;
   grade?: Grade | null;
   studentType?: StudentType | null;
   subjects?: Subject[];
@@ -136,4 +139,11 @@ export interface ScheduleLesson {
   startTime: string;
   endTime: string; 
   room?: string; 
+}
+
+export interface TeacherSubject {
+  teacherId: string;
+  subjectId: string;
+  createdAt: Date;
+  updatedAt: Date;
 }

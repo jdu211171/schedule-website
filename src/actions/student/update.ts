@@ -51,10 +51,7 @@ export async function updateStudentWithPreference(
           studentId,
           preferredSubjects: preferences.preferredSubjects ?? [],
           preferredTeachers: preferences.preferredTeachers ?? [],
-          preferredWeekdaysTimes: {
-            weekdays: preferences.preferredWeekdays ?? [],
-            hours: preferences.preferredHours ?? [],
-          },
+          preferredWeekdaysTimes: preferences.desiredTimes ?? [],
           notes: preferences.additionalNotes ?? null,
         },
       });

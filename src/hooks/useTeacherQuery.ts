@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getTeachers } from "@/actions/teacher";
 import { getTeacher } from "@/actions/teacher/read";
 import { getTeachersCount } from "@/actions/count";
+import { TeacherWithPreference } from "@/schemas/teacher.schema";
 
 export function useTeachersCount() {
   return useQuery({
@@ -28,6 +29,7 @@ export function useTeachers({
 export function useTeacher(teacherId: string) {
   return useQuery({
     queryKey: ["teachers", teacherId],
-    queryFn: () => getTeacher(teacherId),
+    queryFn: () => getTeacher(teacherId) as Promise<TeacherWithPreference>,
+    enabled: !!teacherId,
   });
 }

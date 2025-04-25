@@ -1,9 +1,13 @@
 "use server";
 
-import { studentCreateSchema } from "@/schemas/student.schema";
+import { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { requireAuth } from "../auth-actions";
 import { z } from "zod";
+import {
+  studentCreateSchema,
+  StudentCreateInput,
+} from "@/schemas/student.schema";
 import { studentPreferencesSchema } from "@/schemas/student-preferences.schema";
 
 const createStudentWithPreferenceSchema = z.object({
@@ -18,48 +22,49 @@ export async function createStudentWithPreference(
   data: CreateStudentWithPreferenceInput
 ) {
   await requireAuth();
+
   const parsed = createStudentWithPreferenceSchema.safeParse(data);
   if (!parsed.success) throw new Error("Invalid data provided");
 
   const { student: studentData, preferences } = parsed.data;
 
-  return prisma.$transaction(async (tx) => {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { gradeId, username, password, userId, ...rest } = studentData;
+  const { username, password, ...rest } = studentData;
+  let userId: string | null = null;
 
-    const user = await tx.user.create({
+  if (username && password) {
+    const user = await prisma.user.create({
       data: {
         name: rest.name,
-        username: username,
+        username,
         passwordHash: password,
         role: "STUDENT",
-      }
-    });
-
-    const student = await tx.student.create({
-      data: {
-        ...rest,
-        grade: gradeId ? { connect: { gradeId } } : undefined,
-        user: user.id ? { connect: { id: user.id } } : undefined,
-        studentRegularPreferences: preferences
-          ? {
-            create: {
-              preferredSubjects: preferences.preferredSubjects ?? [],
-              preferredTeachers: preferences.preferredTeachers ?? [],
-              preferredWeekdaysTimes: {
-                weekdays: preferences.preferredWeekdays ?? [],
-                hours: preferences.preferredHours ?? [],
-              },
-              notes: preferences.additionalNotes ?? null,
-            },
-          }
-          : undefined,
-      },
-      include: {
-        studentRegularPreferences: true,
       },
     });
+    userId = user.id;
+  }
 
-    return student;
+  type StudentCreateWithoutCred = Omit<
+    StudentCreateInput,
+    "username" | "password"
+  >;
+
+  const studentDataForPrisma: Prisma.StudentUncheckedCreateInput = {
+    ...(rest as StudentCreateWithoutCred),
+    ...(userId ? { userId } : {}),
+    studentRegularPreferences: preferences
+      ? {
+          create: {
+            preferredSubjects: preferences.preferredSubjects ?? [],
+            preferredTeachers: preferences.preferredTeachers ?? [],
+            preferredWeekdaysTimes: preferences.desiredTimes ?? [],
+            notes: preferences.additionalNotes ?? null,
+          },
+        }
+      : undefined,
+  };
+
+  return prisma.student.create({
+    data: studentDataForPrisma,
+    include: { studentRegularPreferences: true },
   });
 }

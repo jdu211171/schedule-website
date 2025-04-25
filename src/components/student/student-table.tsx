@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { DataTable } from "@/components/data-table"
 import { useStudents } from "@/hooks/useStudentQuery"
 import { useStudentDelete } from "@/hooks/useStudentMutation"
-import { StudentWithGrade, StudentWithPreference } from "@/schemas/student.schema"
+import { StudentWithGrade } from "@/schemas/student.schema"
 import {
     AlertDialog,
     AlertDialogAction,
@@ -21,6 +21,7 @@ import {
 import { Student } from "@prisma/client"
 import { StudentFormDialog } from "@/components/student/student-form-dialog"
 import { useStudentsCount } from "@/hooks/useStudentQuery"
+import type { StudentRegularPreference } from "@prisma/client"
 
 export function StudentTable() {
     const [searchTerm, setSearchTerm] = useState("")
@@ -31,7 +32,7 @@ export function StudentTable() {
     const { data: totalCount = 0 } = useStudentsCount()
     const deleteStudentMutation = useStudentDelete()
 
-    const [studentToEdit, setStudentToEdit] = useState<Student | StudentWithPreference | null>(null)
+    const [studentToEdit, setStudentToEdit] = useState<(Student & { studentRegularPreferences: StudentRegularPreference[] }) | null>(null)
     const [studentToDelete, setStudentToDelete] = useState<Student | null>(null)
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
 
@@ -146,7 +147,7 @@ export function StudentTable() {
             cell: ({ row }) => {
                 return (
                     <div className="flex gap-2">
-                        <Button variant="ghost" size="icon" onClick={() => setStudentToEdit(row.original)}>
+                        <Button variant="ghost" size="icon" onClick={() => setStudentToEdit(row.original as unknown as Student & { studentRegularPreferences: StudentRegularPreference[] })}>
                             <Pencil className="h-4 w-4"/>
                         </Button>
                         <Button variant="ghost" size="icon" onClick={() => setStudentToDelete(row.original)}>

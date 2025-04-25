@@ -1,5 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
-import { Teacher, Subject, Lesson, Evaluation } from "./types";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import {
   Table,
@@ -17,21 +16,35 @@ import SubjectBadge from "./subject-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import DetailDialog from "./detail-dialog";
+import { Teacher } from "@/schemas/teacher.schema";
+import { Subject } from "@/schemas/subject.schema";
+import { Evaluation } from "@/schemas/evaluation.schema";
+import { TeacherSubject } from "@/schemas/teacherSubject.schema";
+import { ClassSession as PrismaClassSession } from "@prisma/client";
 
-// Определяем интерфейс для teacherSubjects вместо any
-interface TeacherSubject {
-  teacherId: string;
-  subjectId: string;
+export type ClassSession = PrismaClassSession & {
+  subject?: Subject | null;
+  dayOfWeek?: string | number;
+  name?: string;
+};
+
+// Extended Teacher type with UI-specific properties
+interface EnrichedTeacher extends Teacher {
+  evaluation: Evaluation | null;
+  subjects: Subject[];
 }
 
 interface TeacherTableProps {
   teachers: Teacher[];
-  selectedTeacherId: string | undefined;
+  selectedTeacherId: string | null;
   onTeacherSelect: (teacherId: string) => void;
-  lessons: Lesson[];
+  lessons: ClassSession[];
   subjects: Subject[];
   evaluations: Evaluation[];
   teacherSubjects: TeacherSubject[];
+  selectedStudentId: string | null;
+  filteredTeachers?: Teacher[];
+  kibouSubjects?: Subject[];
 }
 
 export default function TeacherTable({
@@ -42,6 +55,9 @@ export default function TeacherTable({
   subjects,
   evaluations,
   teacherSubjects,
+  selectedStudentId,
+  filteredTeachers,
+  kibouSubjects = [],
 }: TeacherTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -49,93 +65,90 @@ export default function TeacherTable({
   const [subjectFilters, setSubjectFilters] = useState<string[]>([]);
   const [hasLessonsFilter, setHasLessonsFilter] = useState<boolean | null>(null);
   const [evaluationFilter, setEvaluationFilter] = useState<string | null>(null);
-  const [detailsTeacher, setDetailsTeacher] = useState<Teacher | null>(null);
+  const [detailsTeacher, setDetailsTeacher] = useState<EnrichedTeacher | null>(null);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
 
   const allSubjects = useMemo(() => subjects, [subjects]);
 
-  // Обработчик изменения фильтров
-  const handleFilterChange = (newSubjectFilters: string[], newHasLessonsFilter: boolean | null) => {
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedStudentId]);
+
+  const handleFilterChange = (
+    newSubjectFilters: string[],
+    newHasLessonsFilter: boolean | null,
+  ) => {
     setSubjectFilters(newSubjectFilters);
     setHasLessonsFilter(newHasLessonsFilter);
-    setCurrentPage(1); // Сбрасываем на первую страницу при изменении фильтров
+    setCurrentPage(1);
   };
 
-  // Обработчик изменения фильтра по оценке
   const handleEvaluationFilterChange = (evaluationId: string | null) => {
     setEvaluationFilter(evaluationId);
     setCurrentPage(1);
   };
 
-  // Функция для проверки, есть ли у учителя уроки (мемоизируем с useCallback)
-  const teacherHasLessons = useCallback((teacherId: string) => {
-    return lessons.some((lesson) => lesson.teacherId === teacherId);
-  }, [lessons]);
+  const teacherHasLessons = useCallback(
+    (teacherId: string) => {
+      return lessons.some((lesson) => lesson.teacherId === teacherId);
+    },
+    [lessons],
+  );
 
-  // Обогащаем данные учителей (добавляем оценки и предметы)
   const enrichedTeachers = useMemo(() => {
-    return teachers.map(teacher => {
-      const evaluation = evaluations.find(e => e.evaluationId === teacher.evaluationId) || null;
-      const teacherSubjectsData = teacherSubjects.filter(ts => ts.teacherId === teacher.teacherId);
+    const baseTeachers = filteredTeachers || teachers;
+
+    return baseTeachers.map((teacher) => {
+      const evaluation =
+        evaluations.find((e) => e.evaluationId === teacher.evaluationId) || null;
+
+      // -----------------------------
+      // 科目の決定ロジック
+      // -----------------------------
+      // 先生が担当できる科目は teacherSubjects テーブルの情報のみを参照する。
+      // レッスン履歴に基づく追加の科目は含めないことで、
+      // "講師対応科目" に登録されていない科目が UI に表示される問題を防ぐ。
+      const teacherSubjectsData = teacherSubjects.filter(
+        (ts) => ts.teacherId === teacher.teacherId,
+      );
+
       const subjectIds = new Set<string>();
       const teacherSubjectsList: Subject[] = [];
 
-      teacherSubjectsData.forEach(ts => {
-        const subject = subjects.find(s => s.subjectId === ts.subjectId);
+      teacherSubjectsData.forEach((ts) => {
+        const subject = subjects.find((s) => s.subjectId === ts.subjectId);
         if (subject && !subjectIds.has(subject.subjectId)) {
           subjectIds.add(subject.subjectId);
           teacherSubjectsList.push(subject);
         }
       });
 
-      const teacherLessons = lessons.filter(lesson => lesson.teacherId === teacher.teacherId);
-
-      teacherLessons.forEach(lesson => {
-        if (lesson.subject && !subjectIds.has(lesson.subject.subjectId)) {
-          subjectIds.add(lesson.subject.subjectId);
-          teacherSubjectsList.push(lesson.subject);
-        } else if (lesson.subjectId && !subjectIds.has(lesson.subjectId)) {
-          const subject = subjects.find(s => s.subjectId === lesson.subjectId);
-          if (subject && !subjectIds.has(subject.subjectId)) {
-            subjectIds.add(subject.subjectId);
-            teacherSubjectsList.push(subject);
-          }
-        }
-      });
-
       return {
         ...teacher,
         evaluation,
-        subjects: teacherSubjectsList
-      };
+        subjects: teacherSubjectsList,
+      } as EnrichedTeacher;
     });
-  }, [teachers, evaluations, lessons, subjects, teacherSubjects]);
+  }, [teachers, filteredTeachers, evaluations, subjects, teacherSubjects]);
 
-  // Фильтрация учителей
-  const filteredTeachers = useMemo(() => {
+  const filteredTeachersWithUI = useMemo(() => {
     return enrichedTeachers.filter((teacher) => {
-      // Фильтр по поисковому запросу
       const matchesSearch =
         teacher.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (teacher.university || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
         (teacher.faculty || "").toLowerCase().includes(searchTerm.toLowerCase());
 
-      // Фильтр по предметам
       const teacherSubjects = teacher.subjects || [];
       const matchesSubjects =
         subjectFilters.length === 0 ||
-        teacherSubjects.some(subject => subjectFilters.includes(subject.subjectId));
+        teacherSubjects.some((subject) => subjectFilters.includes(subject.subjectId));
 
-      // Фильтр по наличию уроков
       const matchesHasLessons =
         hasLessonsFilter === null ||
         (hasLessonsFilter === true && teacherHasLessons(teacher.teacherId)) ||
         (hasLessonsFilter === false && !teacherHasLessons(teacher.teacherId));
 
-      // Фильтр по оценке учителя
-      const matchesEvaluation =
-        evaluationFilter === null ||
-        teacher.evaluationId === evaluationFilter;
+      const matchesEvaluation = evaluationFilter === null || teacher.evaluationId === evaluationFilter;
 
       return matchesSearch && matchesSubjects && matchesHasLessons && matchesEvaluation;
     });
@@ -145,20 +158,36 @@ export default function TeacherTable({
     subjectFilters,
     hasLessonsFilter,
     evaluationFilter,
-    teacherHasLessons // Добавляем функцию в зависимости
+    teacherHasLessons,
   ]);
 
-  // Расчет общего количества страниц
-  const totalPages = Math.ceil(filteredTeachers.length / itemsPerPage);
+  const totalPages = Math.ceil(filteredTeachersWithUI.length / itemsPerPage);
 
-  // Получение учителей для текущей страницы
-  const paginatedTeachers = filteredTeachers.slice(
+  const paginatedTeachers = filteredTeachersWithUI.slice(
     (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
+    currentPage * itemsPerPage,
+  );
+
+  const isKibouSubject = useCallback(
+    (teacherSubject: Subject) => {
+      return kibouSubjects.some(
+        (kibouSubject) => kibouSubject.subjectId === teacherSubject.subjectId,
+      );
+    },
+    [kibouSubjects],
   );
 
   return (
     <div className="rounded-md border h-full flex flex-col bg-white">
+      {selectedStudentId && kibouSubjects.length > 0 && (
+        <div className="bg-green-50 p-2 border-b flex flex-wrap items-center gap-2">
+          <span className="text-green-800 text-sm font-medium">希望科目：</span>
+          {kibouSubjects.map((subject) => (
+            <SubjectBadge key={subject.subjectId} subject={subject} size="sm" />
+          ))}
+        </div>
+      )}
+
       <div className="p-4 border-b flex justify-between items-center space-x-2">
         <div className="flex-1 relative">
           <Input
@@ -166,7 +195,7 @@ export default function TeacherTable({
             value={searchTerm}
             onChange={(e) => {
               setSearchTerm(e.target.value);
-              setCurrentPage(1); // Сбрасываем на первую страницу при поиске
+              setCurrentPage(1);
             }}
             placeholder="先生を検索..."
             className="w-full"
@@ -175,7 +204,7 @@ export default function TeacherTable({
             <button
               onClick={() => {
                 setSearchTerm("");
-                setCurrentPage(1); // Сбрасываем на первую страницу при очистке поиска
+                setCurrentPage(1);
               }}
               className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
             >
@@ -215,20 +244,26 @@ export default function TeacherTable({
                   onClick={() => onTeacherSelect(teacher.teacherId)}
                   className={`cursor-pointer ${
                     selectedTeacherId === teacher.teacherId
-                      ? "bg-green-100 hover:bg-green-200" // Зеленое выделение для выбранного учителя
+                      ? "bg-green-100 hover:bg-green-200"
                       : "hover:bg-gray-100"
                   }`}
                 >
-                  <TableCell className="font-medium">
-                    {teacher.name}
-                  </TableCell>
+                  <TableCell className="font-medium">{teacher.name}</TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-1">
                       {teacherSubjects.slice(0, 3).map((subject) => (
-                        <SubjectBadge key={subject.subjectId} subject={subject} size="sm" />
+                        <SubjectBadge
+                          key={subject.subjectId}
+                          subject={subject}
+                          size="sm"
+                          highlight={selectedStudentId ? isKibouSubject(subject) : false}
+                        />
                       ))}
                       {teacherSubjects.length > 3 && (
-                        <Badge variant="outline" className="bg-gray-100 text-gray-800 px-1.5 py-0.5 text-xs rounded-full">
+                        <Badge
+                          variant="outline"
+                          className="bg-gray-100 text-gray-800 px-1.5 py-0.5 text-xs rounded-full"
+                        >
                           +{teacherSubjects.length - 3}
                         </Badge>
                       )}
@@ -238,10 +273,15 @@ export default function TeacherTable({
                     {teacher.evaluation ? (
                       <Badge
                         className={`
-                          ${teacher.evaluation.score && teacher.evaluation.score >= 4 ? 'bg-green-100 text-green-800' :
-                          teacher.evaluation.score && teacher.evaluation.score >= 3 ? 'bg-blue-100 text-blue-800' :
-                          teacher.evaluation.score && teacher.evaluation.score >= 2 ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-gray-100 text-gray-800'}
+                          ${
+                            teacher.evaluation.score && teacher.evaluation.score >= 4
+                              ? "bg-green-100 text-green-800"
+                              : teacher.evaluation.score && teacher.evaluation.score >= 3
+                              ? "bg-blue-100 text-blue-800"
+                              : teacher.evaluation.score && teacher.evaluation.score >= 2
+                              ? "bg-yellow-100 text-yellow-800"
+                              : "bg-gray-100 text-gray-800"
+                          }
                           px-2 py-1 rounded-full text-xs
                         `}
                       >
@@ -257,12 +297,23 @@ export default function TeacherTable({
                       size="sm"
                       className="h-8 w-8 p-0 hover:bg-gray-200 "
                       onClick={(e) => {
-                        e.stopPropagation(); // Предотвращаем срабатывание onClick строки
+                        e.stopPropagation();
                         setDetailsTeacher(teacher);
                         setIsDetailDialogOpen(true);
                       }}
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500 hover:text-gray-700">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="text-gray-500 hover:text-gray-700"
+                      >
                         <circle cx="12" cy="12" r="1" />
                         <circle cx="19" cy="12" r="1" />
                         <circle cx="5" cy="12" r="1" />
@@ -275,24 +326,20 @@ export default function TeacherTable({
           </TableBody>
         </Table>
 
-        {filteredTeachers.length === 0 && (
-          <div className="p-6 text-center text-gray-500">
-            検索結果はありません
-          </div>
+        {filteredTeachersWithUI.length === 0 && (
+          <div className="p-6 text-center text-gray-500">検索結果はありません</div>
         )}
       </ScrollArea>
 
-      {/* Пагинация */}
       <Pagination
         currentPage={currentPage}
         totalPages={totalPages}
-        totalItems={filteredTeachers.length}
+        totalItems={filteredTeachersWithUI.length}
         itemsPerPage={itemsPerPage}
         onPageChange={setCurrentPage}
         onItemsPerPageChange={setItemsPerPage}
       />
 
-      {/* Диалог с подробной информацией */}
       {detailsTeacher && (
         <DetailDialog
           entity={detailsTeacher}

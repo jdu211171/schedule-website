@@ -10,5 +10,20 @@ export async function getStudent(studentId: string) {
     include: { studentRegularPreferences: true },
   });
   if (!student) throw new Error("Student not found");
-  return student;
+
+  return {
+    ...student,
+    preference:
+      student.studentRegularPreferences.length > 0
+        ? {
+            preferredSubjects:
+              student.studentRegularPreferences[0].preferredSubjects || [],
+            preferredTeachers:
+              student.studentRegularPreferences[0].preferredTeachers || [],
+            desiredTimes:
+              student.studentRegularPreferences[0].preferredWeekdaysTimes || [],
+            additionalNotes: student.studentRegularPreferences[0].notes || null,
+          }
+        : null,
+  };
 }

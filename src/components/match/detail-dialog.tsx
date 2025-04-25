@@ -1,4 +1,3 @@
-import { Teacher, Student, Subject, Evaluation, Grade, StudentType } from "./types";
 import {
   Dialog,
   DialogContent,
@@ -11,9 +10,15 @@ import { Badge } from "@/components/ui/badge";
 import SubjectBadge from "./subject-badge";
 import SchoolTypeBadge from "./school-type-badge";
 import { Phone, Bookmark, School, BookOpen, Award, Calendar, GraduationCap, MessageSquare } from "lucide-react";
+import { Teacher } from "@/schemas/teacher.schema";
+import { StudentWithPreference } from "@/schemas/student.schema";
+import { Subject } from "@/schemas/subject.schema";
+import { Evaluation } from "@/schemas/evaluation.schema";
+import { Grade } from "@/schemas/grade.schema";
+import { StudentType } from "@prisma/client";
 
 interface DetailDialogProps {
-  entity: Teacher | Student;
+  entity: Teacher | StudentWithPreference;
   type: "teacher" | "student";
   subjects?: Subject[];
   evaluation?: Evaluation | null;
@@ -44,7 +49,7 @@ export default function DetailDialog({
   const isTeacher = type === "teacher";
   const isStudent = type === "student";
   const teacher = isTeacher ? entity as Teacher : null;
-  const student = isStudent ? entity as Student : null;
+  const student = isStudent ? entity as StudentWithPreference : null;
 
   // Функция для определения статуса (для цветовой схемы)
   const getStatusBadge = () => {
@@ -63,14 +68,14 @@ export default function DetailDialog({
           <div className="flex items-center justify-between">
             <div>
               <DialogTitle className="text-xl font-bold">{entity.name}</DialogTitle>
-              {isStudent && (student as Student).kanaName && (
-                <p className="text-gray-500 text-sm mt-1">{(student as Student).kanaName}</p>
+              {isStudent && (student as StudentWithPreference).kanaName && (
+                <p className="text-gray-500 text-sm mt-1">{(student as StudentWithPreference).kanaName}</p>
               )}
             </div>
             {getStatusBadge()}
           </div>
         </DialogHeader>
-        
+
         <div className="px-6 py-4 space-y-5 max-h-[70vh] overflow-y-auto">
           {/* Содержимое для учителя */}
           {isTeacher && teacher && (
@@ -95,7 +100,7 @@ export default function DetailDialog({
                   )}
                 </div>
               </div>
-              
+
               {/* Предметы */}
               <div className="flex group">
                 <div className="w-1/4 flex items-start">
@@ -108,17 +113,13 @@ export default function DetailDialog({
                       subjects.map((subject) => (
                         <SubjectBadge key={subject.subjectId} subject={subject} />
                       ))
-                    ) : teacher.subjects && teacher.subjects.length > 0 ? (
-                      teacher.subjects.map((subject) => (
-                        <SubjectBadge key={subject.subjectId} subject={subject} />
-                      ))
                     ) : (
                       <p className="text-sm text-gray-500">未入力</p>
                     )}
                   </div>
                 </div>
               </div>
-              
+
               {/* Языковые навыки */}
               <div className="flex group">
                 <div className="w-1/4 flex items-start">
@@ -135,7 +136,7 @@ export default function DetailDialog({
                   {teacher.toefl && <p className="text-sm">TOEFL: <span className="font-medium">{teacher.toefl}</span></p>}
                 </div>
               </div>
-              
+
               {/* Сертификаты */}
               <div className="flex group">
                 <div className="w-1/4 flex items-start">
@@ -151,7 +152,7 @@ export default function DetailDialog({
                   )}
                 </div>
               </div>
-              
+
               {/* Контактная информация */}
               <div className="flex group">
                 <div className="w-1/4 flex items-start">
@@ -168,7 +169,7 @@ export default function DetailDialog({
               </div>
             </>
           )}
-          
+
           {/* Содержимое для студента */}
           {isStudent && student && (
             <>
@@ -189,29 +190,29 @@ export default function DetailDialog({
                       )}
                     </div>
                   )}
-                  
+
                   {student.schoolName && (
                     <p className="text-sm font-medium">{student.schoolName}</p>
                   )}
-                  
-                  {(grade || student.grade) && (
+
+                  {grade && (
                     <p className="text-sm">
-                      {(grade || student.grade)?.name}
+                      {grade.name}
                     </p>
                   )}
-                  
-                  {(studentType || student.studentType) && (
+
+                  {studentType && (
                     <p className="text-sm text-gray-600">
-                      {(studentType || student.studentType)?.name}
+                      {studentType.name}
                     </p>
                   )}
-                  
-                  {!student.examSchoolCategoryType && !student.schoolName && !(grade || student.grade) && (
+
+                  {!student.examSchoolCategoryType && !student.schoolName && !grade && (
                     <p className="text-sm text-gray-500">未入力</p>
                   )}
                 </div>
               </div>
-              
+
               {/* Предметы */}
               <div className="flex group">
                 <div className="w-1/4 flex items-start">
@@ -224,17 +225,13 @@ export default function DetailDialog({
                       subjects.map((subject) => (
                         <SubjectBadge key={subject.subjectId} subject={subject} />
                       ))
-                    ) : student.subjects && student.subjects.length > 0 ? (
-                      student.subjects.map((subject) => (
-                        <SubjectBadge key={subject.subjectId} subject={subject} />
-                      ))
                     ) : (
                       <p className="text-sm text-gray-500">未入力</p>
                     )}
                   </div>
                 </div>
               </div>
-              
+
               {/* Предпочтения по школам */}
               <div className="flex group">
                 <div className="w-1/4 flex items-start">
@@ -253,7 +250,7 @@ export default function DetailDialog({
                   )}
                 </div>
               </div>
-              
+
               {/* Даты */}
               <div className="flex group">
                 <div className="w-1/4 flex items-start">
@@ -272,7 +269,7 @@ export default function DetailDialog({
                   )}
                 </div>
               </div>
-              
+
               {/* Контактная информация */}
               <div className="flex group">
                 <div className="w-1/4 flex items-start">
@@ -291,7 +288,7 @@ export default function DetailDialog({
               </div>
             </>
           )}
-          
+
           {/* Заметки (общие для обоих типов) */}
           {entity.notes && (
             <div className="flex group">
@@ -305,7 +302,7 @@ export default function DetailDialog({
             </div>
           )}
         </div>
-        
+
         <DialogFooter className="px-6 py-4 border-t">
           <Button onClick={onClose}>閉じる</Button>
         </DialogFooter>
