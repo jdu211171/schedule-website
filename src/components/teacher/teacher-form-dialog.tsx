@@ -1,9 +1,9 @@
-"use client";
+"use client"
 
-import { useState } from "react";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
+import { useState } from "react"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { useForm } from "react-hook-form"
+import { z } from "zod"
 
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -32,7 +32,7 @@ export function TeacherFormDialog({ open, onOpenChange, teacher }: TeacherFormDi
     const updateTeacherMutation = useTeacherUpdate()
     const { data: evaluations = [] } = useEvaluations()
 
-  const isEditing = !!teacher;
+    const isEditing = !!teacher
 
     // Check if teacher has preference property to determine if it's TeacherWithPreference
     const hasPreference = teacher && "preference" in teacher
@@ -101,25 +101,12 @@ export function TeacherFormDialog({ open, onOpenChange, teacher }: TeacherFormDi
         },
     })
 
-  async function onSubmit(values: z.infer<typeof teacherCreateSchema>) {
-    setIsSubmitting(true);
-    try {
-      if (isEditing && teacher) {
-        await updateTeacherMutation.mutateAsync({
-          teacherId: teacher.teacherId,
-          ...values,
-        });
-      } else {
-        await createTeacherMutation.mutateAsync(values);
-      }
-      onOpenChange(false);
-      form.reset();
-    } catch (error) {
-      console.error("講師の保存に失敗しました:", error);
-    } finally {
-      setIsSubmitting(false);
+    const formatDate = (date: Date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
     }
-  }
 
     async function onSubmit(values: z.infer<typeof formSchema>) {
         setIsSubmitting(true)
@@ -543,3 +530,4 @@ export function TeacherFormDialog({ open, onOpenChange, teacher }: TeacherFormDi
         </Dialog>
     )
 }
+
