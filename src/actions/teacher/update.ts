@@ -23,26 +23,22 @@ export async function updateTeacherWithShift(
   if (!parsed.success) throw new Error("Invalid data provided");
 
   const { teacher: teacherData, preferences } = parsed.data;
-  const { teacherId } = teacherData;
+  const { teacherId, username, password, ...rest } = teacherData;
 
   return prisma.$transaction(async (tx) => {
-    // Update teacher information
-    await tx.teacher.update({ where: { teacherId }, data: teacherData });
+    await tx.teacher.update({ where: { teacherId }, data: rest });
 
     if (preferences) {
-      // Delete existing shifts
       await tx.teacherRegularShift.deleteMany({ where: { teacherId } });
-
-      // Create new shift entries for each desired time
-      if (preferences.desiredTimes && preferences.desiredTimes.length > 0) {
-        for (const desiredTime of preferences.desiredTimes) {
+      if (preferences.desiredTimes?.length) {
+        for (const t of preferences.desiredTimes) {
           await tx.teacherRegularShift.create({
             data: {
               teacherId,
-              dayOfWeek: desiredTime.dayOfWeek,
-              startTime: new Date(`1970-01-01T${desiredTime.startTime}:00`),
-              endTime: new Date(`1970-01-01T${desiredTime.endTime}:00`),
-              preferredSubjects: [], // Empty array since we're not handling subjects here
+              dayOfWeek: t.dayOfWeek,
+              startTime: new Date(`1970-01-01T${t.startTime}:00`),
+              endTime: new Date(`1970-01-01T${t.endTime}:00`),
+              preferredSubjects: [],
               notes: preferences.additionalNotes,
             },
           });
@@ -50,7 +46,18 @@ export async function updateTeacherWithShift(
       }
     }
 
-    // Return the updated teacher
+    if (username || password) {
+      await tx.user
+        .update({
+          where: { id: teacherId }, // teacherId == user.id の前提
+          data: {
+            ...(username && { username }),
+            ...(password && { passwordHash: password }),
+          },
+        })
+        .catch(() => void 0); // User が無い場合はスルー
+    }
+
     return tx.teacher.findUnique({
       where: { teacherId },
       include: { teacherRegularShifts: true },
@@ -58,23 +65,13 @@ export async function updateTeacherWithShift(
   });
 }
 
-// Keep the original updateTeacher function for backward compatibility
 export async function updateTeacher(data: TeacherUpdateInput) {
   await requireAuth();
-
   const parsed = teacherUpdateSchema.safeParse(data);
-  if (!parsed.success) {
-    throw new Error("Invalid data provided");
-  }
+  if (!parsed.success) throw new Error("Invalid data provided");
 
-  const { teacherId, ...updateData } = parsed.data;
+  const { teacherId, ...rest } = parsed.data;
 
-  await prisma.teacher.update({
-    where: { teacherId },
-    data: updateData,
-  });
-
-  return prisma.teacher.findUnique({
-    where: { teacherId },
-  });
+  await prisma.teacher.update({ where: { teacherId }, data: rest });
+  return prisma.teacher.findUnique({ where: { teacherId } });
 }

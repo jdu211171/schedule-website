@@ -28,6 +28,11 @@ export const studentCreateSchema = z.object({
   parentEmail: z.string().max(100).nullable(),
   notes: z.string().nullable(),
   userId: z.string().nullable().optional(),
+  username: z.string().min(1, { message: "ユーザー名は必須です" }).optional(),
+  password: z
+    .string()
+    .min(6, { message: "パスワードは6文字以上である必要があります" })
+    .optional(),
 });
 
 export const studentUpdateSchema = studentCreateSchema.partial().extend({

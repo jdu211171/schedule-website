@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const teacherCreateSchema = z.object({
-  name: z.string().min(1, { message: "Name is required" }),
+  name: z.string().min(1, { message: "名前は必須です" }),
   evaluationId: z.string().nullable().optional(),
   birthDate: z.date().nullable().optional(),
   mobileNumber: z.string().max(20).nullable().optional(),
@@ -19,10 +19,15 @@ export const teacherCreateSchema = z.object({
   kanjiCertification: z.string().max(50).nullable().optional(),
   otherCertifications: z.string().max(255).nullable().optional(),
   notes: z.string().optional(),
+
+  username: z.string().min(1, { message: "ユーザー名は必須です" }),
+  password: z
+    .string()
+    .min(6, { message: "パスワードは6文字以上である必要があります" }),
 });
 
 export const teacherUpdateSchema = teacherCreateSchema.partial().extend({
-  teacherId: z.string().cuid({ message: "Invalid ID" }), // Required for updates
+  teacherId: z.string().cuid({ message: "無効な ID です" }),
 });
 
 export const teacherSchema = z.object({
