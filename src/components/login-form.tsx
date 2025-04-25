@@ -20,8 +20,10 @@ import { loginUser } from "@/actions/auth-actions";
 import { toast } from "sonner";
 
 const loginSchema = z.object({
-  email: z.string().email("Please enter a valid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
+  usernameOrEmail: z
+    .string()
+    .nonempty("ユーザー名またはメールアドレスを入力してください"),
+  password: z.string().min(6, "パスワードは6文字以上である必要があります"),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
@@ -34,22 +36,22 @@ export function LoginForm({
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: "",
+      usernameOrEmail: "",
       password: "",
     },
   });
 
   const loginMutation = useMutation({
     mutationFn: async (values: LoginFormValues) =>
-      await loginUser(values.email, values.password),
+      await loginUser(values.usernameOrEmail, values.password),
     onSuccess: () => {
-      toast.success("Login successful", {
-        description: "Welcome back!",
+      toast.success("ログイン成功", {
+        description: "お帰りなさい！",
       });
       router.push("/");
     },
     onError: (error) => {
-      toast.error("Login failed", {
+      toast.error("ログイン失敗", {
         description: error.message,
       });
     },
@@ -62,21 +64,25 @@ export function LoginForm({
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <div className="flex flex-col items-center gap-2 text-center">
-        <h1 className="text-2xl font-bold">Login to your account</h1>
+        <h1 className="text-2xl font-bold">アカウントにログイン</h1>
         <p className="text-muted-foreground text-sm text-balance">
-          Enter your email below to login to your account
+          ユーザー名またはメールアドレスを入力してアカウントにログインしてください
         </p>
       </div>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-6">
           <FormField
             control={form.control}
-            name="email"
+            name="usernameOrEmail"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Email</FormLabel>
+                <FormLabel>ユーザー名またはメールアドレス</FormLabel>
                 <FormControl>
-                  <Input type="email" placeholder="m@example.com" {...field} />
+                  <Input
+                    type="text"
+                    placeholder="ユーザー名またはメールアドレス"
+                    {...field}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -88,12 +94,12 @@ export function LoginForm({
             render={({ field }) => (
               <FormItem>
                 <div className="flex items-center justify-between">
-                  <FormLabel>Password</FormLabel>
+                  <FormLabel>パスワード</FormLabel>
                   <a
                     href="#"
                     className="text-sm underline-offset-4 hover:underline"
                   >
-                    Forgot your password?
+                    パスワードをお忘れですか？
                   </a>
                 </div>
                 <FormControl>
@@ -108,11 +114,11 @@ export function LoginForm({
             className="w-full"
             disabled={loginMutation.isPending}
           >
-            {loginMutation.isPending ? "Logging in..." : "Login"}
+            {loginMutation.isPending ? "ログイン中..." : "ログイン"}
           </Button>
           <div className="after:border-border relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t">
             <span className="bg-background text-muted-foreground relative z-10 px-2">
-              Or continue with
+              または以下で続行
             </span>
           </div>
           <Button variant="outline" className="w-full">
@@ -122,14 +128,14 @@ export function LoginForm({
                 fill="currentColor"
               />
             </svg>
-            Login with GitHub
+            GitHubでログイン
           </Button>
         </form>
       </Form>
       <div className="text-center text-sm">
-        Don&apos;t have an account?{" "}
+        アカウントをお持ちではありませんか？{" "}
         <a href="#" className="underline underline-offset-4">
-          Sign up
+          サインアップ
         </a>
       </div>
     </div>

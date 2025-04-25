@@ -24,22 +24,35 @@ export async function createStudentWithPreference(
   const { student: studentData, preferences } = parsed.data;
 
   return prisma.$transaction(async (tx) => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { gradeId, username, password, userId, ...rest } = studentData;
+
+    const user = await tx.user.create({
+      data: {
+        name: rest.name,
+        username: username,
+        passwordHash: password,
+        role: "STUDENT",
+      }
+    });
+
     const student = await tx.student.create({
       data: {
-        ...studentData,
-
+        ...rest,
+        grade: gradeId ? { connect: { gradeId } } : undefined,
+        user: user.id ? { connect: { id: user.id } } : undefined,
         studentRegularPreferences: preferences
           ? {
-              create: {
-                preferredSubjects: preferences.preferredSubjects ?? [],
-                preferredTeachers: preferences.preferredTeachers ?? [],
-                preferredWeekdaysTimes: {
-                  weekdays: preferences.preferredWeekdays ?? [],
-                  hours: preferences.preferredHours ?? [],
-                },
-                notes: preferences.additionalNotes ?? null,
+            create: {
+              preferredSubjects: preferences.preferredSubjects ?? [],
+              preferredTeachers: preferences.preferredTeachers ?? [],
+              preferredWeekdaysTimes: {
+                weekdays: preferences.preferredWeekdays ?? [],
+                hours: preferences.preferredHours ?? [],
               },
-            }
+              notes: preferences.additionalNotes ?? null,
+            },
+          }
           : undefined,
       },
       include: {

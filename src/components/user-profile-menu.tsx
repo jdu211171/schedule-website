@@ -27,12 +27,18 @@ export default function UserProfileMenu() {
     );
   }
 
-  const userInitials =
-    session.user?.name
-      ?.split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase();
+  const userInitials = session.user?.name
+    ?.split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase();
+
+  const dashboardLink =
+    session.user?.role === "STUDENT"
+      ? "/student"
+      : session.user?.role === "TEACHER"
+      ? "/teacher"
+      : "/dashboard";
 
   return (
     <DropdownMenu>
@@ -53,7 +59,7 @@ export default function UserProfileMenu() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
-          <Link href="/dashboard" className="flex items-center w-full">
+          <Link href={dashboardLink} className="flex items-center w-full">
             ダッシュボード
           </Link>
         </DropdownMenuItem>

@@ -21,12 +21,27 @@ export async function updateStudentWithPreference(
   const parsed = updateStudentWithPreferenceSchema.safeParse(data);
   if (!parsed.success) throw new Error("Invalid data provided");
 
-  const { student: studentData, preferences } = parsed.data;
-  const { studentId } = studentData;
+    const { student: studentData, preferences } = parsed.data;
+    const { studentId, username, password } = studentData;
 
-  return prisma.$transaction(async (tx) => {
-    // 学生情報はそのまま更新
-    await tx.student.update({ where: { studentId }, data: studentData });
+    // Use a transaction to ensure both student and preferences are updated atomically
+    return prisma.$transaction(async (tx) => {
+        // Update the student
+        await tx.student.update({
+            where: { studentId },
+            data: studentData,
+        });
+
+        // Update the user credentials if provided
+        if (username || password) {
+            await tx.user.update({
+                where: { id: studentId },
+                data: {
+                    ...(username && { username }),
+                    ...(password && { passwordHash: password }),
+                },
+            });
+        }
 
     if (preferences) {
       await tx.studentRegularPreference.deleteMany({ where: { studentId } });

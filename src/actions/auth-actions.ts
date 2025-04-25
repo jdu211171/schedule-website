@@ -13,9 +13,9 @@ export async function requireAuth() {
     return session;
 }
 
-export async function loginUser(email: string, password: string) {
+export async function loginUser(usernameOrEmail: string, password: string) {
     try {
-        const res = await signIn("credentials", { email, password, redirect: false, });
+        const res = await signIn("credentials", { usernameOrEmail, password, redirect: false, });
 
         console.log("Login response:", res);
     } catch (error) {

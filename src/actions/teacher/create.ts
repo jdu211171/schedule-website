@@ -5,16 +5,32 @@ import { requireAuth } from '../auth-actions';
 import prisma from '@/lib/prisma';
 
 export async function createTeacher(data: TeacherCreateInput) {
-    await requireAuth();
+  await requireAuth();
 
-    const parsed = teacherCreateSchema.safeParse(data);
-    if (!parsed.success) {
-        throw new Error("Invalid data provided");
-    }
+  const parsed = teacherCreateSchema.safeParse(data);
+  if (!parsed.success) {
+    throw new Error("Invalid data provided");
+  }
 
-    await prisma.teacher.create({
-        data: parsed.data,
+  const { username, password, ...teacherData } = parsed.data;
+
+  return prisma.$transaction(async (tx) => {
+    const user = await tx.user.create({
+      data: {
+        name: teacherData.name,
+        username,
+        passwordHash: password,
+        role: "TEACHER",
+      },
     });
 
-    return parsed.data;
+    const teacher = await tx.teacher.create({
+      data: {
+        ...teacherData,
+        userId: user.id,
+      },
+    });
+
+    return teacher;
+  });
 }
