@@ -1,179 +1,160 @@
-import { useMemo } from 'react';
-import { Student, Subject, Teacher, TeacherSubject } from '@/components/match/types';
+import { useMemo } from "react";
 
-interface EnrichedStudent extends Student {
-  preference?: {
-    preferredSubjects: string[];
-    preferredTeachers: string[];
-  } | null;
+import { StudentWithPreference } from "@/schemas/student.schema";
+import { Teacher } from "@/schemas/teacher.schema";
+import { Subject } from "@/schemas/subject.schema";
+import { TeacherSubject } from "@/schemas/teacherSubject.schema";
+
+/* --------------------------------------------------------------------------
+ * Utility helpers
+ * -------------------------------------------------------------------------- */
+
+/**
+ * Collect all <Subject> objects a teacher can teach based solely on the
+ * `teacherSubjects` join‑table. We do **not** look at historic lessons – this
+ * mirrors the behaviour elsewhere in the UI where only the explicitly declared
+ * “講師対応科目” are shown.
+ */
+function getSubjectsForTeacher(
+  teacherId: string,
+  teacherSubjects: TeacherSubject[],
+  subjects: Subject[]
+): Subject[] {
+  const subjectIds = new Set(
+    teacherSubjects
+      .filter((ts) => ts.teacherId === teacherId)
+      .map((ts) => ts.subjectId)
+  );
+  return subjects.filter((s) => subjectIds.has(s.subjectId));
 }
 
-interface EnrichedTeacher extends Teacher {
-  teacherSubjects?: TeacherSubject[];
+/**
+ * Convert a list of subjectId strings found in a student preference record to
+ * the corresponding <Subject> objects.
+ */
+function getPreferredSubjectsForStudent(
+  student: StudentWithPreference,
+  subjects: Subject[]
+): Subject[] {
+  if (!student.preference) return [];
+  const { preferredSubjects } = student.preference;
+  const idSet = new Set(preferredSubjects);
+  return subjects.filter((s) => idSet.has(s.subjectId));
 }
 
+/* --------------------------------------------------------------------------
+ * Public hooks
+ * -------------------------------------------------------------------------- */
+
+/**
+ * When the **student** is chosen first, return an ordered list of teachers and
+ * a list of subjects the student hopes to study (used for UI highlighting).
+ */
 export function useFilteredTeachers(
-  teachers: EnrichedTeacher[],
+  teachers: Teacher[],
   selectedStudentId: string | null,
-  students: EnrichedStudent[],
+  students: StudentWithPreference[],
   subjects: Subject[],
   teacherSubjects: TeacherSubject[]
-) {
+): { filteredTeachers: Teacher[]; kibouSubjects: Subject[] } {
   return useMemo(() => {
+    // No student selected – return original list untouched
     if (!selectedStudentId) {
       return { filteredTeachers: teachers, kibouSubjects: [] };
     }
 
-    const selectedStudent = students.find(student => student.studentId === selectedStudentId);
-    
-    if (!selectedStudent || !selectedStudent.preference) {
+    const student = students.find((s) => s.studentId === selectedStudentId);
+    if (!student) {
       return { filteredTeachers: teachers, kibouSubjects: [] };
     }
 
-    const preferredSubjectIds = selectedStudent.preference.preferredSubjects || [];
-    const preferredTeacherIds = selectedStudent.preference.preferredTeachers || [];
-    
-    const teacherSubjectsMap: Record<string, string[]> = {};
-    teacherSubjects.forEach(ts => {
-      if (!teacherSubjectsMap[ts.teacherId]) {
-        teacherSubjectsMap[ts.teacherId] = [];
-      }
-      teacherSubjectsMap[ts.teacherId].push(ts.subjectId);
-    });
-    
-    if (preferredTeacherIds.length > 0) {
-      const filteredByPreferredTeachers = teachers.filter(teacher => 
-        preferredTeacherIds.includes(teacher.teacherId)
+    const preferredTeachers = new Set(
+      student.preference?.preferredTeachers ?? []
+    );
+    const preferredSubjectIds = new Set(
+      student.preference?.preferredSubjects ?? []
+    );
+
+    // Pre‑compute subjects for each teacher once so we can test fast.
+    const teacherSubjectMap: Record<string, Subject[]> = {};
+    teachers.forEach((t) => {
+      teacherSubjectMap[t.teacherId] = getSubjectsForTeacher(
+        t.teacherId,
+        teacherSubjects,
+        subjects
       );
-      
-      if (filteredByPreferredTeachers.length > 0) {
-        const kibouSubjectsList = preferredSubjectIds
-          .map(subjectId => subjects.find(s => s.subjectId === subjectId))
-          .filter((subject): subject is Subject => !!subject);
-        
-        return { 
-          filteredTeachers: filteredByPreferredTeachers, 
-          kibouSubjects: kibouSubjectsList
-        };
-      }
-    }
+    });
 
-    if (preferredSubjectIds.length > 0) {
-      const filteredTeachers = teachers.filter(teacher => {
-        const teacherSubjectIds = teacherSubjectsMap[teacher.teacherId] || [];
-        return teacherSubjectIds.some(subjectId => preferredSubjectIds.includes(subjectId));
-      });
-
-      const sortedTeachers = [...filteredTeachers].sort((a, b) => {
-        const aIsPreferred = preferredTeacherIds.includes(a.teacherId) ? 1 : 0;
-        const bIsPreferred = preferredTeacherIds.includes(b.teacherId) ? 1 : 0;
-        
-        if (aIsPreferred !== bIsPreferred) {
-          return bIsPreferred - aIsPreferred;
-        }
-        
-        const aMatches = countMatchingSubjects(a.teacherId, preferredSubjectIds, teacherSubjectsMap);
-        const bMatches = countMatchingSubjects(b.teacherId, preferredSubjectIds, teacherSubjectsMap);
-        return bMatches - aMatches;
-      });
-      
-      const kibouSubjectsList = preferredSubjectIds
-        .map(subjectId => subjects.find(s => s.subjectId === subjectId))
-        .filter((subject): subject is Subject => !!subject);
-      
-      return { 
-        filteredTeachers: sortedTeachers, 
-        kibouSubjects: kibouSubjectsList
+    // Ranking: 0 = teacher explicitly preferred, 1 = any subject match, 2 = rest
+    const rankedTeachers = [...teachers].sort((a, b) => {
+      const rankOf = (t: Teacher) => {
+        if (preferredTeachers.has(t.teacherId)) return 0;
+        const teachesPreferredSubject = teacherSubjectMap[t.teacherId].some(
+          (subj) => preferredSubjectIds.has(subj.subjectId)
+        );
+        if (teachesPreferredSubject) return 1;
+        return 2;
       };
-    }
-    
-    return { filteredTeachers: teachers, kibouSubjects: [] };
+      return rankOf(a) - rankOf(b);
+    });
+
+    const kibouSubjects = getPreferredSubjectsForStudent(student, subjects);
+
+    return {
+      filteredTeachers: rankedTeachers,
+      kibouSubjects,
+    };
   }, [teachers, selectedStudentId, students, subjects, teacherSubjects]);
 }
 
+/**
+ * When the **teacher** is chosen first, return an ordered list of students and
+ * a list of subjects that teacher can teach (used for UI highlighting).
+ */
 export function useFilteredStudents(
-  students: EnrichedStudent[],
+  students: StudentWithPreference[],
   selectedTeacherId: string | null,
-  teachers: EnrichedTeacher[],
+  teachers: Teacher[],
   subjects: Subject[],
   teacherSubjects: TeacherSubject[]
-) {
+): { filteredStudents: StudentWithPreference[]; kibouSubjects: Subject[] } {
   return useMemo(() => {
+    // No teacher selected – return original list untouched
     if (!selectedTeacherId) {
       return { filteredStudents: students, kibouSubjects: [] };
     }
 
-    const teacherSubjectIds = teacherSubjects
-      .filter(ts => ts.teacherId === selectedTeacherId)
-      .map(ts => ts.subjectId);
-    
-    if (teacherSubjectIds.length === 0) {
+    const teacher = teachers.find((t) => t.teacherId === selectedTeacherId);
+    if (!teacher) {
       return { filteredStudents: students, kibouSubjects: [] };
     }
-    
-    // Фильтруем учеников
-    const filteredStudents = students.filter(student => {
-      if (!student.preference) return false;
-      
-      if (student.preference.preferredTeachers.includes(selectedTeacherId)) {
-        return true;
-      }
-      
-      return student.preference.preferredSubjects.some(subjectId => 
-        teacherSubjectIds.includes(subjectId)
-      );
+
+    const teacherSubjectList = getSubjectsForTeacher(
+      selectedTeacherId,
+      teacherSubjects,
+      subjects
+    );
+    const teacherSubjectIds = new Set(
+      teacherSubjectList.map((s) => s.subjectId)
+    );
+
+    // Ranking: 0 = student explicitly prefers this teacher, 1 = prefers a subject this teacher teaches, 2 = rest
+    const rankedStudents = [...students].sort((a, b) => {
+      const rankOf = (s: StudentWithPreference) => {
+        if (s.preference?.preferredTeachers?.includes(selectedTeacherId)) {
+          return 0;
+        }
+        const prefersTeacherSubject = (
+          s.preference?.preferredSubjects ?? []
+        ).some((sid) => teacherSubjectIds.has(sid));
+        return prefersTeacherSubject ? 1 : 2;
+      };
+      return rankOf(a) - rankOf(b);
     });
-    
-    // Сортировка результатов
-    const sortedStudents = [...filteredStudents].sort((a, b) => {
-      if (!a.preference || !b.preference) return 0;
-      
-      const aPreferredTeacher = a.preference.preferredTeachers.includes(selectedTeacherId) ? 1 : 0;
-      const bPreferredTeacher = b.preference.preferredTeachers.includes(selectedTeacherId) ? 1 : 0;
-      
-      if (aPreferredTeacher !== bPreferredTeacher) {
-        return bPreferredTeacher - aPreferredTeacher;
-      }
-      
-      const aMatches = countStudentMatchingSubjects(a, teacherSubjectIds);
-      const bMatches = countStudentMatchingSubjects(b, teacherSubjectIds);
-      return bMatches - aMatches;
-    });
-    
-    const kibouSubjectsList = teacherSubjectIds
-      .map(subjectId => subjects.find(s => s.subjectId === subjectId))
-      .filter((subject): subject is Subject => !!subject);
-    
-    return { 
-      filteredStudents: sortedStudents, 
-      kibouSubjects: kibouSubjectsList
+
+    return {
+      filteredStudents: rankedStudents,
+      kibouSubjects: teacherSubjectList,
     };
-  }, [students, selectedTeacherId, subjects, teacherSubjects]); // Удалена лишняя зависимость 'teachers'
-}
-
-function countMatchingSubjects(
-  teacherId: string, 
-  preferredSubjectIds: string[],
-  teacherSubjectsMap: Record<string, string[]>
-): number {
-  const teacherSubjectIds = teacherSubjectsMap[teacherId] || [];
-  
-  return preferredSubjectIds.filter(subjectId => 
-    teacherSubjectIds.includes(subjectId)
-  ).length;
-}
-
-function countStudentMatchingSubjects(
-  student: EnrichedStudent, 
-  teacherSubjectIds: string[]
-): number {
-  if (!student.preference) {
-    return 0;
-  }
-  
-  const studentSubjectIds = student.preference.preferredSubjects;
-  
-  return studentSubjectIds.filter(subjectId => 
-    teacherSubjectIds.includes(subjectId)
-  ).length;
+  }, [students, selectedTeacherId, teachers, subjects, teacherSubjects]);
 }

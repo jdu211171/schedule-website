@@ -33,10 +33,7 @@ export async function createStudentWithPreference(
               create: {
                 preferredSubjects: preferences.preferredSubjects ?? [],
                 preferredTeachers: preferences.preferredTeachers ?? [],
-                preferredWeekdaysTimes: {
-                  weekdays: preferences.preferredWeekdays ?? [],
-                  hours: preferences.preferredHours ?? [],
-                },
+                preferredWeekdaysTimes: preferences.desiredTimes ?? [], // ← 変更
                 notes: preferences.additionalNotes ?? null,
               },
             }

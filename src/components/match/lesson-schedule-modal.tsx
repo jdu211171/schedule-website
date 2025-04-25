@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, ChangeEvent, useMemo } from "react";
-import { Lesson } from "@/components/match/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { BookOpen, X, AlertTriangle } from "lucide-react";
@@ -37,24 +36,53 @@ import {
   getDayOfWeekString,
   getSubjectNameJapanese,
 } from "./lesson-modal-utils";
+import { Subject } from "@/schemas/subject.schema";
+import { ClassSession as PrismaClassSession } from "@prisma/client";
 
-// Расширяем DisplayLesson для внутренних нужд модального окна
-interface ExtendedLesson extends DisplayLesson {
-  subjectName: string; // обязательное поле в ExtendedLesson
+// -----------------------------------------------------------------------------
+// 型定義
+// -----------------------------------------------------------------------------
+// Prisma の ClassSession に UI で必要なプロパティを追加
+export type ClassSession = PrismaClassSession & {
+  id?: string; // UI 識別用
+  subject?: Subject | null;
+  dayOfWeek?: string | number;
+  name?: string;
+  status?: string;
+  teacherName?: string;
+  studentName?: string;
+  room?: string;
+};
+
+// ExtendedLesson for internal modal needs
+interface ExtendedLesson {
+  id: string;
+  name: string;
+  subjectName: string;
+  subjectId?: string;
+  teacherName: string;
+  studentName: string;
+  dayOfWeek: string | number;
+  startTime: string;
+  endTime: string;
+  status: string;
+  teacherId: string;
+  studentId: string;
+  room?: string;
 }
 
 interface LessonScheduleModalProps {
-  lessons: Lesson[];
+  lessons: ClassSession[];
   onClose: () => void;
   teacherName: string;
   studentName: string;
   teacherId: string;
   studentId: string;
   open: boolean;
-  onAddLesson?: (lesson: Partial<Lesson>) => void;
+  onAddLesson?: (lesson: Partial<ClassSession>) => void;
 }
 
-// Функция для проверки пересечения уроков
+// Function to check lesson overlap
 function checkLessonOverlap(
   newLessonDay: number,
   newLessonStart: string,
@@ -64,64 +92,64 @@ function checkLessonOverlap(
   currentStudentId: string,
   editingLessonId?: string
 ): { hasOverlap: boolean; overlapMessage: string } {
-  // Преобразуем время в минуты для сравнения
+  // Convert time to minutes for comparison
   const newStartMinutes = timeStringToMinutes(newLessonStart);
   const newEndMinutes = timeStringToMinutes(newLessonEnd);
 
-  // Проверяем каждый урок на пересечение
+  // Check each lesson for overlap
   for (const lesson of existingLessons) {
-    // Пропускаем текущий редактируемый урок
+    // Skip the current lesson being edited
     if (editingLessonId && lesson.id === editingLessonId) {
       continue;
     }
 
-    // Проверяем только уроки того же дня
-    const lessonDay = typeof lesson.dayOfWeek === 'string' 
-      ? parseInt(lesson.dayOfWeek) 
+    // Only check lessons on the same day
+    const lessonDay = typeof lesson.dayOfWeek === 'string'
+      ? parseInt(lesson.dayOfWeek)
       : lesson.dayOfWeek;
-    
+
     if (lessonDay !== newLessonDay) {
       continue;
     }
 
     const lessonStartMinutes = timeStringToMinutes(lesson.startTime);
     const lessonEndMinutes = timeStringToMinutes(lesson.endTime);
-    
-    // Проверка на пересечение времени
-    // (новый урок начинается до окончания существующего И заканчивается после начала существующего)
+
+    // Check for time intersection
+    // (new lesson starts before existing lesson ends AND ends after existing lesson starts)
     if (newStartMinutes < lessonEndMinutes && newEndMinutes > lessonStartMinutes) {
       let overlapMessage = "";
-      
-      // Уроки учителя
+
+      // Teacher's lessons
       if (lesson.teacherId === currentTeacherId) {
         overlapMessage = `先生はすでに${lesson.startTime}〜${lesson.endTime}に授業があります。`;
       }
-      // Уроки ученика
+      // Student's lessons
       else if (lesson.studentId === currentStudentId) {
         overlapMessage = `生徒はすでに${lesson.startTime}〜${lesson.endTime}に授業があります。`;
       }
-      // Другие уроки
+      // Other lessons
       else {
         overlapMessage = `授業時間が${lesson.startTime}〜${lesson.endTime}の授業と重複しています。`;
       }
-      
+
       return { hasOverlap: true, overlapMessage };
     }
   }
-  
+
   return { hasOverlap: false, overlapMessage: "" };
 }
 
-// Вспомогательная функция для преобразования времени в минуты
+// Helper function to convert time to minutes
 function timeStringToMinutes(timeString: string): number {
   const [hours, minutes] = timeString.split(':').map(Number);
   return hours * 60 + minutes;
 }
 
-// Компонент уведомления для отображения ошибок
+// Error notification component
 function ErrorNotification({ message, onClose }: { message: string; onClose: () => void }) {
   if (!message) return null;
-  
+
   return (
     <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-white border border-red-300 rounded-md shadow-md flex items-center py-2 px-4 max-w-md animate-in fade-in slide-in-from-top-5">
       <span className="text-red-600 mr-2 flex-shrink-0">
@@ -162,9 +190,9 @@ export default function CustomLessonModal({
 
   const [availableSubjects, setAvailableSubjects] = useState<{ subjectId: string, name: string }[]>([]);
   const [availableDays, setAvailableDays] = useState<{ value: string, label: string }[]>([]);
-  // availableTimeSlots переменная используется внутри getAvailableTimeSlots, но не напрямую в компоненте
+  // availableTimeSlots is used inside getAvailableTimeSlots, but not directly in the component
   const [, setAvailableTimeSlots] = useState<{ start: string, end: string }[]>([]);
-  
+
   const durations = useMemo(() => [
     { value: "60分", label: "60分" },
     { value: "90分", label: "90分" },
@@ -173,11 +201,11 @@ export default function CustomLessonModal({
   const [availableDurations, setAvailableDurations] = useState<{ value: string, isAvailable: boolean }[]>(
     durations.map(d => ({ value: d.value, isAvailable: true }))
   );
-  
+
   const [hasCommonSubjects, setHasCommonSubjects] = useState(true);
   const [hasCommonDays, setHasCommonDays] = useState(true);
   const [hasCommonTimeSlots, setHasCommonTimeSlots] = useState(true);
-  
+
   const shouldSetEarliestTime = !startTime && !editMode;
 
   useEffect(() => {
@@ -185,15 +213,15 @@ export default function CustomLessonModal({
       const { subjects, hasSubjects } = getAvailableSubjects(teacherId, studentId);
       setAvailableSubjects(subjects);
       setHasCommonSubjects(hasSubjects);
-      
+
       if (subjects.length === 1 && !selectedSubject) {
         setSelectedSubject(subjects[0].subjectId);
       }
-      
+
       const { days, hasDays } = getAvailableDays(teacherId, studentId);
       setAvailableDays(days);
       setHasCommonDays(hasDays);
-      
+
       if (days.length === 1 && !selectedDay) {
         setSelectedDay(days[0].value);
       }
@@ -203,23 +231,23 @@ export default function CustomLessonModal({
   useEffect(() => {
     if (teacherId && studentId && selectedDay) {
       const { timeSlots, hasTimeSlots, earliestAvailableTime } = getAvailableTimeSlots(
-        teacherId, 
-        studentId, 
+        teacherId,
+        studentId,
         selectedDay
       );
-      
+
       setAvailableTimeSlots(timeSlots);
       setHasCommonTimeSlots(hasTimeSlots);
-      
-      // Если день изменился, или это не режим редактирования и время еще не задано
+
+      // If the day changed, or this is not edit mode and time is not set yet
       const dayChanged = editMode && previousDay !== "" && previousDay !== selectedDay;
-      
+
       if (hasTimeSlots && earliestAvailableTime && (shouldSetEarliestTime || dayChanged)) {
         setStartTime(earliestAvailableTime);
         setTimeError(null);
       }
-      
-      // Сохраняем текущий день для отслеживания изменений
+
+      // Save current day for tracking changes
       setPreviousDay(selectedDay);
     }
   }, [teacherId, studentId, selectedDay, shouldSetEarliestTime, editMode, previousDay]);
@@ -234,51 +262,67 @@ export default function CustomLessonModal({
 
   useEffect(() => {
     const formattedLessons: ExtendedLesson[] = propsLessons.map(lesson => {
-      const subjectName = lesson.subject ? lesson.subject.name : 
+      const subjectName = lesson.subject ? lesson.subject.name :
                           (lesson.name || getSubjectNameJapanese(lesson.subjectId || ''));
-      
+
+      // Ensure id, startTime, endTime, teacherId, studentId, and status are not undefined/null
+      const id: string = (lesson.classId || lesson.id || `temp-${Date.now()}`) as string;
+      const startTime: string = typeof lesson.startTime === "string"
+        ? lesson.startTime
+        : lesson.startTime instanceof Date
+          ? lesson.startTime.toTimeString().slice(0, 5)
+          : "";
+      const endTime: string = typeof lesson.endTime === "string"
+        ? lesson.endTime
+        : lesson.endTime instanceof Date
+          ? lesson.endTime.toTimeString().slice(0, 5)
+          : "";
+      const teacherIdSafe: string = lesson.teacherId ?? teacherId ?? "";
+      const studentIdSafe: string = lesson.studentId ?? studentId ?? "";
+      const statusSafe: string = lesson.status ?? "有効";
+
       return {
-        id: lesson.id,
+        id,
         name: subjectName,
         subjectName: subjectName,
-        subjectId: lesson.subjectId,
+        subjectId: lesson.subjectId ?? "",
         teacherName: teacherName,
         studentName: studentName,
         dayOfWeek: typeof lesson.dayOfWeek === 'string' ? parseInt(lesson.dayOfWeek) : lesson.dayOfWeek || 0,
-        startTime: lesson.startTime,
-        endTime: lesson.endTime,
-        status: lesson.status,
-        teacherId: lesson.teacherId,
-        studentId: lesson.studentId,
+        startTime: startTime,
+        endTime,
+        status: statusSafe,
+        teacherId: teacherIdSafe,
+        studentId: studentIdSafe,
         room: selectedRoom || "未設定"
       };
     });
 
     setLessons(prevLessons => {
-      const tempLessons = prevLessons.filter(lesson => 
-        lesson.id.startsWith('temp-') && 
+      const tempLessons = prevLessons.filter(lesson =>
+        lesson.id.startsWith('temp-') &&
         !formattedLessons.some(l => l.id === lesson.id)
       );
-      
+
       return [...formattedLessons, ...tempLessons];
     });
-  }, [propsLessons, teacherName, studentName, selectedRoom]);
+  }, [propsLessons, teacherName, studentName, selectedRoom, teacherId, studentId]);
 
   useEffect(() => {
     if (startTime && !timeError) {
       const newEndTime = calculateEndTime(startTime, selectedDuration);
       setEndTime(newEndTime);
-      
+
       if (selectedDay) {
         const durationMinutes = selectedDuration === "60分" ? 60 : selectedDuration === "120分" ? 120 : 90;
         const isAvailable = isTimeSlotAvailableForDuration(
-          teacherId, 
-          studentId, 
-          selectedDay, 
-          startTime, 
+          teacherId,
+          studentId,
+          selectedDay,
+          typeof startTime === "string" ? startTime : "",
           durationMinutes
         );
-        
+
         if (!isAvailable) {
           setTimeError(`選択した時間枠は${selectedDuration}の授業には短すぎます`);
         } else {
@@ -292,8 +336,8 @@ export default function CustomLessonModal({
 
   useEffect(() => {
     const initialLessonsLength = propsLessons.length;
-    
-    if (lessons.filter(lesson => !lesson.id.startsWith('temp-')).length !== initialLessonsLength || 
+
+    if (lessons.filter(lesson => !lesson.id.startsWith('temp-')).length !== initialLessonsLength ||
         lessons.some(lesson => lesson.id.startsWith('temp-'))) {
       setHasChanges(true);
     } else {
@@ -304,36 +348,36 @@ export default function CustomLessonModal({
   const handleTimeChange = (e: ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setStartTime(value);
-    
+
     if (value) {
       const timePattern = /^([0-1]?[0-9]|2[0-3]):([0-5][0-9])$/;
-      
+
       if (!timePattern.test(value)) {
         setTimeError("正しい時間形式を入力してください (HH:MM)");
         return;
       }
-      
+
       const minutes = parseInt(value.split(":")[1]);
       if (minutes % 15 !== 0) {
         setTimeError("時間は15分単位でなければなりません (00, 15, 30, 45)");
         return;
       }
-      
+
       setTimeError(null);
     } else {
       setTimeError(null);
     }
   };
-  
+
   const handleTimeStep = (minutesToAdd: number) => {
     if (!startTime) {
       if (teacherId && studentId && selectedDay) {
         const { earliestAvailableTime, hasTimeSlots } = getAvailableTimeSlots(
-          teacherId, 
-          studentId, 
+          teacherId,
+          studentId,
           selectedDay
         );
-        
+
         if (hasTimeSlots && earliestAvailableTime) {
           setStartTime(earliestAvailableTime);
         } else {
@@ -347,60 +391,62 @@ export default function CustomLessonModal({
 
     try {
       const [hours, minutes] = startTime.split(":").map(Number);
-      
+
       let totalMinutes = hours * 60 + minutes + minutesToAdd;
-      
+
       if (totalMinutes < 0) totalMinutes += 24 * 60;
       totalMinutes %= 24 * 60;
-      
+
       const newHours = Math.floor(totalMinutes / 60);
       const newMinutes = totalMinutes % 60;
-      
+
       const formattedHours = newHours.toString().padStart(2, "0");
       const formattedMinutes = newMinutes.toString().padStart(2, "0");
-      
+
       const newTime = `${formattedHours}:${formattedMinutes}`;
       setStartTime(newTime);
       setTimeError(null);
     } catch (e) {
-      console.error("Ошибка при изменении времени:", e);
+      console.error("Error when changing time:", e);
     }
   };
 
   const handleLessonClick = (lesson: DisplayLesson) => {
-    if (!lesson.subjectId) return; // Если нет subjectId, нельзя редактировать
-    
+    if (!lesson.subjectId) return; // Can't edit without subjectId
+
     setEditMode(true);
-    
-    // Приводим к типу ExtendedLesson
+
+    // Convert to ExtendedLesson type
     const extendedLesson: ExtendedLesson = {
       ...lesson,
-      subjectName: lesson.name
+      subjectName: lesson.name,
+      teacherName: lesson.teacherName ?? teacherName ?? "",
+      studentName: lesson.studentName ?? studentName ?? ""
     };
-    
+
     setEditingLesson(extendedLesson);
     setSelectedSubject(lesson.subjectId);
-    
-    // Сохраняем текущий день перед изменением для отслеживания изменений
-    const dayOfWeek = typeof lesson.dayOfWeek === 'string' 
+
+    // Save current day before change for tracking changes
+    const dayOfWeek = typeof lesson.dayOfWeek === 'string'
       ? parseInt(lesson.dayOfWeek)
       : lesson.dayOfWeek;
-    
+
     const dayString = getDayOfWeekString(dayOfWeek);
     setPreviousDay(dayString);
     setSelectedDay(dayString);
-    
+
     const [startHours, startMinutes] = lesson.startTime.split(":").map(Number);
     const [endHours, endMinutes] = lesson.endTime.split(":").map(Number);
-    
+
     const startTotalMinutes = startHours * 60 + startMinutes;
     const endTotalMinutes = endHours * 60 + endMinutes;
-    
+
     let duration = endTotalMinutes - startTotalMinutes;
     if (duration < 0) {
       duration += 24 * 60;
     }
-    
+
     if (duration <= 60) {
       setSelectedDuration("60分");
     } else if (duration <= 90) {
@@ -408,7 +454,7 @@ export default function CustomLessonModal({
     } else {
       setSelectedDuration("120分");
     }
-    
+
     setStartTime(lesson.startTime);
     setEndTime(lesson.endTime);
     setSelectedRoom(lesson.room || "");
@@ -423,31 +469,31 @@ export default function CustomLessonModal({
     }
 
     const now = new Date();
-    const today = now.getDay(); 
+    const today = now.getDay();
     const currentTime = now.getHours() * 60 + now.getMinutes();
-    
+
     const selectedDayNumber = getDayOfWeekNumber(selectedDay);
     const [startHours, startMinutes] = startTime.split(':').map(Number);
     const lessonStartTimeInMinutes = startHours * 60 + startMinutes;
 
-    if (selectedDayNumber < today || 
+    if (selectedDayNumber < today ||
         (selectedDayNumber === today && lessonStartTimeInMinutes <= currentTime)) {
       setErrorMessage("過去の時間に授業を追加することはできません。");
       return;
     }
 
-    // Проверка на пересечение с существующими уроками
+    // Check for overlap with existing classes
     const editingId = editMode && editingLesson ? editingLesson.id : undefined;
     const { hasOverlap, overlapMessage } = checkLessonOverlap(
-      selectedDayNumber, 
-      startTime, 
-      endTime, 
-      lessons, 
-      teacherId, 
+      selectedDayNumber,
+      startTime,
+      endTime,
+      lessons,
+      teacherId,
       studentId,
       editingId
     );
-    
+
     if (hasOverlap) {
       setErrorMessage(overlapMessage);
       return;
@@ -467,19 +513,19 @@ export default function CustomLessonModal({
         room: selectedRoom || "未設定"
       };
 
-      setLessons(prevLessons => 
-        prevLessons.map(lesson => 
+      setLessons(prevLessons =>
+        prevLessons.map(lesson =>
           lesson.id === editingLesson.id ? updatedLesson : lesson
         )
       );
 
       if (onAddLesson) {
         onAddLesson({
-          id: editingLesson.id,
+          classId: editingLesson.id,
           name: subjectName,
           dayOfWeek: getDayOfWeekNumber(selectedDay).toString(),
-          startTime,
-          endTime,
+          startTime: startTime ? new Date(`1970-01-01T${startTime}:00`) : null,
+          endTime: endTime ? new Date(`1970-01-01T${endTime}:00`) : null,
           status: editingLesson.status,
           teacherId: teacherId,
           studentId: studentId,
@@ -509,8 +555,8 @@ export default function CustomLessonModal({
         onAddLesson({
           name: subjectName,
           dayOfWeek: getDayOfWeekNumber(selectedDay).toString(),
-          startTime,
-          endTime,
+          startTime: startTime ? new Date(`1970-01-01T${startTime}:00`) : null,
+          endTime: endTime ? new Date(`1970-01-01T${endTime}:00`) : null,
           status: "有効",
           teacherId: teacherId,
           studentId: studentId,
@@ -550,12 +596,12 @@ export default function CustomLessonModal({
   return (
     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
       {errorMessage && (
-        <ErrorNotification 
-          message={errorMessage} 
-          onClose={() => setErrorMessage("")} 
+        <ErrorNotification
+          message={errorMessage}
+          onClose={() => setErrorMessage("")}
         />
       )}
-      
+
       <div className="bg-white w-[85%] max-w-[1200px] max-h-[95vh] rounded-lg shadow-lg flex flex-col">
         <div className="px-6 py-3 border-b flex justify-between items-center">
           <div>
@@ -575,7 +621,7 @@ export default function CustomLessonModal({
               </div>
             </div>
           </div>
-          <button 
+          <button
             onClick={handleClose}
             className="text-gray-500 hover:text-gray-700 cursor-pointer"
           >
@@ -599,8 +645,8 @@ export default function CustomLessonModal({
           <div className="grid grid-cols-3 gap-8 py-3">
             <div>
               <Label className="block text-sm font-medium mb-1">科目</Label>
-              <Select 
-                value={selectedSubject} 
+              <Select
+                value={selectedSubject}
                 onValueChange={setSelectedSubject}
                 disabled={!hasCommonSubjects}
               >
@@ -610,9 +656,9 @@ export default function CustomLessonModal({
                 <SelectContent className="cursor-pointer">
                   {availableSubjects.length > 0 ? (
                     availableSubjects.map(subject => (
-                      <SelectItem 
-                        key={subject.subjectId} 
-                        value={subject.subjectId} 
+                      <SelectItem
+                        key={subject.subjectId}
+                        value={subject.subjectId}
                         className="cursor-pointer"
                       >
                         {subject.name}
@@ -629,15 +675,15 @@ export default function CustomLessonModal({
                 <p className="text-xs text-red-500 mt-1">共通の科目がありません</p>
               )}
             </div>
-            
+
             <div>
               <Label className="block text-sm font-medium mb-1">曜日</Label>
-              <Select 
-                value={selectedDay} 
+              <Select
+                value={selectedDay}
                 onValueChange={(newDay) => {
                   setSelectedDay(newDay);
-                  
-                  // При смене дня сбрасываем время, чтобы получить самое раннее доступное
+
+                  // When day changes, reset time to get the earliest available
                   if (newDay !== selectedDay) {
                     setStartTime("");
                     setEndTime("");
@@ -651,9 +697,9 @@ export default function CustomLessonModal({
                 <SelectContent className="cursor-pointer">
                   {availableDays.length > 0 ? (
                     availableDays.map(day => (
-                      <SelectItem 
-                        key={day.value} 
-                        value={day.value} 
+                      <SelectItem
+                        key={day.value}
+                        value={day.value}
                         className="cursor-pointer"
                       >
                         {day.label}
@@ -670,16 +716,16 @@ export default function CustomLessonModal({
                 <p className="text-xs text-red-500 mt-1">共通の曜日がありません</p>
               )}
             </div>
-            
+
             <div>
               <Label className="block text-sm font-medium mb-1">授業時間</Label>
               <div className="flex space-x-3">
                 {durations.map(duration => (
-                  <Button 
+                  <Button
                     key={duration.value}
-                    variant={selectedDuration === duration.value ? "default" : "outline"} 
+                    variant={selectedDuration === duration.value ? "default" : "outline"}
                     className={`flex-1 cursor-pointer ${selectedDuration === duration.value ? "bg-black text-white" : ""} ${
-                      (hasNoMatchingOptions || !availableDurations.find(d => d.value === duration.value)?.isAvailable) 
+                      (hasNoMatchingOptions || !availableDurations.find(d => d.value === duration.value)?.isAvailable)
                         ? 'opacity-50 cursor-not-allowed' : ''
                     }`}
                     onClick={() => {
@@ -695,7 +741,7 @@ export default function CustomLessonModal({
                 ))}
               </div>
             </div>
-            
+
             <div>
               <Label className="block text-sm font-medium mb-1">開始時刻</Label>
               <div className="relative">
@@ -709,7 +755,7 @@ export default function CustomLessonModal({
                     disabled={!hasCommonTimeSlots || !selectedDay}
                   />
                   <div className="flex flex-col border border-l-0 border-input rounded-r-md overflow-hidden">
-                    <button 
+                    <button
                       onClick={() => handleTimeStep(15)}
                       className={`flex-1 hover:bg-gray-100 px-2 cursor-pointer flex items-center justify-center ${!hasCommonTimeSlots || !selectedDay ? 'opacity-50 cursor-not-allowed' : ''}`}
                       disabled={!hasCommonTimeSlots || !selectedDay}
@@ -717,7 +763,7 @@ export default function CustomLessonModal({
                       <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m18 15-6-6-6 6"/></svg>
                     </button>
                     <div className="h-px bg-input w-full"></div>
-                    <button 
+                    <button
                       onClick={() => handleTimeStep(-15)}
                       className={`flex-1 hover:bg-gray-100 px-2 cursor-pointer flex items-center justify-center ${!hasCommonTimeSlots || !selectedDay ? 'opacity-50 cursor-not-allowed' : ''}`}
                       disabled={!hasCommonTimeSlots || !selectedDay}
@@ -734,7 +780,7 @@ export default function CustomLessonModal({
               </div>
               <p className="text-xs text-gray-500 mt-1">15分単位で入力してください (例: 12:00, 12:15)</p>
             </div>
-            
+
             <div>
               <Label className="block text-sm font-medium mb-1">終了時刻</Label>
               <Input
@@ -745,11 +791,11 @@ export default function CustomLessonModal({
                 className="w-full bg-gray-50 cursor-not-allowed"
               />
             </div>
-            
+
             <div>
               <Label className="block text-sm font-medium mb-1">ブース</Label>
-              <Select 
-                value={selectedRoom} 
+              <Select
+                value={selectedRoom}
                 onValueChange={setSelectedRoom}
               >
                 <SelectTrigger className="w-full cursor-pointer">
@@ -765,10 +811,10 @@ export default function CustomLessonModal({
             </div>
           </div>
 
-          <Button 
+          <Button
             className={`w-full py-6 cursor-pointer my-5 ${
-              editMode 
-                ? 'bg-yellow-400 hover:bg-yellow-600 text-black' 
+              editMode
+                ? 'bg-yellow-400 hover:bg-yellow-600 text-black'
                 : 'bg-gray-400 hover:bg-gray-500 text-white'
             }`}
             onClick={handleSaveLesson}
@@ -778,8 +824,8 @@ export default function CustomLessonModal({
           </Button>
 
           <div className="mt-2 border-t pt-2">
-            <WeeklySchedule 
-              lessons={lessons} 
+            <WeeklySchedule
+              lessons={lessons}
               onLessonClick={handleLessonClick}
               currentTeacherId={teacherId}
               currentStudentId={studentId}
@@ -793,15 +839,15 @@ export default function CustomLessonModal({
           <div className="flex-grow"></div>
           {editMode ? (
             <>
-              <Button 
-                variant="destructive" 
+              <Button
+                variant="destructive"
                 onClick={resetForm}
                 className="cursor-pointer mr-2"
               >
                 編集をキャンセル
               </Button>
-              <Button 
-                variant="default" 
+              <Button
+                variant="default"
                 disabled={!hasChanges || !selectedSubject || !selectedDay || !startTime || !!timeError}
                 onClick={handleSaveLesson}
                 className={`cursor-pointer ${!hasChanges ? 'opacity-50' : ''}`}
@@ -811,15 +857,15 @@ export default function CustomLessonModal({
             </>
           ) : (
             <>
-              <Button 
-                variant="destructive" 
-                onClick={handleClose} 
-                className="cursor-pointer mr-2" 
+              <Button
+                variant="destructive"
+                onClick={handleClose}
+                className="cursor-pointer mr-2"
               >
                 キャンセル
               </Button>
-              <Button 
-                variant="default" 
+              <Button
+                variant="default"
                 disabled={!hasChanges}
                 onClick={() => setIsConfirmOpen(true)}
                 className={`cursor-pointer bg-black text-white hover:bg-gray-800 ${!hasChanges ? 'opacity-50' : ''}`}

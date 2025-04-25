@@ -1,5 +1,4 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { Student, Subject, Lesson, Grade, StudentType } from "./types";
 import { Input } from "@/components/ui/input";
 import {
   Table,
@@ -18,17 +17,37 @@ import SchoolTypeBadge from "./school-type-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import DetailDialog from "./detail-dialog";
+import { StudentWithPreference } from "@/schemas/student.schema";
+import { Subject } from "@/schemas/subject.schema";
+import { Grade } from "@/schemas/grade.schema";
+import { ClassSession as PrismaClassSession, StudentType } from "@prisma/client";
+
+// -----------------------------------------------------------------------------
+// 型定義
+// -----------------------------------------------------------------------------
+export type ClassSession = PrismaClassSession & {
+  subject?: Subject | null;
+  dayOfWeek?: string | number;
+  name?: string;
+};
+
+// Extended Student type with UI-specific properties
+interface EnrichedStudent extends StudentWithPreference {
+  grade: Grade | null;
+  studentType: StudentType | null;
+  subjects: Subject[];
+}
 
 interface StudentTableProps {
-  students: Student[];
+  students: StudentWithPreference[];
   selectedStudentId: string | null;
   onStudentSelect: (studentId: string) => void;
-  lessons: Lesson[];
+  lessons: ClassSession[];
   subjects: Subject[];
   grades: Grade[];
   studentTypes: StudentType[];
   selectedTeacherId: string | null;
-  filteredStudents?: Student[];
+  filteredStudents?: StudentWithPreference[];
   kibouSubjects?: Subject[];
 }
 
@@ -51,9 +70,9 @@ export default function StudentTable({
   const [hasLessonsFilter, setHasLessonsFilter] = useState<boolean | null>(null);
   const [gradeFilter, setGradeFilter] = useState<string | null>(null);
   const [schoolTypeFilter, setSchoolTypeFilter] = useState<string | null>(null);
-  const [detailsStudent, setDetailsStudent] = useState<Student | null>(null);
+  const [detailsStudent, setDetailsStudent] = useState<EnrichedStudent | null>(null);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
-  
+
   const allSubjects = useMemo(() => subjects, [subjects]);
 
   useEffect(() => {
@@ -64,11 +83,11 @@ export default function StudentTable({
     return lessons.some((lesson) => lesson.studentId === studentId);
   }, [lessons]);
 
-  const getStudentSubjects = useCallback((student: Student) => {
+  const getStudentSubjects = useCallback((student: StudentWithPreference) => {
     const subjectIds = new Set<string>();
     const studentSubjectsList: Subject[] = [];
-    
-    // Добавляем предметы из preference, если они есть
+
+    // Add subjects from preference if they exist
     if (student.preference?.preferredSubjects) {
       student.preference.preferredSubjects.forEach(subjectId => {
         if (!subjectIds.has(subjectId)) {
@@ -80,10 +99,10 @@ export default function StudentTable({
         }
       });
     }
-    
-    // Затем добавляем предметы из уроков
+
+    // Then add subjects from lessons
     const studentLessons = lessons.filter(lesson => lesson.studentId === student.studentId);
-    
+
     studentLessons.forEach(lesson => {
       if (lesson.subject && !subjectIds.has(lesson.subject.subjectId)) {
         subjectIds.add(lesson.subject.subjectId);
@@ -96,7 +115,7 @@ export default function StudentTable({
         }
       }
     });
-    
+
     return studentSubjectsList;
   }, [lessons, subjects]);
 
@@ -118,49 +137,49 @@ export default function StudentTable({
 
   const enrichedStudents = useMemo(() => {
     const baseStudents = filteredStudents || students;
-    
+
     return baseStudents.map(student => {
       const grade = grades.find(g => g.gradeId === student.gradeId) || null;
       const studentType = (grade?.studentTypeId && studentTypes.length > 0)
         ? studentTypes.find(st => st.studentTypeId === grade.studentTypeId) || null
         : null;
       const studentSubjects = getStudentSubjects(student);
-      
+
       return {
         ...student,
         grade,
         studentType,
         subjects: studentSubjects
-      };
+      } as EnrichedStudent;
     });
   }, [students, filteredStudents, grades, studentTypes, getStudentSubjects]);
 
   const filteredStudentsWithUI = useMemo(() => {
     return enrichedStudents.filter((student) => {
-      const matchesSearch = 
+      const matchesSearch =
         student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (student.kanaName || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
         (student.schoolName || "").toLowerCase().includes(searchTerm.toLowerCase());
-      
+
       const studentSubjects = student.subjects || [];
-      const matchesSubjects = 
-        subjectFilters.length === 0 || 
+      const matchesSubjects =
+        subjectFilters.length === 0 ||
         studentSubjects.some(subject => subjectFilters.includes(subject.subjectId));
-      
-      const matchesHasLessons = 
-        hasLessonsFilter === null || 
+
+      const matchesHasLessons =
+        hasLessonsFilter === null ||
         (hasLessonsFilter === true && studentHasLessons(student.studentId)) ||
         (hasLessonsFilter === false && !studentHasLessons(student.studentId));
-      
-      const matchesGrade = 
-        gradeFilter === null || 
+
+      const matchesGrade =
+        gradeFilter === null ||
         student.gradeId === gradeFilter;
-      
-      const matchesSchoolType = 
-        schoolTypeFilter === null || 
+
+      const matchesSchoolType =
+        schoolTypeFilter === null ||
         student.examSchoolCategoryType === schoolTypeFilter;
-      
-      return matchesSearch && matchesSubjects && matchesHasLessons && 
+
+      return matchesSearch && matchesSubjects && matchesHasLessons &&
              matchesGrade && matchesSchoolType;
     });
   }, [
@@ -174,7 +193,7 @@ export default function StudentTable({
   ]);
 
   const totalPages = Math.ceil(filteredStudentsWithUI.length / itemsPerPage);
-  
+
   const paginatedStudents = filteredStudentsWithUI.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
@@ -192,10 +211,10 @@ export default function StudentTable({
         <div className="bg-blue-50 p-2 border-b flex flex-wrap items-center gap-2">
           <span className="text-blue-800 text-sm font-medium">担当可能科目：</span>
           {kibouSubjects.map((subject) => (
-            <SubjectBadge 
-              key={subject.subjectId} 
-              subject={subject} 
-              size="sm" 
+            <SubjectBadge
+              key={subject.subjectId}
+              subject={subject}
+              size="sm"
             />
           ))}
         </div>
@@ -214,7 +233,7 @@ export default function StudentTable({
             className="w-full"
           />
           {searchTerm && (
-            <button 
+            <button
               onClick={() => {
                 setSearchTerm("");
                 setCurrentPage(1);
@@ -225,8 +244,8 @@ export default function StudentTable({
             </button>
           )}
         </div>
-        
-        <FilterPopover 
+
+        <FilterPopover
           subjects={allSubjects}
           grades={grades}
           examSchoolTypes={["ELEMENTARY", "MIDDLE", "HIGH", "UNIVERSITY", "OTHER"]}
@@ -239,7 +258,7 @@ export default function StudentTable({
           initialSchoolTypeFilter={schoolTypeFilter}
         />
       </div>
-      
+
       <ScrollArea className="flex-grow">
         <Table>
           <TableHeader className="bg-gray-50 sticky top-0 z-10">
@@ -253,7 +272,7 @@ export default function StudentTable({
           <TableBody>
             {paginatedStudents.map((student) => {
               const studentSubjects = student.subjects || [];
-              
+
               return (
                 <TableRow
                   key={student.studentId}
@@ -285,10 +304,10 @@ export default function StudentTable({
                   <TableCell>
                     <div className="flex flex-wrap gap-1">
                       {studentSubjects.slice(0, 3).map((subject) => (
-                        <SubjectBadge 
-                          key={subject.subjectId} 
-                          subject={subject} 
-                          size="sm" 
+                        <SubjectBadge
+                          key={subject.subjectId}
+                          subject={subject}
+                          size="sm"
                           highlight={selectedTeacherId ? isKibouSubject(subject) : false}
                         />
                       ))}
@@ -300,9 +319,9 @@ export default function StudentTable({
                     </div>
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       className="h-8 w-8 p-0 hover:bg-gray-100 rounded-full"
                       onClick={(e) => {
                         e.stopPropagation();
@@ -322,15 +341,15 @@ export default function StudentTable({
             })}
           </TableBody>
         </Table>
-        
+
         {filteredStudentsWithUI.length === 0 && (
           <div className="p-6 text-center text-gray-500">
             検索結果はありません
           </div>
         )}
       </ScrollArea>
-      
-      <Pagination 
+
+      <Pagination
         currentPage={currentPage}
         totalPages={totalPages}
         totalItems={filteredStudentsWithUI.length}
@@ -338,7 +357,7 @@ export default function StudentTable({
         onPageChange={setCurrentPage}
         onItemsPerPageChange={setItemsPerPage}
       />
-      
+
       {detailsStudent && (
         <DetailDialog
           entity={detailsStudent}

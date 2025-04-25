@@ -14,17 +14,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useGrades } from "@/hooks/useGradeQuery"
 import { useStudentCreate, useStudentUpdate } from "@/hooks/useStudentMutation"
-import { studentCreateSchema, StudentCreateInput, StudentUpdateInput, type StudentWithPreference } from "@/schemas/student.schema"
-import type { Student } from "@prisma/client"
+import { studentCreateSchema, StudentCreateInput, StudentUpdateInput } from "@/schemas/student.schema"
+import type { Student, StudentRegularPreference } from "@prisma/client"
 import { studentPreferencesSchema, type StudentPreferencesInput } from "@/schemas/student-preferences.schema"
 import { useTeachers } from "@/hooks/useTeacherQuery"
 import { useSubjects } from "@/hooks/useSubjectQuery"
 import { useTeacherSubjects } from "@/hooks/useTeacherSubjectQuery"
+import { StudentDesiredTimeField } from "./student-desired-time-field"
 
 interface StudentFormDialogProps {
     open: boolean
     onOpenChange: (open: boolean) => void
-    student?: Student | StudentWithPreference | null
+    student?: Student & { studentRegularPreferences: StudentRegularPreference[] } | null;
 }
 
 export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDialogProps) {
@@ -44,8 +45,7 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
     const [showSubjectDropdown, setShowSubjectDropdown] = useState(false)
     const [showTeacherDropdown, setShowTeacherDropdown] = useState(false)
 
-    // Check if student has preference property to determine if it's StudentWithPreference
-    const hasPreference = student && "preference" in student
+    const studentPreference = student?.studentRegularPreferences?.[0] || null;
 
     const formSchema = isEditing
         ? z.object({
@@ -90,20 +90,22 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
         },
     })
 
-    // Get preference data safely
-    const studentPreference = hasPreference ? (student as StudentWithPreference).preference : null
-
     // Preferences form
     const preferencesForm = useForm<StudentPreferencesInput>({
-        resolver: zodResolver(studentPreferencesSchema),
-        defaultValues: {
-            preferredSubjects: studentPreference?.preferredSubjects || [],
-            preferredTeachers: studentPreference?.preferredTeachers || [],
-            preferredWeekdays: studentPreference?.preferredWeekdays || [],
-            preferredHours: studentPreference?.preferredHours || [],
-            additionalNotes: studentPreference?.additionalNotes || "",
-        },
-    })
+      resolver: zodResolver(studentPreferencesSchema),
+      defaultValues: {
+        preferredSubjects: studentPreference?.preferredSubjects || [],
+        preferredTeachers: studentPreference?.preferredTeachers || [],
+        desiredTimes: Array.isArray(studentPreference?.preferredWeekdaysTimes)
+          ? (studentPreference.preferredWeekdaysTimes as { dayOfWeek?: string; startTime?: string; endTime?: string }[])
+              .filter(
+                (item): item is { dayOfWeek?: string; startTime?: string; endTime?: string } =>
+                  item !== null && typeof item === "object"
+              )
+          : [],
+        additionalNotes: studentPreference?.notes || "",
+      },
+    });
 
     // Watch selected subjects and teachers
     const selectedSubjects = preferencesForm.watch("preferredSubjects")
@@ -656,152 +658,7 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
                                     )}
                                 />
 
-                                <FormField
-                                    control={preferencesForm.control}
-                                    name="preferredWeekdays"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>希望曜日</FormLabel>
-                                            <FormControl>
-                                                <Select
-                                                    onValueChange={(value) => {
-                                                        const currentValues = field.value || []
-                                                        if (!currentValues.includes(value)) {
-                                                            field.onChange([...currentValues, value])
-                                                        }
-                                                    }}
-                                                >
-                                                    <SelectTrigger>
-                                                        <SelectValue placeholder="曜日を選択" />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="monday">月曜日</SelectItem>
-                                                        <SelectItem value="tuesday">火曜日</SelectItem>
-                                                        <SelectItem value="wednesday">水曜日</SelectItem>
-                                                        <SelectItem value="thursday">木曜日</SelectItem>
-                                                        <SelectItem value="friday">金曜日</SelectItem>
-                                                        <SelectItem value="saturday">土曜日</SelectItem>
-                                                        <SelectItem value="sunday">日曜日</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                            </FormControl>
-                                            <div className="flex flex-wrap gap-2 mt-2">
-                                                {(field.value || []).map((day, index) => (
-                                                    <div key={index} className="flex items-center bg-accent rounded-md px-2 py-1">
-                                                        <span>
-                                                            {day === "monday"
-                                                                ? "月曜日"
-                                                                : day === "tuesday"
-                                                                    ? "火曜日"
-                                                                    : day === "wednesday"
-                                                                        ? "水曜日"
-                                                                        : day === "thursday"
-                                                                            ? "木曜日"
-                                                                            : day === "friday"
-                                                                                ? "金曜日"
-                                                                                : day === "saturday"
-                                                                                    ? "土曜日"
-                                                                                    : day === "sunday"
-                                                                                        ? "日曜日"
-                                                                                        : day}
-                                                        </span>
-                                                        <Button
-                                                            type="button"
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            className="h-4 w-4 p-0 ml-1"
-                                                            onClick={() => {
-                                                                const newValues = [...(field.value || [])]
-                                                                newValues.splice(index, 1)
-                                                                field.onChange(newValues)
-                                                            }}
-                                                        >
-                                                            ×
-                                                        </Button>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-
-                                <FormField
-                                    control={preferencesForm.control}
-                                    name="preferredHours"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>希望時間帯</FormLabel>
-                                            <div className="flex space-x-2">
-                                                <Select
-                                                    onValueChange={(value) => {
-                                                        const currentValues = field.value || []
-                                                        if (!currentValues.includes(value)) {
-                                                            field.onChange([...currentValues, value])
-                                                        }
-                                                    }}
-                                                >
-                                                    <SelectTrigger className="w-[180px]">
-                                                        <SelectValue placeholder="時間帯を選択" />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="morning">午前 (9:00-12:00)</SelectItem>
-                                                        <SelectItem value="afternoon">午後 (13:00-17:00)</SelectItem>
-                                                        <SelectItem value="evening">夕方 (17:00-19:00)</SelectItem>
-                                                        <SelectItem value="night">夜間 (19:00-21:00)</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                                <div className="flex-1">
-                                                    <Input
-                                                        placeholder="カスタム時間帯を入力..."
-                                                        onKeyDown={(e) => {
-                                                            if (e.key === "Enter" && e.currentTarget.value.trim()) {
-                                                                e.preventDefault()
-                                                                const customTime = e.currentTarget.value.trim()
-                                                                const currentValues = field.value || []
-                                                                if (!currentValues.includes(customTime)) {
-                                                                    field.onChange([...currentValues, customTime])
-                                                                }
-                                                                e.currentTarget.value = ""
-                                                            }
-                                                        }}
-                                                    />
-                                                </div>
-                                            </div>
-                                            <div className="flex flex-wrap gap-2 mt-2">
-                                                {(field.value || []).map((time, index) => (
-                                                    <div key={index} className="flex items-center bg-accent rounded-md px-2 py-1">
-                                                        <span>
-                                                            {time === "morning"
-                                                                ? "午前 (9:00-12:00)"
-                                                                : time === "afternoon"
-                                                                    ? "午後 (13:00-17:00)"
-                                                                    : time === "evening"
-                                                                        ? "夕方 (17:00-19:00)"
-                                                                        : time === "night"
-                                                                            ? "夜間 (19:00-21:00)"
-                                                                            : time}
-                                                        </span>
-                                                        <Button
-                                                            type="button"
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            className="h-4 w-4 p-0 ml-1"
-                                                            onClick={() => {
-                                                                const newValues = [...(field.value || [])]
-                                                                newValues.splice(index, 1)
-                                                                field.onChange(newValues)
-                                                            }}
-                                                        >
-                                                            ×
-                                                        </Button>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
+                                <StudentDesiredTimeField form={preferencesForm} />
 
                                 <FormField
                                     control={preferencesForm.control}

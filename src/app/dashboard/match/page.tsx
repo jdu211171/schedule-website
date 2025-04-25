@@ -11,167 +11,157 @@ import { useSubjects } from "@/hooks/useSubjectQuery";
 import { useGrades } from "@/hooks/useGradeQuery";
 import { useEvaluations } from "@/hooks/useEvaluationQuery";
 import { useTeacherSubjects } from "@/hooks/useTeacherSubjectQuery";
+import { useClassSessions } from "@/hooks/useClassSessionQuery";
+import { useStudentTypes } from "@/hooks/useStudentTypeQuery";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Lesson, StudentType, Grade } from "@/components/match/types";
-import { useFilteredStudents, useFilteredTeachers } from "@/components/match/use-filtered-entities";
-import { 
-  mockStudents, 
-  mockTeachers, 
-  mockSubjects, 
-  mockTeacherSubjects, 
-  studentPreferences,
-  mockLessons
-} from "@/components/match/mock-data";
+import { StudentWithPreference } from "@/schemas/student.schema";
+import { Grade } from "@/schemas/grade.schema";
+import { Subject } from "@/schemas/subject.schema";
+import { Teacher } from "@/schemas/teacher.schema";
+import { TeacherSubject } from "@/schemas/teacherSubject.schema";
+import { Evaluation } from "@/schemas/evaluation.schema";
+import {
+  useFilteredStudents,
+  useFilteredTeachers,
+} from "@/components/match/use-filtered-entities";
+import { ClassSession as PrismaClassSession, StudentType } from "@prisma/client";
 
-const mockEvaluations = [
-  {
-    evaluationId: 'eval1',
-    name: 'A評価',
-    score: 5,
-    notes: null,
-    createdAt: new Date(),
-    updatedAt: new Date()
-  },
-  {
-    evaluationId: 'eval2',
-    name: 'B評価',
-    score: 4,
-    notes: null,
-    createdAt: new Date(),
-    updatedAt: new Date()
-  },
-  {
-    evaluationId: 'eval3',
-    name: 'C評価',
-    score: 3,
-    notes: null,
-    createdAt: new Date(),
-    updatedAt: new Date()
-  }
-];
 
-const mockGrades: Grade[] = [
-  {
-    gradeId: 'grade1',
-    name: '中学2年',
-    studentTypeId: 'type1',
-    gradeYear: 2,
-    notes: null,
-    createdAt: new Date(),
-    updatedAt: new Date()
-  },
-  {
-    gradeId: 'grade2',
-    name: '中学3年',
-    studentTypeId: 'type1',
-    gradeYear: 3,
-    notes: null,
-    createdAt: new Date(),
-    updatedAt: new Date()
-  }
-];
+// ------------------------------ 型定義 ------------------------------
+// Prisma の ClassSession に UI で必要なプロパティを追加
+export type ClassSession = PrismaClassSession & {
+  id?: string;
+  subject?: Subject | null;
+  dayOfWeek?: string | number;
+  name?: string;
+  status?: string;
+  teacherName?: string;
+  studentName?: string;
+  room?: string;
+};
 
+/* ----------------------------- 画面コンポーネント ----------------------------- */
 export default function LessonManagementPage() {
+  /* -------------------- 選択状態 -------------------- */
   const [selectedTeacherId, setSelectedTeacherId] = useState<string | null>(null);
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [useMockData, setUseMockData] = useState(true); 
+  const [firstSelection, setFirstSelection] =
+    useState<"teacher" | "student" | null>(null);
+  const { data: teachers = [], isLoading: teachersLoading } = useTeachers({
+    page: 1,
+    pageSize: 1000,
+  });
+  const {
+    data: studentsFromApi = [],
+    isLoading: studentsLoading,
+  } = useStudents({
+    page: 1,
+    pageSize: 1000,
+  });
+  const { data: subjects = [], isLoading: subjectsLoading } = useSubjects(1, 1000);
+  const { data: grades = [], isLoading: gradesLoading } = useGrades(1, 1000);
+  const { data: evaluations = [], isLoading: evaluationsLoading } =
+    useEvaluations(1, 1000);
+  const {
+    data: teacherSubjects = [],
+    isLoading: teacherSubjectsLoading,
+  } = useTeacherSubjects(1, 1000);
+  const {
+    data: classSessions = [],
+    isLoading: classSessionsLoading,
+  } = useClassSessions({});
+  const { data: studentTypes = [], isLoading: studentTypesLoading } =
+    useStudentTypes(1, 1000);
 
-  const [firstSelection, setFirstSelection] = useState<'teacher' | 'student' | null>(null);
+  /* -------------------- 生徒データ整形 -------------------- */
+  const students: StudentWithPreference[] = studentsFromApi.map((student) => ({
+    ...student,
+    preference: student.studentRegularPreferences?.[0]
+      ? {
+          preferredSubjects: student.studentRegularPreferences[0].preferredSubjects,
+          preferredTeachers: student.studentRegularPreferences[0].preferredTeachers,
+          desiredTimes: Array.isArray(student.studentRegularPreferences[0].preferredWeekdaysTimes)
+            ? student.studentRegularPreferences[0].preferredWeekdaysTimes as {
+                dayOfWeek: string;
+                startTime: string;
+                endTime: string;
+              }[]
+            : [],
+          additionalNotes: student.studentRegularPreferences[0].notes ?? null,
+        }
+      : null,
+  }));
 
-  // Запрашиваем данные через API с помощью готовых хуков
-  const { data: apiTeachers = [], isLoading: teachersLoading } = useTeachers();
-  const { data: apiStudents = [], isLoading: studentsLoading } = useStudents();
-  const { data: apiSubjects = [], isLoading: subjectsLoading } = useSubjects();
-  const { data: apiGrades = [], isLoading: gradesLoading } = useGrades();
-  const { data: apiEvaluations = [], isLoading: evaluationsLoading } = useEvaluations();
-  const { data: apiTeacherSubjects = [], isLoading: teacherSubjectsLoading } = useTeacherSubjects();
+  /* -------------------- フィルタリング -------------------- */
+  const { filteredTeachers, kibouSubjects: studentKibouSubjects } =
+    useFilteredTeachers(
+      teachers as Teacher[],
+      selectedStudentId,
+      students,
+      subjects as Subject[],
+      teacherSubjects as TeacherSubject[],
+    );
 
-  const teachers = useMockData ? mockTeachers : apiTeachers;
-  
-  // Добавляем вручную preference к студентам для моковых данных
-  const students = useMockData 
-    ? mockStudents.map(student => ({
-        ...student,
-        preference: studentPreferences[student.studentId as keyof typeof studentPreferences] || null
-      })) 
-    : apiStudents;
-  
-  const subjects = useMockData ? mockSubjects : apiSubjects;
-  const grades = useMockData ? mockGrades : apiGrades;
-  const evaluations = useMockData ? mockEvaluations : apiEvaluations;
-  const teacherSubjects = useMockData ? mockTeacherSubjects : apiTeacherSubjects;
+  const { filteredStudents, kibouSubjects: teacherKibouSubjects } =
+    useFilteredStudents(
+      students,
+      selectedTeacherId,
+      teachers as Teacher[],
+      subjects as Subject[],
+      teacherSubjects as TeacherSubject[],
+    );
 
-  // Тип для типов студентов (так как у нас нет соответствующего хука)
-  const studentTypes: StudentType[] = [];
-
-  const lessons = mockLessons;
-  const lessonsLoading = false;
-
-  // Используем наши хуки фильтрации для отображения связанных учителей и учеников
-  const { filteredTeachers, kibouSubjects: studentKibouSubjects } = useFilteredTeachers(
-    teachers, 
-    selectedStudentId, 
-    students, 
-    subjects,
-    teacherSubjects
-  );
-  
-  const { filteredStudents, kibouSubjects: teacherKibouSubjects } = useFilteredStudents(
-    students, 
-    selectedTeacherId, 
-    teachers, 
-    subjects,
-    teacherSubjects
-  );
-
-  // Обновленный обработчик выбора учителя
+  /* -------------------- ハンドラ -------------------- */
   const handleTeacherSelect = (teacherId: string) => {
     if (teacherId === selectedTeacherId) {
-      const wasFirstSelection = firstSelection === 'teacher';
+      const wasFirstSelection = firstSelection === "teacher";
       setSelectedTeacherId(null);
       if (wasFirstSelection && selectedStudentId) {
-        setFirstSelection('student');
+        setFirstSelection("student");
       } else if (!selectedStudentId) {
         setFirstSelection(null);
       }
     } else {
       if (!selectedTeacherId && !selectedStudentId) {
-        setFirstSelection('teacher');
+        setFirstSelection("teacher");
       }
       setSelectedTeacherId(teacherId);
     }
   };
 
-  // Обновленный обработчик выбора ученика
   const handleStudentSelect = (studentId: string) => {
     if (studentId === selectedStudentId) {
-      const wasFirstSelection = firstSelection === 'student';
+      const wasFirstSelection = firstSelection === "student";
       setSelectedStudentId(null);
       if (wasFirstSelection && selectedTeacherId) {
-        setFirstSelection('teacher');
+        setFirstSelection("teacher");
       } else if (!selectedTeacherId) {
         setFirstSelection(null);
       }
     } else {
       if (!selectedTeacherId && !selectedStudentId) {
-        setFirstSelection('student');
+        setFirstSelection("student");
       }
       setSelectedStudentId(studentId);
     }
   };
 
-  const shouldFilterTeachers = firstSelection === 'student' && selectedStudentId !== null;
-  const shouldFilterStudents = firstSelection === 'teacher' && selectedTeacherId !== null;
+  /* -------------------- その他ロジック（変更なし） -------------------- */
+  const shouldFilterTeachers =
+    firstSelection === "student" && selectedStudentId !== null;
+  const shouldFilterStudents =
+    firstSelection === "teacher" && selectedTeacherId !== null;
 
-  const isButtonActive = selectedTeacherId !== null && selectedStudentId !== null;
+  const isButtonActive =
+    selectedTeacherId !== null && selectedStudentId !== null;
 
-  const getFilteredLessons = () => {
-    return lessons.filter(
-      (lesson) =>
-        lesson.teacherId === selectedTeacherId ||
-        lesson.studentId === selectedStudentId
-    );
+  const getFilteredClassSessions = () => {
+    return classSessions.filter(
+      (session) =>
+        session.teacherId === selectedTeacherId ||
+        session.studentId === selectedStudentId,
+    ) as ClassSession[];
   };
 
   const openModal = () => {
@@ -184,21 +174,20 @@ export default function LessonManagementPage() {
     setIsModalOpen(false);
   };
 
-  const handleAddLesson = (lesson: Partial<Lesson>) => {
-    console.log("Добавлен новый урок:", lesson);
-
+  const handleAddClassSession = (session: Partial<ClassSession>) => {
+    console.log("追加された新規クラスセッション:", session);
   };
 
-  const isLoading = 
-    !useMockData && (
-      teachersLoading || 
-      studentsLoading || 
-      lessonsLoading || 
-      subjectsLoading || 
-      gradesLoading || 
-      evaluationsLoading || 
-      teacherSubjectsLoading
-    );
+  /* -------------------- ローディング判定 -------------------- */
+  const isLoading =
+    teachersLoading ||
+    studentsLoading ||
+    classSessionsLoading ||
+    subjectsLoading ||
+    gradesLoading ||
+    evaluationsLoading ||
+    teacherSubjectsLoading ||
+    studentTypesLoading;
 
   if (isLoading) {
     return (
@@ -221,32 +210,21 @@ export default function LessonManagementPage() {
   return (
     <div className="container mx-auto p-6">
       <h1 className="text-2xl font-bold mb-6">授業管理</h1>
-      
-      {/* Кнопка переключения между моковыми и реальными данными */}
-      <div className="mb-4">
-        <Button 
-          onClick={() => setUseMockData(!useMockData)}
-          variant="outline"
-          className="mb-4"
-        >
-          {useMockData ? "テスト用データを使用中" : "本番データを使用中"}
-        </Button>
-      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 min-h-[400px]">
-        {/* Заголовки с выбранными элементами и кнопка метчинга */}
+        {/* ヘッダー (選択された先生・生徒と編集ボタン) */}
         <div className="col-span-2 flex justify-between items-center mb-2">
           <div className="flex items-center min-w-[200px]">
             <h2 className="text-xl font-semibold">先生:</h2>
             {selectedTeacherId && teachers ? (
               <span className="ml-2 text-green-700 font-medium">
-                {teachers.find((t: { teacherId: string; name: string }) => t.teacherId === selectedTeacherId)?.name}
+                {teachers.find((t) => t.teacherId === selectedTeacherId)?.name}
               </span>
             ) : (
               <span className="ml-2 text-gray-400 italic">未選択</span>
             )}
           </div>
-          
+
           <div className="flex justify-center flex-1">
             <Button
               onClick={openModal}
@@ -257,34 +235,35 @@ export default function LessonManagementPage() {
                   ? "bg-green-600 text-white border-green-600 hover:bg-green-700 hover:border-green-700 hover:text-white"
                   : "bg-gray-100 text-gray-400 cursor-not-allowed"
               }`}
-            > 
-              レッスンを編集
+            >
+              クラスセッションを編集
             </Button>
           </div>
-          
+
           <div className="flex items-center min-w-[200px] justify-end">
             <h2 className="text-xl font-semibold">生徒:</h2>
             {selectedStudentId && students ? (
               <span className="ml-2 text-blue-700 font-medium truncate">
-                {students.find((s: { studentId: string; name: string }) => s.studentId === selectedStudentId)?.name}
+                {students.find((s) => s.studentId === selectedStudentId)?.name}
               </span>
             ) : (
               <span className="ml-2 text-gray-400 italic">未選択</span>
             )}
           </div>
         </div>
-        
-        {/* Обертка для таблицы учителей */}
+
+        {/* 先生テーブル */}
         <div className="flex flex-col h-full">
           <div className="flex-grow">
             <TeacherTable
-              teachers={teachers}
+              teachers={teachers as Teacher[]}
               selectedTeacherId={selectedTeacherId}
               onTeacherSelect={handleTeacherSelect}
-              lessons={lessons}
-              subjects={subjects}
-              evaluations={evaluations}
-              teacherSubjects={teacherSubjects}
+              /* 既存コンポーネント互換のため prop 名は lessons のまま */
+              lessons={classSessions as unknown as ClassSession[]}
+              subjects={subjects as Subject[]}
+              evaluations={evaluations as Evaluation[]}
+              teacherSubjects={teacherSubjects as TeacherSubject[]}
               selectedStudentId={selectedStudentId}
               filteredTeachers={shouldFilterTeachers ? filteredTeachers : undefined}
               kibouSubjects={shouldFilterTeachers ? studentKibouSubjects : []}
@@ -292,17 +271,18 @@ export default function LessonManagementPage() {
           </div>
         </div>
 
-        {/* Обертка для таблицы студентов */}
+        {/* 生徒テーブル */}
         <div className="flex flex-col h-full">
           <div className="flex-grow">
             <StudentTable
-              students={students}
+              students={students as StudentWithPreference[]}
               selectedStudentId={selectedStudentId}
               onStudentSelect={handleStudentSelect}
-              lessons={lessons}
-              subjects={subjects}
-              grades={grades}
-              studentTypes={studentTypes}
+              /* 既存コンポーネント互換のため prop 名は lessons のまま */
+              lessons={classSessions as unknown as ClassSession[]}
+              subjects={subjects as Subject[]}
+              grades={grades as Grade[]}
+              studentTypes={studentTypes as StudentType[]}
               selectedTeacherId={selectedTeacherId}
               filteredStudents={shouldFilterStudents ? filteredStudents : undefined}
               kibouSubjects={shouldFilterStudents ? teacherKibouSubjects : []}
@@ -314,17 +294,18 @@ export default function LessonManagementPage() {
       {isModalOpen && (
         <LessonScheduleModal
           open={isModalOpen}
-          lessons={getFilteredLessons()}
+          /* 既存コンポーネント互換のため prop 名は lessons のまま */
+          lessons={getFilteredClassSessions()}
           onClose={closeModal}
           teacherId={selectedTeacherId || ""}
           studentId={selectedStudentId || ""}
           teacherName={
-            teachers.find((t: { teacherId: string; name: string }) => t.teacherId === selectedTeacherId)?.name || ""
+            teachers.find((t) => t.teacherId === selectedTeacherId)?.name || ""
           }
           studentName={
-            students.find((s: { studentId: string; name: string }) => s.studentId === selectedStudentId)?.name || ""
+            students.find((s) => s.studentId === selectedStudentId)?.name || ""
           }
-          onAddLesson={handleAddLesson}
+          onAddLesson={handleAddClassSession}
         />
       )}
     </div>
