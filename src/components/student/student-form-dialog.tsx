@@ -65,6 +65,9 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
             studentMobile: z.string().max(20).nullable(),
             parentEmail: z.string().max(100).nullable(),
             notes: z.string().nullable(),
+
+            username: z.string().min(1, { message: "ユーザー名は必須です" }).optional(),
+            password: z.string().min(6, { message: "パスワードは6文字以上である必要があります" }).optional(),
         })
         : studentCreateSchema
 
@@ -87,6 +90,9 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
             studentMobile: student?.studentMobile || "",
             parentEmail: student?.parentEmail || "",
             notes: student?.notes || "",
+
+            username: "",
+            password: "",
         },
     })
 
@@ -477,6 +483,32 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
                                             <FormLabel>保護者メール</FormLabel>
                                             <FormControl>
                                                 <Input placeholder="保護者メールを入力" {...field} value={field.value || ""} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="username"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>ユーザー名</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="ユーザー名を入力" {...field} value={field.value || ""} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="password"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>パスワード</FormLabel>
+                                            <FormControl>
+                                                <Input type="password" placeholder="パスワードを入力" {...field} value={field.value || ""} />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>

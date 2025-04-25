@@ -57,6 +57,8 @@ export function TeacherFormDialog({ open, onOpenChange, teacher }: TeacherFormDi
             kanjiCertification: z.string().max(50).nullable().optional(),
             otherCertifications: z.string().max(255).nullable().optional(),
             notes: z.string().optional(),
+            username: z.string().min(1, { message: "ユーザー名は必須です" }).optional(),
+            password: z.string().min(6, { message: "パスワードは6文字以上である必要があります" }).optional(),
         })
         : teacherCreateSchema
 
@@ -81,6 +83,9 @@ export function TeacherFormDialog({ open, onOpenChange, teacher }: TeacherFormDi
             kanjiCertification: teacher?.kanjiCertification || "",
             otherCertifications: teacher?.otherCertifications || "",
             notes: teacher?.notes || "",
+
+            username: "",
+            password: "",
         },
     })
 
@@ -117,7 +122,8 @@ export function TeacherFormDialog({ open, onOpenChange, teacher }: TeacherFormDi
             } else {
                 await createTeacherMutation.mutateAsync({
                     teacher: {
-                        ...values,
+                        ...values as z.infer<typeof teacherCreateSchema>,
+                        username: values.email || "",
                     },
                     preferences: preferencesForm.getValues()
                 })
@@ -439,6 +445,41 @@ export function TeacherFormDialog({ open, onOpenChange, teacher }: TeacherFormDi
                                             <FormMessage />
                                         </FormItem>
                                     )}
+                                />
+                                <FormField
+                                  control={form.control}
+                                  name="username"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>ユーザー名</FormLabel>
+                                      <FormControl>
+                                        <Input
+                                          placeholder="ユーザー名を入力"
+                                          {...field}
+                                          value={field.value || ""}
+                                        />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                                <FormField
+                                  control={form.control}
+                                  name="password"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>パスワード</FormLabel>
+                                      <FormControl>
+                                        <Input
+                                          type="password"
+                                          placeholder="パスワードを入力"
+                                          {...field}
+                                          value={field.value || ""}
+                                        />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
                                 />
                                 <FormField
                                     control={form.control}

@@ -7,36 +7,40 @@ const prisma = new PrismaClient();
 async function main() {
   console.log("Seeding started...");
 
-  // **Create Users** (1 admin, 1 teacher, 1 student)
-  const adminUser = await prisma.user.create({
-    data: {
-      name: "Admin User",
-      email: "admin@admin.com",
-      passwordHash: hashSync("admin123"),
-      role: "ADMIN",
-    },
-  });
-  console.log(`Seeded admin user: ${adminUser.email}`);
+    // **Create Users** (1 admin, 1 teacher, 1 student)
 
-  const teacherUser = await prisma.user.create({
-    data: {
-      name: "Teacher User",
-      email: "teacher@teacher.com",
-      passwordHash: hashSync("teacher123"),
-      role: "TEACHER",
-    },
-  });
-  console.log(`Seeded teacher user: ${teacherUser.email}`);
+    const adminUser = await prisma.user.create({
+        data: {
+            name: 'Admin User',
+            email: 'admin@admin.com',
+            passwordHash: hashSync('admin123'),
+            role: 'ADMIN',
+            username: "ADMIN01",
+        },
+    });
+    console.log(`Seeded admin user: ${adminUser.email}`);
 
-  const studentUser = await prisma.user.create({
-    data: {
-      name: "Student User",
-      email: "student@student.com",
-      passwordHash: hashSync("student123"),
-      role: "STUDENT",
-    },
-  });
-  console.log(`Seeded student user: ${studentUser.email}`);
+    const teacherUser = await prisma.user.create({
+        data: {
+            name: 'Teacher User',
+            email: 'teacher@teacher.com',
+            passwordHash: ('teacher123'),
+            role: 'TEACHER',
+            username: "TEACHER01",
+        },
+    });
+    console.log(`Seeded teacher user: ${teacherUser.email}`);
+
+    const studentUser = await prisma.user.create({
+        data: {
+            name: 'Student User',
+            email: 'student@student.com',
+            passwordHash: ('student123'),
+            role: 'STUDENT',
+            username: "STUDENT01",
+        },
+    });
+    console.log(`Seeded student user: ${studentUser.email}`);
 
   // **Create StudentTypes** (before Grades due to reference)
   const studentTypes = await Promise.all(

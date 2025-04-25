@@ -1,12 +1,12 @@
 import { z } from "zod";
 
 export const subjectTypeCreateSchema = z.object({
-    name: z.string().min(1, { message: "Name is required" }),
+    name: z.string().min(1, { message: "名前は必須です" }),
     notes: z.string().optional(),
 });
 
 export const subjectTypeUpdateSchema = subjectTypeCreateSchema.partial().extend({
-    subjectTypeId: z.string().cuid({ message: "Invalid ID" }), // Required for updates
+    subjectTypeId: z.string().cuid({ message: "無効なIDです" }), // Required for updates
 });
 
 export const subjectTypeSchema = z.object({
