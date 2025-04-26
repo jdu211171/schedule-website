@@ -7,40 +7,39 @@ const prisma = new PrismaClient();
 async function main() {
   console.log("Seeding started...");
 
-    // **Create Users** (1 admin, 1 teacher, 1 student)
+  // **Create Users** (1 admin, 1 teacher, 1 student)
+  const adminUser = await prisma.user.create({
+    data: {
+      name: "Admin User",
+      email: "admin@admin.com",
+      passwordHash: hashSync("admin123"),
+      role: "ADMIN",
+      username: "ADMIN01",
+    },
+  });
+  console.log(`Seeded admin user: ${adminUser.email}`);
 
-    const adminUser = await prisma.user.create({
-        data: {
-            name: 'Admin User',
-            email: 'admin@admin.com',
-            passwordHash: hashSync('admin123'),
-            role: 'ADMIN',
-            username: "ADMIN01",
-        },
-    });
-    console.log(`Seeded admin user: ${adminUser.email}`);
+  const teacherUser = await prisma.user.create({
+    data: {
+      name: "Teacher User",
+      email: "teacher@teacher.com",
+      passwordHash: "teacher123",
+      role: "TEACHER",
+      username: "TEACHER01",
+    },
+  });
+  console.log(`Seeded teacher user: ${teacherUser.email}`);
 
-    const teacherUser = await prisma.user.create({
-        data: {
-            name: 'Teacher User',
-            email: 'teacher@teacher.com',
-            passwordHash: ('teacher123'),
-            role: 'TEACHER',
-            username: "TEACHER01",
-        },
-    });
-    console.log(`Seeded teacher user: ${teacherUser.email}`);
-
-    const studentUser = await prisma.user.create({
-        data: {
-            name: 'Student User',
-            email: 'student@student.com',
-            passwordHash: ('student123'),
-            role: 'STUDENT',
-            username: "STUDENT01",
-        },
-    });
-    console.log(`Seeded student user: ${studentUser.email}`);
+  const studentUser = await prisma.user.create({
+    data: {
+      name: "Student User",
+      email: "student@student.com",
+      passwordHash: "student123",
+      role: "STUDENT",
+      username: "STUDENT01",
+    },
+  });
+  console.log(`Seeded student user: ${studentUser.email}`);
 
   // **Create StudentTypes** (before Grades due to reference)
   const studentTypes = await Promise.all(
@@ -185,49 +184,23 @@ async function main() {
   );
   console.log(`Seeded ${teachers.length} teachers.`);
 
-  // **Create Regular Class Templates**
-  const regularClassTemplates = await Promise.all(
-    Array.from({ length: 30 }).map(() =>
-      prisma.regularClassTemplate.create({
-        data: {
-          dayOfWeek: faker.date.weekday(),
-          subjectId: faker.helpers.arrayElement(subjects).subjectId,
-          boothId: faker.helpers.arrayElement(booths).boothId,
-          teacherId: faker.helpers.arrayElement(teachers).teacherId,
-          startTime: faker.date.recent(),
-          endTime: faker.date.future(),
-          notes: faker.lorem.sentence(),
-        },
-      })
-    )
-  );
-  console.log(
-    `Seeded ${regularClassTemplates.length} regular class templates.`
-  );
-
-  // **Create Class Sessions** (some linked to templates, some exceptional)
-  const classSessions = await Promise.all(
-    Array.from({ length: 60 }).map(async () => {
-      const isRegular = faker.datatype.boolean();
-      const template = isRegular
-        ? faker.helpers.arrayElement(regularClassTemplates)
-        : null;
-      return prisma.classSession.create({
-        data: {
-          date: faker.date.future(),
-          startTime: faker.date.recent(),
-          endTime: faker.date.future(),
-          teacherId: faker.helpers.arrayElement(teachers).teacherId,
-          subjectId: faker.helpers.arrayElement(subjects).subjectId,
-          boothId: faker.helpers.arrayElement(booths).boothId,
-          classTypeId: faker.helpers.arrayElement(classTypes).classTypeId,
-          templateId: template ? template.templateId : null,
-          notes: faker.lorem.sentence(),
-        },
-      });
-    })
-  );
-  console.log(`Seeded ${classSessions.length} class sessions.`);
+  // **Link teacherUser to a new Teacher record**
+  const linkedTeacher = await prisma.teacher.create({
+    data: {
+      name: "Linked Teacher",
+      evaluationId: faker.helpers.arrayElement(evaluations).evaluationId,
+      birthDate: faker.date.birthdate(),
+      mobileNumber: faker.phone.number().slice(0, 20),
+      email: teacherUser.email,
+      highSchool: faker.company.name().slice(0, 100),
+      university: faker.company.name().slice(0, 100),
+      faculty: faker.lorem.word().slice(0, 100),
+      department: faker.lorem.word().slice(0, 100),
+      userId: teacherUser.id, // Link to teacherUser
+      notes: "Linked to teacher user",
+    },
+  });
+  console.log(`Seeded linked teacher: ${linkedTeacher.name}`);
 
   // **Create Students**
   const students = await Promise.all(
@@ -258,233 +231,554 @@ async function main() {
   );
   console.log(`Seeded ${students.length} students.`);
 
-  // **Create Student Class Enrollments**
-  await Promise.all(
-    Array.from({ length: 120 }).map(() =>
-      prisma.studentClassEnrollment.create({
-        data: {
-          classId: faker.helpers.arrayElement(classSessions).classId,
-          studentId: faker.helpers.arrayElement(students).studentId,
-          status: faker.lorem.word(),
-          notes: faker.lorem.sentence(),
-        },
-      })
-    )
-  );
-  console.log(`Seeded 120 student class enrollments.`);
+  // **Link studentUser to a new Student record**
+  const linkedStudent = await prisma.student.create({
+    data: {
+      name: "Linked Student",
+      kanaName: faker.person.lastName().slice(0, 100),
+      gradeId: faker.helpers.arrayElement(grades).gradeId,
+      schoolName: faker.company.name().slice(0, 100),
+      enrollmentDate: faker.date.past(),
+      birthDate: faker.date.birthdate(),
+      homePhone: faker.phone.number().slice(0, 20),
+      parentMobile: faker.phone.number().slice(0, 20),
+      studentMobile: faker.phone.number().slice(0, 20),
+      parentEmail: studentUser.email,
+      userId: studentUser.id, // Link to studentUser
+      notes: "Linked to student user",
+    },
+  });
+  console.log(`Seeded linked student: ${linkedStudent.name}`);
 
-  // **Create Template Student Assignments**
-  await Promise.all(
-    Array.from({ length: 60 }).map(() =>
-      prisma.templateStudentAssignment.create({
-        data: {
-          templateId: faker.helpers.arrayElement(regularClassTemplates)
-            .templateId,
-          studentId: faker.helpers.arrayElement(students).studentId,
-          notes: faker.lorem.sentence(),
-        },
-      })
-    )
-  );
-  console.log(`Seeded 60 template student assignments.`);
+  // **Create TeacherSubject relationships**
+  const teacherSubjects = await Promise.all(
+    Array.from({ length: 40 }).map(async () => {
+      const teacher = faker.helpers.arrayElement(teachers);
+      const subject = faker.helpers.arrayElement(subjects);
 
-  // **Create Intensive Courses**
-  const intensiveCourses = await Promise.all(
-    Array.from({ length: 30 }).map(() =>
-      prisma.intensiveCourse.create({
-        data: {
-          courseId: faker.string.uuid(),
-          name: faker.lorem.word(),
-          subjectId: faker.helpers.arrayElement(subjects).subjectId,
-          gradeId: faker.helpers.arrayElement(grades).gradeId,
-          classDuration: faker.date.recent(),
-          classSessions: faker.number.int({ min: 5, max: 20 }).toString(),
-          sessionType: faker.helpers.arrayElement([
-            "SUMMER",
-            "SPRING",
-            "WINTER",
-            "AUTUMN",
-          ]),
-        },
-      })
-    )
-  );
-  console.log(`Seeded ${intensiveCourses.length} intensive courses.`);
-
-  // **Create Course Assignments**
-  const teacherIds = teachers.map((t) => t.teacherId);
-  const courseIds = intensiveCourses.map((c) => c.courseId);
-  const shuffledCourses = faker.helpers.shuffle([...courseIds]);
-  await Promise.all(
-    teacherIds.flatMap((teacherId, index) => {
-      const startIndex = index * 2;
-      const assignedCourses = shuffledCourses.slice(startIndex, startIndex + 2);
-      return assignedCourses.map((courseId) =>
-        prisma.courseAssignment.create({
-          data: {
-            teacherId,
-            courseId,
-            assignmentDate: faker.date.future(),
-            status: faker.lorem.word(),
-            notes: faker.lorem.sentence(),
-          },
-        })
-      );
-    })
-  );
-  console.log(`Seeded 60 course assignments.`);
-
-  // **Create Notifications**
-  await Promise.all(
-    Array.from({ length: 50 }).map(() =>
-      prisma.notification.create({
-        data: {
-          recipientType: faker.lorem.word(),
-          recipientId: faker.string.uuid(),
-          notificationType: faker.lorem.word(),
-          message: faker.lorem.sentence(),
-          relatedClassId: faker.helpers.arrayElement(classSessions).classId,
-          sentVia: faker.lorem.word(),
-          sentAt: faker.date.past(),
-          readAt: faker.date.future(),
-          status: faker.lorem.word(),
-          notes: faker.lorem.sentence(),
-        },
-      })
-    )
-  );
-  console.log(`Seeded 50 notifications.`);
-
-  // **Create Events**
-  await Promise.all(
-    Array.from({ length: 30 }).map(() =>
-      prisma.event.create({
-        data: {
-          name: faker.lorem.word(),
-          startDate: faker.date.past(),
-          endDate: faker.date.future(),
-          isRecurring: faker.datatype.boolean(),
-        },
-      })
-    )
-  );
-  console.log(`Seeded 30 events.`);
-
-  // **Create StudentRegularPreferences**
-  const weekdays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-  await Promise.all(
-    Array.from({ length: 50 }).map(() =>
-      prisma.studentRegularPreference.create({
-        data: {
-          studentId: faker.helpers.arrayElement(students).studentId,
-          subjectId: faker.helpers.arrayElement(subjects).subjectId,
-          preferredWeekdaysTimes: JSON.stringify(
-            Array.from({ length: faker.number.int({ min: 1, max: 3 }) }).map(
-              () => ({
-                dayOfWeek: faker.helpers.arrayElement(weekdays),
-                startTime: faker.date.recent().toISOString(),
-                endTime: faker.date.future().toISOString(),
-              })
-            )
-          ),
-          preferredSubjects: faker.helpers
-            .arrayElements(subjects, { min: 1, max: 3 })
-            .map((s) => s.subjectId),
-          preferredTeachers: faker.helpers
-            .arrayElements(teachers, { min: 1, max: 3 })
-            .map((t) => t.teacherId),
-          notes: faker.lorem.sentence(),
-        },
-      })
-    )
-  );
-  console.log(`Seeded 50 student regular preferences.`);
-
-  // **Create StudentSpecialPreferences**
-  await Promise.all(
-    Array.from({ length: 50 }).map(() =>
-      prisma.studentSpecialPreference.create({
-        data: {
-          studentId: faker.helpers.arrayElement(students).studentId,
-          classTypeId: faker.helpers.arrayElement(classTypes).classTypeId,
-          subjectId: faker.helpers.arrayElement(subjects).subjectId,
-          date: faker.date.future(),
-          startTime: faker.date.recent(),
-          endTime: faker.date.future(),
-          notes: faker.lorem.sentence(),
-        },
-      })
-    )
-  );
-  console.log(`Seeded 50 student special preferences.`);
-
-  // **Create TeacherRegularShifts**
-  await Promise.all(
-    Array.from({ length: 50 }).map(() =>
-      prisma.teacherRegularShift.create({
-        data: {
-          teacherId: faker.helpers.arrayElement(teachers).teacherId,
-          dayOfWeek: faker.date.weekday(),
-          startTime: faker.date.recent(),
-          endTime: faker.date.future(),
-          notes: faker.lorem.sentence(),
-        },
-      })
-    )
-  );
-  console.log(`Seeded 50 teacher regular shifts.`);
-
-  // **Create TeacherSpecialShifts**
-  await Promise.all(
-    Array.from({ length: 50 }).map(() =>
-      prisma.teacherSpecialShift.create({
-        data: {
-          teacherId: faker.helpers.arrayElement(teachers).teacherId,
-          date: faker.date.future(),
-          startTime: faker.date.recent(),
-          endTime: faker.date.future(),
-          notes: faker.lorem.sentence(),
-        },
-      })
-    )
-  );
-  console.log(`Seeded 50 teacher special shifts.`);
-
-  // **Create TeacherSubjects**
-  await Promise.all(
-    teachers.flatMap((teacher) =>
-      faker.helpers.arrayElements(subjects, { min: 2, max: 3 }).map((subject) =>
-        prisma.teacherSubject.create({
+      try {
+        return await prisma.teacherSubject.create({
           data: {
             teacherId: teacher.teacherId,
             subjectId: subject.subjectId,
             notes: faker.lorem.sentence(),
           },
-        })
-      )
-    )
+        });
+      } catch {
+        // Skip duplicates
+        return null;
+      }
+    })
   );
-  console.log(`Seeded teacher subjects.`);
+  console.log(
+    `Seeded ${
+      teacherSubjects.filter(Boolean).length
+    } teacher subject relationships.`
+  );
 
-  // **Create CourseEnrollments**
-  await Promise.all(
-    students.flatMap((student) =>
-      faker.helpers
-        .arrayElements(intensiveCourses, { min: 1, max: 2 })
-        .map((course) =>
-          prisma.courseEnrollment.create({
-            data: {
-              studentId: student.studentId,
-              courseId: course.courseId,
-              enrollmentDate: faker.date.past(),
-              status: faker.lorem.word(),
-              notes: faker.lorem.sentence(),
-            },
-          })
-        )
-    )
+  // **Create Regular Class Templates**
+  const daysOfWeek = [
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+    "Sunday",
+  ];
+
+  const regularClassTemplates = await Promise.all(
+    Array.from({ length: 30 }).map(() => {
+      // Create a time between 9:00 and 20:00
+      const hour = faker.number.int({ min: 9, max: 20 });
+      const startTime = new Date();
+      startTime.setHours(hour, 0, 0, 0);
+
+      // Classes are 1-2 hours long
+      const duration = faker.number.int({ min: 1, max: 2 });
+      const endTime = new Date(startTime);
+      endTime.setHours(hour + duration, 0, 0, 0);
+
+      // Start and end dates (with endDate at least 3 months after startDate)
+      const startDate = faker.date.future();
+      const endDate = new Date(startDate);
+      endDate.setMonth(
+        startDate.getMonth() + faker.number.int({ min: 3, max: 12 })
+      );
+
+      return prisma.regularClassTemplate.create({
+        data: {
+          dayOfWeek: faker.helpers.arrayElement(daysOfWeek),
+          subjectId: faker.helpers.arrayElement(subjects).subjectId,
+          boothId: faker.helpers.arrayElement(booths).boothId,
+          teacherId: faker.helpers.arrayElement(teachers).teacherId,
+          startTime,
+          endTime,
+          startDate,
+          endDate,
+          notes: faker.lorem.sentence(),
+        },
+      });
+    })
   );
-  console.log(`Seeded course enrollments.`);
+  console.log(
+    `Seeded ${regularClassTemplates.length} regular class templates.`
+  );
+
+  // **Create Teacher Regular Shifts**
+  const teacherRegularShifts = await Promise.all(
+    Array.from({ length: 50 }).map(() => {
+      // Create a time between 8:00 and 22:00
+      const hour = faker.number.int({ min: 8, max: 22 });
+      const startTime = new Date();
+      startTime.setHours(hour, 0, 0, 0);
+
+      // Shifts are 2-8 hours long
+      const duration = faker.number.int({ min: 2, max: 8 });
+      const endTime = new Date(startTime);
+      endTime.setHours(hour + duration, 0, 0, 0);
+
+      // Create JSON for preferred weekdays and times
+      const preferredWeekdaysTimes = {
+        Monday: faker.datatype.boolean(),
+        Tuesday: faker.datatype.boolean(),
+        Wednesday: faker.datatype.boolean(),
+        Thursday: faker.datatype.boolean(),
+        Friday: faker.datatype.boolean(),
+        Saturday: faker.datatype.boolean(),
+        Sunday: faker.datatype.boolean(),
+      };
+
+      // Create arrays for preferred subjects and teachers
+      const preferredSubjects = Array.from(
+        { length: faker.number.int({ min: 1, max: 5 }) },
+        () => faker.helpers.arrayElement(subjects).subjectId
+      );
+
+      const preferredTeachers = Array.from(
+        { length: faker.number.int({ min: 0, max: 3 }) },
+        () => faker.helpers.arrayElement(teachers).teacherId
+      );
+
+      return prisma.teacherRegularShift.create({
+        data: {
+          teacherId: faker.helpers.arrayElement(teachers).teacherId,
+          dayOfWeek: faker.helpers.arrayElement(daysOfWeek),
+          startTime,
+          endTime,
+          preferredWeekdaysTimes,
+          preferredSubjects,
+          preferredTeachers,
+          notes: faker.lorem.sentence(),
+        },
+      });
+    })
+  );
+  console.log(`Seeded ${teacherRegularShifts.length} teacher regular shifts.`);
+
+  // **Create Teacher Special Shifts**
+  const teacherSpecialShifts = await Promise.all(
+    Array.from({ length: 40 }).map(() => {
+      // Create a time between 8:00 and 22:00
+      const hour = faker.number.int({ min: 8, max: 22 });
+      const startTime = new Date();
+      startTime.setHours(hour, 0, 0, 0);
+
+      // Shifts are 2-8 hours long
+      const duration = faker.number.int({ min: 2, max: 8 });
+      const endTime = new Date(startTime);
+      endTime.setHours(hour + duration, 0, 0, 0);
+
+      // Special shifts occur on a specific date
+      const date = faker.date.future();
+
+      // Create JSON for preferred weekdays and times
+      const preferredWeekdaysTimes = {
+        Monday: faker.datatype.boolean(),
+        Tuesday: faker.datatype.boolean(),
+        Wednesday: faker.datatype.boolean(),
+        Thursday: faker.datatype.boolean(),
+        Friday: faker.datatype.boolean(),
+        Saturday: faker.datatype.boolean(),
+        Sunday: faker.datatype.boolean(),
+      };
+
+      // Create arrays for preferred subjects and teachers
+      const preferredSubjects = Array.from(
+        { length: faker.number.int({ min: 1, max: 5 }) },
+        () => faker.helpers.arrayElement(subjects).subjectId
+      );
+
+      const preferredTeachers = Array.from(
+        { length: faker.number.int({ min: 0, max: 3 }) },
+        () => faker.helpers.arrayElement(teachers).teacherId
+      );
+
+      return prisma.teacherSpecialShift.create({
+        data: {
+          teacherId: faker.helpers.arrayElement(teachers).teacherId,
+          date,
+          startTime,
+          endTime,
+          preferredWeekdaysTimes,
+          preferredSubjects,
+          preferredTeachers,
+          notes: faker.lorem.sentence(),
+        },
+      });
+    })
+  );
+  console.log(`Seeded ${teacherSpecialShifts.length} teacher special shifts.`);
+
+  // **Create Template Student Assignments**
+  const templateStudentAssignments = await Promise.all(
+    Array.from({ length: 60 }).map(async () => {
+      const template = faker.helpers.arrayElement(regularClassTemplates);
+      const student = faker.helpers.arrayElement(students);
+
+      try {
+        return await prisma.templateStudentAssignment.create({
+          data: {
+            templateId: template.templateId,
+            studentId: student.studentId,
+            notes: faker.lorem.sentence(),
+          },
+        });
+      } catch {
+        // Skip duplicates
+        return null;
+      }
+    })
+  );
+  console.log(
+    `Seeded ${
+      templateStudentAssignments.filter(Boolean).length
+    } template student assignments.`
+  );
+
+  // **Create Class Sessions**
+  const classSessions = await Promise.all(
+    Array.from({ length: 80 }).map(() => {
+      // Create a date in the next 3 months
+      const date = faker.date.future({ years: 0.25 });
+
+      // Create a time between 9:00 and 20:00
+      const hour = faker.number.int({ min: 9, max: 20 });
+      const startTime = new Date();
+      startTime.setHours(hour, 0, 0, 0);
+
+      // Classes are 1-2 hours long
+      const duration = faker.number.int({ min: 1, max: 2 });
+      const endTime = new Date(startTime);
+      endTime.setHours(hour + duration, 0, 0, 0);
+
+      // Create a duration time object
+      const durationTime = new Date();
+      durationTime.setHours(0, duration * 60, 0, 0);
+
+      // Decide whether to link to a template or not
+      const useTemplate = faker.datatype.boolean();
+      const templateId = useTemplate
+        ? faker.helpers.arrayElement(regularClassTemplates).templateId
+        : null;
+
+      return prisma.classSession.create({
+        data: {
+          date,
+          startTime,
+          endTime,
+          duration: durationTime,
+          teacherId: faker.helpers.arrayElement(teachers).teacherId,
+          studentId: faker.helpers.arrayElement(students).studentId,
+          subjectId: faker.helpers.arrayElement(subjects).subjectId,
+          boothId: faker.helpers.arrayElement(booths).boothId,
+          classTypeId: faker.helpers.arrayElement(classTypes).classTypeId,
+          templateId,
+          notes: faker.lorem.sentence(),
+        },
+      });
+    })
+  );
+  console.log(`Seeded ${classSessions.length} class sessions.`);
+
+  // **Create Student Class Enrollments**
+  const studentClassEnrollments = await Promise.all(
+    Array.from({ length: 120 }).map(async () => {
+      const classSession = faker.helpers.arrayElement(classSessions);
+      const student = faker.helpers.arrayElement(students);
+      const status = faker.helpers.arrayElement([
+        "Confirmed",
+        "Pending",
+        "Cancelled",
+        "Completed",
+      ]);
+
+      try {
+        return await prisma.studentClassEnrollment.create({
+          data: {
+            classId: classSession.classId,
+            studentId: student.studentId,
+            status,
+            notes: faker.lorem.sentence(),
+          },
+        });
+      } catch {
+        // Skip duplicates
+        return null;
+      }
+    })
+  );
+  console.log(
+    `Seeded ${
+      studentClassEnrollments.filter(Boolean).length
+    } student class enrollments.`
+  );
+
+  // **Create Student Regular Preferences**
+  const studentRegularPreferences = await Promise.all(
+    Array.from({ length: 40 }).map(() => {
+      // Create JSON for preferred weekdays and times
+      const preferredWeekdaysTimes = {
+        Monday: {
+          morning: faker.datatype.boolean(),
+          afternoon: faker.datatype.boolean(),
+          evening: faker.datatype.boolean(),
+        },
+        Tuesday: {
+          morning: faker.datatype.boolean(),
+          afternoon: faker.datatype.boolean(),
+          evening: faker.datatype.boolean(),
+        },
+        Wednesday: {
+          morning: faker.datatype.boolean(),
+          afternoon: faker.datatype.boolean(),
+          evening: faker.datatype.boolean(),
+        },
+        Thursday: {
+          morning: faker.datatype.boolean(),
+          afternoon: faker.datatype.boolean(),
+          evening: faker.datatype.boolean(),
+        },
+        Friday: {
+          morning: faker.datatype.boolean(),
+          afternoon: faker.datatype.boolean(),
+          evening: faker.datatype.boolean(),
+        },
+        Saturday: {
+          morning: faker.datatype.boolean(),
+          afternoon: faker.datatype.boolean(),
+          evening: faker.datatype.boolean(),
+        },
+        Sunday: {
+          morning: faker.datatype.boolean(),
+          afternoon: faker.datatype.boolean(),
+          evening: faker.datatype.boolean(),
+        },
+      };
+
+      // Create arrays for preferred subjects and teachers
+      const preferredSubjects = Array.from(
+        { length: faker.number.int({ min: 1, max: 5 }) },
+        () => faker.helpers.arrayElement(subjects).subjectId
+      );
+
+      const preferredTeachers = Array.from(
+        { length: faker.number.int({ min: 0, max: 3 }) },
+        () => faker.helpers.arrayElement(teachers).teacherId
+      );
+
+      return prisma.studentRegularPreference.create({
+        data: {
+          studentId: faker.helpers.arrayElement(students).studentId,
+          subjectId: faker.helpers.arrayElement(subjects).subjectId,
+          preferredWeekdaysTimes,
+          preferredSubjects,
+          preferredTeachers,
+          notes: faker.lorem.sentence(),
+        },
+      });
+    })
+  );
+  console.log(
+    `Seeded ${studentRegularPreferences.length} student regular preferences.`
+  );
+
+  // **Create Student Special Preferences**
+  const studentSpecialPreferences = await Promise.all(
+    Array.from({ length: 30 }).map(() => {
+      // Create a date in the next 3 months
+      const date = faker.date.future({ years: 0.25 });
+
+      // Create a time between 9:00 and 20:00
+      const hour = faker.number.int({ min: 9, max: 20 });
+      const startTime = new Date();
+      startTime.setHours(hour, 0, 0, 0);
+
+      // Classes are 1-2 hours long
+      const duration = faker.number.int({ min: 1, max: 2 });
+      const endTime = new Date(startTime);
+      endTime.setHours(hour + duration, 0, 0, 0);
+
+      // Create JSON for preferred weekdays and times
+      const preferredWeekdaysTimes = {
+        Monday: {
+          morning: faker.datatype.boolean(),
+          afternoon: faker.datatype.boolean(),
+          evening: faker.datatype.boolean(),
+        },
+        Tuesday: {
+          morning: faker.datatype.boolean(),
+          afternoon: faker.datatype.boolean(),
+          evening: faker.datatype.boolean(),
+        },
+        Wednesday: {
+          morning: faker.datatype.boolean(),
+          afternoon: faker.datatype.boolean(),
+          evening: faker.datatype.boolean(),
+        },
+        Thursday: {
+          morning: faker.datatype.boolean(),
+          afternoon: faker.datatype.boolean(),
+          evening: faker.datatype.boolean(),
+        },
+        Friday: {
+          morning: faker.datatype.boolean(),
+          afternoon: faker.datatype.boolean(),
+          evening: faker.datatype.boolean(),
+        },
+        Saturday: {
+          morning: faker.datatype.boolean(),
+          afternoon: faker.datatype.boolean(),
+          evening: faker.datatype.boolean(),
+        },
+        Sunday: {
+          morning: faker.datatype.boolean(),
+          afternoon: faker.datatype.boolean(),
+          evening: faker.datatype.boolean(),
+        },
+      };
+
+      // Create arrays for preferred subjects and teachers
+      const preferredSubjects = Array.from(
+        { length: faker.number.int({ min: 1, max: 5 }) },
+        () => faker.helpers.arrayElement(subjects).subjectId
+      );
+
+      const preferredTeachers = Array.from(
+        { length: faker.number.int({ min: 0, max: 3 }) },
+        () => faker.helpers.arrayElement(teachers).teacherId
+      );
+
+      return prisma.studentSpecialPreference.create({
+        data: {
+          studentId: faker.helpers.arrayElement(students).studentId,
+          classTypeId: faker.helpers.arrayElement(classTypes).classTypeId,
+          subjectId: faker.helpers.arrayElement(subjects).subjectId,
+          date,
+          startTime,
+          endTime,
+          preferredWeekdaysTimes,
+          preferredSubjects,
+          preferredTeachers,
+          notes: faker.lorem.sentence(),
+        },
+      });
+    })
+  );
+  console.log(
+    `Seeded ${studentSpecialPreferences.length} student special preferences.`
+  );
+
+  // **Create Intensive Courses**
+  const intensiveCourseTypes = ["SUMMER", "SPRING", "WINTER", "AUTUMN"];
+
+  const intensiveCourses = await Promise.all(
+    Array.from({ length: 15 }).map(() => {
+      // Create a duration (1-3 hours)
+      const hours = faker.number.int({ min: 1, max: 3 });
+      const duration = new Date();
+      duration.setHours(hours, 0, 0, 0);
+
+      return prisma.intensiveCourse.create({
+        data: {
+          courseId: faker.string.uuid(),
+          name: faker.lorem.words(3),
+          subjectId: faker.helpers.arrayElement(subjects).subjectId,
+          gradeId: faker.helpers.arrayElement(grades).gradeId,
+          classDuration: duration,
+          classSessions: faker.number.int({ min: 3, max: 15 }).toString(),
+          sessionType: faker.helpers.arrayElement(
+            intensiveCourseTypes
+          ) as unknown as import("@prisma/client").IntensiveCourseType,
+        },
+      });
+    })
+  );
+  console.log(`Seeded ${intensiveCourses.length} intensive courses.`);
+
+  // **Create Course Assignments** (Teachers assigned to intensive courses)
+  const courseAssignments = await Promise.all(
+    Array.from({ length: 25 }).map(async () => {
+      const teacher = faker.helpers.arrayElement(teachers);
+      const course = faker.helpers.arrayElement(intensiveCourses);
+      const status = faker.helpers.arrayElement([
+        "Assigned",
+        "Pending",
+        "Declined",
+        "Completed",
+      ]);
+
+      try {
+        return await prisma.courseAssignment.create({
+          data: {
+            teacherId: teacher.teacherId,
+            courseId: course.courseId,
+            assignmentDate: faker.date.recent(),
+            status,
+            notes: faker.lorem.sentence(),
+          },
+        });
+      } catch {
+        // Skip duplicates
+        return null;
+      }
+    })
+  );
+  console.log(
+    `Seeded ${courseAssignments.filter(Boolean).length} course assignments.`
+  );
+
+  // **Create Course Enrollments** (Students enrolled in intensive courses)
+  const courseEnrollments = await Promise.all(
+    Array.from({ length: 35 }).map(async () => {
+      const student = faker.helpers.arrayElement(students);
+      const course = faker.helpers.arrayElement(intensiveCourses);
+      const status = faker.helpers.arrayElement([
+        "Enrolled",
+        "Pending",
+        "Cancelled",
+        "Completed",
+      ]);
+
+      try {
+        return await prisma.courseEnrollment.create({
+          data: {
+            studentId: student.studentId,
+            courseId: course.courseId,
+            enrollmentDate: faker.date.recent(),
+            status,
+            notes: faker.lorem.sentence(),
+          },
+        });
+      } catch {
+        // Skip duplicates
+        return null;
+      }
+    })
+  );
+  console.log(
+    `Seeded ${courseEnrollments.filter(Boolean).length} course enrollments.`
+  );
 
   console.log("Seeding complete");
 }
