@@ -6,6 +6,7 @@ export const studentPreferencesSchema = z.object({
   preferredTeachers: z.array(z.string()).default([]),
   desiredTimes: z.array(desiredTimeSchema).default([]),
   additionalNotes: z.string().nullable().optional(),
+  classTypeId: z.string().nullable().optional(),
 });
 
 export type StudentPreferencesInput = z.infer<typeof studentPreferencesSchema>;

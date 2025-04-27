@@ -1,6 +1,5 @@
 "use server";
 
-import { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { requireAuth } from "../auth-actions";
 import { z } from "zod";
@@ -48,23 +47,98 @@ export async function createStudentWithPreference(
     "username" | "password"
   >;
 
-  const studentDataForPrisma: Prisma.StudentUncheckedCreateInput = {
-    ...(rest as StudentCreateWithoutCred),
-    ...(userId ? { userId } : {}),
-    studentRegularPreferences: preferences
-      ? {
-          create: {
-            preferredSubjects: preferences.preferredSubjects ?? [],
-            preferredTeachers: preferences.preferredTeachers ?? [],
-            preferredWeekdaysTimes: preferences.desiredTimes ?? [],
-            notes: preferences.additionalNotes ?? null,
-          },
-        }
-      : undefined,
-  };
+  // Transaction to create student and preferences
+  return prisma.$transaction(async (tx) => {
+    // Create the student
+    const student = await tx.student.create({
+      data: {
+        ...(rest as StudentCreateWithoutCred),
+        userId: userId || undefined,
+      },
+    });
 
-  return prisma.student.create({
-    data: studentDataForPrisma,
-    include: { studentRegularPreferences: true },
+    // Create preferences if provided
+    if (preferences) {
+      // Create the base preference record
+      const preference = await tx.studentPreference.create({
+        data: {
+          studentId: student.studentId,
+          classTypeId: preferences.classTypeId || null,
+          notes: preferences.additionalNotes || null,
+        },
+      });
+
+      // Create teacher preferences
+      if (
+        preferences.preferredTeachers &&
+        preferences.preferredTeachers.length > 0
+      ) {
+        await Promise.all(
+          preferences.preferredTeachers.map((teacherId) =>
+            tx.studentPreferenceTeacher.create({
+              data: {
+                studentPreferenceId: preference.preferenceId,
+                teacherId,
+              },
+            })
+          )
+        );
+      }
+
+      // Create subject preferences
+      if (
+        preferences.preferredSubjects &&
+        preferences.preferredSubjects.length > 0
+      ) {
+        await Promise.all(
+          preferences.preferredSubjects.map((subjectId) =>
+            tx.studentPreferenceSubject.create({
+              data: {
+                studentPreferenceId: preference.preferenceId,
+                subjectId,
+              },
+            })
+          )
+        );
+      }
+
+      // Create time slot preferences
+      if (preferences.desiredTimes && preferences.desiredTimes.length > 0) {
+        await Promise.all(
+          preferences.desiredTimes.map((timeSlot) =>
+            tx.studentPreferenceTimeSlot.create({
+              data: {
+                preferenceId: preference.preferenceId,
+                dayOfWeek: timeSlot.dayOfWeek,
+                startTime: timeSlot.startTime,
+                endTime: timeSlot.endTime,
+              },
+            })
+          )
+        );
+      }
+    }
+
+    // Return the student with preferences
+    return tx.student.findUnique({
+      where: { studentId: student.studentId },
+      include: {
+        StudentPreference: {
+          include: {
+            teachers: {
+              include: {
+                teacher: true,
+              },
+            },
+            subjects: {
+              include: {
+                subject: true,
+              },
+            },
+            timeSlots: true,
+          },
+        },
+      },
+    });
   });
 }
