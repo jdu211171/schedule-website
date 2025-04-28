@@ -1,6 +1,6 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { boothSchema } from "@/schemas/booth.schema";
+import { CreateBoothSchema, UpdateBoothSchema } from "@/schemas/booth.schema";
 
 export async function GET() {
   const session = await auth();
@@ -25,7 +25,7 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json();
-  const data = boothSchema.parse(body);
+  const data = CreateBoothSchema.parse(body);
   const booth = await prisma.booth.create({ data });
   return Response.json(booth, { status: 201 });
 }
@@ -40,7 +40,7 @@ export async function PUT(request: Request) {
   }
 
   const body = await request.json();
-  const { boothId, ...data } = boothSchema.parse(body);
+  const { boothId, ...data } = UpdateBoothSchema.parse(body);
   const booth = await prisma.booth.update({
     where: { boothId },
     data,

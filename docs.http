@@ -6,4 +6,34 @@ GET {{url}}/booth
 Content-Type: application/json
 Cookie: {{cookie}}
 
+### create a new booth
+POST {{url}}/booth
+Content-Type: application/json
+Cookie: {{cookie}}
 
+{
+  "name": "New Booth",
+  "status": true,
+  "notes": "Test booth"
+}
+
+### update an existing booth
+PUT {{url}}/booth
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "boothId": "REPLACE_WITH_EXISTING_BOOTH_ID",
+  "name": "Updated Booth Name",
+  "status": false,
+  "notes": "Updated notes"
+}
+
+### delete a booth
+DELETE {{url}}/booth
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "boothId": "REPLACE_WITH_EXISTING_BOOTH_ID"
+}
