@@ -4,7 +4,7 @@ import { updateStudentWithPreference } from "@/actions/student/update";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { studentCreateSchema, studentUpdateSchema } from "@/schemas/student.schema";
-import { studentPreferencesSchema } from "@/schemas/student-preferences.schema";
+import { studentPreferencesSchema } from "@/schemas/student-preference.schema";
 
 // Define the combined input schema for create
 const createStudentWithPreferenceSchema = z.object({

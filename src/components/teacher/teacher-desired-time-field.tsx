@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button"
 import { FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { DesiredTimeInput } from "@/schemas/desiredTime.schema"
+import { DesiredTimeInput } from "@/schemas/desired-time.schema"
 import { TeacherShiftPreferencesInput } from "@/schemas/teacher-preferences.schema"
 
 interface TeacherDesiredTimeFieldProps {

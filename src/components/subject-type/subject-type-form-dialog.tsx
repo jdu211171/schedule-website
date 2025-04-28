@@ -11,7 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useSubjectTypeCreate, useSubjectTypeUpdate } from "@/hooks/useSubjectTypeMutation"
-import { subjectTypeCreateSchema } from "@/schemas/subjectType.schema"
+import { subjectTypeCreateSchema } from "@/schemas/subject-type.schema"
 import { SubjectType } from "@prisma/client"
 
 interface SubjectTypeFormDialogProps {

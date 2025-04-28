@@ -11,7 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useStudentTypeCreate, useStudentTypeUpdate } from "@/hooks/useStudentTypeMutation"
-import { studentTypeCreateSchema } from "@/schemas/studentType.schema"
+import { studentTypeCreateSchema } from "@/schemas/student-type.schema"
 import { StudentType } from "@prisma/client"
 
 interface StudentTypeFormDialogProps {

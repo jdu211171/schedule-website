@@ -2,7 +2,7 @@ import { createClassType } from "@/actions/classType/create";
 import { deleteClassType } from "@/actions/classType/delete";
 import { updateClassType } from "@/actions/classType/update";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ClassTypeUpdateInput } from "@/schemas/classType.schema";
+import { ClassTypeUpdateInput } from "@/schemas/class-type.schema";
 
 export function useClassTypeCreate() {
     const queryClient = useQueryClient();

@@ -1,65 +1,22 @@
 import { z } from "zod";
-import { Booth, Subject, Teacher } from "@prisma/client";
 
-export const regularClassTemplateCreateSchema = z.object({
-  dayOfWeek: z.enum([
-    "MONDAY",
-    "TUESDAY",
-    "WEDNESDAY",
-    "THURSDAY",
-    "FRIDAY",
-    "SATURDAY",
-    "SUNDAY",
-  ]),
-  subjectId: z.string().max(50),
-  boothId: z.string().max(50),
-  teacherId: z.string().max(50),
-  startTime: z.date(),
-  endTime: z.date(),
-  startDate: z.date().nullable(),
-  endDate: z.date().nullable(),
-  notes: z.string().nullable(),
-});
-
-export const regularClassTemplateUpdateSchema = regularClassTemplateCreateSchema
-  .partial()
-  .extend({
-    templateId: z.string().cuid({ message: "Invalid ID" }),
-  });
-
-export const regularClassTemplateSchema = z.object({
-  templateId: z.string().cuid(),
-  dayOfWeek: z.enum([
-    "MONDAY",
-    "TUESDAY",
-    "WEDNESDAY",
-    "THURSDAY",
-    "FRIDAY",
-    "SATURDAY",
-    "SUNDAY",
-  ]),
-  subjectId: z.string(),
-  boothId: z.string(),
-  teacherId: z.string(),
-  startTime: z.date(),
-  endTime: z.date(),
-  startDate: z.date().nullable(),
-  endDate: z.date().nullable(),
-  notes: z.string().nullable(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
-});
-
-export type RegularClassTemplateCreateInput = z.infer<
-  typeof regularClassTemplateCreateSchema
->;
-export type RegularClassTemplateUpdateInput = z.infer<
-  typeof regularClassTemplateUpdateSchema
->;
-export type RegularClassTemplateWithRelations = z.infer<
-  typeof regularClassTemplateSchema
-> & {
-  booth: Booth | null;
-  subject: Subject | null;
-  teacher: Teacher | null;
-};
+export const RegularClassTemplateSchema = z
+  .object({
+    templateId: z.string(), // default: cuid()
+    dayOfWeek: DayOfWeekEnum,
+    startTime: z.date(),
+    endTime: z.date(),
+    teacherId: z.string(),
+    classTypeId: z.string(),
+    boothId: z.string(),
+    subjectId: z.string(),
+    students: z.lazy(() => TemplateStudentAssignmentSchema).array(), // relation: TemplateStudentAssignment[]
+    teacher: z.lazy(() => TeacherSchema), // relation: Teacher
+    classType: z.lazy(() => ClassTypeSchema), // relation: ClassType
+    booth: z.lazy(() => BoothSchema), // relation: Booth
+    subject: z.lazy(() => SubjectSchema), // relation: Subject
+    classSessions: z.lazy(() => ClassSessionSchema).array(), // relation: ClassSession[]
+    createdAt: z.date(), // default: now()
+    updatedAt: z.date(), // default: now()
+  })
+  .strict();

@@ -1,10 +1,9 @@
 import { z } from "zod";
 
-export const BoothSchema = z
+export const ClassTypeSchema = z
   .object({
-    boothId: z.string(), // default: cuid()
+    classTypeId: z.string(), // default: cuid()
     name: z.string().max(100),
-    status: z.boolean().optional(), // default: true
     notes: z.string().max(255).optional(),
     classSessions: z.lazy(() => ClassSessionSchema).array(), // relation: ClassSession[]
     createdAt: z.date(), // default: now()

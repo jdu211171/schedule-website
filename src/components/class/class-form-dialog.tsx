@@ -27,7 +27,7 @@ import {
   useClassTypeCreate,
   useClassTypeUpdate,
 } from "@/hooks/useClassTypeMutation";
-import { classTypeCreateSchema } from "@/schemas/classType.schema";
+import { classTypeCreateSchema } from "@/schemas/class-type.schema";
 import { ClassType } from "@prisma/client";
 
 interface ClassFormDialogProps {

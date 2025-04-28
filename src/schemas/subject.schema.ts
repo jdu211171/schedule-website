@@ -1,24 +1,15 @@
 import { z } from "zod";
 
-export const subjectCreateSchema = z.object({
-  name: z.string().min(1, { message: "名前は必須です" }),
-  subjectTypeId: z.string().min(1, { message: "科目タイプIDは必須です" }),
-  notes: z.string().optional(),
-});
-
-export const subjectUpdateSchema = subjectCreateSchema.partial().extend({
-  subjectId: z.string().cuid({ message: "無効なIDです" }),
-});
-
-export const subjectSchema = z.object({
-  subjectId: z.string(),
-  name: z.string(),
-  subjectTypeId: z.string(),
-  notes: z.string().nullable(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
-});
-
-export type SubjectCreateInput = z.infer<typeof subjectCreateSchema>;
-export type SubjectUpdateInput = z.infer<typeof subjectUpdateSchema>;
-export type Subject = z.infer<typeof subjectSchema>;
+export const SubjectSchema = z
+  .object({
+    subjectId: z.string(), // default: cuid()
+    name: z.string().max(100),
+    subjectTypeId: z.string(),
+    classSessions: z.lazy(() => ClassSessionSchema).array(), // relation: ClassSession[]
+    teacherSubjects: z.lazy(() => TeacherSubjectSchema).array(), // relation: TeacherSubject[]
+    evaluations: z.lazy(() => EvaluationSchema).array(), // relation: Evaluation[]
+    regularClassTemplates: z.lazy(() => RegularClassTemplateSchema).array(), // relation: RegularClassTemplate[]
+    subjectType: z.lazy(() => SubjectTypeSchema), // relation: SubjectType
+    createdAt: z.date(), // default: now()
+  })
+  .strict();
