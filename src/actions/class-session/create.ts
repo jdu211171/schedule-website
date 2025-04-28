@@ -47,6 +47,7 @@ export async function createClassSession(
         boothId,
         classTypeId,
         notes,
+        studentId,
         // templateId is null for exceptional classes
       },
     });

@@ -11,6 +11,26 @@ interface StudentDesiredTimeFieldProps {
   form: UseFormReturn<StudentPreferencesInput>
 }
 
+const dayOfWeekMap = {
+  "MONDAY": "Monday",
+  "TUESDAY": "Tuesday",
+  "WEDNESDAY": "Wednesday",
+  "THURSDAY": "Thursday",
+  "FRIDAY": "Friday",
+  "SATURDAY": "Saturday",
+  "SUNDAY": "Sunday"
+}
+
+const dayOfWeekDisplayMap = {
+  "Monday": "月曜日",
+  "Tuesday": "火曜日",
+  "Wednesday": "水曜日",
+  "Thursday": "木曜日",
+  "Friday": "金曜日",
+  "Saturday": "土曜日",
+  "Sunday": "日曜日"
+}
+
 export const StudentDesiredTimeField = ({ form }: StudentDesiredTimeFieldProps) => {
   const [selectedWeekday, setSelectedWeekday] = useState<string>("")
   const [startTime, setStartTime] = useState<string>("")
@@ -34,17 +54,11 @@ export const StudentDesiredTimeField = ({ form }: StudentDesiredTimeFieldProps) 
                     <SelectValue placeholder="曜日を選択" />
                   </SelectTrigger>
                   <SelectContent>
-                    {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-                      .filter(day => !(field.value || []).some((time: DesiredTimeInput) => time.dayOfWeek === day))
-                      .map(day => (
-                        <SelectItem key={day} value={day}>
-                          {day === "Monday" ? "月曜日"
-                            : day === "Tuesday" ? "火曜日"
-                              : day === "Wednesday" ? "水曜日"
-                                : day === "Thursday" ? "木曜日"
-                                  : day === "Friday" ? "金曜日"
-                                    : day === "Saturday" ? "土曜日"
-                                      : "日曜日"}
+                    {Object.entries(dayOfWeekMap)
+                      .filter(([, displayValue]) => !(field.value || []).some((time: DesiredTimeInput) => time.dayOfWeek === displayValue))
+                      .map(([, displayValue]) => (
+                        <SelectItem key={displayValue} value={displayValue}>
+                          {dayOfWeekDisplayMap[displayValue as keyof typeof dayOfWeekDisplayMap]}
                         </SelectItem>
                       ))}
                   </SelectContent>
@@ -114,13 +128,7 @@ export const StudentDesiredTimeField = ({ form }: StudentDesiredTimeFieldProps) 
               {(field.value || []).map((time: DesiredTimeInput, index: number) => (
                 <div key={index} className="flex items-center bg-accent rounded-md px-3 py-1">
                   <span>
-                    {time.dayOfWeek === "Monday" ? "月曜日"
-                      : time.dayOfWeek === "Tuesday" ? "火曜日"
-                        : time.dayOfWeek === "Wednesday" ? "水曜日"
-                          : time.dayOfWeek === "Thursday" ? "木曜日"
-                            : time.dayOfWeek === "Friday" ? "金曜日"
-                              : time.dayOfWeek === "Saturday" ? "土曜日"
-                                : "日曜日"}: {time.startTime} 〜 {time.endTime}
+                    {dayOfWeekDisplayMap[time.dayOfWeek as keyof typeof dayOfWeekDisplayMap]}: {time.startTime} 〜 {time.endTime}
                   </span>
                   <Button
                     type="button"

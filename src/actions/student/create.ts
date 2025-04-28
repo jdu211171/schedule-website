@@ -1,5 +1,6 @@
 "use server";
 
+import { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { requireAuth } from "../auth-actions";
 import { z } from "zod";
@@ -42,103 +43,41 @@ export async function createStudentWithPreference(
     userId = user.id;
   }
 
-  type StudentCreateWithoutCred = Omit<
-    StudentCreateInput,
-    "username" | "password"
-  >;
-
-  // Transaction to create student and preferences
-  return prisma.$transaction(async (tx) => {
-    // Create the student
-    const student = await tx.student.create({
-      data: {
-        ...(rest as StudentCreateWithoutCred),
-        userId: userId || undefined,
-      },
-    });
-
-    // Create preferences if provided
-    if (preferences) {
-      // Create the base preference record
-      const preference = await tx.studentPreference.create({
-        data: {
-          studentId: student.studentId,
-          classTypeId: preferences.classTypeId || null,
-          notes: preferences.additionalNotes || null,
-        },
-      });
-
-      // Create teacher preferences
-      if (
-        preferences.preferredTeachers &&
-        preferences.preferredTeachers.length > 0
-      ) {
-        await Promise.all(
-          preferences.preferredTeachers.map((teacherId) =>
-            tx.studentPreferenceTeacher.create({
-              data: {
-                studentPreferenceId: preference.preferenceId,
-                teacherId,
-              },
-            })
-          )
-        );
-      }
-
-      // Create subject preferences
-      if (
-        preferences.preferredSubjects &&
-        preferences.preferredSubjects.length > 0
-      ) {
-        await Promise.all(
-          preferences.preferredSubjects.map((subjectId) =>
-            tx.studentPreferenceSubject.create({
-              data: {
-                studentPreferenceId: preference.preferenceId,
-                subjectId,
-              },
-            })
-          )
-        );
-      }
-
-      // Create time slot preferences
-      if (preferences.desiredTimes && preferences.desiredTimes.length > 0) {
-        await Promise.all(
-          preferences.desiredTimes.map((timeSlot) =>
-            tx.studentPreferenceTimeSlot.create({
-              data: {
-                preferenceId: preference.preferenceId,
-                dayOfWeek: timeSlot.dayOfWeek,
-                startTime: timeSlot.startTime,
-                endTime: timeSlot.endTime,
-              },
-            })
-          )
-        );
-      }
-    }
-
-    // Return the student with preferences
-    return tx.student.findUnique({
-      where: { studentId: student.studentId },
-      include: {
-        StudentPreference: {
-          include: {
-            teachers: {
-              include: {
-                teacher: true,
-              },
-            },
+  const studentDataForPrisma: Prisma.StudentUncheckedCreateInput = {
+    ...(rest as Omit<StudentCreateInput, "username" | "password">),
+    ...(userId ? { userId } : {}),
+    StudentPreference: preferences
+      ? {
+          create: {
+            notes: preferences.additionalNotes ?? null,
             subjects: {
-              include: {
-                subject: true,
-              },
+              create: (preferences.preferredSubjects ?? []).map(
+                (subjectId) => ({
+                  subjectId,
+                })
+              ),
             },
-            timeSlots: true,
+            teachers: {
+              create: (preferences.preferredTeachers ?? []).map(
+                (teacherId) => ({
+                  teacherId,
+                })
+              ),
+            },
+            timeSlots: {
+              create: (preferences.desiredTimes ?? []).map((time) => ({
+                dayOfWeek: time.dayOfWeek as DayOfWeek,
+                startTime: time.startTime, // Ensure this is a DateTime or string in HH:mm format
+                endTime: time.endTime, // Ensure this is a DateTime or string in HH:mm format
+              })),
+            },
           },
-        },
-      },
-    });
+        }
+      : undefined,
+  };
+
+  return prisma.student.create({
+    data: studentDataForPrisma,
+    include: { StudentPreference: true },
   });
 }

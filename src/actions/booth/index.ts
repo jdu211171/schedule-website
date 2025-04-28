@@ -65,7 +65,6 @@ export async function getBooths({
   }
 
   return prisma.booth.findMany({
-    where,
     skip,
     take: pageSize,
     orderBy: {

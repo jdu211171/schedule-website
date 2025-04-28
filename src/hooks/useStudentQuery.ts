@@ -1,8 +1,8 @@
-import { getStudents } from "@/actions/student";
+import { getStudents, StudentWithDetails } from "@/actions/student";
 import { getStudent } from "@/actions/student/read";
 import { getStudentsCount } from "@/actions/count";
 import { useQuery } from "@tanstack/react-query";
-import { Grade, Student, StudentRegularPreference } from "@prisma/client";
+import { Student } from "@prisma/client";
 
 export function useStudentsCount() {
   return useQuery({
@@ -24,10 +24,7 @@ export function useStudents({
     queryKey: ["students", page, pageSize, teacherId],
     queryFn: () =>
       getStudents({ page, pageSize, teacherId }) as Promise<
-        (Student & {
-          grade: Grade | null;
-          studentRegularPreferences: StudentRegularPreference[];
-        })[]
+        StudentWithDetails[]
       >,
   });
 }
@@ -37,7 +34,19 @@ export function useStudent(studentId: string) {
     queryKey: ["students", studentId],
     queryFn: () =>
       getStudent(studentId) as Promise<
-        Student & { studentRegularPreferences: StudentRegularPreference[] }
+        Student & {
+          preference: {
+            preferredSubjects: string[];
+            preferredTeachers: string[];
+            desiredTimes: {
+              dayOfWeek: string;
+              startTime: Date;
+              endTime: Date;
+            }[];
+            additionalNotes: string | null;
+            classTypeId: string | null;
+          } | null;
+        }
       >,
     enabled: !!studentId,
   });

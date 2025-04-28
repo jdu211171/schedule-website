@@ -1,16 +1,19 @@
 import { z } from "zod";
+import { dayOfWeekEnum } from "./teacher-preferences.schema";
 
 export const teacherCreateSchema = z.object({
   name: z.string().min(1, { message: "名前は必須です" }),
-  evaluationId: z.string().nullable().optional(),
-  birthDate: z.date().nullable().optional(),
-  mobileNumber: z.string().max(20).nullable().optional(),
-  email: z.string().email().optional(),
-  highSchool: z.string().max(100).nullable().optional(),
-  university: z.string().max(100).nullable().optional(),
-  faculty: z.string().max(100).nullable().optional(),
-  department: z.string().max(100).nullable().optional(),
-  enrollmentStatus: z.string().max(50).nullable().optional(),
+  evaluationId: z.string().min(1, { message: "評価IDは必須です" }),
+  birthDate: z.date(),
+  mobileNumber: z.string().max(20),
+  email: z
+    .string()
+    .email({ message: "有効なメールアドレスを入力してください" }),
+  highSchool: z.string().max(100),
+  university: z.string().max(100),
+  faculty: z.string().max(100),
+  department: z.string().max(100),
+  enrollmentStatus: z.string().max(50),
   otherUniversities: z.string().max(255).nullable().optional(),
   englishProficiency: z.string().max(50).nullable().optional(),
   toeic: z.number().int().nullable().optional(),
@@ -18,7 +21,7 @@ export const teacherCreateSchema = z.object({
   mathCertification: z.string().max(50).nullable().optional(),
   kanjiCertification: z.string().max(50).nullable().optional(),
   otherCertifications: z.string().max(255).nullable().optional(),
-  notes: z.string().optional(),
+  notes: z.string().max(255).nullable().optional(),
 
   username: z.string().min(1, { message: "ユーザー名は必須です" }),
   password: z
@@ -30,18 +33,27 @@ export const teacherUpdateSchema = teacherCreateSchema.partial().extend({
   teacherId: z.string().cuid({ message: "無効な ID です" }),
 });
 
+export const teacherShiftSchema = z.object({
+  shiftId: z.string().optional(),
+  teacherId: z.string(),
+  dayOfWeek: dayOfWeekEnum,
+  startTime: z.date(),
+  endTime: z.date(),
+  notes: z.string().nullable().optional(),
+});
+
 export const teacherSchema = z.object({
   teacherId: z.string(),
   name: z.string(),
-  evaluationId: z.string().nullable(),
-  birthDate: z.date().nullable(),
-  mobileNumber: z.string().nullable(),
-  email: z.string().nullable(),
-  highSchool: z.string().nullable(),
-  university: z.string().nullable(),
-  faculty: z.string().nullable(),
-  department: z.string().nullable(),
-  enrollmentStatus: z.string().nullable(),
+  evaluationId: z.string(),
+  birthDate: z.date(),
+  mobileNumber: z.string(),
+  email: z.string(),
+  highSchool: z.string(),
+  university: z.string(),
+  faculty: z.string(),
+  department: z.string(),
+  enrollmentStatus: z.string(),
   otherUniversities: z.string().nullable(),
   englishProficiency: z.string().nullable(),
   toeic: z.number().int().nullable(),
@@ -50,6 +62,7 @@ export const teacherSchema = z.object({
   kanjiCertification: z.string().nullable(),
   otherCertifications: z.string().nullable(),
   notes: z.string().nullable(),
+  userId: z.string(),
   createdAt: z.date(),
   updatedAt: z.date(),
 });

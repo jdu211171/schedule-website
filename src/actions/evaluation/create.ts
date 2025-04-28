@@ -12,9 +12,15 @@ export async function createEvaluation(data: EvaluationCreateInput) {
         throw new Error("Invalid data provided");
     }
 
+    // Ensure 'score' is always present (default to 0 or another sensible value if missing)
+    const evaluationData = {
+        ...parsed.data,
+        score: parsed.data.score ?? 0, // Replace 0 with your desired default if needed
+    };
+
     await prisma.evaluation.create({
-        data: parsed.data,
+        data: evaluationData,
     });
 
-    return parsed.data;
+    return evaluationData;
 }

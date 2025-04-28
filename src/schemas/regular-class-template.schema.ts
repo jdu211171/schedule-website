@@ -2,11 +2,19 @@ import { z } from "zod";
 import { Booth, Subject, Teacher } from "@prisma/client";
 
 export const regularClassTemplateCreateSchema = z.object({
-  dayOfWeek: z.string().max(20), // 必須
-  subjectId: z.string().max(50).nullable(),
-  boothId: z.string().max(50).nullable(),
-  teacherId: z.string().max(50).nullable(),
-  startTime: z.date(), // Date オブジェクト（時刻部分のみ使用）
+  dayOfWeek: z.enum([
+    "MONDAY",
+    "TUESDAY",
+    "WEDNESDAY",
+    "THURSDAY",
+    "FRIDAY",
+    "SATURDAY",
+    "SUNDAY",
+  ]),
+  subjectId: z.string().max(50),
+  boothId: z.string().max(50),
+  teacherId: z.string().max(50),
+  startTime: z.date(),
   endTime: z.date(),
   startDate: z.date().nullable(),
   endDate: z.date().nullable(),
@@ -21,10 +29,18 @@ export const regularClassTemplateUpdateSchema = regularClassTemplateCreateSchema
 
 export const regularClassTemplateSchema = z.object({
   templateId: z.string().cuid(),
-  dayOfWeek: z.string(),
-  subjectId: z.string().nullable(),
-  boothId: z.string().nullable(),
-  teacherId: z.string().nullable(),
+  dayOfWeek: z.enum([
+    "MONDAY",
+    "TUESDAY",
+    "WEDNESDAY",
+    "THURSDAY",
+    "FRIDAY",
+    "SATURDAY",
+    "SUNDAY",
+  ]),
+  subjectId: z.string(),
+  boothId: z.string(),
+  teacherId: z.string(),
   startTime: z.date(),
   endTime: z.date(),
   startDate: z.date().nullable(),

@@ -1,9 +1,10 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
+import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -15,17 +16,30 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useGrades } from "@/hooks/useGradeQuery"
 import { useStudentCreate, useStudentUpdate } from "@/hooks/useStudentMutation"
 import { studentCreateSchema, StudentCreateInput, StudentUpdateInput } from "@/schemas/student.schema"
-import type { Student, StudentRegularPreference } from "@prisma/client"
+import type { Student } from "@prisma/client"
 import { studentPreferencesSchema, type StudentPreferencesInput } from "@/schemas/student-preferences.schema"
 import { useTeachers } from "@/hooks/useTeacherQuery"
 import { useSubjects } from "@/hooks/useSubjectQuery"
 import { useTeacherSubjects } from "@/hooks/useTeacherSubjectQuery"
 import { StudentDesiredTimeField } from "./student-desired-time-field"
 
+// Define the type for the props, including the preference structure from the API
 interface StudentFormDialogProps {
     open: boolean
     onOpenChange: (open: boolean) => void
-    student?: Student & { studentRegularPreferences: StudentRegularPreference[] } | null;
+    student?: (Student & {
+        preference?: {
+            preferredSubjects: string[];
+            preferredTeachers: string[];
+            desiredTimes: {
+                dayOfWeek: string;
+                startTime: string;
+                endTime: string;
+            }[];
+            additionalNotes: string | null;
+            classTypeId: string | null;
+        } | null;
+    }) | null;
 }
 
 export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDialogProps) {
@@ -35,17 +49,18 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
     const updateStudentMutation = useStudentUpdate()
 
     const isEditing = !!student
-    const { data: grades = [] } = useGrades()
-    const { data: teachers = [] } = useTeachers({})
-    const { data: subjects = [] } = useSubjects()
-    const { data: teacherSubjects = [] } = useTeacherSubjects()
+    const { data: grades = [], isLoading: gradesLoading } = useGrades()
+    const { data: teachers = [], isLoading: teachersLoading } = useTeachers({})
+    const { data: subjects = [], isLoading: subjectsLoading } = useSubjects()
+    const { data: teacherSubjects = [], isLoading: teacherSubjectsLoading } = useTeacherSubjects()
 
     const [subjectSearchTerm, setSubjectSearchTerm] = useState("")
     const [teacherSearchTerm, setTeacherSearchTerm] = useState("")
     const [showSubjectDropdown, setShowSubjectDropdown] = useState(false)
     const [showTeacherDropdown, setShowTeacherDropdown] = useState(false)
 
-    const studentPreference = student?.studentRegularPreferences?.[0] || null;
+    // Access the preference data directly from the student object
+    const studentPreference = student?.preference || null;
 
     const formSchema = isEditing
         ? z.object({
@@ -96,22 +111,28 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
         },
     })
 
-    // Preferences form
+    // Preferences form - Now using the correct data structure from the API
     const preferencesForm = useForm<StudentPreferencesInput>({
       resolver: zodResolver(studentPreferencesSchema),
       defaultValues: {
         preferredSubjects: studentPreference?.preferredSubjects || [],
         preferredTeachers: studentPreference?.preferredTeachers || [],
-        desiredTimes: Array.isArray(studentPreference?.preferredWeekdaysTimes)
-          ? (studentPreference.preferredWeekdaysTimes as { dayOfWeek?: string; startTime?: string; endTime?: string }[])
-              .filter(
-                (item): item is { dayOfWeek?: string; startTime?: string; endTime?: string } =>
-                  item !== null && typeof item === "object"
-              )
-          : [],
-        additionalNotes: studentPreference?.notes || "",
+        desiredTimes: studentPreference?.desiredTimes || [],
+        additionalNotes: studentPreference?.additionalNotes || "",
       },
     });
+
+    // Reset preferences form when student data changes
+    useEffect(() => {
+      if (studentPreference) {
+        preferencesForm.reset({
+          preferredSubjects: studentPreference.preferredSubjects || [],
+          preferredTeachers: studentPreference.preferredTeachers || [],
+          desiredTimes: studentPreference.desiredTimes || [],
+          additionalNotes: studentPreference.additionalNotes || "",
+        });
+      }
+    }, [studentPreference, preferencesForm]);
 
     // Watch selected subjects and teachers
     const selectedSubjects = preferencesForm.watch("preferredSubjects")
@@ -176,6 +197,10 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
         return `${year}-${month}-${day}`
     }
 
+    // Loading states
+    const isLoading = gradesLoading || teachersLoading || subjectsLoading || teacherSubjectsLoading;
+
+    // Handle form submission
     async function onSubmit(values: z.infer<typeof formSchema>) {
         setIsSubmitting(true)
         try {
@@ -188,22 +213,65 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
                     } as StudentUpdateInput,
                     preferences: preferencesForm.getValues()
                 }
-                await updateStudentMutation.mutateAsync(updateData)
+                await updateStudentMutation.mutateAsync(updateData);
+                toast.success("学生情報が更新されました");
+                onOpenChange(false);
+                form.reset();
+                preferencesForm.reset();
             } else {
                 const createData = {
                     student: values as StudentCreateInput,
                     preferences: preferencesForm.getValues()
                 }
-                await createStudentMutation.mutateAsync(createData)
+                await createStudentMutation.mutateAsync(createData);
+                toast.success("学生が作成されました");
+                onOpenChange(false);
+                form.reset();
+                preferencesForm.reset();
             }
-            onOpenChange(false)
-            form.reset()
-            preferencesForm.reset()
         } catch (error) {
-            console.error("学生の保存に失敗しました:", error)
+            console.error("学生の保存に失敗しました:", error);
+
+            // Extract error message
+            let errorMessage = "学生の保存に失敗しました";
+            if (error instanceof Error) {
+                // Check for username uniqueness error
+                if (error.message.includes("already in use")) {
+                    errorMessage = error.message;
+                    // Set form error on username field
+                    form.setError("username", {
+                        type: "manual",
+                        message: "このユーザー名は既に使用されています"
+                    });
+                } else if (error.message.includes("Invalid")) {
+                    errorMessage = "入力データが無効です。フォームを確認してください。";
+                }
+            }
+
+            toast.error(`エラー: ${errorMessage}`);
         } finally {
-            setIsSubmitting(false)
+            setIsSubmitting(false);
         }
+    }
+
+    // For debugging - log preference data when it changes
+    useEffect(() => {
+        if (process.env.NODE_ENV === 'development') {
+            console.log('Student preference data:', studentPreference);
+        }
+    }, [studentPreference]);
+
+    // Show loading state
+    if (isLoading) {
+        return (
+            <Dialog open={open} onOpenChange={onOpenChange}>
+                <DialogContent className="sm:max-w-[600px]">
+                    <DialogHeader>
+                        <DialogTitle>データを読み込み中...</DialogTitle>
+                    </DialogHeader>
+                </DialogContent>
+            </Dialog>
+        );
     }
 
     return (
@@ -582,6 +650,13 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
                                                                     {subject.name}
                                                                 </div>
                                                             ))}
+                                                        {filteredSubjects.filter((subject) =>
+                                                            subject.name.toLowerCase().includes(subjectSearchTerm.toLowerCase())
+                                                        ).length === 0 && (
+                                                            <div className="p-2 text-muted-foreground">
+                                                                該当する科目が見つかりません
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 )}
                                             </div>
@@ -659,6 +734,13 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
                                                                     {teacher.name}
                                                                 </div>
                                                             ))}
+                                                        {filteredTeachers.filter((teacher) =>
+                                                            teacher.name.toLowerCase().includes(teacherSearchTerm.toLowerCase())
+                                                        ).length === 0 && (
+                                                            <div className="p-2 text-muted-foreground">
+                                                                該当する講師が見つかりません
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 )}
                                             </div>
@@ -719,4 +801,3 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
         </Dialog>
     )
 }
-

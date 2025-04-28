@@ -148,10 +148,9 @@ export default function LessonManagementPage() {
   };
 
   /* -------------------- その他ロジック（変更なし） -------------------- */
-  const shouldFilterTeachers =
-    firstSelection === "student" && selectedStudentId !== null;
-  const shouldFilterStudents =
-    firstSelection === "teacher" && selectedTeacherId !== null;
+  const shouldFilterTeachers = selectedStudentId !== null;
+
+  const shouldFilterStudents = selectedTeacherId !== null;
 
   const isButtonActive =
     selectedTeacherId !== null && selectedStudentId !== null;
