@@ -1,14 +1,20 @@
+import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { StudentIdSchema } from "@/schemas/student.schema";
-import { ZodError } from "zod";
 
 export async function GET(
   request: Request,
   { params }: { params: { studentId: string } }
 ) {
+  const session = await auth();
+  if (!session) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
-    // Validate the studentId
-    const { studentId } = StudentIdSchema.parse(params);
+    const studentId = params.studentId;
+
+    // No need for explicit schema validation here, as Next.js' dynamic route
+    // parameter already guarantees we have a string
 
     // Fetch the student with related data
     const student = await prisma.student.findUnique({
@@ -52,12 +58,6 @@ export async function GET(
     return Response.json({ data: student });
   } catch (error) {
     console.error("Error fetching student:", error);
-    if (error instanceof ZodError) {
-      return Response.json(
-        { error: "Invalid student ID", details: error.errors },
-        { status: 400 }
-      );
-    }
     return Response.json({ error: "Failed to fetch student" }, { status: 500 });
   }
 }
