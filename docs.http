@@ -1,39 +1,62 @@
 @url = http://localhost:3000/api
 @cookie = sb-vyauzmxjjpbzichdnqnp-auth-token=base64-eyJhY2Nlc3NfdG9rZW4iOiJleUpoYkdjaU9pSklVekkxTmlJc0ltdHBaQ0k2SWxVdmR6QktXRlIwWTNkYU55OHZkV2NpTENKMGVYQWlPaUpLVjFRaWZRLmV5SnBjM01pT2lKb2RIUndjem92TDNaNVlYVjZiWGhxYW5CaWVtbGphR1J1Y1c1d0xuTjFjR0ZpWVhObExtTnZMMkYxZEdndmRqRWlMQ0p6ZFdJaU9pSXpNVE0zTVRVME9DMDBPRFF4TFRRNU9Ea3RZVFUxWkMwNU1UUmlZelppTVRJeVpUWWlMQ0poZFdRaU9pSmhkWFJvWlc1MGFXTmhkR1ZrSWl3aVpYaHdJam94TnpRME9EZ3dPRGs0TENKcFlYUWlPakUzTkRRNE56Y3lPVGdzSW1WdFlXbHNJam9pYVhOc2IyMUFaMjFoYVd3dVkyOXRJaXdpY0dodmJtVWlPaUlpTENKaGNIQmZiV1YwWVdSaGRHRWlPbnNpY0hKdmRtbGtaWElpT2lKbGJXRnBiQ0lzSW5CeWIzWnBaR1Z5Y3lJNld5SmxiV0ZwYkNKZGZTd2lkWE5sY2w5dFpYUmhaR0YwWVNJNmV5SmxiV0ZwYkY5MlpYSnBabWxsWkNJNmRISjFaWDBzSW5KdmJHVWlPaUpoZFhSb1pXNTBhV05oZEdWa0lpd2lZV0ZzSWpvaVlXR
 
-### get all booths with filters (status, type, name)
+### Get all booths (basic - descending order by name)
 GET {{url}}/booth
 Content-Type: application/json
 Cookie: {{cookie}}
 
-### create a new booth
+### Get booths with pagination
+GET {{url}}/booth?page=1&limit=10
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get booths with filtering by name (case-insensitive)
+GET {{url}}/booth?name=New
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get booths with filtering by status
+GET {{url}}/booth?status=true
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get booths with sorting
+GET {{url}}/booth?sort=createdAt&order=desc
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get booths with multiple filters and pagination
+GET {{url}}/booth?name=new&status=true&page=1&limit=5&sort=name&order=asc
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Create a new booth
 POST {{url}}/booth
 Content-Type: application/json
 Cookie: {{cookie}}
 
 {
-  "name": "New Booth",
+  "name": "New Study Room",
   "status": true,
-  "notes": "Test booth"
+  "notes": "Quiet study space for individual sessions"
 }
 
-### update an existing booth
+### Update an existing booth
+# Replace BOOTH_ID with an actual ID from your database
 PUT {{url}}/booth
 Content-Type: application/json
 Cookie: {{cookie}}
 
 {
-  "boothId": "REPLACE_WITH_EXISTING_BOOTH_ID",
-  "name": "Updated Booth Name",
+  "boothId": "BOOTH_ID",
+  "name": "Updated Study Room",
   "status": false,
-  "notes": "Updated notes"
+  "notes": "Under maintenance"
 }
 
-### delete a booth
-DELETE {{url}}/booth
+### Delete a booth (using query parameter)
+# Replace BOOTH_ID with an actual ID from your database
+DELETE {{url}}/booth?boothId=BOOTH_ID
 Content-Type: application/json
 Cookie: {{cookie}}
-
-{
-  "boothId": "REPLACE_WITH_EXISTING_BOOTH_ID"
-}
