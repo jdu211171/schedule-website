@@ -1,6 +1,10 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { BoothQuerySchema, CreateBoothSchema, UpdateBoothSchema } from "@/schemas/booth.schema";
+import {
+  ClassTypeQuerySchema,
+  CreateClassTypeSchema,
+  UpdateClassTypeSchema,
+} from "@/schemas/class-type.schema";
 import { ZodError } from "zod";
 
 export async function GET(request: Request) {
@@ -12,10 +16,10 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
 
   try {
-    const query = BoothQuerySchema.parse(
+    const query = ClassTypeQuerySchema.parse(
       Object.fromEntries(searchParams.entries())
     );
-    const { page, limit, name, status, sort, order } = query;
+    const { page, limit, name, sort, order } = query;
 
     const filters: Record<string, unknown> = {};
 
@@ -23,18 +27,14 @@ export async function GET(request: Request) {
       filters.name = { contains: name, mode: "insensitive" };
     }
 
-    if (status !== undefined) {
-      filters.status = status === "true";
-    }
-
     const skip = (page - 1) * limit;
 
     const orderBy: Record<string, string> = {};
     orderBy[sort] = order;
 
-    const total = await prisma.booth.count({ where: filters });
+    const total = await prisma.classType.count({ where: filters });
 
-    const booths = await prisma.booth.findMany({
+    const classTypes = await prisma.classType.findMany({
       where: filters,
       skip,
       take: limit,
@@ -42,7 +42,7 @@ export async function GET(request: Request) {
     });
 
     return Response.json({
-      data: booths,
+      data: classTypes,
       pagination: {
         total,
         page,
@@ -57,7 +57,10 @@ export async function GET(request: Request) {
         { status: 400 }
       );
     }
-    return Response.json({ error: "Failed to fetch booths" }, { status: 500 });
+    return Response.json(
+      { error: "Failed to fetch class types" },
+      { status: 500 }
+    );
   }
 }
 
@@ -72,14 +75,14 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const data = CreateBoothSchema.parse(body);
+    const data = CreateClassTypeSchema.parse(body);
 
-    const booth = await prisma.booth.create({ data });
+    const classType = await prisma.classType.create({ data });
 
     return Response.json(
       {
-        message: "Booth created successfully",
-        data: booth,
+        message: "Class type created successfully",
+        data: classType,
       },
       { status: 201 }
     );
@@ -90,7 +93,10 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
-    return Response.json({ error: "Failed to create booth" }, { status: 500 });
+    return Response.json(
+      { error: "Failed to create class type" },
+      { status: 500 }
+    );
   }
 }
 
@@ -105,30 +111,36 @@ export async function PUT(request: Request) {
 
   try {
     const body = await request.json();
-    const { boothId, ...data } = UpdateBoothSchema.parse(body);
+    const { classTypeId, ...data } = UpdateClassTypeSchema.parse(body);
 
-    const existingBooth = await prisma.booth.findUnique({
-      where: { boothId },
+    const existingClassType = await prisma.classType.findUnique({
+      where: { classTypeId },
     });
 
-    if (!existingBooth) {
-      return Response.json({ error: "Booth not found" }, { status: 404 });
+    if (!existingClassType) {
+      return Response.json({ error: "Class type not found" }, { status: 404 });
     }
 
-    const booth = await prisma.booth.update({
-      where: { boothId },
+    const classType = await prisma.classType.update({
+      where: { classTypeId },
       data,
     });
 
     return Response.json({
-      message: "Booth updated successfully",
-      data: booth
+      message: "Class type updated successfully",
+      data: classType,
     });
   } catch (error) {
     if (error instanceof ZodError) {
-      return Response.json({ error: "Validation failed", details: error.errors }, { status: 400 });
+      return Response.json(
+        { error: "Validation failed", details: error.errors },
+        { status: 400 }
+      );
     }
-    return Response.json({ error: "Failed to update booth" }, { status: 500 });
+    return Response.json(
+      { error: "Failed to update class type" },
+      { status: 500 }
+    );
   }
 }
 
@@ -143,43 +155,52 @@ export async function DELETE(request: Request) {
 
   try {
     const { searchParams } = new URL(request.url);
-    const boothId = searchParams.get("boothId");
+    const classTypeId = searchParams.get("classTypeId");
 
-    if (!boothId) {
-      return Response.json({ error: "Booth ID is required" }, { status: 400 });
+    if (!classTypeId) {
+      return Response.json(
+        { error: "Class type ID is required" },
+        { status: 400 }
+      );
     }
 
-    const existingBooth = await prisma.booth.findUnique({
-      where: { boothId },
+    const existingClassType = await prisma.classType.findUnique({
+      where: { classTypeId },
     });
 
-    if (!existingBooth) {
-      return Response.json({ error: "Booth not found" }, { status: 404 });
+    if (!existingClassType) {
+      return Response.json({ error: "Class type not found" }, { status: 404 });
     }
 
+    // Check for related records
     const hasRelatedClassSessions = await prisma.classSession.findFirst({
-      where: { boothId },
+      where: { classTypeId },
     });
 
-    const hasRelatedTemplates = await prisma.regularClassTemplate.findFirst({
-      where: { boothId },
-    });
+    const hasRelatedStudentPreferences =
+      await prisma.studentPreference.findFirst({
+        where: { classTypeId },
+      });
 
-    if (hasRelatedClassSessions || hasRelatedTemplates) {
+    if (hasRelatedClassSessions || hasRelatedStudentPreferences) {
       return Response.json(
         {
-          error: "Cannot delete booth with related class sessions or templates",
+          error:
+            "Cannot delete class type with related class sessions or student preferences",
         },
         { status: 409 }
       );
     }
 
-    await prisma.booth.delete({ where: { boothId } });
+    await prisma.classType.delete({ where: { classTypeId } });
 
     return Response.json({
-      message: "Booth deleted successfully",
+      message: "Class type deleted successfully",
     });
   } catch {
-    return Response.json({ error: "Failed to delete booth" }, { status: 500 });
+    return Response.json(
+      { error: "Failed to delete class type" },
+      { status: 500 }
+    );
   }
 }
