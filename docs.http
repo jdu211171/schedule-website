@@ -121,3 +121,103 @@ Cookie: {{cookie}}
 DELETE {{url}}/class-type?classTypeId=CLASS_TYPE_ID
 Content-Type: application/json
 Cookie: {{cookie}}
+
+###########
+# STUDENT #
+###########
+
+### Get all students (basic - descending order by name)
+GET {{url}}/student
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get students with pagination
+GET {{url}}/student?page=1&limit=10
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get students with filtering by name (case-insensitive)
+GET {{url}}/student?name=高橋
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get students with filtering by school name (case-insensitive)
+GET {{url}}/student?schoolName=公立桜小学校
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get students with filtering by grade
+# Replace GRADE_ID with an actual grade ID from your database
+GET {{url}}/student?gradeId=cma144m54000a104qkhcfnvzl
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get students with filtering by school type
+GET {{url}}/student?schoolType=PUBLIC
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get students with filtering by exam school type
+GET {{url}}/student?examSchoolType=HIGH
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get students with sorting
+GET {{url}}/student?sort=birthDate&order=desc
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get students with multiple filters and pagination
+GET {{url}}/student?name=Sato&schoolType=PRIVATE&page=1&limit=5&sort=name&order=asc
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get a single student by ID (include related data)
+# Replace STUDENT_ID with an actual ID from your database
+GET {{url}}/student/STUDENT_ID
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Create a new student
+POST {{url}}/student
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "name": "Takahashi Yuki",
+  "kanaName": "タカハシ ユキ",
+  "gradeId": "GRADE_ID",
+  "schoolName": "Tokyo Metropolitan High School",
+  "schoolType": "PUBLIC",
+  "examSchoolType": "HIGH",
+  "firstChoiceSchool": "Tokyo University",
+  "secondChoiceSchool": "Waseda University",
+  "enrollmentDate": "2023-04-01",
+  "birthDate": "2005-06-15",
+  "homePhone": "03-1234-5678",
+  "parentMobile": "090-1234-5678",
+  "studentMobile": "080-1234-5678",
+  "parentEmail": "parent@example.com",
+  "notes": "Interested in math and science",
+  "userId": "USER_ID"
+}
+
+### Update an existing student
+# Replace STUDENT_ID with an actual ID from your database
+PUT {{url}}/student
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "studentId": "STUDENT_ID",
+  "name": "Takahashi Yuki",
+  "kanaName": "タカハシ ユキ",
+  "schoolName": "Tokyo Metropolitan Advanced High School",
+  "notes": "Interested in computer science and mathematics"
+}
+
+### Delete a student (using query parameter)
+# Replace STUDENT_ID with an actual ID from your database
+DELETE {{url}}/student?studentId=STUDENT_ID
+Content-Type: application/json
+Cookie: {{cookie}}
