@@ -265,6 +265,12 @@ GET {{url}}/student-type?page=1&limit=10&name=Elementary&sort=name&order=asc
 Content-Type: application/json
 Cookie: {{cookie}}
 
+### Get a single student type by ID
+# Replace STUDENT_TYPE_ID with an actual ID from your database
+GET {{url}}/student-type/STUDENT_TYPE_ID
+Content-Type: application/json
+Cookie: {{cookie}}
+
 ### Create a new student type
 POST {{url}}/student-type
 Content-Type: application/json

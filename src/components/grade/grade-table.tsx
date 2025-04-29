@@ -48,9 +48,11 @@ export function GradeTable() {
             studentTypeId: string;
             name: string;
         }
-        (studentTypes as StudentType[]).forEach((type: StudentType) => {
-            map.set(type.studentTypeId, type.name);
-        });
+        if (Array.isArray(studentTypes)) {
+            studentTypes.forEach((type: StudentType) => {
+                map.set(type.studentTypeId, type.name);
+            });
+        }
         return map;
     }, [studentTypes]);
 
