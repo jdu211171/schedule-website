@@ -415,3 +415,60 @@ Cookie: {{cookie}}
 DELETE {{url}}/evaluation?evaluationId=cma144m5n000n104qdxmlxrdu
 Content-Type: application/json
 Cookie: {{cookie}}
+
+################
+# SUBJECT TYPE #
+################
+
+### Get all subject types (basic - descending order by name)
+GET {{url}}/subject-type
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get subject types with pagination
+GET {{url}}/subject-type?page=1&limit=10
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get subject types with filtering by name (case-insensitive)
+GET {{url}}/subject-type?name=数学
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get subject types with sorting
+GET {{url}}/subject-type?sort=createdAt&order=desc
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get subject types with multiple filters and pagination
+GET {{url}}/subject-type?name=数学&page=1&limit=5&sort=name&order=asc
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Create a new subject type
+POST {{url}}/subject-type
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "name": "Science",
+  "notes": "Includes physics, chemistry, and biology subjects"
+}
+
+### Update an existing subject type
+# Replace SUBJECT_TYPE_ID with an actual ID from your database
+PUT {{url}}/subject-type
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "subjectTypeId": "cma1vj74k00181036ardrfevg",
+  "name": "Natural Sciences",
+  "notes": "Physics, chemistry, biology, and earth sciences"
+}
+
+### Delete a subject type (using query parameter)
+# Replace SUBJECT_TYPE_ID with an actual ID from your database
+DELETE {{url}}/subject-type?subjectTypeId=cma1vj74k00181036ardrfevg
+Content-Type: application/json
+Cookie: {{cookie}}
