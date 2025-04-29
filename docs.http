@@ -100,6 +100,12 @@ GET {{url}}/class-type?name=通常&page=1&limit=5&sort=name&order=asc
 Content-Type: application/json
 Cookie: {{cookie}}
 
+### Get a single class type by ID
+# Replace CLASS_TYPE_ID with an actual ID from your database
+GET {{url}}/class-type/cma144m5k000l104qnb9sfcq5
+Content-Type: application/json
+Cookie: {{cookie}}]
+
 ### Create a new class type
 POST {{url}}/class-type
 Content-Type: application/json
