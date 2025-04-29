@@ -472,3 +472,65 @@ Cookie: {{cookie}}
 DELETE {{url}}/subject-type?subjectTypeId=cma1vj74k00181036ardrfevg
 Content-Type: application/json
 Cookie: {{cookie}}
+
+###########
+# SUBJECT #
+###########
+
+### Get all subjects (basic - descending order by name)
+GET {{url}}/subjects
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get subjects with pagination
+GET {{url}}/subjects?page=1&limit=10
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get subjects with filtering by name (case-insensitive)
+GET {{url}}/subjects?name=英語
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get subjects with filtering by subject type ID
+GET {{url}}/subjects?subjectTypeId=cma144m5d000e104q1leaiz1u
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get subjects with sorting
+GET {{url}}/subjects?sort=createdAt&order=desc
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get subjects with multiple filters and pagination
+GET {{url}}/subjects?name=数学&subjectTypeId=cma144m5d000e104q1leaiz1u&page=1&limit=5&sort=name&order=asc
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Create a new subject
+POST {{url}}/subjects
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "name": "Advanced Physics",
+  "subjectTypeId": "cma144m5d000f104qxtggm46e",
+  "notes": "University preparation course for physics"
+}
+
+### Update an existing subject
+PUT {{url}}/subjects
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "subjectId": "cma144m5g000j104q9todc1hr",
+  "name": "Advanced Physics",
+  "subjectTypeId": "cma144m5d000f104qxtggm46e",
+  "notes": "Updated university preparation course"
+}
+
+### Delete a subject (using query parameter)
+DELETE {{url}}/subjects?subjectId=cma144m5g000j104q9todc1hr
+Content-Type: application/json
+Cookie: {{cookie}}
