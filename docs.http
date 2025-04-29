@@ -284,3 +284,70 @@ Cookie: {{cookie}}
 DELETE {{url}}/student-type?studentTypeId=cma1tmebc00171036sj95amta
 Content-Type: application/json
 Cookie: {{cookie}}
+
+###################
+# TEACHER SUBJECT #
+###################
+
+### Get all teacher subjects (basic)
+GET {{url}}/teacher-subjects
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get teacher subjects with pagination
+GET {{url}}/teacher-subjects?page=1&limit=10
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get teacher subjects with filtering by teacherId
+# Replace TEACHER_ID with an actual ID from your database
+GET {{url}}/teacher-subjects?teacherId=cma144m5u000u104qsqx0wjex
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get teacher subjects with filtering by subjectId
+# Replace SUBJECT_ID with an actual ID from your database
+GET {{url}}/teacher-subjects?subjectId=cma144m5g000g104qhle1xh2y
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get teacher subjects with sorting
+GET {{url}}/teacher-subjects?sort=createdAt&order=desc
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get teacher subjects with multiple filters and pagination
+# Replace IDs with actual IDs from your database
+GET {{url}}/teacher-subjects?teacherId=TEACHER_ID&subjectId=SUBJECT_ID&page=1&limit=5&sort=createdAt&order=asc
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Create a new teacher subject relationship
+# Replace IDs with actual IDs from your database
+POST {{url}}/teacher-subjects
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "teacherId": "TEACHER_ID",
+  "subjectId": "SUBJECT_ID",
+  "notes": "Teacher is highly qualified in this subject"
+}
+
+### Update an existing teacher subject relationship
+# Replace IDs with actual IDs from your database
+PUT {{url}}/teacher-subjects
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "teacherId": "TEACHER_ID",
+  "subjectId": "SUBJECT_ID",
+  "notes": "Updated qualification notes for this subject"
+}
+
+### Delete a teacher subject relationship (using query parameters)
+# Replace IDs with actual IDs from your database
+DELETE {{url}}/teacher-subjects?teacherId=TEACHER_ID&subjectId=SUBJECT_ID
+Content-Type: application/json
+Cookie: {{cookie}}
