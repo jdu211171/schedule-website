@@ -3,6 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { useEffect } from "react"; // Add this import
 
 import { Button } from "@/components/ui/button";
 import {
@@ -47,17 +48,26 @@ export function BoothFormDialog({
 
   const formSchema = CreateBoothSchema;
 
-  // Fetch booth details when editing
   const { data: boothData } = useBooth(booth?.boothId || "");
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: (boothData as Booth)?.name || "",
-      status: (boothData as Booth)?.status ?? true,
-      notes: (boothData as Booth)?.notes || "",
+      name: "",
+      status: true,
+      notes: "",
     },
   });
+
+  useEffect(() => {
+    if (boothData) {
+      form.reset({
+        name: boothData.name || "",
+        status: boothData.status ?? true,
+        notes: boothData.notes || "",
+      });
+    }
+  }, [boothData, form]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {

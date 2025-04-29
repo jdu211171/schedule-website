@@ -22,6 +22,10 @@ type BoothsResponse = {
   };
 };
 
+type SingleBoothResponse = {
+  data: Booth;
+};
+
 export function useBooths(params: UseBoothsParams = {}) {
   const { page = 1, limit = 10, name, status, sort, order } = params;
 
@@ -44,6 +48,7 @@ export function useBooths(params: UseBoothsParams = {}) {
 export function useBooth(boothId: string) {
   return useQuery<Booth>({
     queryKey: ["booth", boothId],
-    queryFn: () => fetcher(`/api/booth?boothId=${boothId}`),
+    queryFn: async () => await fetcher<SingleBoothResponse>(`/api/booth/${boothId}`).then((res) => res.data),
+    enabled: !!boothId,
   });
 }

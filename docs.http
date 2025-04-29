@@ -35,6 +35,12 @@ GET {{url}}/booth?name=new&status=true&page=1&limit=5&sort=name&order=asc
 Content-Type: application/json
 Cookie: {{cookie}}
 
+### Get a single booth by ID
+# Replace BOOTH_ID with an actual ID from your database
+GET {{url}}/booth/cma1dzjg60003106qp9p1get7
+Content-Type: application/json
+Cookie: {{cookie}}
+
 ### Create a new booth
 POST {{url}}/booth
 Content-Type: application/json
