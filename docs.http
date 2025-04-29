@@ -244,3 +244,43 @@ Cookie: {{cookie}}
 DELETE {{url}}/student?studentId=cma144m640014104q3x1v0vcp
 Content-Type: application/json
 Cookie: {{cookie}}
+
+################
+# STUDENT TYPE #
+################
+
+### Get all student types
+GET {{url}}/student-type
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get all student types with pagination and filtering
+GET {{url}}/student-type?page=1&limit=10&name=Elementary&sort=name&order=asc
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Create a new student type
+POST {{url}}/student-type
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "name": "High School",
+  "description": "Students in grades 10-12"
+}
+
+### Update an existing student type
+PUT {{url}}/student-type
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "studentTypeId": "cma1tmebc00171036sj95amta",
+  "name": "Updated High School",
+  "description": "Students in grades 9-12"
+}
+
+### Delete a student type
+DELETE {{url}}/student-type?studentTypeId=cma1tmebc00171036sj95amta
+Content-Type: application/json
+Cookie: {{cookie}}
