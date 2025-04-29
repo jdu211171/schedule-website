@@ -1,35 +1,41 @@
-import { getBooths } from "@/actions/booth";
-import { getBooth } from "@/actions/booth/read";
-import { getBoothsCount } from "@/actions/count";
+import { fetcher } from "@/lib/fetcher";
 import { useQuery } from "@tanstack/react-query";
 
 export function useBoothsCount() {
   return useQuery({
     queryKey: ["booths", "count"],
-    queryFn: () => getBoothsCount(),
+    queryFn: () => fetcher<number>("/api/booth?count=true"),
   });
 }
 
 type UseBoothsParams = {
-  weekday?: string;
-  startTime?: string;
-  endTime?: string;
   page?: number;
-  pageSize?: number;
+  limit?: number;
+  name?: string;
+  status?: boolean;
+  sort?: string;
+  order?: "asc" | "desc";
 };
 
 export function useBooths(params: UseBoothsParams = {}) {
-  const { weekday, startTime, endTime, page = 1, pageSize = 10 } = params;
+  const { page = 1, limit = 10, name, status, sort = "id", order = "asc" } = params;
 
   return useQuery({
-    queryKey: ["booths", weekday, startTime, endTime, page, pageSize],
-    queryFn: () => getBooths({ weekday, startTime, endTime, page, pageSize }),
+    queryKey: ["booths", page, limit, name, status, sort, order],
+    queryFn: () =>
+      fetcher("/api/booth", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ page, limit, name, status, sort, order }),
+      }),
   });
 }
 
 export function useBooth(boothId: string) {
   return useQuery({
-    queryKey: ["booths", boothId],
-    queryFn: () => getBooth(boothId),
+    queryKey: ["booth", boothId],
+    queryFn: () => fetcher(`/api/booth?boothId=${boothId}`),
   });
 }
