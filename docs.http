@@ -608,3 +608,99 @@ Cookie: {{cookie}}
 DELETE {{url}}/grades?gradeId=cma1x3s6o001c103697jyilas
 Content-Type: application/json
 Cookie: {{cookie}}
+
+###########
+# TEACHER #
+###########
+
+### Get all teachers (basic - descending order by name)
+GET {{url}}/teacher
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get teachers with pagination
+GET {{url}}/teacher?page=1&limit=10
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get teachers with filtering by name (case-insensitive)
+GET {{url}}/teacher?name=鈴木
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get teachers with filtering by email (case-insensitive)
+GET {{url}}/teacher?email=teacher
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get teachers with filtering by university (case-insensitive)
+GET {{url}}/teacher?university=京都
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get teachers with filtering by enrollment status
+GET {{url}}/teacher?enrollmentStatus=在籍
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get teachers with sorting
+GET {{url}}/teacher?sort=createdAt&order=desc
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get teachers with multiple filters and pagination
+GET {{url}}/teacher?name=Tanaka&university=Tokyo&page=1&limit=5&sort=name&order=asc
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get a single teacher by ID (make sure to replace with a real ID)
+GET {{url}}/teacher/cma144m5u000u104qsqx0wjex
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Create a new teacher
+POST {{url}}/teacher
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "username": "tanaka_kenji",
+  "password": "securepassword123",
+  "name": "Tanaka Kenji",
+  "evaluationId": "cma144m5n000n104qdxmlxrdu",
+  "birthDate": "1990-05-10",
+  "mobileNumber": "090-1234-5678",
+  "email": "tanaka.kenji@example.com",
+  "highSchool": "Tokyo High School",
+  "university": "Tokyo University",
+  "faculty": "Science",
+  "department": "Physics",
+  "enrollmentStatus": "ACTIVE",
+  "subjects": [
+    "cma144m5g000g104qhle1xh2y",
+    "cma144m5g000h104q011r76l4"
+  ]
+}
+
+### Update an existing teacher (make sure to replace with a real ID)
+PUT {{url}}/teacher
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "teacherId": "cma144m5u000u104qsqx0wjex",
+  "password": "newSecurePassword456",
+  "name": "Tanaka Kenji",
+  "email": "kenji.tanaka@example.com",
+  "mobileNumber": "090-8765-4321",
+  "subjects": [
+    "cma144m5g000g104qhle1xh2y",
+    "cma144m5g000h104q011r76l4"
+  ],
+  "notes": "Expert in advanced mathematics and physics"
+}
+
+### Delete a teacher (using query parameter)
+DELETE {{url}}/teacher?teacherId=cma144m5u000u104qsqx0wjex
+Content-Type: application/json
+Cookie: {{cookie}}
