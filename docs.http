@@ -379,6 +379,12 @@ GET {{url}}/evaluation
 Content-Type: application/json
 Cookie: {{cookie}}
 
+### Get a single evaluation by ID
+# Replace EVALUATION_ID with an actual ID from your database
+GET {{url}}/evaluation/cma144m5n000n104qdxmlxrdu
+Content-Type: application/json
+Cookie: {{cookie}}
+
 ### Get evaluations with pagination
 GET {{url}}/evaluation?page=1&limit=10
 Content-Type: application/json
