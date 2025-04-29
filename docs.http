@@ -312,6 +312,12 @@ GET {{url}}/teacher-subjects
 Content-Type: application/json
 Cookie: {{cookie}}
 
+### Get a single teacher-subject relationship by composite ID
+# Replace TEACHER_ID and SUBJECT_ID with actual IDs from your database
+GET {{url}}/teacher-subjects/cma144m5w000w104q8cncwj26/cma144m5g000i104q6edj7rri
+Content-Type: application/json
+Cookie: {{cookie}}
+
 ### Get teacher subjects with pagination
 GET {{url}}/teacher-subjects?page=1&limit=10
 Content-Type: application/json
