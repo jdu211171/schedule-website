@@ -351,3 +351,67 @@ Cookie: {{cookie}}
 DELETE {{url}}/teacher-subjects?teacherId=TEACHER_ID&subjectId=SUBJECT_ID
 Content-Type: application/json
 Cookie: {{cookie}}
+
+##############
+# EVALUATION #
+##############
+
+### Get all evaluations (basic - descending order by name)
+GET {{url}}/evaluation
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get evaluations with pagination
+GET {{url}}/evaluation?page=1&limit=10
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get evaluations with filtering by name (case-insensitive)
+GET {{url}}/evaluation?name=B
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get evaluations with filtering by score
+GET {{url}}/evaluation?score=90
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get evaluations with sorting
+GET {{url}}/evaluation?sort=score&order=desc
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get evaluations with multiple filters and pagination
+GET {{url}}/evaluation?name=Basic&score=3&page=1&limit=5&sort=name&order=asc
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Create a new evaluation
+POST {{url}}/evaluation
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "name": "Exceptional Teaching",
+  "score": 5,
+  "notes": "Outstanding knowledge and teaching skills"
+}
+
+### Update an existing evaluation
+# Replace EVALUATION_ID with an actual ID from your database
+PUT {{url}}/evaluation
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "evaluationId": "cma144m5n000n104qdxmlxrdu",
+  "name": "Updated Exceptional Teaching",
+  "score": 4,
+  "notes": "Very good knowledge and teaching skills"
+}
+
+### Delete an evaluation (using query parameter)
+# Replace EVALUATION_ID with an actual ID from your database
+DELETE {{url}}/evaluation?evaluationId=cma144m5n000n104qdxmlxrdu
+Content-Type: application/json
+Cookie: {{cookie}}
