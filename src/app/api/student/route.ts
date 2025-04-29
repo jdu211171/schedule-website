@@ -358,7 +358,7 @@ export async function PUT(request: Request) {
   try {
     const body = await request.json();
     const validatedData = UpdateStudentWithPreferencesSchema.parse(body);
-    const { studentId, preferences, ...studentData } = validatedData;
+    const { studentId, password, preferences, ...studentData } = validatedData;
 
     // Check if student exists
     const existingStudent = await prisma.student.findUnique({
@@ -462,6 +462,15 @@ export async function PUT(request: Request) {
         where: { studentId },
         data: updateData,
       });
+
+      // 2. Update password if provided
+      if (password) {
+        const passwordHash = await bcrypt.hash(password, 10);
+        await tx.user.update({
+          where: { id: existingStudent.userId },
+          data: { passwordHash },
+        });
+      }
 
       // 2. Update preferences if provided
       if (preferences) {

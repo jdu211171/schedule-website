@@ -221,6 +221,7 @@ Cookie: {{cookie}}
 
 {
   "studentId": "cma144m620012104qmvpu55ar",
+  "password": "newSecurePassword456",
   "name": "Takahashi Yuki",
   "parentEmail": "new_parent@example.com",
   "kanaName": "タカハシ ユキ",

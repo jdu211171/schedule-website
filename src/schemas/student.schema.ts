@@ -296,6 +296,8 @@ export const UpdateStudentWithPreferencesSchema = z.object({
 
   // Basic student fields (all optional)
   name: z.string().min(1).max(100).optional(),
+  // User fields
+  password: z.string().min(6).optional(),
   kanaName: z
     .string()
     .max(100)
