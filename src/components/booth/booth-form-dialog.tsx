@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -25,7 +24,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { useBoothCreate, useBoothUpdate } from "@/hooks/useBoothMutation";
-import { boothCreateSchema } from "@/schemas/booth.schema";
+import { useBooth } from "@/hooks/useBoothQuery";
+import { CreateBoothSchema } from "@/schemas/booth.schema";
 import { Booth } from "@prisma/client";
 
 interface BoothFormDialogProps {
@@ -39,31 +39,27 @@ export function BoothFormDialog({
   onOpenChange,
   booth,
 }: BoothFormDialogProps) {
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const createBoothMutation = useBoothCreate();
   const updateBoothMutation = useBoothUpdate();
-
+  const isSubmitting =
+    createBoothMutation.isPending || updateBoothMutation.isPending;
   const isEditing = !!booth;
 
-  const formSchema = isEditing
-    ? z.object({
-        name: z.string().min(1, { message: "名前は必須です" }),
-        status: z.boolean().default(true),
-        notes: z.string().optional(),
-      })
-    : boothCreateSchema;
+  const formSchema = CreateBoothSchema;
+
+  // Fetch booth details when editing
+  const { data: boothData } = useBooth(booth?.boothId || "");
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: booth?.name || "",
-      status: booth?.status ?? true,
-      notes: booth?.notes || "",
+      name: (boothData as Booth)?.name || "",
+      status: (boothData as Booth)?.status ?? true,
+      notes: (boothData as Booth)?.notes || "",
     },
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    setIsSubmitting(true);
     try {
       if (isEditing && booth) {
         await updateBoothMutation.mutateAsync({
@@ -77,8 +73,6 @@ export function BoothFormDialog({
       form.reset();
     } catch (error) {
       console.error("ブースの保存に失敗しました:", error);
-    } finally {
-      setIsSubmitting(false);
     }
   }
 

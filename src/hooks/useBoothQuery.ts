@@ -1,12 +1,7 @@
 import { fetcher } from "@/lib/fetcher";
 import { useQuery } from "@tanstack/react-query";
-
-export function useBoothsCount() {
-  return useQuery({
-    queryKey: ["booths", "count"],
-    queryFn: () => fetcher<number>("/api/booth?count=true"),
-  });
-}
+import { BoothQuerySchema } from "@/schemas/booth.schema";
+import { Booth } from "@prisma/client";
 
 type UseBoothsParams = {
   page?: number;
@@ -17,24 +12,37 @@ type UseBoothsParams = {
   order?: "asc" | "desc";
 };
 
-export function useBooths(params: UseBoothsParams = {}) {
-  const { page = 1, limit = 10, name, status, sort = "id", order = "asc" } = params;
+type BoothsResponse = {
+  data: Booth[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    pages: number;
+  };
+};
 
-  return useQuery({
+export function useBooths(params: UseBoothsParams = {}) {
+  const { page = 1, limit = 10, name, status, sort, order } = params;
+
+  const query = BoothQuerySchema.parse({ page, limit, name, status, sort, order });
+  const searchParams = new URLSearchParams(
+    Object.entries(query).reduce((acc, [key, value]) => {
+      if (value !== undefined) {
+        acc[key] = String(value);
+      }
+      return acc;
+    }, {} as Record<string, string>)
+  ).toString();
+
+  return useQuery<BoothsResponse>({
     queryKey: ["booths", page, limit, name, status, sort, order],
-    queryFn: () =>
-      fetcher("/api/booth", {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ page, limit, name, status, sort, order }),
-      }),
+    queryFn: async () => await fetcher<BoothsResponse>(`/api/booth?${searchParams}`),
   });
 }
 
 export function useBooth(boothId: string) {
-  return useQuery({
+  return useQuery<Booth>({
     queryKey: ["booth", boothId],
     queryFn: () => fetcher(`/api/booth?boothId=${boothId}`),
   });

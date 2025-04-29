@@ -36,11 +36,11 @@ export const BoothIdSchema = z
 // Schema for querying booths with filtering, pagination, and sorting
 export const BoothQuerySchema = z
   .object({
-    page: z.coerce.number().int().positive().optional().default(1),
-    limit: z.coerce.number().int().positive().max(100).optional().default(10),
+    page: z.coerce.number().int().positive().optional().default(1).optional(),
+    limit: z.coerce.number().int().positive().max(100).optional().default(10).optional(),
     name: z.string().optional(),
     status: z.enum(["true", "false"]).optional(),
-    sort: z.enum(["name", "createdAt", "updatedAt"]).optional().default("name"),
+    sort: z.enum(["name", "createdAt", "updatedAt"]).optional().default("createdAt"),
     order: z.enum(["asc", "desc"]).optional().default("desc"),
   })
   .strict();

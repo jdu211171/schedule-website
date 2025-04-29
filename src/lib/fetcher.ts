@@ -20,6 +20,8 @@ export async function fetcher<T>(url: string, options?: RequestInit): Promise<T>
     },
   });
 
+  console.log("fetcher", url, options, res);
+
   if (!res.ok) {
     const info = await res.json();
     const status = res.status;
@@ -27,5 +29,5 @@ export async function fetcher<T>(url: string, options?: RequestInit): Promise<T>
     throw error;
   }
 
-  return res.json();
+  return await res.json();
 }
