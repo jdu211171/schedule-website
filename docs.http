@@ -534,3 +534,77 @@ Cookie: {{cookie}}
 DELETE {{url}}/subjects?subjectId=cma144m5g000j104q9todc1hr
 Content-Type: application/json
 Cookie: {{cookie}}
+
+###########
+# GRADE   #
+###########
+
+### Get all grades (basic - descending order by name)
+GET {{url}}/grades
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get grades with pagination
+GET {{url}}/grades?page=1&limit=10
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get grades with filtering by name (case-insensitive)
+GET {{url}}/grades?name=Elementary
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get grades with filtering by studentTypeId
+# Replace STUDENT_TYPE_ID with an actual student type ID from your database
+GET {{url}}/grades?studentTypeId=cma144m52000910xx3x9r8h9k
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get grades with filtering by gradeYear
+GET {{url}}/grades?gradeYear=3
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get grades with sorting
+GET {{url}}/grades?sort=gradeYear&order=asc
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get grades with multiple filters and pagination
+# Replace STUDENT_TYPE_ID with an actual student type ID from your database
+GET {{url}}/grades?name=Elementary&studentTypeId=cma144m52000910xx3x9r8h9k&gradeYear=2&page=1&limit=5&sort=name&order=asc
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Create a new grades
+# Replace STUDENT_TYPE_ID with an actual student type ID from your database
+POST {{url}}/grades
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "name": "Second Year Junior High",
+  "studentTypeId": "cma144m500008104qarmazu88",
+  "gradeYear": 8,
+  "notes": "Second year of junior high school (8th grades)"
+}
+
+### Update an existing grades
+# Replace GRADE_ID and STUDENT_TYPE_ID with actual IDs from your database
+PUT {{url}}/grades
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "gradeId": "cma1x3s6o001c103697jyilas",
+  "name": "Updated Second Year Junior High",
+  "studentTypeId": "cma144m500008104qarmazu88",
+  "gradeYear": 8,
+  "notes": "Updated notes for second year junior high school"
+}
+
+### Delete a grades (using query parameter)
+# Replace GRADE_ID with an actual ID from your database
+DELETE {{url}}/grades?gradeId=cma1x3s6o001c103697jyilas
+Content-Type: application/json
+Cookie: {{cookie}}
