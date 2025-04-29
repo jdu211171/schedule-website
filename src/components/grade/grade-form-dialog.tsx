@@ -31,8 +31,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useGradeCreate, useGradeUpdate } from "@/hooks/useGradeMutation";
-import { gradeCreateSchema } from "@/schemas/grade.schema";
-import { Grade } from "@prisma/client";
+import { useGrade } from "@/hooks/useGradeQuery";
+import { CreateGradeSchema } from "@/schemas/grade.schema";
+import { Grade, StudentType } from "@prisma/client";
 import { useStudentTypes } from "@/hooks/useStudentTypeQuery";
 
 interface GradeFormDialogProps {
@@ -57,7 +58,6 @@ export function GradeFormDialog({
   onOpenChange,
   grade,
 }: GradeFormDialogProps) {
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedStudentTypeName, setSelectedStudentTypeName] = useState<
     string | null
   >(null);
@@ -65,28 +65,21 @@ export function GradeFormDialog({
 
   const createGradeMutation = useGradeCreate();
   const updateGradeMutation = useGradeUpdate();
-  const { data: studentTypes = [] } = useStudentTypes();
+  const isSubmitting = createGradeMutation.isPending || updateGradeMutation.isPending;
+  const { data: studentTypes = [] } = useStudentTypes() as { data: StudentType[] } | { data: undefined };
+  const { data: gradeData } = useGrade(grade?.gradeId || "");
 
   const isEditing = !!grade;
 
-  const formSchema = isEditing
-    ? z.object({
-        name: z
-          .string()
-          .max(100, { message: "名前は100文字以内で入力してください" }),
-        studentTypeId: z.string().nullable().optional(),
-        gradeYear: z.number().int().nullable().optional(),
-        notes: z.string().nullable().optional(),
-      })
-    : gradeCreateSchema;
+  const formSchema = CreateGradeSchema;
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: grade?.name || "",
-      studentTypeId: grade?.studentTypeId || null,
-      gradeYear: grade?.gradeYear || null,
-      notes: grade?.notes || "",
+      name: "",
+      studentTypeId: "",
+      gradeYear: 0,
+      notes: "",
     },
   });
 
@@ -94,8 +87,19 @@ export function GradeFormDialog({
   const studentTypeId = form.watch("studentTypeId");
 
   useEffect(() => {
+    if (gradeData) {
+      form.reset({
+        name: gradeData.name || "",
+        studentTypeId: gradeData.studentTypeId || "",
+        gradeYear: gradeData.gradeYear || 0,
+        notes: gradeData.notes || "",
+      });
+    }
+  }, [gradeData, form]);
+
+  useEffect(() => {
     if (studentTypeId) {
-      const studentType = studentTypes.find(
+      const studentType = (studentTypes as StudentType[]).find(
         (type) => type.studentTypeId === studentTypeId
       );
       setSelectedStudentTypeName(studentType?.name || null);
@@ -123,7 +127,6 @@ export function GradeFormDialog({
   }, [form, selectedStudentTypeName, gradeYear, isNameManuallyEdited]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    setIsSubmitting(true);
     try {
       if (isEditing && grade) {
         await updateGradeMutation.mutateAsync({
@@ -138,8 +141,6 @@ export function GradeFormDialog({
       setIsNameManuallyEdited(false); // Reset for next time dialog opens
     } catch (error) {
       console.error("学年の保存に失敗しました:", error);
-    } finally {
-      setIsSubmitting(false);
     }
   }
 
@@ -180,9 +181,9 @@ export function GradeFormDialog({
                   <FormControl>
                     <Select
                       onValueChange={(value) => {
-                        field.onChange(value === "none" ? null : value);
+                        field.onChange(value === "none" ? "" : value);
                         // Reset grade year when student type changes
-                        form.setValue("gradeYear", null);
+                        form.setValue("gradeYear", 0);
                       }}
                       value={field.value || "none"}
                     >
@@ -191,12 +192,12 @@ export function GradeFormDialog({
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">未選択</SelectItem>
-                        {studentTypes.map((type) => (
+                        {studentTypes.map((type: StudentType) => (
                           <SelectItem
-                            key={type.studentTypeId}
-                            value={type.studentTypeId}
+                          key={type.studentTypeId}
+                          value={type.studentTypeId}
                           >
-                            {type.name}
+                          {type.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -216,7 +217,7 @@ export function GradeFormDialog({
                     <Select
                       onValueChange={(value) =>
                         field.onChange(
-                          value === "none" ? null : parseInt(value)
+                          value === "none" ? 0 : parseInt(value)
                         )
                       }
                       value={field.value?.toString() || "none"}

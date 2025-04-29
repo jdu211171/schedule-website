@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState } from "react"
 import type { ColumnDef } from "@tanstack/react-table"
 import { Pencil, Trash2 } from "lucide-react"
 
@@ -20,15 +20,18 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Grade } from "@prisma/client"
 import { GradeFormDialog } from "@/components/grade/grade-form-dialog"
-import { useGradesCount } from "@/hooks/useGradeQuery"
 import { useStudentTypes } from "@/hooks/useStudentTypeQuery"
+import { useMemo } from "react"
 
 export function GradeTable() {
     const [searchTerm, setSearchTerm] = useState("")
     const [page, setPage] = useState(1)
     const pageSize = 10
-    const { data: grades = [], isLoading, isFetching } = useGrades(page, pageSize)
-    const { data: totalCount = 0 } = useGradesCount()
+    const { data: gradesData, isLoading, isFetching } = useGrades({
+        page,
+        limit: pageSize,
+        name: searchTerm || undefined,
+    });
     const { data: studentTypes = [] } = useStudentTypes()
     const deleteGradeMutation = useGradeDelete()
 
@@ -36,21 +39,20 @@ export function GradeTable() {
     const [gradeToDelete, setGradeToDelete] = useState<Grade | null>(null)
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
 
+    const grades = gradesData?.data || [];
+    const totalCount = gradesData?.pagination.total || 0;
+
     const studentTypeMap = useMemo(() => {
         const map = new Map<string, string>();
-        studentTypes.forEach(type => {
+        interface StudentType {
+            studentTypeId: string;
+            name: string;
+        }
+        (studentTypes as StudentType[]).forEach((type: StudentType) => {
             map.set(type.studentTypeId, type.name);
         });
         return map;
     }, [studentTypes]);
-
-    const filteredGrades = searchTerm
-        ? grades.filter(
-            (grade) =>
-                grade.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                (grade.notes && grade.notes.toLowerCase().includes(searchTerm.toLowerCase())),
-        )
-        : grades
 
     const columns: ColumnDef<Grade>[] = [
         {
@@ -113,7 +115,7 @@ export function GradeTable() {
         <>
             <DataTable
                 columns={columns}
-                data={filteredGrades}
+                data={grades}
                 isLoading={isLoading || isFetching}
                 searchPlaceholder="学年を検索..."
                 onSearch={setSearchTerm}

@@ -582,6 +582,12 @@ GET {{url}}/grades?name=Elementary&studentTypeId=cma144m52000910xx3x9r8h9k&grade
 Content-Type: application/json
 Cookie: {{cookie}}
 
+### Get a single grade by ID
+# Replace GRADE_ID with an actual ID from your database
+GET {{url}}/grades/GRADE_ID
+Content-Type: application/json
+Cookie: {{cookie}}
+
 ### Create a new grades
 # Replace STUDENT_TYPE_ID with an actual student type ID from your database
 POST {{url}}/grades
