@@ -449,6 +449,12 @@ GET {{url}}/subject-type
 Content-Type: application/json
 Cookie: {{cookie}}
 
+### Get a single subject type by ID
+# Replace SUBJECT_TYPE_ID with an actual ID from your database
+GET {{url}}/subject-type/cma144m5d000e104q1leaiz1u
+Content-Type: application/json
+Cookie: {{cookie}}
+
 ### Get subject types with pagination
 GET {{url}}/subject-type?page=1&limit=10
 Content-Type: application/json
