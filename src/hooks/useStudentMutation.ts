@@ -1,61 +1,102 @@
-import { createStudentWithPreference } from "@/actions/student/create";
-import { deleteStudent } from "@/actions/student/delete";
-import { updateStudentWithPreference } from "@/actions/student/update";
+import { fetcher } from "@/lib/fetcher";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { z } from "zod";
-import { studentCreateSchema, studentUpdateSchema } from "@/schemas/student.schema";
-import { studentPreferencesSchema } from "@/schemas/student-preference.schema";
+import { Student } from "@prisma/client";
 
-// Define the combined input schema for create
-const createStudentWithPreferenceSchema = z.object({
-    student: studentCreateSchema,
-    preferences: studentPreferencesSchema.optional()
-});
+type CreateStudentInput = {
+  username: string;
+  password: string;
+  name: string;
+  kanaName?: string;
+  gradeId?: string;
+  schoolName?: string;
+  schoolType?: string;
+  examSchoolType?: string;
+  birthDate?: string;
+  parentEmail?: string;
+  preferences?: {
+    subjects?: string[];
+    teachers?: string[];
+    timeSlots?: {
+      dayOfWeek: string;
+      startTime: string;
+      endTime: string;
+    }[];
+  };
+};
 
-type CreateStudentWithPreferenceInput = z.infer<typeof createStudentWithPreferenceSchema>;
+type UpdateStudentInput = {
+  studentId: string;
+  password?: string;
+  name?: string;
+  kanaName?: string;
+  gradeId?: string;
+  schoolName?: string;
+  schoolType?: string;
+  examSchoolType?: string;
+  birthDate?: string;
+  parentEmail?: string;
+  preferences?: {
+    subjects?: string[];
+    teachers?: string[];
+    timeSlots?: {
+      dayOfWeek: string;
+      startTime: string;
+      endTime: string;
+    }[];
+  };
+};
 
-// Define the combined input schema for update
-const updateStudentWithPreferenceSchema = z.object({
-    student: studentUpdateSchema,
-    preferences: studentPreferencesSchema.optional()
-});
+type CreateStudentResponse = {
+  message: string;
+  data: Student;
+};
 
-type UpdateStudentWithPreferenceInput = z.infer<typeof updateStudentWithPreferenceSchema>;
+type UpdateStudentResponse = {
+  message: string;
+  data: Student;
+};
+
+type DeleteStudentResponse = {
+  message: string;
+};
 
 export function useStudentCreate() {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: (data: CreateStudentWithPreferenceInput) => {
-            // Validate data against the schema at runtime
-            createStudentWithPreferenceSchema.parse(data);
-            return createStudentWithPreference(data);
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["students"] });
-        }
-    });
+  const queryClient = useQueryClient();
+  return useMutation<CreateStudentResponse, Error, CreateStudentInput>({
+    mutationFn: (data) =>
+      fetcher("/api/student", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["students"] });
+    },
+  });
 }
 
 export function useStudentUpdate() {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: (data: UpdateStudentWithPreferenceInput) => {
-            // Validate data against the schema at runtime
-            updateStudentWithPreferenceSchema.parse(data);
-            return updateStudentWithPreference(data);
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["students"] });
-        }
-    });
+  const queryClient = useQueryClient();
+  return useMutation<UpdateStudentResponse, Error, UpdateStudentInput>({
+    mutationFn: (data) =>
+      fetcher(`/api/student`, {
+        method: "PUT",
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["students"] });
+    },
+  });
 }
 
 export function useStudentDelete() {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: deleteStudent,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["students"] });
-        }
-    });
+  const queryClient = useQueryClient();
+  return useMutation<DeleteStudentResponse, Error, string>({
+    mutationFn: (studentId) =>
+      fetcher(`/api/student?studentId=${studentId}`, {
+        method: "DELETE",
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["students"] });
+    },
+  });
 }

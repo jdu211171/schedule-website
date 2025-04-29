@@ -65,8 +65,9 @@ export function GradeFormDialog({
 
   const createGradeMutation = useGradeCreate();
   const updateGradeMutation = useGradeUpdate();
-  const isSubmitting = createGradeMutation.isPending || updateGradeMutation.isPending;
-  const { data: studentTypes = [] } = useStudentTypes() as { data: StudentType[] } | { data: undefined };
+  const isSubmitting =
+    createGradeMutation.isPending || updateGradeMutation.isPending;
+  const { data: studentTypes } = useStudentTypes();
   const { data: gradeData } = useGrade(grade?.gradeId || "");
 
   const isEditing = !!grade;
@@ -99,7 +100,7 @@ export function GradeFormDialog({
 
   useEffect(() => {
     if (studentTypeId) {
-      const studentType = (studentTypes as StudentType[]).find(
+      const studentType = studentTypes?.data.find(
         (type) => type.studentTypeId === studentTypeId
       );
       setSelectedStudentTypeName(studentType?.name || null);
@@ -192,12 +193,12 @@ export function GradeFormDialog({
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">未選択</SelectItem>
-                        {studentTypes.map((type: StudentType) => (
+                        {studentTypes?.data.map((type: StudentType) => (
                           <SelectItem
-                          key={type.studentTypeId}
-                          value={type.studentTypeId}
+                            key={type.studentTypeId}
+                            value={type.studentTypeId}
                           >
-                          {type.name}
+                            {type.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -216,9 +217,7 @@ export function GradeFormDialog({
                   <FormControl>
                     <Select
                       onValueChange={(value) =>
-                        field.onChange(
-                          value === "none" ? 0 : parseInt(value)
-                        )
+                        field.onChange(value === "none" ? 0 : parseInt(value))
                       }
                       value={field.value?.toString() || "none"}
                       disabled={

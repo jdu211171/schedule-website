@@ -107,7 +107,7 @@ model Student {
   gradeId                    String?                     @map("grade_id") @db.VarChar(50)
   schoolName                 String?                     @map("school_name") @db.VarChar(100)
   schoolType                 SchoolType?                 @map("school_type")
-  examSchoolType             examSchoolType?             @map("exam_school_type")
+  examSchoolType             SchoolType?             @map("exam_school_type")
   examSchoolCategoryType     examSchoolType?             @map("exam_school_category_type")
   firstChoiceSchool          String?                     @map("first_choice_school") @db.VarChar(100)
   secondChoiceSchool         String?                     @map("second_choice_school") @db.VarChar(100)

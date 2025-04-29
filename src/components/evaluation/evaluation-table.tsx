@@ -20,14 +20,21 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Evaluation } from "@prisma/client";
 import { EvaluationFormDialog } from "@/components/evaluation/evaluation-form-dialog";
-import { useEvaluationsCount } from "@/hooks/useEvaluationQuery";
 
 export function EvaluationTable() {
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
   const pageSize = 10;
-  const { data: evaluations = [], isLoading, isFetching } = useEvaluations(page, pageSize);
-  const { data: totalCount = 0 } = useEvaluationsCount();
+  const {
+    data: evaluations,
+    isLoading,
+    isFetching,
+  } = useEvaluations({
+    page,
+    limit: pageSize,
+    name: searchTerm || undefined,
+  });
+  const totalCount = evaluations?.pagination.total || 0;
   const deleteEvaluationMutation = useEvaluationDelete();
 
   const [evaluationToEdit, setEvaluationToEdit] = useState<Evaluation | null>(
@@ -36,15 +43,6 @@ export function EvaluationTable() {
   const [evaluationToDelete, setEvaluationToDelete] =
     useState<Evaluation | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-
-  const filteredEvaluations = searchTerm
-    ? evaluations.filter(
-        (evaluation) =>
-          evaluation.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          (evaluation.notes &&
-            evaluation.notes.toLowerCase().includes(searchTerm.toLowerCase()))
-      )
-    : evaluations;
 
   const columns: ColumnDef<Evaluation>[] = [
     {
@@ -93,7 +91,7 @@ export function EvaluationTable() {
         );
         setEvaluationToDelete(null);
       } catch (error) {
-        console.error("評価の削除に失敗しました:", error);
+        console.error("Failed to delete evaluation:", error);
       }
     }
   };
@@ -108,7 +106,7 @@ export function EvaluationTable() {
     <>
       <DataTable
         columns={columns}
-        data={filteredEvaluations}
+        data={evaluations?.data || []}
         isLoading={isLoading || isFetching}
         searchPlaceholder="評価を検索..."
         onSearch={setSearchTerm}
