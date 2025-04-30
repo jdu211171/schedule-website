@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { z } from "zod";
 
 // Base schema with common fields
@@ -53,3 +54,8 @@ export type Subject = z.infer<typeof SubjectSchema>;
 export type CreateSubjectInput = z.infer<typeof CreateSubjectSchema>;
 export type UpdateSubjectInput = z.infer<typeof UpdateSubjectSchema>;
 export type SubjectQuery = z.infer<typeof SubjectQuerySchema>;
+export type SubjectWithRelations = Prisma.SubjectGetPayload<{
+  include: {
+    subjectType: true;
+  };
+}>;
