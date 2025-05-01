@@ -13,8 +13,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useTeacherCreate, useTeacherUpdate } from "@/hooks/useTeacherMutation"
-import { teacherCreateSchema } from "@/schemas/teacher.schema"
-import { Teacher, TeacherWithPreference } from "@/schemas/teacher.schema"
+import { CreateTeacherSchema, TeacherSchema, Teacher } from "@/schemas/teacher.schema"
 import { useEvaluations } from "@/hooks/useEvaluationQuery"
 import { teacherShiftPreferencesSchema, TeacherShiftPreferencesInput } from "@/schemas/teacher-preferences.schema"
 import { TeacherDesiredTimeField } from "./teacher-desired-time-field"
@@ -22,7 +21,7 @@ import { TeacherDesiredTimeField } from "./teacher-desired-time-field"
 interface TeacherFormDialogProps {
     open: boolean
     onOpenChange: (open: boolean) => void
-    teacher?: Teacher | TeacherWithPreference | null
+    teacher?: Teacher | null
 }
 
 export function TeacherFormDialog({ open, onOpenChange, teacher }: TeacherFormDialogProps) {
@@ -30,37 +29,12 @@ export function TeacherFormDialog({ open, onOpenChange, teacher }: TeacherFormDi
     const [activeTab, setActiveTab] = useState("basic")
     const createTeacherMutation = useTeacherCreate()
     const updateTeacherMutation = useTeacherUpdate()
-    const { data: evaluations = [] } = useEvaluations()
+    const { data: response } = useEvaluations()
+    const evaluations = response?.data ?? []
 
-    const isEditing = !!teacher
 
-    // Check if teacher has preference property to determine if it's TeacherWithPreference
-    const hasPreference = teacher && "preference" in teacher
-
-    const formSchema = isEditing
-        ? z.object({
-            name: z.string().min(1, { message: "名前は必須です" }),
-            evaluationId: z.string().nullable().optional(),
-            birthDate: z.date().nullable().optional(),
-            mobileNumber: z.string().max(20).nullable().optional(),
-            email: z.string().email().optional(),
-            highSchool: z.string().max(100).nullable().optional(),
-            university: z.string().max(100).nullable().optional(),
-            faculty: z.string().max(100).nullable().optional(),
-            department: z.string().max(100).nullable().optional(),
-            enrollmentStatus: z.string().max(50).nullable().optional(),
-            otherUniversities: z.string().max(255).nullable().optional(),
-            englishProficiency: z.string().max(50).nullable().optional(),
-            toeic: z.number().int().nullable().optional(),
-            toefl: z.number().int().nullable().optional(),
-            mathCertification: z.string().max(50).nullable().optional(),
-            kanjiCertification: z.string().max(50).nullable().optional(),
-            otherCertifications: z.string().max(255).nullable().optional(),
-            notes: z.string().optional(),
-            username: z.string().min(1, { message: "ユーザー名は必須です" }).optional(),
-            password: z.string().min(6, { message: "パスワードは6文字以上である必要があります" }).optional(),
-        })
-        : teacherCreateSchema
+  const isEditing = !!teacher
+  const formSchema = isEditing ? TeacherSchema : CreateTeacherSchema
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
@@ -89,15 +63,12 @@ export function TeacherFormDialog({ open, onOpenChange, teacher }: TeacherFormDi
         },
     })
 
-    // Get preference data safely
-    const teacherPreference = hasPreference ? (teacher as TeacherWithPreference).preference : null
-
     // Preferences form
     const preferencesForm = useForm<TeacherShiftPreferencesInput>({
         resolver: zodResolver(teacherShiftPreferencesSchema),
         defaultValues: {
-            desiredTimes: Array.isArray(teacherPreference?.desiredTimes) ? teacherPreference!.desiredTimes : [],
-            additionalNotes: teacherPreference?.additionalNotes || "",
+            desiredTimes: teacher?.preference?.desiredTimes || [],
+            additionalNotes: teacher?.preference?.additionalNotes || "",
         },
     })
 
@@ -111,28 +82,30 @@ export function TeacherFormDialog({ open, onOpenChange, teacher }: TeacherFormDi
     async function onSubmit(values: z.infer<typeof formSchema>) {
         setIsSubmitting(true)
         try {
+      const preferences = preferencesForm.getValues()
+
             if (isEditing && teacher) {
                 await updateTeacherMutation.mutateAsync({
                     teacher: {
                         teacherId: teacher.teacherId,
                         ...values,
                     },
-                    preferences: preferencesForm.getValues()
+                    preferences
                 })
             } else {
                 await createTeacherMutation.mutateAsync({
                     teacher: {
-                        ...values as z.infer<typeof teacherCreateSchema>,
+                        ...values as z.infer<typeof CreateTeacherSchema>,
                         username: values.email || "",
                     },
-                    preferences: preferencesForm.getValues()
+                    preferences
                 })
               }
             onOpenChange(false)
             form.reset()
             preferencesForm.reset()
         } catch (error) {
-            console.error("講師の保存に失敗しました:", error)
+      console.error("Error saving teacher:", error)
         } finally {
             setIsSubmitting(false)
         }

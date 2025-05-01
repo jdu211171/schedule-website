@@ -1,38 +1,30 @@
+import { fetcher } from "@/lib/fetcher";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createTeacherWithShift } from "@/actions/teacher/create";
-import { updateTeacherWithShift } from "@/actions/teacher/update";
-import { deleteTeacher } from "@/actions/teacher/delete";
-import { z } from "zod";
-import {
-  teacherCreateSchema,
-  teacherUpdateSchema,
-} from "@/schemas/teacher.schema";
-import { teacherShiftPreferencesSchema } from "@/schemas/teacher-preferences.schema";
+import { CreateTeacherWithShiftInput, UpdateTeacherWithShiftInput } from "@/schemas/teacher.schema";
+import { TeacherWithPreference } from "@/schemas/teacher.schema";
 
-// Define the combined input schema for create
-const createTeacherWithShiftSchema = z.object({
-  teacher: teacherCreateSchema,
-  preferences: teacherShiftPreferencesSchema.optional(),
-});
+type CreateTeacherResponse = {
+  message: string;
+  data: TeacherWithPreference;
+};
 
-type CreateTeacherWithShiftInput = z.infer<typeof createTeacherWithShiftSchema>;
+type UpdateTeacherResponse = {
+  message: string;
+  data: TeacherWithPreference;
+};
 
-// Define the combined input schema for update
-const updateTeacherWithShiftSchema = z.object({
-  teacher: teacherUpdateSchema,
-  preferences: teacherShiftPreferencesSchema.optional(),
-});
-
-type UpdateTeacherWithShiftInput = z.infer<typeof updateTeacherWithShiftSchema>;
+type DeleteTeacherResponse = {
+  message: string;
+};
 
 export function useTeacherCreate() {
   const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (data: CreateTeacherWithShiftInput) => {
-      // Validate data against the schema at runtime
-      createTeacherWithShiftSchema.parse(data);
-      return createTeacherWithShift(data);
-    },
+  return useMutation<CreateTeacherResponse, Error, CreateTeacherWithShiftInput>({
+    mutationFn: (data) =>
+      fetcher("/api/teachers", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["teachers"] });
     },
@@ -41,12 +33,12 @@ export function useTeacherCreate() {
 
 export function useTeacherUpdate() {
   const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (data: UpdateTeacherWithShiftInput) => {
-      // Validate data against the schema at runtime
-      updateTeacherWithShiftSchema.parse(data);
-      return updateTeacherWithShift(data);
-    },
+  return useMutation<UpdateTeacherResponse, Error, UpdateTeacherWithShiftInput>({
+    mutationFn: (data) =>
+      fetcher("/api/teachers", {
+        method: "PUT",
+        body: JSON.stringify(data),
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["teachers"] });
     },
@@ -55,8 +47,11 @@ export function useTeacherUpdate() {
 
 export function useTeacherDelete() {
   const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: deleteTeacher,
+  return useMutation<DeleteTeacherResponse, Error, string>({
+    mutationFn: (teacherId) =>
+      fetcher(`/api/teachers?teacherId=${teacherId}`, {
+        method: "DELETE",
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["teachers"] });
     },

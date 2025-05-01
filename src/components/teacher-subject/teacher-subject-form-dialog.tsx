@@ -68,6 +68,7 @@ export function TeacherSubjectFormDialog({ open, onOpenChange, teacherSubject }:
         }
     }
 
+  console.log("Subjects data:", subjects)
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent>
@@ -88,7 +89,7 @@ export function TeacherSubjectFormDialog({ open, onOpenChange, teacherSubject }:
                                                 <SelectValue placeholder="講師を選択" />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                {teachers.map((teacher) => (
+                                                {teachers?.map((teacher) => (
                                                     <SelectItem key={teacher.teacherId} value={teacher.teacherId}>
                                                         {teacher.name}
                                                     </SelectItem>
@@ -112,11 +113,15 @@ export function TeacherSubjectFormDialog({ open, onOpenChange, teacherSubject }:
                                                 <SelectValue placeholder="科目を選択" />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                {subjects.map((subject) => (
-                                                    <SelectItem key={subject.subjectId} value={subject.subjectId}>
-                                                        {subject.name}
-                                                    </SelectItem>
-                                                ))}
+                        {Array.isArray(subjects) ? (
+                          subjects.map((subject) => (
+                            <SelectItem key={subject.subjectId} value={subject.subjectId}>
+                              {subject.name}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <div>err</div>
+                        )}
                                             </SelectContent>
                                         </Select>
                                     </FormControl>

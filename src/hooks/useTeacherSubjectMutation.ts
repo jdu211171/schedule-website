@@ -1,35 +1,59 @@
+import { fetcher } from "@/lib/fetcher";
+import { CreateTeacherSubjectInput, UpdateTeacherSubjectInput } from "@/schemas/teacherSubject.schema";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createTeacherSubject } from "@/actions/teacherSubject/create";
-import { updateTeacherSubject } from "@/actions/teacherSubject/update";
-import { deleteTeacherSubject } from "@/actions/teacherSubject/delete";
+import { TeacherSubject } from "@prisma/client";
+
+type CreateTeacherSubjectResponse = {
+  message: string;
+  data: TeacherSubject;
+};
+
+type UpdateTeacherSubjectResponse = {
+  message: string;
+  data: TeacherSubject;
+};
+
+type DeleteTeacherSubjectResponse = {
+  message: string;
+};
 
 export function useTeacherSubjectCreate() {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: createTeacherSubject,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["teacherSubjects"] });
-        },
-    });
+  const queryClient = useQueryClient();
+  return useMutation<CreateTeacherSubjectResponse, Error, CreateTeacherSubjectInput>({
+    mutationFn: (data) =>
+      fetcher("/api/teacher-subjects", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["teacherSubjects"] });
+    },
+  });
 }
 
 export function useTeacherSubjectUpdate() {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: updateTeacherSubject,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["teacherSubjects"] });
-        },
-    });
+  const queryClient = useQueryClient();
+  return useMutation<UpdateTeacherSubjectResponse, Error, UpdateTeacherSubjectInput>({
+    mutationFn: ({ teacherId, subjectId, ...data }) =>
+      fetcher(`/api/teacher-subjects`, {
+        method: "PUT",
+        body: JSON.stringify({ teacherId, subjectId, ...data }),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["teacherSubjects"] });
+    },
+  });
 }
 
 export function useTeacherSubjectDelete() {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: ({ teacherId, subjectId }: { teacherId: string; subjectId: string }) =>
-            deleteTeacherSubject(teacherId, subjectId),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["teacherSubjects"] });
-        },
-    });
+  const queryClient = useQueryClient();
+  return useMutation<DeleteTeacherSubjectResponse, Error, { teacherId: string; subjectId: string }>({
+    mutationFn: ({ teacherId, subjectId }) =>
+      fetcher(`/api/teacher-subjects?teacherId=${teacherId}&subjectId=${subjectId}`, {
+        method: "DELETE",
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["teacherSubjects"] });
+    },
+  });
 }
