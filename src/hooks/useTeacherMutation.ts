@@ -1,7 +1,7 @@
 import { fetcher } from "@/lib/fetcher";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { CreateTeacherWithShiftInput, UpdateTeacherWithShiftInput } from "@/schemas/teacher.schema";
-import { TeacherWithPreference } from "@/schemas/teacher.schema";
+import { TeacherWithPreference } from "./useTeacherQuery";
+import { CreateTeacherInput, UpdateTeacherInput } from "../schemas/teacher.schema";
 
 type CreateTeacherResponse = {
   message: string;
@@ -19,9 +19,9 @@ type DeleteTeacherResponse = {
 
 export function useTeacherCreate() {
   const queryClient = useQueryClient();
-  return useMutation<CreateTeacherResponse, Error, CreateTeacherWithShiftInput>({
+  return useMutation<CreateTeacherResponse, Error, CreateTeacherInput>({
     mutationFn: (data) =>
-      fetcher("/api/teachers", {
+      fetcher("/api/teacher", {
         method: "POST",
         body: JSON.stringify(data),
       }),
@@ -33,9 +33,9 @@ export function useTeacherCreate() {
 
 export function useTeacherUpdate() {
   const queryClient = useQueryClient();
-  return useMutation<UpdateTeacherResponse, Error, UpdateTeacherWithShiftInput>({
+  return useMutation<UpdateTeacherResponse, Error, UpdateTeacherInput>({
     mutationFn: (data) =>
-      fetcher("/api/teachers", {
+      fetcher("/api/teacher", {
         method: "PUT",
         body: JSON.stringify(data),
       }),
@@ -49,7 +49,7 @@ export function useTeacherDelete() {
   const queryClient = useQueryClient();
   return useMutation<DeleteTeacherResponse, Error, string>({
     mutationFn: (teacherId) =>
-      fetcher(`/api/teachers?teacherId=${teacherId}`, {
+      fetcher(`/api/teacher?teacherId=${teacherId}`, {
         method: "DELETE",
       }),
     onSuccess: () => {

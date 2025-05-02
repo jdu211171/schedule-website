@@ -1,13 +1,12 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import type { ColumnDef } from "@tanstack/react-table"
-import { Pencil, Trash2 } from "lucide-react"
+import { useState } from "react";
+import type { ColumnDef } from "@tanstack/react-table";
+import { Pencil, Trash2 } from "lucide-react";
 
-import { Button } from "@/components/ui/button"
-import { DataTable } from "@/components/data-table"
-import { useTeachers, useTeachersCount } from "@/hooks/useTeacherQuery"
-import { useTeacherDelete } from "@/hooks/useTeacherMutation"
+import { Button } from "@/components/ui/button";
+import { DataTable } from "@/components/data-table";
+import { useTeacherDelete } from "@/hooks/useTeacherMutation";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,42 +16,36 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { Teacher } from "@prisma/client"
-import { TeacherFormDialog } from "@/components/teacher/teacher-form-dialog"
-import { useEvaluations } from "@/hooks/useEvaluationQuery"
+} from "@/components/ui/alert-dialog";
+import { TeacherFormDialog } from "@/components/teacher/teacher-form-dialog";
+import { useEvaluations } from "@/hooks/useEvaluationQuery";
+import { useTeachers } from "@/hooks/useTeacherQuery";
+import { Teacher } from "@/schemas/teacher.schema";
 
 export function TeacherTable() {
-  const [searchTerm, setSearchTerm] = useState("")
-  const [page, setPage] = useState(1)
-  const pageSize = 10
+  const [searchTerm, setSearchTerm] = useState("");
+  const [page, setPage] = useState(1);
+  const limit = 10;
 
-  const { data: teachers = [], isLoading, isFetching } = useTeachers({ page, pageSize })
-  const { data: totalCount = 0 } = useTeachersCount()
-  const { data: evaluationsRaw } = useEvaluations()
+  const {
+    data: teachers,
+    isLoading,
+    isFetching,
+  } = useTeachers({ page, limit });
+  const { data: evaluationsRaw } = useEvaluations();
 
-  const evaluations = evaluationsRaw?.data ?? []
-  const evaluationMap = new Map<string, string>()
-  evaluations.forEach(evaluation => {
+  const evaluations = evaluationsRaw?.data ?? [];
+  const evaluationMap = new Map<string, string>();
+  evaluations.forEach((evaluation) => {
     if (evaluation.evaluationId) {
-      evaluationMap.set(evaluation.evaluationId, evaluation.name)
+      evaluationMap.set(evaluation.evaluationId, evaluation.name);
     }
-  })
+  });
 
-  const deleteTeacherMutation = useTeacherDelete()
-  const [teacherToEdit, setTeacherToEdit] = useState<Teacher | null>(null)
-  const [teacherToDelete, setTeacherToDelete] = useState<Teacher | null>(null)
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
-
-  const filteredTeachers = searchTerm
-    ? teachers.filter(
-      (teacher) =>
-        teacher.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (teacher.notes && teacher.notes.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (teacher.email && teacher.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (teacher.university && teacher.university.toLowerCase().includes(searchTerm.toLowerCase()))
-    )
-    : teachers
+  const deleteTeacherMutation = useTeacherDelete();
+  const [teacherToEdit, setTeacherToEdit] = useState<Teacher | null>(null);
+  const [teacherToDelete, setTeacherToDelete] = useState<Teacher | null>(null);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
   const columns: ColumnDef<Teacher>[] = [
     {
@@ -63,15 +56,17 @@ export function TeacherTable() {
       accessorKey: "evaluationId",
       header: "評価",
       cell: ({ row }) => {
-        const evaluationId = row.original.evaluationId
-        return evaluationId ? evaluationMap.get(evaluationId) || "-" : "-"
+        const evaluationId = row.original.evaluationId;
+        return evaluationId ? evaluationMap.get(evaluationId) || "-" : "-";
       },
     },
     {
       accessorKey: "birthDate",
       header: "生年月日",
       cell: ({ row }) =>
-        row.original.birthDate ? new Date(row.original.birthDate).toLocaleDateString() : "-",
+        row.original.birthDate
+          ? new Date(row.original.birthDate).toLocaleDateString()
+          : "-",
     },
     {
       accessorKey: "mobileNumber",
@@ -108,39 +103,45 @@ export function TeacherTable() {
       header: "操作",
       cell: ({ row }) => (
         <div className="flex gap-2">
-          <Button variant="ghost" size="icon" onClick={() => setTeacherToEdit(row.original)}>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setTeacherToEdit(row.original)}
+          >
             <Pencil className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="icon" onClick={() => setTeacherToDelete(row.original)}>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setTeacherToDelete(row.original)}
+          >
             <Trash2 className="h-4 w-4 text-destructive" />
           </Button>
         </div>
       ),
     },
-  ]
+  ];
 
   const handleDeleteTeacher = async () => {
     if (teacherToDelete) {
       try {
-        await deleteTeacherMutation.mutateAsync(teacherToDelete.teacherId)
-        setTeacherToDelete(null)
+        await deleteTeacherMutation.mutateAsync(teacherToDelete.teacherId);
+        setTeacherToDelete(null);
       } catch (error) {
-        console.error("講師の削除に失敗しました:", error)
+        console.error("講師の削除に失敗しました:", error);
       }
     }
-  }
+  };
 
   const handlePageChange = (newPage: number) => {
-    setPage(newPage + 1)
-  }
-
-  const totalPages = Math.ceil(totalCount / pageSize)
+    setPage(newPage + 1);
+  };
 
   return (
     <>
       <DataTable
         columns={columns}
-        data={filteredTeachers}
+        data={teachers?.data || []}
         isLoading={isLoading || isFetching}
         searchPlaceholder="講師を検索..."
         onSearch={setSearchTerm}
@@ -148,10 +149,10 @@ export function TeacherTable() {
         onCreateNew={() => setIsCreateDialogOpen(true)}
         createNewLabel="新しい講師"
         pageIndex={page - 1}
-        pageCount={totalPages || 1}
+        pageCount={teachers?.pagination.pages || 0}
         onPageChange={handlePageChange}
-        pageSize={pageSize}
-        totalItems={totalCount}
+        pageSize={teachers?.pagination.pageSize || 0}
+        totalItems={teachers?.pagination.total || 0}
       />
 
       {teacherToEdit && (
@@ -179,11 +180,15 @@ export function TeacherTable() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setTeacherToDelete(null)}>キャンセル</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteTeacher}>削除</AlertDialogAction>
+            <AlertDialogCancel onClick={() => setTeacherToDelete(null)}>
+              キャンセル
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteTeacher}>
+              削除
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>
-  )
+  );
 }

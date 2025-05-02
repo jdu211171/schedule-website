@@ -1,12 +1,19 @@
 import { fetcher } from "@/lib/fetcher";
+import { Prisma } from "@prisma/client";
 import { useQuery } from "@tanstack/react-query";
-import { TeacherWithPreference } from "@/schemas/teacher.schema";
 
 type UseTeachersParams = {
   page?: number;
-  pageSize?: number;
-  studentId?: string;
+  limit?: number;
+  name?: string;
+  email?: string;
+  university?: string;
+  enrollmentStatus?: string;
 };
+
+export type TeacherWithPreference = Prisma.TeacherGetPayload<{
+  include: Prisma.TeacherInclude;
+}>;
 
 type TeachersResponse = {
   data: TeacherWithPreference[];
@@ -23,12 +30,15 @@ type SingleTeacherResponse = {
 };
 
 export function useTeachers(params: UseTeachersParams = {}) {
-  const { page = 1, pageSize = 10, studentId } = params;
+  const { page = 1, limit = 10, name, email, university, enrollmentStatus } = params;
 
   const query = {
     page,
-    pageSize,
-    studentId,
+    limit,
+    name,
+    email,
+    university,
+    enrollmentStatus,
   };
 
   const searchParams = new URLSearchParams(
@@ -41,15 +51,15 @@ export function useTeachers(params: UseTeachersParams = {}) {
   ).toString();
 
   return useQuery<TeachersResponse>({
-    queryKey: ["teachers", page, pageSize, studentId],
-    queryFn: async () => await fetcher<TeachersResponse>(`/api/teachers?${searchParams}`),
+    queryKey: ["teachers", page, limit, name, email, university, enrollmentStatus],
+    queryFn: async () => await fetcher<TeachersResponse>(`/api/teacher?${searchParams}`),
   });
 }
 
 export function useTeacher(teacherId: string) {
   return useQuery<TeacherWithPreference>({
     queryKey: ["teacher", teacherId],
-    queryFn: async () => await fetcher<SingleTeacherResponse>(`/api/teachers/${teacherId}`).then((res) => res.data),
+    queryFn: async () => await fetcher<SingleTeacherResponse>(`/api/teacher/${teacherId}`).then((res) => res.data),
     enabled: !!teacherId,
   });
 }
@@ -57,6 +67,6 @@ export function useTeacher(teacherId: string) {
 export function useTeachersCount() {
   return useQuery({
     queryKey: ["teachers", "count"],
-    queryFn: () => fetcher<number>("/api/teachers/count"),
+    queryFn: () => fetcher<number>("/api/teacher/count"),
   });
 }

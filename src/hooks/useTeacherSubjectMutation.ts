@@ -1,5 +1,5 @@
 import { fetcher } from "@/lib/fetcher";
-import { CreateTeacherSubjectInput, UpdateTeacherSubjectInput } from "@/schemas/teacherSubject.schema";
+import { CreateTeacherSubjectInput, UpdateTeacherSubjectInput } from "@/schemas/teacher-subject.schema";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { TeacherSubject } from "@prisma/client";
 
