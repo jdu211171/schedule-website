@@ -1,16 +1,16 @@
 import { fetcher } from "@/lib/fetcher";
+import { CreateTeacherInput, UpdateTeacherInput } from "@/schemas/teacher.schema";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { CreateTeacherWithShiftInput, UpdateTeacherWithShiftInput } from "@/schemas/teacher.schema";
-import { TeacherWithPreference } from "@/schemas/teacher.schema";
+import { Teacher } from "@prisma/client";
 
 type CreateTeacherResponse = {
   message: string;
-  data: TeacherWithPreference;
+  data: Teacher;
 };
 
 type UpdateTeacherResponse = {
   message: string;
-  data: TeacherWithPreference;
+  data: Teacher;
 };
 
 type DeleteTeacherResponse = {
@@ -19,9 +19,9 @@ type DeleteTeacherResponse = {
 
 export function useTeacherCreate() {
   const queryClient = useQueryClient();
-  return useMutation<CreateTeacherResponse, Error, CreateTeacherWithShiftInput>({
+  return useMutation<CreateTeacherResponse, Error, CreateTeacherInput>({
     mutationFn: (data) =>
-      fetcher("/api/teachers", {
+      fetcher("/api/teacher", {
         method: "POST",
         body: JSON.stringify(data),
       }),
@@ -33,11 +33,11 @@ export function useTeacherCreate() {
 
 export function useTeacherUpdate() {
   const queryClient = useQueryClient();
-  return useMutation<UpdateTeacherResponse, Error, UpdateTeacherWithShiftInput>({
-    mutationFn: (data) =>
-      fetcher("/api/teachers", {
+  return useMutation<UpdateTeacherResponse, Error, UpdateTeacherInput>({
+    mutationFn: ({ teacherId, ...data }) =>
+      fetcher(`/api/teacher`, {
         method: "PUT",
-        body: JSON.stringify(data),
+        body: JSON.stringify({ teacherId, ...data }),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["teachers"] });
@@ -49,7 +49,7 @@ export function useTeacherDelete() {
   const queryClient = useQueryClient();
   return useMutation<DeleteTeacherResponse, Error, string>({
     mutationFn: (teacherId) =>
-      fetcher(`/api/teachers?teacherId=${teacherId}`, {
+      fetcher(`/api/teacher?teacherId=${teacherId}`, {
         method: "DELETE",
       }),
     onSuccess: () => {

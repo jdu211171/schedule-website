@@ -1,62 +1,51 @@
 import { fetcher } from "@/lib/fetcher";
 import { useQuery } from "@tanstack/react-query";
-import { TeacherWithPreference } from "@/schemas/teacher.schema";
+import { TeacherQuerySchema } from "@/schemas/teacher.schema";
+import { Teacher } from "@prisma/client";
 
 type UseTeachersParams = {
   page?: number;
-  pageSize?: number;
-  studentId?: string;
+  limit?: number;
+  name?: string;
+  sort?: string;
+  order?: "asc" | "desc";
 };
 
 type TeachersResponse = {
-  data: TeacherWithPreference[];
+  data: Teacher[];
   pagination: {
     total: number;
     page: number;
-    pageSize: number;
+    limit: number;
     pages: number;
   };
 };
 
 type SingleTeacherResponse = {
-  data: TeacherWithPreference;
+  data: Teacher;
 };
 
 export function useTeachers(params: UseTeachersParams = {}) {
-  const { page = 1, pageSize = 10, studentId } = params;
+  const { page = 1, limit = 10, name, sort, order } = params;
 
-  const query = {
-    page,
-    pageSize,
-    studentId,
-  };
-
+  const query = TeacherQuerySchema.parse({page, limit, name, sort, order});
   const searchParams = new URLSearchParams(
     Object.entries(query).reduce((acc, [key, value]) => {
-      if (value !== undefined) {
-        acc[key] = String(value);
-      }
+      if (value !== undefined) acc[key] = String(value);
       return acc;
     }, {} as Record<string, string>)
   ).toString();
 
   return useQuery<TeachersResponse>({
-    queryKey: ["teachers", page, pageSize, studentId],
-    queryFn: async () => await fetcher<TeachersResponse>(`/api/teachers?${searchParams}`),
+    queryKey: ["teachers", page, limit, name, sort, order],
+    queryFn: () => fetcher(`/api/teacher?${searchParams}`),
   });
 }
 
 export function useTeacher(teacherId: string) {
-  return useQuery<TeacherWithPreference>({
+  return useQuery<Teacher>({
     queryKey: ["teacher", teacherId],
-    queryFn: async () => await fetcher<SingleTeacherResponse>(`/api/teachers/${teacherId}`).then((res) => res.data),
+    queryFn: () => fetcher<SingleTeacherResponse>(`/api/teacher/${teacherId}`).then((res) => res.data),
     enabled: !!teacherId,
-  });
-}
-
-export function useTeachersCount() {
-  return useQuery({
-    queryKey: ["teachers", "count"],
-    queryFn: () => fetcher<number>("/api/teachers/count"),
   });
 }

@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useTeacherCreate, useTeacherUpdate } from "@/hooks/useTeacherMutation"
 import { CreateTeacherSchema, TeacherSchema, Teacher } from "@/schemas/teacher.schema"
+import type { TeacherFormInput } from "@/schemas/teacher-types"
 import { useEvaluations } from "@/hooks/useEvaluationQuery"
 import { teacherShiftPreferencesSchema, TeacherShiftPreferencesInput } from "@/schemas/teacher-preferences.schema"
 import { TeacherDesiredTimeField } from "./teacher-desired-time-field"
@@ -21,7 +22,7 @@ import { TeacherDesiredTimeField } from "./teacher-desired-time-field"
 interface TeacherFormDialogProps {
     open: boolean
     onOpenChange: (open: boolean) => void
-    teacher?: Teacher | null
+    teacher?: (Teacher & { additionalNotes?: string; desiredTimes?: TeacherShiftPreferencesInput['desiredTimes'] }) | null
 }
 
 export function TeacherFormDialog({ open, onOpenChange, teacher }: TeacherFormDialogProps) {
@@ -36,12 +37,12 @@ export function TeacherFormDialog({ open, onOpenChange, teacher }: TeacherFormDi
   const isEditing = !!teacher
   const formSchema = isEditing ? TeacherSchema : CreateTeacherSchema
 
-    const form = useForm<z.infer<typeof formSchema>>({
+    const form = useForm<TeacherFormInput>({
         resolver: zodResolver(formSchema),
         defaultValues: {
             name: teacher?.name || "",
-            evaluationId: teacher?.evaluationId || null,
-            birthDate: teacher?.birthDate || null,
+            evaluationId: teacher?.evaluationId || undefined,
+            birthDate: teacher?.birthDate || undefined,
             mobileNumber: teacher?.mobileNumber || "",
             email: teacher?.email || "",
             highSchool: teacher?.highSchool || "",
@@ -51,15 +52,17 @@ export function TeacherFormDialog({ open, onOpenChange, teacher }: TeacherFormDi
             enrollmentStatus: teacher?.enrollmentStatus || "",
             otherUniversities: teacher?.otherUniversities || "",
             englishProficiency: teacher?.englishProficiency || "",
-            toeic: teacher?.toeic || null,
-            toefl: teacher?.toefl || null,
+            toeic: teacher?.toeic ?? undefined,
+            toefl: teacher?.toefl ?? undefined,
             mathCertification: teacher?.mathCertification || "",
             kanjiCertification: teacher?.kanjiCertification || "",
             otherCertifications: teacher?.otherCertifications || "",
             notes: teacher?.notes || "",
 
+          ...(isEditing ? {} : {
             username: "",
-            password: "",
+            password: ""
+          }),
         },
     })
 
@@ -67,17 +70,10 @@ export function TeacherFormDialog({ open, onOpenChange, teacher }: TeacherFormDi
     const preferencesForm = useForm<TeacherShiftPreferencesInput>({
         resolver: zodResolver(teacherShiftPreferencesSchema),
         defaultValues: {
-            desiredTimes: teacher?.preference?.desiredTimes || [],
-            additionalNotes: teacher?.preference?.additionalNotes || "",
+            desiredTimes: teacher?.desiredTimes || [],
+            additionalNotes: teacher?.additionalNotes ?? "",
         },
     })
-
-    const formatDate = (date: Date) => {
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-    }
 
     async function onSubmit(values: z.infer<typeof formSchema>) {
         setIsSubmitting(true)
@@ -86,19 +82,15 @@ export function TeacherFormDialog({ open, onOpenChange, teacher }: TeacherFormDi
 
             if (isEditing && teacher) {
                 await updateTeacherMutation.mutateAsync({
-                    teacher: {
-                        teacherId: teacher.teacherId,
-                        ...values,
-                    },
-                    preferences
+                    ...values,
+                    teacherId: teacher.teacherId,
+                    ...preferences
                 })
             } else {
                 await createTeacherMutation.mutateAsync({
-                    teacher: {
-                        ...values as z.infer<typeof CreateTeacherSchema>,
-                        username: values.email || "",
-                    },
-                    preferences
+                    ...values,
+                    ...(isEditing ? {} : { username: values.email || "" }),
+                    ...preferences
                 })
               }
             onOpenChange(false)
@@ -174,28 +166,28 @@ export function TeacherFormDialog({ open, onOpenChange, teacher }: TeacherFormDi
                                         </FormItem>
                                     )}
                                 />
-                                <FormField
-                                    control={form.control}
-                                    name="birthDate"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>生年月日</FormLabel>
-                                            <FormControl>
-                                                <Input
-                                                    type="date"
-                                                    {...field}
-                                                    value={field.value instanceof Date ? formatDate(field.value) : ""}
-                                                    onChange={(e) => {
-                                                        const dateValue = e.target.value ? new Date(e.target.value) : null;
-                                                        field.onChange(dateValue);
-                                                    }}
-                                                />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                                <FormField
+                              <FormField
+                                control={form.control}
+                                name="birthDate"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>生年月日</FormLabel>
+                                    <FormControl>
+                                      <Input
+                                        type="date"
+                                        {...field}
+                                        value={field.value ?? ""}
+                                        onChange={(e) => {
+                                          field.onChange(e.target.value); // всегда строка
+                                        }}
+                                      />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+
+                              <FormField
                                     control={form.control}
                                     name="mobileNumber"
                                     render={({ field }) => (
