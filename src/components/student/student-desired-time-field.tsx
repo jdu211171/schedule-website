@@ -1,14 +1,16 @@
 import { useState } from "react"
 import { UseFormReturn } from "react-hook-form"
-import { StudentPreferencesInput } from "@/schemas/student-preference.schema"
 import { Button } from "@/components/ui/button"
 import { FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DesiredTimeInput } from "@/schemas/desired-time.schema"
 
+// Update to use the correct type
 interface StudentDesiredTimeFieldProps {
-  form: UseFormReturn<StudentPreferencesInput>
+  form: UseFormReturn<{
+    desiredTimes: DesiredTimeInput[]
+  }>
 }
 
 const dayOfWeekMap = {
@@ -105,7 +107,7 @@ export const StudentDesiredTimeField = ({ form }: StudentDesiredTimeFieldProps) 
                     return;
                   }
 
-                  const newTime: DesiredTimeInput = {
+                  const newTime = {
                     dayOfWeek: selectedWeekday,
                     startTime,
                     endTime,

@@ -681,59 +681,84 @@ export async function DELETE(request: Request) {
     // Check if student exists
     const existingStudent = await prisma.student.findUnique({
       where: { studentId },
+      include: {
+        StudentPreference: true,
+        studentClassEnrollments: true,
+        templateStudentAssignments: true,
+        ClassSession: true,
+      },
     });
 
     if (!existingStudent) {
       return Response.json({ error: "Student not found" }, { status: 404 });
     }
 
-    // Check for related data before deletion
-    const hasRelatedClassSessions = await prisma.classSession.findFirst({
-      where: { studentId },
-    });
+    // Begin transaction to delete student and all related data
+    await prisma.$transaction(async (tx) => {
+      // 1. Delete related data first
+      if (
+        existingStudent.StudentPreference &&
+        existingStudent.StudentPreference.length > 0
+      ) {
+        for (const pref of existingStudent.StudentPreference) {
+          // Delete any preference subjects
+          await tx.studentPreferenceSubject.deleteMany({
+            where: { studentPreferenceId: pref.preferenceId },
+          });
 
-    const hasRelatedEnrollments = await prisma.studentClassEnrollment.findFirst(
-      {
-        where: { studentId },
+          // Delete any preference teachers
+          await tx.studentPreferenceTeacher.deleteMany({
+            where: { studentPreferenceId: pref.preferenceId },
+          });
+
+          // Delete any preference time slots
+          await tx.studentPreferenceTimeSlot.deleteMany({
+            where: { preferenceId: pref.preferenceId },
+          });
+        }
+
+        // Delete the preferences themselves
+        await tx.studentPreference.deleteMany({
+          where: { studentId },
+        });
       }
-    );
 
-    const hasRelatedAssignments =
-      await prisma.templateStudentAssignment.findFirst({
+      // Delete enrollments
+      await tx.studentClassEnrollment.deleteMany({
         where: { studentId },
       });
 
-    const hasRelatedPreferences = await prisma.studentPreference.findFirst({
-      where: { studentId },
+      // Delete template assignments
+      await tx.templateStudentAssignment.deleteMany({
+        where: { studentId },
+      });
+
+      // Delete class sessions
+      await tx.classSession.deleteMany({
+        where: { studentId },
+      });
+
+      // 2. Delete the student
+      await tx.student.delete({
+        where: { studentId },
+      });
+
+      // 3. Finally delete the user
+      await tx.user.delete({
+        where: { id: existingStudent.userId },
+      });
     });
-
-    if (
-      hasRelatedClassSessions ||
-      hasRelatedEnrollments ||
-      hasRelatedAssignments ||
-      hasRelatedPreferences
-    ) {
-      return Response.json(
-        {
-          error:
-            "Student has related data and cannot be deleted (sessions, enrollments, assignments, or preferences exist)",
-        },
-        { status: 400 }
-      );
-    }
-
-    // Delete the student and associated user
-    await prisma.$transaction([
-      prisma.student.delete({ where: { studentId } }),
-      prisma.user.delete({ where: { id: existingStudent.userId } }),
-    ]);
 
     return Response.json({
-      message: "Student deleted successfully",
+      message: "Student and associated data deleted successfully",
     });
-  } catch {
+  } catch (error) {
+    console.error("Error deleting student:", error);
     return Response.json(
-      { error: "Failed to delete student" },
+      {
+        error: "Failed to delete student",
+        message: error instanceof Error ? error.message : "Unknown error",
+      },
       { status: 500 }
     );
   }

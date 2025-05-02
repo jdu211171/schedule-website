@@ -65,7 +65,7 @@ export function StudentTable() {
       accessorKey: "schoolType",
       header: "学校タイプ",
       cell: ({ row }) => {
-        const value = row.original.schoolType;
+        const value = row.original.schoolType as string | null;
         if (value === "PRIVATE") return "私立";
         if (value === "PUBLIC") return "公立";
         return "-";
@@ -75,7 +75,7 @@ export function StudentTable() {
       accessorKey: "examSchoolType",
       header: "受験校タイプ",
       cell: ({ row }) => {
-        const value = row.original.examSchoolType;
+        const value = row.original.examSchoolType as string | null;
         if (value === "PRIVATE") return "私立";
         if (value === "PUBLIC") return "公立";
         return "-";
@@ -109,7 +109,7 @@ export function StudentTable() {
       header: "入学日",
       cell: ({ row }) =>
         row.original.enrollmentDate
-          ? row.original.enrollmentDate.toLocaleDateString()
+          ? new Date(row.original.enrollmentDate).toLocaleDateString()
           : "-",
     },
     {
@@ -117,7 +117,7 @@ export function StudentTable() {
       header: "生年月日",
       cell: ({ row }) =>
         row.original.birthDate
-          ? row.original.birthDate.toLocaleDateString()
+          ? new Date(row.original.birthDate).toLocaleDateString()
           : "-",
     },
     {

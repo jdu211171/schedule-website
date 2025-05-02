@@ -21,6 +21,8 @@ type CreateStudentInput = {
       startTime: string;
       endTime: string;
     }[];
+    notes?: string;
+    classTypeId?: string;
   };
 };
 
@@ -43,6 +45,8 @@ type UpdateStudentInput = {
       startTime: string;
       endTime: string;
     }[];
+    notes?: string;
+    classTypeId?: string;
   };
 };
 
