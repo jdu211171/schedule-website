@@ -7,6 +7,7 @@ import {
   UpdateRegularClassTemplateSchema,
   TemplateQuerySchema,
 } from "@/schemas/regular-class-template.schema";
+import { DayOfWeek } from "@prisma/client";
 import { ZodError } from "zod";
 
 export async function GET(request: Request) {
@@ -19,8 +20,315 @@ export async function GET(request: Request) {
   const action = searchParams.get("action");
 
   try {
+    // New actions for step-by-step template creation flow
+    if (action === "compatible-teachers") {
+      const studentId = searchParams.get("studentId");
+      if (!studentId)
+        return Response.json({ error: "studentId required" }, { status: 400 });
+
+      const student = await prisma.student.findUnique({
+        where: { studentId },
+        include: {
+          StudentPreference: {
+            include: {
+              teachers: true,
+              subjects: true,
+            },
+          },
+        },
+      });
+
+      if (!student) {
+        return Response.json({ error: "Student not found" }, { status: 404 });
+      }
+
+      const preferredTeacherIds = student.StudentPreference.flatMap((pref) =>
+        pref.teachers.map((t) => t.teacherId)
+      );
+
+      const preferredSubjectIds = student.StudentPreference.flatMap((pref) =>
+        pref.subjects.map((s) => s.subjectId)
+      );
+
+      const preferredTeachers = await prisma.teacher.findMany({
+        where: { teacherId: { in: preferredTeacherIds } },
+        include: {
+          teacherSubjects: { include: { subject: true } },
+          evaluation: true,
+        },
+      });
+
+      const subjectTeachers = await prisma.teacher.findMany({
+        where: {
+          teacherSubjects: { some: { subjectId: { in: preferredSubjectIds } } },
+          teacherId: { notIn: preferredTeacherIds },
+        },
+        include: {
+          teacherSubjects: { include: { subject: true } },
+          evaluation: true,
+        },
+      });
+
+      const otherTeachers = await prisma.teacher.findMany({
+        where: {
+          teacherId: {
+            notIn: [
+              ...preferredTeacherIds,
+              ...subjectTeachers.map((t) => t.teacherId),
+            ],
+          },
+        },
+        include: {
+          teacherSubjects: { include: { subject: true } },
+          evaluation: true,
+        },
+      });
+
+      return Response.json({
+        data: {
+          preferredTeachers,
+          subjectTeachers,
+          otherTeachers,
+          allTeachers: [
+            ...preferredTeachers,
+            ...subjectTeachers,
+            ...otherTeachers,
+          ],
+        },
+      });
+    } else if (action === "compatible-students") {
+      const teacherId = searchParams.get("teacherId");
+      if (!teacherId)
+        return Response.json({ error: "teacherId required" }, { status: 400 });
+
+      const teacher = await prisma.teacher.findUnique({
+        where: { teacherId },
+        include: { teacherSubjects: true },
+      });
+
+      if (!teacher) {
+        return Response.json({ error: "Teacher not found" }, { status: 404 });
+      }
+
+      const teacherSubjectIds = teacher.teacherSubjects.map(
+        (ts) => ts.subjectId
+      );
+
+      const preferredStudents = await prisma.student.findMany({
+        where: {
+          StudentPreference: { some: { teachers: { some: { teacherId } } } },
+        },
+        include: {
+          grade: true,
+          StudentPreference: {
+            include: {
+              subjects: { include: { subject: true } },
+              teachers: { include: { teacher: true } },
+              timeSlots: true,
+            },
+          },
+        },
+      });
+
+      const subjectStudents = await prisma.student.findMany({
+        where: {
+          StudentPreference: {
+            some: {
+              subjects: { some: { subjectId: { in: teacherSubjectIds } } },
+            },
+          },
+          studentId: { notIn: preferredStudents.map((s) => s.studentId) },
+        },
+        include: {
+          grade: true,
+          StudentPreference: {
+            include: {
+              subjects: { include: { subject: true } },
+              teachers: { include: { teacher: true } },
+              timeSlots: true,
+            },
+          },
+        },
+      });
+
+      const otherStudents = await prisma.student.findMany({
+        where: {
+          studentId: {
+            notIn: [
+              ...preferredStudents.map((s) => s.studentId),
+              ...subjectStudents.map((s) => s.studentId),
+            ],
+          },
+        },
+        include: {
+          grade: true,
+          StudentPreference: {
+            include: {
+              subjects: { include: { subject: true } },
+              teachers: { include: { teacher: true } },
+              timeSlots: true,
+            },
+          },
+        },
+      });
+
+      return Response.json({
+        data: {
+          preferredStudents,
+          subjectStudents,
+          otherStudents,
+          allStudents: [
+            ...preferredStudents,
+            ...subjectStudents,
+            ...otherStudents,
+          ],
+        },
+      });
+    } else if (action === "compatible-subjects") {
+      const teacherId = searchParams.get("teacherId");
+      const studentId = searchParams.get("studentId");
+
+      if (!teacherId || !studentId) {
+        return Response.json(
+          { error: "teacherId and studentId required" },
+          { status: 400 }
+        );
+      }
+
+      const teacher = await prisma.teacher.findUnique({
+        where: { teacherId },
+        include: { teacherSubjects: { include: { subject: true } } },
+      });
+
+      const student = await prisma.student.findUnique({
+        where: { studentId },
+        include: {
+          StudentPreference: {
+            include: { subjects: { include: { subject: true } } },
+          },
+        },
+      });
+
+      if (!teacher || !student) {
+        return Response.json(
+          { error: "Teacher or student not found" },
+          { status: 404 }
+        );
+      }
+
+      const studentSubjectIds = student.StudentPreference.flatMap((pref) =>
+        pref.subjects.map((s) => s.subjectId)
+      );
+
+      const commonSubjects = teacher.teacherSubjects
+        .filter((ts) => studentSubjectIds.includes(ts.subjectId))
+        .map((ts) => ts.subject);
+
+      const otherSubjects = teacher.teacherSubjects
+        .filter((ts) => !studentSubjectIds.includes(ts.subjectId))
+        .map((ts) => ts.subject);
+
+      return Response.json({
+        data: {
+          commonSubjects,
+          otherSubjects,
+          allSubjects: [...commonSubjects, ...otherSubjects],
+        },
+      });
+    } else if (action === "available-time-slots") {
+      const teacherId = searchParams.get("teacherId");
+      const studentId = searchParams.get("studentId");
+
+      if (!teacherId || !studentId) {
+        return Response.json(
+          { error: "teacherId and studentId required" },
+          { status: 400 }
+        );
+      }
+
+      const teacherShifts = await prisma.teacherShiftReference.findMany({
+        where: { teacherId },
+      });
+
+      const studentPrefs = await prisma.studentPreferenceTimeSlot.findMany({
+        where: { studentPreference: { studentId } },
+      });
+
+      const shiftsByDay: Record<string, (typeof teacherShifts)[number][]> = {};
+      teacherShifts.forEach((shift) => {
+        if (!shiftsByDay[shift.dayOfWeek]) {
+          shiftsByDay[shift.dayOfWeek] = [];
+        }
+        shiftsByDay[shift.dayOfWeek].push(shift);
+      });
+
+      const prefsByDay: Record<string, (typeof studentPrefs)[number][]> = {};
+      studentPrefs.forEach((pref) => {
+        if (!prefsByDay[pref.dayOfWeek]) {
+          prefsByDay[pref.dayOfWeek] = [];
+        }
+        prefsByDay[pref.dayOfWeek].push(pref);
+      });
+
+      const availableSlots = Object.entries(shiftsByDay).flatMap(
+        ([day, shifts]) => {
+          const studentPrefs = prefsByDay[day] || [];
+          return shifts.map((shift) => ({
+            dayOfWeek: day,
+            startTime: shift.startTime,
+            endTime: shift.endTime,
+            isPreferredByStudent: studentPrefs.some(
+              (pref) =>
+                pref.startTime <= shift.endTime &&
+                pref.endTime >= shift.startTime
+            ),
+          }));
+        }
+      );
+
+      return Response.json({
+        data: {
+          availableSlots,
+          teacherShifts,
+          studentPreferences: studentPrefs,
+        },
+      });
+    } else if (action === "available-booths") {
+      const dayOfWeek = searchParams.get("dayOfWeek");
+      const startTime = searchParams.get("startTime");
+      const endTime = searchParams.get("endTime");
+
+      if (!dayOfWeek || !startTime || !endTime) {
+        return Response.json(
+          { error: "dayOfWeek, startTime, endTime required" },
+          { status: 400 }
+        );
+      }
+
+      const start = new Date(`1970-01-01T${startTime}`);
+      const end = new Date(`1970-01-01T${endTime}`);
+
+      const booths = await prisma.booth.findMany({
+        where: {
+          status: true,
+          NOT: {
+            regularClassTemplates: {
+              some: {
+                dayOfWeek: dayOfWeek as DayOfWeek,
+                startTime: { lt: end },
+                endTime: { gt: start },
+              },
+            },
+          },
+        },
+      });
+
+      return Response.json({
+        data: booths,
+      });
+    }
     // Special endpoint for finding available slots with filtering
-    if (action === "available-slots") {
+    else if (action === "available-slots") {
       const filterParams = Object.fromEntries(searchParams.entries());
       const filter = AvailabilityFilterSchema.parse(filterParams);
 
@@ -321,162 +629,103 @@ export async function POST(request: Request) {
     const body = await request.json();
     const isBatch = Array.isArray(body);
 
-    // Parse templates (single or batch)
-    let templates = [];
+    // Handle single or batch template creation
     if (isBatch) {
-      templates = BatchCreateRegularClassTemplateSchema.parse(body);
-    } else {
-      templates = [CreateRegularClassTemplateSchema.parse(body)];
-    }
+      const templates = BatchCreateRegularClassTemplateSchema.parse(body);
 
-    // Prepare time objects for conflict detection
-    const templatesWithTimeObjects = templates.map((template) => {
-      const startTime = new Date(`1970-01-01T${template.startTime}`);
-      const endTime = new Date(`1970-01-01T${template.endTime}`);
-      return {
-        ...template,
-        startTimeObj: startTime,
-        endTimeObj: endTime,
-      };
-    });
+      // Process each template in a transaction
+      const results = await prisma.$transaction(
+        templates.map((template) => {
+          const {
+            studentIds,
+            startTime,
+            endTime,
+            startDate,
+            endDate,
+            ...templateData
+          } = template;
 
-    // Check for booth conflicts across all templates
-    const boothConflicts = await Promise.all(
-      templatesWithTimeObjects.map(async (template) => {
-        const existingTemplates = await prisma.regularClassTemplate.findMany({
-          where: {
-            boothId: template.boothId,
-            dayOfWeek: template.dayOfWeek,
-            startTime: { lt: template.endTimeObj },
-            endTime: { gt: template.startTimeObj },
-          },
-        });
-
-        return {
-          template,
-          conflicts: existingTemplates.length > 0 ? existingTemplates : null,
-        };
-      })
-    );
-
-    // Check for teacher conflicts across all templates
-    const teacherConflicts = await Promise.all(
-      templatesWithTimeObjects.map(async (template) => {
-        const existingTemplates = await prisma.regularClassTemplate.findMany({
-          where: {
-            teacherId: template.teacherId,
-            dayOfWeek: template.dayOfWeek,
-            startTime: { lt: template.endTimeObj },
-            endTime: { gt: template.startTimeObj },
-          },
-        });
-
-        return {
-          template,
-          conflicts: existingTemplates.length > 0 ? existingTemplates : null,
-        };
-      })
-    );
-
-    // Check for student conflicts across all templates
-    const studentConflicts = await Promise.all(
-      templatesWithTimeObjects.flatMap((template) =>
-        template.studentIds.map(async (studentId) => {
-          const existingTemplates = await prisma.regularClassTemplate.findMany({
-            where: {
-              dayOfWeek: template.dayOfWeek,
-              startTime: { lt: template.endTimeObj },
-              endTime: { gt: template.startTimeObj },
+          // Convert time strings to Date objects
+          return prisma.regularClassTemplate.create({
+            data: {
+              ...templateData,
+              startTime: new Date(`1970-01-01T${startTime}`),
+              endTime: new Date(`1970-01-01T${endTime}`),
+              ...(startDate ? { startDate: new Date(startDate) } : {}),
+              ...(endDate ? { endDate: new Date(endDate) } : {}),
               templateStudentAssignments: {
-                some: { studentId },
+                create: studentIds.map((studentId) => ({
+                  studentId,
+                })),
+              },
+            },
+            include: {
+              teacher: true,
+              subject: true,
+              booth: true,
+              templateStudentAssignments: {
+                include: {
+                  student: true,
+                },
               },
             },
           });
-
-          return {
-            template,
-            studentId,
-            conflicts: existingTemplates.length > 0 ? existingTemplates : null,
-          };
         })
-      )
-    );
+      );
 
-    // Collect all conflicts
-    const allConflicts = {
-      booth: boothConflicts.filter((c) => c.conflicts !== null),
-      teacher: teacherConflicts.filter((c) => c.conflicts !== null),
-      student: studentConflicts.filter((c) => c.conflicts !== null),
-    };
-
-    // If any conflicts found, return error with details
-    if (
-      allConflicts.booth.length > 0 ||
-      allConflicts.teacher.length > 0 ||
-      allConflicts.student.length > 0
-    ) {
       return Response.json(
         {
-          error: "Scheduling conflict detected",
-          conflicts: allConflicts,
+          message: `${results.length} templates created successfully`,
+          data: results,
         },
-        { status: 409 }
+        { status: 201 }
+      );
+    } else {
+      // Single template creation
+      const template = CreateRegularClassTemplateSchema.parse(body);
+      const {
+        studentIds,
+        startTime,
+        endTime,
+        startDate,
+        endDate,
+        ...templateData
+      } = template;
+
+      // Convert time strings to Date objects
+      const createdTemplate = await prisma.regularClassTemplate.create({
+        data: {
+          ...templateData,
+          startTime: new Date(`1970-01-01T${startTime}`),
+          endTime: new Date(`1970-01-01T${endTime}`),
+          ...(startDate ? { startDate: new Date(startDate) } : {}),
+          ...(endDate ? { endDate: new Date(endDate) } : {}),
+          templateStudentAssignments: {
+            create: studentIds.map((studentId) => ({
+              studentId,
+            })),
+          },
+        },
+        include: {
+          teacher: true,
+          subject: true,
+          booth: true,
+          templateStudentAssignments: {
+            include: {
+              student: true,
+            },
+          },
+        },
+      });
+
+      return Response.json(
+        {
+          message: "Template created successfully",
+          data: createdTemplate,
+        },
+        { status: 201 }
       );
     }
-
-    // If no conflicts, proceed with creation in a transaction
-    const results = await prisma.$transaction(
-      templates.map((template) => {
-        const {
-          studentIds,
-          startTime,
-          endTime,
-          startDate,
-          endDate,
-          ...templateData
-        } = template;
-
-        // Convert time strings to Date objects
-        return prisma.regularClassTemplate.create({
-          data: {
-            ...templateData,
-            startTime: new Date(`1970-01-01T${startTime}`),
-            endTime: new Date(`1970-01-01T${endTime}`),
-            ...(startDate ? { startDate: new Date(startDate) } : {}),
-            ...(endDate ? { endDate: new Date(endDate) } : {}),
-            templateStudentAssignments: {
-              create: studentIds.map((studentId) => ({
-                studentId,
-              })),
-            },
-          },
-          include: {
-            teacher: true,
-            subject: true,
-            booth: true,
-            templateStudentAssignments: {
-              include: {
-                student: true,
-              },
-            },
-          },
-        });
-      }),
-      {
-        // Set transaction isolation level to prevent race conditions
-        isolationLevel: "Serializable",
-      }
-    );
-
-    return Response.json(
-      {
-        message: `${results.length} template${
-          results.length === 1 ? "" : "s"
-        } created successfully`,
-        data: results,
-      },
-      { status: 201 }
-    );
   } catch (error) {
     if (error instanceof ZodError) {
       return Response.json(
@@ -486,10 +735,7 @@ export async function POST(request: Request) {
     }
     console.error("Error creating template:", error);
     return Response.json(
-      {
-        error: "Failed to create template",
-        message: error instanceof Error ? error.message : "Unknown error",
-      },
+      { error: "Failed to create template" },
       { status: 500 }
     );
   }
@@ -547,142 +793,49 @@ export async function PUT(request: Request) {
       updateData.endDate = new Date(endDate);
     }
 
-    // Check for conflicts if time, day, booth, or teacher is changing
-    if (
-      startTime ||
-      endTime ||
-      data.dayOfWeek ||
-      data.boothId ||
-      data.teacherId
-    ) {
-      const startTimeObj = startTime
-        ? new Date(`1970-01-01T${startTime}`)
-        : existingTemplate.startTime;
-
-      const endTimeObj = endTime
-        ? new Date(`1970-01-01T${endTime}`)
-        : existingTemplate.endTime;
-
-      const dayOfWeek = data.dayOfWeek || existingTemplate.dayOfWeek;
-      const boothId = data.boothId || existingTemplate.boothId;
-      const teacherId = data.teacherId || existingTemplate.teacherId;
-
-      // Check booth conflicts
-      const boothConflicts = await prisma.regularClassTemplate.findMany({
-        where: {
-          boothId,
-          dayOfWeek,
-          startTime: { lt: endTimeObj },
-          endTime: { gt: startTimeObj },
-          NOT: { templateId },
-        },
+    // Update template and student assignments in a transaction
+    const result = await prisma.$transaction(async (tx) => {
+      // Update the template itself
+      await tx.regularClassTemplate.update({
+        where: { templateId },
+        data: updateData,
       });
 
-      // Check teacher conflicts
-      const teacherConflicts = await prisma.regularClassTemplate.findMany({
-        where: {
-          teacherId,
-          dayOfWeek,
-          startTime: { lt: endTimeObj },
-          endTime: { gt: startTimeObj },
-          NOT: { templateId },
-        },
-      });
+      // Update student assignments if provided
+      if (studentIds) {
+        // Delete existing assignments
+        await tx.templateStudentAssignment.deleteMany({
+          where: { templateId },
+        });
 
-      // Check student conflicts if student IDs are provided
-      const studentConflicts = [];
-      if (studentIds && studentIds.length > 0) {
-        for (const studentId of studentIds) {
-          const conflicts = await prisma.regularClassTemplate.findMany({
-            where: {
-              dayOfWeek,
-              startTime: { lt: endTimeObj },
-              endTime: { gt: startTimeObj },
-              templateStudentAssignments: {
-                some: { studentId },
+        // Create new assignments
+        await Promise.all(
+          studentIds.map((studentId) =>
+            tx.templateStudentAssignment.create({
+              data: {
+                templateId,
+                studentId,
               },
-              NOT: { templateId },
-            },
-          });
-
-          if (conflicts.length > 0) {
-            studentConflicts.push({ studentId, conflicts });
-          }
-        }
-      }
-
-      // Combine all conflicts
-      const allConflicts = {
-        booth: boothConflicts,
-        teacher: teacherConflicts,
-        student: studentConflicts,
-      };
-
-      // Return error if conflicts found
-      if (
-        boothConflicts.length > 0 ||
-        teacherConflicts.length > 0 ||
-        studentConflicts.length > 0
-      ) {
-        return Response.json(
-          {
-            error: "Update would create scheduling conflicts",
-            conflicts: allConflicts,
-          },
-          { status: 409 }
+            })
+          )
         );
       }
-    }
 
-    // Update template and student assignments in a transaction
-    const result = await prisma.$transaction(
-      async (tx) => {
-        // Update the template itself
-        await tx.regularClassTemplate.update({
-          where: { templateId },
-          data: updateData,
-        });
-
-        // Update student assignments if provided
-        if (studentIds) {
-          // Delete existing assignments
-          await tx.templateStudentAssignment.deleteMany({
-            where: { templateId },
-          });
-
-          // Create new assignments
-          await Promise.all(
-            studentIds.map((studentId) =>
-              tx.templateStudentAssignment.create({
-                data: {
-                  templateId,
-                  studentId,
-                },
-              })
-            )
-          );
-        }
-
-        // Return updated template with related data
-        return tx.regularClassTemplate.findUnique({
-          where: { templateId },
-          include: {
-            teacher: true,
-            subject: true,
-            booth: true,
-            templateStudentAssignments: {
-              include: {
-                student: true,
-              },
+      // Return updated template with related data
+      return tx.regularClassTemplate.findUnique({
+        where: { templateId },
+        include: {
+          teacher: true,
+          subject: true,
+          booth: true,
+          templateStudentAssignments: {
+            include: {
+              student: true,
             },
           },
-        });
-      },
-      {
-        // Set transaction isolation level to prevent race conditions
-        isolationLevel: "Serializable",
-      }
-    );
+        },
+      });
+    });
 
     return Response.json({
       message: "Template updated successfully",
