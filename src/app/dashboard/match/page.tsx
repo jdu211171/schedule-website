@@ -1,44 +1,35 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import TeacherTable from "../../../components/match/teacher-table";
 import StudentTable from "../../../components/match/student-table";
 import LessonScheduleModal from "../../../components/match/lesson-schedule-modal";
 import { Button } from "@/components/ui/button";
-import { useTeachers } from "@/hooks/useTeacherQuery";
-import { useStudents } from "@/hooks/useStudentQuery";
-import { useSubjects } from "@/hooks/useSubjectQuery";
-import { useGrades } from "@/hooks/useGradeQuery";
-import { useEvaluations } from "@/hooks/useEvaluationQuery";
-import { useTeacherSubjects } from "@/hooks/useTeacherSubjectQuery";
-import { useClassSessions } from "@/hooks/useClassSessionQuery";
-import { useStudentTypes } from "@/hooks/useStudentTypeQuery";
 import { Skeleton } from "@/components/ui/skeleton";
-import { StudentWithPreference } from "@/schemas/student.schema";
-import { Grade } from "@/schemas/grade.schema";
-import { Subject } from "@/schemas/subject.schema";
-import { Teacher } from "@/schemas/teacher.schema";
-import { TeacherSubject } from "@/schemas/teacherSubject.schema";
-import { Evaluation } from "@/schemas/evaluation.schema";
+
+// Import hooks
+import { useMatchTeachers } from "@/components/match/hooks/useMatchTeachers";
+import { useMatchStudents } from "@/components/match/hooks/useMatchStudents";
+import { useMatchSubjects } from "@/components/match/hooks/useMatchSubjects";
+import { useMatchGrades } from "@/components/match/hooks/useMatchGrades";
+import { useMatchEvaluations } from "@/components/match/hooks/useMatchEvaluations";
+import { useMatchTeacherSubjects } from "@/components/match/hooks/useMatchTeacherSubjects";
+import { useMatchClassSessions } from "@/components/match/hooks/useMatchClassSessions";
+import { useMatchStudentTypes } from "@/components/match/hooks/useMatchStudentTypes";
+import { useCompatibleTeachers } from "@/components/match/hooks/useCompatibleTeachers";
+import { useCompatibleStudents } from "@/components/match/hooks/useCompatibleStudents";
+
+// Import types
 import {
-  useFilteredStudents,
-  useFilteredTeachers,
-} from "@/components/match/use-filtered-entities";
-import { ClassSession as PrismaClassSession, StudentType } from "@prisma/client";
-
-
-// ------------------------------ 型定義 ------------------------------
-// Prisma の ClassSession に UI で必要なプロパティを追加
-export type ClassSession = PrismaClassSession & {
-  id?: string;
-  subject?: Subject | null;
-  dayOfWeek?: string | number;
-  name?: string;
-  status?: string;
-  teacherName?: string;
-  studentName?: string;
-  room?: string;
-};
+  StudentWithPreference,
+  Grade,
+  Subject,
+  Teacher,
+  TeacherSubject,
+  Evaluation,
+  StudentType,
+  ClassSession
+} from "@/components/match/types";
 
 /* ----------------------------- 画面コンポーネント ----------------------------- */
 export default function LessonManagementPage() {
@@ -46,74 +37,169 @@ export default function LessonManagementPage() {
   const [selectedTeacherId, setSelectedTeacherId] = useState<string | null>(null);
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [firstSelection, setFirstSelection] =
-    useState<"teacher" | "student" | null>(null);
-  const { data: teachers = [], isLoading: teachersLoading } = useTeachers({
+  const [firstSelection, setFirstSelection] = useState<"teacher" | "student" | null>(null);
+
+  /* -------------------- フィルタリング結果のキャッシュ -------------------- */
+  const [cachedFilteredTeachers, setCachedFilteredTeachers] = useState<Teacher[]>([]);
+  const [cachedFilteredStudents, setCachedFilteredStudents] = useState<StudentWithPreference[]>([]);
+  const [studentKibouSubjects, setStudentKibouSubjects] = useState<Subject[]>([]);
+  const [teacherKibouSubjects, setTeacherKibouSubjects] = useState<Subject[]>([]);
+  
+  /* -------------------- 互換性読み込みインジケータ -------------------- */
+  const [isLoadingTeacherCompatibility, setIsLoadingTeacherCompatibility] = useState(false);
+  const [isLoadingStudentCompatibility, setIsLoadingStudentCompatibility] = useState(false);
+
+  /* -------------------- データ取得 -------------------- */
+  const { data: teachersData, isLoading: teachersLoading } = useMatchTeachers({
     page: 1,
-    pageSize: 1000,
+    limit: 100, // より多くのデータを取得するために制限を増やす
   });
-  const {
-    data: studentsFromApi = [],
-    isLoading: studentsLoading,
-  } = useStudents({
+  const teachers = teachersData?.data || [];
+
+  const { data: studentsData, isLoading: studentsLoading } = useMatchStudents({
     page: 1,
-    pageSize: 1000,
+    limit: 100, // 制限を増やす
   });
-  const { data: subjects = [], isLoading: subjectsLoading } = useSubjects(1, 1000);
-  const { data: grades = [], isLoading: gradesLoading } = useGrades(1, 1000);
-  const { data: evaluations = [], isLoading: evaluationsLoading } =
-    useEvaluations(1, 1000);
-  const {
-    data: teacherSubjects = [],
-    isLoading: teacherSubjectsLoading,
-  } = useTeacherSubjects(1, 1000);
-  const {
-    data: classSessions = [],
-    isLoading: classSessionsLoading,
-  } = useClassSessions({});
-  const { data: studentTypes = [], isLoading: studentTypesLoading } =
-    useStudentTypes(1, 1000);
+  const studentsFromApi = useMemo(() => studentsData?.data || [], [studentsData]);
+
+  const { data: subjectsData, isLoading: subjectsLoading } = useMatchSubjects({
+    page: 1,
+    limit: 100,
+  });
+  const subjects = useMemo(() => subjectsData?.data || [], [subjectsData]);
+
+  const { data: gradesData, isLoading: gradesLoading } = useMatchGrades({
+    page: 1,
+    limit: 100,
+  });
+  const grades = gradesData?.data || [];
+
+  const { data: evaluationsData, isLoading: evaluationsLoading } = useMatchEvaluations({
+    page: 1,
+    limit: 100,
+  });
+  const evaluations = evaluationsData?.data || [];
+
+  const { data: teacherSubjectsData, isLoading: teacherSubjectsLoading } = useMatchTeacherSubjects({
+    page: 1,
+    limit: 100,
+  });
+  const teacherSubjects = useMemo(() => teacherSubjectsData?.data || [], [teacherSubjectsData]);
+  const { data: classSessionsData, isLoading: classSessionsLoading } = useMatchClassSessions({});
+  const classSessions = useMemo(() => classSessionsData?.data || [], [classSessionsData]);
+
+  const { data: studentTypesData, isLoading: studentTypesLoading } = useMatchStudentTypes({
+    page: 1,
+    limit: 100,
+  });
+  const studentTypes = studentTypesData?.data || [];
 
   /* -------------------- 生徒データ整形 -------------------- */
-  const students: StudentWithPreference[] = studentsFromApi.map((student) => ({
+  const students = useMemo(() => studentsFromApi.map((student) => ({
     ...student,
     preference: student.studentRegularPreferences?.[0]
       ? {
           preferredSubjects: student.studentRegularPreferences[0].preferredSubjects,
           preferredTeachers: student.studentRegularPreferences[0].preferredTeachers,
           desiredTimes: Array.isArray(student.studentRegularPreferences[0].preferredWeekdaysTimes)
-            ? student.studentRegularPreferences[0].preferredWeekdaysTimes as {
-                dayOfWeek: string;
-                startTime: string;
-                endTime: string;
-              }[]
+            ? student.studentRegularPreferences[0].preferredWeekdaysTimes
             : [],
           additionalNotes: student.studentRegularPreferences[0].notes ?? null,
         }
       : null,
-  }));
+  })), [studentsFromApi]);
 
-  /* -------------------- フィルタリング -------------------- */
-  const { filteredTeachers, kibouSubjects: studentKibouSubjects } =
-    useFilteredTeachers(
-      teachers as Teacher[],
-      selectedStudentId,
-      students,
-      subjects as Subject[],
-      teacherSubjects as TeacherSubject[],
-    );
+  /* -------------------- 科目の取得ロジック -------------------- */
+  // 学生の科目を取得する関数
+  const getStudentSubjects = useCallback((studentId: string | null): Subject[] => {
+    if (!studentId) return [];
+    
+    const student = students.find(s => s.studentId === studentId);
+    if (!student || !student.preference || !student.preference.preferredSubjects) return [];
+    
+    const preferredSubjectIds = student.preference.preferredSubjects;
+    return subjects.filter(subject => preferredSubjectIds.includes(subject.subjectId));
+  }, [students, subjects]);
 
-  const { filteredStudents, kibouSubjects: teacherKibouSubjects } =
-    useFilteredStudents(
-      students,
-      selectedTeacherId,
-      teachers as Teacher[],
-      subjects as Subject[],
-      teacherSubjects as TeacherSubject[],
+  // 先生の科目を取得する関数
+  const getTeacherSubjects = useCallback((teacherId: string | null): Subject[] => {
+    if (!teacherId) return [];
+    
+    const teacherSubjectsData = teacherSubjects.filter(
+      (ts: TeacherSubject) => ts.teacherId === teacherId
     );
+    const subjectIds = teacherSubjectsData.map((ts: TeacherSubject) => ts.subjectId);
+    
+    return subjects.filter(subject => subjectIds.includes(subject.subjectId));
+  }, [teacherSubjects, subjects]);
+
+  /* -------------------- 互換性機能 -------------------- */
+  const { 
+    data: compatibleTeachersData, 
+    isLoading: compatibleTeachersLoading 
+  } = useCompatibleTeachers(selectedStudentId);
+  
+  const { 
+    data: compatibleStudentsData, 
+    isLoading: compatibleStudentsLoading 
+  } = useCompatibleStudents(selectedTeacherId);
+
+  // 選択時に先に科目情報を設定
+  useEffect(() => {
+    if (selectedStudentId) {
+      // 学生を選択した場合、すぐに彼の科目を表示する
+      const studentSubjects = getStudentSubjects(selectedStudentId);
+      if (studentSubjects.length > 0) {
+        setStudentKibouSubjects(studentSubjects);
+      }
+    }
+  }, [selectedStudentId, getStudentSubjects]);
+
+  useEffect(() => {
+    if (selectedTeacherId) {
+      // 先生を選択した場合、すぐに彼の科目を表示する
+      const teacherSubjects = getTeacherSubjects(selectedTeacherId);
+      if (teacherSubjects.length > 0) {
+        setTeacherKibouSubjects(teacherSubjects);
+      }
+    }
+  }, [selectedTeacherId, getTeacherSubjects]);
+
+  // APIからの互換性データを処理
+  useEffect(() => {
+    setIsLoadingTeacherCompatibility(compatibleTeachersLoading);
+    
+    if (compatibleTeachersData && !compatibleTeachersLoading) {
+      console.log("Received compatible teachers:", compatibleTeachersData);
+      setCachedFilteredTeachers(compatibleTeachersData.filteredTeachers || []);
+      
+      if (compatibleTeachersData.kibouSubjects && compatibleTeachersData.kibouSubjects.length > 0) {
+        setStudentKibouSubjects(compatibleTeachersData.kibouSubjects);
+      }
+    } else if (!selectedStudentId) {
+      setCachedFilteredTeachers([]);
+      setStudentKibouSubjects([]);
+    }
+  }, [compatibleTeachersData, compatibleTeachersLoading, selectedStudentId]);
+
+  useEffect(() => {
+    setIsLoadingStudentCompatibility(compatibleStudentsLoading);
+    
+    if (compatibleStudentsData && !compatibleStudentsLoading) {
+      console.log("Received compatible students:", compatibleStudentsData);
+      setCachedFilteredStudents(compatibleStudentsData.filteredStudents || []);
+      
+      if (compatibleStudentsData.kibouSubjects && compatibleStudentsData.kibouSubjects.length > 0) {
+        setTeacherKibouSubjects(compatibleStudentsData.kibouSubjects);
+      }
+    } else if (!selectedTeacherId) {
+      setCachedFilteredStudents([]);
+      setTeacherKibouSubjects([]);
+    }
+  }, [compatibleStudentsData, compatibleStudentsLoading, selectedTeacherId]);
 
   /* -------------------- ハンドラ -------------------- */
-  const handleTeacherSelect = (teacherId: string) => {
+  const handleTeacherSelect = useCallback((teacherId: string) => {
     if (teacherId === selectedTeacherId) {
       const wasFirstSelection = firstSelection === "teacher";
       setSelectedTeacherId(null);
@@ -128,9 +214,9 @@ export default function LessonManagementPage() {
       }
       setSelectedTeacherId(teacherId);
     }
-  };
+  }, [selectedTeacherId, selectedStudentId, firstSelection]);
 
-  const handleStudentSelect = (studentId: string) => {
+  const handleStudentSelect = useCallback((studentId: string) => {
     if (studentId === selectedStudentId) {
       const wasFirstSelection = firstSelection === "student";
       setSelectedStudentId(null);
@@ -145,37 +231,45 @@ export default function LessonManagementPage() {
       }
       setSelectedStudentId(studentId);
     }
-  };
+  }, [selectedStudentId, selectedTeacherId, firstSelection]);
 
-  /* -------------------- その他ロジック（変更なし） -------------------- */
+  /* -------------------- その他ロジック -------------------- */
   const shouldFilterTeachers = selectedStudentId !== null;
-
   const shouldFilterStudents = selectedTeacherId !== null;
+  const isButtonActive = selectedTeacherId !== null && selectedStudentId !== null;
 
-  const isButtonActive =
-    selectedTeacherId !== null && selectedStudentId !== null;
-
-  const getFilteredClassSessions = () => {
+  const getFilteredClassSessions = useCallback(() => {
     return classSessions.filter(
       (session) =>
         session.teacherId === selectedTeacherId ||
         session.studentId === selectedStudentId,
     ) as ClassSession[];
-  };
+  }, [classSessions, selectedTeacherId, selectedStudentId]);
 
-  const openModal = () => {
+  const openModal = useCallback(() => {
     if (isButtonActive) {
       setIsModalOpen(true);
     }
-  };
+  }, [isButtonActive]);
 
-  const closeModal = () => {
+  const closeModal = useCallback(() => {
     setIsModalOpen(false);
-  };
+  }, []);
 
-  const handleAddClassSession = (session: Partial<ClassSession>) => {
+  const handleAddClassSession = useCallback((session: Partial<ClassSession>) => {
     console.log("追加された新規クラスセッション:", session);
-  };
+    // APIを呼び出してセッションを保存する
+  }, []);
+
+  /* -------------------- デバッグログ -------------------- */
+  useEffect(() => {
+    if (teacherKibouSubjects.length > 0) {
+      console.log("Teacher Kibou Subjects:", teacherKibouSubjects);
+    }
+    if (studentKibouSubjects.length > 0) {
+      console.log("Student Kibou Subjects:", studentKibouSubjects);
+    }
+  }, [teacherKibouSubjects, studentKibouSubjects]);
 
   /* -------------------- ローディング判定 -------------------- */
   const isLoading =
@@ -254,18 +348,22 @@ export default function LessonManagementPage() {
         {/* 先生テーブル */}
         <div className="flex flex-col h-full">
           <div className="flex-grow">
+            {isLoadingTeacherCompatibility && shouldFilterTeachers && (
+              <div className="py-2 px-4 mb-2 bg-blue-50 text-blue-700 rounded shadow-sm">
+                互換性のある先生を検索中...
+              </div>
+            )}
             <TeacherTable
               teachers={teachers as Teacher[]}
               selectedTeacherId={selectedTeacherId}
               onTeacherSelect={handleTeacherSelect}
-              /* 既存コンポーネント互換のため prop 名は lessons のまま */
               lessons={classSessions as unknown as ClassSession[]}
               subjects={subjects as Subject[]}
               evaluations={evaluations as Evaluation[]}
               teacherSubjects={teacherSubjects as TeacherSubject[]}
               selectedStudentId={selectedStudentId}
-              filteredTeachers={shouldFilterTeachers ? filteredTeachers : undefined}
-              kibouSubjects={shouldFilterTeachers ? studentKibouSubjects : []}
+              filteredTeachers={shouldFilterTeachers ? cachedFilteredTeachers : undefined}
+              kibouSubjects={studentKibouSubjects} // 常に科目を渡す、フィルタリング前でも
             />
           </div>
         </div>
@@ -273,18 +371,22 @@ export default function LessonManagementPage() {
         {/* 生徒テーブル */}
         <div className="flex flex-col h-full">
           <div className="flex-grow">
+            {isLoadingStudentCompatibility && shouldFilterStudents && (
+              <div className="py-2 px-4 mb-2 bg-blue-50 text-blue-700 rounded shadow-sm">
+                互換性のある生徒を検索中...
+              </div>
+            )}
             <StudentTable
               students={students as StudentWithPreference[]}
               selectedStudentId={selectedStudentId}
               onStudentSelect={handleStudentSelect}
-              /* 既存コンポーネント互換のため prop 名は lessons のまま */
               lessons={classSessions as unknown as ClassSession[]}
               subjects={subjects as Subject[]}
               grades={grades as Grade[]}
               studentTypes={studentTypes as StudentType[]}
               selectedTeacherId={selectedTeacherId}
-              filteredStudents={shouldFilterStudents ? filteredStudents : undefined}
-              kibouSubjects={shouldFilterStudents ? teacherKibouSubjects : []}
+              filteredStudents={shouldFilterStudents ? cachedFilteredStudents : undefined}
+              kibouSubjects={teacherKibouSubjects} // 常に科目を渡す、フィルタリング前でも
             />
           </div>
         </div>
@@ -293,7 +395,6 @@ export default function LessonManagementPage() {
       {isModalOpen && (
         <LessonScheduleModal
           open={isModalOpen}
-          /* 既存コンポーネント互換のため prop 名は lessons のまま */
           lessons={getFilteredClassSessions()}
           onClose={closeModal}
           teacherId={selectedTeacherId || ""}
