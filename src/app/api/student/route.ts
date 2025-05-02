@@ -73,6 +73,22 @@ export async function GET(request: Request) {
       orderBy,
       include: {
         grade: true,
+        StudentPreference: {
+          include: {
+            classType: true,
+            subjects: {
+              include: {
+                subject: true,
+              },
+            },
+            teachers: {
+              include: {
+                teacher: true,
+              },
+            },
+            timeSlots: true,
+          },
+        },
       },
     });
 
@@ -220,9 +236,24 @@ export async function POST(request: Request) {
       });
 
       // 3. Create the student record
+      // Fix: Ensure examSchoolType is only set if it matches the enum (ELEMENTARY, MIDDLE, HIGH, UNIVERSITY, OTHER)
+      const validExamSchoolTypes = [
+        "ELEMENTARY",
+        "MIDDLE",
+        "HIGH",
+        "UNIVERSITY",
+        "OTHER",
+      ];
+      const fixedStudentData = {
+        ...studentData,
+        examSchoolType: validExamSchoolTypes.includes(studentData.examSchoolType!)
+          ? studentData.examSchoolType
+          : null,
+      };
+
       const student = await tx.student.create({
         data: {
-          ...studentData,
+          ...fixedStudentData,
           userId: user.id,
         },
       });

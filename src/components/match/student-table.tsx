@@ -17,21 +17,15 @@ import SchoolTypeBadge from "./school-type-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import DetailDialog from "./detail-dialog";
-import { StudentWithPreference } from "@/schemas/student.schema";
-import { Subject } from "@/schemas/subject.schema";
-import { Grade } from "@/schemas/grade.schema";
-import { ClassSession as PrismaClassSession, StudentType } from "@prisma/client";
 
-// -----------------------------------------------------------------------------
-// 型定義
-// -----------------------------------------------------------------------------
-export type ClassSession = PrismaClassSession & {
-  subject?: Subject | null;
-  dayOfWeek?: string | number;
-  name?: string;
-};
+import {
+  StudentWithPreference,
+  Subject,
+  Grade,
+  ClassSession,
+  StudentType
+} from "@/components/match/types";
 
-// Extended Student type with UI-specific properties
 interface EnrichedStudent extends StudentWithPreference {
   grade: Grade | null;
   studentType: StudentType | null;
@@ -87,7 +81,6 @@ export default function StudentTable({
     const subjectIds = new Set<string>();
     const studentSubjectsList: Subject[] = [];
 
-    // Add subjects from preference if they exist
     if (student.preference?.preferredSubjects) {
       student.preference.preferredSubjects.forEach(subjectId => {
         if (!subjectIds.has(subjectId)) {
@@ -100,7 +93,6 @@ export default function StudentTable({
       });
     }
 
-    // Then add subjects from lessons
     const studentLessons = lessons.filter(lesson => lesson.studentId === student.studentId);
 
     studentLessons.forEach(lesson => {
@@ -135,16 +127,21 @@ export default function StudentTable({
     setCurrentPage(1);
   };
 
-  const enrichedStudents = useMemo(() => {
-    const baseStudents = filteredStudents || students;
+  const baseStudents = useMemo(() => {
+    return filteredStudents || students;
+  }, [filteredStudents, students]);
 
+  const enrichedStudents = useMemo(() => {
     return baseStudents.map(student => {
       const grade = grades.find(g => g.gradeId === student.gradeId) || null;
       const studentType = (grade?.studentTypeId && studentTypes.length > 0)
         ? studentTypes.find(st => st.studentTypeId === grade.studentTypeId) || null
         : null;
+      
       const studentSubjects = getStudentSubjects(student);
-
+      
+      console.log(`Student ${student.name} subjects:`, studentSubjects);
+  
       return {
         ...student,
         grade,
@@ -152,7 +149,7 @@ export default function StudentTable({
         subjects: studentSubjects
       } as EnrichedStudent;
     });
-  }, [students, filteredStudents, grades, studentTypes, getStudentSubjects]);
+  }, [baseStudents, grades, studentTypes, getStudentSubjects]);
 
   const filteredStudentsWithUI = useMemo(() => {
     return enrichedStudents.filter((student) => {
@@ -207,16 +204,20 @@ export default function StudentTable({
 
   return (
     <div className="rounded-md border h-full flex flex-col bg-white">
-      {selectedTeacherId && kibouSubjects.length > 0 && (
+      {selectedTeacherId && (
         <div className="bg-blue-50 p-2 border-b flex flex-wrap items-center gap-2">
           <span className="text-blue-800 text-sm font-medium">担当可能科目：</span>
-          {kibouSubjects.map((subject) => (
-            <SubjectBadge
-              key={subject.subjectId}
-              subject={subject}
-              size="sm"
-            />
-          ))}
+          {kibouSubjects.length > 0 ? (
+            kibouSubjects.map((subject) => (
+              <SubjectBadge
+                key={subject.subjectId}
+                subject={subject}
+                size="sm"
+              />
+            ))
+          ) : (
+            <span className="text-blue-600 text-xs italic">Загрузка предметов...</span>
+          )}
         </div>
       )}
 
@@ -270,75 +271,74 @@ export default function StudentTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {paginatedStudents.map((student) => {
-              const studentSubjects = student.subjects || [];
-
-              return (
-                <TableRow
-                  key={student.studentId}
-                  onClick={() => onStudentSelect(student.studentId)}
-                  className={`cursor-pointer ${
-                    selectedStudentId === student.studentId
-                      ? "bg-blue-100 hover:bg-blue-200"
-                      : "hover:bg-gray-100"
-                  }`}
-                >
-                  <TableCell className="font-medium">
-                    <div>
-                      {student.name}
-                    </div>
-                    {student.kanaName && (
-                      <div className="text-xs text-gray-500">{student.kanaName}</div>
+            {paginatedStudents.map((student) => (
+              <TableRow
+                key={student.studentId}
+                onClick={() => onStudentSelect(student.studentId)}
+                className={`cursor-pointer ${
+                  selectedStudentId === student.studentId
+                    ? "bg-blue-100 hover:bg-blue-200"
+                    : "hover:bg-gray-100"
+                }`}
+              >
+                <TableCell className="font-medium">
+                  <div>
+                    {student.name}
+                  </div>
+                  {student.kanaName && (
+                    <div className="text-xs text-gray-500">{student.kanaName}</div>
+                  )}
+                </TableCell>
+                <TableCell className="text-sm">
+                  <div className="flex flex-col gap-1">
+                    {student.examSchoolCategoryType && (
+                      <SchoolTypeBadge type={student.examSchoolCategoryType} size="sm" />
                     )}
-                  </TableCell>
-                  <TableCell className="text-sm">
-                    <div className="flex flex-col gap-1">
-                      {student.examSchoolCategoryType && (
-                        <SchoolTypeBadge type={student.examSchoolCategoryType} size="sm" />
-                      )}
-                      {student.grade && (
-                        <div className="text-xs text-gray-500">{student.grade.name}</div>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1">
-                      {studentSubjects.slice(0, 3).map((subject) => (
-                        <SubjectBadge
-                          key={subject.subjectId}
-                          subject={subject}
-                          size="sm"
-                          highlight={selectedTeacherId ? isKibouSubject(subject) : false}
-                        />
-                      ))}
-                      {studentSubjects.length > 3 && (
-                        <Badge variant="outline" className="bg-gray-100 text-gray-800 px-1.5 py-0.5 text-xs rounded-full">
-                          +{studentSubjects.length - 3}
-                        </Badge>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0 hover:bg-gray-100 rounded-full"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setDetailsStudent(student);
-                        setIsDetailDialogOpen(true);
-                      }}
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500 hover:text-gray-700">
-                        <circle cx="12" cy="12" r="1" />
-                        <circle cx="19" cy="12" r="1" />
-                        <circle cx="5" cy="12" r="1" />
-                      </svg>
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
+                    {student.grade && (
+                      <div className="text-xs text-gray-500">{student.grade.name}</div>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex flex-wrap gap-1">
+                    {(student.subjects || []).slice(0, 3).map((subject) => (
+                      <SubjectBadge
+                        key={subject.subjectId}
+                        subject={subject}
+                        size="sm"
+                        highlight={selectedTeacherId ? isKibouSubject(subject) : false}
+                      />
+                    ))}
+                    {(student.subjects || []).length > 3 && (
+                      <Badge variant="outline" className="bg-gray-100 text-gray-800 px-1.5 py-0.5 text-xs rounded-full">
+                        +{student.subjects.length - 3}
+                      </Badge>
+                    )}
+                    {(!student.subjects || student.subjects.length === 0) && (
+                      <span className="text-gray-500 text-xs"></span>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell className="text-right">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 hover:bg-gray-100 rounded-full"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDetailsStudent(student);
+                      setIsDetailDialogOpen(true);
+                    }}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500 hover:text-gray-700">
+                      <circle cx="12" cy="12" r="1" />
+                      <circle cx="19" cy="12" r="1" />
+                      <circle cx="5" cy="12" r="1" />
+                    </svg>
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
           </TableBody>
         </Table>
 

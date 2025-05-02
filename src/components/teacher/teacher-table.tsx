@@ -1,13 +1,12 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import type { ColumnDef } from "@tanstack/react-table"
-import { Pencil, Trash2 } from "lucide-react"
+import { useState } from "react";
+import type { ColumnDef } from "@tanstack/react-table";
+import { Pencil, Trash2 } from "lucide-react";
 
-import { Button } from "@/components/ui/button"
-import { DataTable } from "@/components/data-table"
-import { useTeachers } from "@/hooks/useTeacherQuery"
-import { useTeacherDelete } from "@/hooks/useTeacherMutation"
+import { Button } from "@/components/ui/button";
+import { DataTable } from "@/components/data-table";
+import { useTeacherDelete } from "@/hooks/useTeacherMutation";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,28 +16,33 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { Teacher } from "@prisma/client"
-import { TeacherFormDialog } from "@/components/teacher/teacher-form-dialog"
+} from "@/components/ui/alert-dialog";
+import { TeacherFormDialog } from "@/components/teacher/teacher-form-dialog";
+import { useEvaluations } from "@/hooks/useEvaluationQuery";
+import { useTeachers } from "@/hooks/useTeacherQuery";
+import { Teacher } from "@/schemas/teacher.schema";
 
 export function TeacherTable() {
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
-  const pageSize = 10;
+  const limit = 10;
+
   const {
     data: teachers,
     isLoading,
     isFetching,
-  } = useTeachers({
-    page,
-    limit: pageSize,
-    name: searchTerm || undefined,
+  } = useTeachers({ page, limit });
+  const { data: evaluationsRaw } = useEvaluations();
+
+  const evaluations = evaluationsRaw?.data ?? [];
+  const evaluationMap = new Map<string, string>();
+  evaluations.forEach((evaluation) => {
+    if (evaluation.evaluationId) {
+      evaluationMap.set(evaluation.evaluationId, evaluation.name);
+    }
   });
 
-  const typedTeachers = teachers?.data;
-  const totalCount = teachers?.pagination.total || 0;
   const deleteTeacherMutation = useTeacherDelete();
-
   const [teacherToEdit, setTeacherToEdit] = useState<Teacher | null>(null);
   const [teacherToDelete, setTeacherToDelete] = useState<Teacher | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -49,39 +53,72 @@ export function TeacherTable() {
       header: "名前",
     },
     {
-      accessorKey: "enrollmentStatus",  // Используем правильный ключ
-      header: "ステータス",
-      cell: ({ row }) => (
-        <div>{row.original.enrollmentStatus === "ACTIVE" ? "使用可" : "使用不可"}</div>  // Логика отображения статуса
-      ),
+      accessorKey: "evaluationId",
+      header: "評価",
+      cell: ({ row }) => {
+        const evaluationId = row.original.evaluationId;
+        return evaluationId ? evaluationMap.get(evaluationId) || "-" : "-";
+      },
+    },
+    {
+      accessorKey: "birthDate",
+      header: "生年月日",
+      cell: ({ row }) =>
+        row.original.birthDate
+          ? new Date(row.original.birthDate).toLocaleDateString()
+          : "-",
+    },
+    {
+      accessorKey: "mobileNumber",
+      header: "携帯電話",
+      cell: ({ row }) => row.original.mobileNumber || "-",
+    },
+    {
+      accessorKey: "email",
+      header: "メール",
+      cell: ({ row }) => row.original.email || "-",
+    },
+    {
+      accessorKey: "university",
+      header: "大学",
+      cell: ({ row }) => row.original.university || "-",
+    },
+    {
+      accessorKey: "faculty",
+      header: "学部",
+      cell: ({ row }) => row.original.faculty || "-",
+    },
+    {
+      accessorKey: "enrollmentStatus",
+      header: "在籍状況",
+      cell: ({ row }) => row.original.enrollmentStatus || "-",
     },
     {
       accessorKey: "notes",
       header: "メモ",
+      cell: ({ row }) => row.original.notes || "-",
     },
     {
       id: "actions",
       header: "操作",
-      cell: ({ row }) => {
-        return (
-          <div className="flex gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setTeacherToEdit(row.original)}
-            >
-              <Pencil className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setTeacherToDelete(row.original)}
-            >
-              <Trash2 className="h-4 w-4 text-destructive" />
-            </Button>
-          </div>
-        );
-      },
+      cell: ({ row }) => (
+        <div className="flex gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setTeacherToEdit(row.original)}
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setTeacherToDelete(row.original)}
+          >
+            <Trash2 className="h-4 w-4 text-destructive" />
+          </Button>
+        </div>
+      ),
     },
   ];
 
@@ -91,7 +128,7 @@ export function TeacherTable() {
         await deleteTeacherMutation.mutateAsync(teacherToDelete.teacherId);
         setTeacherToDelete(null);
       } catch (error) {
-        console.error("教師の削除に失敗しました:", error);
+        console.error("講師の削除に失敗しました:", error);
       }
     }
   };
@@ -100,41 +137,29 @@ export function TeacherTable() {
     setPage(newPage + 1);
   };
 
-  const totalPages = Math.ceil(totalCount / pageSize);
-
   return (
     <>
       <DataTable
         columns={columns}
-        data={typedTeachers || []}
+        data={teachers?.data || []}
         isLoading={isLoading || isFetching}
-        searchPlaceholder="教師を検索..."
+        searchPlaceholder="講師を検索..."
         onSearch={setSearchTerm}
         searchValue={searchTerm}
         onCreateNew={() => setIsCreateDialogOpen(true)}
-        createNewLabel="新規作成"
+        createNewLabel="新しい講師"
         pageIndex={page - 1}
-        pageCount={totalPages || 1}
+        pageCount={teachers?.pagination.pages || 0}
         onPageChange={handlePageChange}
-        pageSize={pageSize}
-        totalItems={totalCount}
+        pageSize={teachers?.pagination.pageSize || 0}
+        totalItems={teachers?.pagination.total || 0}
       />
 
       {teacherToEdit && (
         <TeacherFormDialog
           open={!!teacherToEdit}
           onOpenChange={(open) => !open && setTeacherToEdit(null)}
-          teacher={{
-            ...teacherToEdit,
-            otherUniversities: teacherToEdit.otherUniversities ?? undefined,
-            englishProficiency: teacherToEdit.englishProficiency ?? undefined,
-            toeic: teacherToEdit.toeic ?? undefined,
-            toefl: teacherToEdit.toefl ?? undefined,
-            mathCertification: teacherToEdit.mathCertification ?? undefined,
-            kanjiCertification: teacherToEdit.kanjiCertification ?? undefined,
-            otherCertifications: teacherToEdit.otherCertifications ?? undefined,
-            notes: teacherToEdit.notes ?? undefined
-          }}
+          teacher={teacherToEdit}
         />
       )}
 
@@ -155,11 +180,15 @@ export function TeacherTable() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setTeacherToDelete(null)}>キャンセル</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteTeacher}>削除</AlertDialogAction>
+            <AlertDialogCancel onClick={() => setTeacherToDelete(null)}>
+              キャンセル
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteTeacher}>
+              削除
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>
-  )
+  );
 }

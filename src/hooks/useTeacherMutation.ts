@@ -1,16 +1,16 @@
 import { fetcher } from "@/lib/fetcher";
-import { CreateTeacherInput, UpdateTeacherInput } from "@/schemas/teacher.schema";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Teacher } from "@prisma/client";
+import { TeacherWithPreference } from "./useTeacherQuery";
+import { CreateTeacherInput, UpdateTeacherInput } from "../schemas/teacher.schema";
 
 type CreateTeacherResponse = {
   message: string;
-  data: Teacher;
+  data: TeacherWithPreference;
 };
 
 type UpdateTeacherResponse = {
   message: string;
-  data: Teacher;
+  data: TeacherWithPreference;
 };
 
 type DeleteTeacherResponse = {
@@ -34,10 +34,10 @@ export function useTeacherCreate() {
 export function useTeacherUpdate() {
   const queryClient = useQueryClient();
   return useMutation<UpdateTeacherResponse, Error, UpdateTeacherInput>({
-    mutationFn: ({ teacherId, ...data }) =>
-      fetcher(`/api/teacher`, {
+    mutationFn: (data) =>
+      fetcher("/api/teacher", {
         method: "PUT",
-        body: JSON.stringify({ teacherId, ...data }),
+        body: JSON.stringify(data),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["teachers"] });

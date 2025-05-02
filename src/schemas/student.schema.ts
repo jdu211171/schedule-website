@@ -31,7 +31,7 @@ const StudentBaseSchema = z.object({
     .optional()
     .transform((val) => (val === "" ? undefined : val)),
   schoolType: SchoolTypeEnum.optional(),
-  examSchoolType: SchoolTypeEnum.optional(),
+  examSchoolType: ExamSchoolTypeEnum.optional(),
   examSchoolCategoryType: ExamSchoolTypeEnum.optional(),
   firstChoiceSchool: z
     .string()
@@ -213,13 +213,9 @@ export const CreateUserStudentSchema = z.object({
     .max(100)
     .optional()
     .transform((val) => (val === "" ? undefined : val)),
-  schoolType: z.enum(["PUBLIC", "PRIVATE"]).optional(),
-  examSchoolType: z
-    .enum(["PUBLIC", "PRIVATE"])
-    .optional(),
-  examSchoolCategoryType: z
-    .enum(["ELEMENTARY", "MIDDLE", "HIGH", "UNIVERSITY", "OTHER"])
-    .optional(),
+  schoolType: SchoolTypeEnum.optional(),
+  examSchoolType: ExamSchoolTypeEnum.optional(),
+  examSchoolCategoryType: ExamSchoolTypeEnum.optional(),
   firstChoiceSchool: z
     .string()
     .max(100)

@@ -752,3 +752,345 @@ Cookie: {{cookie}}
 DELETE {{url}}/teacher?teacherId=cma144m5u000u104qsqx0wjex
 Content-Type: application/json
 Cookie: {{cookie}}
+
+############################
+# REGULAR CLASS TEMPLATES  #
+############################
+
+### Get all templates (basic - with pagination)
+GET {{url}}/regular-class-templates?page=1&limit=10
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get templates with filtering by day of week
+GET {{url}}/regular-class-templates?dayOfWeek=MONDAY
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get templates with filtering by teacher
+# Replace TEACHER_ID with an actual ID from your database
+GET {{url}}/regular-class-templates?teacherId=cma144m5u000u104qsqx0wjex
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get templates with filtering by student
+# Replace STUDENT_ID with an actual ID from your database
+GET {{url}}/regular-class-templates?studentId=cma144m600010104qpk5ai7om
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get templates with filtering by subject
+# Replace SUBJECT_ID with an actual ID from your database
+GET {{url}}/regular-class-templates?subjectId=cma144m5g000h104q011r76l4
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get templates with filtering by booth
+# Replace BOOTH_ID with an actual ID from your database
+GET {{url}}/regular-class-templates?boothId=cma144m5r000q104qlec1r0x3
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get templates with sorting
+GET {{url}}/regular-class-templates?sort=dayOfWeek&order=asc
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get templates with multiple filters and pagination
+# Replace IDs with actual IDs from your database
+GET {{url}}/regular-class-templates?dayOfWeek=MONDAY&teacherId=cma144m5u000u104qsqx0wjex&page=1&limit=5&sort=startTime&order=asc
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get a single template by ID
+# Replace TEMPLATE_ID with an actual ID from your database
+GET {{url}}/regular-class-templates/cma144m6a0016104q2lv6v7lv
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get available slots with filtering (time-based availability)
+GET {{url}}/regular-class-templates?action=available-slots&dayOfWeek=MONDAY&startTime=15:00&endTime=16:30
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get available slots with teacher filter
+# Replace TEACHER_ID with an actual ID from your database
+GET {{url}}/regular-class-templates?action=available-slots&dayOfWeek=MONDAY&startTime=15:00&endTime=16:30&teacherId=cma144m5u000u104qsqx0wjex
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get available slots with student filter
+# Replace STUDENT_ID with an actual ID from your database
+GET {{url}}/regular-class-templates?action=available-slots&dayOfWeek=MONDAY&startTime=15:00&endTime=16:30&studentId=cma144m600010104qpk5ai7om
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get available slots with subject filter
+# Replace SUBJECT_ID with an actual ID from your database
+GET {{url}}/regular-class-templates?action=available-slots&dayOfWeek=MONDAY&startTime=15:00&endTime=16:30&subjectId=cma144m5g000h104q011r76l4
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get available slots with booth filter
+# Replace BOOTH_ID with an actual ID from your database
+GET {{url}}/regular-class-templates?action=available-slots&dayOfWeek=MONDAY&startTime=15:00&endTime=16:30&boothId=cma144m5r000q104qlec1r0x3
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get available slots with multiple filters
+# Replace IDs with actual IDs from your database
+GET {{url}}/regular-class-templates?action=available-slots&dayOfWeek=MONDAY&startTime=15:00&endTime=16:30&teacherId=cma144m5u000u104qsqx0wjex&subjectId=cma144m5g000h104q011r76l4
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Create a single template
+# Replace IDs with actual IDs from your database
+POST {{url}}/regular-class-templates
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "dayOfWeek": "MONDAY",
+  "startTime": "15:00",
+  "endTime": "16:30",
+  "teacherId": "cma144m5u000u104qsqx0wjex",
+  "subjectId": "cma144m5g000h104q011r76l4",
+  "boothId": "cma144m5r000q104qlec1r0x3",
+  "studentIds": ["cma144m600010104qpk5ai7om"],
+  "notes": "Regular Monday math class"
+}
+
+### Create multiple templates (batch)
+# Replace IDs with actual IDs from your database
+POST {{url}}/regular-class-templates
+Content-Type: application/json
+Cookie: {{cookie}}
+
+[
+  {
+    "dayOfWeek": "MONDAY",
+    "startTime": "15:00",
+    "endTime": "16:30",
+    "teacherId": "cma144m5u000u104qsqx0wjex",
+    "subjectId": "cma144m5g000h104q011r76l4",
+    "boothId": "cma144m5r000q104qlec1r0x3",
+    "studentIds": ["cma144m600010104qpk5ai7om"],
+    "notes": "Regular Monday math class"
+  }
+]
+
+### Create a template with date range
+# Replace IDs with actual IDs from your database
+POST {{url}}/regular-class-templates
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "dayOfWeek": "MONDAY",
+  "startTime": "15:00",
+  "endTime": "16:30",
+  "teacherId": "cma144m5u000u104qsqx0wjex",
+  "subjectId": "cma144m5g000h104q011r76l4",
+  "boothId": "cma144m5r000q104qlec1r0x3",
+  "startDate": "2025-05-01",
+  "endDate": "2026-03-31",
+  "studentIds": ["cma144m600010104qpk5ai7om"],
+  "notes": "高3数学 週次枠"
+}
+
+### Update an existing template
+# Replace TEMPLATE_ID and other IDs with actual IDs from your database
+PUT {{url}}/regular-class-templates
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "templateId": "cma144m6a0016104q2lv6v7lv",
+  "dayOfWeek": "MONDAY",
+  "startTime": "15:00",
+  "endTime": "16:30",
+  "studentIds": ["cma144m600010104qpk5ai7om"],
+  "notes": "Updated to Monday with one student"
+}
+
+### Update a template's time only
+# Replace TEMPLATE_ID with an actual ID from your database
+PUT {{url}}/regular-class-templates
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "templateId": "cma144m6a0016104q2lv6v7lv",
+  "startTime": "15:00",
+  "endTime": "16:30"
+}
+
+### Update a template's students only
+# Replace TEMPLATE_ID and STUDENT_IDs with actual IDs from your database
+PUT {{url}}/regular-class-templates
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "templateId": "cma144m6a0016104q2lv6v7lv",
+  "studentIds": ["cma144m600010104qpk5ai7om"]
+}
+
+### Delete a template
+# Replace TEMPLATE_ID with an actual ID from your database
+DELETE {{url}}/regular-class-templates?templateId=cma144m6a0016104q2lv6v7lv
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Test conflict detection (try to schedule template when booth is already booked)
+# Replace IDs with actual IDs from your database - use a time slot and booth
+# that you know already has a template scheduled
+POST {{url}}/regular-class-templates
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "dayOfWeek": "MONDAY",
+  "startTime": "14:00",
+  "endTime": "15:00",
+  "teacherId": "cma144m5u000u104qsqx0wjex",
+  "subjectId": "cma144m5g000g104qhle1xh2y",
+  "boothId": "cma1dzjg60003106qp9p1get7",
+  "studentIds": ["cma144m620012104qmvpu55ar"],
+  "notes": "This should cause a booth conflict"
+}
+
+### Test conflict detection (try to schedule template when teacher is already booked)
+# Replace IDs with actual IDs from your database - use a time slot and teacher
+# that you know already has a template scheduled
+POST {{url}}/regular-class-templates
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "dayOfWeek": "MONDAY",
+  "startTime": "14:00",
+  "endTime": "15:00",
+  "teacherId": "cma144m5w000w104q8cncwj26",
+  "subjectId": "cma144m5g000g104qhle1xh2y",
+  "boothId": "cma1dzjg60003106qp9p1get7",
+  "studentIds": ["cma144m620012104qmvpu55ar"],
+  "notes": "This should cause a teacher conflict"
+}
+
+### Test conflict detection (try to schedule template when student is already booked)
+# Replace IDs with actual IDs from your database - use a student
+# that you know already has a template scheduled at this time
+POST {{url}}/regular-class-templates
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "dayOfWeek": "MONDAY",
+  "startTime": "14:00",
+  "endTime": "15:00",
+  "teacherId": "cma144m5u000u104qsqx0wjex",
+  "subjectId": "cma144m5g000g104qhle1xh2y",
+  "boothId": "cma1dzjg60003106qp9p1get7",
+  "studentIds": ["cma144m620012104qmvpu55ar"],
+  "notes": "This should cause a student conflict"
+}
+
+############################
+# NEW TEMPLATE API ROUTES  #
+############################
+
+### Get compatible teachers for a specific student (prioritized)
+# Replace STUDENT_ID with an actual ID from your database
+GET {{url}}/regular-class-templates?action=compatible-teachers&studentId=cma144m600010104qpk5ai7om
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get compatible students for a specific teacher (prioritized)
+# Replace TEACHER_ID with an actual ID from your database
+GET {{url}}/regular-class-templates?action=compatible-students&teacherId=cma144m5u000u104qsqx0wjex
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get compatible subjects for a teacher-student combination
+# Replace TEACHER_ID and STUDENT_ID with actual IDs from your database
+GET {{url}}/regular-class-templates?action=compatible-subjects&teacherId=cma144m5u000u104qsqx0wjex&studentId=cma144m600010104qpk5ai7om
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get available time slots for a teacher-student combination
+# Replace TEACHER_ID and STUDENT_ID with actual IDs from your database
+GET {{url}}/regular-class-templates?action=available-time-slots&teacherId=cma144m5u000u104qsqx0wjex&studentId=cma144m600010104qpk5ai7om
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get available booths for a specific day and time
+GET {{url}}/regular-class-templates?action=available-booths&dayOfWeek=MONDAY&startTime=15:00&endTime=16:30
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get available booths (different day)
+GET {{url}}/regular-class-templates?action=available-booths&dayOfWeek=WEDNESDAY&startTime=14:00&endTime=15:30
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Error test: Get compatible teachers without student ID (should return error)
+GET {{url}}/regular-class-templates?action=compatible-teachers
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Error test: Get compatible students without teacher ID (should return error)
+GET {{url}}/regular-class-templates?action=compatible-students
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Error test: Get compatible subjects with missing IDs (should return error)
+GET {{url}}/regular-class-templates?action=compatible-subjects&teacherId=cma144m5u000u104qsqx0wjex
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Error test: Get available time slots with missing IDs (should return error)
+GET {{url}}/regular-class-templates?action=available-time-slots&teacherId=cma144m5u000u104qsqx0wjex
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Error test: Get available booths with missing parameters (should return error)
+GET {{url}}/regular-class-templates?action=available-booths&dayOfWeek=MONDAY
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Complete flow test 1: Get compatible teachers for student
+GET {{url}}/regular-class-templates?action=compatible-teachers&studentId=cma144m600010104qpk5ai7om
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Complete flow test 2: Get compatible subjects for selected teacher and student
+GET {{url}}/regular-class-templates?action=compatible-subjects&teacherId=cma144m5u000u104qsqx0wjex&studentId=cma144m600010104qpk5ai7om
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Complete flow test 3: Get available time slots for selected teacher and student
+GET {{url}}/regular-class-templates?action=available-time-slots&teacherId=cma144m5u000u104qsqx0wjex&studentId=cma144m600010104qpk5ai7om
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Complete flow test 4: Get available booths for selected day and time
+GET {{url}}/regular-class-templates?action=available-booths&dayOfWeek=MONDAY&startTime=15:00&endTime=16:30
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Complete flow test 5: Create template with selected parameters
+POST {{url}}/regular-class-templates
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "dayOfWeek": "MONDAY",
+  "startTime": "15:00",
+  "endTime": "16:30",
+  "teacherId": "cma144m5u000u104qsqx0wjex",
+  "subjectId": "cma144m5g000h104q011r76l4",
+  "boothId": "cma144m5r000q104qlec1r0x3",
+  "studentIds": ["cma144m600010104qpk5ai7om"],
+  "notes": "Regular Monday class created from new step-by-step flow"
+}

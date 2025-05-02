@@ -1,3 +1,4 @@
+// components/match/teacher-table.tsx
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import {
@@ -16,19 +17,17 @@ import SubjectBadge from "./subject-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import DetailDialog from "./detail-dialog";
-import { Teacher } from "@/schemas/teacher.schema";
-import { Subject } from "@/schemas/subject.schema";
-import { Evaluation } from "@/schemas/evaluation.schema";
-import { TeacherSubject } from "@/schemas/teacherSubject.schema";
-import { ClassSession as PrismaClassSession } from "@prisma/client";
 
-export type ClassSession = PrismaClassSession & {
-  subject?: Subject | null;
-  dayOfWeek?: string | number;
-  name?: string;
-};
+// Импортируем типы из файла типов
+import {
+  Teacher,
+  Subject,
+  Evaluation,
+  TeacherSubject,
+  ClassSession
+} from "@/components/match/types";
 
-// Extended Teacher type with UI-specific properties
+// Интерфейс для обогащенного учителя с доп. свойствами для UI
 interface EnrichedTeacher extends Teacher {
   evaluation: Evaluation | null;
   subjects: Subject[];
@@ -95,9 +94,12 @@ export default function TeacherTable({
     [lessons],
   );
 
-  const enrichedTeachers = useMemo(() => {
-    const baseTeachers = filteredTeachers || teachers;
+  // Используем filteredTeachers, если они предоставлены, иначе используем всех учителей
+  const baseTeachers = useMemo(() => {
+    return filteredTeachers || teachers;
+  }, [filteredTeachers, teachers]);
 
+  const enrichedTeachers = useMemo(() => {
     return baseTeachers.map((teacher) => {
       const evaluation =
         evaluations.find((e) => e.evaluationId === teacher.evaluationId) || null;
@@ -129,8 +131,9 @@ export default function TeacherTable({
         subjects: teacherSubjectsList,
       } as EnrichedTeacher;
     });
-  }, [teachers, filteredTeachers, evaluations, subjects, teacherSubjects]);
+  }, [baseTeachers, evaluations, subjects, teacherSubjects]);
 
+  // Фильтрация на стороне клиента
   const filteredTeachersWithUI = useMemo(() => {
     return enrichedTeachers.filter((teacher) => {
       const matchesSearch =
@@ -179,12 +182,17 @@ export default function TeacherTable({
 
   return (
     <div className="rounded-md border h-full flex flex-col bg-white">
-      {selectedStudentId && kibouSubjects.length > 0 && (
+      {/* Показываем заголовок с предпочитаемыми предметами, если выбран ученик */}
+      {selectedStudentId && (
         <div className="bg-green-50 p-2 border-b flex flex-wrap items-center gap-2">
           <span className="text-green-800 text-sm font-medium">希望科目：</span>
-          {kibouSubjects.map((subject) => (
-            <SubjectBadge key={subject.subjectId} subject={subject} size="sm" />
-          ))}
+          {kibouSubjects.length > 0 ? (
+            kibouSubjects.map((subject) => (
+              <SubjectBadge key={subject.subjectId} subject={subject} size="sm" />
+            ))
+          ) : (
+            <span className="text-green-600 text-xs italic">...</span>
+          )}
         </div>
       )}
 
@@ -253,11 +261,11 @@ export default function TeacherTable({
                     <div className="flex flex-wrap gap-1">
                       {teacherSubjects.slice(0, 3).map((subject) => (
                         <SubjectBadge
-                          key={subject.subjectId}
-                          subject={subject}
-                          size="sm"
-                          highlight={selectedStudentId ? isKibouSubject(subject) : false}
-                        />
+                        key={subject.subjectId}
+                        subject={subject}
+                        size="sm"
+                        highlight={selectedStudentId ? isKibouSubject(subject) : false}
+                      />
                       ))}
                       {teacherSubjects.length > 3 && (
                         <Badge
