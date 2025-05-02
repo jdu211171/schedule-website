@@ -129,7 +129,51 @@ export function StudentFormDialog({
   const [showTeacherDropdown, setShowTeacherDropdown] = useState(false);
 
   // Access the preference data directly from the student object
-  const studentPreference = student?.preference || null;
+  const studentPreference = useMemo(() => {
+    if (!student || !student.StudentPreference || student.StudentPreference.length === 0) {
+      return null;
+    }
+
+    // Get the first preference object
+    const preference = student.StudentPreference[0];
+
+    // Extract subject IDs from the nested structure
+    const preferredSubjects = preference.subjects?.map(s => s.subjectId) || [];
+
+    // Extract teacher IDs from the nested structure
+    const preferredTeachers = preference.teachers?.map(t => t.teacherId) || [];
+
+    // Map time slots to the expected format
+    const desiredTimes = preference.timeSlots?.map(ts => {
+      // Convert Date objects to time strings if needed
+      const startTime = ts.startTime instanceof Date
+        ? ts.startTime.toTimeString().slice(0, 5)
+        : typeof ts.startTime === 'string'
+          ? ts.startTime.slice(11, 16)
+          : '';
+
+      const endTime = ts.endTime instanceof Date
+        ? ts.endTime.toTimeString().slice(0, 5)
+        : typeof ts.endTime === 'string'
+          ? ts.endTime.slice(11, 16)
+          : '';
+
+      return {
+        dayOfWeek: ts.dayOfWeek,
+        startTime,
+        endTime,
+      };
+    }) || [];
+
+    return {
+      preferredSubjects,
+      preferredTeachers,
+      desiredTimes,
+      additionalNotes: preference.notes || null,
+      classTypeId: preference.classTypeId || null,
+    };
+  }, [student]);
+
 
   const formSchema = CreateUserStudentSchema;
 
@@ -189,9 +233,29 @@ export function StudentFormDialog({
   const desiredTimesForm = useForm<{ desiredTimes: { dayOfWeek: string; startTime: string; endTime: string }[] }>({
     defaultValues: { desiredTimes: preferencesForm.getValues("desiredTimes") || [] },
   });
+
+  // Sync from preferencesForm to desiredTimesForm
   useEffect(() => {
-    desiredTimesForm.setValue("desiredTimes", preferencesForm.getValues("desiredTimes") || []);
-  }, [preferencesForm.watch("desiredTimes")]);
+    const preferenceTimes = preferencesForm.watch("desiredTimes");
+    if (preferenceTimes && JSON.stringify(preferenceTimes) !== JSON.stringify(desiredTimesForm.getValues().desiredTimes)) {
+      desiredTimesForm.setValue("desiredTimes", preferenceTimes || []);
+    }
+  }, [preferencesForm.watch("desiredTimes"), desiredTimesForm]);
+
+  // Sync from desiredTimesForm to preferencesForm
+  useEffect(() => {
+    const desiredTimes = desiredTimesForm.watch("desiredTimes");
+    if (desiredTimes && desiredTimes.length > 0) {
+      // Ensure the day of week is in uppercase enum format (MONDAY not Monday)
+      const formattedTimes = desiredTimes.map(time => ({
+        dayOfWeek: time.dayOfWeek.toUpperCase(),
+        startTime: time.startTime,
+        endTime: time.endTime
+      }));
+
+      preferencesForm.setValue("desiredTimes", formattedTimes);
+    }
+  }, [desiredTimesForm.watch("desiredTimes"), preferencesForm]);
 
   // Watch selected subjects and teachers
   const selectedSubjects = preferencesForm.watch("preferredSubjects");
@@ -229,10 +293,14 @@ export function StudentFormDialog({
 
   // Compute filtered teachers based on selected subjects
   const filteredTeachers = useMemo(() => {
+    // Ensure only Teacher objects are used
+    const teacherList: Teacher[] = (teachersArray as Teacher[]).filter(
+      (t): t is Teacher => typeof t.teacherId === "string"
+    );
     if (!selectedSubjects.length) {
-      return teachersArray;
+      return teacherList;
     }
-    return teachersArray.filter((teacher: Teacher) => {
+    return teacherList.filter((teacher) => {
       const teacherSubjects = teacherToSubjectsMap.get(teacher.teacherId) || [];
       return selectedSubjects.some((subjectId: string) =>
         teacherSubjects.includes(subjectId)
@@ -273,7 +341,7 @@ export function StudentFormDialog({
       subjects: preference.preferredSubjects,
       teachers: preference.preferredTeachers,
       timeSlots: preference.desiredTimes.map(time => ({
-        dayOfWeek: time.dayOfWeek,
+        dayOfWeek: time.dayOfWeek.toUpperCase(), // Ensure uppercase enum format
         startTime: time.startTime,
         endTime: time.endTime
       })),
@@ -286,14 +354,32 @@ export function StudentFormDialog({
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
     try {
+      // Get the latest time slots from the desiredTimesForm
+      const timeSlots = desiredTimesForm.getValues().desiredTimes;
+
+      // Ensure the day of week is in uppercase enum format (MONDAY not Monday)
+      const formattedTimeSlots = timeSlots.map(time => ({
+        dayOfWeek: time.dayOfWeek.toUpperCase(), // Convert to proper enum format
+        startTime: time.startTime,
+        endTime: time.endTime
+      }));
+
+      // Update the preferencesForm with these values
+      preferencesForm.setValue("desiredTimes", formattedTimeSlots);
+
       const preferenceData = preferencesForm.getValues();
       const preferences = mapPreferencesForApi(preferenceData);
+
+      // Log the actual data being sent to verify
+      console.log("Submitting with time slots:", preferences.timeSlots);
+
       const payload = {
         ...values,
         birthDate: values.birthDate instanceof Date ? formatDate(values.birthDate) : values.birthDate,
         enrollmentDate: values.enrollmentDate instanceof Date ? formatDate(values.enrollmentDate) : values.enrollmentDate,
         preferences,
       };
+
       if (isEditing && student) {
         await updateStudentMutation.mutateAsync({
           studentId: student.studentId,
@@ -305,6 +391,7 @@ export function StudentFormDialog({
       onOpenChange(false);
       form.reset();
       preferencesForm.reset();
+      desiredTimesForm.reset();
     } catch (error) {
       console.error("Failed to save student:", error);
     } finally {
@@ -907,8 +994,8 @@ export function StudentFormDialog({
                       </div>
                       <div className="flex flex-wrap gap-2 mt-2">
                         {(field.value || []).map((teacherId, index) => {
-                          const teacher = teachersArray.find(
-                            (t: Teacher) => t.teacherId === teacherId
+                          const teacher = (teachersArray as Teacher[]).find(
+                            (t) => t.teacherId === teacherId
                           );
                           return (
                             <div
@@ -966,11 +1053,28 @@ export function StudentFormDialog({
           <Button
             type="submit"
             disabled={isSubmitting}
-            onClick={form.handleSubmit(onSubmit)}
+            onClick={() => {
+              // Get time slot data from the dedicated form
+              const timeSlots = desiredTimesForm.getValues().desiredTimes;
+
+              // Ensure the day of week is in uppercase enum format (MONDAY not Monday)
+              const formattedTimeSlots = timeSlots.map(time => ({
+                dayOfWeek: time.dayOfWeek.toUpperCase(), // Convert to proper enum format
+                startTime: time.startTime,
+                endTime: time.endTime
+              }));
+
+              // Update the preferences form with the latest time slots
+              preferencesForm.setValue("desiredTimes", formattedTimeSlots);
+
+              // Always use the main form's submit handler
+              form.handleSubmit(onSubmit)();
+            }}
           >
             {isSubmitting ? "保存中..." : isEditing ? "変更を保存" : "作成"}
           </Button>
         </DialogFooter>
+
       </DialogContent>
     </Dialog>
   );
