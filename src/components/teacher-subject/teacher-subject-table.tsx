@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Pencil, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/data-table";
 import {
@@ -34,8 +34,6 @@ export function TeacherSubjectTable() {
   console.log(teacherSubjects);
   const deleteTeacherSubjectMutation = useTeacherSubjectDelete();
 
-  const [teacherSubjectToEdit, setTeacherSubjectToEdit] =
-    useState<TeacherSubjectWithRelations | null>(null);
   const [teacherSubjectToDelete, setTeacherSubjectToDelete] =
     useState<TeacherSubjectWithRelations | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -60,13 +58,6 @@ export function TeacherSubjectTable() {
       cell: ({ row }) => {
         return (
           <div className="flex gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setTeacherSubjectToEdit(row.original)}
-            >
-              <Pencil className="h-4 w-4" />
-            </Button>
             <Button
               variant="ghost"
               size="icon"
@@ -115,14 +106,6 @@ export function TeacherSubjectTable() {
         pageSize={pageSize}
         totalItems={teacherSubjects?.pagination.total}
       />
-
-      {teacherSubjectToEdit && (
-        <TeacherSubjectFormDialog
-          open={!!teacherSubjectToEdit}
-          onOpenChange={(open) => !open && setTeacherSubjectToEdit(null)}
-          teacherSubject={teacherSubjectToEdit}
-        />
-      )}
 
       <TeacherSubjectFormDialog
         open={isCreateDialogOpen}
