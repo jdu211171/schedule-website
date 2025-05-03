@@ -39,9 +39,26 @@ import { useSubjects } from "@/hooks/useSubjectQuery";
 import { useTeacherSubjects } from "@/hooks/useTeacherSubjectQuery";
 import { StudentDesiredTimeField } from "./student-desired-time-field";
 import {
-  CreateStudentSchema,
   CreateUserStudentSchema,
 } from "@/schemas/student.schema";
+import { TeacherSubject } from "@prisma/client";
+import { Teacher } from "@/schemas/teacher.schema";
+
+// Define the missing schema for student preferences
+const studentPreferencesSchema = z.object({
+  preferredSubjects: z.array(z.string()).default([]),
+  preferredTeachers: z.array(z.string()).default([]),
+  desiredTimes: z.array(z.object({
+    dayOfWeek: z.string(),
+    startTime: z.string(),
+    endTime: z.string()
+  })).default([]),
+  additionalNotes: z.string().nullable().default(null),
+  classTypeId: z.string().nullable().default(null),
+});
+
+// TypeScript type for the schema
+type StudentPreference = z.infer<typeof studentPreferencesSchema>;
 
 // Define the type for the props, including the preference structure from the API
 interface StudentFormDialogProps {
@@ -79,7 +96,32 @@ export function StudentFormDialog({
   const { data: teachers = [], isLoading: teachersLoading } = useTeachers({});
   const { data: subjects = [], isLoading: subjectsLoading } = useSubjects();
   const { data: teacherSubjects = [], isLoading: teacherSubjectsLoading } =
-    useTeacherSubjects();
+    useTeacherSubjects({});
+
+  // Memoize arrays to avoid dependency issues in useMemo
+  const gradesArray = useMemo(() => Array.isArray(grades) ? grades : (grades?.data ?? []), [grades]);
+  const teachersArray = useMemo(() => Array.isArray(teachers) ? teachers : (teachers?.data ?? []), [teachers]);
+  const subjectsArray = useMemo(() => Array.isArray(subjects) ? subjects : (subjects?.data ?? []), [subjects]);
+  const teacherSubjectsArray = useMemo(() => Array.isArray(teacherSubjects) ? teacherSubjects : (teacherSubjects?.data ?? []), [teacherSubjects]);
+
+  // Helper type for subject compatibility
+  interface SubjectCompat {
+    subjectId: string;
+    name: string;
+    subjectTypeId: string;
+    notes?: string | null;
+  }
+
+  // Map subjectsArray to compatible type for filter/find
+  const subjectsCompatArray: SubjectCompat[] = useMemo(
+    () => subjectsArray.map((s: SubjectCompat) => ({
+      subjectId: s.subjectId,
+      name: s.name,
+      subjectTypeId: s.subjectTypeId,
+      notes: s.notes,
+    })),
+    [subjectsArray]
+  );
 
   const [subjectSearchTerm, setSubjectSearchTerm] = useState("");
   const [teacherSearchTerm, setTeacherSearchTerm] = useState("");
@@ -87,7 +129,51 @@ export function StudentFormDialog({
   const [showTeacherDropdown, setShowTeacherDropdown] = useState(false);
 
   // Access the preference data directly from the student object
-  const studentPreference = student?.preference || null;
+  const studentPreference = useMemo(() => {
+    if (!student || !student.StudentPreference || student.StudentPreference.length === 0) {
+      return null;
+    }
+
+    // Get the first preference object
+    const preference = student.StudentPreference[0];
+
+    // Extract subject IDs from the nested structure
+    const preferredSubjects = preference.subjects?.map(s => s.subjectId) || [];
+
+    // Extract teacher IDs from the nested structure
+    const preferredTeachers = preference.teachers?.map(t => t.teacherId) || [];
+
+    // Map time slots to the expected format
+    const desiredTimes = preference.timeSlots?.map(ts => {
+      // Convert Date objects to time strings if needed
+      const startTime = ts.startTime instanceof Date
+        ? ts.startTime.toTimeString().slice(0, 5)
+        : typeof ts.startTime === 'string'
+          ? ts.startTime.slice(11, 16)
+          : '';
+
+      const endTime = ts.endTime instanceof Date
+        ? ts.endTime.toTimeString().slice(0, 5)
+        : typeof ts.endTime === 'string'
+          ? ts.endTime.slice(11, 16)
+          : '';
+
+      return {
+        dayOfWeek: ts.dayOfWeek,
+        startTime,
+        endTime,
+      };
+    }) || [];
+
+    return {
+      preferredSubjects,
+      preferredTeachers,
+      desiredTimes,
+      additionalNotes: preference.notes || null,
+      classTypeId: preference.classTypeId || null,
+    };
+  }, [student]);
+
 
   const formSchema = CreateUserStudentSchema;
 
@@ -103,8 +189,10 @@ export function StudentFormDialog({
       examSchoolCategoryType: student?.examSchoolCategoryType || undefined,
       firstChoiceSchool: student?.firstChoiceSchool || "",
       secondChoiceSchool: student?.secondChoiceSchool || "",
-      enrollmentDate: student?.enrollmentDate || undefined,
-      birthDate: student?.birthDate,
+      enrollmentDate: student?.enrollmentDate
+        ? new Date(student.enrollmentDate)
+        : undefined,
+      birthDate: student?.birthDate ? new Date(student.birthDate) : new Date(),
       homePhone: student?.homePhone || "",
       parentMobile: student?.parentMobile || "",
       studentMobile: student?.studentMobile || "",
@@ -116,7 +204,7 @@ export function StudentFormDialog({
     },
   });
 
-  // Preferences form - Now using the correct data structure from the API
+  // Preferences form using the properly defined schema
   const preferencesForm = useForm<StudentPreference>({
     resolver: zodResolver(studentPreferencesSchema),
     defaultValues: {
@@ -124,6 +212,7 @@ export function StudentFormDialog({
       preferredTeachers: studentPreference?.preferredTeachers || [],
       desiredTimes: studentPreference?.desiredTimes || [],
       additionalNotes: studentPreference?.additionalNotes || "",
+      classTypeId: studentPreference?.classTypeId || null,
     },
   });
 
@@ -135,9 +224,38 @@ export function StudentFormDialog({
         preferredTeachers: studentPreference.preferredTeachers || [],
         desiredTimes: studentPreference.desiredTimes || [],
         additionalNotes: studentPreference.additionalNotes || "",
+        classTypeId: studentPreference.classTypeId,
       });
     }
   }, [studentPreference, preferencesForm]);
+
+  // Derived form for desiredTimes only
+  const desiredTimesForm = useForm<{ desiredTimes: { dayOfWeek: string; startTime: string; endTime: string }[] }>({
+    defaultValues: { desiredTimes: preferencesForm.getValues("desiredTimes") || [] },
+  });
+
+  // Sync from preferencesForm to desiredTimesForm
+  useEffect(() => {
+    const preferenceTimes = preferencesForm.watch("desiredTimes");
+    if (preferenceTimes && JSON.stringify(preferenceTimes) !== JSON.stringify(desiredTimesForm.getValues().desiredTimes)) {
+      desiredTimesForm.setValue("desiredTimes", preferenceTimes || []);
+    }
+  }, [preferencesForm.watch("desiredTimes"), desiredTimesForm]);
+
+  // Sync from desiredTimesForm to preferencesForm
+  useEffect(() => {
+    const desiredTimes = desiredTimesForm.watch("desiredTimes");
+    if (desiredTimes && desiredTimes.length > 0) {
+      // Ensure the day of week is in uppercase enum format (MONDAY not Monday)
+      const formattedTimes = desiredTimes.map(time => ({
+        dayOfWeek: time.dayOfWeek.toUpperCase(),
+        startTime: time.startTime,
+        endTime: time.endTime
+      }));
+
+      preferencesForm.setValue("desiredTimes", formattedTimes);
+    }
+  }, [desiredTimesForm.watch("desiredTimes"), preferencesForm]);
 
   // Watch selected subjects and teachers
   const selectedSubjects = preferencesForm.watch("preferredSubjects");
@@ -146,7 +264,7 @@ export function StudentFormDialog({
   // Create a mapping of teacherId to the subjects they teach using useMemo
   const teacherToSubjectsMap = useMemo(() => {
     const map = new Map<string, string[]>();
-    teacherSubjects.forEach((ts) => {
+    teacherSubjectsArray.forEach((ts: TeacherSubject) => {
       if (!map.has(ts.teacherId)) {
         map.set(ts.teacherId, []);
       }
@@ -156,12 +274,12 @@ export function StudentFormDialog({
       }
     });
     return map;
-  }, [teacherSubjects]);
+  }, [teacherSubjectsArray]);
 
   // Create a mapping of subjectId to the teachers who teach it using useMemo
   const subjectToTeachersMap = useMemo(() => {
     const map = new Map<string, string[]>();
-    teacherSubjects.forEach((ts) => {
+    teacherSubjectsArray.forEach((ts: TeacherSubject) => {
       if (!map.has(ts.subjectId)) {
         map.set(ts.subjectId, []);
       }
@@ -171,33 +289,37 @@ export function StudentFormDialog({
       }
     });
     return map;
-  }, [teacherSubjects]);
+  }, [teacherSubjectsArray]);
 
   // Compute filtered teachers based on selected subjects
   const filteredTeachers = useMemo(() => {
+    // Ensure only Teacher objects are used
+    const teacherList: Teacher[] = (teachersArray as Teacher[]).filter(
+      (t): t is Teacher => typeof t.teacherId === "string"
+    );
     if (!selectedSubjects.length) {
-      return teachers;
+      return teacherList;
     }
-    return teachers.filter((teacher) => {
+    return teacherList.filter((teacher) => {
       const teacherSubjects = teacherToSubjectsMap.get(teacher.teacherId) || [];
-      return selectedSubjects.some((subjectId) =>
+      return selectedSubjects.some((subjectId: string) =>
         teacherSubjects.includes(subjectId)
       );
     });
-  }, [teachers, teacherToSubjectsMap, selectedSubjects]);
+  }, [teachersArray, teacherToSubjectsMap, selectedSubjects]);
 
   // Compute filtered subjects based on selected teachers
   const filteredSubjects = useMemo(() => {
     if (!selectedTeachers.length) {
-      return subjects;
+      return subjectsCompatArray;
     }
-    return subjects.filter((subject) => {
+    return subjectsCompatArray.filter((subject) => {
       const subjectTeachers = subjectToTeachersMap.get(subject.subjectId) || [];
-      return selectedTeachers.some((teacherId) =>
+      return selectedTeachers.some((teacherId: string) =>
         subjectTeachers.includes(teacherId)
       );
     });
-  }, [subjects, subjectToTeachersMap, selectedTeachers]);
+  }, [subjectsCompatArray, subjectToTeachersMap, selectedTeachers]);
 
   const formatDate = (date: Date) => {
     const year = date.getFullYear();
@@ -213,20 +335,63 @@ export function StudentFormDialog({
     subjectsLoading ||
     teacherSubjectsLoading;
 
+  // Function to map the preferences form data to the API format
+  const mapPreferencesForApi = (preference: StudentPreference) => {
+    return {
+      subjects: preference.preferredSubjects,
+      teachers: preference.preferredTeachers,
+      timeSlots: preference.desiredTimes.map(time => ({
+        dayOfWeek: time.dayOfWeek.toUpperCase(), // Ensure uppercase enum format
+        startTime: time.startTime,
+        endTime: time.endTime
+      })),
+      notes: preference.additionalNotes || undefined,
+      classTypeId: preference.classTypeId || undefined
+    };
+  };
+
   // Handle form submission
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
     try {
+      // Get the latest time slots from the desiredTimesForm
+      const timeSlots = desiredTimesForm.getValues().desiredTimes;
+
+      // Ensure the day of week is in uppercase enum format (MONDAY not Monday)
+      const formattedTimeSlots = timeSlots.map(time => ({
+        dayOfWeek: time.dayOfWeek.toUpperCase(), // Convert to proper enum format
+        startTime: time.startTime,
+        endTime: time.endTime
+      }));
+
+      // Update the preferencesForm with these values
+      preferencesForm.setValue("desiredTimes", formattedTimeSlots);
+
+      const preferenceData = preferencesForm.getValues();
+      const preferences = mapPreferencesForApi(preferenceData);
+
+      // Log the actual data being sent to verify
+      console.log("Submitting with time slots:", preferences.timeSlots);
+
+      const payload = {
+        ...values,
+        birthDate: values.birthDate instanceof Date ? formatDate(values.birthDate) : values.birthDate,
+        enrollmentDate: values.enrollmentDate instanceof Date ? formatDate(values.enrollmentDate) : values.enrollmentDate,
+        preferences,
+      };
+
       if (isEditing && student) {
         await updateStudentMutation.mutateAsync({
           studentId: student.studentId,
-          ...values,
+          ...payload,
         });
       } else {
-        await createStudentMutation.mutateAsync(values);
+        await createStudentMutation.mutateAsync(payload);
       }
       onOpenChange(false);
       form.reset();
+      preferencesForm.reset();
+      desiredTimesForm.reset();
     } catch (error) {
       console.error("Failed to save student:", error);
     } finally {
@@ -332,7 +497,7 @@ export function StudentFormDialog({
                             <SelectValue placeholder="学年を選択" />
                           </SelectTrigger>
                           <SelectContent>
-                            {grades.map((grade) => (
+                            {gradesArray.map((grade: { gradeId: string; name: string }) => (
                               <SelectItem
                                 key={grade.gradeId}
                                 value={grade.gradeId}
@@ -488,13 +653,10 @@ export function StudentFormDialog({
                           value={
                             field.value instanceof Date
                               ? formatDate(field.value)
-                              : ""
+                              : field.value || ""
                           }
                           onChange={(e) => {
-                            const dateValue = e.target.value
-                              ? new Date(e.target.value)
-                              : null;
-                            field.onChange(dateValue);
+                            field.onChange(e.target.value);
                           }}
                         />
                       </FormControl>
@@ -515,13 +677,10 @@ export function StudentFormDialog({
                           value={
                             field.value instanceof Date
                               ? formatDate(field.value)
-                              : ""
+                              : field.value || ""
                           }
                           onChange={(e) => {
-                            const dateValue = e.target.value
-                              ? new Date(e.target.value)
-                              : null;
-                            field.onChange(dateValue);
+                            field.onChange(e.target.value);
                           }}
                         />
                       </FormControl>
@@ -730,7 +889,7 @@ export function StudentFormDialog({
                       </div>
                       <div className="flex flex-wrap gap-2 mt-2">
                         {(field.value || []).map((subjectId, index) => {
-                          const subject = subjects.find(
+                          const subject = subjectsCompatArray.find(
                             (s) => s.subjectId === subjectId
                           );
                           return (
@@ -835,7 +994,7 @@ export function StudentFormDialog({
                       </div>
                       <div className="flex flex-wrap gap-2 mt-2">
                         {(field.value || []).map((teacherId, index) => {
-                          const teacher = teachers.find(
+                          const teacher = (teachersArray as Teacher[]).find(
                             (t) => t.teacherId === teacherId
                           );
                           return (
@@ -866,7 +1025,7 @@ export function StudentFormDialog({
                   )}
                 />
 
-                <StudentDesiredTimeField form={preferencesForm} />
+                <StudentDesiredTimeField form={desiredTimesForm} />
 
                 <FormField
                   control={preferencesForm.control}
@@ -894,11 +1053,28 @@ export function StudentFormDialog({
           <Button
             type="submit"
             disabled={isSubmitting}
-            onClick={form.handleSubmit(onSubmit)}
+            onClick={() => {
+              // Get time slot data from the dedicated form
+              const timeSlots = desiredTimesForm.getValues().desiredTimes;
+
+              // Ensure the day of week is in uppercase enum format (MONDAY not Monday)
+              const formattedTimeSlots = timeSlots.map(time => ({
+                dayOfWeek: time.dayOfWeek.toUpperCase(), // Convert to proper enum format
+                startTime: time.startTime,
+                endTime: time.endTime
+              }));
+
+              // Update the preferences form with the latest time slots
+              preferencesForm.setValue("desiredTimes", formattedTimeSlots);
+
+              // Always use the main form's submit handler
+              form.handleSubmit(onSubmit)();
+            }}
           >
             {isSubmitting ? "保存中..." : isEditing ? "変更を保存" : "作成"}
           </Button>
         </DialogFooter>
+
       </DialogContent>
     </Dialog>
   );

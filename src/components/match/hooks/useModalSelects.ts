@@ -1,8 +1,18 @@
 // components/match/hooks/useModalSelects.ts
 import { useState, useEffect, useCallback } from 'react';
-import axios from 'axios';
-import { Subject } from '../types';
+import { 
+  Subject, 
+  RegularClassTemplate, 
+  TimeSlotPreference 
+} from '../types';
+import { 
+  fetchCompatibleSubjects, 
+  fetchAvailableTimeSlots, 
+  fetchAvailableBooths,
+  createRegularClassTemplate,
+} from '../api-client';
 
+// Interface for available time slots
 interface AvailableTimeSlot {
   dayOfWeek: string;
   startTime: string;
@@ -10,6 +20,7 @@ interface AvailableTimeSlot {
   isPreferredByStudent?: boolean;
 }
 
+// Interface for booths
 interface Booth {
   boothId: string;
   name: string;
@@ -19,11 +30,13 @@ interface Booth {
   updatedAt: string;
 }
 
+// Hook parameters
 interface UseModalSelectsProps {
   teacherId: string | null;
   studentId: string | null;
 }
 
+// Hook return values
 interface UseModalSelectsReturn {
   subjects: Subject[];
   availableDays: { value: string; label: string }[];
@@ -55,8 +68,10 @@ interface UseModalSelectsReturn {
   getDurationOptions: () => { value: string; isAvailable: boolean }[];
   resetForm: () => void;
   handleTimeStep: (step: number) => void;
+  createClassSession: (notes?: string) => Promise<boolean>;
 }
 
+// Day of week mapping to Japanese
 const dayMapping: Record<string, string> = {
   'MONDAY': '月曜日',
   'TUESDAY': '火曜日',
@@ -66,8 +81,6 @@ const dayMapping: Record<string, string> = {
   'SATURDAY': '土曜日',
   'SUNDAY': '日曜日'
 };
-
-const API_URL = 'http://localhost:3000/api';
 
 export function useModalSelects({
   teacherId,
@@ -104,7 +117,7 @@ export function useModalSelects({
   
   // Format time string to uniform HH:MM format
   const formatTimeString = useCallback((timeString: string): string => {
-    // Если время в формате ISO строки (например, "1970-01-01T14:00:00.000Z")
+    // If time is in ISO string format (e.g., "1970-01-01T14:00:00.000Z")
     if (timeString.includes('T')) {
       const date = new Date(timeString);
       return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
@@ -135,7 +148,7 @@ export function useModalSelects({
       
       return `${endHours.toString().padStart(2, '0')}:${endMins.toString().padStart(2, '0')}`;
     } catch (e) {
-      console.error('Ошибка расчета времени окончания:', e);
+      console.error('Error calculating end time:', e);
       return '';
     }
   }, []);
@@ -322,18 +335,10 @@ export function useModalSelects({
     setError(null);
     
     try {
-      const { data } = await axios.get(`${API_URL}/regular-class-templates`, {
-        params: {
-          action: 'compatible-subjects',
-          teacherId,
-          studentId
-        }
-      });
+      const response = await fetchCompatibleSubjects(teacherId, studentId);
       
-      console.log('API response for compatible subjects:', data);
-      
-      // Используем только общие предметы (commonSubjects)
-      const commonSubjects = data.data?.commonSubjects || [];
+      // Using only common subjects (commonSubjects)
+      const commonSubjects = response.data?.commonSubjects || [];
       setSubjects(commonSubjects);
       setHasCommonSubjects(commonSubjects.length > 0);
       
@@ -352,7 +357,7 @@ export function useModalSelects({
       }));
     } catch (err) {
       console.error('Error loading compatible subjects:', err);
-      setError('Ошибка при загрузке доступных предметов');
+      setError('Error loading available subjects');
       setHasCommonSubjects(false);
     } finally {
       setLoading(false);
@@ -376,34 +381,57 @@ export function useModalSelects({
     setError(null);
     
     try {
-      const { data } = await axios.get(`${API_URL}/regular-class-templates`, {
-        params: {
-          action: 'available-time-slots',
-          teacherId,
-          studentId
+      const response = await fetchAvailableTimeSlots(teacherId, studentId);
+      
+      // Transform data from API response to AvailableTimeSlot structure
+      const timeSlots: AvailableTimeSlot[] = [];
+      
+      // Convert student preferences to available slots
+      const studentPreferences = response.data?.studentPreferences || [];
+      studentPreferences.forEach((pref: TimeSlotPreference) => {
+        if (pref.dayOfWeek && pref.startTime && pref.endTime) {
+          timeSlots.push({
+            dayOfWeek: pref.dayOfWeek,
+            startTime: pref.startTime,
+            endTime: pref.endTime,
+            isPreferredByStudent: true
+          });
         }
       });
       
-      console.log('API response for available time slots:', data);
+      // Add available slots from API response
+      const availableSlots = response.data?.availableSlots || [];
+      availableSlots.forEach((slot: TimeSlotPreference) => {
+        if (slot.dayOfWeek && slot.startTime && slot.endTime) {
+          if (!timeSlots.some(s => 
+            s.dayOfWeek === slot.dayOfWeek && 
+            s.startTime === slot.startTime && 
+            s.endTime === slot.endTime)) {
+            timeSlots.push({
+              dayOfWeek: slot.dayOfWeek,
+              startTime: slot.startTime,
+              endTime: slot.endTime
+            });
+          }
+        }
+      });
       
-      // Get available time slots from API response
-      const availableSlots = data.data?.availableSlots || [];
-      setAvailableTimeSlots(availableSlots);
-      setHasCommonTimeSlots(availableSlots.length > 0);
+      setAvailableTimeSlots(timeSlots);
+      setHasCommonTimeSlots(timeSlots.length > 0);
       
-      extractAvailableDays(availableSlots);
+      extractAvailableDays(timeSlots);
       
       setCachedData(prev => ({
         ...prev,
         timeSlots: {
           teacherId,
           studentId,
-          data: availableSlots
+          data: timeSlots
         }
       }));
     } catch (err) {
       console.error('Error loading available time slots:', err);
-      setError('Ошибка при загрузке доступных временных слотов');
+      setError('Error loading available time slots');
       setHasCommonTimeSlots(false);
     } finally {
       setLoading(false);
@@ -474,17 +502,9 @@ export function useModalSelects({
     setError(null);
     
     try {
-      const { data } = await axios.get(`${API_URL}/regular-class-templates`, {
-        params: {
-          action: 'available-booths',
-          dayOfWeek: selectedDay,
-          startTime: selectedStartTime,
-          endTime: selectedEndTime
-        }
-      });
+      const response = await fetchAvailableBooths(selectedDay, selectedStartTime, selectedEndTime);
       
-      
-      const boothsData = data.data || [];
+      const boothsData = response.data || [];
       setAvailableBooths(boothsData);
 
       if (boothsData.length === 1) {
@@ -502,12 +522,50 @@ export function useModalSelects({
       }));
     } catch (err) {
       console.error('Error loading available booths:', err);
-      setError('Ошибка при загрузке доступных кабинетов');
+      setError('Error loading available booths');
       setAvailableBooths([]);
     } finally {
       setLoading(false);
     }
   }, [selectedDay, selectedStartTime, selectedEndTime, cachedData.booths]);
+  
+  // Function for creating regular class session
+  const createClassSession = useCallback(async (notes?: string): Promise<boolean> => {
+    if (!teacherId || !studentId || !selectedSubject || !selectedDay || 
+        !selectedStartTime || !selectedEndTime || !selectedBooth) {
+      setError('Please fill in all fields');
+      return false;
+    }
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const templateData: RegularClassTemplate = {
+        dayOfWeek: selectedDay,
+        startTime: selectedStartTime,
+        endTime: selectedEndTime,
+        teacherId: teacherId,
+        subjectId: selectedSubject,
+        boothId: selectedBooth,
+        studentIds: [studentId],
+        notes: notes || `${getDayLabel(selectedDay)} ${selectedStartTime}-${selectedEndTime}`
+      };
+      
+      await createRegularClassTemplate(templateData);
+      
+      resetForm();
+      
+      return true;
+    } catch (err) {
+      console.error('Error creating class session:', err);
+      setError('Error creating class session');
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, [teacherId, studentId, selectedSubject, selectedDay, selectedStartTime, 
+      selectedEndTime, selectedBooth, getDayLabel, resetForm]);
   
   // Handler for changing the selected day
   const handleDayChange = useCallback((day: string) => {
@@ -517,13 +575,13 @@ export function useModalSelects({
     setSelectedBooth('');
   }, []);
   
-  // Duration change handler
+  // Start time change handler
   const handleStartTimeChange = useCallback((time: string) => {
     setSelectedStartTime(time);
     setSelectedBooth('');
   }, []);
   
-  // Обработчик изменения продолжительности
+  // Duration change handler
   const handleDurationChange = useCallback((duration: string) => {
     setSelectedDuration(duration);
     if (selectedStartTime) {
@@ -598,6 +656,7 @@ export function useModalSelects({
     getDayLabel,
     getDurationOptions,
     resetForm,
-    handleTimeStep
+    handleTimeStep,
+    createClassSession
   };
 }

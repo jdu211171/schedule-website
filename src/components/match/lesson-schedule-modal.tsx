@@ -17,8 +17,9 @@ import WeeklySchedule from "./weekly-schedule";
 import LessonModalSelects from "./lesson-modal-selects";
 import { useModalSelects } from "./hooks/useModalSelects";
 import { ClassSession } from "./types";
+import { useRegularLessons } from "./hooks/useRegularLessons";
 
-// Компонент для отображения ошибки
+// Component for displaying error notification
 function ErrorNotification({ message, onClose }: { message: string; onClose: () => void }) {
   if (!message) return null;
 
@@ -36,7 +37,6 @@ function ErrorNotification({ message, onClose }: { message: string; onClose: () 
 }
 
 interface LessonScheduleModalProps {
-  lessons: ClassSession[];
   onClose: () => void;
   teacherName: string;
   studentName: string;
@@ -47,30 +47,42 @@ interface LessonScheduleModalProps {
 }
 
 export default function LessonScheduleModal({
-  lessons,
   onClose,
   teacherName,
   studentName,
   teacherId,
   studentId,
   open,
-  onAddLesson,
+  onAddLesson, // eslint-disable-line @typescript-eslint/no-unused-vars
 }: LessonScheduleModalProps) {
-  // Состояние для отображения ошибок
+  // State for error display
   const [errorMessage, setErrorMessage] = useState<string>("");
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   
-  // Используем наш хук для работы с API
+  // Loading existing lessons using hook for all 3 types (teacher, student and shared)
+  const { 
+    data: lessons = [], 
+    isLoading: lessonsLoading,
+    refetch: refetchLessons 
+  } = useRegularLessons({
+    teacherId,
+    studentId,
+    teacherName,
+    studentName
+  });
+  
+  // console.log("All lessons in modal:", lessons);
+  
+  // Using our hook for API operations
   const {
-    // Данные для селектов
+    // Data for selects
     subjects,
     availableDays,
-    // availableTimeSlots удалено, так как не используется
     availableStartTimes,
     availableBooths,
     
-    // Выбранные значения
+    // Selected values
     selectedSubject,
     selectedDay,
     selectedStartTime,
@@ -78,89 +90,79 @@ export default function LessonScheduleModal({
     selectedDuration,
     selectedBooth,
     
-    // Сетеры для выбранных значений
+    // Setters for selected values
     setSelectedSubject,
     setSelectedDay,
     setSelectedStartTime,
     setSelectedDuration,
     setSelectedBooth,
     
-    // Состояния загрузки
+    // Loading states
     loading,
     error,
     hasCommonSubjects,
     hasCommonDays,
     hasCommonTimeSlots,
     
-    // Полезные методы
+    // Utility methods
     getDurationOptions,
-    resetForm,
-    handleTimeStep
+    // resetForm,
+    handleTimeStep,
+    createClassSession
   } = useModalSelects({
     teacherId,
     studentId
   });
   
-  // Получаем варианты продолжительности
   const durationOptions = getDurationOptions();
   
-  // Отображаем ошибку API
+  // Display API error
   useEffect(() => {
     if (error) {
       setErrorMessage(error);
     }
   }, [error]);
   
-  // Отслеживаем изменения для предупреждения при закрытии
+  // Track changes for close warning
   useEffect(() => {
     if (selectedSubject || selectedBooth) {
       setHasChanges(true);
     }
   }, [selectedSubject, selectedBooth]);
   
-  // Обработчик добавления урока
-  const handleSaveLesson = () => {
+  // Lesson add handler
+  const handleSaveLesson = async () => {
     if (!selectedSubject || !selectedDay || !selectedStartTime || !selectedEndTime || !selectedBooth) {
       setErrorMessage("Пожалуйста, заполните все поля");
       return;
     }
     
-    // Преобразуем day в формат числа
-    const dayOfWeekMap: Record<string, string> = {
-      'MONDAY': '1',
-      'TUESDAY': '2',
-      'WEDNESDAY': '3',
-      'THURSDAY': '4',
-      'FRIDAY': '5',
-      'SATURDAY': '6',
-      'SUNDAY': '0'
-    };
-    
-    // Создаем объект урока для отправки в API
-    const newLesson: Partial<ClassSession> = {
-      teacherId,
-      studentId,
-      subjectId: selectedSubject,
-      boothId: selectedBooth,
-      dayOfWeek: dayOfWeekMap[selectedDay] || selectedDay,
-      startTime: selectedStartTime,
-      endTime: selectedEndTime,
-      status: "有効" // активный статус
-    };
-    
-    if (onAddLesson) {
-      try {
-        onAddLesson(newLesson);
-        resetForm();
+    try {
+      // console.log("Creating class session with selected values:", {
+      //   selectedSubject,
+      //   selectedDay,
+      //   selectedStartTime,
+      //   selectedEndTime,
+      //   selectedBooth
+      // });
+      
+      const success = await createClassSession();
+      
+      if (success) {
+        // console.log("Class session created successfully");
+        await refetchLessons();
         setHasChanges(true);
-      } catch (error) {
-        console.error("Ошибка при добавлении урока:", error);
+      } else {
+        console.error("Failed to create class session");
         setErrorMessage("Не удалось добавить урок. Попробуйте еще раз.");
       }
+    } catch (error) {
+      console.error("Error saving lesson:", error);
+      setErrorMessage("Не удалось добавить урок. Попробуйте еще раз.");
     }
   };
   
-  // Обработчик закрытия модального окна
+  // Modal close handler
   const handleClose = () => {
     if (hasChanges) {
       setIsConfirmOpen(true);
@@ -169,12 +171,12 @@ export default function LessonScheduleModal({
     }
   };
   
-  // Подтверждение изменений и закрытие
+  // Confirm changes and close
   const handleConfirmChanges = () => {
     onClose();
   };
   
-  // Проверка наличия совместимых опций
+  // Check for compatible options
   const hasNoMatchingOptions = !hasCommonSubjects || !hasCommonDays || !hasCommonTimeSlots;
   
   if (!open) return null;
@@ -189,7 +191,7 @@ export default function LessonScheduleModal({
       )}
 
       <div className="bg-white w-[85%] max-w-[1200px] max-h-[95vh] rounded-lg shadow-lg flex flex-col">
-        {/* Заголовок */}
+        {/* Header */}
         <div className="px-6 py-3 border-b flex justify-between items-center">
           <div>
             <h2 className="flex items-center text-xl font-bold">
@@ -216,25 +218,25 @@ export default function LessonScheduleModal({
           </button>
         </div>
 
-        {/* Контент */}
+        {/* Content */}
         <div className="px-6 overflow-y-auto flex-grow">
-          {/* Отображение индикатора загрузки */}
-          {loading && (
+          {/* Loading indicator */}
+          {(loading || lessonsLoading) && (
             <div className="p-4 text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
               <p className="mt-2 text-gray-600">データを読み込み中...</p>
             </div> )
           }
 
-          {/* Компонент с селектами */}
+          {/* Selects component */}
           <LessonModalSelects
-            // Данные для селектов
+            // Select data
             subjects={subjects}
             availableDays={availableDays}
             availableStartTimes={availableStartTimes}
             availableBooths={availableBooths}
             
-            // Выбранные значения
+            // Selected values
             selectedSubject={selectedSubject}
             selectedDay={selectedDay}
             selectedStartTime={selectedStartTime}
@@ -242,26 +244,26 @@ export default function LessonScheduleModal({
             selectedDuration={selectedDuration}
             selectedBooth={selectedBooth}
             
-            // Сетеры для выбранных значений
+            // Setters for selected values
             setSelectedSubject={setSelectedSubject}
             setSelectedDay={setSelectedDay}
             setSelectedStartTime={setSelectedStartTime}
             setSelectedDuration={setSelectedDuration}
             setSelectedBooth={setSelectedBooth}
             
-            // Ошибки и статусы
+            // Errors and statuses
             timeError={null}
             hasCommonSubjects={hasCommonSubjects}
             hasCommonDays={hasCommonDays}
             hasCommonTimeSlots={hasCommonTimeSlots}
             loading={loading}
             
-            // Дополнительно
+            // Additional
             durationOptions={durationOptions}
             handleTimeStep={handleTimeStep}
           />
 
-          {/* Кнопка добавления урока */}
+          {/* Add lesson button */}
           <Button
             className={`w-full py-6 cursor-pointer my-5 ${
               hasNoMatchingOptions || !selectedSubject || !selectedDay || !selectedStartTime || !selectedBooth
@@ -274,7 +276,7 @@ export default function LessonScheduleModal({
             授業を追加
           </Button>
 
-          {/* Недельное расписание */}
+          {/* Weekly schedule with updated logic for different lesson types */}
           <div className="mt-2 border-t pt-2">
             <WeeklySchedule
               lessons={lessons}
@@ -287,7 +289,7 @@ export default function LessonScheduleModal({
           </div>
         </div>
 
-        {/* Футер */}
+        {/* Footer */}
         <div className="px-6 py-3 border-t flex justify-between">
           <div className="flex-grow"></div>
           <Button
@@ -308,7 +310,7 @@ export default function LessonScheduleModal({
           </Button>
         </div>
 
-        {/* Диалог подтверждения */}
+        {/* Confirmation dialog */}
         <AlertDialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>

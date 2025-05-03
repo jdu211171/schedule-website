@@ -140,7 +140,7 @@ export default function StudentTable({
       
       const studentSubjects = getStudentSubjects(student);
       
-      console.log(`Student ${student.name} subjects:`, studentSubjects);
+      // console.log(`Student ${student.name} subjects:`, studentSubjects);
   
       return {
         ...student,

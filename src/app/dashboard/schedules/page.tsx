@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import AdminCalendarDay from '@/components/admin-schedule/admin-calendar-day';
 import AdminCalendarWeek from '@/components/admin-schedule/admin-calendar-week';
+import AdminCalendarList from '@/components/admin-schedule/admin-calendar-list';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
@@ -48,8 +49,7 @@ export default function ScheduleManagementPage() {
           <p>月間表示は開発中です。</p>
         </TabsContent>
         <TabsContent value="list">
-          {/* Здесь будет представление в виде списка */}
-          <p>リスト表示は開発中です。</p>
+          <AdminCalendarList />
         </TabsContent>
       </Tabs>
     </div>

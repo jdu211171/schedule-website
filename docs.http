@@ -1,5 +1,5 @@
 @url = http://localhost:3000/api
-@cookie = sb-vyauzmxjjpbzichdnqnp-auth-token=base64-eyJhY2Nlc3NfdG9rZW4iOiJleUpoYkdjaU9pSklVekkxTmlJc0ltdHBaQ0k2SWxVdmR6QktXRlIwWTNkYU55OHZkV2NpTENKMGVYQWlPaUpLVjFRaWZRLmV5SnBjM01pT2lKb2RIUndjem92TDNaNVlYVjZiWGhxYW5CaWVtbGphR1J1Y1c1d0xuTjFjR0ZpWVhObExtTnZMMkYxZEdndmRqRWlMQ0p6ZFdJaU9pSXpNVE0zTVRVME9DMDBPRFF4TFRRNU9Ea3RZVFUxWkMwNU1UUmlZelppTVRJeVpUWWlMQ0poZFdRaU9pSmhkWFJvWlc1MGFXTmhkR1ZrSWl3aVpYaHdJam94TnpRME9EZ3dPRGs0TENKcFlYUWlPakUzTkRRNE56Y3lPVGdzSW1WdFlXbHNJam9pYVhOc2IyMUFaMjFoYVd3dVkyOXRJaXdpY0dodmJtVWlPaUlpTENKaGNIQmZiV1YwWVdSaGRHRWlPbnNpY0hKdmRtbGtaWElpT2lKbGJXRnBiQ0lzSW5CeWIzWnBaR1Z5Y3lJNld5SmxiV0ZwYkNKZGZTd2lkWE5sY2w5dFpYUmhaR0YwWVNJNmV5SmxiV0ZwYkY5MlpYSnBabWxsWkNJNmRISjFaWDBzSW5KdmJHVWlPaUpoZFhSb1pXNTBhV05oZEdWa0lpd2lZV0ZzSWpvaVlXR
+@cookie = 03e7e12c0fb0a025c04a2d1a1daec94577ed3c07d98cb6fd22e2a414b0361cef%7C9521c25a0010fc9e9100a790f38ca49d20b549ff21e0cdf36b7232787d0d757c; authjs.callback-url=http%3A%2F%2Flocalhost%3A3000%2Fdashboard%2Fmatch; authjs.session-token=eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2Q0JDLUhTNTEyIiwia2lkIjoiN2k0YkNIMDRhZHdRM0V4ZkV2ZnRNd2pEX0FWUnk3TW1PSFA1d0kxWTUtT1FFekpjQjNSV0NoUkIyWUtKdzRsZWZaWVBMTXY0T3I4amw4ZGpvZzktYncifQ..D-nwTONZdNkQ-5yKslCyIA.1n8_kvrm39sX7RNctcXKiV4dGDywTxqU0-JcX40e5oZzpmeSfuV7f7zV6Isn3j9pBiHOqibRUvWcXWILVoi2Lr5n6abotuQOUf79m-q1f1QLLuDj4smkL8Oc-nJAC6WfqZBWYcTyFOFgANnHvZ42Sm404L1UT_lf3eM89hXn4tjlPLkIPqQ4ljeyJqU1ycBJVlmZdn_feNeZUvCChA0PaTZDUFLg0_bISll9ZscMzT89a3timR12NuzeDp-N1C0pjihpoqh0EFOY9HqSeqRzA6mu10Py2q0-rgFuOyJiw_I.v3v5QUslj-DaUn24R1HpptkccaSHqQMNFfOuSgc9iaA
 
 #########
 # BOOTH #
@@ -715,7 +715,7 @@ Cookie: {{cookie}}
   "username": "tanaka_kenji",
   "password": "securepassword123",
   "name": "Tanaka Kenji",
-  "evaluationId": "cma144m5n000n104qdxmlxrdu",
+  "evaluationId": "cma6sgl380001vzo0f8oaxyds",
   "birthDate": "1990-05-10",
   "mobileNumber": "090-1234-5678",
   "email": "tanaka.kenji@example.com",
@@ -1002,25 +1002,25 @@ Cookie: {{cookie}}
 
 ### Get compatible teachers for a specific student (prioritized)
 # Replace STUDENT_ID with an actual ID from your database
-GET {{url}}/regular-class-templates?action=compatible-teachers&studentId=cma144m600010104qpk5ai7om
+GET {{url}}/regular-class-templates?action=compatible-teachers&studentId=cma6fzd850010vi7kmvl0lsax
 Content-Type: application/json
 Cookie: {{cookie}}
 
 ### Get compatible students for a specific teacher (prioritized)
 # Replace TEACHER_ID with an actual ID from your database
-GET {{url}}/regular-class-templates?action=compatible-students&teacherId=cma144m5u000u104qsqx0wjex
+GET {{url}}/regular-class-templates?action=compatible-students&teacherId=cma6fzd7z000uvi7k4uc6q8m3
 Content-Type: application/json
 Cookie: {{cookie}}
 
 ### Get compatible subjects for a teacher-student combination
 # Replace TEACHER_ID and STUDENT_ID with actual IDs from your database
-GET {{url}}/regular-class-templates?action=compatible-subjects&teacherId=cma144m5u000u104qsqx0wjex&studentId=cma144m600010104qpk5ai7om
+GET {{url}}/regular-class-templates?action=compatible-subjects&teacherId=cma6fzd7z000uvi7k4uc6q8m3&studentId=cma6fzd850010vi7kmvl0lsax
 Content-Type: application/json
 Cookie: {{cookie}}
 
 ### Get available time slots for a teacher-student combination
 # Replace TEACHER_ID and STUDENT_ID with actual IDs from your database
-GET {{url}}/regular-class-templates?action=available-time-slots&teacherId=cma144m5u000u104qsqx0wjex&studentId=cma144m600010104qpk5ai7om
+GET {{url}}/regular-class-templates?action=available-time-slots&teacherId=ccma6fzd7z000uvi7k4uc6q8m3&studentId=cma6fzd850010vi7kmvl0lsax
 Content-Type: application/json
 Cookie: {{cookie}}
 
@@ -1050,7 +1050,7 @@ Content-Type: application/json
 Cookie: {{cookie}}
 
 ### Error test: Get available time slots with missing IDs (should return error)
-GET {{url}}/regular-class-templates?action=available-time-slots&teacherId=cma144m5u000u104qsqx0wjex
+GET {{url}}/regular-class-templates?action=available-time-slots&teacherId=ccma6fzd7z000uvi7k4uc6q8m3
 Content-Type: application/json
 Cookie: {{cookie}}
 
@@ -1060,7 +1060,7 @@ Content-Type: application/json
 Cookie: {{cookie}}
 
 ### Complete flow test 1: Get compatible teachers for student
-GET {{url}}/regular-class-templates?action=compatible-teachers&studentId=cma144m600010104qpk5ai7om
+GET {{url}}/regular-class-templates?action=compatible-teachers&studentId=cma6fzd850010vi7kmvl0lsax
 Content-Type: application/json
 Cookie: {{cookie}}
 
@@ -1070,7 +1070,7 @@ Content-Type: application/json
 Cookie: {{cookie}}
 
 ### Complete flow test 3: Get available time slots for selected teacher and student
-GET {{url}}/regular-class-templates?action=available-time-slots&teacherId=cma144m5u000u104qsqx0wjex&studentId=cma144m600010104qpk5ai7om
+GET {{url}}/regular-class-templates?action=available-time-slots&teacherId=ccma6fzd7z000uvi7k4uc6q8m3&studentId=cma6fzd850010vi7kmvl0lsax
 Content-Type: application/json
 Cookie: {{cookie}}
 

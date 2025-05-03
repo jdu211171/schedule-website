@@ -18,7 +18,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import DetailDialog from "./detail-dialog";
 
-// Импортируем типы из файла типов
 import {
   Teacher,
   Subject,
@@ -27,7 +26,6 @@ import {
   ClassSession
 } from "@/components/match/types";
 
-// Интерфейс для обогащенного учителя с доп. свойствами для UI
 interface EnrichedTeacher extends Teacher {
   evaluation: Evaluation | null;
   subjects: Subject[];
@@ -94,7 +92,6 @@ export default function TeacherTable({
     [lessons],
   );
 
-  // Используем filteredTeachers, если они предоставлены, иначе используем всех учителей
   const baseTeachers = useMemo(() => {
     return filteredTeachers || teachers;
   }, [filteredTeachers, teachers]);
@@ -133,7 +130,6 @@ export default function TeacherTable({
     });
   }, [baseTeachers, evaluations, subjects, teacherSubjects]);
 
-  // Фильтрация на стороне клиента
   const filteredTeachersWithUI = useMemo(() => {
     return enrichedTeachers.filter((teacher) => {
       const matchesSearch =
