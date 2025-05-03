@@ -181,7 +181,7 @@ export default function TeacherTable({
       {/* Показываем заголовок с предпочитаемыми предметами, если выбран ученик */}
       {selectedStudentId && (
         <div className="bg-green-50 p-2 border-b flex flex-wrap items-center gap-2">
-          <span className="text-green-800 text-sm font-medium">希望科目：</span>
+          <span className="text-green-800 text-sm font-medium">担当可能科目：</span>
           {kibouSubjects.length > 0 ? (
             kibouSubjects.map((subject) => (
               <SubjectBadge key={subject.subjectId} subject={subject} size="sm" />

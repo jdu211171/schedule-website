@@ -314,7 +314,7 @@ Cookie: {{cookie}}
 
 ### Get a single teacher-subject relationship by composite ID
 # Replace TEACHER_ID and SUBJECT_ID with actual IDs from your database
-GET {{url}}/teacher-subjects/cma144m5w000w104q8cncwj26/cma144m5g000i104q6edj7rri
+GET {{url}}/teacher-subjects/cma6fzd7z000uvi7k4uc6q8m3/cma6fzd7o000gvi7kafpxtmb8
 Content-Type: application/json
 Cookie: {{cookie}}
 
@@ -325,13 +325,13 @@ Cookie: {{cookie}}
 
 ### Get teacher subjects with filtering by teacherId
 # Replace TEACHER_ID with an actual ID from your database
-GET {{url}}/teacher-subjects?teacherId=cma144m5u000u104qsqx0wjex
+GET {{url}}/teacher-subjects?teacherId=cma6fzd7z000uvi7k4uc6q8m3
 Content-Type: application/json
 Cookie: {{cookie}}
 
 ### Get teacher subjects with filtering by subjectId
 # Replace SUBJECT_ID with an actual ID from your database
-GET {{url}}/teacher-subjects?subjectId=cma144m5g000g104qhle1xh2y
+GET {{url}}/teacher-subjects?subjectId=cma6fzd7o000gvi7kafpxtmb8
 Content-Type: application/json
 Cookie: {{cookie}}
 
@@ -457,7 +457,7 @@ Cookie: {{cookie}}
 
 ### Get a single subject type by ID
 # Replace SUBJECT_TYPE_ID with an actual ID from your database
-GET {{url}}/subject-type/cma144m5d000e104q1leaiz1u
+GET {{url}}/subject-type/cma6fzd7m000dvi7krd27jfox
 Content-Type: application/json
 Cookie: {{cookie}}
 
@@ -535,7 +535,7 @@ Content-Type: application/json
 Cookie: {{cookie}}
 
 ### Get subjects with filtering by subject type ID
-GET {{url}}/subjects?subjectTypeId=cma144m5d000e104q1leaiz1u
+GET {{url}}/subjects?subjectTypeId=cma6fzd7m000dvi7krd27jfox
 Content-Type: application/json
 Cookie: {{cookie}}
 

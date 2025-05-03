@@ -80,7 +80,8 @@ export default function StudentTable({
   const getStudentSubjects = useCallback((student: StudentWithPreference) => {
     const subjectIds = new Set<string>();
     const studentSubjectsList: Subject[] = [];
-
+  
+    // 1. Получаем предметы из preference
     if (student.preference?.preferredSubjects) {
       student.preference.preferredSubjects.forEach(subjectId => {
         if (!subjectIds.has(subjectId)) {
@@ -92,9 +93,31 @@ export default function StudentTable({
         }
       });
     }
-
+  
+    // 2. Получаем предметы из StudentPreference
+    if (student.StudentPreference) {
+      student.StudentPreference.forEach(pref => {
+        if (pref.subjects) {
+          pref.subjects.forEach(subjectItem => {
+            if (subjectItem.subjectId && !subjectIds.has(subjectItem.subjectId)) {
+              const subject = subjects.find(s => s.subjectId === subjectItem.subjectId);
+              if (subject) {
+                subjectIds.add(subjectItem.subjectId);
+                studentSubjectsList.push(subject);
+              } else if (subjectItem.subject) {
+                // Если у нас есть вложенный объект subject
+                subjectIds.add(subjectItem.subject.subjectId);
+                studentSubjectsList.push(subjectItem.subject);
+              }
+            }
+          });
+        }
+      });
+    }
+  
+    // 3. Получаем предметы из уроков
     const studentLessons = lessons.filter(lesson => lesson.studentId === student.studentId);
-
+  
     studentLessons.forEach(lesson => {
       if (lesson.subject && !subjectIds.has(lesson.subject.subjectId)) {
         subjectIds.add(lesson.subject.subjectId);
@@ -107,7 +130,7 @@ export default function StudentTable({
         }
       }
     });
-
+  
     return studentSubjectsList;
   }, [lessons, subjects]);
 
@@ -216,7 +239,7 @@ export default function StudentTable({
               />
             ))
           ) : (
-            <span className="text-blue-600 text-xs italic">Загрузка предметов...</span>
+            <span className="text-blue-600 text-xs italic">...</span>
           )}
         </div>
       )}

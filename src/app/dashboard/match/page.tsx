@@ -115,11 +115,63 @@ export default function LessonManagementPage() {
     if (!studentId) return [];
     
     const student = students.find(s => s.studentId === studentId);
-    if (!student || !student.preference || !student.preference.preferredSubjects) return [];
+    if (!student) return [];
     
-    const preferredSubjectIds = student.preference.preferredSubjects;
-    return subjects.filter(subject => preferredSubjectIds.includes(subject.subjectId));
-  }, [students, subjects]);
+    const subjectIds = new Set<string>();
+    const studentSubjectsList: Subject[] = [];
+    
+    // 1. Получаем предметы из preference
+    if (student.preference && student.preference.preferredSubjects) {
+      student.preference.preferredSubjects.forEach(subjectId => {
+        if (!subjectIds.has(subjectId)) {
+          const subject = subjects.find(s => s.subjectId === subjectId);
+          if (subject) {
+            subjectIds.add(subjectId);
+            studentSubjectsList.push(subject);
+          }
+        }
+      });
+    }
+    
+    // 2. Получаем предметы из StudentPreference
+    if (student.StudentPreference) {
+      student.StudentPreference.forEach(pref => {
+        if (pref.subjects) {
+          pref.subjects.forEach(subjectItem => {
+            if (subjectItem.subjectId && !subjectIds.has(subjectItem.subjectId)) {
+              const subject = subjects.find(s => s.subjectId === subjectItem.subjectId);
+              if (subject) {
+                subjectIds.add(subjectItem.subjectId);
+                studentSubjectsList.push(subject);
+              } else if (subjectItem.subject) {
+                // Если у нас есть вложенный объект subject
+                subjectIds.add(subjectItem.subject.subjectId);
+                studentSubjectsList.push(subjectItem.subject);
+              }
+            }
+          });
+        }
+      });
+    }
+    
+    // 3. Получаем предметы из уроков
+    const studentLessons = classSessions.filter(lesson => lesson.studentId === studentId);
+    
+    studentLessons.forEach(lesson => {
+      if (lesson.subject && !subjectIds.has(lesson.subject.subjectId)) {
+        subjectIds.add(lesson.subject.subjectId);
+        studentSubjectsList.push(lesson.subject);
+      } else if (lesson.subjectId && !subjectIds.has(lesson.subjectId)) {
+        const subject = subjects.find(s => s.subjectId === lesson.subjectId);
+        if (subject && !subjectIds.has(subject.subjectId)) {
+          subjectIds.add(subject.subjectId);
+          studentSubjectsList.push(subject);
+        }
+      }
+    });
+    
+    return studentSubjectsList;
+  }, [students, subjects, classSessions]);
 
   // 先生の科目を取得する関数
   const getTeacherSubjects = useCallback((teacherId: string | null): Subject[] => {
@@ -167,22 +219,6 @@ export default function LessonManagementPage() {
 
   // APIからの互換性データを処理
   useEffect(() => {
-    setIsLoadingTeacherCompatibility(compatibleTeachersLoading);
-    
-    if (compatibleTeachersData && !compatibleTeachersLoading) {
-      console.log("Received compatible teachers:", compatibleTeachersData);
-      setCachedFilteredTeachers(compatibleTeachersData.filteredTeachers || []);
-      
-      if (compatibleTeachersData.kibouSubjects && compatibleTeachersData.kibouSubjects.length > 0) {
-        setStudentKibouSubjects(compatibleTeachersData.kibouSubjects);
-      }
-    } else if (!selectedStudentId) {
-      setCachedFilteredTeachers([]);
-      setStudentKibouSubjects([]);
-    }
-  }, [compatibleTeachersData, compatibleTeachersLoading, selectedStudentId]);
-
-  useEffect(() => {
     setIsLoadingStudentCompatibility(compatibleStudentsLoading);
     
     if (compatibleStudentsData && !compatibleStudentsLoading) {
@@ -191,12 +227,38 @@ export default function LessonManagementPage() {
       
       if (compatibleStudentsData.kibouSubjects && compatibleStudentsData.kibouSubjects.length > 0) {
         setTeacherKibouSubjects(compatibleStudentsData.kibouSubjects);
+      } else {
+        const subjects = getTeacherSubjects(selectedTeacherId);
+        if (subjects.length > 0) {
+          setTeacherKibouSubjects(subjects);
+        }
       }
     } else if (!selectedTeacherId) {
       setCachedFilteredStudents([]);
       setTeacherKibouSubjects([]);
     }
-  }, [compatibleStudentsData, compatibleStudentsLoading, selectedTeacherId]);
+  }, [compatibleStudentsData, compatibleStudentsLoading, selectedTeacherId, getTeacherSubjects]);
+
+  useEffect(() => {
+    setIsLoadingTeacherCompatibility(compatibleTeachersLoading);
+    
+    if (compatibleTeachersData && !compatibleTeachersLoading) {
+      console.log("Received compatible teachers:", compatibleTeachersData);
+      setCachedFilteredTeachers(compatibleTeachersData.filteredTeachers || []);
+      
+      if (compatibleTeachersData.kibouSubjects && compatibleTeachersData.kibouSubjects.length > 0) {
+        setStudentKibouSubjects(compatibleTeachersData.kibouSubjects);
+      } else {
+        const subjects = getStudentSubjects(selectedStudentId);
+        if (subjects.length > 0) {
+          setStudentKibouSubjects(subjects);
+        }
+      }
+    } else if (!selectedStudentId) {
+      setCachedFilteredTeachers([]);
+      setStudentKibouSubjects([]);
+    }
+  }, [compatibleTeachersData, compatibleTeachersLoading, selectedStudentId, getStudentSubjects]);
 
   /* -------------------- ハンドラ -------------------- */
   const handleTeacherSelect = useCallback((teacherId: string) => {
