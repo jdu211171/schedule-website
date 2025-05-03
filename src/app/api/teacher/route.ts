@@ -28,6 +28,8 @@ export async function GET(request: Request) {
       email,
       university,
       enrollmentStatus,
+      subjectId,
+      evaluationId,
       sort,
       order,
     } = query;
@@ -53,16 +55,25 @@ export async function GET(request: Request) {
       };
     }
 
+    // Handle evaluationId filtering
+    if (evaluationId) {
+      // If evaluationId is an array, filter for teachers with evaluationId in the array
+      if (Array.isArray(evaluationId)) {
+        filters.evaluationId = {
+          in: evaluationId,
+        };
+      } else {
+        // If evaluationId is a string, filter for exact match
+        filters.evaluationId = evaluationId;
+      }
+    }
+
     const skip = (page - 1) * limit;
 
     const orderBy: Record<string, string> = {};
     orderBy[sort] = order;
 
-    const total = await prisma.teacher.count({
-      where: filters,
-    });
-
-    const teachers = await prisma.teacher.findMany({
+    let teacherQuery = {
       where: filters,
       skip,
       take: limit,
@@ -76,7 +87,47 @@ export async function GET(request: Request) {
         },
         TeacherShiftReference: true,
       },
+    };
+
+    // If subjectId is provided, adjust the query to filter teachers
+    // who teach the specified subject(s)
+    if (subjectId) {
+      if (Array.isArray(subjectId)) {
+        // For multiple subjects, find teachers who teach ANY of the specified subjects
+        teacherQuery = {
+          ...teacherQuery,
+          where: {
+            ...teacherQuery.where,
+            teacherSubjects: {
+              some: {
+                subjectId: {
+                  in: subjectId,
+                },
+              },
+            },
+          },
+        };
+      } else {
+        // For a single subject
+        teacherQuery = {
+          ...teacherQuery,
+          where: {
+            ...teacherQuery.where,
+            teacherSubjects: {
+              some: {
+                subjectId,
+              },
+            },
+          },
+        };
+      }
+    }
+
+    const total = await prisma.teacher.count({
+      where: teacherQuery.where,
     });
+
+    const teachers = await prisma.teacher.findMany(teacherQuery);
 
     return Response.json({
       data: teachers,

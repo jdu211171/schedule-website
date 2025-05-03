@@ -1,5 +1,5 @@
 @url = http://localhost:3000/api
-@cookie = 03e7e12c0fb0a025c04a2d1a1daec94577ed3c07d98cb6fd22e2a414b0361cef%7C9521c25a0010fc9e9100a790f38ca49d20b549ff21e0cdf36b7232787d0d757c; authjs.callback-url=http%3A%2F%2Flocalhost%3A3000%2Fdashboard%2Fmatch; authjs.session-token=eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2Q0JDLUhTNTEyIiwia2lkIjoiN2k0YkNIMDRhZHdRM0V4ZkV2ZnRNd2pEX0FWUnk3TW1PSFA1d0kxWTUtT1FFekpjQjNSV0NoUkIyWUtKdzRsZWZaWVBMTXY0T3I4amw4ZGpvZzktYncifQ..D-nwTONZdNkQ-5yKslCyIA.1n8_kvrm39sX7RNctcXKiV4dGDywTxqU0-JcX40e5oZzpmeSfuV7f7zV6Isn3j9pBiHOqibRUvWcXWILVoi2Lr5n6abotuQOUf79m-q1f1QLLuDj4smkL8Oc-nJAC6WfqZBWYcTyFOFgANnHvZ42Sm404L1UT_lf3eM89hXn4tjlPLkIPqQ4ljeyJqU1ycBJVlmZdn_feNeZUvCChA0PaTZDUFLg0_bISll9ZscMzT89a3timR12NuzeDp-N1C0pjihpoqh0EFOY9HqSeqRzA6mu10Py2q0-rgFuOyJiw_I.v3v5QUslj-DaUn24R1HpptkccaSHqQMNFfOuSgc9iaA
+@cookie = authjs.csrf-token=b809ec3e10daad3a64e35db6c8bfc21891ce7da7a32f5d3657774d1e1261a70d%7Cc5d4c0011bd3c39a8821ed00d2159b8a48590a9c99bd2cd1fa585ef1a2559d53; authjs.callback-url=http%3A%2F%2Flocalhost%3A3000%2F; authjs.session-token=eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2Q0JDLUhTNTEyIiwia2lkIjoiV0stMTdJYWdNdnREdUFmaTkwN1g0aUt5RFE5ZHFxeGxvUFJLcFpqOEZkMTdmZmV4Qlo3YkFsb2QzZy12MjJDM2xmbFNDWV9jTEYtUmVMRUxCQUpsekEifQ..OdmrOF3cqWUT3vvMIgY23Q.vbtAvjOix7jxIpzBknSy84LGIy-ANS4vQGL5BjqtudWWQudcRLZAuCO7KTVlLpp01mA_V0P335OxAtVVzo6ZhCyC1gzZp1DOH51fIXeeMb_wDncyi9ElfGdc44-niZeAHsuH86pKdgeTYhjQQWZePcd7mUVmLmh5gpHO8soBQH8wkOnWBuBqD2gPfbpHWswyq8N4F99GhJSsMvkvM4vTJabC7S9zGLLdKTMSQoXEslhLEL3h63gUPiqRUmmQUfoVIqoB8qOGiNsP-AkprUf9PBoMSDt8WwnQkGnZDyIJ8xA.4PdqlLzSj0wjdkKn2Zrjqea0O1GWZ8P_3L84i-1CP-Y
 
 #########
 # BOOTH #
@@ -688,6 +688,16 @@ Cookie: {{cookie}}
 
 ### Get teachers with filtering by enrollment status
 GET {{url}}/teacher?enrollmentStatus=在籍
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get teachers with filtering by subject
+GET {{url}}/teacher?subjectId=cma8l10zf000jsbli6r8j3m1g
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get teachers with filtering by evaluation
+GET {{url}}/teacher?evaluationId=cma8l10zo000nsblisdv6cc3g
 Content-Type: application/json
 Cookie: {{cookie}}
 

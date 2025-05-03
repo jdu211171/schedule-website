@@ -309,6 +309,8 @@ export const TeacherQuerySchema = z
     email: z.string().optional(),
     university: z.string().optional(),
     enrollmentStatus: z.string().optional(),
+    subjectId: z.union([z.string(), z.array(z.string())]).optional(),
+    evaluationId: z.union([z.string(), z.array(z.string())]).optional(),
     sort: z
       .enum([
         "name",
