@@ -26,9 +26,12 @@ export async function GET(request: Request) {
       limit,
       name,
       gradeName,
+      gradeId,
+      studentTypeId,
       schoolName,
       schoolType,
       examSchoolType,
+      preferredSubjectId,
       sort,
       order,
     } = query;
@@ -47,14 +50,74 @@ export async function GET(request: Request) {
       filters.schoolType = schoolType;
     }
 
+    // Handle examSchoolType filtering
     if (examSchoolType) {
-      filters.examSchoolType = examSchoolType;
+      if (Array.isArray(examSchoolType)) {
+        filters.examSchoolType = { in: examSchoolType };
+      } else {
+        filters.examSchoolType = examSchoolType;
+      }
     }
 
+    // Handle gradeName filtering (existing logic)
     if (gradeName) {
       filters.grade = {
         name: { contains: gradeName, mode: "insensitive" },
       };
+    }
+
+    // Handle gradeId filtering
+    if (gradeId) {
+      if (Array.isArray(gradeId)) {
+        filters.gradeId = { in: gradeId };
+      } else {
+        filters.gradeId = gradeId;
+      }
+    }
+
+    // Handle studentTypeId filtering
+    if (studentTypeId) {
+      if (Array.isArray(studentTypeId)) {
+        filters.grade = {
+          ...(typeof filters.grade === "object" && filters.grade !== null ? filters.grade : {}),
+          studentTypeId: { in: studentTypeId },
+        };
+      } else {
+        filters.grade = {
+          ...(typeof filters.grade === "object" && filters.grade !== null ? filters.grade : {}),
+          studentTypeId: studentTypeId,
+        };
+      }
+    }
+
+    // Handle preferred subject filtering
+    if (preferredSubjectId) {
+      // Add filter for students with specified preferred subject(s)
+      if (Array.isArray(preferredSubjectId)) {
+        // For multiple subjects, find students who prefer ANY of the specified subjects
+        filters.StudentPreference = {
+          some: {
+            subjects: {
+              some: {
+                subjectId: {
+                  in: preferredSubjectId,
+                },
+              },
+            },
+          },
+        };
+      } else {
+        // For a single subject
+        filters.StudentPreference = {
+          some: {
+            subjects: {
+              some: {
+                subjectId: preferredSubjectId,
+              },
+            },
+          },
+        };
+      }
     }
 
     const skip = (page - 1) * limit;

@@ -32,7 +32,7 @@ const StudentBaseSchema = z.object({
     .transform((val) => (val === "" ? undefined : val)),
   schoolType: SchoolTypeEnum.optional(),
   examSchoolType: ExamSchoolTypeEnum.optional(),
-  examSchoolCategoryType: ExamSchoolTypeEnum.optional(),
+  examSchoolCategoryType: SchoolTypeEnum.optional(),
   firstChoiceSchool: z
     .string()
     .max(100)
@@ -108,7 +108,7 @@ export const UpdateStudentSchema = z
       .transform((val) => (val === "" ? undefined : val)),
     schoolType: SchoolTypeEnum.optional(),
     examSchoolType: ExamSchoolTypeEnum.optional(),
-    examSchoolCategoryType: ExamSchoolTypeEnum.optional(),
+    examSchoolCategoryType: SchoolTypeEnum.optional(),
     firstChoiceSchool: z
       .string()
       .max(100)
@@ -170,11 +170,19 @@ export const StudentQuerySchema = z
     limit: z.coerce.number().int().positive().max(100).optional().default(10),
     name: z.string().optional(),
     gradeName: z.string().optional(),
+    gradeId: z.union([z.string(), z.array(z.string())]).optional(),
+    studentTypeId: z.union([z.string(), z.array(z.string())]).optional(),
     schoolName: z.string().optional(),
     schoolType: z.enum(["PUBLIC", "PRIVATE"]).optional(),
     examSchoolType: z
-      .enum(["ELEMENTARY", "MIDDLE", "HIGH", "UNIVERSITY", "OTHER"])
+      .union([
+        z.enum(["ELEMENTARY", "MIDDLE", "HIGH", "UNIVERSITY", "OTHER"]),
+        z.array(
+          z.enum(["ELEMENTARY", "MIDDLE", "HIGH", "UNIVERSITY", "OTHER"])
+        ),
+      ])
       .optional(),
+    preferredSubjectId: z.union([z.string(), z.array(z.string())]).optional(),
     sort: z
       .enum([
         "name",
@@ -215,7 +223,7 @@ export const CreateUserStudentSchema = z.object({
     .transform((val) => (val === "" ? undefined : val)),
   schoolType: SchoolTypeEnum.optional(),
   examSchoolType: ExamSchoolTypeEnum.optional(),
-  examSchoolCategoryType: ExamSchoolTypeEnum.optional(),
+  examSchoolCategoryType: SchoolTypeEnum.optional(),
   firstChoiceSchool: z
     .string()
     .max(100)
@@ -309,7 +317,7 @@ export const UpdateStudentWithPreferencesSchema = z.object({
     .transform((val) => (val === "" ? undefined : val)),
   schoolType: SchoolTypeEnum.optional(),
   examSchoolType: ExamSchoolTypeEnum.optional(),
-  examSchoolCategoryType: ExamSchoolTypeEnum.optional(),
+  examSchoolCategoryType: SchoolTypeEnum.optional(),
   firstChoiceSchool: z
     .string()
     .max(100)

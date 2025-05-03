@@ -168,8 +168,63 @@ GET {{url}}/student?schoolType=立
 Content-Type: application/json
 Cookie: {{cookie}}
 
+### Get students with filtering by school type
+GET {{url}}/student?preferredSubjectId=cma8l10zf000gsbliobc5chll&preferredSubjectId=cma8l10zf000hsbli2q544ji2&preferredSubjectId=cma8l10zf000isbli6pbaft9f
+Content-Type: application/json
+Cookie: {{cookie}}
+
 ### Get students with filtering by exam school type
 GET {{url}}/student?examSchoolType=HIGH
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Filter students by a single preferred subject (英語)
+GET {{url}}/student?preferredSubjectId=cma8l10zf000isbli6pbaft9f
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Filter students by multiple preferred subjects (数学 and 物理)
+GET {{url}}/student?preferredSubjectId=cma8l10zf000hsbli2q544ji2&preferredSubjectId=cma8l10zf000jsbli6r8j3m1g
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Filter students by a single grade (高校3年生)
+GET {{url}}/student?gradeId=cma8l10z3000csblil5o6ua7t
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Filter students by multiple grades (小学6年生 and 中学3年生)
+GET {{url}}/student?gradeId=cma8l10z3000asbli3kbl5fca&gradeId=cma8l10z3000bsbli822xa6o2
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Filter students by a single student type (中学生)
+GET {{url}}/student?studentTypeId=cma8l10yy0008sblienua7w7a
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Filter students by multiple student types (小学生 and 高校生)
+GET {{url}}/student?studentTypeId=cma8l10yy0007sbliu5oat9m7&studentTypeId=cma8l10yy0009sbli90ahuq0n
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Filter students by a single exam school type (HIGH)
+GET {{url}}/student?examSchoolType=HIGH
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Filter students by multiple exam school types (ELEMENTARY and MIDDLE)
+GET {{url}}/student?examSchoolType=ELEMENTARY&examSchoolType=MIDDLE
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Combined example: High school students interested in Math and Physics
+GET {{url}}/student?studentTypeId=cma8l10yy0009sbli90ahuq0n&preferredSubjectId=cma8l10zf000hsbli2q544ji2&preferredSubjectId=cma8l10zf000jsbli6r8j3m1g
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Combined example: Middle school 3rd grade students interested in English
+GET {{url}}/student?gradeId=cma8l10z3000bsbli822xa6o2&preferredSubjectId=cma8l10zf000isbli6pbaft9f
 Content-Type: application/json
 Cookie: {{cookie}}
 
