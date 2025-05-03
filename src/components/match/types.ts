@@ -1,6 +1,5 @@
 // components/match/types.ts
 
-// Общие типы для пагинации и запросов
 export interface PaginationParams {
   page?: number;
   limit?: number;
@@ -8,7 +7,6 @@ export interface PaginationParams {
   order?: 'asc' | 'desc';
 }
 
-// Интерфейсы для учителей
 export interface Teacher {
   teacherId: string;
   name: string;
@@ -57,7 +55,6 @@ export interface TeacherResponse {
   data: Teacher[];
 }
 
-// Интерфейсы для учеников
 export interface Student {
   studentId: string;
   name: string;
@@ -132,6 +129,24 @@ export interface StudentPreference {
   notes: string | null;
 }
 
+export interface TeacherShift {
+  id?: string;
+  teacherId?: string;
+  dayOfWeek?: string;
+  startTime?: string;
+  endTime?: string;
+  [key: string]: unknown;
+}
+
+export interface TimeSlotPreference {
+  id?: string;
+  studentId?: string;
+  dayOfWeek?: string;
+  startTime?: string;
+  endTime?: string;
+  [key: string]: unknown;
+}
+
 export interface Grade {
   gradeId: string;
   name: string;
@@ -154,7 +169,6 @@ export interface StudentResponse {
   data: Student[];
 }
 
-// Интерфейсы для предметов
 export interface Subject {
   subjectId: string;
   name: string;
@@ -168,7 +182,6 @@ export interface SubjectResponse {
   data: Subject[];
 }
 
-// Интерфейсы для типов студентов
 export interface StudentType {
   studentTypeId: string;
   name: string;
@@ -181,7 +194,6 @@ export interface StudentTypeResponse {
   data: StudentType[];
 }
 
-// Интерфейсы для API фильтрации
 export interface CompatibleTeachersResponse {
   data: {
     preferredTeachers: Teacher[];
@@ -205,7 +217,6 @@ export interface CompatibleStudentsResponse {
   };
 }
 
-// Интерфейс для классов
 export interface ClassSession {
   classSessionId?: string;
   teacherId?: string;
@@ -224,9 +235,172 @@ export interface ClassSession {
   room?: string;
 }
 
+export interface RegularClassTemplate {
+  dayOfWeek: string;
+  startTime: string;
+  endTime: string;
+  teacherId: string;
+  subjectId: string;
+  boothId: string;
+  studentIds: string[];
+  notes?: string;
+  startDate?: string;
+  endDate?: string;
+}
+
+export interface ClassSessionTemplate extends ClassSession {
+  templateId?: string;
+  id?: string;
+  studentIds?: string[];
+  subjectName?: string;
+  templateStudentAssignments?: Array<{
+    id?: string;
+    templateId?: string;
+    studentId?: string;
+    [key: string]: unknown;
+  }>;
+  startDate?: string | null;
+  endDate?: string | null;
+  booth?: {
+    boothId: string;
+    name: string;
+    status: boolean;
+    notes: string | null;
+    createdAt: string;
+    updatedAt: string;
+  };
+  subject?: {
+    subjectId: string;
+    name: string;
+    notes: string | null;
+    subjectTypeId: string;
+    createdAt: string;
+    updatedAt: string;
+  };
+  teacher?: {
+    teacherId: string;
+    name: string;
+    email?: string;
+    mobileNumber?: string;
+    birthDate?: string;
+    university?: string;
+    faculty?: string;
+    department?: string;
+    evaluationId?: string;
+    enrollmentStatus?: string;
+    highSchool?: string;
+    userId?: string;
+    createdAt?: string;
+    updatedAt?: string;
+  };
+}
+
 export interface ClassSessionResponse {
   data: ClassSession[];
 }
 
+export interface CompatibleSubjectsResponse {
+  data: {
+    commonSubjects: Subject[];
+    otherSubjects: Subject[];
+    allSubjects: Subject[];
+  };
+}
 
+export interface AvailableTimeSlotsResponse {
+  data: {
+    availableSlots: Array<{
+      dayOfWeek: string;
+      startTime: string;
+      endTime: string;
+    }>;
+    teacherShifts: Array<TeacherShift>;
+    studentPreferences: Array<TimeSlotPreference>;
+  };
+}
 
+export interface AvailableBoothsResponse {
+  data: Array<{
+    boothId: string;
+    name: string;
+    status: boolean;
+    notes: string | null;
+    createdAt: string;
+    updatedAt: string;
+  }>;
+}
+
+export interface DisplayLesson {
+  id: string;
+  templateId?: string;
+  name: string;
+  dayOfWeek: string;
+  startTime: string;
+  endTime: string;
+  status?: string;
+  teacherId: string;
+  studentId: string;
+  subjectId?: string;
+  subjectName?: string;
+  teacherName?: string;
+  studentName?: string;
+  room?: string;
+  boothId?: string;
+  lessonType?: 'teacher' | 'student' | 'current';
+}
+
+export interface TemplateDataFromAPI {
+  templateId?: string;
+  id?: string;
+  dayOfWeek?: string | number;
+  startTime?: string;
+  endTime?: string;
+  teacherId?: string;
+  studentId?: string;
+  studentIds?: string[];
+  subjectId?: string;
+  boothId?: string;
+  status?: string;
+  subject?: {
+    subjectId?: string;
+    name?: string;
+    notes?: string | null;
+    subjectTypeId?: string;
+    createdAt?: string;
+    updatedAt?: string;
+  } | Subject | null;
+  booth?: {
+    boothId?: string;
+    name?: string;
+    status?: boolean;
+    notes?: string | null;
+    createdAt?: string;
+    updatedAt?: string;
+  };
+  subjectName?: string;
+  teacherName?: string;
+  studentName?: string;
+  room?: string;
+  notes?: string;
+  startDate?: string | null;
+  endDate?: string | null;
+  templateStudentAssignments?: Array<unknown>;
+  createdAt?: string;
+  updatedAt?: string;
+  teacher?: {
+    teacherId?: string;
+    name?: string;
+    email?: string;
+    mobileNumber?: string;
+    birthDate?: string;
+    university?: string;
+    faculty?: string;
+    department?: string;
+    evaluationId?: string;
+    enrollmentStatus?: string;
+    highSchool?: string;
+    userId?: string;
+    createdAt?: string;
+    updatedAt?: string;
+  };
+}
