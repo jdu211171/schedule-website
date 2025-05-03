@@ -33,7 +33,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useGrades } from "@/hooks/useGradeQuery";
 import { useStudentCreate, useStudentUpdate } from "@/hooks/useStudentMutation";
-import type { Student } from "@prisma/client";
+import type { Student } from "@/components/match/types";
 import { useTeachers } from "@/hooks/useTeacherQuery";
 import { useSubjects } from "@/hooks/useSubjectQuery";
 import { useTeacherSubjects } from "@/hooks/useTeacherSubjectQuery";
@@ -42,7 +42,6 @@ import {
   CreateUserStudentSchema,
 } from "@/schemas/student.schema";
 import { TeacherSubject } from "@prisma/client";
-import { Teacher } from "@/schemas/teacher.schema";
 
 // Define the missing schema for student preferences
 const studentPreferencesSchema = z.object({
@@ -64,21 +63,7 @@ type StudentPreference = z.infer<typeof studentPreferencesSchema>;
 interface StudentFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  student?:
-    | (Student & {
-        preference?: {
-          preferredSubjects: string[];
-          preferredTeachers: string[];
-          desiredTimes: {
-            dayOfWeek: string;
-            startTime: string;
-            endTime: string;
-          }[];
-          additionalNotes: string | null;
-          classTypeId: string | null;
-        } | null;
-      })
-    | null;
+  student?: Student | null;
 }
 
 export function StudentFormDialog({
@@ -145,18 +130,9 @@ export function StudentFormDialog({
 
     // Map time slots to the expected format
     const desiredTimes = preference.timeSlots?.map(ts => {
-      // Convert Date objects to time strings if needed
-      const startTime = ts.startTime instanceof Date
-        ? ts.startTime.toTimeString().slice(0, 5)
-        : typeof ts.startTime === 'string'
-          ? ts.startTime.slice(11, 16)
-          : '';
-
-      const endTime = ts.endTime instanceof Date
-        ? ts.endTime.toTimeString().slice(0, 5)
-        : typeof ts.endTime === 'string'
-          ? ts.endTime.slice(11, 16)
-          : '';
+      // Assume string type for startTime/endTime
+      const startTime = typeof ts.startTime === 'string' ? ts.startTime.slice(11, 16) : '';
+      const endTime = typeof ts.endTime === 'string' ? ts.endTime.slice(11, 16) : '';
 
       return {
         dayOfWeek: ts.dayOfWeek,
@@ -184,16 +160,11 @@ export function StudentFormDialog({
       kanaName: student?.kanaName || "",
       gradeId: student?.gradeId || "",
       schoolName: student?.schoolName || "",
-      schoolType: student?.schoolType || undefined,
-      examSchoolType: student?.examSchoolType || undefined,
-      examSchoolCategoryType: student?.examSchoolCategoryType || undefined,
-      firstChoiceSchool: student?.firstChoiceSchool || "",
-      secondChoiceSchool: student?.secondChoiceSchool || "",
-      enrollmentDate: student?.enrollmentDate
-        ? new Date(student.enrollmentDate)
-        : undefined,
-      birthDate: student?.birthDate ? new Date(student.birthDate) : new Date(),
-      homePhone: student?.homePhone || "",
+      schoolType: safeEnum(student?.schoolType, ["PUBLIC", "PRIVATE"]),
+      examSchoolType: safeEnum(student?.examSchoolType, ["ELEMENTARY", "MIDDLE", "HIGH", "UNIVERSITY", "OTHER"]),
+      examSchoolCategoryType: safeEnum(student?.examSchoolCategoryType, ["ELEMENTARY", "MIDDLE", "HIGH", "UNIVERSITY", "OTHER"]),
+      enrollmentDate: student?.enrollmentDate ? student.enrollmentDate.slice(0, 10) : "",
+      birthDate: student?.birthDate ? student.birthDate.slice(0, 10) : "",
       parentMobile: student?.parentMobile || "",
       studentMobile: student?.studentMobile || "",
       parentEmail: student?.parentEmail || "",
@@ -240,22 +211,20 @@ export function StudentFormDialog({
     if (preferenceTimes && JSON.stringify(preferenceTimes) !== JSON.stringify(desiredTimesForm.getValues().desiredTimes)) {
       desiredTimesForm.setValue("desiredTimes", preferenceTimes || []);
     }
-  }, [preferencesForm.watch("desiredTimes"), desiredTimesForm]);
+  }, [preferencesForm, desiredTimesForm]);
 
   // Sync from desiredTimesForm to preferencesForm
   useEffect(() => {
     const desiredTimes = desiredTimesForm.watch("desiredTimes");
     if (desiredTimes && desiredTimes.length > 0) {
-      // Ensure the day of week is in uppercase enum format (MONDAY not Monday)
       const formattedTimes = desiredTimes.map(time => ({
         dayOfWeek: time.dayOfWeek.toUpperCase(),
         startTime: time.startTime,
         endTime: time.endTime
       }));
-
       preferencesForm.setValue("desiredTimes", formattedTimes);
     }
-  }, [desiredTimesForm.watch("desiredTimes"), preferencesForm]);
+  }, [desiredTimesForm, preferencesForm]);
 
   // Watch selected subjects and teachers
   const selectedSubjects = preferencesForm.watch("preferredSubjects");
@@ -292,11 +261,12 @@ export function StudentFormDialog({
   }, [teacherSubjectsArray]);
 
   // Compute filtered teachers based on selected subjects
+  const teacherList = useMemo(() => {
+    return Array.isArray(teachersArray)
+      ? teachersArray.filter((t) => typeof t === "object" && t !== null && typeof t.teacherId === "string" && t.name)
+      : [];
+  }, [teachersArray]);
   const filteredTeachers = useMemo(() => {
-    // Ensure only Teacher objects are used
-    const teacherList: Teacher[] = (teachersArray as Teacher[]).filter(
-      (t): t is Teacher => typeof t.teacherId === "string"
-    );
     if (!selectedSubjects.length) {
       return teacherList;
     }
@@ -306,7 +276,7 @@ export function StudentFormDialog({
         teacherSubjects.includes(subjectId)
       );
     });
-  }, [teachersArray, teacherToSubjectsMap, selectedSubjects]);
+  }, [teacherList, teacherToSubjectsMap, selectedSubjects]);
 
   // Compute filtered subjects based on selected teachers
   const filteredSubjects = useMemo(() => {
@@ -321,11 +291,23 @@ export function StudentFormDialog({
     });
   }, [subjectsCompatArray, subjectToTeachersMap, selectedTeachers]);
 
-  const formatDate = (date: Date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
+  // Helper to format date input to YYYY-MM-DD
+  const formatDateInput = (date: string | Date | undefined | null) => {
+    if (!date) return "";
+    if (typeof date === "string") {
+      // If it's already YYYY-MM-DD, return as is
+      if (/^\d{4}-\d{2}-\d{2}$/.test(date)) return date;
+      // If it's ISO string, extract date part
+      if (/^\d{4}-\d{2}-\d{2}T/.test(date)) return date.slice(0, 10);
+      // Otherwise, try to parse
+      const d = new Date(date);
+      if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+      return "";
+    }
+    if (date instanceof Date && !isNaN(date.getTime())) {
+      return date.toISOString().slice(0, 10);
+    }
+    return "";
   };
 
   // Loading states
@@ -375,8 +357,7 @@ export function StudentFormDialog({
 
       const payload = {
         ...values,
-        birthDate: values.birthDate instanceof Date ? formatDate(values.birthDate) : values.birthDate,
-        enrollmentDate: values.enrollmentDate instanceof Date ? formatDate(values.enrollmentDate) : values.enrollmentDate,
+        // Do NOT convert to Date or formatDate, just send the string
         preferences,
       };
 
@@ -650,13 +631,9 @@ export function StudentFormDialog({
                         <Input
                           type="date"
                           {...field}
-                          value={
-                            field.value instanceof Date
-                              ? formatDate(field.value)
-                              : field.value || ""
-                          }
+                          value={formatDateInput(field.value)}
                           onChange={(e) => {
-                            field.onChange(e.target.value);
+                            field.onChange(e.target.value || undefined);
                           }}
                         />
                       </FormControl>
@@ -674,13 +651,9 @@ export function StudentFormDialog({
                         <Input
                           type="date"
                           {...field}
-                          value={
-                            field.value instanceof Date
-                              ? formatDate(field.value)
-                              : field.value || ""
-                          }
+                          value={formatDateInput(field.value)}
                           onChange={(e) => {
-                            field.onChange(e.target.value);
+                            field.onChange(e.target.value || undefined);
                           }}
                         />
                       </FormControl>
@@ -994,7 +967,7 @@ export function StudentFormDialog({
                       </div>
                       <div className="flex flex-wrap gap-2 mt-2">
                         {(field.value || []).map((teacherId, index) => {
-                          const teacher = (teachersArray as Teacher[]).find(
+                          const teacher = teacherList.find(
                             (t) => t.teacherId === teacherId
                           );
                           return (
@@ -1078,4 +1051,9 @@ export function StudentFormDialog({
       </DialogContent>
     </Dialog>
   );
+}
+
+// Helper to safely get enum value or undefined
+function safeEnum<T extends string>(val: unknown, allowed: readonly T[]): T | undefined {
+  return typeof val === "string" && allowed.includes(val as T) ? (val as T) : undefined;
 }
