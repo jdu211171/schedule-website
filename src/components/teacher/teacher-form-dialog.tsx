@@ -34,22 +34,20 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTeacherCreate, useTeacherUpdate } from "@/hooks/useTeacherMutation";
 import {
   CreateTeacherSchema,
-  TeacherSchema,
-  Teacher,
   CreateUserTeacherSchema,
 } from "@/schemas/teacher.schema";
 import { useEvaluations } from "@/hooks/useEvaluationQuery";
-import {
-  teacherShiftPreferencesSchema,
-  TeacherShiftPreferencesInput,
-} from "@/schemas/teacher-preferences.schema";
 import { TeacherDesiredTimeField } from "./teacher-desired-time-field";
-import { TeacherShiftReference, TeacherShiftReferenceSchema } from "@/schemas/teacher-shift-reference.schema";
+import {
+  TeacherShiftReference,
+  TeacherShiftReferenceSchema,
+} from "@/schemas/teacher-shift-reference.schema";
+import { TeacherWithPreference } from "@/hooks/useTeacherQuery";
 
 interface TeacherFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  teacher?: Teacher | null;
+  teacher?: TeacherWithPreference | null;
 }
 
 export function TeacherFormDialog({
@@ -98,7 +96,8 @@ export function TeacherFormDialog({
   const preferencesForm = useForm<TeacherShiftReference>({
     resolver: zodResolver(TeacherShiftReferenceSchema),
     defaultValues: {
-      dayOfWeek: teacher.shift.,
+      dayOfWeek: teacher?.TeacherShiftReference?.dayOfWeek || "MONDAY",
+
     },
   });
 
@@ -572,7 +571,6 @@ export function TeacherFormDialog({
             <Form {...preferencesForm}>
               <form className="space-y-4">
                 <TeacherDesiredTimeField form={preferencesForm} />
-
                 <FormField
                   control={preferencesForm.control}
                   name="additionalNotes"

@@ -63,10 +63,3 @@ export function useTeacher(teacherId: string) {
     enabled: !!teacherId,
   });
 }
-
-export function useTeachersCount() {
-  return useQuery({
-    queryKey: ["teachers", "count"],
-    queryFn: () => fetcher<number>("/api/teacher/count"),
-  });
-}
