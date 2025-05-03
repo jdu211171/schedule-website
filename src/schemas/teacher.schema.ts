@@ -54,21 +54,6 @@ const TeacherBaseSchema = z.object({
     .transform((val) => (val === "" ? undefined : val)),
 });
 
-const TeacherShiftSchema = z.object({
-  dayOfWeek: z.enum([
-    "MONDAY",
-    "TUESDAY",
-    "WEDNESDAY",
-    "THURSDAY",
-    "FRIDAY",
-    "SATURDAY",
-    "SUNDAY",
-  ]),
-  startTime: z.string(),
-  endTime: z.string(),
-  notes: z.string().optional(),
-});
-
 // Complete teacher schema (includes all fields from the database)
 export const TeacherSchema = TeacherBaseSchema.extend({
   teacherId: z.string(),
@@ -134,6 +119,25 @@ export const CreateUserTeacherSchema = z.object({
     .max(255)
     .optional()
     .transform((val) => (val === "" ? undefined : val)),
+  shifts: z
+    .array(
+      z.object({
+        dayOfWeek: z.enum([
+          "MONDAY",
+          "TUESDAY",
+          "WEDNESDAY",
+          "THURSDAY",
+          "FRIDAY",
+          "SATURDAY",
+          "SUNDAY",
+        ]),
+        startTime: z.string(),
+        endTime: z.string(),
+        notes: z.string().optional(),
+      })
+    )
+    .optional(),
+
   notes: z
     .string()
     .max(255)
@@ -142,9 +146,6 @@ export const CreateUserTeacherSchema = z.object({
 
   // Optional teacher subjects
   subjects: z.array(z.string()).optional(),
-
-  // Optional shifts
-  shifts: z.array(TeacherShiftSchema).optional(),
 });
 
 // Schema for updating an existing teacher
@@ -263,6 +264,25 @@ export const UpdateTeacherWithSubjectsSchema = z.object({
     .max(255)
     .optional()
     .transform((val) => (val === "" ? undefined : val)),
+  shifts: z
+    .array(
+      z.object({
+        dayOfWeek: z.enum([
+          "MONDAY",
+          "TUESDAY",
+          "WEDNESDAY",
+          "THURSDAY",
+          "FRIDAY",
+          "SATURDAY",
+          "SUNDAY",
+        ]),
+        startTime: z.string(),
+        endTime: z.string(),
+        notes: z.string().optional(),
+      })
+    )
+    .optional(),
+
   notes: z
     .string()
     .max(255)
@@ -271,9 +291,6 @@ export const UpdateTeacherWithSubjectsSchema = z.object({
 
   // Optional subjects
   subjects: z.array(z.string()).optional(),
-
-  // Optional shifts
-  shifts: z.array(TeacherShiftSchema).optional(),
 });
 
 // Schema for retrieving a single teacher by ID

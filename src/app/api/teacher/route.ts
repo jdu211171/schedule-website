@@ -5,6 +5,7 @@ import {
   TeacherQuerySchema,
   UpdateTeacherWithSubjectsSchema,
 } from "@/schemas/teacher.schema";
+import { DayOfWeek } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { ZodError } from "zod";
 
@@ -73,6 +74,7 @@ export async function GET(request: Request) {
             subject: true,
           },
         },
+        TeacherShiftReference: true,
       },
     });
 
@@ -114,7 +116,8 @@ export async function POST(request: Request) {
     // Validate the combined user/teacher data
     const validatedData = CreateUserTeacherSchema.parse(body);
 
-    const { username, password, subjects, ...teacherData } = validatedData;
+    const { username, password, subjects, shifts, ...teacherData } =
+      validatedData;
 
     // Check if username is already taken
     const existingUser = await prisma.user.findUnique({
@@ -200,6 +203,29 @@ export async function POST(request: Request) {
         );
       }
 
+      // 5. If shifts are provided, create teacher shift references
+      if (shifts && shifts.length > 0) {
+        await Promise.all(
+          shifts.map(
+            (shift: {
+              dayOfWeek: string;
+              startTime: string;
+              endTime: string;
+              notes?: string;
+            }) =>
+              tx.teacherShiftReference.create({
+                data: {
+                  teacherId: teacher.teacherId,
+                  dayOfWeek: shift.dayOfWeek as DayOfWeek,
+                  startTime: new Date(`1970-01-01T${shift.startTime}`),
+                  endTime: new Date(`1970-01-01T${shift.endTime}`),
+                  notes: shift.notes,
+                },
+              })
+          )
+        );
+      }
+
       // Return the created teacher with all related data
       return tx.teacher.findUnique({
         where: { teacherId: teacher.teacherId },
@@ -210,6 +236,7 @@ export async function POST(request: Request) {
               subject: true,
             },
           },
+          TeacherShiftReference: true,
         },
       });
     });
@@ -349,7 +376,6 @@ export async function PUT(request: Request) {
           );
         }
       }
-
 
       // 4. Update shifts if provided
       if (shifts !== undefined) {
