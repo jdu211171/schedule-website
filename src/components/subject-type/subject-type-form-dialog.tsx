@@ -28,7 +28,7 @@ import {
   useSubjectTypeUpdate,
 } from "@/hooks/useSubjectTypeMutation";
 import { SubjectType } from "@prisma/client";
-import { CreateStudentSchema } from "@/schemas/student.schema";
+import { CreateSubjectTypeSchema } from "@/schemas/subject-type.schema";
 
 interface SubjectTypeFormDialogProps {
   open: boolean;
@@ -48,7 +48,7 @@ export function SubjectTypeFormDialog({
     createSubjectTypeMutation.isPending || updateSubjectTypeMutation.isPending;
   const isEditing = !!subjectType;
 
-  const formSchema = CreateStudentSchema;
+  const formSchema = CreateSubjectTypeSchema;
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
