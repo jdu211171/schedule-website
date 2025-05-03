@@ -1,7 +1,7 @@
 import { fetcher } from "@/lib/fetcher";
 import { useQuery } from "@tanstack/react-query";
 import { GradeQuerySchema } from "@/schemas/grade.schema";
-import { Grade } from "@prisma/client";
+import { Grade, Prisma } from "@prisma/client";
 
 type UseGradesParams = {
   page?: number;
@@ -13,12 +13,12 @@ type UseGradesParams = {
   order?: "asc" | "desc";
 };
 
+export type GradeWithStudentType = Prisma.GradeGetPayload<{
+  include: { studentType: true };
+}>;
+
 type GradesResponse = {
-  data: (Grade & {
-    studentType?: {
-      name: string;
-    };
-  })[];
+  data: GradeWithStudentType[];
   pagination: {
     total: number;
     page: number;

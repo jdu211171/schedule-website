@@ -3,7 +3,7 @@ import { z } from "zod";
 // Base schema with common fields
 const GradeBaseSchema = z.object({
   name: z.string().min(1).max(100),
-  studentTypeId: z.string(),
+  studentTypeId: z.string().min(1),
   gradeYear: z.number().int(),
   notes: z
     .string()

@@ -6,7 +6,7 @@ import { Pencil, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/data-table";
-import { useGrades } from "@/hooks/useGradeQuery";
+import { GradeWithStudentType, useGrades } from "@/hooks/useGradeQuery";
 import { useGradeDelete } from "@/hooks/useGradeMutation";
 import {
   AlertDialog,
@@ -20,8 +20,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Grade } from "@prisma/client";
 import { GradeFormDialog } from "@/components/grade/grade-form-dialog";
-import { useStudentTypes } from "@/hooks/useStudentTypeQuery";
-import { useMemo } from "react";
 
 export function GradeTable() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -36,7 +34,6 @@ export function GradeTable() {
     limit: pageSize,
     name: searchTerm || undefined,
   });
-  const { data: studentTypes = [] } = useStudentTypes();
   const deleteGradeMutation = useGradeDelete();
 
   const [gradeToEdit, setGradeToEdit] = useState<Grade | null>(null);
@@ -46,22 +43,7 @@ export function GradeTable() {
   const grades = gradesData?.data || [];
   const totalCount = gradesData?.pagination.total || 0;
 
-  const studentTypeMap = useMemo(() => {
-    const map = new Map<string, string>();
-    if (!studentTypes) return map;
-    interface StudentType {
-      studentTypeId: string;
-      name: string;
-    }
-    if (Array.isArray(studentTypes)) {
-      studentTypes.forEach((type: StudentType) => {
-        map.set(type.studentTypeId, type.name);
-      });
-    }
-    return map;
-  }, [studentTypes]);
-
-  const columns: ColumnDef<Grade>[] = [
+  const columns: ColumnDef<GradeWithStudentType>[] = [
     {
       accessorKey: "name",
       header: "名前",
@@ -70,8 +52,7 @@ export function GradeTable() {
       accessorKey: "studentTypeId",
       header: "学生タイプ",
       cell: ({ row }) => {
-        const studentTypeId = row.original.studentTypeId;
-        return studentTypeId ? studentTypeMap.get(studentTypeId) || "-" : "-";
+        return row.original.studentType.name;
       },
     },
     {
