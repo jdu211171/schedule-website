@@ -15,7 +15,7 @@ import {
   TemplateDataFromAPI
 } from './types';
 
-const API_URL = 'http://localhost:3000/api';
+const API_URL = '/api';
 
 // API functions for teachers
 export const fetchTeachers = async (params: TeacherParams = {}): Promise<TeacherResponse> => {
