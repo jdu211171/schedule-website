@@ -394,8 +394,6 @@ const handleStudentFiltersChange = useCallback(
     // Логика добавления сессии
   }, []);
 
-  // Удален useEffect для логирования kibou предметов
-
   const isLoading =
     teachersLoading ||
     studentsLoading ||

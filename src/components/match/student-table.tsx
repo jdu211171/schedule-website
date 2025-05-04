@@ -13,7 +13,6 @@ import { X } from "lucide-react";
 import FilterPopover from "./filter-popover";
 import Pagination from "./pagination";
 import SubjectBadge from "./subject-badge";
-// import SchoolTypeBadge from "./school-type-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import DetailDialog from "./detail-dialog";
@@ -381,9 +380,11 @@ export default function StudentTable({
                 </TableCell>
                 <TableCell className="text-sm">
                   <div className="flex flex-col gap-1">
-                    {/* {student.examSchoolCategoryType && (
-                      <SchoolTypeBadge type={student.examSchoolCategoryType} size="sm" />
-                    )} */}
+                    {student.examSchoolCategoryType && (
+                      <Badge className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-xs">
+                        {student.examSchoolCategoryType}
+                      </Badge>
+                    )}
                     {student.grade && (
                       <div className="text-xs text-gray-500">{student.grade.name}</div>
                     )}

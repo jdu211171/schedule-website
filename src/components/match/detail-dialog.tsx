@@ -9,7 +9,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import SubjectBadge from "./subject-badge";
-import SchoolTypeBadge from "./school-type-badge";
 import { Phone, Bookmark, School, BookOpen, Award, Calendar, GraduationCap, MessageSquare } from "lucide-react";
 import { Teacher, Subject, Evaluation, Grade, StudentType } from "@/components/match/types";
 
@@ -184,7 +183,9 @@ export default function DetailDialog({
                 <div className="w-3/4 space-y-2 pl-2 border-l-2 border-gray-100 ">
                   {student.examSchoolCategoryType && (
                     <div>
-                      <SchoolTypeBadge type={student.examSchoolCategoryType} />
+                      <span className="text-sm bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
+                        {student.examSchoolCategoryType}
+                      </span>
                       {student.examSchoolType && (
                         <span className="text-sm ml-2">
                           {student.examSchoolType === "PUBLIC" ? "公立" : "私立"}
