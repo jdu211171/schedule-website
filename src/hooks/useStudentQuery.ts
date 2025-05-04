@@ -10,7 +10,8 @@ type UseStudentsParams = {
   schoolName?: string;
   gradeName?: string;
   schoolType?: string;
-  examSchoolType?: string;
+  examSchoolType?: string | string[];
+  examSchoolCategoryType?: string | string[];
   sort?: string;
   order?: "asc" | "desc";
 };
@@ -30,20 +31,36 @@ type SingleStudentResponse = {
 };
 
 export function useStudents(params: UseStudentsParams = {}) {
-  const { page = 1, limit = 10, name, schoolName, gradeName, schoolType, examSchoolType, sort, order } = params;
+  const { page = 1, limit = 10, name, schoolName, gradeName, schoolType, examSchoolType, examSchoolCategoryType, sort, order } = params;
 
-  const searchParams = new URLSearchParams(
-    Object.entries({ page, limit, name, schoolName, gradeName, schoolType, examSchoolType, sort, order }).reduce((acc, [key, value]) => {
-      if (value !== undefined) {
-        acc[key] = String(value);
-      }
-      return acc;
-    }, {} as Record<string, string>)
-  ).toString();
+  // Build search params, supporting array values for examSchoolType and examSchoolCategoryType
+  const searchParams = new URLSearchParams();
+  if (page) searchParams.set("page", String(page));
+  if (limit) searchParams.set("limit", String(limit));
+  if (name) searchParams.set("name", name);
+  if (schoolName) searchParams.set("schoolName", schoolName);
+  if (gradeName) searchParams.set("gradeName", gradeName);
+  if (schoolType) searchParams.set("schoolType", schoolType);
+  if (sort) searchParams.set("sort", sort);
+  if (order) searchParams.set("order", order);
+  if (examSchoolType) {
+    if (Array.isArray(examSchoolType)) {
+      examSchoolType.forEach((v) => searchParams.append("examSchoolType", v));
+    } else {
+      searchParams.set("examSchoolType", examSchoolType);
+    }
+  }
+  if (examSchoolCategoryType) {
+    if (Array.isArray(examSchoolCategoryType)) {
+      examSchoolCategoryType.forEach((v) => searchParams.append("examSchoolCategoryType", v));
+    } else {
+      searchParams.set("examSchoolCategoryType", examSchoolCategoryType);
+    }
+  }
 
   return useQuery<StudentsResponse>({
-    queryKey: ["students", page, limit, name, schoolName, gradeName, schoolType, examSchoolType, sort, order],
-    queryFn: async () => await fetcher<StudentsResponse>(`/api/student?${searchParams}`),
+    queryKey: ["students", page, limit, name, schoolName, gradeName, schoolType, examSchoolType, examSchoolCategoryType, sort, order],
+    queryFn: async () => await fetcher<StudentsResponse>(`/api/student?${searchParams.toString()}`),
   });
 }
 

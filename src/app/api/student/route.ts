@@ -330,8 +330,9 @@ export async function POST(request: Request) {
       });
 
       // 3. Create the student record
-      // Fix: Ensure examSchoolType is only set if it matches the enum (ELEMENTARY, MIDDLE, HIGH, UNIVERSITY, OTHER)
-      const validExamSchoolTypes = [
+      // Fix: Ensure examSchoolType is only set if it matches the enum (PUBLIC, PRIVATE)
+      const validSchoolTypes = ["PUBLIC", "PRIVATE"];
+      const validExamSchoolCategoryTypes = [
         "ELEMENTARY",
         "MIDDLE",
         "HIGH",
@@ -340,9 +341,16 @@ export async function POST(request: Request) {
       ];
       const fixedStudentData = {
         ...studentData,
-        examSchoolType: validExamSchoolTypes.includes(studentData.examSchoolType!)
+        // Only set examSchoolType if valid
+        examSchoolType: validSchoolTypes.includes(studentData.examSchoolType!)
           ? studentData.examSchoolType
-          : null,
+          : undefined,
+        // Only set examSchoolCategoryType if valid
+        examSchoolCategoryType: validExamSchoolCategoryTypes.includes(
+          studentData.examSchoolCategoryType!
+        )
+          ? studentData.examSchoolCategoryType
+          : undefined,
       };
 
       const student = await tx.student.create({

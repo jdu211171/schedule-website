@@ -161,8 +161,14 @@ export function StudentFormDialog({
       gradeId: student?.gradeId || "",
       schoolName: student?.schoolName || "",
       schoolType: safeEnum(student?.schoolType, ["PUBLIC", "PRIVATE"]),
-      examSchoolType: safeEnum(student?.examSchoolType, ["ELEMENTARY", "MIDDLE", "HIGH", "UNIVERSITY", "OTHER"]),
-      examSchoolCategoryType: safeEnum(student?.examSchoolCategoryType, ["ELEMENTARY", "MIDDLE", "HIGH", "UNIVERSITY", "OTHER"]),
+      examSchoolType: safeEnum(student?.examSchoolType, ["PUBLIC", "PRIVATE"]),
+      examSchoolCategoryType: safeEnum(student?.examSchoolCategoryType, [
+        "ELEMENTARY",
+        "MIDDLE",
+        "HIGH",
+        "UNIVERSITY",
+        "OTHER"
+      ]),
       enrollmentDate: student?.enrollmentDate ? student.enrollmentDate.slice(0, 10) : "",
       birthDate: student?.birthDate ? student.birthDate.slice(0, 10) : "",
       parentMobile: student?.parentMobile || "",

@@ -11,7 +11,8 @@ type CreateStudentInput = {
   gradeId?: string;
   schoolName?: string;
   schoolType?: string;
-  examSchoolType?: string;
+  examSchoolType?: "ELEMENTARY" | "MIDDLE" | "HIGH" | "UNIVERSITY" | "OTHER";
+  examSchoolCategoryType?: "ELEMENTARY" | "MIDDLE" | "HIGH" | "UNIVERSITY" | "OTHER";
   birthDate?: string;
   parentEmail?: string;
   preferences?: {
@@ -35,7 +36,8 @@ type UpdateStudentInput = {
   gradeId?: string;
   schoolName?: string;
   schoolType?: string;
-  examSchoolType?: string;
+  examSchoolType?: "ELEMENTARY" | "MIDDLE" | "HIGH" | "UNIVERSITY" | "OTHER";
+  examSchoolCategoryType?: "ELEMENTARY" | "MIDDLE" | "HIGH" | "UNIVERSITY" | "OTHER";
   birthDate?: string;
   parentEmail?: string;
   preferences?: {
