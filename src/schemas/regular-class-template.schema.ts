@@ -1,49 +1,100 @@
+// regular-class-template.schema.ts
 import { z } from "zod";
-import { Booth, Subject, Teacher } from "@prisma/client";
 
-export const regularClassTemplateCreateSchema = z.object({
-  dayOfWeek: z.string().max(20), // 必須
-  subjectId: z.string().max(50).nullable(),
-  boothId: z.string().max(50).nullable(),
-  teacherId: z.string().max(50).nullable(),
-  startTime: z.date(), // Date オブジェクト（時刻部分のみ使用）
-  endTime: z.date(),
-  startDate: z.date().nullable(),
-  endDate: z.date().nullable(),
-  notes: z.string().nullable(),
+// Base schema with common fields
+const RegularClassTemplateBaseSchema = z.object({
+  dayOfWeek: z.enum([
+    "MONDAY",
+    "TUESDAY",
+    "WEDNESDAY",
+    "THURSDAY",
+    "FRIDAY",
+    "SATURDAY",
+    "SUNDAY",
+  ]),
+  startTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
+  endTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
+  teacherId: z.string(),
+  subjectId: z.string(),
+  boothId: z.string(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  notes: z.string().max(255).optional(),
+  studentIds: z.array(z.string()),
 });
 
-export const regularClassTemplateUpdateSchema = regularClassTemplateCreateSchema
-  .partial()
-  .extend({
-    templateId: z.string().cuid({ message: "Invalid ID" }),
-  });
-
-export const regularClassTemplateSchema = z.object({
-  templateId: z.string().cuid(),
-  dayOfWeek: z.string(),
-  subjectId: z.string().nullable(),
-  boothId: z.string().nullable(),
-  teacherId: z.string().nullable(),
-  startTime: z.date(),
-  endTime: z.date(),
-  startDate: z.date().nullable(),
-  endDate: z.date().nullable(),
-  notes: z.string().nullable(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
+// Schema for finding available slots with filtering
+export const AvailabilityFilterSchema = z.object({
+  dayOfWeek: z.enum([
+    "MONDAY",
+    "TUESDAY",
+    "WEDNESDAY",
+    "THURSDAY",
+    "FRIDAY",
+    "SATURDAY",
+    "SUNDAY",
+  ]),
+  startTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
+  endTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
+  teacherId: z.string().optional(),
+  studentId: z.string().optional(),
+  subjectId: z.string().optional(),
+  boothId: z.string().optional(),
 });
 
-export type RegularClassTemplateCreateInput = z.infer<
-  typeof regularClassTemplateCreateSchema
+// Schema for creating a single template
+export const CreateRegularClassTemplateSchema =
+  RegularClassTemplateBaseSchema.strict();
+
+// Schema for batch creating multiple templates
+export const BatchCreateRegularClassTemplateSchema = z.array(
+  CreateRegularClassTemplateSchema
+);
+
+// Schema for updating a template
+export const UpdateRegularClassTemplateSchema =
+  RegularClassTemplateBaseSchema.extend({
+    templateId: z.string(),
+  })
+    .partial()
+    .required({ templateId: true })
+    .strict();
+
+// Schema for querying templates
+export const TemplateQuerySchema = z.object({
+  page: z.coerce.number().int().positive().optional().default(1),
+  limit: z.coerce.number().int().positive().max(100).optional().default(10),
+  dayOfWeek: z
+    .enum([
+      "MONDAY",
+      "TUESDAY",
+      "WEDNESDAY",
+      "THURSDAY",
+      "FRIDAY",
+      "SATURDAY",
+      "SUNDAY",
+    ])
+    .optional(),
+  teacherId: z.string().optional(),
+  studentId: z.string().optional(),
+  subjectId: z.string().optional(),
+  boothId: z.string().optional(),
+  sort: z
+    .enum(["dayOfWeek", "startTime", "endTime", "createdAt", "updatedAt"])
+    .optional()
+    .default("dayOfWeek"),
+  order: z.enum(["asc", "desc"]).optional().default("asc"),
+});
+
+// TypeScript types derived from the schemas
+export type AvailabilityFilter = z.infer<typeof AvailabilityFilterSchema>;
+export type CreateRegularClassTemplateInput = z.infer<
+  typeof CreateRegularClassTemplateSchema
 >;
-export type RegularClassTemplateUpdateInput = z.infer<
-  typeof regularClassTemplateUpdateSchema
+export type BatchCreateRegularClassTemplateInput = z.infer<
+  typeof BatchCreateRegularClassTemplateSchema
 >;
-export type RegularClassTemplateWithRelations = z.infer<
-  typeof regularClassTemplateSchema
-> & {
-  booth: Booth | null;
-  subject: Subject | null;
-  teacher: Teacher | null;
-};
+export type UpdateRegularClassTemplateInput = z.infer<
+  typeof UpdateRegularClassTemplateSchema
+>;
+export type TemplateQuery = z.infer<typeof TemplateQuerySchema>;

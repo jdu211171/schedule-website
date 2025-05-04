@@ -1,3 +1,4 @@
+// components/match/detail-dialog.tsx
 import {
   Dialog,
   DialogContent,
@@ -8,19 +9,33 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import SubjectBadge from "./subject-badge";
-import SchoolTypeBadge from "./school-type-badge";
 import { Phone, Bookmark, School, BookOpen, Award, Calendar, GraduationCap, MessageSquare } from "lucide-react";
-import { Teacher } from "@/schemas/teacher.schema";
-import { StudentWithPreference } from "@/schemas/student.schema";
-import { Subject } from "@/schemas/subject.schema";
-import { Evaluation } from "@/schemas/evaluation.schema";
-import { Grade } from "@/schemas/grade.schema";
-import { StudentType } from "@prisma/client";
+import { Teacher, Subject, Evaluation, Grade, StudentType } from "@/components/match/types";
+
+// Интерфейс для StudentWithPreference
+export interface StudentWithPreference {
+  studentId: string;
+  name: string;
+  kanaName: string | null;
+  gradeId: string | null;
+  schoolName: string | null;
+  examSchoolType: string | null;
+  examSchoolCategoryType: string | null;
+  birthDate: Date | string | null;
+  enrollmentDate?: Date | string | null;
+  parentEmail: string | null;
+  homePhone?: string | null;
+  parentMobile: string | null;
+  studentMobile: string | null;
+  firstChoiceSchool?: string | null;
+  secondChoiceSchool?: string | null;
+  notes: string | null;
+}
 
 interface DetailDialogProps {
   entity: Teacher | StudentWithPreference;
   type: "teacher" | "student";
-  subjects?: Subject[];
+  subjects: Subject[];
   evaluation?: Evaluation | null;
   grade?: Grade | null;
   studentType?: StudentType | null;
@@ -31,13 +46,14 @@ interface DetailDialogProps {
 export default function DetailDialog({
   entity,
   type,
-  subjects = [],
+  subjects,
+  evaluation = null,
   grade = null,
   studentType = null,
   open,
   onClose,
 }: DetailDialogProps) {
-  const formatDate = (date: Date | null) => {
+  const formatDate = (date: Date | string | null) => {
     if (!date) return "未入力";
     return new Date(date).toLocaleDateString("ja-JP", {
       year: "numeric",
@@ -120,38 +136,23 @@ export default function DetailDialog({
                 </div>
               </div>
 
-              {/* Языковые навыки */}
-              <div className="flex group">
-                <div className="w-1/4 flex items-start">
-                  <MessageSquare className="h-5 w-5 text-yellow-500 mr-2" />
-                  <span className="text-sm font-medium text-gray-700">言語スキル</span>
+              {/* Оценка */}
+              {evaluation && (
+                <div className="flex group">
+                  <div className="w-1/4 flex items-start">
+                    <Award className="h-5 w-5 text-purple-500 mr-2" />
+                    <span className="text-sm font-medium text-gray-700">評価</span>
+                  </div>
+                  <div className="w-3/4 space-y-1 pl-2 border-l-2 border-gray-100">
+                    <p className="text-sm">
+                      {evaluation.name}{evaluation.score ? ` (${evaluation.score})` : ''}
+                    </p>
+                    {evaluation.notes && (
+                      <p className="text-sm text-gray-600">{evaluation.notes}</p>
+                    )}
+                  </div>
                 </div>
-                <div className="w-3/4 space-y-1 pl-2 border-l-2 border-gray-100 ">
-                  {teacher.englishProficiency ? (
-                    <p className="text-sm">英語: <span className="font-medium">{teacher.englishProficiency}</span></p>
-                  ) : (
-                    <p className="text-sm text-gray-500">未入力</p>
-                  )}
-                  {teacher.toeic && <p className="text-sm">TOEIC: <span className="font-medium">{teacher.toeic}</span></p>}
-                  {teacher.toefl && <p className="text-sm">TOEFL: <span className="font-medium">{teacher.toefl}</span></p>}
-                </div>
-              </div>
-
-              {/* Сертификаты */}
-              <div className="flex group">
-                <div className="w-1/4 flex items-start">
-                  <Award className="h-5 w-5 text-purple-500 mr-2" />
-                  <span className="text-sm font-medium text-gray-700">証明書</span>
-                </div>
-                <div className="w-3/4 space-y-1 pl-2 border-l-2 border-gray-100">
-                  {teacher.mathCertification && <p className="text-sm">数学: <span className="font-medium">{teacher.mathCertification}</span></p>}
-                  {teacher.kanjiCertification && <p className="text-sm">漢字: <span className="font-medium">{teacher.kanjiCertification}</span></p>}
-                  {teacher.otherCertifications && <p className="text-sm">その他: <span className="font-medium">{teacher.otherCertifications}</span></p>}
-                  {!teacher.mathCertification && !teacher.kanjiCertification && !teacher.otherCertifications && (
-                    <p className="text-sm text-gray-500">未入力</p>
-                  )}
-                </div>
-              </div>
+              )}
 
               {/* Контактная информация */}
               <div className="flex group">
@@ -182,7 +183,9 @@ export default function DetailDialog({
                 <div className="w-3/4 space-y-2 pl-2 border-l-2 border-gray-100 ">
                   {student.examSchoolCategoryType && (
                     <div>
-                      <SchoolTypeBadge type={student.examSchoolCategoryType} />
+                      <span className="text-sm bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
+                        {student.examSchoolCategoryType}
+                      </span>
                       {student.examSchoolType && (
                         <span className="text-sm ml-2">
                           {student.examSchoolType === "PUBLIC" ? "公立" : "私立"}

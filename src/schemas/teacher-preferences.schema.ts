@@ -1,11 +1,29 @@
 import { z } from "zod";
-import { desiredTimeSchema } from "./desiredTime.schema";
 
-export const teacherShiftPreferencesSchema = z.object({
-  desiredTimes: z.array(desiredTimeSchema).default([]),
+export const TeacherShiftPreferencesSchema = z.object({
+  dayOfWeek: z
+    .enum([
+      "MONDAY",
+      "TUESDAY",
+      "WEDNESDAY",
+      "THURSDAY",
+      "FRIDAY",
+      "SATURDAY",
+      "SUNDAY",
+    ])
+    .optional(),
+  desiredTimes: z
+    .array(
+      z.object({
+        dayOfWeek: z.string(),
+        startTime: z.string(),
+        endTime: z.string(),
+      })
+    )
+    .default([]),
   additionalNotes: z.string().nullable().default(null),
 });
 
 export type TeacherShiftPreferencesInput = z.infer<
-  typeof teacherShiftPreferencesSchema
+  typeof TeacherShiftPreferencesSchema
 >;

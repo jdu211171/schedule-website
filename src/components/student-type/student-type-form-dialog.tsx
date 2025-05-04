@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
@@ -11,7 +11,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useStudentTypeCreate, useStudentTypeUpdate } from "@/hooks/useStudentTypeMutation"
-import { studentTypeCreateSchema } from "@/schemas/studentType.schema"
+import { useStudentType } from "@/hooks/useStudentTypeQuery"
+import { CreateStudentTypeSchema } from "@/schemas/student-type.schema"
 import { StudentType } from "@prisma/client"
 
 interface StudentTypeFormDialogProps {
@@ -21,29 +22,33 @@ interface StudentTypeFormDialogProps {
 }
 
 export function StudentTypeFormDialog({ open, onOpenChange, studentType }: StudentTypeFormDialogProps) {
-    const [isSubmitting, setIsSubmitting] = useState(false)
     const createStudentTypeMutation = useStudentTypeCreate()
     const updateStudentTypeMutation = useStudentTypeUpdate()
+    const isSubmitting = createStudentTypeMutation.isPending || updateStudentTypeMutation.isPending
+    const { data: studentTypeData } = useStudentType(studentType?.studentTypeId || "")
 
     const isEditing = !!studentType
 
-    const formSchema = isEditing
-        ? z.object({
-            name: z.string().min(1, { message: "名前は必須です" }),
-            description: z.string().optional(),
-        })
-        : studentTypeCreateSchema
+    const formSchema = CreateStudentTypeSchema
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: {
-            name: studentType?.name || "",
-            description: studentType?.description || "",
+            name: "",
+            description: "",
         },
     })
 
+    useEffect(() => {
+        if (studentTypeData) {
+            form.reset({
+                name: studentTypeData.name || "",
+                description: studentTypeData.description || "",
+            })
+        }
+    }, [studentTypeData, form])
+
     async function onSubmit(values: z.infer<typeof formSchema>) {
-        setIsSubmitting(true)
         try {
             if (isEditing && studentType) {
                 await updateStudentTypeMutation.mutateAsync({
@@ -57,8 +62,6 @@ export function StudentTypeFormDialog({ open, onOpenChange, studentType }: Stude
             form.reset()
         } catch (error) {
             console.error("学生タイプの保存に失敗しました:", error)
-        } finally {
-            setIsSubmitting(false)
         }
     }
 

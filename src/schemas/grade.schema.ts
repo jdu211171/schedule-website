@@ -1,26 +1,57 @@
 import { z } from "zod";
 
-export const gradeCreateSchema = z.object({
-    name: z.string().max(100, { message: "Name must be 100 characters or less" }),
-    studentTypeId: z.string().nullable().optional(),
-    gradeYear: z.number().int().nullable().optional(),
-    notes: z.string().nullable().optional(),
+// Base schema with common fields
+const GradeBaseSchema = z.object({
+  name: z.string().min(1).max(100),
+  studentTypeId: z.string().min(1),
+  gradeYear: z.number().int(),
+  notes: z
+    .string()
+    .max(255)
+    .optional()
+    .transform((val) => (val === "" ? undefined : val)),
 });
 
-export const gradeUpdateSchema = gradeCreateSchema.partial().extend({
-    gradeId: z.string().cuid({ message: "Invalid ID" }), // Required for updates
+// Complete grade schema (includes all fields from the database)
+export const GradeSchema = GradeBaseSchema.extend({
+  gradeId: z.string(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
 });
 
-export const gradeSchema = z.object({
+// Schema for creating a new grade (no gradeId needed as it will be generated)
+export const CreateGradeSchema = GradeBaseSchema.strict();
+
+// Schema for updating an existing grade (requires gradeId)
+export const UpdateGradeSchema = GradeBaseSchema.extend({
+  gradeId: z.string(),
+}).strict();
+
+// Schema for retrieving a single grade by ID
+export const GradeIdSchema = z
+  .object({
     gradeId: z.string(),
-    name: z.string(),
-    studentTypeId: z.string().nullable(),
-    gradeYear: z.number().int().nullable(),
-    notes: z.string().nullable(),
-    createdAt: z.date(),
-    updatedAt: z.date(),
-});
+  })
+  .strict();
 
-export type GradeCreateInput = z.infer<typeof gradeCreateSchema>;
-export type GradeUpdateInput = z.infer<typeof gradeUpdateSchema>;
-export type Grade = z.infer<typeof gradeSchema>;
+// Schema for querying grades with filtering, pagination, and sorting
+export const GradeQuerySchema = z
+  .object({
+    page: z.coerce.number().int().positive().optional().default(1),
+    limit: z.coerce.number().int().positive().max(100).optional().default(10),
+    name: z.string().optional(),
+    studentTypeId: z.string().optional(),
+    gradeYear: z.coerce.number().int().optional(),
+    sort: z
+      .enum(["name", "studentTypeId", "gradeYear", "createdAt", "updatedAt"])
+      .optional()
+      .default("name"),
+    order: z.enum(["asc", "desc"]).optional().default("desc"),
+  })
+  .strict();
+
+// TypeScript types derived from the schemas
+export type Grade = z.infer<typeof GradeSchema>;
+export type CreateGradeInput = z.infer<typeof CreateGradeSchema>;
+export type UpdateGradeInput = z.infer<typeof UpdateGradeSchema>;
+export type GradeQuery = z.infer<typeof GradeQuerySchema>;

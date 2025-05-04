@@ -2,24 +2,7 @@
 
 import { Card, CardContent } from "@/components/ui/card";
 import { UserRound, Calendar, Clock, MapPin } from "lucide-react";
-import { format } from "date-fns";
-
-// Создаём новый интерфейс, не расширяющий Lesson, а содержащий нужные нам поля
-export interface DisplayLesson {
-  id: string;
-  name: string;
-  dayOfWeek: string | number;
-  startTime: string;
-  endTime: string;
-  status: string;
-  teacherId: string;
-  studentId: string;
-  subjectId?: string;
-  subjectName?: string; 
-  teacherName?: string;
-  studentName?: string;
-  room?: string;
-}
+import { DisplayLesson } from "./types";
 
 interface LessonCardProps {
   lesson: DisplayLesson;
@@ -30,20 +13,6 @@ interface LessonCardProps {
   studentName: string;
 }
 
-const isLessonPassed = (lesson: DisplayLesson): boolean => {
-  const today = new Date();
-  const currentDayOfWeek = today.getDay();
-  const lessonDayOfWeek = typeof lesson.dayOfWeek === 'string'
-    ? parseInt(lesson.dayOfWeek)
-    : lesson.dayOfWeek;
-
-  if (lessonDayOfWeek < currentDayOfWeek) return true;
-  if (lessonDayOfWeek > currentDayOfWeek) return false;
-
-  const currentTime = format(today, "HH:mm");
-  return lesson.endTime < currentTime;
-};
-
 export default function LessonCard({ 
   lesson, 
   onLessonClick, 
@@ -52,29 +21,37 @@ export default function LessonCard({
   teacherName,
   studentName 
 }: LessonCardProps) {
-  const isPassed = isLessonPassed(lesson);
-  const dayOfWeekNames = ["日曜日", "月曜日", "火曜日", "水曜日", "木曜日", "金曜日", "土曜日"];
-  const dayOfWeekNumber = typeof lesson.dayOfWeek === 'string'
-    ? parseInt(lesson.dayOfWeek)
-    : lesson.dayOfWeek;
-  const dayOfWeekName = dayOfWeekNames[dayOfWeekNumber];
+  const dayOfWeekMap: Record<string, string> = {
+    'SUNDAY': '日曜日',
+    'MONDAY': '月曜日',
+    'TUESDAY': '火曜日',
+    'WEDNESDAY': '水曜日',
+    'THURSDAY': '木曜日',
+    'FRIDAY': '金曜日',
+    'SATURDAY': '土曜日',
+    '0': '日曜日',
+    '1': '月曜日',
+    '2': '火曜日',
+    '3': '水曜日',
+    '4': '木曜日',
+    '5': '金曜日',
+    '6': '土曜日'
+  };
+
+  const dayOfWeekName = dayOfWeekMap[lesson.dayOfWeek] || '不明';
 
   let cardColorClass = "";
-  
-  if (isPassed) {
-    cardColorClass = "bg-gray-100";
-  } else {
-    if (cardType === "current") {
-      cardColorClass = "bg-white";
-    } else if (cardType === "teacher") {
-      cardColorClass = "bg-green-50";
-    } else if (cardType === "student") {
-      cardColorClass = "bg-blue-50";
-    }
+  if (cardType === "current") {
+    cardColorClass = "bg-white";
+  } else if (cardType === "teacher") {
+    cardColorClass = "bg-green-50";
+  } else if (cardType === "student") {
+    cardColorClass = "bg-blue-50";
   }
 
   const displayTeacherName = lesson.teacherName || teacherName;
   const displayStudentName = lesson.studentName || studentName;
+  const displaySubjectName = lesson.name || lesson.subjectName || "不明";
 
   return (
     <Card
@@ -84,7 +61,7 @@ export default function LessonCard({
       <CardContent className="p-2">
         <div className="border-b pb-1 mb-1">
           <div className="text-base font-bold text-black text-center">
-            {lesson.name}
+            {displaySubjectName}
           </div>
         </div>
 

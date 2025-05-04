@@ -1,61 +1,136 @@
-import { createStudentWithPreference } from "@/actions/student/create";
-import { deleteStudent } from "@/actions/student/delete";
-import { updateStudentWithPreference } from "@/actions/student/update";
+import { fetcher } from "@/lib/fetcher";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { z } from "zod";
-import { studentCreateSchema, studentUpdateSchema } from "@/schemas/student.schema";
-import { studentPreferencesSchema } from "@/schemas/student-preferences.schema";
+import { Student } from "@prisma/client";
+import { toast } from "sonner";
 
-// Define the combined input schema for create
-const createStudentWithPreferenceSchema = z.object({
-    student: studentCreateSchema,
-    preferences: studentPreferencesSchema.optional()
-});
+type CreateStudentInput = {
+  username: string;
+  password: string;
+  name: string;
+  kanaName?: string;
+  gradeId?: string;
+  schoolName?: string;
+  schoolType?: "PUBLIC" | "PRIVATE";
+  examSchoolType?: "PUBLIC" | "PRIVATE";
+  examSchoolCategoryType?: "ELEMENTARY" | "MIDDLE" | "HIGH" | "UNIVERSITY" | "OTHER";
+  birthDate?: string;
+  parentEmail?: string;
+  preferences?: {
+    subjects?: string[];
+    teachers?: string[];
+    timeSlots?: {
+      dayOfWeek: string;
+      startTime: string;
+      endTime: string;
+    }[];
+    notes?: string;
+    classTypeId?: string;
+  };
+};
 
-type CreateStudentWithPreferenceInput = z.infer<typeof createStudentWithPreferenceSchema>;
+type UpdateStudentInput = {
+  studentId: string;
+  password?: string;
+  name?: string;
+  kanaName?: string;
+  gradeId?: string;
+  schoolName?: string;
+  schoolType?: "PUBLIC" | "PRIVATE";
+  examSchoolType?: "PUBLIC" | "PRIVATE";
+  examSchoolCategoryType?: "ELEMENTARY" | "MIDDLE" | "HIGH" | "UNIVERSITY" | "OTHER";
+  birthDate?: string;
+  parentEmail?: string;
+  preferences?: {
+    subjects?: string[];
+    teachers?: string[];
+    timeSlots?: {
+      dayOfWeek: string;
+      startTime: string;
+      endTime: string;
+    }[];
+    notes?: string;
+    classTypeId?: string;
+  };
+};
 
-// Define the combined input schema for update
-const updateStudentWithPreferenceSchema = z.object({
-    student: studentUpdateSchema,
-    preferences: studentPreferencesSchema.optional()
-});
+type CreateStudentResponse = {
+  message: string;
+  data: Student;
+};
 
-type UpdateStudentWithPreferenceInput = z.infer<typeof updateStudentWithPreferenceSchema>;
+type UpdateStudentResponse = {
+  message: string;
+  data: Student;
+};
+
+type DeleteStudentResponse = {
+  message: string;
+};
 
 export function useStudentCreate() {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: (data: CreateStudentWithPreferenceInput) => {
-            // Validate data against the schema at runtime
-            createStudentWithPreferenceSchema.parse(data);
-            return createStudentWithPreference(data);
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["students"] });
-        }
-    });
+  const queryClient = useQueryClient();
+  return useMutation<CreateStudentResponse, Error, CreateStudentInput>({
+    mutationFn: (data) =>
+      fetcher("/api/student", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["students"] });
+
+      toast.success("生徒を追加しました", {
+        description: data.message,
+      });
+    },
+    onError: (error) => {
+      toast.error("生徒の追加に失敗しました", {
+        description: error.message,
+      });
+    },
+  });
 }
 
 export function useStudentUpdate() {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: (data: UpdateStudentWithPreferenceInput) => {
-            // Validate data against the schema at runtime
-            updateStudentWithPreferenceSchema.parse(data);
-            return updateStudentWithPreference(data);
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["students"] });
-        }
-    });
+  const queryClient = useQueryClient();
+  return useMutation<UpdateStudentResponse, Error, UpdateStudentInput>({
+    mutationFn: (data) =>
+      fetcher(`/api/student`, {
+        method: "PUT",
+        body: JSON.stringify(data),
+      }),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["students"] });
+
+      toast.success("生徒を更新しました", {
+        description: data.message,
+      });
+    },
+    onError: (error) => {
+      toast.error("生徒の更新に失敗しました", {
+        description: error.message,
+      });
+    },
+  });
 }
 
 export function useStudentDelete() {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: deleteStudent,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["students"] });
-        }
-    });
+  const queryClient = useQueryClient();
+  return useMutation<DeleteStudentResponse, Error, string>({
+    mutationFn: (studentId) =>
+      fetcher(`/api/student?studentId=${studentId}`, {
+        method: "DELETE",
+      }),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["students"] });
+
+      toast.success("生徒を削除しました", {
+        description: data.message,
+      });
+    },
+    onError: (error) => {
+      toast.error("生徒の削除に失敗しました", {
+        description: error.message,
+      });
+    },
+  });
 }

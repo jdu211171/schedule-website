@@ -7,7 +7,6 @@ import { usePathname } from 'next/navigation'
 
 const tabs = [
     { name: 'ブース', href: '/dashboard/master/booths' },
-    { name: 'クラス', href: '/dashboard/master/class' },
     { name: '評価', href: '/dashboard/master/evaluation' },
     { name: '学年', href: '/dashboard/master/grade' },
     { name: '学生', href: '/dashboard/master/student' },

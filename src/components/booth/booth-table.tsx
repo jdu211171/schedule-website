@@ -6,7 +6,7 @@ import { Pencil, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/data-table";
-import { useBooths, useBoothsCount } from "@/hooks/useBoothQuery";
+import { useBooths } from "@/hooks/useBoothQuery";
 import { useBoothDelete } from "@/hooks/useBoothMutation";
 import {
   AlertDialog,
@@ -25,22 +25,25 @@ export function BoothTable() {
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
   const pageSize = 10;
-  const { data: booths = [], isLoading, isFetching } = useBooths({ page, pageSize });
-  const { data: totalCount = 0 } = useBoothsCount();
+  const {
+    data: booths,
+    isLoading,
+    isFetching,
+  } = useBooths({
+    page,
+    limit: pageSize,
+    name: searchTerm || undefined,
+  });
+
+  // Ensure the data type returned by useBooths matches the expected type
+  const typedBooths = booths?.data;
+
+  const totalCount = booths?.pagination.total || 0;
   const deleteBoothMutation = useBoothDelete();
 
   const [boothToEdit, setBoothToEdit] = useState<Booth | null>(null);
   const [boothToDelete, setBoothToDelete] = useState<Booth | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-
-  const filteredBooths = searchTerm
-    ? booths.filter(
-        (booth) =>
-          booth.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          (booth.notes &&
-            booth.notes.toLowerCase().includes(searchTerm.toLowerCase()))
-      )
-    : booths;
 
   const columns: ColumnDef<Booth>[] = [
     {
@@ -50,7 +53,9 @@ export function BoothTable() {
     {
       accessorKey: "status",
       header: "ステータス",
-      cell: ({ row }) => <div>{row.original.status ? "使用可" : "使用不可"}</div>,
+      cell: ({ row }) => (
+        <div>{row.original.status ? "使用可" : "使用不可"}</div>
+      ),
     },
     {
       accessorKey: "notes",
@@ -103,7 +108,7 @@ export function BoothTable() {
     <>
       <DataTable
         columns={columns}
-        data={filteredBooths}
+        data={typedBooths || []}
         isLoading={isLoading || isFetching}
         searchPlaceholder="ブースを検索..."
         onSearch={setSearchTerm}

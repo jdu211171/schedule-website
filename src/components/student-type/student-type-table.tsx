@@ -19,28 +19,25 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { StudentType } from "@prisma/client"
-import { useStudentTypesCount } from "@/hooks/useStudentTypeQuery"
 import { StudentTypeFormDialog } from "@/components/student-type/student-type-form-dialog";
 
 export function StudentTypeTable() {
     const [searchTerm, setSearchTerm] = useState("")
     const [page, setPage] = useState(1)
     const pageSize = 10
-    const { data: studentTypes = [], isLoading, isFetching } = useStudentTypes(page, pageSize)
-    const { data: totalCount = 0 } = useStudentTypesCount()
+    const { data: studentTypesData, isLoading, isFetching } = useStudentTypes({
+        page,
+        limit: pageSize,
+        name: searchTerm || undefined,
+    });
     const deleteStudentTypeMutation = useStudentTypeDelete()
 
     const [studentTypeToEdit, setStudentTypeToEdit] = useState<StudentType | null>(null)
     const [studentTypeToDelete, setStudentTypeToDelete] = useState<StudentType | null>(null)
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
 
-    const filteredStudentTypes = searchTerm
-        ? studentTypes.filter(
-            (studentType) =>
-                studentType.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                (studentType.description && studentType.description.toLowerCase().includes(searchTerm.toLowerCase()))
-        )
-        : studentTypes
+    const studentTypes = studentTypesData?.data || [];
+    const totalCount = studentTypesData?.pagination.total || 0;
 
     const columns: ColumnDef<StudentType>[] = [
         {
@@ -88,7 +85,7 @@ export function StudentTypeTable() {
         <>
             <DataTable
                 columns={columns}
-                data={filteredStudentTypes}
+                data={studentTypes}
                 isLoading={isLoading || isFetching}
                 searchPlaceholder="学生タイプを検索..."
                 onSearch={setSearchTerm}

@@ -8,129 +8,192 @@ import {
 } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Subject, Evaluation, Grade, StudentType, ExamSchoolCategoryType } from "./types";
+import { Subject, Evaluation, Grade, StudentType } from "./types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { TeacherFilterParams, StudentFilterParams } from "./types";
 
 interface FilterPopoverProps {
   subjects: Subject[];
   evaluations?: Evaluation[];
   grades?: Grade[];
   studentTypes?: StudentType[];
-  examSchoolTypes?: ExamSchoolCategoryType[];
   
-  onFilterChange: (subjectFilters: string[], hasLessonsFilter: boolean | null) => void;
-  onGradeFilterChange?: (gradeId: string | null) => void;
-  onSchoolTypeFilterChange?: (schoolType: string | null) => void;
-  onEvaluationFilterChange?: (evaluationId: string | null) => void;
+  onTeacherFiltersChange?: (params: TeacherFilterParams) => void;
+  onStudentFiltersChange?: (params: StudentFilterParams) => void;
   
   initialSubjectFilters?: string[];
-  initialHasLessonsFilter?: boolean | null;
+  initialEvaluationFilters?: string[];
   initialGradeFilter?: string | null;
   initialSchoolTypeFilter?: string | null;
-  initialEvaluationFilter?: string | null;
+  initialStudentTypeFilters?: string[];
+  
+  entityType: "teacher" | "student";
 }
 
 export default function FilterPopover({
   subjects,
   evaluations = [],
   grades = [],
-  examSchoolTypes = ["ELEMENTARY", "MIDDLE", "HIGH", "UNIVERSITY", "OTHER"],
+  studentTypes = [],
   
-  onFilterChange,
-  onGradeFilterChange,
-  onSchoolTypeFilterChange,
-  onEvaluationFilterChange,
+  onTeacherFiltersChange,
+  onStudentFiltersChange,
   
   initialSubjectFilters = [],
-  initialHasLessonsFilter = null,
+  initialEvaluationFilters = [],
   initialGradeFilter = null,
   initialSchoolTypeFilter = null,
-  initialEvaluationFilter = null,
+  initialStudentTypeFilters = [],
+  
+  entityType = "teacher",
 }: FilterPopoverProps) {
   const [showFilterMenu, setShowFilterMenu] = useState(false);
-  const [subjectFilters, setSubjectFilters] = useState<string[]>(initialSubjectFilters);
-  const [hasLessonsFilter, setHasLessonsFilter] = useState<boolean | null>(initialHasLessonsFilter);
-  const [gradeFilter, setGradeFilter] = useState<string | null>(initialGradeFilter);
-  const [schoolTypeFilter, setSchoolTypeFilter] = useState<string | null>(initialSchoolTypeFilter);
-  const [evaluationFilter, setEvaluationFilter] = useState<string | null>(initialEvaluationFilter);
+  
+  const [localSubjectFilters, setLocalSubjectFilters] = useState<string[]>(initialSubjectFilters);
+  const [localEvaluationFilters, setLocalEvaluationFilters] = useState<string[]>(initialEvaluationFilters);
+  const [localGradeFilter, setLocalGradeFilter] = useState<string | null>(initialGradeFilter);
+  const [localSchoolTypeFilter, setLocalSchoolTypeFilter] = useState<string | null>(initialSchoolTypeFilter);
+  const [localStudentTypeFilters, setLocalStudentTypeFilters] = useState<string[]>(initialStudentTypeFilters);
   const [activeTab, setActiveTab] = useState("subjects");
-
-  // Обработчик для переключения фильтров предметов
-  const toggleSubjectFilter = (subject: Subject) => {
-    if (subjectFilters.includes(subject.subjectId)) {
-      setSubjectFilters(subjectFilters.filter((s) => s !== subject.subjectId));
+  
+  // Обработчик для переключения фильтра по предмету
+  const toggleSubjectFilter = (subjectId: string) => {
+    let newFilters: string[];
+    
+    if (localSubjectFilters.includes(subjectId)) {
+      newFilters = localSubjectFilters.filter(id => id !== subjectId);
     } else {
-      setSubjectFilters([...subjectFilters, subject.subjectId]);
+      newFilters = [...localSubjectFilters, subjectId];
     }
+    
+    setLocalSubjectFilters(newFilters);
   };
 
-  // Обработчик для фильтра по наличию уроков
-  const toggleHasLessonsFilter = (value: boolean | null) => {
-    setHasLessonsFilter(value);
+  // Обработчик для переключения фильтра по оценке
+  const toggleEvaluationFilter = (evaluationId: string) => {
+    let newFilters: string[];
+    
+    if (localEvaluationFilters.includes(evaluationId)) {
+      newFilters = localEvaluationFilters.filter(id => id !== evaluationId);
+    } else {
+      newFilters = [...localEvaluationFilters, evaluationId];
+    }
+    
+    setLocalEvaluationFilters(newFilters);
+  };
+
+  // Обработчик для переключения фильтра по типу студента
+  const toggleStudentTypeFilter = (studentTypeId: string) => {
+    let newFilters: string[];
+    
+    if (localStudentTypeFilters.includes(studentTypeId)) {
+      newFilters = localStudentTypeFilters.filter(id => id !== studentTypeId);
+    } else {
+      newFilters = [...localStudentTypeFilters, studentTypeId];
+    }
+    
+    setLocalStudentTypeFilters(newFilters);
   };
 
   // Обработчик для фильтра по типу школы
-  const handleSchoolTypeFilterChange = (value: string | null) => {
-    setSchoolTypeFilter(value);
-    if (onSchoolTypeFilterChange) {
-      onSchoolTypeFilterChange(value);
-    }
-  };
+  // const handleSchoolTypeFilterChange = (value: string | null) => {
+  //   setLocalSchoolTypeFilter(value);
+  // };
 
   // Обработчик для фильтра по классу
   const handleGradeFilterChange = (value: string | null) => {
-    setGradeFilter(value);
-    if (onGradeFilterChange) {
-      onGradeFilterChange(value);
-    }
-  };
-
-  // Обработчик для фильтра по оценке
-  const handleEvaluationFilterChange = (value: string | null) => {
-    setEvaluationFilter(value);
-    if (onEvaluationFilterChange) {
-      onEvaluationFilterChange(value);
-    }
+    setLocalGradeFilter(value);
   };
 
   // Очистка всех фильтров
   const clearFilters = () => {
-    setSubjectFilters([]);
-    setHasLessonsFilter(null);
-    setGradeFilter(null);
-    setSchoolTypeFilter(null);
-    setEvaluationFilter(null);
+    setLocalSubjectFilters([]);
+    setLocalEvaluationFilters([]);
+    setLocalGradeFilter(null);
+    setLocalSchoolTypeFilter(null);
+    setLocalStudentTypeFilters([]);
     
-    if (onGradeFilterChange) onGradeFilterChange(null);
-    if (onSchoolTypeFilterChange) onSchoolTypeFilterChange(null);
-    if (onEvaluationFilterChange) onEvaluationFilterChange(null);
-  };
-
-  // Применение фильтров
-  const applyFilters = () => {
-    onFilterChange(subjectFilters, hasLessonsFilter);
+    if (entityType === "teacher" && onTeacherFiltersChange) {
+      onTeacherFiltersChange({});
+    } else if (entityType === "student" && onStudentFiltersChange) {
+      onStudentFiltersChange({});
+    }
     setShowFilterMenu(false);
   };
 
-  // Японские названия для типов школ
-  const schoolTypeLabels: Record<string, string> = {
-    "ELEMENTARY": "小学校",
-    "MIDDLE": "中学校",
-    "HIGH": "高校",
-    "UNIVERSITY": "大学",
-    "OTHER": "その他"
+  // Применение фильтров - теперь используем разные обработчики в зависимости от типа сущности
+  const applyFilters = () => {
+    if (entityType === "teacher" && onTeacherFiltersChange) {
+      const teacherFilterParams: TeacherFilterParams = {};
+      if (localSubjectFilters.length > 0) {
+        teacherFilterParams.subjectId = [...localSubjectFilters];
+      }
+      if (localEvaluationFilters.length > 0) {
+        teacherFilterParams.evaluationId = [...localEvaluationFilters];
+      }    
+      onTeacherFiltersChange(teacherFilterParams);
+    } else if (entityType === "student" && onStudentFiltersChange) {
+      const studentFilterParams: StudentFilterParams = {};
+      if (localSubjectFilters.length > 0) {
+        studentFilterParams.preferredSubjectId = [...localSubjectFilters];
+      }
+      if (localStudentTypeFilters.length > 0) {
+        studentFilterParams.studentTypeId = [...localStudentTypeFilters];
+      }
+      if (localGradeFilter) {
+        studentFilterParams.gradeId = localGradeFilter;
+      }
+      if (localSchoolTypeFilter) {
+        studentFilterParams.schoolType = localSchoolTypeFilter;
+      }
+      onStudentFiltersChange(studentFilterParams);
+    }
+    
+    setShowFilterMenu(false);
   };
 
+  // Синхронизация с внешними фильтрами при открытии меню
+  const handleOpenChange = (open: boolean) => {
+    if (open) {
+      setLocalSubjectFilters([...initialSubjectFilters]);
+      setLocalEvaluationFilters([...initialEvaluationFilters]);
+      setLocalGradeFilter(initialGradeFilter);
+      setLocalSchoolTypeFilter(initialSchoolTypeFilter);
+      setLocalStudentTypeFilters([...initialStudentTypeFilters]);
+    }
+    setShowFilterMenu(open);
+  };
+
+  // Проверка, применены ли фильтры (используем внешние значения)
   const isFiltersApplied = 
-    subjectFilters.length > 0 || 
-    hasLessonsFilter !== null ||
-    gradeFilter !== null ||
-    schoolTypeFilter !== null ||
-    evaluationFilter !== null;
+    initialSubjectFilters.length > 0 ||
+    initialEvaluationFilters.length > 0 ||
+    initialGradeFilter !== null ||
+    initialSchoolTypeFilter !== null ||
+    initialStudentTypeFilters.length > 0;
+
+  const getTabList = () => {
+    if (entityType === "teacher") {
+      return (
+        <TabsList className="grid grid-cols-2 w-full mb-2">
+          <TabsTrigger value="subjects">科目</TabsTrigger>
+          <TabsTrigger value="status">状態</TabsTrigger>
+        </TabsList>
+      );
+    } else {
+      return (
+        <TabsList className="grid grid-cols-3 w-full mb-2">
+          <TabsTrigger value="subjects">科目</TabsTrigger>
+          <TabsTrigger value="school">学校</TabsTrigger>
+          <TabsTrigger value="status">状態</TabsTrigger>
+        </TabsList>
+      );
+    }
+  };
 
   return (
-    <Popover open={showFilterMenu} onOpenChange={setShowFilterMenu}>
+    <Popover open={showFilterMenu} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <Button 
           variant={isFiltersApplied ? "default" : "outline"} 
@@ -144,23 +207,30 @@ export default function FilterPopover({
         <div className="p-3 border-b">
           <div className="font-medium pb-1">フィルタ</div>
           <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid grid-cols-3 w-full mb-2">
-              <TabsTrigger value="subjects">科目</TabsTrigger>
-              <TabsTrigger value="school">学校</TabsTrigger>
-              <TabsTrigger value="status">状態</TabsTrigger>
-            </TabsList>
+            {getTabList()}
             
             {/* Вкладка с предметами */}
             <TabsContent value="subjects" className="space-y-4">
+              {/* Добавляем чекбокс "Все" для предметов */}
+              <div className="flex items-center space-x-2 mb-2 border-b pb-2">
+                <Checkbox 
+                  id="subject-all" 
+                  checked={localSubjectFilters.length === 0}
+                  onCheckedChange={() => setLocalSubjectFilters([])}
+                />
+                <Label htmlFor="subject-all" className="font-medium">すべての科目</Label>
+              </div>
+              
               {subjects.length > 0 && (
                 <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                   <div className="grid grid-cols-1 gap-2">
+                    {/* Чекбоксы для предметов */}
                     {subjects.map((subject) => (
                       <div className="flex items-center space-x-2" key={subject.subjectId}>
                         <Checkbox 
                           id={`subject-${subject.subjectId}`} 
-                          checked={subjectFilters.includes(subject.subjectId)}
-                          onCheckedChange={() => toggleSubjectFilter(subject)}
+                          checked={localSubjectFilters.includes(subject.subjectId)}
+                          onCheckedChange={() => toggleSubjectFilter(subject.subjectId)}
                         />
                         <Label htmlFor={`subject-${subject.subjectId}`}>{subject.name}</Label>
                       </div>
@@ -176,98 +246,90 @@ export default function FilterPopover({
               )}
             </TabsContent>
             
-            {/* Вкладка со школами и классами */}
-            <TabsContent value="school" className="space-y-4">
-              {/* Типы школ */}
-              {examSchoolTypes.length > 0 && (
-                <div className="space-y-2">
-                  <div className="text-sm font-medium">学校種類</div>
-                  <RadioGroup 
-                    value={schoolTypeFilter || ""} 
-                    onValueChange={(value) => handleSchoolTypeFilterChange(value === "" ? null : value)}
-                  >
-                    <div className="flex items-center space-x-2 mb-1">
-                      <RadioGroupItem value="" id="school-type-all" />
-                      <Label htmlFor="school-type-all">すべて</Label>
-                    </div>
-                    {examSchoolTypes.map((type) => (
-                      <div className="flex items-center space-x-2" key={type}>
-                        <RadioGroupItem value={type} id={`school-type-${type}`} />
-                        <Label htmlFor={`school-type-${type}`}>{schoolTypeLabels[type] || type}</Label>
+            {/* Вкладка со школами и классами - только для учеников */}
+            {entityType === "student" && (
+              <TabsContent value="school" className="space-y-4">
+                {/* Классы/Года */}
+                {grades.length > 0 && (
+                  <div className="space-y-2 mt-4">
+                    <div className="text-sm font-medium">学年</div>
+                    <RadioGroup 
+                      value={localGradeFilter || ""} 
+                      onValueChange={(value) => handleGradeFilterChange(value === "" ? null : value)}
+                    >
+                      <div className="flex items-center space-x-2 mb-1">
+                        <RadioGroupItem value="" id="grade-all" />
+                        <Label htmlFor="grade-all">すべて</Label>
                       </div>
-                    ))}
-                  </RadioGroup>
-                </div>
-              )}
-
-              {/* Классы/Года */}
-              {grades.length > 0 && (
-                <div className="space-y-2 mt-4">
-                  <div className="text-sm font-medium">学年</div>
-                  <RadioGroup 
-                    value={gradeFilter || ""} 
-                    onValueChange={(value) => handleGradeFilterChange(value === "" ? null : value)}
-                  >
-                    <div className="flex items-center space-x-2 mb-1">
-                      <RadioGroupItem value="" id="grade-all" />
-                      <Label htmlFor="grade-all">すべて</Label>
-                    </div>
-                    {grades.map((grade) => (
-                      <div className="flex items-center space-x-2" key={grade.gradeId}>
-                        <RadioGroupItem value={grade.gradeId} id={`grade-${grade.gradeId}`} />
-                        <Label htmlFor={`grade-${grade.gradeId}`}>{grade.name}</Label>
-                      </div>
-                    ))}
-                  </RadioGroup>
-                </div>
-              )}
-            </TabsContent>
+                      {grades.map((grade) => (
+                        <div className="flex items-center space-x-2" key={grade.gradeId}>
+                          <RadioGroupItem value={grade.gradeId} id={`grade-${grade.gradeId}`} />
+                          <Label htmlFor={`grade-${grade.gradeId}`}>{grade.name}</Label>
+                        </div>
+                      ))}
+                    </RadioGroup>
+                  </div>
+                )}
+              </TabsContent>
+            )}
             
             {/* Вкладка со статусами */}
             <TabsContent value="status" className="space-y-4">
-              {/* Фильтр по наличию уроков */}
-              <div className="space-y-2">
-                <div className="text-sm font-medium">レッスン</div>
-                <RadioGroup 
-                  value={hasLessonsFilter === null ? "" : hasLessonsFilter ? "yes" : "no"} 
-                  onValueChange={(value) => toggleHasLessonsFilter(
-                    value === "" ? null : value === "yes" ? true : false
-                  )}
-                >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="" id="lessons-all" />
-                    <Label htmlFor="lessons-all">すべて</Label>
+              {/* Для учителей показываем оценки */}
+              {entityType === "teacher" && evaluations.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2 mb-2 border-b pb-2">
+                    <Checkbox 
+                      id="evaluation-all" 
+                      checked={localEvaluationFilters.length === 0}
+                      onCheckedChange={() => setLocalEvaluationFilters([])}
+                    />
+                    <Label htmlFor="evaluation-all" className="font-medium">すべての評価</Label>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="yes" id="has-lessons" />
-                    <Label htmlFor="has-lessons">レッスンあり</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="no" id="no-lessons" />
-                    <Label htmlFor="no-lessons">レッスンなし</Label>
-                  </div>
-                </RadioGroup>
-              </div>
-
-              {/* Оценки учителей */}
-              {evaluations.length > 0 && (
-                <div className="space-y-2 mt-4">
+                  
                   <div className="text-sm font-medium">評価</div>
-                  <RadioGroup 
-                    value={evaluationFilter || ""} 
-                    onValueChange={(value) => handleEvaluationFilterChange(value === "" ? null : value)}
-                  >
-                    <div className="flex items-center space-x-2 mb-1">
-                      <RadioGroupItem value="" id="evaluation-all" />
-                      <Label htmlFor="evaluation-all">すべて</Label>
-                    </div>
+                  <div className="grid grid-cols-1 gap-2">
+                    {/* Чекбоксы для оценок */}
                     {evaluations.map((evaluation) => (
                       <div className="flex items-center space-x-2" key={evaluation.evaluationId}>
-                        <RadioGroupItem value={evaluation.evaluationId} id={`evaluation-${evaluation.evaluationId}`} />
+                        <Checkbox 
+                          id={`evaluation-${evaluation.evaluationId}`} 
+                          checked={localEvaluationFilters.includes(evaluation.evaluationId)}
+                          onCheckedChange={() => toggleEvaluationFilter(evaluation.evaluationId)}
+                        />
                         <Label htmlFor={`evaluation-${evaluation.evaluationId}`}>{evaluation.name}</Label>
                       </div>
                     ))}
-                  </RadioGroup>
+                  </div>
+                </div>
+              )}
+
+              {/* Для студентов показываем типы студентов */}
+              {entityType === "student" && studentTypes.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2 mb-2 border-b pb-2">
+                    <Checkbox 
+                      id="student-type-all" 
+                      checked={localStudentTypeFilters.length === 0}
+                      onCheckedChange={() => setLocalStudentTypeFilters([])}
+                    />
+                    <Label htmlFor="student-type-all" className="font-medium">すべての生徒タイプ</Label>
+                  </div>
+                  
+                  <div className="text-sm font-medium">生徒タイプ</div>
+                  <div className="grid grid-cols-1 gap-2">
+                    {/* Чекбоксы для типов студентов */}
+                    {studentTypes.map((type) => (
+                      <div className="flex items-center space-x-2" key={type.studentTypeId}>
+                        <Checkbox 
+                          id={`student-type-${type.studentTypeId}`} 
+                          checked={localStudentTypeFilters.includes(type.studentTypeId)}
+                          onCheckedChange={() => toggleStudentTypeFilter(type.studentTypeId)}
+                        />
+                        <Label htmlFor={`student-type-${type.studentTypeId}`}>{type.name}</Label>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </TabsContent>

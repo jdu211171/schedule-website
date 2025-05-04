@@ -1,34 +1,87 @@
+import { fetcher } from "@/lib/fetcher";
+import { CreateSubjectInput, UpdateSubjectInput } from "@/schemas/subject.schema";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createSubject } from "@/actions/subject/create";
-import { updateSubject } from "@/actions/subject/update";
-import { deleteSubject } from "@/actions/subject/delete";
+import { Subject } from "@prisma/client";
+import { toast } from "sonner";
+
+type CreateSubjectResponse = {
+  message: string;
+  data: Subject;
+};
+
+type UpdateSubjectResponse = {
+  message: string;
+  data: Subject;
+};
+
+type DeleteSubjectResponse = {
+  message: string;
+};
 
 export function useSubjectCreate() {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: createSubject,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["subjects"] });
-        },
-    });
+  const queryClient = useQueryClient();
+  return useMutation<CreateSubjectResponse, Error, CreateSubjectInput>({
+    mutationFn: (data) =>
+      fetcher("/api/subjects", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["subjects"] });
+
+      toast.success("科目を追加しました", {
+        description: data.message,
+      });
+    },
+    onError: (error) => {
+      toast.error("科目の追加に失敗しました", {
+        description: error.message,
+      });
+    },
+  });
 }
 
 export function useSubjectUpdate() {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: updateSubject,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["subjects"] });
-        },
-    });
+  const queryClient = useQueryClient();
+  return useMutation<UpdateSubjectResponse, Error, UpdateSubjectInput>({
+    mutationFn: ({ subjectId, ...data }) =>
+      fetcher(`/api/subjects`, {
+        method: "PUT",
+        body: JSON.stringify({ subjectId, ...data }),
+      }),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["subjects"] });
+
+      toast.success("科目を更新しました", {
+        description: data.message,
+      });
+    },
+    onError: (error) => {
+      toast.error("科目の更新に失敗しました", {
+        description: error.message,
+      });
+    },
+  });
 }
 
 export function useSubjectDelete() {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: deleteSubject,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["subjects"] });
-        },
-    });
+  const queryClient = useQueryClient();
+  return useMutation<DeleteSubjectResponse, Error, string>({
+    mutationFn: (subjectId) =>
+      fetcher(`/api/subjects?subjectId=${subjectId}`, {
+        method: "DELETE",
+      }),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["subjects"] });
+
+      toast.success("科目を削除しました", {
+        description: data.message,
+      });
+    },
+    onError: (error) => {
+      toast.error("科目の削除に失敗しました", {
+        description: error.message,
+      });
+    },
+  });
 }

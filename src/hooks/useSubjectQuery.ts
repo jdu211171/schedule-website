@@ -1,25 +1,54 @@
+import { fetcher } from "@/lib/fetcher";
 import { useQuery } from "@tanstack/react-query";
-import { getSubjects } from "@/actions/subject";
-import { getSubject } from "@/actions/subject/read";
-import { getSubjectsCount } from "@/actions/count";
+import { SubjectQuerySchema, SubjectWithRelations } from "@/schemas/subject.schema";
+import { Subject } from "@prisma/client";
 
-export function useSubjectsCount() {
-    return useQuery({
-        queryKey: ["subjects", "count"],
-        queryFn: () => getSubjectsCount(),
-    });
-}
+type UseSubjectsParams = {
+  page?: number;
+  limit?: number;
+  name?: string;
+  subjectTypeId?: string;
+  sort?: string;
+  order?: "asc" | "desc";
+};
 
-export function useSubjects(page: number = 1, pageSize: number = 15) {
-    return useQuery({
-        queryKey: ["subjects", page, pageSize],
-        queryFn: () => getSubjects({ page, pageSize }),
-    });
+type SubjectsResponse = {
+  data: SubjectWithRelations[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    pages: number;
+  };
+};
+
+type SingleSubjectResponse = {
+  data: Subject;
+};
+
+export function useSubjects(params: UseSubjectsParams = {}) {
+  const { page = 1, limit = 10, name, subjectTypeId, sort, order } = params;
+
+  const query = SubjectQuerySchema.parse({ page, limit, name, subjectTypeId, sort, order });
+  const searchParams = new URLSearchParams(
+    Object.entries(query).reduce((acc, [key, value]) => {
+      if (value !== undefined) {
+        acc[key] = String(value);
+      }
+      return acc;
+    }, {} as Record<string, string>)
+  ).toString();
+
+  return useQuery<SubjectsResponse>({
+    queryKey: ["subjects", page, limit, name, subjectTypeId, sort, order],
+    queryFn: async () => await fetcher<SubjectsResponse>(`/api/subjects?${searchParams}`),
+  });
 }
 
 export function useSubject(subjectId: string) {
-    return useQuery({
-        queryKey: ["subjects", subjectId],
-        queryFn: () => getSubject(subjectId),
-    });
+  return useQuery<Subject>({
+    queryKey: ["subject", subjectId],
+    queryFn: async () => await fetcher<SingleSubjectResponse>(`/api/subjects/${subjectId}`).then((res) => res.data),
+    enabled: !!subjectId,
+  });
 }

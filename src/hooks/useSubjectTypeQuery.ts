@@ -1,25 +1,63 @@
+import { fetcher } from "@/lib/fetcher";
 import { useQuery } from "@tanstack/react-query";
-import { getSubjectTypes } from "@/actions/subjectType";
-import { getSubjectType } from "@/actions/subjectType/read";
-import { getSubjectTypesCount } from "@/actions/count";
+import { SubjectTypeQuerySchema } from "@/schemas/subject-type.schema";
+import { SubjectType } from "@prisma/client";
 
-export function useSubjectTypesCount() {
-    return useQuery({
-        queryKey: ["subjectTypes", "count"],
-        queryFn: () => getSubjectTypesCount(),
-    });
-}
+type UseSubjectTypesParams = {
+  page?: number;
+  limit?: number;
+  name?: string;
+  sort?: string;
+  order?: "asc" | "desc";
+};
 
-export function useSubjectTypes(page: number = 1, pageSize: number = 15) {
-    return useQuery({
-        queryKey: ["subjectTypes", page, pageSize],
-        queryFn: () => getSubjectTypes({ page, pageSize }),
-    });
+type SubjectTypesResponse = {
+  data: SubjectType[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    pages: number;
+  };
+};
+
+type SingleSubjectTypeResponse = {
+  data: SubjectType;
+};
+
+export function useSubjectTypes(params: UseSubjectTypesParams = {}) {
+  const { page = 1, limit = 10, name, sort, order } = params;
+
+  const query = SubjectTypeQuerySchema.parse({
+    page,
+    limit,
+    name,
+    sort,
+    order,
+  });
+  const searchParams = new URLSearchParams(
+    Object.entries(query).reduce((acc, [key, value]) => {
+      if (value !== undefined) {
+        acc[key] = String(value);
+      }
+      return acc;
+    }, {} as Record<string, string>)
+  ).toString();
+
+  return useQuery<SubjectTypesResponse>({
+    queryKey: ["subjectType", page, limit, name, sort, order],
+    queryFn: async () =>
+      await fetcher<SubjectTypesResponse>(`/api/subject-type?${searchParams}`),
+  });
 }
 
 export function useSubjectType(subjectTypeId: string) {
-    return useQuery({
-        queryKey: ["subjectTypes", subjectTypeId],
-        queryFn: () => getSubjectType(subjectTypeId),
-    });
+  return useQuery<SubjectType>({
+    queryKey: ["subjectType", subjectTypeId],
+    queryFn: async () =>
+      await fetcher<SingleSubjectTypeResponse>(
+        `/api/subject-type/${subjectTypeId}`
+      ).then((res) => res.data),
+    enabled: !!subjectTypeId,
+  });
 }

@@ -13,25 +13,19 @@ import { X } from "lucide-react";
 import FilterPopover from "./filter-popover";
 import Pagination from "./pagination";
 import SubjectBadge from "./subject-badge";
-import SchoolTypeBadge from "./school-type-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import DetailDialog from "./detail-dialog";
-import { StudentWithPreference } from "@/schemas/student.schema";
-import { Subject } from "@/schemas/subject.schema";
-import { Grade } from "@/schemas/grade.schema";
-import { ClassSession as PrismaClassSession, StudentType } from "@prisma/client";
 
-// -----------------------------------------------------------------------------
-// 型定義
-// -----------------------------------------------------------------------------
-export type ClassSession = PrismaClassSession & {
-  subject?: Subject | null;
-  dayOfWeek?: string | number;
-  name?: string;
-};
+import {
+  StudentWithPreference,
+  Grade,
+  Subject,
+  ClassSession,
+  StudentType,
+  StudentFilterParams
+} from "@/components/match/types";
 
-// Extended Student type with UI-specific properties
 interface EnrichedStudent extends StudentWithPreference {
   grade: Grade | null;
   studentType: StudentType | null;
@@ -49,6 +43,12 @@ interface StudentTableProps {
   selectedTeacherId: string | null;
   filteredStudents?: StudentWithPreference[];
   kibouSubjects?: Subject[];
+  
+  onStudentFiltersChange?: (params: StudentFilterParams) => void;
+  currentSubjectFilters?: string[];
+  currentGradeFilter?: string | null;
+  currentStudentTypeFilters?: string[];
+  currentSchoolTypeFilter?: string | null;
 }
 
 export default function StudentTable({
@@ -62,32 +62,32 @@ export default function StudentTable({
   selectedTeacherId,
   filteredStudents,
   kibouSubjects = [],
+  onStudentFiltersChange,
+  currentSubjectFilters = [],
+  currentGradeFilter = null,
+  currentStudentTypeFilters = [],
+  currentSchoolTypeFilter = null,
 }: StudentTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
-  const [subjectFilters, setSubjectFilters] = useState<string[]>([]);
-  const [hasLessonsFilter, setHasLessonsFilter] = useState<boolean | null>(null);
-  const [gradeFilter, setGradeFilter] = useState<string | null>(null);
-  const [schoolTypeFilter, setSchoolTypeFilter] = useState<string | null>(null);
   const [detailsStudent, setDetailsStudent] = useState<EnrichedStudent | null>(null);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
-
-  const allSubjects = useMemo(() => subjects, [subjects]);
 
   useEffect(() => {
     setCurrentPage(1);
   }, [selectedTeacherId]);
 
-  const studentHasLessons = useCallback((studentId: string) => {
-    return lessons.some((lesson) => lesson.studentId === studentId);
-  }, [lessons]);
+  const allSubjects = useMemo(() => subjects, [subjects]);
+
+  // const studentHasLessons = useCallback((studentId: string) => {
+  //   return lessons.some((lesson) => lesson.studentId === studentId);
+  // }, [lessons]);
 
   const getStudentSubjects = useCallback((student: StudentWithPreference) => {
     const subjectIds = new Set<string>();
     const studentSubjectsList: Subject[] = [];
-
-    // Add subjects from preference if they exist
+  
     if (student.preference?.preferredSubjects) {
       student.preference.preferredSubjects.forEach(subjectId => {
         if (!subjectIds.has(subjectId)) {
@@ -99,10 +99,28 @@ export default function StudentTable({
         }
       });
     }
-
-    // Then add subjects from lessons
+  
+    if (student.StudentPreference) {
+      student.StudentPreference.forEach(pref => {
+        if (pref.subjects) {
+          pref.subjects.forEach(subjectItem => {
+            if (subjectItem.subjectId && !subjectIds.has(subjectItem.subjectId)) {
+              const subject = subjects.find(s => s.subjectId === subjectItem.subjectId);
+              if (subject) {
+                subjectIds.add(subjectItem.subjectId);
+                studentSubjectsList.push(subject);
+              } else if (subjectItem.subject) {
+                subjectIds.add(subjectItem.subject.subjectId);
+                studentSubjectsList.push(subjectItem.subject);
+              }
+            }
+          });
+        }
+      });
+    }
+  
     const studentLessons = lessons.filter(lesson => lesson.studentId === student.studentId);
-
+  
     studentLessons.forEach(lesson => {
       if (lesson.subject && !subjectIds.has(lesson.subject.subjectId)) {
         subjectIds.add(lesson.subject.subjectId);
@@ -115,36 +133,32 @@ export default function StudentTable({
         }
       }
     });
-
+  
     return studentSubjectsList;
   }, [lessons, subjects]);
 
-  const handleFilterChange = (newSubjectFilters: string[], newHasLessonsFilter: boolean | null) => {
-    setSubjectFilters(newSubjectFilters);
-    setHasLessonsFilter(newHasLessonsFilter);
+  // Обработчик фильтров студентов
+  const handleFiltersChange = (filters: StudentFilterParams) => {
     setCurrentPage(1);
+    
+    if (onStudentFiltersChange) {
+      onStudentFiltersChange(filters);
+    }
   };
 
-  const handleGradeFilterChange = (gradeId: string | null) => {
-    setGradeFilter(gradeId);
-    setCurrentPage(1);
-  };
-
-  const handleSchoolTypeFilterChange = (schoolType: string | null) => {
-    setSchoolTypeFilter(schoolType);
-    setCurrentPage(1);
-  };
+  const baseStudents = useMemo(() => {
+    return filteredStudents || students;
+  }, [filteredStudents, students]);
 
   const enrichedStudents = useMemo(() => {
-    const baseStudents = filteredStudents || students;
-
     return baseStudents.map(student => {
       const grade = grades.find(g => g.gradeId === student.gradeId) || null;
       const studentType = (grade?.studentTypeId && studentTypes.length > 0)
         ? studentTypes.find(st => st.studentTypeId === grade.studentTypeId) || null
         : null;
+      
       const studentSubjects = getStudentSubjects(student);
-
+      
       return {
         ...student,
         grade,
@@ -152,49 +166,27 @@ export default function StudentTable({
         subjects: studentSubjects
       } as EnrichedStudent;
     });
-  }, [students, filteredStudents, grades, studentTypes, getStudentSubjects]);
+  }, [baseStudents, grades, studentTypes, getStudentSubjects]);
 
-  const filteredStudentsWithUI = useMemo(() => {
+  // Локальная фильтрация только по поисковому запросу
+  const filteredStudentsWithSearch = useMemo(() => {
+    if (!searchTerm.trim()) {
+      return enrichedStudents;
+    }
+    
     return enrichedStudents.filter((student) => {
       const matchesSearch =
         student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (student.kanaName || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
         (student.schoolName || "").toLowerCase().includes(searchTerm.toLowerCase());
 
-      const studentSubjects = student.subjects || [];
-      const matchesSubjects =
-        subjectFilters.length === 0 ||
-        studentSubjects.some(subject => subjectFilters.includes(subject.subjectId));
-
-      const matchesHasLessons =
-        hasLessonsFilter === null ||
-        (hasLessonsFilter === true && studentHasLessons(student.studentId)) ||
-        (hasLessonsFilter === false && !studentHasLessons(student.studentId));
-
-      const matchesGrade =
-        gradeFilter === null ||
-        student.gradeId === gradeFilter;
-
-      const matchesSchoolType =
-        schoolTypeFilter === null ||
-        student.examSchoolCategoryType === schoolTypeFilter;
-
-      return matchesSearch && matchesSubjects && matchesHasLessons &&
-             matchesGrade && matchesSchoolType;
+      return matchesSearch;
     });
-  }, [
-    enrichedStudents,
-    searchTerm,
-    subjectFilters,
-    hasLessonsFilter,
-    gradeFilter,
-    schoolTypeFilter,
-    studentHasLessons
-  ]);
+  }, [enrichedStudents, searchTerm]);
 
-  const totalPages = Math.ceil(filteredStudentsWithUI.length / itemsPerPage);
+  const totalPages = Math.ceil(filteredStudentsWithSearch.length / itemsPerPage);
 
-  const paginatedStudents = filteredStudentsWithUI.slice(
+  const paginatedStudents = filteredStudentsWithSearch.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
@@ -205,18 +197,117 @@ export default function StudentTable({
     );
   }, [kibouSubjects]);
 
+  // Проверка, применены ли фильтры
+  const isFilterActive = (
+    currentSubjectFilters.length > 0 || 
+    currentStudentTypeFilters.length > 0 || 
+    currentGradeFilter !== null || 
+    currentSchoolTypeFilter !== null
+  );
+
+  // Форматирование списка активных фильтров для отображения
+  const getActiveFiltersDisplay = () => {
+    const activeFilters: React.ReactNode[] = [];
+    
+    if (currentSubjectFilters.length > 0) {
+      const subjectNames = currentSubjectFilters.map(id => 
+        subjects.find(s => s.subjectId === id)?.name || 'Unknown'
+      );
+      
+      activeFilters.push(
+        <Badge key="subjects" className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
+          科目: {subjectNames.join(', ')}
+        </Badge>
+      );
+    }
+    
+    if (currentStudentTypeFilters.length > 0) {
+      const typeNames = currentStudentTypeFilters.map(id => 
+        studentTypes.find(t => t.studentTypeId === id)?.name || 'Unknown'
+      );
+      
+      activeFilters.push(
+        <Badge key="studentTypes" className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
+          生徒タイプ: {typeNames.join(', ')}
+        </Badge>
+      );
+    }
+    
+    if (currentGradeFilter) {
+      const gradeName = grades.find(g => g.gradeId === currentGradeFilter)?.name || 'Unknown';
+      
+      activeFilters.push(
+        <Badge key="grade" className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
+          学年: {gradeName}
+        </Badge>
+      );
+    }
+    
+    if (currentSchoolTypeFilter) {
+      const schoolTypeLabel = getSchoolTypeLabel(currentSchoolTypeFilter);
+      
+      activeFilters.push(
+        <Badge key="schoolType" className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
+          学校タイプ: {schoolTypeLabel}
+        </Badge>
+      );
+    }
+    
+    return activeFilters;
+  };
+
+  // Получение понятного названия типа школы
+  const getSchoolTypeLabel = (type: string) => {
+    switch (type) {
+      case "ELEMENTARY": return "小学校";
+      case "MIDDLE": return "中学校";
+      case "HIGH": return "高校";
+      case "UNIVERSITY": return "大学";
+      default: return "その他";
+    }
+  };
+
+  // Очистка всех фильтров
+  const clearAllFilters = () => {
+    if (onStudentFiltersChange) {
+      onStudentFiltersChange({});
+    }
+  };
+
   return (
     <div className="rounded-md border h-full flex flex-col bg-white">
-      {selectedTeacherId && kibouSubjects.length > 0 && (
+      {selectedTeacherId && (
         <div className="bg-blue-50 p-2 border-b flex flex-wrap items-center gap-2">
           <span className="text-blue-800 text-sm font-medium">担当可能科目：</span>
-          {kibouSubjects.map((subject) => (
-            <SubjectBadge
-              key={subject.subjectId}
-              subject={subject}
-              size="sm"
-            />
-          ))}
+          {kibouSubjects.length > 0 ? (
+            kibouSubjects.map((subject) => (
+              <SubjectBadge
+                key={subject.subjectId}
+                subject={subject}
+                size="sm"
+              />
+            ))
+          ) : (
+            <span className="text-blue-600 text-xs italic">...</span>
+          )}
+        </div>
+      )}
+
+      {/* Отображаем информацию об активных фильтрах */}
+      {isFilterActive && (
+        <div className="bg-blue-50 p-2 border-b">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-blue-800 text-sm font-medium">アクティブフィルター：</span>
+            {getActiveFiltersDisplay()}
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-6 px-2 text-xs text-blue-600 hover:text-blue-800"
+              onClick={clearAllFilters}
+            >
+              クリア
+            </Button>
+          </div>
         </div>
       )}
 
@@ -248,14 +339,13 @@ export default function StudentTable({
         <FilterPopover
           subjects={allSubjects}
           grades={grades}
-          examSchoolTypes={["ELEMENTARY", "MIDDLE", "HIGH", "UNIVERSITY", "OTHER"]}
-          onFilterChange={handleFilterChange}
-          onGradeFilterChange={handleGradeFilterChange}
-          onSchoolTypeFilterChange={handleSchoolTypeFilterChange}
-          initialSubjectFilters={subjectFilters}
-          initialHasLessonsFilter={hasLessonsFilter}
-          initialGradeFilter={gradeFilter}
-          initialSchoolTypeFilter={schoolTypeFilter}
+          studentTypes={studentTypes}
+          onStudentFiltersChange={handleFiltersChange}
+          initialSubjectFilters={currentSubjectFilters}
+          initialGradeFilter={currentGradeFilter}
+          initialStudentTypeFilters={currentStudentTypeFilters}
+          initialSchoolTypeFilter={currentSchoolTypeFilter}
+          entityType="student"
         />
       </div>
 
@@ -270,79 +360,80 @@ export default function StudentTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {paginatedStudents.map((student) => {
-              const studentSubjects = student.subjects || [];
-
-              return (
-                <TableRow
-                  key={student.studentId}
-                  onClick={() => onStudentSelect(student.studentId)}
-                  className={`cursor-pointer ${
-                    selectedStudentId === student.studentId
-                      ? "bg-blue-100 hover:bg-blue-200"
-                      : "hover:bg-gray-100"
-                  }`}
-                >
-                  <TableCell className="font-medium">
-                    <div>
-                      {student.name}
-                    </div>
-                    {student.kanaName && (
-                      <div className="text-xs text-gray-500">{student.kanaName}</div>
+            {paginatedStudents.map((student) => (
+              <TableRow
+                key={student.studentId}
+                onClick={() => onStudentSelect(student.studentId)}
+                className={`cursor-pointer ${
+                  selectedStudentId === student.studentId
+                    ? "bg-blue-100 hover:bg-blue-200"
+                    : "hover:bg-gray-100"
+                }`}
+              >
+                <TableCell className="font-medium">
+                  <div>
+                    {student.name}
+                  </div>
+                  {student.kanaName && (
+                    <div className="text-xs text-gray-500">{student.kanaName}</div>
+                  )}
+                </TableCell>
+                <TableCell className="text-sm">
+                  <div className="flex flex-col gap-1">
+                    {student.examSchoolCategoryType && (
+                      <Badge className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-xs">
+                        {student.examSchoolCategoryType}
+                      </Badge>
                     )}
-                  </TableCell>
-                  <TableCell className="text-sm">
-                    <div className="flex flex-col gap-1">
-                      {student.examSchoolCategoryType && (
-                        <SchoolTypeBadge type={student.examSchoolCategoryType} size="sm" />
-                      )}
-                      {student.grade && (
-                        <div className="text-xs text-gray-500">{student.grade.name}</div>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1">
-                      {studentSubjects.slice(0, 3).map((subject) => (
-                        <SubjectBadge
-                          key={subject.subjectId}
-                          subject={subject}
-                          size="sm"
-                          highlight={selectedTeacherId ? isKibouSubject(subject) : false}
-                        />
-                      ))}
-                      {studentSubjects.length > 3 && (
-                        <Badge variant="outline" className="bg-gray-100 text-gray-800 px-1.5 py-0.5 text-xs rounded-full">
-                          +{studentSubjects.length - 3}
-                        </Badge>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0 hover:bg-gray-100 rounded-full"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setDetailsStudent(student);
-                        setIsDetailDialogOpen(true);
-                      }}
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500 hover:text-gray-700">
-                        <circle cx="12" cy="12" r="1" />
-                        <circle cx="19" cy="12" r="1" />
-                        <circle cx="5" cy="12" r="1" />
-                      </svg>
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
+                    {student.grade && (
+                      <div className="text-xs text-gray-500">{student.grade.name}</div>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex flex-wrap gap-1">
+                    {(student.subjects || []).slice(0, 3).map((subject) => (
+                      <SubjectBadge
+                        key={subject.subjectId}
+                        subject={subject}
+                        size="sm"
+                        highlight={selectedTeacherId ? isKibouSubject(subject) : false}
+                      />
+                    ))}
+                    {(student.subjects || []).length > 3 && (
+                      <Badge variant="outline" className="bg-gray-100 text-gray-800 px-1.5 py-0.5 text-xs rounded-full">
+                        +{student.subjects.length - 3}
+                      </Badge>
+                    )}
+                    {(!student.subjects || student.subjects.length === 0) && (
+                      <span className="text-gray-500 text-xs"></span>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell className="text-right">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 hover:bg-gray-100 rounded-full"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDetailsStudent(student);
+                      setIsDetailDialogOpen(true);
+                    }}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500 hover:text-gray-700">
+                      <circle cx="12" cy="12" r="1" />
+                      <circle cx="19" cy="12" r="1" />
+                      <circle cx="5" cy="12" r="1" />
+                    </svg>
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
           </TableBody>
         </Table>
 
-        {filteredStudentsWithUI.length === 0 && (
+        {filteredStudentsWithSearch.length === 0 && (
           <div className="p-6 text-center text-gray-500">
             検索結果はありません
           </div>
@@ -352,7 +443,7 @@ export default function StudentTable({
       <Pagination
         currentPage={currentPage}
         totalPages={totalPages}
-        totalItems={filteredStudentsWithUI.length}
+        totalItems={filteredStudentsWithSearch.length}
         itemsPerPage={itemsPerPage}
         onPageChange={setCurrentPage}
         onItemsPerPageChange={setItemsPerPage}

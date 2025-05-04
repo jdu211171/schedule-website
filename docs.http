@@ -1,0 +1,1368 @@
+@url = http://localhost:3000/api
+@cookie = 59086600ea9732cdd30dfbd46519ea530c75639d98893bed709e703d7ba2d518%7Ce95e297865aaec0bc1a358a8bd44e626223ec0c969c62d49254005c00b55464f; authjs.callback-url=http%3A%2F%2Flocalhost%3A3000; authjs.session-token=eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2Q0JDLUhTNTEyIiwia2lkIjoiN2k0YkNIMDRhZHdRM0V4ZkV2ZnRNd2pEX0FWUnk3TW1PSFA1d0kxWTUtT1FFekpjQjNSV0NoUkIyWUtKdzRsZWZaWVBMTXY0T3I4amw4ZGpvZzktYncifQ..nWgTrZOguMBCaR7aBBiiCA.xUYervzCmt3te2XMqo6tbzFPt4qZ8C3iA6sfwyrIQ8JqJuEVVYVA9j97vDZnJ4oIQlICDiGsAV2yPbK-qA9-T84e7zmsLZpbUpDvwL-UdASyirmPlkg9UteCT64DrhKX2zNFxZE4hq_Usi-vJCoGpraNE4ILrFNEnJ6T7Q8LGM2UJFzRn2vk6TX1h3cVbWIP3OIfDsKWBfuzwAPTMywLNgDZojC6tt4YSkG9ku_BVORBGqhaQFEnRgovlGKTDKl5UB0pWTHgx-bR4i7PLrkVoNSGyeSfIbMXwayY_dCimXw.KzyHuzmV-KLwBtGtkZk6I73Otr_iXO3rkoYsSRRvD_Y
+
+#########
+# BOOTH #
+#########
+
+### Get all booths (basic - descending order by name)
+GET {{url}}/booth
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get booths with pagination
+GET {{url}}/booth?page=1&limit=10
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get booths with filtering by name (case-insensitive)
+GET {{url}}/booth?name=New
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get booths with filtering by status
+GET {{url}}/booth?status=true
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get booths with sorting
+GET {{url}}/booth?sort=createdAt&order=desc
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get booths with multiple filters and pagination
+GET {{url}}/booth?name=new&status=true&page=1&limit=5&sort=name&order=asc
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get a single booth by ID
+# Replace BOOTH_ID with an actual ID from your database
+GET {{url}}/booth/cma1dzjg60003106qp9p1get7
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Create a new booth
+POST {{url}}/booth
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "name": "New Study Room",
+  "status": true,
+  "notes": "Quiet study space for individual sessions"
+}
+
+### Update an existing booth
+# Replace BOOTH_ID with an actual ID from your database
+PUT {{url}}/booth
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "boothId": "BOOTH_ID",
+  "name": "Updated Study Room",
+  "status": false,
+  "notes": "Under maintenance"
+}
+
+### Delete a booth (using query parameter)
+# Replace BOOTH_ID with an actual ID from your database
+DELETE {{url}}/booth?boothId=BOOTH_ID
+Content-Type: application/json
+Cookie: {{cookie}}
+
+##############
+# CLASS TYPE #
+##############
+
+### Get all class types (basic - descending order by name)
+GET {{url}}/class-type
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get class types with pagination
+GET {{url}}/class-type?page=1&limit=10
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get class types with filtering by name (case-insensitive)
+GET {{url}}/class-type?name=Regular
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get class types with sorting
+GET {{url}}/class-type?sort=createdAt&order=desc
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get class types with multiple filters and pagination
+GET {{url}}/class-type?name=通常&page=1&limit=5&sort=name&order=asc
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get a single class type by ID
+# Replace CLASS_TYPE_ID with an actual ID from your database
+GET {{url}}/class-type/cma144m5k000l104qnb9sfcq5
+Content-Type: application/json
+Cookie: {{cookie}}]
+
+### Create a new class type
+POST {{url}}/class-type
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "name": "Special Tutorial",
+  "notes": "One-on-one intensive tutorial sessions"
+}
+
+### Update an existing class type
+# Replace CLASS_TYPE_ID with an actual ID from your database
+PUT {{url}}/class-type
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "classTypeId": "CLASS_TYPE_ID",
+  "name": "Updated Tutorial Session",
+  "notes": "Modified tutorial format"
+}
+
+### Delete a class type (using query parameter)
+# Replace CLASS_TYPE_ID with an actual ID from your database
+DELETE {{url}}/class-type?classTypeId=CLASS_TYPE_ID
+Content-Type: application/json
+Cookie: {{cookie}}
+
+###########
+# STUDENT #
+###########
+
+### Get all students (basic - descending order by name)
+GET {{url}}/student
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get students with pagination
+GET {{url}}/student?page=1&limit=10
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get students with filtering by name (case-insensitive)
+GET {{url}}/student?name=高橋
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get students with filtering by school name (case-insensitive)
+GET {{url}}/student?schoolName=公
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Filter students by a single grade (High School 3rd year)
+GET {{url}}/student?gradeId=cma144m54000c104qisekc112
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Filter students by multiple grades (Elementary 6th and Middle School 3rd)
+GET {{url}}/student?gradeId=cma144m54000a104qkhcfnvzl&gradeId=cma144m54000b104q2ajwb2vp
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Filter students by a single student type (High School students)
+GET {{url}}/student?studentTypeId=cma144m500009104qiuhx9jbd
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Filter students by multiple student types (Elementary and Middle School)
+GET {{url}}/student?studentTypeId=cma144m500007104qds9nqqsy&studentTypeId=cma144m500008104qarmazu88
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Filter students by a single preferred subject (English)
+GET {{url}}/student?preferredSubjectId=cma144m5g000i104q6edj7rri
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Filter students by multiple preferred subjects (Math and Japanese)
+GET {{url}}/student?preferredSubjectId=cma144m5g000h104q011r76l4&preferredSubjectId=cma144m5g000g104qhle1xh2y
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Filter students by a single exam school type\
+GET {{url}}/student?examSchoolType=HIGH
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Combined example: Elementary 6th grade students interested in Japanese
+GET {{url}}/student?gradeId=cma144m54000a104qkhcfnvzl&preferredSubjectId=cma144m5g000g104qhle1xh2y
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Combined example: Middle school students interested in English
+GET {{url}}/student?studentTypeId=cma144m500008104qarmazu88&preferredSubjectId=cma144m5g000i104q6edj7rri
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Complex filter: Elementary or Middle school students interested in Math or English
+GET {{url}}/student?studentTypeId=cma144m500007104qds9nqqsy&studentTypeId=cma144m500008104qarmazu88&preferredSubjectId=cma144m5g000h104q011r76l4&preferredSubjectId=cma144m5g000i104q6edj7rri
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get students with filtering by grade name (case-insensitive)
+GET {{url}}/student?gradeName=小学
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get students with filtering by school type
+GET {{url}}/student?schoolType=立
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get students with filtering by school type
+GET {{url}}/student?preferredSubjectId=cma8l10zf000gsbliobc5chll&preferredSubjectId=cma8l10zf000hsbli2q544ji2&preferredSubjectId=cma8l10zf000isbli6pbaft9f
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get students with filtering by exam school type
+GET {{url}}/student?examSchoolType=HIGH
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Filter students by a single preferred subject (英語)
+GET {{url}}/student?preferredSubjectId=cma8l10zf000isbli6pbaft9f
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Filter students by multiple preferred subjects (数学 and 物理)
+GET {{url}}/student?preferredSubjectId=cma6fzd7o000ivi7kzzpo62f4&preferredSubjectId=cma6fzd7o000hvi7kjew9z6dm
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Filter students by a single grade (高校3年生)
+GET {{url}}/student?gradeId=cma8l10z3000csblil5o6ua7t
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Filter students by multiple grades (小学6年生 and 中学3年生)
+GET {{url}}/student?gradeId=cma8l10z3000asbli3kbl5fca&gradeId=cma8l10z3000bsbli822xa6o2
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Filter students by a single student type (中学生)
+GET {{url}}/student?studentTypeId=cma8l10yy0008sblienua7w7a
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Filter students by multiple student types (小学生 and 高校生)
+GET {{url}}/student?studentTypeId=cma8l10yy0007sbliu5oat9m7&studentTypeId=cma8l10yy0009sbli90ahuq0n
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Filter students by a single exam school type (HIGH)
+GET {{url}}/student?examSchoolType=HIGH
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Filter students by multiple exam school types (ELEMENTARY and MIDDLE)
+GET {{url}}/student?examSchoolType=ELEMENTARY&examSchoolType=MIDDLE
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Combined example: High school students interested in Math and Physics
+GET {{url}}/student?studentTypeId=cma8l10yy0009sbli90ahuq0n&preferredSubjectId=cma8l10zf000hsbli2q544ji2&preferredSubjectId=cma8l10zf000jsbli6r8j3m1g
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Combined example: Middle school 3rd grade students interested in English
+GET {{url}}/student?gradeId=cma8l10z3000bsbli822xa6o2&preferredSubjectId=cma8l10zf000isbli6pbaft9f
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get students with sorting
+GET {{url}}/student?sort=createdAt&order=desc
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get students with multiple filters and pagination
+GET {{url}}/student?name=Sato&schoolType=PRIVATE&gradeName=Middle&page=1&limit=5&sort=name&order=asc
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get a single student by ID (now publicly accessible without authentication)
+# This endpoint now works without any Zod validation issues
+GET {{url}}/student/cma144m620012104qmvpu55ar
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Create a new student
+# Make sure to use a real user ID from your database
+POST {{url}}/student
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "username": "takahashi_yuki",
+  "password": "securepassword123",
+  "name": "Takahashi Yuki",
+  "kanaName": "タカハシ ユキ",
+  "gradeId": "cma144m54000a104qkhcfnvzl",
+  "schoolName": "Tokyo Metropolitan High School",
+  "schoolType": "PUBLIC",
+  "examSchoolType": "HIGH",
+  "birthDate": "2005-06-15",
+  "parentEmail": "parent@example.com",
+  "preferences": {
+    "subjects": [
+      "cma144m5g000g104qhle1xh2y",
+      "cma144m5g000h104q011r76l4"
+      ],
+    "teachers": [
+      "cma144m5w000w104q8cncwj26",
+       "cma144m5u000u104qsqx0wjex"
+       ],
+    "timeSlots": [
+      {
+        "dayOfWeek": "MONDAY",
+        "startTime": "14:00:00",
+        "endTime": "16:00:00"
+      }
+    ]
+  }
+}
+
+### Update an existing student
+# Now works with partial updates (birthDate is optional)
+PUT {{url}}/student
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "studentId": "cma144m620012104qmvpu55ar",
+  "password": "newSecurePassword456",
+  "name": "Takahashi Yuki",
+  "parentEmail": "new_parent@example.com",
+  "kanaName": "タカハシ ユキ",
+  "schoolName": "Tokyo Metropolitan Advanced High School",
+    "preferences": {
+    "subjects": [
+      "cma144m5g000g104qhle1xh2y",
+      "cma144m5g000h104q011r76l4"
+      ],
+    "teachers": [
+      "cma144m5w000w104q8cncwj26",
+      "cma144m5u000u104qsqx0wjex"
+      ]
+  },
+  "notes": "Interested in computer science and mathematics"
+}
+
+### Delete a student (using query parameter)
+# Replace STUDENT_ID with an actual ID from your database
+DELETE {{url}}/student?studentId=cma144m640014104q3x1v0vcp
+Content-Type: application/json
+Cookie: {{cookie}}
+
+################
+# STUDENT TYPE #
+################
+
+### Get all student types
+GET {{url}}/student-type
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get all student types with pagination and filtering
+GET {{url}}/student-type?page=1&limit=10&name=Elementary&sort=name&order=asc
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get a single student type by ID
+# Replace STUDENT_TYPE_ID with an actual ID from your database
+GET {{url}}/student-type/STUDENT_TYPE_ID
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Create a new student type
+POST {{url}}/student-type
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "name": "High School",
+  "description": "Students in grades 10-12"
+}
+
+### Update an existing student type
+PUT {{url}}/student-type
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "studentTypeId": "cma1tmebc00171036sj95amta",
+  "name": "Updated High School",
+  "description": "Students in grades 9-12"
+}
+
+### Delete a student type
+DELETE {{url}}/student-type?studentTypeId=cma1tmebc00171036sj95amta
+Content-Type: application/json
+Cookie: {{cookie}}
+
+###################
+# TEACHER SUBJECT #
+###################
+
+### Get all teacher subjects (basic)
+GET {{url}}/teacher-subjects
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get a single teacher-subject relationship by composite ID
+# Replace TEACHER_ID and SUBJECT_ID with actual IDs from your database
+GET {{url}}/teacher-subjects/cma6fzd7z000uvi7k4uc6q8m3/cma6fzd7o000gvi7kafpxtmb8
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get teacher subjects with pagination
+GET {{url}}/teacher-subjects?page=1&limit=10
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get teacher subjects with filtering by teacherId
+# Replace TEACHER_ID with an actual ID from your database
+GET {{url}}/teacher-subjects?teacherId=cma6fzd7z000uvi7k4uc6q8m3
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get teacher subjects with filtering by subjectId
+# Replace SUBJECT_ID with an actual ID from your database
+GET {{url}}/teacher-subjects?subjectId=cma6fzd7o000gvi7kafpxtmb8
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get teacher subjects with sorting
+GET {{url}}/teacher-subjects?sort=createdAt&order=desc
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get teacher subjects with multiple filters and pagination
+# Replace IDs with actual IDs from your database
+GET {{url}}/teacher-subjects?teacherId=TEACHER_ID&subjectId=SUBJECT_ID&page=1&limit=5&sort=createdAt&order=asc
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Create a new teacher subject relationship
+# Replace IDs with actual IDs from your database
+POST {{url}}/teacher-subjects
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "teacherId": "TEACHER_ID",
+  "subjectId": "SUBJECT_ID",
+  "notes": "Teacher is highly qualified in this subject"
+}
+
+### Update an existing teacher subject relationship
+# Replace IDs with actual IDs from your database
+PUT {{url}}/teacher-subjects
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "teacherId": "TEACHER_ID",
+  "subjectId": "SUBJECT_ID",
+  "notes": "Updated qualification notes for this subject"
+}
+
+### Delete a teacher subject relationship (using query parameters)
+# Replace IDs with actual IDs from your database
+DELETE {{url}}/teacher-subjects?teacherId=TEACHER_ID&subjectId=SUBJECT_ID
+Content-Type: application/json
+Cookie: {{cookie}}
+
+##############
+# EVALUATION #
+##############
+
+### Get all evaluations (basic - descending order by name)
+GET {{url}}/evaluation
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get a single evaluation by ID
+# Replace EVALUATION_ID with an actual ID from your database
+GET {{url}}/evaluation/cma144m5n000n104qdxmlxrdu
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get evaluations with pagination
+GET {{url}}/evaluation?page=1&limit=10
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get evaluations with filtering by name (case-insensitive)
+GET {{url}}/evaluation?name=B
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get evaluations with filtering by score
+GET {{url}}/evaluation?score=90
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get evaluations with sorting
+GET {{url}}/evaluation?sort=score&order=desc
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get evaluations with multiple filters and pagination
+GET {{url}}/evaluation?name=Basic&score=3&page=1&limit=5&sort=name&order=asc
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Create a new evaluation
+POST {{url}}/evaluation
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "name": "Exceptional Teaching",
+  "score": 5,
+  "notes": "Outstanding knowledge and teaching skills"
+}
+
+### Update an existing evaluation
+# Replace EVALUATION_ID with an actual ID from your database
+PUT {{url}}/evaluation
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "evaluationId": "cma144m5n000n104qdxmlxrdu",
+  "name": "Updated Exceptional Teaching",
+  "score": 4,
+  "notes": "Very good knowledge and teaching skills"
+}
+
+### Delete an evaluation (using query parameter)
+# Replace EVALUATION_ID with an actual ID from your database
+DELETE {{url}}/evaluation?evaluationId=cma144m5n000n104qdxmlxrdu
+Content-Type: application/json
+Cookie: {{cookie}}
+
+################
+# SUBJECT TYPE #
+################
+
+### Get all subject types (basic - descending order by name)
+GET {{url}}/subject-type
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get a single subject type by ID
+# Replace SUBJECT_TYPE_ID with an actual ID from your database
+GET {{url}}/subject-type/cma6fzd7m000dvi7krd27jfox
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get subject types with pagination
+GET {{url}}/subject-type?page=1&limit=10
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get subject types with filtering by name (case-insensitive)
+GET {{url}}/subject-type?name=数学
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get subject types with sorting
+GET {{url}}/subject-type?sort=createdAt&order=desc
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get subject types with multiple filters and pagination
+GET {{url}}/subject-type?name=数学&page=1&limit=5&sort=name&order=asc
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Create a new subject type
+POST {{url}}/subject-type
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "name": "Science",
+  "notes": "Includes physics, chemistry, and biology subjects"
+}
+
+### Update an existing subject type
+# Replace SUBJECT_TYPE_ID with an actual ID from your database
+PUT {{url}}/subject-type
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "subjectTypeId": "cma1vj74k00181036ardrfevg",
+  "name": "Natural Sciences",
+  "notes": "Physics, chemistry, biology, and earth sciences"
+}
+
+### Delete a subject type (using query parameter)
+# Replace SUBJECT_TYPE_ID with an actual ID from your database
+DELETE {{url}}/subject-type?subjectTypeId=cma1vj74k00181036ardrfevg
+Content-Type: application/json
+Cookie: {{cookie}}
+
+###########
+# SUBJECT #
+###########
+
+### Get all subjects (basic - descending order by name)
+GET {{url}}/subjects
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get a single subject by ID
+# Replace SUBJECT_ID with an actual ID from your database
+GET {{url}}/subjects/cma6fzd7o000ivi7kzzpo62f4
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get subjects with pagination
+GET {{url}}/subjects?page=1&limit=10
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get subjects with filtering by name (case-insensitive)
+GET {{url}}/subjects?name=英語
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get subjects with filtering by subject type ID
+GET {{url}}/subjects?subjectTypeId=cma6fzd7m000dvi7krd27jfox
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get subjects with sorting
+GET {{url}}/subjects?sort=createdAt&order=desc
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get subjects with multiple filters and pagination
+GET {{url}}/subjects?name=英語&subjectTypeId=cma6fzd7m000dvi7krd27jfox&page=1&limit=5&sort=name&order=asc
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Create a new subject
+POST {{url}}/subjects
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "name": "Advanced Physics",
+  "subjectTypeId": "cma144m5d000f104qxtggm46e",
+  "notes": "University preparation course for physics"
+}
+
+### Update an existing subject
+PUT {{url}}/subjects
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "subjectId": "cma144m5g000j104q9todc1hr",
+  "name": "Advanced Physics",
+  "subjectTypeId": "cma144m5d000f104qxtggm46e",
+  "notes": "Updated university preparation course"
+}
+
+### Delete a subject (using query parameter)
+DELETE {{url}}/subjects?subjectId=cma144m5g000j104q9todc1hr
+Content-Type: application/json
+Cookie: {{cookie}}
+
+###########
+# GRADE   #
+###########
+
+### Get all grades (basic - descending order by name)
+GET {{url}}/grades
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get grades with pagination
+GET {{url}}/grades?page=1&limit=10
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get grades with filtering by name (case-insensitive)
+GET {{url}}/grades?name=Elementary
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get grades with filtering by studentTypeId
+# Replace STUDENT_TYPE_ID with an actual student type ID from your database
+GET {{url}}/grades?studentTypeId=cma144m52000910xx3x9r8h9k
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get grades with filtering by gradeYear
+GET {{url}}/grades?gradeYear=3
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get grades with sorting
+GET {{url}}/grades?sort=gradeYear&order=asc
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get grades with multiple filters and pagination
+# Replace STUDENT_TYPE_ID with an actual student type ID from your database
+GET {{url}}/grades?name=Elementary&studentTypeId=cma144m52000910xx3x9r8h9k&gradeYear=2&page=1&limit=5&sort=name&order=asc
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get a single grade by ID
+# Replace GRADE_ID with an actual ID from your database
+GET {{url}}/grades/GRADE_ID
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Create a new grades
+# Replace STUDENT_TYPE_ID with an actual student type ID from your database
+POST {{url}}/grades
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "name": "Second Year Junior High",
+  "studentTypeId": "cma144m500008104qarmazu88",
+  "gradeYear": 8,
+  "notes": "Second year of junior high school (8th grades)"
+}
+
+### Update an existing grades
+# Replace GRADE_ID and STUDENT_TYPE_ID with actual IDs from your database
+PUT {{url}}/grades
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "gradeId": "cma1x3s6o001c103697jyilas",
+  "name": "Updated Second Year Junior High",
+  "studentTypeId": "cma144m500008104qarmazu88",
+  "gradeYear": 8,
+  "notes": "Updated notes for second year junior high school"
+}
+
+### Delete a grades (using query parameter)
+# Replace GRADE_ID with an actual ID from your database
+DELETE {{url}}/grades?gradeId=cma1x3s6o001c103697jyilas
+Content-Type: application/json
+Cookie: {{cookie}}
+
+###########
+# TEACHER #
+###########
+
+### Get all teachers (basic - descending order by name)
+GET {{url}}/teacher
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get teachers with pagination
+GET {{url}}/teacher?page=1&limit=10
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get teachers with filtering by name (case-insensitive)
+GET {{url}}/teacher?name=鈴木
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get teachers with filtering by email (case-insensitive)
+GET {{url}}/teacher?email=teacher
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get teachers with filtering by university (case-insensitive)
+GET {{url}}/teacher?university=京都
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Filter teachers by a single subject (English/英語)
+GET {{url}}/teacher?subjectId=cma144m5g000i104q6edj7rri
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Filter teachers by multiple subjects (Math/数学 AND Science/理科)
+GET {{url}}/teacher?subjectId=cma6fzd7o000ivi7kzzpo62f4&subjectId=cma6fzd7o000gvi7kafpxtmb8
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Filter teachers by a single evaluation (A rating)
+GET {{url}}/teacher?evaluationId=cma144m5n000o104qpemje8e2
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Filter teachers by multiple evaluations (A AND B ratings)
+GET {{url}}/teacher?evaluationId=cma144m5n000o104qpemje8e2&evaluationId=cma144m5n000p104q1ther34i
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Combined filtering: Teachers who teach either English OR Math AND have either A OR "Exceptional Teaching" evaluation
+GET {{url}}/teacher?subjectId=cma144m5g000i104q6edj7rri&subjectId=cma144m5g000h104q011r76l4&evaluationId=cma144m5n000o104qpemje8e2&evaluationId=cma144m5n000n104qdxmlxrdu
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Advanced filtering: Teachers who teach either Math OR Physics, have either A OR B evaluation, AND match a specific university
+GET {{url}}/teacher?subjectId=cma144m5g000h104q011r76l4&subjectId=cma144m5g000j104q9todc1hr&evaluationId=cma144m5n000o104qpemje8e2&evaluationId=cma144m5n000p104q1ther34i&university=Tokyo
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### More subjects filtering: Teachers who teach any of Japanese, English, or Math
+GET {{url}}/teacher?subjectId=cma144m5g000g104qhle1xh2y&subjectId=cma144m5g000i104q6edj7rri&subjectId=cma144m5g000h104q011r76l4
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### With pagination and sorting: Teachers who teach any science subject, with pagination
+GET {{url}}/teacher?subjectId=cma144m5g000k104qfuzs5vgp&subjectId=cma144m5g000j104q9todc1hr&subjectId=cma1wevlv001a1036a1aj3ynp&page=1&limit=5&sort=name&order=asc
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get teachers with filtering by enrollment status
+GET {{url}}/teacher?enrollmentStatus=在籍
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get teachers with filtering by subject
+GET {{url}}/teacher?subjectId=cma6fzd7o000hvi7kjew9z6dm&subjectId=cma6fzd7o000gvi7kafpxtmb8
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get teachers with filtering by evaluation
+GET {{url}}/teacher?evaluationId=cma6fzd7t000nvi7k7n4dgt7r
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get teachers with sorting
+GET {{url}}/teacher?sort=createdAt&order=desc
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get teachers with multiple filters and pagination
+GET {{url}}/teacher?name=Tanaka&university=Tokyo&page=1&limit=5&sort=name&order=asc
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get a single teacher by ID (make sure to replace with a real ID)
+GET {{url}}/teacher/cma144m5u000u104qsqx0wjex
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Create a new teacher with subjects and shifts
+POST {{url}}/teacher
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "username": "yamada_keiko",
+  "password": "securepassword123",
+  "name": "Yamada Keiko",
+  "evaluationId": "cma144m5n000n104qdxmlxrdu",
+  "birthDate": "1989-07-15",
+  "mobileNumber": "090-9876-5432",
+  "email": "yamada.keiko@example.com",
+  "highSchool": "Osaka High School",
+  "university": "Kyoto University",
+  "faculty": "Education",
+  "department": "Mathematics Education",
+  "enrollmentStatus": "ACTIVE",
+  "subjects": [
+    "cma144m5g000g104qhle1xh2y",
+    "cma144m5g000h104q011r76l4"
+  ],
+  "shifts": [
+    {
+      "dayOfWeek": "MONDAY",
+      "startTime": "13:00:00",
+      "endTime": "18:00:00",
+      "notes": "Prefers afternoon classes"
+    },
+    {
+      "dayOfWeek": "WEDNESDAY",
+      "startTime": "09:00:00",
+      "endTime": "15:00:00",
+      "notes": "Available for morning and early afternoon"
+    },
+    {
+      "dayOfWeek": "FRIDAY",
+      "startTime": "14:00:00",
+      "endTime": "19:00:00"
+    }
+  ]
+}
+
+### Update an existing teacher with new subjects and shifts
+PUT {{url}}/teacher
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "teacherId": "cma144m5w000w104q8cncwj26",
+  "name": "Suzuki Takeshi",
+  "email": "suzuki.takeshi@example.com",
+  "subjects": [
+    "cma144m5g000i104q6edj7rri",
+    "cma144m5g000g104qhle1xh2y"
+  ],
+  "shifts": [
+    {
+      "dayOfWeek": "TUESDAY",
+      "startTime": "14:00:00",
+      "endTime": "20:00:00",
+      "notes": "Prefers evening classes"
+    },
+    {
+      "dayOfWeek": "THURSDAY",
+      "startTime": "13:00:00",
+      "endTime": "18:00:00"
+    },
+    {
+      "dayOfWeek": "SATURDAY",
+      "startTime": "10:00:00",
+      "endTime": "15:00:00",
+      "notes": "Available for weekend classes"
+    }
+  ]
+}
+
+### Update just the shifts for an existing teacher
+PUT {{url}}/teacher
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "teacherId": "cma144m5u000u104qsqx0wjex",
+  "shifts": [
+    {
+      "dayOfWeek": "MONDAY",
+      "startTime": "09:00:00",
+      "endTime": "15:00:00",
+      "notes": "Morning availability"
+    },
+    {
+      "dayOfWeek": "WEDNESDAY",
+      "startTime": "13:00:00",
+      "endTime": "19:00:00"
+    }
+  ]
+}
+
+### Update just the subjects for an existing teacher
+PUT {{url}}/teacher
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "teacherId": "cma144m5u000u104qsqx0wjex",
+  "subjects": [
+    "cma144m5g000h104q011r76l4",
+    "cma144m5g000j104q9todc1hr"
+  ]
+}
+
+### Get a teacher with their subjects and shifts
+GET {{url}}/teacher/cma144m5u000u104qsqx0wjex
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Create a new teacher
+POST {{url}}/teacher
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "username": "tanaka_kenji",
+  "password": "securepassword123",
+  "name": "Tanaka Kenji",
+  "evaluationId": "cma144m5n000n104qdxmlxrdu",
+  "birthDate": "1990-05-10",
+  "mobileNumber": "090-1234-5678",
+  "email": "tanaka.kenji@example.com",
+  "highSchool": "Tokyo High School",
+  "university": "Tokyo University",
+  "faculty": "Science",
+  "department": "Physics",
+  "enrollmentStatus": "ACTIVE",
+  "subjects": [
+    "cma144m5g000g104qhle1xh2y",
+    "cma144m5g000h104q011r76l4"
+  ]
+}
+
+### Update an existing teacher (make sure to replace with a real ID)
+PUT {{url}}/teacher
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "teacherId": "cma144m5u000u104qsqx0wjex",
+  "password": "newSecurePassword456",
+  "name": "Tanaka Kenji",
+  "email": "kenji.tanaka@example.com",
+  "mobileNumber": "090-8765-4321",
+  "subjects": [
+    "cma144m5g000g104qhle1xh2y",
+    "cma144m5g000h104q011r76l4"
+  ],
+  "notes": "Expert in advanced mathematics and physics"
+}
+
+### Delete a teacher (using query parameter)
+DELETE {{url}}/teacher?teacherId=cma144m5u000u104qsqx0wjex
+Content-Type: application/json
+Cookie: {{cookie}}
+
+############################
+# REGULAR CLASS TEMPLATES  #
+############################
+
+### Get all templates (basic - with pagination)
+GET {{url}}/regular-class-templates?page=1&limit=10
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get templates with filtering by day of week
+GET {{url}}/regular-class-templates?dayOfWeek=MONDAY
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get templates with filtering by teacher
+# Replace TEACHER_ID with an actual ID from your database
+GET {{url}}/regular-class-templates?teacherId=cma144m5u000u104qsqx0wjex
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get templates with filtering by student
+# Replace STUDENT_ID with an actual ID from your database
+GET {{url}}/regular-class-templates?studentId=cma144m600010104qpk5ai7om
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get templates with filtering by subject
+# Replace SUBJECT_ID with an actual ID from your database
+GET {{url}}/regular-class-templates?subjectId=cma144m5g000h104q011r76l4
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get templates with filtering by booth
+# Replace BOOTH_ID with an actual ID from your database
+GET {{url}}/regular-class-templates?boothId=cma144m5r000q104qlec1r0x3
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get templates with sorting
+GET {{url}}/regular-class-templates?sort=dayOfWeek&order=asc
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get templates with multiple filters and pagination
+# Replace IDs with actual IDs from your database
+GET {{url}}/regular-class-templates?dayOfWeek=MONDAY&teacherId=cma144m5u000u104qsqx0wjex&page=1&limit=5&sort=startTime&order=asc
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get a single template by ID
+# Replace TEMPLATE_ID with an actual ID from your database
+GET {{url}}/regular-class-templates/cma144m6a0016104q2lv6v7lv
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get available slots with filtering (time-based availability)
+GET {{url}}/regular-class-templates?action=available-slots&dayOfWeek=MONDAY&startTime=15:00&endTime=16:30
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get available slots with teacher filter
+# Replace TEACHER_ID with an actual ID from your database
+GET {{url}}/regular-class-templates?action=available-slots&dayOfWeek=MONDAY&startTime=15:00&endTime=16:30&teacherId=cma144m5u000u104qsqx0wjex
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get available slots with student filter
+# Replace STUDENT_ID with an actual ID from your database
+GET {{url}}/regular-class-templates?action=available-slots&dayOfWeek=MONDAY&startTime=15:00&endTime=16:30&studentId=cma144m600010104qpk5ai7om
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get available slots with subject filter
+# Replace SUBJECT_ID with an actual ID from your database
+GET {{url}}/regular-class-templates?action=available-slots&dayOfWeek=MONDAY&startTime=15:00&endTime=16:30&subjectId=cma144m5g000h104q011r76l4
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get available slots with booth filter
+# Replace BOOTH_ID with an actual ID from your database
+GET {{url}}/regular-class-templates?action=available-slots&dayOfWeek=MONDAY&startTime=15:00&endTime=16:30&boothId=cma144m5r000q104qlec1r0x3
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get available slots with multiple filters
+# Replace IDs with actual IDs from your database
+GET {{url}}/regular-class-templates?action=available-slots&dayOfWeek=MONDAY&startTime=15:00&endTime=16:30&teacherId=cma144m5u000u104qsqx0wjex&subjectId=cma144m5g000h104q011r76l4
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Create a single template
+# Replace IDs with actual IDs from your database
+POST {{url}}/regular-class-templates
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "dayOfWeek": "MONDAY",
+  "startTime": "15:00",
+  "endTime": "16:30",
+  "teacherId": "cma144m5u000u104qsqx0wjex",
+  "subjectId": "cma144m5g000h104q011r76l4",
+  "boothId": "cma144m5r000q104qlec1r0x3",
+  "studentIds": ["cma144m600010104qpk5ai7om"],
+  "notes": "Regular Monday math class"
+}
+
+### Create multiple templates (batch)
+# Replace IDs with actual IDs from your database
+POST {{url}}/regular-class-templates
+Content-Type: application/json
+Cookie: {{cookie}}
+
+[
+  {
+    "dayOfWeek": "MONDAY",
+    "startTime": "15:00",
+    "endTime": "16:30",
+    "teacherId": "cma144m5u000u104qsqx0wjex",
+    "subjectId": "cma144m5g000h104q011r76l4",
+    "boothId": "cma144m5r000q104qlec1r0x3",
+    "studentIds": ["cma144m600010104qpk5ai7om"],
+    "notes": "Regular Monday math class"
+  }
+]
+
+### Create a template with date range
+# Replace IDs with actual IDs from your database
+POST {{url}}/regular-class-templates
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "dayOfWeek": "MONDAY",
+  "startTime": "15:00",
+  "endTime": "16:30",
+  "teacherId": "cma144m5u000u104qsqx0wjex",
+  "subjectId": "cma144m5g000h104q011r76l4",
+  "boothId": "cma144m5r000q104qlec1r0x3",
+  "startDate": "2025-05-01",
+  "endDate": "2026-03-31",
+  "studentIds": ["cma144m600010104qpk5ai7om"],
+  "notes": "高3数学 週次枠"
+}
+
+### Update an existing template
+# Replace TEMPLATE_ID and other IDs with actual IDs from your database
+PUT {{url}}/regular-class-templates
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "templateId": "cma144m6a0016104q2lv6v7lv",
+  "dayOfWeek": "MONDAY",
+  "startTime": "15:00",
+  "endTime": "16:30",
+  "studentIds": ["cma144m600010104qpk5ai7om"],
+  "notes": "Updated to Monday with one student"
+}
+
+### Update a template's time only
+# Replace TEMPLATE_ID with an actual ID from your database
+PUT {{url}}/regular-class-templates
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "templateId": "cma144m6a0016104q2lv6v7lv",
+  "startTime": "15:00",
+  "endTime": "16:30"
+}
+
+### Update a template's students only
+# Replace TEMPLATE_ID and STUDENT_IDs with actual IDs from your database
+PUT {{url}}/regular-class-templates
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "templateId": "cma144m6a0016104q2lv6v7lv",
+  "studentIds": ["cma144m600010104qpk5ai7om"]
+}
+
+### Delete a template
+# Replace TEMPLATE_ID with an actual ID from your database
+DELETE {{url}}/regular-class-templates?templateId=cma144m6a0016104q2lv6v7lv
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Test conflict detection (try to schedule template when booth is already booked)
+# Replace IDs with actual IDs from your database - use a time slot and booth
+# that you know already has a template scheduled
+POST {{url}}/regular-class-templates
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "dayOfWeek": "MONDAY",
+  "startTime": "14:00",
+  "endTime": "15:00",
+  "teacherId": "cma144m5u000u104qsqx0wjex",
+  "subjectId": "cma144m5g000g104qhle1xh2y",
+  "boothId": "cma1dzjg60003106qp9p1get7",
+  "studentIds": ["cma144m620012104qmvpu55ar"],
+  "notes": "This should cause a booth conflict"
+}
+
+### Test conflict detection (try to schedule template when teacher is already booked)
+# Replace IDs with actual IDs from your database - use a time slot and teacher
+# that you know already has a template scheduled
+POST {{url}}/regular-class-templates
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "dayOfWeek": "MONDAY",
+  "startTime": "14:00",
+  "endTime": "15:00",
+  "teacherId": "cma144m5w000w104q8cncwj26",
+  "subjectId": "cma144m5g000g104qhle1xh2y",
+  "boothId": "cma1dzjg60003106qp9p1get7",
+  "studentIds": ["cma144m620012104qmvpu55ar"],
+  "notes": "This should cause a teacher conflict"
+}
+
+### Test conflict detection (try to schedule template when student is already booked)
+# Replace IDs with actual IDs from your database - use a student
+# that you know already has a template scheduled at this time
+POST {{url}}/regular-class-templates
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "dayOfWeek": "MONDAY",
+  "startTime": "14:00",
+  "endTime": "15:00",
+  "teacherId": "cma144m5u000u104qsqx0wjex",
+  "subjectId": "cma144m5g000g104qhle1xh2y",
+  "boothId": "cma1dzjg60003106qp9p1get7",
+  "studentIds": ["cma144m620012104qmvpu55ar"],
+  "notes": "This should cause a student conflict"
+}
+
+############################
+# NEW TEMPLATE API ROUTES  #
+############################
+
+### Get compatible teachers for a specific student (prioritized)
+# Replace STUDENT_ID with an actual ID from your database
+GET {{url}}/regular-class-templates?action=compatible-teachers&studentId=cma6fzd850010vi7kmvl0lsax
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get compatible students for a specific teacher (prioritized)
+# Replace TEACHER_ID with an actual ID from your database
+GET {{url}}/regular-class-templates?action=compatible-students&teacherId=cma6fzd7z000uvi7k4uc6q8m3
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get compatible subjects for a teacher-student combination
+# Replace TEACHER_ID and STUDENT_ID with actual IDs from your database
+GET {{url}}/regular-class-templates?action=compatible-subjects&teacherId=cma6fzd7z000uvi7k4uc6q8m3&studentId=cma6fzd850010vi7kmvl0lsax
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get available time slots for a teacher-student combination
+# Replace TEACHER_ID and STUDENT_ID with actual IDs from your database
+GET {{url}}/regular-class-templates?action=available-time-slots&teacherId=ccma6fzd7z000uvi7k4uc6q8m3&studentId=cma6fzd850010vi7kmvl0lsax
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get available booths for a specific day and time
+GET {{url}}/regular-class-templates?action=available-booths&dayOfWeek=MONDAY&startTime=15:00&endTime=16:30
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get available booths (different day)
+GET {{url}}/regular-class-templates?action=available-booths&dayOfWeek=WEDNESDAY&startTime=14:00&endTime=15:30
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Error test: Get compatible teachers without student ID (should return error)
+GET {{url}}/regular-class-templates?action=compatible-teachers
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Error test: Get compatible students without teacher ID (should return error)
+GET {{url}}/regular-class-templates?action=compatible-students
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Error test: Get compatible subjects with missing IDs (should return error)
+GET {{url}}/regular-class-templates?action=compatible-subjects&teacherId=cma144m5u000u104qsqx0wjex
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Error test: Get available time slots with missing IDs (should return error)
+GET {{url}}/regular-class-templates?action=available-time-slots&teacherId=ccma6fzd7z000uvi7k4uc6q8m3
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Error test: Get available booths with missing parameters (should return error)
+GET {{url}}/regular-class-templates?action=available-booths&dayOfWeek=MONDAY
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Complete flow test 1: Get compatible teachers for student
+GET {{url}}/regular-class-templates?action=compatible-teachers&studentId=cma6fzd850010vi7kmvl0lsax
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Complete flow test 2: Get compatible subjects for selected teacher and student
+GET {{url}}/regular-class-templates?action=compatible-subjects&teacherId=cma144m5u000u104qsqx0wjex&studentId=cma144m600010104qpk5ai7om
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Complete flow test 3: Get available time slots for selected teacher and student
+GET {{url}}/regular-class-templates?action=available-time-slots&teacherId=ccma6fzd7z000uvi7k4uc6q8m3&studentId=cma6fzd850010vi7kmvl0lsax
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Complete flow test 4: Get available booths for selected day and time
+GET {{url}}/regular-class-templates?action=available-booths&dayOfWeek=MONDAY&startTime=15:00&endTime=16:30
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Complete flow test 5: Create template with selected parameters
+POST {{url}}/regular-class-templates
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "dayOfWeek": "MONDAY",
+  "startTime": "15:00",
+  "endTime": "16:30",
+  "teacherId": "cma144m5u000u104qsqx0wjex",
+  "subjectId": "cma144m5g000h104q011r76l4",
+  "boothId": "cma144m5r000q104qlec1r0x3",
+  "studentIds": ["cma144m600010104qpk5ai7om"],
+  "notes": "Regular Monday class created from new step-by-step flow"
+}

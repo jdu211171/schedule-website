@@ -1,66 +1,57 @@
+import { fetcher } from "@/lib/fetcher";
 import { useQuery } from "@tanstack/react-query";
-import {
-  RegularClassTemplate,
-  Booth,
-  Subject,
-  Teacher,
-  Student,
-  TemplateStudentAssignment,
-} from "@prisma/client";
-import { getRegularClassTemplates } from "@/actions/regularClassTemplate";
-import { getRegularClassTemplate } from "@/actions/regularClassTemplate/read";
+import { RegularClassTemplate } from "@prisma/client";
 
-type TemplateWithRelations = RegularClassTemplate & {
-  booth: Booth | null;
-  subject: Subject | null;
-  teacher: Teacher | null;
-  templateStudentAssignments: (TemplateStudentAssignment & {
-    student: Student | null;
-  })[];
-};
-
-export function useRegularClassTemplates({
-  page = 1,
-  pageSize = 10,
-  teacherId,
-  studentId,
-  subjectId,
-  dayOfWeek,
-}: {
+type UseRegularClassTemplatesParams = {
   page?: number;
-  pageSize?: number;
+  limit?: number;
   teacherId?: string;
   studentId?: string;
   subjectId?: string;
   dayOfWeek?: string;
-}) {
-  return useQuery({
-    queryKey: [
-      "regularClassTemplates",
-      page,
-      pageSize,
-      teacherId,
-      studentId,
-      subjectId,
-      dayOfWeek,
-    ],
-    queryFn: () =>
-      getRegularClassTemplates({
-        page,
-        pageSize,
-        teacherId,
-        studentId,
-        subjectId,
-        dayOfWeek,
-      }) as Promise<TemplateWithRelations[]>,
+  sort?: string;
+  order?: "asc" | "desc";
+};
+
+type RegularClassTemplatesResponse = {
+  data: RegularClassTemplate[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    pages: number;
+  };
+};
+
+type SingleRegularClassTemplateResponse = {
+  data: RegularClassTemplate;
+};
+
+export function useRegularClassTemplates(params: UseRegularClassTemplatesParams = {}) {
+  const { page = 1, limit = 10, teacherId, studentId, subjectId, dayOfWeek, sort, order } = params;
+
+  const searchParams = new URLSearchParams(
+    Object.entries({ page, limit, teacherId, studentId, subjectId, dayOfWeek, sort, order }).reduce(
+      (acc, [key, value]) => {
+        if (value !== undefined) {
+          acc[key] = String(value);
+        }
+        return acc;
+      },
+      {} as Record<string, string>
+    )
+  ).toString();
+
+  return useQuery<RegularClassTemplatesResponse>({
+    queryKey: ["regularClassTemplates", page, limit, teacherId, studentId, subjectId, dayOfWeek, sort, order],
+    queryFn: async () => await fetcher<RegularClassTemplatesResponse>(`/api/regular-class-templates?${searchParams}`),
   });
 }
 
 export function useRegularClassTemplate(templateId: string) {
-  return useQuery({
-    queryKey: ["regularClassTemplates", templateId],
-    queryFn: () =>
-      getRegularClassTemplate(templateId) as Promise<TemplateWithRelations>,
+  return useQuery<RegularClassTemplate>({
+    queryKey: ["regularClassTemplate", templateId],
+    queryFn: async () => await fetcher<SingleRegularClassTemplateResponse>(`/api/regular-class-templates/${templateId}`).then((res) => res.data),
     enabled: !!templateId,
   });
 }
