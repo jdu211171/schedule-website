@@ -19,7 +19,21 @@ const API_URL = 'http://localhost:3000/api';
 
 // API functions for teachers
 export const fetchTeachers = async (params: TeacherParams = {}): Promise<TeacherResponse> => {
-  const { data } = await axios.get(`${API_URL}/teacher`, { params });
+  const urlParams = new URLSearchParams();
+  
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === undefined) return;
+    
+    if (Array.isArray(value)) {
+      value.forEach(item => {
+        urlParams.append(key, String(item));
+      });
+    } else {
+      urlParams.append(key, String(value));
+    }
+  });
+  
+  const { data } = await axios.get(`${API_URL}/teacher?${urlParams.toString()}`);
   return data;
 };
 
@@ -30,7 +44,21 @@ export const fetchTeacherById = async (teacherId: string) => {
 
 // API functions for students
 export const fetchStudents = async (params: StudentParams = {}): Promise<StudentResponse> => {
-  const { data } = await axios.get(`${API_URL}/student`, { params });
+  const urlParams = new URLSearchParams();
+  
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === undefined) return;
+    
+    if (Array.isArray(value)) {
+      value.forEach(item => {
+        urlParams.append(key, String(item));
+      });
+    } else {
+      urlParams.append(key, String(value));
+    }
+  });
+  
+  const { data } = await axios.get(`${API_URL}/student?${urlParams.toString()}`);
   return data;
 };
 

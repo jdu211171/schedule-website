@@ -49,8 +49,8 @@ export interface TeacherParams extends PaginationParams {
   email?: string;
   university?: string;
   enrollmentStatus?: string;
-  subjectId?: string; 
-  evaluationId?: string;
+  subjectId?: string | string[];  
+  evaluationId?: string | string[]; 
 }
 
 export interface TeacherResponse {
@@ -164,7 +164,10 @@ export interface StudentParams extends PaginationParams {
   schoolName?: string;
   gradeName?: string;
   schoolType?: string;
-  examSchoolType?: string;
+  examSchoolType?: string | string[];
+  preferredSubjectId?: string | string[];
+  studentTypeId?: string | string[];
+  gradeId?: string | null;
 }
 
 export interface StudentResponse {
@@ -405,4 +408,16 @@ export interface TemplateDataFromAPI {
     createdAt?: string;
     updatedAt?: string;
   };
+}
+
+export interface TeacherFilterParams {
+  subjectId?: string[];
+  evaluationId?: string[];
+}
+
+export interface StudentFilterParams {
+  preferredSubjectId?: string[];
+  studentTypeId?: string[];
+  gradeId?: string | null;
+  schoolType?: string | null;
 }

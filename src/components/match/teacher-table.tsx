@@ -22,7 +22,8 @@ import {
   Subject,
   Evaluation,
   TeacherSubject,
-  ClassSession
+  ClassSession,
+  TeacherFilterParams
 } from "@/components/match/types";
 
 interface EnrichedTeacher extends Teacher {
@@ -41,11 +42,10 @@ interface TeacherTableProps {
   selectedStudentId: string | null;
   filteredTeachers?: Teacher[];
   kibouSubjects?: Subject[];
-  onTeacherFilterChange?: (params: { subjectId?: string, evaluationId?: string }) => void; // Обработчик серверной фильтрации
   
-  // Добавляем через пропсы текущие значения фильтров
-  currentSubjectFilter?: string | null;
-  currentEvaluationFilter?: string | null;
+  onTeacherFiltersChange?: (params: TeacherFilterParams) => void;
+  currentSubjectFilters?: string[];
+  currentEvaluationFilters?: string[];
 }
 
 export default function TeacherTable({
@@ -59,58 +59,26 @@ export default function TeacherTable({
   selectedStudentId,
   filteredTeachers,
   kibouSubjects = [],
-  onTeacherFilterChange,
-  currentSubjectFilter = null,
-  currentEvaluationFilter = null,
+  onTeacherFiltersChange,
+  currentSubjectFilters = [],
+  currentEvaluationFilters = [],
 }: TeacherTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
   const [detailsTeacher, setDetailsTeacher] = useState<EnrichedTeacher | null>(null);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
-  
-  // Серверные фильтры с инициализацией из пропсов
-  const [serverSubjectFilter, setServerSubjectFilter] = useState<string | null>(currentSubjectFilter);
-  const [serverEvaluationFilter, setServerEvaluationFilter] = useState<string | null>(currentEvaluationFilter);
-
-  // При изменении пропсов обновляем состояние фильтров
-  useEffect(() => {
-    setServerSubjectFilter(currentSubjectFilter);
-  }, [currentSubjectFilter]);
-  
-  useEffect(() => {
-    setServerEvaluationFilter(currentEvaluationFilter);
-  }, [currentEvaluationFilter]);
 
   useEffect(() => {
     setCurrentPage(1);
   }, [selectedStudentId]);
 
-  // Обработка серверного фильтра по предмету
-  const handleSubjectFilterChange = (subjectId: string | null) => {
-    setServerSubjectFilter(subjectId);
+  // Обработчик фильтров - теперь единый для всех типов фильтров
+  const handleFiltersChange = (filters: TeacherFilterParams) => {
     setCurrentPage(1);
     
-    // Если передан обработчик фильтра от родительского компонента
-    if (onTeacherFilterChange) {
-      onTeacherFilterChange({
-        subjectId: subjectId || undefined,
-        evaluationId: serverEvaluationFilter || undefined
-      });
-    }
-  };
-
-  // Обработка серверного фильтра по оценке
-  const handleEvaluationFilterChange = (evaluationId: string | null) => {
-    setServerEvaluationFilter(evaluationId);
-    setCurrentPage(1);
-    
-    // Если передан обработчик фильтра от родительского компонента
-    if (onTeacherFilterChange) {
-      onTeacherFilterChange({
-        subjectId: serverSubjectFilter || undefined,
-        evaluationId: evaluationId || undefined
-      });
+    if (onTeacherFiltersChange) {
+      onTeacherFiltersChange(filters);
     }
   };
 
@@ -125,12 +93,6 @@ export default function TeacherTable({
       const evaluation =
         evaluations.find((e) => e.evaluationId === teacher.evaluationId) || null;
 
-      // -----------------------------
-      // 科目の決定ロジック
-      // -----------------------------
-      // 先生が担当できる科目は teacherSubjects テーブルの情報のみを参照する。
-      // レッスン履歴に基づく追加の科目は含めないことで、
-      // "講師対応科目" に登録されていない科目が UI に表示される問題を防ぐ。
       const teacherSubjectsData = teacherSubjects.filter(
         (ts) => ts.teacherId === teacher.teacherId,
       );
@@ -187,7 +149,45 @@ export default function TeacherTable({
   );
 
   // Проверка, применены ли фильтры
-  const isFilterActive = serverSubjectFilter !== null || serverEvaluationFilter !== null;
+  const isFilterActive = currentSubjectFilters.length > 0 || currentEvaluationFilters.length > 0;
+
+  // Форматирование списка активных фильтров для отображения
+  const getActiveFiltersDisplay = () => {
+    const activeFilters: React.ReactNode[] = [];
+    
+    if (currentSubjectFilters.length > 0) {
+      const subjectNames = currentSubjectFilters.map(id => 
+        subjects.find(s => s.subjectId === id)?.name || 'Unknown'
+      );
+      
+      activeFilters.push(
+        <Badge key="subjects" className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
+          科目: {subjectNames.join(', ')}
+        </Badge>
+      );
+    }
+    
+    if (currentEvaluationFilters.length > 0) {
+      const evaluationNames = currentEvaluationFilters.map(id => 
+        evaluations.find(e => e.evaluationId === id)?.name || 'Unknown'
+      );
+      
+      activeFilters.push(
+        <Badge key="evaluations" className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
+          評価: {evaluationNames.join(', ')}
+        </Badge>
+      );
+    }
+    
+    return activeFilters;
+  };
+
+  // Очистка всех фильтров
+  const clearAllFilters = () => {
+    if (onTeacherFiltersChange) {
+      onTeacherFiltersChange({});
+    }
+  };
 
   return (
     <div className="rounded-md border h-full flex flex-col bg-white">
@@ -210,27 +210,12 @@ export default function TeacherTable({
         <div className="bg-blue-50 p-2 border-b">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-blue-800 text-sm font-medium">アクティブフィルター：</span>
-            {serverSubjectFilter && (
-              <Badge className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
-                科目: {subjects.find(s => s.subjectId === serverSubjectFilter)?.name || 'Unknown'}
-              </Badge>
-            )}
-            {serverEvaluationFilter && (
-              <Badge className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
-                評価: {evaluations.find(e => e.evaluationId === serverEvaluationFilter)?.name || 'Unknown'}
-              </Badge>
-            )}
+            {getActiveFiltersDisplay()}
             <Button 
               variant="ghost" 
               size="sm" 
               className="h-6 px-2 text-xs text-blue-600 hover:text-blue-800"
-              onClick={() => {
-                if (onTeacherFilterChange) {
-                  onTeacherFilterChange({});
-                }
-                setServerSubjectFilter(null);
-                setServerEvaluationFilter(null);
-              }}
+              onClick={clearAllFilters}
             >
               クリア
             </Button>
@@ -266,11 +251,10 @@ export default function TeacherTable({
         <FilterPopover
           subjects={allSubjects}
           evaluations={evaluations}
-          onEvaluationFilterChange={handleEvaluationFilterChange}
-          onSubjectFilterChange={handleSubjectFilterChange}
-          initialEvaluationFilter={serverEvaluationFilter}
-          initialSubjectFilter={serverSubjectFilter}
-          entityType="teacher" // Указываем, что это фильтр для учителей
+          onTeacherFiltersChange={handleFiltersChange}
+          initialSubjectFilters={currentSubjectFilters}
+          initialEvaluationFilters={currentEvaluationFilters}
+          entityType="teacher"
         />
       </div>
 
@@ -303,11 +287,11 @@ export default function TeacherTable({
                     <div className="flex flex-wrap gap-1">
                       {teacherSubjects.slice(0, 3).map((subject) => (
                         <SubjectBadge
-                        key={subject.subjectId}
-                        subject={subject}
-                        size="sm"
-                        highlight={selectedStudentId ? isKibouSubject(subject) : false}
-                      />
+                          key={subject.subjectId}
+                          subject={subject}
+                          size="sm"
+                          highlight={selectedStudentId ? isKibouSubject(subject) : false}
+                        />
                       ))}
                       {teacherSubjects.length > 3 && (
                         <Badge

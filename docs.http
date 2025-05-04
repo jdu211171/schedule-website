@@ -797,7 +797,7 @@ Content-Type: application/json
 Cookie: {{cookie}}
 
 ### Filter teachers by multiple subjects (Math/数学 AND Science/理科)
-GET {{url}}/teacher?subjectId=cma144m5g000h104q011r76l4&subjectId=cma144m5g000k104qfuzs5vgp
+GET {{url}}/teacher?subjectId=cma6fzd7o000ivi7kzzpo62f4&subjectId=cma6fzd7o000gvi7kafpxtmb8
 Content-Type: application/json
 Cookie: {{cookie}}
 

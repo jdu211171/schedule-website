@@ -25,60 +25,125 @@ import {
   Grade,
   Subject,
   Teacher,
+  Student,
   TeacherSubject,
   Evaluation,
   StudentType,
-  ClassSession
+  ClassSession,
+  TeacherFilterParams,
+  StudentFilterParams
 } from "@/components/match/types";
 
-/* ----------------------------- 画面コンポーネント ----------------------------- */
 export default function LessonManagementPage() {
-  /* -------------------- 選択状態 -------------------- */
   const [selectedTeacherId, setSelectedTeacherId] = useState<string | null>(null);
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [firstSelection, setFirstSelection] = useState<"teacher" | "student" | null>(null);
 
-  /* -------------------- フィルタリング結果のキャッシュ -------------------- */
   const [cachedFilteredTeachers, setCachedFilteredTeachers] = useState<Teacher[]>([]);
   const [cachedFilteredStudents, setCachedFilteredStudents] = useState<StudentWithPreference[]>([]);
   const [studentKibouSubjects, setStudentKibouSubjects] = useState<Subject[]>([]);
   const [teacherKibouSubjects, setTeacherKibouSubjects] = useState<Subject[]>([]);
   
-  /* -------------------- 互換性読み込みインジケータ -------------------- */
   const [isLoadingTeacherCompatibility, setIsLoadingTeacherCompatibility] = useState(false);
   const [isLoadingStudentCompatibility, setIsLoadingStudentCompatibility] = useState(false);
 
-  /* -------------------- Серверные фильтры для учителей -------------------- */
-  const [teacherSubjectFilter, setTeacherSubjectFilter] = useState<string | undefined>(undefined);
-  const [teacherEvaluationFilter, setTeacherEvaluationFilter] = useState<string | undefined>(undefined);
+  // Состояния фильтров для учителей
+  const [teacherSubjectFilters, setTeacherSubjectFilters] = useState<string[]>([]);
+  const [teacherEvaluationFilters, setTeacherEvaluationFilters] = useState<string[]>([]);
+
+  // Состояния фильтров для студентов
+  const [studentSubjectFilters, setStudentSubjectFilters] = useState<string[]>([]);
+  const [studentGradeFilter, setStudentGradeFilter] = useState<string | null>(null);
+  const [studentTypeFilters, setStudentTypeFilters] = useState<string[]>([]);
+  const [studentSchoolTypeFilter, setStudentSchoolTypeFilter] = useState<string | null>(null);
 
   /* -------------------- Обработчик серверной фильтрации учителей -------------------- */
-  const handleTeacherFilterChange = useCallback(
-    (params: { subjectId?: string; evaluationId?: string }) => {
-      // Преобразуем undefined в null для совместимости с компонентами
-      const subjectId = params.subjectId === undefined ? null : params.subjectId;
-      const evaluationId = params.evaluationId === undefined ? null : params.evaluationId;
+  const handleTeacherFiltersChange = useCallback(
+    (params: TeacherFilterParams) => {
+      if ('subjectId' in params) {
+        if (params.subjectId) {
+          setTeacherSubjectFilters([...params.subjectId]);
+        } else {
+          setTeacherSubjectFilters([]);
+        }
+      }
       
-      // Сохраняем текущие значения фильтров
-      setTeacherSubjectFilter(params.subjectId);
-      setTeacherEvaluationFilter(params.evaluationId);
+      if ('evaluationId' in params) {
+        if (params.evaluationId) {
+          setTeacherEvaluationFilters([...params.evaluationId]);
+        } else {
+          setTeacherEvaluationFilters([]);
+        }
+      }
+      
+      if (Object.keys(params).length === 0) {
+        setTeacherSubjectFilters([]);
+        setTeacherEvaluationFilters([]);
+      }
     },
     []
   );
 
-  /* -------------------- データ取得 -------------------- */
+/* -------------------- Обработчик серверной фильтрации студентов -------------------- */
+const handleStudentFiltersChange = useCallback(
+  (params: StudentFilterParams) => {
+    if ('preferredSubjectId' in params) {
+      if (params.preferredSubjectId) {
+        setStudentSubjectFilters([...params.preferredSubjectId]);
+      } else {
+        setStudentSubjectFilters([]);
+      }
+    }
+    
+    if ('gradeId' in params) {
+      // Добавляем проверку на undefined
+      if (params.gradeId !== undefined) {
+        setStudentGradeFilter(params.gradeId);
+      }
+    }
+
+    if ('studentTypeId' in params) {
+      if (params.studentTypeId) {
+        setStudentTypeFilters([...params.studentTypeId]);
+      } else {
+        setStudentTypeFilters([]);
+      }
+    }
+    
+    if ('schoolType' in params) {
+      if (params.schoolType !== undefined) {
+        setStudentSchoolTypeFilter(params.schoolType);
+      }
+    }
+    
+    if (Object.keys(params).length === 0) {
+      setStudentSubjectFilters([]);
+      setStudentGradeFilter(null);
+      setStudentTypeFilters([]);
+      setStudentSchoolTypeFilter(null);
+    }
+  },
+  []
+);
+
+  // Запрос учителей с фильтрами
   const { data: teachersData, isLoading: teachersLoading } = useMatchTeachers({
     page: 1,
     limit: 100,
-    subjectId: teacherSubjectFilter,
-    evaluationId: teacherEvaluationFilter,
+    subjectId: teacherSubjectFilters.length > 0 ? teacherSubjectFilters : undefined,
+    evaluationId: teacherEvaluationFilters.length > 0 ? teacherEvaluationFilters : undefined,
   });
   const teachers = useMemo(() => teachersData?.data || [], [teachersData]);
 
+  // Запрос студентов с фильтрами
   const { data: studentsData, isLoading: studentsLoading } = useMatchStudents({
     page: 1,
-    limit: 100, // 制限を増やす
+    limit: 100,
+    preferredSubjectId: studentSubjectFilters.length > 0 ? studentSubjectFilters : undefined,
+    gradeId: studentGradeFilter || undefined,
+    studentTypeId: studentTypeFilters.length > 0 ? studentTypeFilters : undefined,
+    examSchoolType: studentSchoolTypeFilter || undefined,
   });
   const studentsFromApi = useMemo(() => studentsData?.data || [], [studentsData]);
 
@@ -114,8 +179,8 @@ export default function LessonManagementPage() {
   });
   const studentTypes = studentTypesData?.data || [];
 
-  /* -------------------- 生徒データ整形 -------------------- */
-  const students = useMemo(() => studentsFromApi.map((student) => ({
+  // Обогащение данных о студентах информацией о предпочтениях
+  const students = useMemo(() => studentsFromApi.map((student: Student) => ({
     ...student,
     preference: student.studentRegularPreferences?.[0]
       ? {
@@ -129,71 +194,66 @@ export default function LessonManagementPage() {
       : null,
   })), [studentsFromApi]);
 
-  /* -------------------- 科目の取得ロジック -------------------- */
-  // 学生の科目を取得する関数
-  const getStudentSubjects = useCallback((studentId: string | null): Subject[] => {
-    if (!studentId) return [];
-    
-    const student = students.find(s => s.studentId === studentId);
-    if (!student) return [];
-    
-    const subjectIds = new Set<string>();
-    const studentSubjectsList: Subject[] = [];
-    
-    // 1. Получаем предметы из preference
-    if (student.preference && student.preference.preferredSubjects) {
-      student.preference.preferredSubjects.forEach(subjectId => {
-        if (!subjectIds.has(subjectId)) {
-          const subject = subjects.find(s => s.subjectId === subjectId);
-          if (subject) {
-            subjectIds.add(subjectId);
-            studentSubjectsList.push(subject);
-          }
-        }
-      });
-    }
-    
-    // 2. Получаем предметы из StudentPreference
-    if (student.StudentPreference) {
-      student.StudentPreference.forEach(pref => {
-        if (pref.subjects) {
-          pref.subjects.forEach(subjectItem => {
-            if (subjectItem.subjectId && !subjectIds.has(subjectItem.subjectId)) {
-              const subject = subjects.find(s => s.subjectId === subjectItem.subjectId);
-              if (subject) {
-                subjectIds.add(subjectItem.subjectId);
-                studentSubjectsList.push(subject);
-              } else if (subjectItem.subject) {
-                // Если у нас есть вложенный объект subject
-                subjectIds.add(subjectItem.subject.subjectId);
-                studentSubjectsList.push(subjectItem.subject);
-              }
-            }
-          });
-        }
-      });
-    }
-    
-    // 3. Получаем предметы из уроков
-    const studentLessons = classSessions.filter(lesson => lesson.studentId === studentId);
-    
-    studentLessons.forEach(lesson => {
-      if (lesson.subject && !subjectIds.has(lesson.subject.subjectId)) {
-        subjectIds.add(lesson.subject.subjectId);
-        studentSubjectsList.push(lesson.subject);
-      } else if (lesson.subjectId && !subjectIds.has(lesson.subjectId)) {
-        const subject = subjects.find(s => s.subjectId === lesson.subjectId);
-        if (subject && !subjectIds.has(subject.subjectId)) {
-          subjectIds.add(subject.subjectId);
+  // Получение предметов студента с добавленными типами
+ const getStudentSubjects = useCallback((studentId: string | null): Subject[] => {
+  if (!studentId) return [];
+  
+  const student = students.find((s: StudentWithPreference) => s.studentId === studentId);
+  if (!student) return [];
+  
+  const subjectIds = new Set<string>();
+  const studentSubjectsList: Subject[] = [];
+  
+  if (student.preference && student.preference.preferredSubjects) {
+    student.preference.preferredSubjects.forEach((subjectId: string) => {
+      if (!subjectIds.has(subjectId)) {
+        const subject = subjects.find((s: Subject) => s.subjectId === subjectId);
+        if (subject) {
+          subjectIds.add(subjectId);
           studentSubjectsList.push(subject);
         }
       }
     });
-    
-    return studentSubjectsList;
-  }, [students, subjects, classSessions]);
+  }
+  
+  if (student.StudentPreference) {
+    student.StudentPreference.forEach((pref: any) => {
+      if (pref.subjects) {
+        pref.subjects.forEach((subjectItem: any) => {
+          if (subjectItem.subjectId && !subjectIds.has(subjectItem.subjectId)) {
+            const subject = subjects.find((s: Subject) => s.subjectId === subjectItem.subjectId);
+            if (subject) {
+              subjectIds.add(subjectItem.subjectId);
+              studentSubjectsList.push(subject);
+            } else if (subjectItem.subject) {
+              subjectIds.add(subjectItem.subject.subjectId);
+              studentSubjectsList.push(subjectItem.subject);
+            }
+          }
+        });
+      }
+    });
+  }
+  
+  const studentLessons = classSessions.filter(lesson => lesson.studentId === studentId);
+  
+  studentLessons.forEach(lesson => {
+    if (lesson.subject && !subjectIds.has(lesson.subject.subjectId)) {
+      subjectIds.add(lesson.subject.subjectId);
+      studentSubjectsList.push(lesson.subject);
+    } else if (lesson.subjectId && !subjectIds.has(lesson.subjectId)) {
+      const subject = subjects.find((s: Subject) => s.subjectId === lesson.subjectId);
+      if (subject && !subjectIds.has(subject.subjectId)) {
+        subjectIds.add(subject.subjectId);
+        studentSubjectsList.push(subject);
+      }
+    }
+  });
+  
+  return studentSubjectsList;
+}, [students, subjects, classSessions]);
 
-  // 先生の科目を取得する関数
+  // Получение предметов учителя
   const getTeacherSubjects = useCallback((teacherId: string | null): Subject[] => {
     if (!teacherId) return [];
     
@@ -205,7 +265,7 @@ export default function LessonManagementPage() {
     return subjects.filter(subject => subjectIds.includes(subject.subjectId));
   }, [teacherSubjects, subjects]);
 
-  /* -------------------- 互換性機能 -------------------- */
+  // Получение совместимых учителей и студентов
   const { 
     data: compatibleTeachersData, 
     isLoading: compatibleTeachersLoading 
@@ -216,10 +276,9 @@ export default function LessonManagementPage() {
     isLoading: compatibleStudentsLoading 
   } = useCompatibleStudents(selectedTeacherId);
 
-  // 選択時に先に科目情報を設定
+  // Обновление предметов студента при выборе студента
   useEffect(() => {
     if (selectedStudentId) {
-      // 学生を選択した場合、すぐに彼の科目を表示する
       const studentSubjects = getStudentSubjects(selectedStudentId);
       if (studentSubjects.length > 0) {
         setStudentKibouSubjects(studentSubjects);
@@ -227,9 +286,9 @@ export default function LessonManagementPage() {
     }
   }, [selectedStudentId, getStudentSubjects]);
 
+  // Обновление предметов учителя при выборе учителя
   useEffect(() => {
     if (selectedTeacherId) {
-      // 先生を選択した場合、すぐに彼の科目を表示する
       const teacherSubjects = getTeacherSubjects(selectedTeacherId);
       if (teacherSubjects.length > 0) {
         setTeacherKibouSubjects(teacherSubjects);
@@ -237,12 +296,11 @@ export default function LessonManagementPage() {
     }
   }, [selectedTeacherId, getTeacherSubjects]);
 
-  // APIからの互換性データを処理
+  // Обработка данных о совместимых студентах
   useEffect(() => {
     setIsLoadingStudentCompatibility(compatibleStudentsLoading);
     
     if (compatibleStudentsData && !compatibleStudentsLoading) {
-      console.log("Received compatible students:", compatibleStudentsData);
       setCachedFilteredStudents(compatibleStudentsData.filteredStudents || []);
       
       if (compatibleStudentsData.kibouSubjects && compatibleStudentsData.kibouSubjects.length > 0) {
@@ -259,11 +317,11 @@ export default function LessonManagementPage() {
     }
   }, [compatibleStudentsData, compatibleStudentsLoading, selectedTeacherId, getTeacherSubjects]);
 
+  // Обработка данных о совместимых учителях
   useEffect(() => {
     setIsLoadingTeacherCompatibility(compatibleTeachersLoading);
     
     if (compatibleTeachersData && !compatibleTeachersLoading) {
-      console.log("Received compatible teachers:", compatibleTeachersData);
       setCachedFilteredTeachers(compatibleTeachersData.filteredTeachers || []);
       
       if (compatibleTeachersData.kibouSubjects && compatibleTeachersData.kibouSubjects.length > 0) {
@@ -280,7 +338,7 @@ export default function LessonManagementPage() {
     }
   }, [compatibleTeachersData, compatibleTeachersLoading, selectedStudentId, getStudentSubjects]);
 
-  /* -------------------- ハンドラ -------------------- */
+  // Обработчик выбора учителя
   const handleTeacherSelect = useCallback((teacherId: string) => {
     if (teacherId === selectedTeacherId) {
       const wasFirstSelection = firstSelection === "teacher";
@@ -298,6 +356,7 @@ export default function LessonManagementPage() {
     }
   }, [selectedTeacherId, selectedStudentId, firstSelection]);
 
+  // Обработчик выбора студента
   const handleStudentSelect = useCallback((studentId: string) => {
     if (studentId === selectedStudentId) {
       const wasFirstSelection = firstSelection === "student";
@@ -315,7 +374,6 @@ export default function LessonManagementPage() {
     }
   }, [selectedStudentId, selectedTeacherId, firstSelection]);
 
-  /* -------------------- その他ロジック -------------------- */
   const shouldFilterTeachers = selectedStudentId !== null;
   const shouldFilterStudents = selectedTeacherId !== null;
   const isButtonActive = selectedTeacherId !== null && selectedStudentId !== null;
@@ -339,21 +397,11 @@ export default function LessonManagementPage() {
   }, []);
 
   const handleAddClassSession = useCallback((session: Partial<ClassSession>) => {
-    console.log("追加された新規クラスセッション:", session);
-    // APIを呼び出してセッションを保存する
+    // Логика добавления сессии
   }, []);
 
-  /* -------------------- デバッグログ -------------------- */
-  useEffect(() => {
-    if (teacherKibouSubjects.length > 0) {
-      console.log("Teacher Kibou Subjects:", teacherKibouSubjects);
-    }
-    if (studentKibouSubjects.length > 0) {
-      console.log("Student Kibou Subjects:", studentKibouSubjects);
-    }
-  }, [teacherKibouSubjects, studentKibouSubjects]);
+  // Удален useEffect для логирования kibou предметов
 
-  /* -------------------- ローディング判定 -------------------- */
   const isLoading =
     teachersLoading ||
     studentsLoading ||
@@ -387,13 +435,12 @@ export default function LessonManagementPage() {
       <h1 className="text-2xl font-bold mb-6">授業管理</h1>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 min-h-[400px]">
-        {/* ヘッダー (選択された先生・生徒と編集ボタン) */}
         <div className="col-span-2 flex justify-between items-center mb-2">
           <div className="flex items-center min-w-[200px]">
             <h2 className="text-xl font-semibold">先生:</h2>
             {selectedTeacherId && teachers ? (
               <span className="ml-2 text-green-700 font-medium">
-                {teachers.find((t) => t.teacherId === selectedTeacherId)?.name}
+                {teachers.find((t: Teacher) => t.teacherId === selectedTeacherId)?.name}
               </span>
             ) : (
               <span className="ml-2 text-gray-400 italic">未選択</span>
@@ -419,7 +466,7 @@ export default function LessonManagementPage() {
             <h2 className="text-xl font-semibold">生徒:</h2>
             {selectedStudentId && students ? (
               <span className="ml-2 text-blue-700 font-medium truncate">
-                {students.find((s) => s.studentId === selectedStudentId)?.name}
+                {students.find((s: StudentWithPreference) => s.studentId === selectedStudentId)?.name}
               </span>
             ) : (
               <span className="ml-2 text-gray-400 italic">未選択</span>
@@ -427,7 +474,6 @@ export default function LessonManagementPage() {
           </div>
         </div>
 
-        {/* 先生テーブル */}
         <div className="flex flex-col h-full">
           <div className="flex-grow">
             {isLoadingTeacherCompatibility && shouldFilterTeachers && (
@@ -446,14 +492,13 @@ export default function LessonManagementPage() {
               selectedStudentId={selectedStudentId}
               filteredTeachers={shouldFilterTeachers ? cachedFilteredTeachers : undefined}
               kibouSubjects={studentKibouSubjects}
-              onTeacherFilterChange={handleTeacherFilterChange}
-              currentSubjectFilter={teacherSubjectFilter || null}
-              currentEvaluationFilter={teacherEvaluationFilter || null}
+              onTeacherFiltersChange={handleTeacherFiltersChange}
+              currentSubjectFilters={teacherSubjectFilters}
+              currentEvaluationFilters={teacherEvaluationFilters}
             />
           </div>
         </div>
 
-        {/* 生徒テーブル */}
         <div className="flex flex-col h-full">
           <div className="flex-grow">
             {isLoadingStudentCompatibility && shouldFilterStudents && (
@@ -471,7 +516,12 @@ export default function LessonManagementPage() {
               studentTypes={studentTypes as StudentType[]}
               selectedTeacherId={selectedTeacherId}
               filteredStudents={shouldFilterStudents ? cachedFilteredStudents : undefined}
-              kibouSubjects={teacherKibouSubjects} // 常に科目を渡す、フィルタリング前でも
+              kibouSubjects={teacherKibouSubjects}
+              onStudentFiltersChange={handleStudentFiltersChange}
+              currentSubjectFilters={studentSubjectFilters}
+              currentGradeFilter={studentGradeFilter}
+              currentStudentTypeFilters={studentTypeFilters}
+              currentSchoolTypeFilter={studentSchoolTypeFilter}
             />
           </div>
         </div>
@@ -485,10 +535,10 @@ export default function LessonManagementPage() {
           teacherId={selectedTeacherId || ""}
           studentId={selectedStudentId || ""}
           teacherName={
-            teachers.find((t) => t.teacherId === selectedTeacherId)?.name || ""
+            teachers.find((t: Teacher) => t.teacherId === selectedTeacherId)?.name || ""
           }
           studentName={
-            students.find((s) => s.studentId === selectedStudentId)?.name || ""
+            students.find((s: Student) => s.studentId === selectedStudentId)?.name || ""
           }
           onAddLesson={handleAddClassSession}
         />

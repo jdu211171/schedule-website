@@ -20,10 +20,11 @@ import DetailDialog from "./detail-dialog";
 
 import {
   StudentWithPreference,
-  Subject,
   Grade,
+  Subject,
   ClassSession,
-  StudentType
+  StudentType,
+  StudentFilterParams
 } from "@/components/match/types";
 
 interface EnrichedStudent extends StudentWithPreference {
@@ -43,6 +44,12 @@ interface StudentTableProps {
   selectedTeacherId: string | null;
   filteredStudents?: StudentWithPreference[];
   kibouSubjects?: Subject[];
+  
+  onStudentFiltersChange?: (params: StudentFilterParams) => void;
+  currentSubjectFilters?: string[];
+  currentGradeFilter?: string | null;
+  currentStudentTypeFilters?: string[];
+  currentSchoolTypeFilter?: string | null;
 }
 
 export default function StudentTable({
@@ -56,22 +63,23 @@ export default function StudentTable({
   selectedTeacherId,
   filteredStudents,
   kibouSubjects = [],
+  onStudentFiltersChange,
+  currentSubjectFilters = [],
+  currentGradeFilter = null,
+  currentStudentTypeFilters = [],
+  currentSchoolTypeFilter = null,
 }: StudentTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
-  const [subjectFilters, setSubjectFilters] = useState<string[]>([]);
-  const [hasLessonsFilter, setHasLessonsFilter] = useState<boolean | null>(null);
-  const [gradeFilter, setGradeFilter] = useState<string | null>(null);
-  const [schoolTypeFilter, setSchoolTypeFilter] = useState<string | null>(null);
   const [detailsStudent, setDetailsStudent] = useState<EnrichedStudent | null>(null);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
-
-  const allSubjects = useMemo(() => subjects, [subjects]);
 
   useEffect(() => {
     setCurrentPage(1);
   }, [selectedTeacherId]);
+
+  const allSubjects = useMemo(() => subjects, [subjects]);
 
   const studentHasLessons = useCallback((studentId: string) => {
     return lessons.some((lesson) => lesson.studentId === studentId);
@@ -81,7 +89,6 @@ export default function StudentTable({
     const subjectIds = new Set<string>();
     const studentSubjectsList: Subject[] = [];
   
-    // 1. Получаем предметы из preference
     if (student.preference?.preferredSubjects) {
       student.preference.preferredSubjects.forEach(subjectId => {
         if (!subjectIds.has(subjectId)) {
@@ -94,7 +101,6 @@ export default function StudentTable({
       });
     }
   
-    // 2. Получаем предметы из StudentPreference
     if (student.StudentPreference) {
       student.StudentPreference.forEach(pref => {
         if (pref.subjects) {
@@ -105,7 +111,6 @@ export default function StudentTable({
                 subjectIds.add(subjectItem.subjectId);
                 studentSubjectsList.push(subject);
               } else if (subjectItem.subject) {
-                // Если у нас есть вложенный объект subject
                 subjectIds.add(subjectItem.subject.subjectId);
                 studentSubjectsList.push(subjectItem.subject);
               }
@@ -115,7 +120,6 @@ export default function StudentTable({
       });
     }
   
-    // 3. Получаем предметы из уроков
     const studentLessons = lessons.filter(lesson => lesson.studentId === student.studentId);
   
     studentLessons.forEach(lesson => {
@@ -134,20 +138,13 @@ export default function StudentTable({
     return studentSubjectsList;
   }, [lessons, subjects]);
 
-  const handleFilterChange = (newSubjectFilters: string[], newHasLessonsFilter: boolean | null) => {
-    setSubjectFilters(newSubjectFilters);
-    setHasLessonsFilter(newHasLessonsFilter);
+  // Обработчик фильтров студентов
+  const handleFiltersChange = (filters: StudentFilterParams) => {
     setCurrentPage(1);
-  };
-
-  const handleGradeFilterChange = (gradeId: string | null) => {
-    setGradeFilter(gradeId);
-    setCurrentPage(1);
-  };
-
-  const handleSchoolTypeFilterChange = (schoolType: string | null) => {
-    setSchoolTypeFilter(schoolType);
-    setCurrentPage(1);
+    
+    if (onStudentFiltersChange) {
+      onStudentFiltersChange(filters);
+    }
   };
 
   const baseStudents = useMemo(() => {
@@ -163,8 +160,6 @@ export default function StudentTable({
       
       const studentSubjects = getStudentSubjects(student);
       
-      // console.log(`Student ${student.name} subjects:`, studentSubjects);
-  
       return {
         ...student,
         grade,
@@ -174,47 +169,25 @@ export default function StudentTable({
     });
   }, [baseStudents, grades, studentTypes, getStudentSubjects]);
 
-  const filteredStudentsWithUI = useMemo(() => {
+  // Локальная фильтрация только по поисковому запросу
+  const filteredStudentsWithSearch = useMemo(() => {
+    if (!searchTerm.trim()) {
+      return enrichedStudents;
+    }
+    
     return enrichedStudents.filter((student) => {
       const matchesSearch =
         student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (student.kanaName || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
         (student.schoolName || "").toLowerCase().includes(searchTerm.toLowerCase());
 
-      const studentSubjects = student.subjects || [];
-      const matchesSubjects =
-        subjectFilters.length === 0 ||
-        studentSubjects.some(subject => subjectFilters.includes(subject.subjectId));
-
-      const matchesHasLessons =
-        hasLessonsFilter === null ||
-        (hasLessonsFilter === true && studentHasLessons(student.studentId)) ||
-        (hasLessonsFilter === false && !studentHasLessons(student.studentId));
-
-      const matchesGrade =
-        gradeFilter === null ||
-        student.gradeId === gradeFilter;
-
-      const matchesSchoolType =
-        schoolTypeFilter === null ||
-        student.examSchoolCategoryType === schoolTypeFilter;
-
-      return matchesSearch && matchesSubjects && matchesHasLessons &&
-             matchesGrade && matchesSchoolType;
+      return matchesSearch;
     });
-  }, [
-    enrichedStudents,
-    searchTerm,
-    subjectFilters,
-    hasLessonsFilter,
-    gradeFilter,
-    schoolTypeFilter,
-    studentHasLessons
-  ]);
+  }, [enrichedStudents, searchTerm]);
 
-  const totalPages = Math.ceil(filteredStudentsWithUI.length / itemsPerPage);
+  const totalPages = Math.ceil(filteredStudentsWithSearch.length / itemsPerPage);
 
-  const paginatedStudents = filteredStudentsWithUI.slice(
+  const paginatedStudents = filteredStudentsWithSearch.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
@@ -224,6 +197,83 @@ export default function StudentTable({
       kibouSubject => kibouSubject.subjectId === studentSubject.subjectId
     );
   }, [kibouSubjects]);
+
+  // Проверка, применены ли фильтры
+  const isFilterActive = (
+    currentSubjectFilters.length > 0 || 
+    currentStudentTypeFilters.length > 0 || 
+    currentGradeFilter !== null || 
+    currentSchoolTypeFilter !== null
+  );
+
+  // Форматирование списка активных фильтров для отображения
+  const getActiveFiltersDisplay = () => {
+    const activeFilters: React.ReactNode[] = [];
+    
+    if (currentSubjectFilters.length > 0) {
+      const subjectNames = currentSubjectFilters.map(id => 
+        subjects.find(s => s.subjectId === id)?.name || 'Unknown'
+      );
+      
+      activeFilters.push(
+        <Badge key="subjects" className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
+          科目: {subjectNames.join(', ')}
+        </Badge>
+      );
+    }
+    
+    if (currentStudentTypeFilters.length > 0) {
+      const typeNames = currentStudentTypeFilters.map(id => 
+        studentTypes.find(t => t.studentTypeId === id)?.name || 'Unknown'
+      );
+      
+      activeFilters.push(
+        <Badge key="studentTypes" className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
+          生徒タイプ: {typeNames.join(', ')}
+        </Badge>
+      );
+    }
+    
+    if (currentGradeFilter) {
+      const gradeName = grades.find(g => g.gradeId === currentGradeFilter)?.name || 'Unknown';
+      
+      activeFilters.push(
+        <Badge key="grade" className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
+          学年: {gradeName}
+        </Badge>
+      );
+    }
+    
+    if (currentSchoolTypeFilter) {
+      const schoolTypeLabel = getSchoolTypeLabel(currentSchoolTypeFilter);
+      
+      activeFilters.push(
+        <Badge key="schoolType" className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
+          学校タイプ: {schoolTypeLabel}
+        </Badge>
+      );
+    }
+    
+    return activeFilters;
+  };
+
+  // Получение понятного названия типа школы
+  const getSchoolTypeLabel = (type: string) => {
+    switch (type) {
+      case "ELEMENTARY": return "小学校";
+      case "MIDDLE": return "中学校";
+      case "HIGH": return "高校";
+      case "UNIVERSITY": return "大学";
+      default: return "その他";
+    }
+  };
+
+  // Очистка всех фильтров
+  const clearAllFilters = () => {
+    if (onStudentFiltersChange) {
+      onStudentFiltersChange({});
+    }
+  };
 
   return (
     <div className="rounded-md border h-full flex flex-col bg-white">
@@ -241,6 +291,24 @@ export default function StudentTable({
           ) : (
             <span className="text-blue-600 text-xs italic">...</span>
           )}
+        </div>
+      )}
+
+      {/* Отображаем информацию об активных фильтрах */}
+      {isFilterActive && (
+        <div className="bg-blue-50 p-2 border-b">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-blue-800 text-sm font-medium">アクティブフィルター：</span>
+            {getActiveFiltersDisplay()}
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-6 px-2 text-xs text-blue-600 hover:text-blue-800"
+              onClick={clearAllFilters}
+            >
+              クリア
+            </Button>
+          </div>
         </div>
       )}
 
@@ -272,14 +340,13 @@ export default function StudentTable({
         <FilterPopover
           subjects={allSubjects}
           grades={grades}
-          examSchoolTypes={["ELEMENTARY", "MIDDLE", "HIGH", "UNIVERSITY", "OTHER"]}
-          onFilterChange={handleFilterChange}
-          onGradeFilterChange={handleGradeFilterChange}
-          onSchoolTypeFilterChange={handleSchoolTypeFilterChange}
-          initialSubjectFilters={subjectFilters}
-          initialHasLessonsFilter={hasLessonsFilter}
-          initialGradeFilter={gradeFilter}
-          initialSchoolTypeFilter={schoolTypeFilter}
+          studentTypes={studentTypes}
+          onStudentFiltersChange={handleFiltersChange}
+          initialSubjectFilters={currentSubjectFilters}
+          initialGradeFilter={currentGradeFilter}
+          initialStudentTypeFilters={currentStudentTypeFilters}
+          initialSchoolTypeFilter={currentSchoolTypeFilter}
+          entityType="student"
         />
       </div>
 
@@ -365,7 +432,7 @@ export default function StudentTable({
           </TableBody>
         </Table>
 
-        {filteredStudentsWithUI.length === 0 && (
+        {filteredStudentsWithSearch.length === 0 && (
           <div className="p-6 text-center text-gray-500">
             検索結果はありません
           </div>
@@ -375,7 +442,7 @@ export default function StudentTable({
       <Pagination
         currentPage={currentPage}
         totalPages={totalPages}
-        totalItems={filteredStudentsWithUI.length}
+        totalItems={filteredStudentsWithSearch.length}
         itemsPerPage={itemsPerPage}
         onPageChange={setCurrentPage}
         onItemsPerPageChange={setItemsPerPage}
