@@ -379,14 +379,6 @@ const handleStudentFiltersChange = useCallback(
   const shouldFilterStudents = selectedTeacherId !== null;
   const isButtonActive = selectedTeacherId !== null && selectedStudentId !== null;
 
-  const getFilteredClassSessions = useCallback(() => {
-    return classSessions.filter(
-      (session) =>
-        session.teacherId === selectedTeacherId ||
-        session.studentId === selectedStudentId,
-    ) as ClassSession[];
-  }, [classSessions, selectedTeacherId, selectedStudentId]);
-
   const openModal = useCallback(() => {
     if (isButtonActive) {
       setIsModalOpen(true);
@@ -530,21 +522,20 @@ const handleStudentFiltersChange = useCallback(
       </div>
 
       {isModalOpen && (
-        <LessonScheduleModal
-          open={isModalOpen}
-          lessons={getFilteredClassSessions()}
-          onClose={closeModal}
-          teacherId={selectedTeacherId || ""}
-          studentId={selectedStudentId || ""}
-          teacherName={
-            teachers.find((t: Teacher) => t.teacherId === selectedTeacherId)?.name || ""
-          }
-          studentName={
-            students.find((s: Student) => s.studentId === selectedStudentId)?.name || ""
-          }
-          onAddLesson={handleAddClassSession}
-        />
-      )}
+  <LessonScheduleModal
+    open={isModalOpen}
+    onClose={closeModal}
+    teacherId={selectedTeacherId || ""}
+    studentId={selectedStudentId || ""}
+    teacherName={
+      teachers.find((t: Teacher) => t.teacherId === selectedTeacherId)?.name || ""
+    }
+    studentName={
+      students.find((s: Student) => s.studentId === selectedStudentId)?.name || ""
+    }
+    onAddLesson={handleAddClassSession}
+  />
+)}
     </div>
   );
 }

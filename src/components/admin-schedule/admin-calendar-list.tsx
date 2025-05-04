@@ -88,7 +88,7 @@ export default function AdminCalendarList() {
   // Получение данных
   const { data: templates, isLoading, error } = useRegularClassTemplates({
     page,
-    pageSize
+    // pageSize
   }) as { data: TemplateWithRelations[] | undefined, isLoading: boolean, error: Error | null };
 
   // Мутации для удаления
