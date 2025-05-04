@@ -741,6 +741,46 @@ GET {{url}}/teacher?university=京都
 Content-Type: application/json
 Cookie: {{cookie}}
 
+### Filter teachers by a single subject (English/英語)
+GET {{url}}/teacher?subjectId=cma144m5g000i104q6edj7rri
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Filter teachers by multiple subjects (Math/数学 AND Science/理科)
+GET {{url}}/teacher?subjectId=cma144m5g000h104q011r76l4&subjectId=cma144m5g000k104qfuzs5vgp
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Filter teachers by a single evaluation (A rating)
+GET {{url}}/teacher?evaluationId=cma144m5n000o104qpemje8e2
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Filter teachers by multiple evaluations (A AND B ratings)
+GET {{url}}/teacher?evaluationId=cma144m5n000o104qpemje8e2&evaluationId=cma144m5n000p104q1ther34i
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Combined filtering: Teachers who teach either English OR Math AND have either A OR "Exceptional Teaching" evaluation
+GET {{url}}/teacher?subjectId=cma144m5g000i104q6edj7rri&subjectId=cma144m5g000h104q011r76l4&evaluationId=cma144m5n000o104qpemje8e2&evaluationId=cma144m5n000n104qdxmlxrdu
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Advanced filtering: Teachers who teach either Math OR Physics, have either A OR B evaluation, AND match a specific university
+GET {{url}}/teacher?subjectId=cma144m5g000h104q011r76l4&subjectId=cma144m5g000j104q9todc1hr&evaluationId=cma144m5n000o104qpemje8e2&evaluationId=cma144m5n000p104q1ther34i&university=Tokyo
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### More subjects filtering: Teachers who teach any of Japanese, English, or Math
+GET {{url}}/teacher?subjectId=cma144m5g000g104qhle1xh2y&subjectId=cma144m5g000i104q6edj7rri&subjectId=cma144m5g000h104q011r76l4
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### With pagination and sorting: Teachers who teach any science subject, with pagination
+GET {{url}}/teacher?subjectId=cma144m5g000k104qfuzs5vgp&subjectId=cma144m5g000j104q9todc1hr&subjectId=cma1wevlv001a1036a1aj3ynp&page=1&limit=5&sort=name&order=asc
+Content-Type: application/json
+Cookie: {{cookie}}
+
 ### Get teachers with filtering by enrollment status
 GET {{url}}/teacher?enrollmentStatus=在籍
 Content-Type: application/json

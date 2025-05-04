@@ -18,9 +18,24 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
 
   try {
-    const query = TeacherQuerySchema.parse(
-      Object.fromEntries(searchParams.entries())
-    );
+    const paramsObj: Record<string, unknown> = {};
+
+    // Handle potential array parameters
+    for (const key of ["subjectId", "evaluationId"]) {
+      const values = searchParams.getAll(key);
+      if (values.length > 0) {
+        paramsObj[key] = values.length === 1 ? values[0] : values;
+      }
+    }
+
+    // Add all other parameters
+    for (const [key, value] of searchParams.entries()) {
+      if (key !== "subjectId" && key !== "evaluationId") {
+        paramsObj[key] = value;
+      }
+    }
+
+    const query = TeacherQuerySchema.parse(paramsObj);
     const {
       page,
       limit,
