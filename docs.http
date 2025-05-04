@@ -158,6 +158,56 @@ GET {{url}}/student?schoolName=公
 Content-Type: application/json
 Cookie: {{cookie}}
 
+### Filter students by a single grade (High School 3rd year)
+GET {{url}}/student?gradeId=cma144m54000c104qisekc112
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Filter students by multiple grades (Elementary 6th and Middle School 3rd)
+GET {{url}}/student?gradeId=cma144m54000a104qkhcfnvzl&gradeId=cma144m54000b104q2ajwb2vp
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Filter students by a single student type (High School students)
+GET {{url}}/student?studentTypeId=cma144m500009104qiuhx9jbd
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Filter students by multiple student types (Elementary and Middle School)
+GET {{url}}/student?studentTypeId=cma144m500007104qds9nqqsy&studentTypeId=cma144m500008104qarmazu88
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Filter students by a single preferred subject (English)
+GET {{url}}/student?preferredSubjectId=cma144m5g000i104q6edj7rri
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Filter students by multiple preferred subjects (Math and Japanese)
+GET {{url}}/student?preferredSubjectId=cma144m5g000h104q011r76l4&preferredSubjectId=cma144m5g000g104qhle1xh2y
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Filter students by a single exam school type\
+GET {{url}}/student?examSchoolType=HIGH
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Combined example: Elementary 6th grade students interested in Japanese
+GET {{url}}/student?gradeId=cma144m54000a104qkhcfnvzl&preferredSubjectId=cma144m5g000g104qhle1xh2y
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Combined example: Middle school students interested in English
+GET {{url}}/student?studentTypeId=cma144m500008104qarmazu88&preferredSubjectId=cma144m5g000i104q6edj7rri
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Complex filter: Elementary or Middle school students interested in Math or English
+GET {{url}}/student?studentTypeId=cma144m500007104qds9nqqsy&studentTypeId=cma144m500008104qarmazu88&preferredSubjectId=cma144m5g000h104q011r76l4&preferredSubjectId=cma144m5g000i104q6edj7rri
+Content-Type: application/json
+Cookie: {{cookie}}
+
 ### Get students with filtering by grade name (case-insensitive)
 GET {{url}}/student?gradeName=小学
 Content-Type: application/json

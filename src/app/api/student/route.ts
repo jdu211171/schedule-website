@@ -18,9 +18,36 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
 
   try {
-    const query = StudentQuerySchema.parse(
-      Object.fromEntries(searchParams.entries())
-    );
+    const paramsObj: Record<string, unknown> = {};
+
+    // Handle potential array parameters
+    for (const key of [
+      "gradeId",
+      "studentTypeId",
+      "examSchoolType",
+      "preferredSubjectId",
+    ]) {
+      const values = searchParams.getAll(key);
+      if (values.length > 0) {
+        paramsObj[key] = values.length === 1 ? values[0] : values;
+      }
+    }
+
+    // Add all other parameters
+    for (const [key, value] of searchParams.entries()) {
+      if (
+        ![
+          "gradeId",
+          "studentTypeId",
+          "examSchoolType",
+          "preferredSubjectId",
+        ].includes(key)
+      ) {
+        paramsObj[key] = value;
+      }
+    }
+
+    const query = StudentQuerySchema.parse(paramsObj);
     const {
       page,
       limit,
@@ -79,12 +106,16 @@ export async function GET(request: Request) {
     if (studentTypeId) {
       if (Array.isArray(studentTypeId)) {
         filters.grade = {
-          ...(typeof filters.grade === "object" && filters.grade !== null ? filters.grade : {}),
+          ...(typeof filters.grade === "object" && filters.grade !== null
+            ? filters.grade
+            : {}),
           studentTypeId: { in: studentTypeId },
         };
       } else {
         filters.grade = {
-          ...(typeof filters.grade === "object" && filters.grade !== null ? filters.grade : {}),
+          ...(typeof filters.grade === "object" && filters.grade !== null
+            ? filters.grade
+            : {}),
           studentTypeId: studentTypeId,
         };
       }
