@@ -200,7 +200,7 @@ export default function TeacherTable({
               <SubjectBadge key={subject.subjectId} subject={subject} size="sm" />
             ))
           ) : (
-            <span className="text-green-600 text-xs italic">Загрузка предметов...</span>
+            <span className="text-green-600 text-xs italic">...</span>
           )}
         </div>
       )}
