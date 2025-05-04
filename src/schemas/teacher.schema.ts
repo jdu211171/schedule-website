@@ -1,5 +1,16 @@
 import { z } from "zod";
 
+// Enum for DayOfWeek (from Prisma)
+export const DayOfWeekEnum = z.enum([
+  "MONDAY",
+  "TUESDAY",
+  "WEDNESDAY",
+  "THURSDAY",
+  "FRIDAY",
+  "SATURDAY",
+  "SUNDAY",
+]);
+
 // Base schema with common fields
 const TeacherBaseSchema = z.object({
   name: z.string().min(1).max(100),
@@ -58,8 +69,8 @@ const TeacherBaseSchema = z.object({
 export const TeacherSchema = TeacherBaseSchema.extend({
   teacherId: z.string(),
   userId: z.string(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
+  createdAt: z.string().transform((val) => new Date(val)),
+  updatedAt: z.string().transform((val) => new Date(val)),
 });
 
 // Schema for creating a new teacher
@@ -122,15 +133,7 @@ export const CreateUserTeacherSchema = z.object({
   shifts: z
     .array(
       z.object({
-        dayOfWeek: z.enum([
-          "MONDAY",
-          "TUESDAY",
-          "WEDNESDAY",
-          "THURSDAY",
-          "FRIDAY",
-          "SATURDAY",
-          "SUNDAY",
-        ]),
+        dayOfWeek: DayOfWeekEnum,
         startTime: z.string(),
         endTime: z.string(),
         notes: z.string().optional(),
@@ -267,15 +270,7 @@ export const UpdateTeacherWithSubjectsSchema = z.object({
   shifts: z
     .array(
       z.object({
-        dayOfWeek: z.enum([
-          "MONDAY",
-          "TUESDAY",
-          "WEDNESDAY",
-          "THURSDAY",
-          "FRIDAY",
-          "SATURDAY",
-          "SUNDAY",
-        ]),
+        dayOfWeek: DayOfWeekEnum,
         startTime: z.string(),
         endTime: z.string(),
         notes: z.string().optional(),

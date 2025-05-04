@@ -19,8 +19,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { TeacherFormDialog } from "@/components/teacher/teacher-form-dialog";
 import { useEvaluations } from "@/hooks/useEvaluationQuery";
-import { useTeachers } from "@/hooks/useTeacherQuery";
-import { Teacher } from "@/schemas/teacher.schema";
+import { useTeachers, TeacherWithPreference } from "@/hooks/useTeacherQuery";
 
 export function TeacherTable() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -43,11 +42,11 @@ export function TeacherTable() {
   });
 
   const deleteTeacherMutation = useTeacherDelete();
-  const [teacherToEdit, setTeacherToEdit] = useState<Teacher | null>(null);
-  const [teacherToDelete, setTeacherToDelete] = useState<Teacher | null>(null);
+  const [teacherToEdit, setTeacherToEdit] = useState<TeacherWithPreference | null>(null);
+  const [teacherToDelete, setTeacherToDelete] = useState<TeacherWithPreference | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
-  const columns: ColumnDef<Teacher>[] = [
+  const columns: ColumnDef<TeacherWithPreference>[] = [
     {
       accessorKey: "name",
       header: "名前",
@@ -137,11 +136,23 @@ export function TeacherTable() {
     setPage(newPage + 1);
   };
 
+  // Map undefined to null for all optional string fields in teachers data
+  // This fixes the type incompatibility with the DataTable component
+  const normalizedTeachers = (teachers?.data || []).map((t) => ({
+    ...t,
+    otherUniversities: t.otherUniversities ?? null,
+    englishProficiency: t.englishProficiency ?? null,
+    mathCertification: t.mathCertification ?? null,
+    kanjiCertification: t.kanjiCertification ?? null,
+    otherCertifications: t.otherCertifications ?? null,
+    notes: t.notes ?? null,
+  }));
+
   return (
     <>
       <DataTable
         columns={columns}
-        data={teachers?.data || []}
+        data={normalizedTeachers}
         isLoading={isLoading || isFetching}
         searchPlaceholder="講師を検索..."
         onSearch={setSearchTerm}

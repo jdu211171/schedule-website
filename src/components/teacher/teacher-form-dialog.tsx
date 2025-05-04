@@ -31,7 +31,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useTeacherCreate, useTeacherUpdate } from "@/hooks/useTeacherMutation";
+import { useTeacherCreate, useTeacherUpdate, DayOfWeek } from "@/hooks/useTeacherMutation";
 import {
   CreateUserTeacherSchema,
 } from "@/schemas/teacher.schema";
@@ -104,7 +104,8 @@ export function TeacherFormDialog({
     defaultValues: {
       name: teacher?.name || "",
       evaluationId: teacher?.evaluationId || undefined,
-      birthDate: teacher?.birthDate ? new Date(teacher.birthDate).toISOString().split('T')[0] : "",
+      // Ensure birthDate is a Date or undefined
+      birthDate: teacher?.birthDate ? new Date(teacher.birthDate) : undefined,
       mobileNumber: teacher?.mobileNumber || "",
       email: teacher?.email || "",
       highSchool: teacher?.highSchool || "",
@@ -137,12 +138,12 @@ export function TeacherFormDialog({
   }));
 
   // Preferences form
-  const preferencesForm = useForm<Omit<TeacherShiftPreferencesInput, 'additionalNotes'> & { additionalNotes?: string }>({
+  const preferencesForm = useForm<Omit<TeacherShiftPreferencesInput, 'additionalNotes'> & { additionalNotes: string | null }>({
     resolver: zodResolver(TeacherShiftPreferencesSchema),
     defaultValues: {
       dayOfWeek: teacher?.TeacherShiftReference?.[0]?.dayOfWeek || undefined,
       desiredTimes: formattedShifts || [],
-      additionalNotes: teacher?.TeacherShiftReference?.[0]?.notes || undefined,
+      additionalNotes: teacher?.TeacherShiftReference?.[0]?.notes ?? null,
     },
   });
 
@@ -165,7 +166,7 @@ export function TeacherFormDialog({
       preferencesForm.reset({
         dayOfWeek: teacher.TeacherShiftReference?.[0]?.dayOfWeek,
         desiredTimes: formattedShifts,
-        additionalNotes: teacher.TeacherShiftReference?.[0]?.notes || undefined,
+        additionalNotes: teacher.TeacherShiftReference?.[0]?.notes || null,
       });
 
       // Reset subjects form
@@ -176,9 +177,6 @@ export function TeacherFormDialog({
     }
   }, [teacher, preferencesForm, subjectsForm]);
 
-  // Watch selected subjects
-  const selectedSubjects = subjectsForm.watch("subjects");
-
   const formatDate = (date: Date) => {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -186,53 +184,108 @@ export function TeacherFormDialog({
     return `${year}-${month}-${day}`;
   };
 
+  const getBirthDateString = (value: unknown) => {
+    if (typeof value === 'string') return value.slice(0, 10);
+    if (value instanceof Date && !isNaN(value.getTime())) return formatDate(value);
+    return "";
+  };
+
+  // Helper function to ensure dayOfWeek is a valid enum value
+  const ensureDayOfWeekEnum = (day: string): DayOfWeek => {
+    const validDays: DayOfWeek[] = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"];
+    const upperDay = day.toUpperCase() as DayOfWeek;
+
+    if (validDays.includes(upperDay)) {
+      return upperDay;
+    }
+
+    // Default to Monday if invalid
+    console.warn(`Invalid day of week: ${day}, defaulting to MONDAY`);
+    return "MONDAY";
+  };
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
     try {
-      // Get shift preferences
-      const shifts = preferencesForm.getValues().desiredTimes.map(time => ({
-        dayOfWeek: time.dayOfWeek,
-        startTime: time.startTime,
-        endTime: time.endTime,
-        notes: preferencesForm.getValues().additionalNotes
-      }));
+      // Get shift preferences with properly formatted dayOfWeek enum values
+      const shifts = preferencesForm.getValues().desiredTimes.map(time => {
+        const noteVal = preferencesForm.getValues().additionalNotes;
+        return {
+          dayOfWeek: ensureDayOfWeekEnum(time.dayOfWeek),
+          startTime: time.startTime,
+          endTime: time.endTime,
+          notes: noteVal,
+        };
+      });
 
       // Get selected subjects
       const subjects = subjectsForm.getValues().subjects;
 
-      // Create a payload with proper date formatting
-      const payload = {
-        ...values,
-        // Ensure birthDate is always a string (not null or undefined)
-        birthDate: values.birthDate || new Date().toISOString().split('T')[0],
-        username: values.username || values.email,
-        shifts,
-        subjects
-      };
-
-      // Remove empty fields to avoid validation errors
-      Object.keys(payload).forEach(key => {
-        if (payload[key] === undefined || payload[key] === null || payload[key] === '') {
-          delete payload[key];
-        }
-      });
+      // Convert birthDate to ISO string (YYYY-MM-DD)
+      const birthDateStr = values.birthDate
+        ? (typeof values.birthDate === 'string'
+            ? values.birthDate
+            : values.birthDate instanceof Date
+              ? values.birthDate.toISOString().split('T')[0]
+              : '')
+        : new Date().toISOString().split('T')[0];
 
       if (isEditing && teacher) {
-        // Create a copy of values with password only included if it's not empty
-        const teacherData = { ...payload, teacherId: teacher.teacherId };
-
-        // For edit mode, remove username from request as it cannot be changed
-        delete teacherData.username;
-
-        // If password is empty, remove it from the request
-        if (!teacherData.password) {
-          delete teacherData.password;
-        }
-
-        await updateTeacherMutation.mutateAsync(teacherData);
+        // Update mode: build UpdateTeacherInput
+        const updatePayload = {
+          teacherId: teacher.teacherId,
+          name: values.name || undefined,
+          evaluationId: values.evaluationId || undefined,
+          birthDate: birthDateStr,
+          mobileNumber: values.mobileNumber || undefined,
+          email: values.email || undefined,
+          highSchool: values.highSchool || undefined,
+          university: values.university || undefined,
+          faculty: values.faculty || undefined,
+          department: values.department || undefined,
+          enrollmentStatus: values.enrollmentStatus || undefined,
+          otherUniversities: values.otherUniversities || undefined,
+          englishProficiency: values.englishProficiency || undefined,
+          toeic: values.toeic ?? undefined,
+          toefl: values.toefl ?? undefined,
+          mathCertification: values.mathCertification || undefined,
+          kanjiCertification: values.kanjiCertification || undefined,
+          otherCertifications: values.otherCertifications || undefined,
+          notes: values.notes || undefined,
+          password: values.password || undefined,
+          subjects: subjects.length > 0 ? subjects : undefined,
+          shifts: shifts.length > 0 ? shifts : undefined,
+        };
+        await updateTeacherMutation.mutateAsync(updatePayload);
       } else {
-        await createTeacherMutation.mutateAsync(payload);
+        // Create mode: build CreateTeacherInput
+        const createPayload = {
+          name: values.name,
+          evaluationId: values.evaluationId,
+          birthDate: birthDateStr,
+          mobileNumber: values.mobileNumber,
+          email: values.email,
+          highSchool: values.highSchool,
+          university: values.university,
+          faculty: values.faculty,
+          department: values.department,
+          enrollmentStatus: values.enrollmentStatus,
+          otherUniversities: values.otherUniversities || undefined,
+          englishProficiency: values.englishProficiency || undefined,
+          toeic: values.toeic ?? undefined,
+          toefl: values.toefl ?? undefined,
+          mathCertification: values.mathCertification || undefined,
+          kanjiCertification: values.kanjiCertification || undefined,
+          otherCertifications: values.otherCertifications || undefined,
+          notes: values.notes || undefined,
+          username: values.username || values.email,
+          password: values.password || '',
+          subjects: subjects.length > 0 ? subjects : undefined,
+          shifts: shifts.length > 0 ? shifts : undefined,
+        };
+        await createTeacherMutation.mutateAsync(createPayload);
       }
+
       onOpenChange(false);
       form.reset();
       preferencesForm.reset();
@@ -346,11 +399,7 @@ export function TeacherFormDialog({
                           {...field}
                           // Ensure we always have a valid string value
                           value={
-                            typeof field.value === 'string' && field.value
-                              ? field.value.slice(0, 10)
-                              : field.value instanceof Date && !isNaN(field.value.getTime())
-                                ? formatDate(field.value)
-                                : ""
+                            getBirthDateString(field.value)
                           }
                           onChange={(e) => {
                             field.onChange(e.target.value || undefined);
@@ -892,54 +941,89 @@ export function TeacherFormDialog({
                   return;
                 }
 
-                // Proceed with the rest of the submission process...
+                // Get form values
                 const formValues = form.getValues();
+
+                // Convert birthDate to string format
+                const birthDateStr = formValues.birthDate
+                  ? (typeof formValues.birthDate === 'string'
+                    ? formValues.birthDate
+                    : formValues.birthDate instanceof Date
+                      ? formValues.birthDate.toISOString().split('T')[0]
+                      : '')
+                  : new Date().toISOString().split('T')[0];
+
+                // Get subjects
                 const subjects = subjectsForm.getValues().subjects;
-                const shifts = preferencesForm.getValues().desiredTimes.map(time => ({
-                  dayOfWeek: time.dayOfWeek.toUpperCase(),
-                  startTime: time.startTime,
-                  endTime: time.endTime,
-                  notes: preferencesForm.getValues().additionalNotes
-                }));
+
+                // Get shift preferences with properly formatted dayOfWeek enum values
+                const shifts = preferencesForm.getValues().desiredTimes.map(time => {
+                  const noteVal = preferencesForm.getValues().additionalNotes;
+                  return {
+                    dayOfWeek: ensureDayOfWeekEnum(time.dayOfWeek),
+                    startTime: time.startTime,
+                    endTime: time.endTime,
+                    notes: noteVal,
+                  };
+                });
 
                 // Create the complete payload
                 const payload = {
                   ...formValues,
+                  birthDate: birthDateStr,
                   subjects,
                   shifts,
-                  birthDate: formValues.birthDate || new Date().toISOString().split('T')[0],
                   username: formValues.username || formValues.email,
                 };
 
-                // Clean up the payload
-                Object.keys(payload).forEach(key => {
-                  if (payload[key] === undefined || payload[key] === null || payload[key] === '') {
-                    delete payload[key];
+                // Clean up the payload - remove empty values
+                const cleanedPayload: Record<string, unknown> = {};
+
+                Object.entries(payload).forEach(([key, value]) => {
+                  if (value !== undefined && value !== null && value !== '') {
+                    cleanedPayload[key] = value;
                   }
                 });
 
-                console.log("Final payload being sent:", payload);
+                console.log("Final payload being sent:", cleanedPayload);
 
                 // Handle edit vs create case
                 if (isEditing && teacher) {
-                  const teacherData = {
-                    ...payload,
+                  const updateData = {
+                    ...cleanedPayload,
                     teacherId: teacher.teacherId
                   };
-
-                  // Remove username from update data - it shouldn't be updated
-                  delete teacherData.username;
-
-                  // Remove password if empty
-                  if (!teacherData.password) {
-                    delete teacherData.password;
-                  }
-
-                  console.log("About to update teacher with data:", teacherData);
-                  await updateTeacherMutation.mutateAsync(teacherData);
+                  // No need to check or delete password property here
+                  console.log("About to update teacher with data:", updateData);
+                  await updateTeacherMutation.mutateAsync(updateData as /* UpdateTeacherInput */ typeof updateData); // Specify the correct type here
                   console.log("Teacher update completed successfully");
                 } else {
-                  await createTeacherMutation.mutateAsync(payload);
+                  // Build a proper CreateTeacherInput object
+                  const createPayload = {
+                    name: formValues.name,
+                    evaluationId: formValues.evaluationId,
+                    birthDate: birthDateStr,
+                    mobileNumber: formValues.mobileNumber,
+                    email: formValues.email,
+                    highSchool: formValues.highSchool,
+                    university: formValues.university,
+                    faculty: formValues.faculty,
+                    department: formValues.department,
+                    enrollmentStatus: formValues.enrollmentStatus,
+                    otherUniversities: formValues.otherUniversities || undefined,
+                    englishProficiency: formValues.englishProficiency || undefined,
+                    toeic: formValues.toeic ?? undefined,
+                    toefl: formValues.toefl ?? undefined,
+                    mathCertification: formValues.mathCertification || undefined,
+                    kanjiCertification: formValues.kanjiCertification || undefined,
+                    otherCertifications: formValues.otherCertifications || undefined,
+                    notes: formValues.notes || undefined,
+                    username: formValues.username || formValues.email,
+                    password: formValues.password || '',
+                    subjects: subjects.length > 0 ? subjects : undefined,
+                    shifts: shifts.length > 0 ? shifts : undefined,
+                  };
+                  await createTeacherMutation.mutateAsync(createPayload);
                 }
 
                 // Close dialog and reset forms on success

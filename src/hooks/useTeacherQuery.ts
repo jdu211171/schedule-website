@@ -9,10 +9,19 @@ type UseTeachersParams = {
   email?: string;
   university?: string;
   enrollmentStatus?: string;
+  subjectId?: string | string[];
+  evaluationId?: string | string[];
+  sort?: string;
+  order?: "asc" | "desc";
 };
 
 export type TeacherWithPreference = Prisma.TeacherGetPayload<{
-  include: Prisma.TeacherInclude;
+  include: {
+    teacherSubjects: true;
+    TeacherShiftReference: true;
+    evaluation: true;
+    user: true;
+  };
 }>;
 
 type TeachersResponse = {
@@ -30,36 +39,75 @@ type SingleTeacherResponse = {
 };
 
 export function useTeachers(params: UseTeachersParams = {}) {
-  const { page = 1, limit = 10, name, email, university, enrollmentStatus } = params;
-
-  const query = {
-    page,
-    limit,
+  const {
+    page = 1,
+    limit = 10,
     name,
     email,
     university,
     enrollmentStatus,
-  };
+    subjectId,
+    evaluationId,
+    sort,
+    order,
+  } = params;
 
-  const searchParams = new URLSearchParams(
-    Object.entries(query).reduce((acc, [key, value]) => {
-      if (value !== undefined) {
-        acc[key] = String(value);
-      }
-      return acc;
-    }, {} as Record<string, string>)
-  ).toString();
+  // Build search params, supporting array values
+  const searchParams = new URLSearchParams();
+  if (page) searchParams.set("page", String(page));
+  if (limit) searchParams.set("limit", String(limit));
+  if (name) searchParams.set("name", name);
+  if (email) searchParams.set("email", email);
+  if (university) searchParams.set("university", university);
+  if (enrollmentStatus) searchParams.set("enrollmentStatus", enrollmentStatus);
+  if (sort) searchParams.set("sort", sort);
+  if (order) searchParams.set("order", order);
+
+  // Handle array values
+  if (subjectId) {
+    if (Array.isArray(subjectId)) {
+      subjectId.forEach((v) => searchParams.append("subjectId", v));
+    } else {
+      searchParams.set("subjectId", subjectId);
+    }
+  }
+
+  if (evaluationId) {
+    if (Array.isArray(evaluationId)) {
+      evaluationId.forEach((v) => searchParams.append("evaluationId", v));
+    } else {
+      searchParams.set("evaluationId", evaluationId);
+    }
+  }
 
   return useQuery<TeachersResponse>({
-    queryKey: ["teachers", page, limit, name, email, university, enrollmentStatus],
-    queryFn: async () => await fetcher<TeachersResponse>(`/api/teacher?${searchParams}`),
+    queryKey: [
+      "teachers",
+      page,
+      limit,
+      name,
+      email,
+      university,
+      enrollmentStatus,
+      subjectId,
+      evaluationId,
+      sort,
+      order,
+    ],
+    queryFn: async () =>
+      await fetcher<TeachersResponse>(
+        `/api/teacher?${searchParams.toString()}`
+      ),
   });
 }
 
 export function useTeacher(teacherId: string) {
   return useQuery<TeacherWithPreference>({
     queryKey: ["teacher", teacherId],
-    queryFn: async () => await fetcher<SingleTeacherResponse>(`/api/teacher/${teacherId}`).then((res) => res.data),
+    queryFn: async () =>
+      await fetcher<SingleTeacherResponse>(`/api/teacher/${teacherId}`).then(
+        (res) => res.data
+      ),
     enabled: !!teacherId,
   });
 }

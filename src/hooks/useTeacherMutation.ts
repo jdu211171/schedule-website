@@ -2,11 +2,16 @@ import { fetcher } from "@/lib/fetcher";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { TeacherWithPreference } from "./useTeacherQuery";
 import { toast } from "sonner";
+import { DayOfWeekEnum } from "@/schemas/teacher.schema";
+import { z } from "zod";
 
+export type DayOfWeek = z.infer<typeof DayOfWeekEnum>;
+
+// Input for creating a teacher (matches Zod and Prisma)
 type CreateTeacherInput = {
   name: string;
   evaluationId: string;
-  birthDate: Date | string;
+  birthDate: string; // ISO string
   mobileNumber: string;
   email: string;
   highSchool: string;
@@ -14,30 +19,31 @@ type CreateTeacherInput = {
   faculty: string;
   department: string;
   enrollmentStatus: string;
-  otherUniversities?: string;
-  englishProficiency?: string;
-  toeic?: number;
-  toefl?: number;
-  mathCertification?: string;
-  kanjiCertification?: string;
-  otherCertifications?: string;
-  notes?: string;
+  otherUniversities?: string | null;
+  englishProficiency?: string | null;
+  toeic?: number | null;
+  toefl?: number | null;
+  mathCertification?: string | null;
+  kanjiCertification?: string | null;
+  otherCertifications?: string | null;
+  notes?: string | null;
   username: string;
-  password?: string;
+  password: string;
   subjects?: string[];
   shifts?: {
-    dayOfWeek: string;
+    dayOfWeek: DayOfWeek;
     startTime: string;
     endTime: string;
-    notes?: string;
+    notes?: string | null;
   }[];
 };
 
+// Input for updating a teacher (matches Zod and Prisma)
 type UpdateTeacherInput = {
   teacherId: string;
   name?: string;
   evaluationId?: string;
-  birthDate?: Date | string;
+  birthDate?: string;
   mobileNumber?: string;
   email?: string;
   highSchool?: string;
@@ -45,21 +51,21 @@ type UpdateTeacherInput = {
   faculty?: string;
   department?: string;
   enrollmentStatus?: string;
-  otherUniversities?: string;
-  englishProficiency?: string;
-  toeic?: number;
-  toefl?: number;
-  mathCertification?: string;
-  kanjiCertification?: string;
-  otherCertifications?: string;
-  notes?: string;
+  otherUniversities?: string | null;
+  englishProficiency?: string | null;
+  toeic?: number | null;
+  toefl?: number | null;
+  mathCertification?: string | null;
+  kanjiCertification?: string | null;
+  otherCertifications?: string | null;
+  notes?: string | null;
   password?: string;
   subjects?: string[];
   shifts?: {
-    dayOfWeek: string;
+    dayOfWeek: DayOfWeek;
     startTime: string;
     endTime: string;
-    notes?: string;
+    notes?: string | null;
   }[];
 };
 
@@ -81,7 +87,6 @@ export function useTeacherCreate() {
   const queryClient = useQueryClient();
   return useMutation<CreateTeacherResponse, Error, CreateTeacherInput>({
     mutationFn: (data) => {
-      // The data is already in the expected format, no need to transform
       return fetcher("/api/teacher", {
         method: "POST",
         body: JSON.stringify(data),
@@ -106,7 +111,6 @@ export function useTeacherUpdate() {
   const queryClient = useQueryClient();
   return useMutation<UpdateTeacherResponse, Error, UpdateTeacherInput>({
     mutationFn: (data) => {
-      // The data is already in the expected format, no need to transform
       return fetcher(`/api/teacher`, {
         method: "PUT",
         body: JSON.stringify(data),
