@@ -5,7 +5,7 @@ export const StudentPreferenceTeacherSchema = z
     preferenceTeacherId: z.string(), // default: cuid()
     preferenceId: z.string(),
     teacherId: z.string(),
-    preference: z.lazy(() => StudentPreferenceSchema), // relation: StudentPreference
-    teacher: z.lazy(() => TeacherSchema), // relation: Teacher
+    // preference: z.lazy(() => StudentPreferenceSchema), // relation: StudentPreference
+    // teacher: z.lazy(() => TeacherSchema), // relation: Teacher
   })
   .strict();

@@ -6,6 +6,6 @@ export const UserSchema = z
     email: z.string().email().optional(),
     emailVerified: z.date().optional(),
     image: z.string().url().optional(),
-    role: UserRoleEnum.optional(),
+    // role: UserRoleEnum.optional(),
   })
   .strict();

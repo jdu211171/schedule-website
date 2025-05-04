@@ -6,6 +6,6 @@ export const StudentPreferenceTimeSlotSchema = z
     preferenceId: z.string(),
     startTime: z.date(),
     endTime: z.date(),
-    preference: z.lazy(() => StudentPreferenceSchema), // relation: StudentPreference
+    // preference: z.lazy(() => StudentPreferenceSchema), // relation: StudentPreference
   })
   .strict();
