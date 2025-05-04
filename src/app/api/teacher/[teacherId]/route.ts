@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET(
   request: Request,
-  { params }: { params: { teacherId: string } }
+  { params }: { params: Promise<{ teacherId: string }> }
 ) {
   const session = await auth();
   if (!session) {
@@ -11,7 +11,7 @@ export async function GET(
   }
 
   try {
-    const teacherId = params.teacherId;
+    const { teacherId } = await params;
 
     // Fetch the teacher with related data
     const teacher = await prisma.teacher.findUnique({

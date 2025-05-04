@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET(
   request: Request,
-  { params }: { params: { boothId: string } }
+  { params }: { params: Promise<{ boothId: string }> }
 ) {
   const session = await auth();
   if (!session) {
@@ -11,10 +11,7 @@ export async function GET(
   }
 
   try {
-    const boothId = params.boothId;
-
-    // No need for explicit schema validation here, as Next.js' dynamic route
-    // parameter already guarantees we have a string
+    const { boothId } = await params;
 
     // Fetch the booth
     const booth = await prisma.booth.findUnique({

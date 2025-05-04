@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET(
   request: Request,
-  { params }: { params: { templateId: string } }
+  { params }: { params: Promise<{ templateId: string }> }
 ) {
   const session = await auth();
   if (!session) {
@@ -12,7 +12,7 @@ export async function GET(
   }
 
   try {
-    const templateId = params.templateId;
+    const { templateId } = await params;
 
     // Fetch the template with related data
     const template = await prisma.regularClassTemplate.findUnique({

@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET(
   request: Request,
-  { params }: { params: { studentId: string } }
+  { params }: { params: Promise<{ studentId: string }> }
 ) {
   const session = await auth();
   if (!session) {
@@ -11,7 +11,7 @@ export async function GET(
   }
 
   try {
-    const studentId = params.studentId;
+    const { studentId } = await params;
 
     // No need for explicit schema validation here, as Next.js' dynamic route
     // parameter already guarantees we have a string
