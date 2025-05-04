@@ -10,8 +10,8 @@ type CreateStudentInput = {
   kanaName?: string;
   gradeId?: string;
   schoolName?: string;
-  schoolType?: string;
-  examSchoolType?: "ELEMENTARY" | "MIDDLE" | "HIGH" | "UNIVERSITY" | "OTHER";
+  schoolType?: "PUBLIC" | "PRIVATE";
+  examSchoolType?: "PUBLIC" | "PRIVATE";
   examSchoolCategoryType?: "ELEMENTARY" | "MIDDLE" | "HIGH" | "UNIVERSITY" | "OTHER";
   birthDate?: string;
   parentEmail?: string;
@@ -35,8 +35,8 @@ type UpdateStudentInput = {
   kanaName?: string;
   gradeId?: string;
   schoolName?: string;
-  schoolType?: string;
-  examSchoolType?: "ELEMENTARY" | "MIDDLE" | "HIGH" | "UNIVERSITY" | "OTHER";
+  schoolType?: "PUBLIC" | "PRIVATE";
+  examSchoolType?: "PUBLIC" | "PRIVATE";
   examSchoolCategoryType?: "ELEMENTARY" | "MIDDLE" | "HIGH" | "UNIVERSITY" | "OTHER";
   birthDate?: string;
   parentEmail?: string;

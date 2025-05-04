@@ -17,7 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Student } from "@prisma/client";
+import type { Student } from "@/schemas/student.schema";
 import { StudentFormDialog } from "@/components/student/student-form-dialog";
 import { StudentWithGrade } from "@/schemas/student.schema";
 
@@ -41,6 +41,27 @@ export function StudentTable() {
   const [studentToEdit, setStudentToEdit] = useState<Student | null>(null);
   const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+
+  // Helper to normalize nulls to undefined for Student fields
+  function normalizeStudentNulls(student: StudentWithGrade): Student {
+    return {
+      ...student,
+      kanaName: student.kanaName ?? undefined,
+      gradeId: student.gradeId ?? undefined,
+      schoolName: student.schoolName ?? undefined,
+      schoolType: student.schoolType ?? undefined,
+      examSchoolType: student.examSchoolType ?? undefined,
+      examSchoolCategoryType: student.examSchoolCategoryType ?? undefined,
+      firstChoiceSchool: student.firstChoiceSchool ?? undefined,
+      secondChoiceSchool: student.secondChoiceSchool ?? undefined,
+      enrollmentDate: student.enrollmentDate ?? undefined,
+      homePhone: student.homePhone ?? undefined,
+      parentMobile: student.parentMobile ?? undefined,
+      studentMobile: student.studentMobile ?? undefined,
+      parentEmail: student.parentEmail ?? undefined,
+      notes: student.notes ?? undefined,
+    };
+  }
 
   const columns: ColumnDef<StudentWithGrade>[] = [
     {
@@ -154,14 +175,14 @@ export function StudentTable() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setStudentToEdit(row.original)}
+              onClick={() => setStudentToEdit(normalizeStudentNulls(row.original))}
             >
               <Pencil className="h-4 w-4" />
             </Button>
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setStudentToDelete(row.original)}
+              onClick={() => setStudentToDelete(normalizeStudentNulls(row.original))}
             >
               <Trash2 className="h-4 w-4 text-destructive" />
             </Button>

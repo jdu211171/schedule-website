@@ -33,7 +33,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useGrades } from "@/hooks/useGradeQuery";
 import { useStudentCreate, useStudentUpdate } from "@/hooks/useStudentMutation";
-import type { Student } from "@/components/match/types";
+import type { Student } from "@/schemas/student.schema";
 import { useTeachers } from "@/hooks/useTeacherQuery";
 import { useSubjects } from "@/hooks/useSubjectQuery";
 import { useTeacherSubjects } from "@/hooks/useTeacherSubjectQuery";
@@ -113,44 +113,6 @@ export function StudentFormDialog({
   const [showSubjectDropdown, setShowSubjectDropdown] = useState(false);
   const [showTeacherDropdown, setShowTeacherDropdown] = useState(false);
 
-  // Access the preference data directly from the student object
-  const studentPreference = useMemo(() => {
-    if (!student || !student.StudentPreference || student.StudentPreference.length === 0) {
-      return null;
-    }
-
-    // Get the first preference object
-    const preference = student.StudentPreference[0];
-
-    // Extract subject IDs from the nested structure
-    const preferredSubjects = preference.subjects?.map(s => s.subjectId) || [];
-
-    // Extract teacher IDs from the nested structure
-    const preferredTeachers = preference.teachers?.map(t => t.teacherId) || [];
-
-    // Map time slots to the expected format
-    const desiredTimes = preference.timeSlots?.map(ts => {
-      // Assume string type for startTime/endTime
-      const startTime = typeof ts.startTime === 'string' ? ts.startTime.slice(11, 16) : '';
-      const endTime = typeof ts.endTime === 'string' ? ts.endTime.slice(11, 16) : '';
-
-      return {
-        dayOfWeek: ts.dayOfWeek,
-        startTime,
-        endTime,
-      };
-    }) || [];
-
-    return {
-      preferredSubjects,
-      preferredTeachers,
-      desiredTimes,
-      additionalNotes: preference.notes || null,
-      classTypeId: preference.classTypeId || null,
-    };
-  }, [student]);
-
-
   const formSchema = CreateUserStudentSchema;
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -161,16 +123,19 @@ export function StudentFormDialog({
       gradeId: student?.gradeId || "",
       schoolName: student?.schoolName || "",
       schoolType: safeEnum(student?.schoolType, ["PUBLIC", "PRIVATE"]),
-      examSchoolType: safeEnum(student?.examSchoolType, ["PUBLIC", "PRIVATE"]),
+      // Only set examSchoolType if it matches the correct API enum, otherwise undefined
+      examSchoolType: safeEnum(student?.examSchoolType, [
+        "PUBLIC",
+        "PRIVATE"
+      ]) ?? undefined,
       examSchoolCategoryType: safeEnum(student?.examSchoolCategoryType, [
         "ELEMENTARY",
         "MIDDLE",
         "HIGH",
         "UNIVERSITY",
         "OTHER"
-      ]),
-      enrollmentDate: student?.enrollmentDate ? student.enrollmentDate.slice(0, 10) : "",
-      birthDate: student?.birthDate ? student.birthDate.slice(0, 10) : "",
+      ]) ?? undefined,
+      birthDate: student?.birthDate ? new Date(student.birthDate) : undefined,
       parentMobile: student?.parentMobile || "",
       studentMobile: student?.studentMobile || "",
       parentEmail: student?.parentEmail || "",
@@ -185,26 +150,13 @@ export function StudentFormDialog({
   const preferencesForm = useForm<StudentPreference>({
     resolver: zodResolver(studentPreferencesSchema),
     defaultValues: {
-      preferredSubjects: studentPreference?.preferredSubjects || [],
-      preferredTeachers: studentPreference?.preferredTeachers || [],
-      desiredTimes: studentPreference?.desiredTimes || [],
-      additionalNotes: studentPreference?.additionalNotes || "",
-      classTypeId: studentPreference?.classTypeId || null,
+      preferredSubjects: [],
+      preferredTeachers: [],
+      desiredTimes: [],
+      additionalNotes: "",
+      classTypeId: null,
     },
   });
-
-  // Reset preferences form when student data changes
-  useEffect(() => {
-    if (studentPreference) {
-      preferencesForm.reset({
-        preferredSubjects: studentPreference.preferredSubjects || [],
-        preferredTeachers: studentPreference.preferredTeachers || [],
-        desiredTimes: studentPreference.desiredTimes || [],
-        additionalNotes: studentPreference.additionalNotes || "",
-        classTypeId: studentPreference.classTypeId,
-      });
-    }
-  }, [studentPreference, preferencesForm]);
 
   // Derived form for desiredTimes only
   const desiredTimesForm = useForm<{ desiredTimes: { dayOfWeek: string; startTime: string; endTime: string }[] }>({
@@ -361,9 +313,28 @@ export function StudentFormDialog({
       // Log the actual data being sent to verify
       console.log("Submitting with time slots:", preferences.timeSlots);
 
+      // Convert Date objects to string (YYYY-MM-DD) for API
+      const formatDateString = (d: string | Date | undefined) => {
+        if (!d) return undefined;
+        if (typeof d === "string") return d;
+        if (d instanceof Date && !isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+        return undefined;
+      };
       const payload = {
         ...values,
-        // Do NOT convert to Date or formatDate, just send the string
+        birthDate: formatDateString(values.birthDate),
+        enrollmentDate: formatDateString((values as { enrollmentDate?: string | Date }).enrollmentDate),
+        examSchoolType: safeEnum(values.examSchoolType, [
+          "PUBLIC",
+          "PRIVATE"
+        ]),
+        examSchoolCategoryType: safeEnum(values.examSchoolCategoryType, [
+          "ELEMENTARY",
+          "MIDDLE",
+          "HIGH",
+          "UNIVERSITY",
+          "OTHER"
+        ]),
         preferences,
       };
 
@@ -385,13 +356,6 @@ export function StudentFormDialog({
       setIsSubmitting(false);
     }
   }
-
-  // For debugging - log preference data when it changes
-  useEffect(() => {
-    if (process.env.NODE_ENV === "development") {
-      console.log("Student preference data:", studentPreference);
-    }
-  }, [studentPreference]);
 
   // Show loading state
   if (isLoading) {
@@ -572,9 +536,7 @@ export function StudentFormDialog({
                       <FormLabel>受験校カテゴリータイプ</FormLabel>
                       <FormControl>
                         <Select
-                          onValueChange={(value) =>
-                            field.onChange(value || null)
-                          }
+                          onValueChange={field.onChange}
                           value={field.value || ""}
                         >
                           <SelectTrigger>
@@ -621,26 +583,6 @@ export function StudentFormDialog({
                           placeholder="第二志望校を入力"
                           {...field}
                           value={field.value || ""}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="enrollmentDate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>入学日</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="date"
-                          {...field}
-                          value={formatDateInput(field.value)}
-                          onChange={(e) => {
-                            field.onChange(e.target.value || undefined);
-                          }}
                         />
                       </FormControl>
                       <FormMessage />
