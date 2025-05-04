@@ -2,6 +2,7 @@ import { fetcher } from "@/lib/fetcher";
 import { CreateBoothInput, UpdateBoothInput } from "@/schemas/booth.schema";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Booth } from "@prisma/client";
+import { toast } from "sonner";
 
 type CreateBoothResponse = {
   message: string;
@@ -25,8 +26,17 @@ export function useBoothCreate() {
         method: "POST",
         body: JSON.stringify(data),
       }),
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["booths"] });
+
+      toast.success("ブースを追加しました", {
+        description: data.message,
+      });
+    },
+    onError: (error) => {
+      toast.error("ブースの追加に失敗しました", {
+        description: error.message,
+      });
     },
   });
 }
@@ -39,8 +49,17 @@ export function useBoothUpdate() {
         method: "PUT",
         body: JSON.stringify({ boothId, ...data }),
       }),
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["booths"] });
+
+      toast.success("ブースを更新しました", {
+        description: data.message,
+      });
+    },
+    onError: (error) => {
+      toast.error("ブースの更新に失敗しました", {
+        description: error.message,
+      });
     },
   });
 }
@@ -52,8 +71,17 @@ export function useBoothDelete() {
       fetcher(`/api/booth?boothId=${boothId}`, {
         method: "DELETE",
       }),
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["booths"] });
+
+      toast.success("ブースを削除しました", {
+        description: data.message,
+      });
+    },
+    onError: (error) => {
+      toast.error("ブースの削除に失敗しました", {
+        description: error.message,
+      });
     },
   });
 }

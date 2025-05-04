@@ -90,17 +90,3 @@ export function useGrade(gradeId: string) {
     enabled: !!gradeId,
   });
 }
-
-// We don't need this function based on the booth pattern
-// as the total count is included in the pagination response
-export function useGradesCount() {
-  return useQuery<number>({
-    queryKey: ["grades", "count"],
-    queryFn: async () => {
-      const response = await fetcher<GradesResponse>(
-        `/api/grades?page=1&limit=1`
-      );
-      return response.pagination.total;
-    },
-  });
-}

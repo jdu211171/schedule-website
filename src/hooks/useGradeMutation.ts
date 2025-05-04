@@ -2,6 +2,7 @@ import { fetcher } from "@/lib/fetcher";
 import { CreateGradeInput, UpdateGradeInput } from "@/schemas/grade.schema";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Grade } from "@prisma/client";
+import { toast } from "sonner";
 
 type CreateGradeResponse = {
   message: string;
@@ -25,8 +26,17 @@ export function useGradeCreate() {
         method: "POST",
         body: JSON.stringify(data),
       }),
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["grades"] });
+
+      toast.success("学年を追加しました", {
+        description: data.message,
+      });
+    },
+    onError: (error) => {
+      toast.error("学年の追加に失敗しました", {
+        description: error.message,
+      });
     },
   });
 }
@@ -39,9 +49,17 @@ export function useGradeUpdate() {
         method: "PUT",
         body: JSON.stringify({ gradeId, ...data }),
       }),
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["grades"] });
-      queryClient.invalidateQueries({ queryKey: ["grade"] });
+
+      toast.success("学年を更新しました", {
+        description: data.message,
+      });
+    },
+    onError: (error) => {
+      toast.error("学年の更新に失敗しました", {
+        description: error.message,
+      });
     },
   });
 }
@@ -53,8 +71,17 @@ export function useGradeDelete() {
       fetcher(`/api/grades?gradeId=${gradeId}`, {
         method: "DELETE",
       }),
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["grades"] });
+
+      toast.success("学年を削除しました", {
+        description: data.message,
+      });
+    },
+    onError: (error) => {
+      toast.error("学年の削除に失敗しました", {
+        description: error.message,
+      });
     },
   });
 }

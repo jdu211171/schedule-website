@@ -1,6 +1,7 @@
 import { fetcher } from "@/lib/fetcher";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { TeacherWithPreference } from "./useTeacherQuery";
+import { toast } from "sonner";
 
 type CreateTeacherInput = {
   name: string;
@@ -86,8 +87,17 @@ export function useTeacherCreate() {
         body: JSON.stringify(data),
       });
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["teachers"] });
+
+      toast.success("教師を追加しました", {
+        description: data.message,
+      });
+    },
+    onError: (error) => {
+      toast.error("教師の追加に失敗しました", {
+        description: error.message,
+      });
     },
   });
 }
@@ -102,8 +112,17 @@ export function useTeacherUpdate() {
         body: JSON.stringify(data),
       });
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["teachers"] });
+
+      toast.success("教師を更新しました", {
+        description: data.message,
+      });
+    },
+    onError: (error) => {
+      toast.error("教師の更新に失敗しました", {
+        description: error.message,
+      });
     },
   });
 }
@@ -115,8 +134,17 @@ export function useTeacherDelete() {
       fetcher(`/api/teacher?teacherId=${teacherId}`, {
         method: "DELETE",
       }),
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["teachers"] });
+
+      toast.success("教師を削除しました", {
+        description: data.message,
+      });
+    },
+    onError: (error) => {
+      toast.error("教師の削除に失敗しました", {
+        description: error.message,
+      });
     },
   });
 }

@@ -1,6 +1,7 @@
 import { fetcher } from "@/lib/fetcher";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Student } from "@prisma/client";
+import { toast } from "sonner";
 
 type CreateStudentInput = {
   username: string;
@@ -72,8 +73,17 @@ export function useStudentCreate() {
         method: "POST",
         body: JSON.stringify(data),
       }),
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["students"] });
+
+      toast.success("生徒を追加しました", {
+        description: data.message,
+      });
+    },
+    onError: (error) => {
+      toast.error("生徒の追加に失敗しました", {
+        description: error.message,
+      });
     },
   });
 }
@@ -86,8 +96,17 @@ export function useStudentUpdate() {
         method: "PUT",
         body: JSON.stringify(data),
       }),
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["students"] });
+
+      toast.success("生徒を更新しました", {
+        description: data.message,
+      });
+    },
+    onError: (error) => {
+      toast.error("生徒の更新に失敗しました", {
+        description: error.message,
+      });
     },
   });
 }
@@ -99,8 +118,17 @@ export function useStudentDelete() {
       fetcher(`/api/student?studentId=${studentId}`, {
         method: "DELETE",
       }),
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["students"] });
+
+      toast.success("生徒を削除しました", {
+        description: data.message,
+      });
+    },
+    onError: (error) => {
+      toast.error("生徒の削除に失敗しました", {
+        description: error.message,
+      });
     },
   });
 }

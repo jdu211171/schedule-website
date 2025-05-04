@@ -5,6 +5,7 @@ import {
 } from "@/schemas/student-type.schema";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { StudentType } from "@prisma/client";
+import { toast } from "sonner";
 
 type CreateStudentTypeResponse = {
   message: string;
@@ -28,8 +29,17 @@ export function useStudentTypeCreate() {
         method: "POST",
         body: JSON.stringify(data),
       }),
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["studentType"] });
+
+      toast.success("生徒タイプを追加しました", {
+        description: data.message,
+      });
+    },
+    onError: (error) => {
+      toast.error("生徒タイプの追加に失敗しました", {
+        description: error.message,
+      });
     },
   });
 }
@@ -42,9 +52,17 @@ export function useStudentTypeUpdate() {
         method: "PUT",
         body: JSON.stringify({ studentTypeId, ...data }),
       }),
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["studentType"] });
-      queryClient.invalidateQueries({ queryKey: ["studentTypeDetail"] });
+
+      toast.success("生徒タイプを更新しました", {
+        description: data.message,
+      });
+    },
+    onError: (error) => {
+      toast.error("生徒タイプの更新に失敗しました", {
+        description: error.message,
+      });
     },
   });
 }
@@ -56,8 +74,17 @@ export function useStudentTypeDelete() {
       fetcher(`/api/student-type?studentTypeId=${studentTypeId}`, {
         method: "DELETE",
       }),
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["studentType"] });
+
+      toast.success("生徒タイプを削除しました", {
+        description: data.message,
+      });
+    },
+    onError: (error) => {
+      toast.error("生徒タイプの削除に失敗しました", {
+        description: error.message,
+      });
     },
   });
 }

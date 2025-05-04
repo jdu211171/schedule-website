@@ -2,6 +2,7 @@ import { fetcher } from "@/lib/fetcher";
 import { CreateSubjectInput, UpdateSubjectInput } from "@/schemas/subject.schema";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Subject } from "@prisma/client";
+import { toast } from "sonner";
 
 type CreateSubjectResponse = {
   message: string;
@@ -25,8 +26,17 @@ export function useSubjectCreate() {
         method: "POST",
         body: JSON.stringify(data),
       }),
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["subjects"] });
+
+      toast.success("科目を追加しました", {
+        description: data.message,
+      });
+    },
+    onError: (error) => {
+      toast.error("科目の追加に失敗しました", {
+        description: error.message,
+      });
     },
   });
 }
@@ -39,8 +49,17 @@ export function useSubjectUpdate() {
         method: "PUT",
         body: JSON.stringify({ subjectId, ...data }),
       }),
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["subjects"] });
+
+      toast.success("科目を更新しました", {
+        description: data.message,
+      });
+    },
+    onError: (error) => {
+      toast.error("科目の更新に失敗しました", {
+        description: error.message,
+      });
     },
   });
 }
@@ -52,8 +71,17 @@ export function useSubjectDelete() {
       fetcher(`/api/subjects?subjectId=${subjectId}`, {
         method: "DELETE",
       }),
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["subjects"] });
+
+      toast.success("科目を削除しました", {
+        description: data.message,
+      });
+    },
+    onError: (error) => {
+      toast.error("科目の削除に失敗しました", {
+        description: error.message,
+      });
     },
   });
 }

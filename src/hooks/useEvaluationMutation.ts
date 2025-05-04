@@ -1,6 +1,7 @@
 import { fetcher } from "@/lib/fetcher";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Evaluation } from "@prisma/client";
+import { toast } from "sonner";
 
 type CreateEvaluationInput = {
   name: string;
@@ -37,8 +38,17 @@ export function useEvaluationCreate() {
         method: "POST",
         body: JSON.stringify(data),
       }),
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["evaluations"] });
+
+      toast.success("評価を追加しました", {
+        description: data.message,
+      });
+    },
+    onError: (error) => {
+      toast.error("評価の追加に失敗しました", {
+        description: error.message,
+      });
     },
   });
 }
@@ -51,8 +61,17 @@ export function useEvaluationUpdate() {
         method: "PUT",
         body: JSON.stringify({ evaluationId, ...data }),
       }),
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["evaluations"] });
+
+      toast.success("評価を更新しました", {
+        description: data.message,
+      });
+    },
+    onError: (error) => {
+      toast.error("評価の更新に失敗しました", {
+        description: error.message,
+      });
     },
   });
 }
@@ -64,8 +83,17 @@ export function useEvaluationDelete() {
       fetcher(`/api/evaluation?evaluationId=${evaluationId}`, {
         method: "DELETE",
       }),
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["evaluations"] });
+
+      toast.success("評価を削除しました", {
+        description: data.message,
+      });
+    },
+    onError: (error) => {
+      toast.error("評価の削除に失敗しました", {
+        description: error.message,
+      });
     },
   });
 }
