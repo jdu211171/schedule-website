@@ -31,7 +31,9 @@ import {
   StudentType,
   ClassSession,
   TeacherFilterParams,
-  StudentFilterParams
+  StudentFilterParams,
+  StudentPreferenceItem,
+  StudentPreferenceSubject,
 } from "@/components/match/types";
 
 export default function LessonManagementPage() {
@@ -97,7 +99,6 @@ const handleStudentFiltersChange = useCallback(
     }
     
     if ('gradeId' in params) {
-      // Добавляем проверку на undefined
       if (params.gradeId !== undefined) {
         setStudentGradeFilter(params.gradeId);
       }
@@ -217,9 +218,9 @@ const handleStudentFiltersChange = useCallback(
   }
   
   if (student.StudentPreference) {
-    student.StudentPreference.forEach((pref: any) => {
+    student.StudentPreference.forEach((pref: StudentPreferenceItem) => {
       if (pref.subjects) {
-        pref.subjects.forEach((subjectItem: any) => {
+        pref.subjects.forEach((subjectItem: StudentPreferenceSubject) => {
           if (subjectItem.subjectId && !subjectIds.has(subjectItem.subjectId)) {
             const subject = subjects.find((s: Subject) => s.subjectId === subjectItem.subjectId);
             if (subject) {
@@ -397,6 +398,7 @@ const handleStudentFiltersChange = useCallback(
   }, []);
 
   const handleAddClassSession = useCallback((session: Partial<ClassSession>) => {
+    console.log("add session:", session);
     // Логика добавления сессии
   }, []);
 

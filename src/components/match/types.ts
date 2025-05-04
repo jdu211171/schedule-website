@@ -131,6 +131,23 @@ export interface StudentPreference {
   notes: string | null;
 }
 
+export interface StudentPreferenceSubject {
+  id: string;
+  studentPreferenceId: string;
+  subjectId: string;
+  subject?: Subject;
+}
+
+export interface StudentPreferenceItem {
+  preferenceId: string;
+  studentId: string;
+  classTypeId: string;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  subjects?: StudentPreferenceSubject[];
+}
+
 export interface TeacherShift {
   id?: string;
   teacherId?: string;

@@ -52,7 +52,6 @@ export default function TeacherTable({
   teachers,
   selectedTeacherId,
   onTeacherSelect,
-  lessons,
   subjects,
   evaluations,
   teacherSubjects,

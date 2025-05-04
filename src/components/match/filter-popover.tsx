@@ -97,9 +97,9 @@ export default function FilterPopover({
   };
 
   // Обработчик для фильтра по типу школы
-  const handleSchoolTypeFilterChange = (value: string | null) => {
-    setLocalSchoolTypeFilter(value);
-  };
+  // const handleSchoolTypeFilterChange = (value: string | null) => {
+  //   setLocalSchoolTypeFilter(value);
+  // };
 
   // Обработчик для фильтра по классу
   const handleGradeFilterChange = (value: string | null) => {

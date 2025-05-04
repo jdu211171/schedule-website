@@ -81,9 +81,9 @@ export default function StudentTable({
 
   const allSubjects = useMemo(() => subjects, [subjects]);
 
-  const studentHasLessons = useCallback((studentId: string) => {
-    return lessons.some((lesson) => lesson.studentId === studentId);
-  }, [lessons]);
+  // const studentHasLessons = useCallback((studentId: string) => {
+  //   return lessons.some((lesson) => lesson.studentId === studentId);
+  // }, [lessons]);
 
   const getStudentSubjects = useCallback((student: StudentWithPreference) => {
     const subjectIds = new Set<string>();

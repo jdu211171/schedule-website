@@ -7,11 +7,8 @@ import { TeacherParams } from '../types';
  * Хук для получения списка учителей с возможностью фильтрации
  */
 export function useMatchTeachers(params: TeacherParams = {}) {
-  const { page = 1, limit = 10, subjectId, evaluationId } = params;
-  
-  
   return useQuery({
-    queryKey: ['matchTeachers', { ...params, subjectId, evaluationId }],
+    queryKey: ['matchTeachers', params],
     queryFn: () => fetchTeachers(params)
   });
 }
