@@ -1,4 +1,3 @@
-// components/match/teacher-table.tsx
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import {
@@ -42,6 +41,11 @@ interface TeacherTableProps {
   selectedStudentId: string | null;
   filteredTeachers?: Teacher[];
   kibouSubjects?: Subject[];
+  onTeacherFilterChange?: (params: { subjectId?: string, evaluationId?: string }) => void; // Обработчик серверной фильтрации
+  
+  // Добавляем через пропсы текущие значения фильтров
+  currentSubjectFilter?: string | null;
+  currentEvaluationFilter?: string | null;
 }
 
 export default function TeacherTable({
@@ -55,42 +59,62 @@ export default function TeacherTable({
   selectedStudentId,
   filteredTeachers,
   kibouSubjects = [],
+  onTeacherFilterChange,
+  currentSubjectFilter = null,
+  currentEvaluationFilter = null,
 }: TeacherTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
-  const [subjectFilters, setSubjectFilters] = useState<string[]>([]);
-  const [hasLessonsFilter, setHasLessonsFilter] = useState<boolean | null>(null);
-  const [evaluationFilter, setEvaluationFilter] = useState<string | null>(null);
   const [detailsTeacher, setDetailsTeacher] = useState<EnrichedTeacher | null>(null);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
+  
+  // Серверные фильтры с инициализацией из пропсов
+  const [serverSubjectFilter, setServerSubjectFilter] = useState<string | null>(currentSubjectFilter);
+  const [serverEvaluationFilter, setServerEvaluationFilter] = useState<string | null>(currentEvaluationFilter);
 
-  const allSubjects = useMemo(() => subjects, [subjects]);
+  // При изменении пропсов обновляем состояние фильтров
+  useEffect(() => {
+    setServerSubjectFilter(currentSubjectFilter);
+  }, [currentSubjectFilter]);
+  
+  useEffect(() => {
+    setServerEvaluationFilter(currentEvaluationFilter);
+  }, [currentEvaluationFilter]);
 
   useEffect(() => {
     setCurrentPage(1);
   }, [selectedStudentId]);
 
-  const handleFilterChange = (
-    newSubjectFilters: string[],
-    newHasLessonsFilter: boolean | null,
-  ) => {
-    setSubjectFilters(newSubjectFilters);
-    setHasLessonsFilter(newHasLessonsFilter);
+  // Обработка серверного фильтра по предмету
+  const handleSubjectFilterChange = (subjectId: string | null) => {
+    setServerSubjectFilter(subjectId);
     setCurrentPage(1);
+    
+    // Если передан обработчик фильтра от родительского компонента
+    if (onTeacherFilterChange) {
+      onTeacherFilterChange({
+        subjectId: subjectId || undefined,
+        evaluationId: serverEvaluationFilter || undefined
+      });
+    }
   };
 
+  // Обработка серверного фильтра по оценке
   const handleEvaluationFilterChange = (evaluationId: string | null) => {
-    setEvaluationFilter(evaluationId);
+    setServerEvaluationFilter(evaluationId);
     setCurrentPage(1);
+    
+    // Если передан обработчик фильтра от родительского компонента
+    if (onTeacherFilterChange) {
+      onTeacherFilterChange({
+        subjectId: serverSubjectFilter || undefined,
+        evaluationId: evaluationId || undefined
+      });
+    }
   };
 
-  const teacherHasLessons = useCallback(
-    (teacherId: string) => {
-      return lessons.some((lesson) => lesson.teacherId === teacherId);
-    },
-    [lessons],
-  );
+  const allSubjects = useMemo(() => subjects, [subjects]);
 
   const baseTeachers = useMemo(() => {
     return filteredTeachers || teachers;
@@ -130,39 +154,25 @@ export default function TeacherTable({
     });
   }, [baseTeachers, evaluations, subjects, teacherSubjects]);
 
-  const filteredTeachersWithUI = useMemo(() => {
+  // Локальная фильтрация только по поисковому запросу
+  const filteredTeachersWithSearch = useMemo(() => {
+    if (!searchTerm.trim()) {
+      return enrichedTeachers;
+    }
+    
     return enrichedTeachers.filter((teacher) => {
       const matchesSearch =
         teacher.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (teacher.university || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
         (teacher.faculty || "").toLowerCase().includes(searchTerm.toLowerCase());
 
-      const teacherSubjects = teacher.subjects || [];
-      const matchesSubjects =
-        subjectFilters.length === 0 ||
-        teacherSubjects.some((subject) => subjectFilters.includes(subject.subjectId));
-
-      const matchesHasLessons =
-        hasLessonsFilter === null ||
-        (hasLessonsFilter === true && teacherHasLessons(teacher.teacherId)) ||
-        (hasLessonsFilter === false && !teacherHasLessons(teacher.teacherId));
-
-      const matchesEvaluation = evaluationFilter === null || teacher.evaluationId === evaluationFilter;
-
-      return matchesSearch && matchesSubjects && matchesHasLessons && matchesEvaluation;
+      return matchesSearch;
     });
-  }, [
-    enrichedTeachers,
-    searchTerm,
-    subjectFilters,
-    hasLessonsFilter,
-    evaluationFilter,
-    teacherHasLessons,
-  ]);
+  }, [enrichedTeachers, searchTerm]);
 
-  const totalPages = Math.ceil(filteredTeachersWithUI.length / itemsPerPage);
+  const totalPages = Math.ceil(filteredTeachersWithSearch.length / itemsPerPage);
 
-  const paginatedTeachers = filteredTeachersWithUI.slice(
+  const paginatedTeachers = filteredTeachersWithSearch.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage,
   );
@@ -176,19 +186,55 @@ export default function TeacherTable({
     [kibouSubjects],
   );
 
+  // Проверка, применены ли фильтры
+  const isFilterActive = serverSubjectFilter !== null || serverEvaluationFilter !== null;
+
   return (
     <div className="rounded-md border h-full flex flex-col bg-white">
       {/* Показываем заголовок с предпочитаемыми предметами, если выбран ученик */}
       {selectedStudentId && (
         <div className="bg-green-50 p-2 border-b flex flex-wrap items-center gap-2">
-          <span className="text-green-800 text-sm font-medium">担当可能科目：</span>
+          <span className="text-green-800 text-sm font-medium">希望科目：</span>
           {kibouSubjects.length > 0 ? (
             kibouSubjects.map((subject) => (
               <SubjectBadge key={subject.subjectId} subject={subject} size="sm" />
             ))
           ) : (
-            <span className="text-green-600 text-xs italic">...</span>
+            <span className="text-green-600 text-xs italic">Загрузка предметов...</span>
           )}
+        </div>
+      )}
+
+      {/* Отображаем информацию об активных фильтрах */}
+      {isFilterActive && (
+        <div className="bg-blue-50 p-2 border-b">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-blue-800 text-sm font-medium">アクティブフィルター：</span>
+            {serverSubjectFilter && (
+              <Badge className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
+                科目: {subjects.find(s => s.subjectId === serverSubjectFilter)?.name || 'Unknown'}
+              </Badge>
+            )}
+            {serverEvaluationFilter && (
+              <Badge className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
+                評価: {evaluations.find(e => e.evaluationId === serverEvaluationFilter)?.name || 'Unknown'}
+              </Badge>
+            )}
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-6 px-2 text-xs text-blue-600 hover:text-blue-800"
+              onClick={() => {
+                if (onTeacherFilterChange) {
+                  onTeacherFilterChange({});
+                }
+                setServerSubjectFilter(null);
+                setServerEvaluationFilter(null);
+              }}
+            >
+              クリア
+            </Button>
+          </div>
         </div>
       )}
 
@@ -220,11 +266,11 @@ export default function TeacherTable({
         <FilterPopover
           subjects={allSubjects}
           evaluations={evaluations}
-          onFilterChange={handleFilterChange}
           onEvaluationFilterChange={handleEvaluationFilterChange}
-          initialSubjectFilters={subjectFilters}
-          initialHasLessonsFilter={hasLessonsFilter}
-          initialEvaluationFilter={evaluationFilter}
+          onSubjectFilterChange={handleSubjectFilterChange}
+          initialEvaluationFilter={serverEvaluationFilter}
+          initialSubjectFilter={serverSubjectFilter}
+          entityType="teacher" // Указываем, что это фильтр для учителей
         />
       </div>
 
@@ -330,7 +376,7 @@ export default function TeacherTable({
           </TableBody>
         </Table>
 
-        {filteredTeachersWithUI.length === 0 && (
+        {filteredTeachersWithSearch.length === 0 && (
           <div className="p-6 text-center text-gray-500">検索結果はありません</div>
         )}
       </ScrollArea>
@@ -338,7 +384,7 @@ export default function TeacherTable({
       <Pagination
         currentPage={currentPage}
         totalPages={totalPages}
-        totalItems={filteredTeachersWithUI.length}
+        totalItems={filteredTeachersWithSearch.length}
         itemsPerPage={itemsPerPage}
         onPageChange={setCurrentPage}
         onItemsPerPageChange={setItemsPerPage}

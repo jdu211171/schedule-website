@@ -1,5 +1,5 @@
 @url = http://localhost:3000/api
-@cookie = authjs.csrf-token=b809ec3e10daad3a64e35db6c8bfc21891ce7da7a32f5d3657774d1e1261a70d%7Cc5d4c0011bd3c39a8821ed00d2159b8a48590a9c99bd2cd1fa585ef1a2559d53; authjs.callback-url=http%3A%2F%2Flocalhost%3A3000%2F; authjs.session-token=eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2Q0JDLUhTNTEyIiwia2lkIjoiV0stMTdJYWdNdnREdUFmaTkwN1g0aUt5RFE5ZHFxeGxvUFJLcFpqOEZkMTdmZmV4Qlo3YkFsb2QzZy12MjJDM2xmbFNDWV9jTEYtUmVMRUxCQUpsekEifQ..OdmrOF3cqWUT3vvMIgY23Q.vbtAvjOix7jxIpzBknSy84LGIy-ANS4vQGL5BjqtudWWQudcRLZAuCO7KTVlLpp01mA_V0P335OxAtVVzo6ZhCyC1gzZp1DOH51fIXeeMb_wDncyi9ElfGdc44-niZeAHsuH86pKdgeTYhjQQWZePcd7mUVmLmh5gpHO8soBQH8wkOnWBuBqD2gPfbpHWswyq8N4F99GhJSsMvkvM4vTJabC7S9zGLLdKTMSQoXEslhLEL3h63gUPiqRUmmQUfoVIqoB8qOGiNsP-AkprUf9PBoMSDt8WwnQkGnZDyIJ8xA.4PdqlLzSj0wjdkKn2Zrjqea0O1GWZ8P_3L84i-1CP-Y
+@cookie = 59086600ea9732cdd30dfbd46519ea530c75639d98893bed709e703d7ba2d518%7Ce95e297865aaec0bc1a358a8bd44e626223ec0c969c62d49254005c00b55464f; authjs.callback-url=http%3A%2F%2Flocalhost%3A3000; authjs.session-token=eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2Q0JDLUhTNTEyIiwia2lkIjoiN2k0YkNIMDRhZHdRM0V4ZkV2ZnRNd2pEX0FWUnk3TW1PSFA1d0kxWTUtT1FFekpjQjNSV0NoUkIyWUtKdzRsZWZaWVBMTXY0T3I4amw4ZGpvZzktYncifQ..nWgTrZOguMBCaR7aBBiiCA.xUYervzCmt3te2XMqo6tbzFPt4qZ8C3iA6sfwyrIQ8JqJuEVVYVA9j97vDZnJ4oIQlICDiGsAV2yPbK-qA9-T84e7zmsLZpbUpDvwL-UdASyirmPlkg9UteCT64DrhKX2zNFxZE4hq_Usi-vJCoGpraNE4ILrFNEnJ6T7Q8LGM2UJFzRn2vk6TX1h3cVbWIP3OIfDsKWBfuzwAPTMywLNgDZojC6tt4YSkG9ku_BVORBGqhaQFEnRgovlGKTDKl5UB0pWTHgx-bR4i7PLrkVoNSGyeSfIbMXwayY_dCimXw.KzyHuzmV-KLwBtGtkZk6I73Otr_iXO3rkoYsSRRvD_Y
 
 #########
 # BOOTH #
@@ -234,7 +234,7 @@ Content-Type: application/json
 Cookie: {{cookie}}
 
 ### Filter students by multiple preferred subjects (数学 and 物理)
-GET {{url}}/student?preferredSubjectId=cma8l10zf000hsbli2q544ji2&preferredSubjectId=cma8l10zf000jsbli6r8j3m1g
+GET {{url}}/student?preferredSubjectId=cma6fzd7o000ivi7kzzpo62f4&preferredSubjectId=cma6fzd7o000hvi7kjew9z6dm
 Content-Type: application/json
 Cookie: {{cookie}}
 
@@ -625,7 +625,7 @@ Cookie: {{cookie}}
 
 ### Get a single subject by ID
 # Replace SUBJECT_ID with an actual ID from your database
-GET {{url}}/subjects/cma144m5g000i104q6edj7rri
+GET {{url}}/subjects/cma6fzd7o000ivi7kzzpo62f4
 Content-Type: application/json
 Cookie: {{cookie}}
 
@@ -650,7 +650,7 @@ Content-Type: application/json
 Cookie: {{cookie}}
 
 ### Get subjects with multiple filters and pagination
-GET {{url}}/subjects?name=数学&subjectTypeId=cma144m5d000e104q1leaiz1u&page=1&limit=5&sort=name&order=asc
+GET {{url}}/subjects?name=英語&subjectTypeId=cma6fzd7m000dvi7krd27jfox&page=1&limit=5&sort=name&order=asc
 Content-Type: application/json
 Cookie: {{cookie}}
 
@@ -837,12 +837,12 @@ Content-Type: application/json
 Cookie: {{cookie}}
 
 ### Get teachers with filtering by subject
-GET {{url}}/teacher?subjectId=cma8l10zf000jsbli6r8j3m1g
+GET {{url}}/teacher?subjectId=cma6fzd7o000hvi7kjew9z6dm&subjectId=cma6fzd7o000gvi7kafpxtmb8
 Content-Type: application/json
 Cookie: {{cookie}}
 
 ### Get teachers with filtering by evaluation
-GET {{url}}/teacher?evaluationId=cma8l10zo000nsblisdv6cc3g
+GET {{url}}/teacher?evaluationId=cma6fzd7t000nvi7k7n4dgt7r
 Content-Type: application/json
 Cookie: {{cookie}}
 

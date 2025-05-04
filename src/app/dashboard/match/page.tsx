@@ -49,12 +49,32 @@ export default function LessonManagementPage() {
   const [isLoadingTeacherCompatibility, setIsLoadingTeacherCompatibility] = useState(false);
   const [isLoadingStudentCompatibility, setIsLoadingStudentCompatibility] = useState(false);
 
+  /* -------------------- Серверные фильтры для учителей -------------------- */
+  const [teacherSubjectFilter, setTeacherSubjectFilter] = useState<string | undefined>(undefined);
+  const [teacherEvaluationFilter, setTeacherEvaluationFilter] = useState<string | undefined>(undefined);
+
+  /* -------------------- Обработчик серверной фильтрации учителей -------------------- */
+  const handleTeacherFilterChange = useCallback(
+    (params: { subjectId?: string; evaluationId?: string }) => {
+      // Преобразуем undefined в null для совместимости с компонентами
+      const subjectId = params.subjectId === undefined ? null : params.subjectId;
+      const evaluationId = params.evaluationId === undefined ? null : params.evaluationId;
+      
+      // Сохраняем текущие значения фильтров
+      setTeacherSubjectFilter(params.subjectId);
+      setTeacherEvaluationFilter(params.evaluationId);
+    },
+    []
+  );
+
   /* -------------------- データ取得 -------------------- */
   const { data: teachersData, isLoading: teachersLoading } = useMatchTeachers({
     page: 1,
-    limit: 100, // より多くのデータを取得するために制限を増やす
+    limit: 100,
+    subjectId: teacherSubjectFilter,
+    evaluationId: teacherEvaluationFilter,
   });
-  const teachers = teachersData?.data || [];
+  const teachers = useMemo(() => teachersData?.data || [], [teachersData]);
 
   const { data: studentsData, isLoading: studentsLoading } = useMatchStudents({
     page: 1,
@@ -425,7 +445,10 @@ export default function LessonManagementPage() {
               teacherSubjects={teacherSubjects as TeacherSubject[]}
               selectedStudentId={selectedStudentId}
               filteredTeachers={shouldFilterTeachers ? cachedFilteredTeachers : undefined}
-              kibouSubjects={studentKibouSubjects} // 常に科目を渡す、フィルタリング前でも
+              kibouSubjects={studentKibouSubjects}
+              onTeacherFilterChange={handleTeacherFilterChange}
+              currentSubjectFilter={teacherSubjectFilter || null}
+              currentEvaluationFilter={teacherEvaluationFilter || null}
             />
           </div>
         </div>

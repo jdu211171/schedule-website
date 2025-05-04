@@ -49,6 +49,8 @@ export interface TeacherParams extends PaginationParams {
   email?: string;
   university?: string;
   enrollmentStatus?: string;
+  subjectId?: string; 
+  evaluationId?: string;
 }
 
 export interface TeacherResponse {

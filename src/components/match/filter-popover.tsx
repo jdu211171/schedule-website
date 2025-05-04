@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Filter } from "lucide-react";
 import {
@@ -6,7 +6,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Subject, Evaluation, Grade, StudentType, ExamSchoolCategoryType } from "./types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -19,16 +18,18 @@ interface FilterPopoverProps {
   studentTypes?: StudentType[];
   examSchoolTypes?: ExamSchoolCategoryType[];
   
-  onFilterChange: (subjectFilters: string[], hasLessonsFilter: boolean | null) => void;
   onGradeFilterChange?: (gradeId: string | null) => void;
   onSchoolTypeFilterChange?: (schoolType: string | null) => void;
   onEvaluationFilterChange?: (evaluationId: string | null) => void;
+  onSubjectFilterChange?: (subjectId: string | null) => void;
   
-  initialSubjectFilters?: string[];
-  initialHasLessonsFilter?: boolean | null;
   initialGradeFilter?: string | null;
   initialSchoolTypeFilter?: string | null;
   initialEvaluationFilter?: string | null;
+  initialSubjectFilter?: string | null;
+  
+  // Указывает, для какого типа сущностей отображается фильтр (учитель или ученик)
+  entityType: "teacher" | "student";
 }
 
 export default function FilterPopover({
@@ -37,37 +38,40 @@ export default function FilterPopover({
   grades = [],
   examSchoolTypes = ["ELEMENTARY", "MIDDLE", "HIGH", "UNIVERSITY", "OTHER"],
   
-  onFilterChange,
   onGradeFilterChange,
   onSchoolTypeFilterChange,
   onEvaluationFilterChange,
+  onSubjectFilterChange,
   
-  initialSubjectFilters = [],
-  initialHasLessonsFilter = null,
   initialGradeFilter = null,
   initialSchoolTypeFilter = null,
   initialEvaluationFilter = null,
+  initialSubjectFilter = null,
+  
+  entityType = "teacher",
 }: FilterPopoverProps) {
   const [showFilterMenu, setShowFilterMenu] = useState(false);
-  const [subjectFilters, setSubjectFilters] = useState<string[]>(initialSubjectFilters);
-  const [hasLessonsFilter, setHasLessonsFilter] = useState<boolean | null>(initialHasLessonsFilter);
+  const [subjectFilter, setSubjectFilter] = useState<string | null>(initialSubjectFilter);
   const [gradeFilter, setGradeFilter] = useState<string | null>(initialGradeFilter);
   const [schoolTypeFilter, setSchoolTypeFilter] = useState<string | null>(initialSchoolTypeFilter);
   const [evaluationFilter, setEvaluationFilter] = useState<string | null>(initialEvaluationFilter);
   const [activeTab, setActiveTab] = useState("subjects");
+  
+  // Синхронизируем состояние с начальными значениями при их изменении
+  useEffect(() => {
+    setSubjectFilter(initialSubjectFilter);
+  }, [initialSubjectFilter]);
+  
+  useEffect(() => {
+    setEvaluationFilter(initialEvaluationFilter);
+  }, [initialEvaluationFilter]);
 
-  // Обработчик для переключения фильтров предметов
-  const toggleSubjectFilter = (subject: Subject) => {
-    if (subjectFilters.includes(subject.subjectId)) {
-      setSubjectFilters(subjectFilters.filter((s) => s !== subject.subjectId));
-    } else {
-      setSubjectFilters([...subjectFilters, subject.subjectId]);
+  // Обработчик для фильтра по предмету
+  const handleSubjectFilterChange = (value: string | null) => {
+    setSubjectFilter(value);
+    if (onSubjectFilterChange) {
+      onSubjectFilterChange(value);
     }
-  };
-
-  // Обработчик для фильтра по наличию уроков
-  const toggleHasLessonsFilter = (value: boolean | null) => {
-    setHasLessonsFilter(value);
   };
 
   // Обработчик для фильтра по типу школы
@@ -96,8 +100,7 @@ export default function FilterPopover({
 
   // Очистка всех фильтров
   const clearFilters = () => {
-    setSubjectFilters([]);
-    setHasLessonsFilter(null);
+    setSubjectFilter(null);
     setGradeFilter(null);
     setSchoolTypeFilter(null);
     setEvaluationFilter(null);
@@ -105,11 +108,14 @@ export default function FilterPopover({
     if (onGradeFilterChange) onGradeFilterChange(null);
     if (onSchoolTypeFilterChange) onSchoolTypeFilterChange(null);
     if (onEvaluationFilterChange) onEvaluationFilterChange(null);
+    if (onSubjectFilterChange) onSubjectFilterChange(null);
+    
+    setShowFilterMenu(false);
   };
 
   // Применение фильтров
   const applyFilters = () => {
-    onFilterChange(subjectFilters, hasLessonsFilter);
+    // Все фильтры уже применяются в реальном времени, просто закрываем меню
     setShowFilterMenu(false);
   };
 
@@ -123,11 +129,30 @@ export default function FilterPopover({
   };
 
   const isFiltersApplied = 
-    subjectFilters.length > 0 || 
-    hasLessonsFilter !== null ||
+    subjectFilter !== null ||
     gradeFilter !== null ||
     schoolTypeFilter !== null ||
     evaluationFilter !== null;
+
+  // Определяем, какие вкладки показывать в зависимости от типа сущности
+  const getTabList = () => {
+    if (entityType === "teacher") {
+      return (
+        <TabsList className="grid grid-cols-2 w-full mb-2">
+          <TabsTrigger value="subjects">科目</TabsTrigger>
+          <TabsTrigger value="status">状態</TabsTrigger>
+        </TabsList>
+      );
+    } else {
+      return (
+        <TabsList className="grid grid-cols-3 w-full mb-2">
+          <TabsTrigger value="subjects">科目</TabsTrigger>
+          <TabsTrigger value="school">学校</TabsTrigger>
+          <TabsTrigger value="status">状態</TabsTrigger>
+        </TabsList>
+      );
+    }
+  };
 
   return (
     <Popover open={showFilterMenu} onOpenChange={setShowFilterMenu}>
@@ -144,28 +169,33 @@ export default function FilterPopover({
         <div className="p-3 border-b">
           <div className="font-medium pb-1">フィルタ</div>
           <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid grid-cols-3 w-full mb-2">
-              <TabsTrigger value="subjects">科目</TabsTrigger>
-              <TabsTrigger value="school">学校</TabsTrigger>
-              <TabsTrigger value="status">状態</TabsTrigger>
-            </TabsList>
+            {getTabList()}
             
             {/* Вкладка с предметами */}
             <TabsContent value="subjects" className="space-y-4">
               {subjects.length > 0 && (
                 <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                  <div className="grid grid-cols-1 gap-2">
-                    {subjects.map((subject) => (
-                      <div className="flex items-center space-x-2" key={subject.subjectId}>
-                        <Checkbox 
-                          id={`subject-${subject.subjectId}`} 
-                          checked={subjectFilters.includes(subject.subjectId)}
-                          onCheckedChange={() => toggleSubjectFilter(subject)}
-                        />
-                        <Label htmlFor={`subject-${subject.subjectId}`}>{subject.name}</Label>
+                  <RadioGroup 
+                    value={subjectFilter || ""} 
+                    onValueChange={(value) => handleSubjectFilterChange(value === "" ? null : value)}
+                  >
+                    <div className="grid grid-cols-1 gap-2">
+                      {/* Опция "Все" */}
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="" id="subject-all" />
+                        <Label htmlFor="subject-all">すべて</Label>
                       </div>
-                    ))}
-                  </div>
+                      {subjects.map((subject) => (
+                        <div className="flex items-center space-x-2" key={subject.subjectId}>
+                          <RadioGroupItem 
+                            value={subject.subjectId} 
+                            id={`subject-${subject.subjectId}`} 
+                          />
+                          <Label htmlFor={`subject-${subject.subjectId}`}>{subject.name}</Label>
+                        </div>
+                      ))}
+                    </div>
+                  </RadioGroup>
                 </div>
               )}
 
@@ -176,82 +206,60 @@ export default function FilterPopover({
               )}
             </TabsContent>
             
-            {/* Вкладка со школами и классами */}
-            <TabsContent value="school" className="space-y-4">
-              {/* Типы школ */}
-              {examSchoolTypes.length > 0 && (
-                <div className="space-y-2">
-                  <div className="text-sm font-medium">学校種類</div>
-                  <RadioGroup 
-                    value={schoolTypeFilter || ""} 
-                    onValueChange={(value) => handleSchoolTypeFilterChange(value === "" ? null : value)}
-                  >
-                    <div className="flex items-center space-x-2 mb-1">
-                      <RadioGroupItem value="" id="school-type-all" />
-                      <Label htmlFor="school-type-all">すべて</Label>
-                    </div>
-                    {examSchoolTypes.map((type) => (
-                      <div className="flex items-center space-x-2" key={type}>
-                        <RadioGroupItem value={type} id={`school-type-${type}`} />
-                        <Label htmlFor={`school-type-${type}`}>{schoolTypeLabels[type] || type}</Label>
+            {/* Вкладка со школами и классами - только для учеников */}
+            {entityType === "student" && (
+              <TabsContent value="school" className="space-y-4">
+                {/* Типы школ */}
+                {examSchoolTypes.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium">学校種類</div>
+                    <RadioGroup 
+                      value={schoolTypeFilter || ""} 
+                      onValueChange={(value) => handleSchoolTypeFilterChange(value === "" ? null : value)}
+                    >
+                      <div className="flex items-center space-x-2 mb-1">
+                        <RadioGroupItem value="" id="school-type-all" />
+                        <Label htmlFor="school-type-all">すべて</Label>
                       </div>
-                    ))}
-                  </RadioGroup>
-                </div>
-              )}
+                      {examSchoolTypes.map((type) => (
+                        <div className="flex items-center space-x-2" key={type}>
+                          <RadioGroupItem value={type} id={`school-type-${type}`} />
+                          <Label htmlFor={`school-type-${type}`}>{schoolTypeLabels[type] || type}</Label>
+                        </div>
+                      ))}
+                    </RadioGroup>
+                  </div>
+                )}
 
-              {/* Классы/Года */}
-              {grades.length > 0 && (
-                <div className="space-y-2 mt-4">
-                  <div className="text-sm font-medium">学年</div>
-                  <RadioGroup 
-                    value={gradeFilter || ""} 
-                    onValueChange={(value) => handleGradeFilterChange(value === "" ? null : value)}
-                  >
-                    <div className="flex items-center space-x-2 mb-1">
-                      <RadioGroupItem value="" id="grade-all" />
-                      <Label htmlFor="grade-all">すべて</Label>
-                    </div>
-                    {grades.map((grade) => (
-                      <div className="flex items-center space-x-2" key={grade.gradeId}>
-                        <RadioGroupItem value={grade.gradeId} id={`grade-${grade.gradeId}`} />
-                        <Label htmlFor={`grade-${grade.gradeId}`}>{grade.name}</Label>
+                {/* Классы/Года */}
+                {grades.length > 0 && (
+                  <div className="space-y-2 mt-4">
+                    <div className="text-sm font-medium">学年</div>
+                    <RadioGroup 
+                      value={gradeFilter || ""} 
+                      onValueChange={(value) => handleGradeFilterChange(value === "" ? null : value)}
+                    >
+                      <div className="flex items-center space-x-2 mb-1">
+                        <RadioGroupItem value="" id="grade-all" />
+                        <Label htmlFor="grade-all">すべて</Label>
                       </div>
-                    ))}
-                  </RadioGroup>
-                </div>
-              )}
-            </TabsContent>
+                      {grades.map((grade) => (
+                        <div className="flex items-center space-x-2" key={grade.gradeId}>
+                          <RadioGroupItem value={grade.gradeId} id={`grade-${grade.gradeId}`} />
+                          <Label htmlFor={`grade-${grade.gradeId}`}>{grade.name}</Label>
+                        </div>
+                      ))}
+                    </RadioGroup>
+                  </div>
+                )}
+              </TabsContent>
+            )}
             
             {/* Вкладка со статусами */}
             <TabsContent value="status" className="space-y-4">
-              {/* Фильтр по наличию уроков */}
-              <div className="space-y-2">
-                <div className="text-sm font-medium">レッスン</div>
-                <RadioGroup 
-                  value={hasLessonsFilter === null ? "" : hasLessonsFilter ? "yes" : "no"} 
-                  onValueChange={(value) => toggleHasLessonsFilter(
-                    value === "" ? null : value === "yes" ? true : false
-                  )}
-                >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="" id="lessons-all" />
-                    <Label htmlFor="lessons-all">すべて</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="yes" id="has-lessons" />
-                    <Label htmlFor="has-lessons">レッスンあり</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="no" id="no-lessons" />
-                    <Label htmlFor="no-lessons">レッスンなし</Label>
-                  </div>
-                </RadioGroup>
-              </div>
-
-              {/* Оценки учителей */}
-              {evaluations.length > 0 && (
-                <div className="space-y-2 mt-4">
+              {/* Оценки учителей - только для учителей */}
+              {entityType === "teacher" && evaluations.length > 0 && (
+                <div className="space-y-2">
                   <div className="text-sm font-medium">評価</div>
                   <RadioGroup 
                     value={evaluationFilter || ""} 
@@ -287,7 +295,7 @@ export default function FilterPopover({
             size="sm" 
             onClick={applyFilters}
           >
-            適用
+            閉じる
           </Button>
         </div>
       </PopoverContent>
