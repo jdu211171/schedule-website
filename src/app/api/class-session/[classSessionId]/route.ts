@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET(
   request: Request,
-  { params }: { params: { classSessionId: string } }
+  { params }: { params: Promise<{ classSessionId: string }> }
 ) {
   const session = await auth();
   if (!session) {
@@ -11,7 +11,8 @@ export async function GET(
   }
 
   try {
-    const classId = params.classId;
+    const { classSessionId } = await params;
+    const classId = classSessionId;
 
     // Fetch the class session with related data
     const classSession = await prisma.classSession.findUnique({
