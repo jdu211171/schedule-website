@@ -1,0 +1,49 @@
+import { auth } from "@/auth";
+import { prisma } from "@/lib/prisma";
+
+export async function GET(
+  request: Request,
+  { params }: { params: { classId: string } }
+) {
+  const session = await auth();
+  if (!session) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const classId = params.classId;
+
+    // Fetch the class session with related data
+    const classSession = await prisma.classSession.findUnique({
+      where: { classId },
+      include: {
+        booth: true,
+        classType: true,
+        subject: true,
+        teacher: true,
+        student: true,
+        regularClassTemplate: true,
+        studentClassEnrollments: {
+          include: {
+            student: true,
+          },
+        },
+      },
+    });
+
+    if (!classSession) {
+      return Response.json(
+        { error: "Class session not found" },
+        { status: 404 }
+      );
+    }
+
+    return Response.json({ data: classSession });
+  } catch (error) {
+    console.error("Error fetching class session:", error);
+    return Response.json(
+      { error: "Failed to fetch class session" },
+      { status: 500 }
+    );
+  }
+}

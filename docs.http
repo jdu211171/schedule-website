@@ -1366,3 +1366,259 @@ Cookie: {{cookie}}
   "studentIds": ["cma144m600010104qpk5ai7om"],
   "notes": "Regular Monday class created from new step-by-step flow"
 }
+
+################
+# CLASS SESSION #
+################
+
+### Get all class sessions (basic)
+GET {{url}}/class-session
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get class sessions with pagination
+GET {{url}}/class-session?page=1&limit=10
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get class sessions for a specific date
+GET {{url}}/class-session?date=2025-05-10
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get class sessions within a date range
+GET {{url}}/class-session?startDate=2025-05-10&endDate=2025-05-17
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get class sessions for a specific teacher (single value)
+GET {{url}}/class-session?teacherId=cma8l10zw000usblivj4xgo22
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get class sessions for multiple teachers
+GET {{url}}/class-session?teacherId=cma8l10zw000usblivj4xgo22&teacherId=cma8l10zz000wsbliwpo14tb1&teacherId=cma8l1102000ysbliibv1grp1
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get class sessions for a specific student (single value)
+GET {{url}}/class-session?studentId=cma8l11050010sbli4bqmqkcj
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get class sessions for multiple students
+GET {{url}}/class-session?studentId=cma8l11050010sbli4bqmqkcj&studentId=cma8l11080012sbli4o8ub11s&studentId=cma8l110a0014sblith88qn08
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get class sessions for a specific subject (single value)
+GET {{url}}/class-session?subjectId=cma8l10zf000hsbli2q544ji2
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get class sessions for multiple subjects
+GET {{url}}/class-session?subjectId=cma8l10zf000hsbli2q544ji2&subjectId=cma8l10zf000isbli6pbaft9f&subjectId=cma8l10zf000jsbli6r8j3m1g
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get class sessions for a specific booth (single value)
+GET {{url}}/class-session?boothId=cma8l10zs000qsblit27g595w
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get class sessions for multiple booths
+GET {{url}}/class-session?boothId=cma8l10zs000qsblit27g595w&boothId=cma8l10zs000rsblikqyde80c&boothId=cma8l10zs000ssblitmudm27s
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get class sessions for a specific class type (single value)
+GET {{url}}/class-session?classTypeId=cma8l10zk000lsblivajzyuxu
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get class sessions for multiple class types
+GET {{url}}/class-session?classTypeId=cma8l10zk000lsblivajzyuxu&classTypeId=cma8l10zk000msbli9gyyx1wh
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get class sessions for a specific template (single value)
+GET {{url}}/class-session?templateId=cma8l110g0016sblicr4f6y84
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get class sessions for a specific day of week (single value)
+GET {{url}}/class-session?dayOfWeek=MONDAY
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get class sessions for multiple days of week
+GET {{url}}/class-session?dayOfWeek=MONDAY&dayOfWeek=WEDNESDAY&dayOfWeek=FRIDAY
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get only template-based class sessions
+GET {{url}}/class-session?isTemplateInstance=true
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get only standalone class sessions
+GET {{url}}/class-session?isTemplateInstance=false
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get class sessions with sorting (ascending by date)
+GET {{url}}/class-session?sort=date&order=asc
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get class sessions with sorting (descending by start time)
+GET {{url}}/class-session?sort=startTime&order=desc
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get class sessions with multiple filters and pagination - Complex query 1
+# Get math sessions taught by 山田 太郎 in Booth A for high school students
+GET {{url}}/class-session?teacherId=cma8l10zw000usblivj4xgo22&subjectId=cma8l10zf000hsbli2q544ji2&boothId=cma8l10zs000qsblit27g595w&studentId=cma8l11050010sbli4bqmqkcj&page=1&limit=5&sort=date&order=asc
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get class sessions with multiple filters and pagination - Complex query 2
+# Get all sessions for either math or physics on Monday or Wednesday
+GET {{url}}/class-session?subjectId=cma8l10zf000hsbli2q544ji2&subjectId=cma8l10zf000jsbli6r8j3m1g&dayOfWeek=MONDAY&dayOfWeek=WEDNESDAY&page=1&limit=10&sort=startTime&order=asc
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Create a new standalone class session
+POST {{url}}/class-session
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "date": "2025-05-15",
+  "startTime": "14:00:00",
+  "endTime": "15:30:00",
+  "teacherId": "cma8l10zw000usblivj4xgo22",
+  "studentId": "cma8l11050010sbli4bqmqkcj",
+  "subjectId": "cma8l10zf000hsbli2q544ji2",
+  "boothId": "cma8l10zs000qsblit27g595w",
+  "classTypeId": "cma8l10zk000lsblivajzyuxu",
+  "notes": "数学特別授業"
+}
+
+### Create a new class session from a template
+POST {{url}}/class-session
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "templateId": "cma8l110g0016sblicr4f6y84",
+  "date": "2025-05-17",
+  "startTime": "15:00:00",
+  "endTime": "16:30:00",
+  "boothId": "cma8l10zs000rsblikqyde80c",
+  "notes": "Booth Bに変更された数学授業"
+}
+
+### Create a new class session from a template (using template defaults)
+POST {{url}}/class-session
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "templateId": "cma8l110g0016sblicr4f6y84",
+  "date": "2025-05-24",
+  "notes": "テンプレートのデフォルト設定を使用"
+}
+
+### Update a standalone class session (all fields)
+# Replace CLASS_SESSION_ID with an actual ID from your database
+PUT {{url}}/class-session
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "classId": "CLASS_SESSION_ID",
+  "date": "2025-05-16",
+  "startTime": "16:00:00",
+  "endTime": "17:30:00",
+  "teacherId": "cma8l10zz000wsbliwpo14tb1",
+  "studentId": "cma8l11080012sbli4o8ub11s",
+  "subjectId": "cma8l10zf000isbli6pbaft9f",
+  "boothId": "cma8l10zs000ssblitmudm27s",
+  "classTypeId": "cma8l10zk000msbli9gyyx1wh",
+  "notes": "英語特別授業に変更"
+}
+
+### Update a template-based class session (allowed fields only)
+# Replace TEMPLATE_BASED_CLASS_ID with an actual ID from your database
+PUT {{url}}/class-session
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "classId": "TEMPLATE_BASED_CLASS_ID",
+  "startTime": "15:30:00",
+  "endTime": "17:00:00",
+  "boothId": "cma8l10zs000ssblitmudm27s",
+  "notes": "時間とブースの変更のみ"
+}
+
+### Delete a class session
+# Replace CLASS_SESSION_ID with an actual ID from your database
+DELETE {{url}}/class-session?classId=CLASS_SESSION_ID
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Test conflict detection (try to schedule when booth is already booked)
+# This uses a date/time that might cause a conflict based on the data provided
+POST {{url}}/class-session
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "date": "2025-05-15",
+  "startTime": "14:00:00",
+  "endTime": "15:30:00",
+  "teacherId": "cma8l1102000ysbliibv1grp1",
+  "studentId": "cma8l11080012sbli4o8ub11s",
+  "subjectId": "cma8l10zf000jsbli6r8j3m1g",
+  "boothId": "cma8l10zs000qsblit27g595w",
+  "classTypeId": "cma8l10zk000lsblivajzyuxu",
+  "notes": "物理特別授業（ブース衝突テスト）"
+}
+
+### Test conflict detection (try to schedule when teacher is already booked)
+# This uses a teacher that might be busy at this time based on the data provided
+POST {{url}}/class-session
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "date": "2025-05-15",
+  "startTime": "14:00:00",
+  "endTime": "15:30:00",
+  "teacherId": "cma8l10zw000usblivj4xgo22",
+  "studentId": "cma8l11080012sbli4o8ub11s",
+  "subjectId": "cma8l10zf000jsbli6r8j3m1g",
+  "boothId": "cma8l10zs000rsblikqyde80c",
+  "classTypeId": "cma8l10zk000lsblivajzyuxu",
+  "notes": "物理特別授業（講師衝突テスト）"
+}
+
+### Test conflict detection (try to schedule when student is already booked)
+# This uses a student that might be busy at this time based on the data provided
+POST {{url}}/class-session
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "date": "2025-05-15",
+  "startTime": "14:00:00",
+  "endTime": "15:30:00",
+  "teacherId": "cma8l1102000ysbliibv1grp1",
+  "studentId": "cma8l11050010sbli4bqmqkcj",
+  "subjectId": "cma8l10zf000jsbli6r8j3m1g",
+  "boothId": "cma8l10zs000rsblikqyde80c",
+  "classTypeId": "cma8l10zk000lsblivajzyuxu",
+  "notes": "物理特別授業（生徒衝突テスト）"
+}
