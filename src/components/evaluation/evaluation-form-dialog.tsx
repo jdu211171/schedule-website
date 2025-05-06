@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -41,7 +40,6 @@ export function EvaluationFormDialog({
   onOpenChange,
   evaluation,
 }: EvaluationFormDialogProps) {
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const createEvaluationMutation = useEvaluationCreate();
   const updateEvaluationMutation = useEvaluationUpdate();
 
@@ -58,28 +56,39 @@ export function EvaluationFormDialog({
     },
   });
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
-    setIsSubmitting(true);
-    try {
-      if (isEditing && evaluation) {
-        await updateEvaluationMutation.mutateAsync({
-          evaluationId: evaluation.evaluationId,
-          ...values,
-        });
-      } else {
-        await createEvaluationMutation.mutateAsync(values);
-      }
-      onOpenChange(false);
-      form.reset();
-    } catch (error) {
-      console.error("Failed to save evaluation:", error);
-    } finally {
-      setIsSubmitting(false);
+  function onSubmit(values: z.infer<typeof formSchema>) {
+    // Ensure the notes field is explicitly included, even if empty
+    const updatedValues = {
+      ...values,
+      notes: values.notes ?? "", // Ensure notes is at least an empty string, not undefined
+    };
+
+    // Close the dialog immediately for better UX
+    onOpenChange(false);
+    form.reset();
+
+    // Then trigger the mutation
+    if (isEditing && evaluation) {
+      updateEvaluationMutation.mutate({
+        evaluationId: evaluation.evaluationId,
+        ...updatedValues,
+      });
+    } else {
+      createEvaluationMutation.mutate(updatedValues);
     }
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(open) => {
+        if (!open) {
+          // Reset form when dialog is closed
+          form.reset();
+        }
+        onOpenChange(open);
+      }}
+    >
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>{isEditing ? "評価の編集" : "評価の作成"}</DialogTitle>
@@ -141,8 +150,8 @@ export function EvaluationFormDialog({
               )}
             />
             <DialogFooter>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "保存中..." : isEditing ? "変更を保存" : "作成"}
+              <Button type="submit">
+                {isEditing ? "変更を保存" : "作成"}
               </Button>
             </DialogFooter>
           </form>

@@ -3,17 +3,18 @@ import { z } from "zod";
 // Base schema with common fields
 const EvaluationBaseSchema = z.object({
   name: z
-    .string()
+    .string({ required_error: "名前は必須です" })
     .min(1, { message: "入力は必須です" })
     .max(100, { message: "100文字以内で入力してください" }),
   score: z
-    .number({ invalid_type_error: "数値で入力してください" })
-    .int({ message: "整数で入力してください" }),
+    .number({ required_error: "スコアは必須です", invalid_type_error: "数値で入力してください" })
+    .int({ message: "整数で入力してください" })
+    .positive({ message: "正の数を入力してください" }),
   notes: z
     .string()
     .max(255, { message: "255文字以内で入力してください" })
-    .optional()
-    .transform((val) => (val === "" ? undefined : val)),
+    .nullable()
+    .default(""),
 });
 
 // Complete evaluation schema (includes all fields from the database)
@@ -53,6 +54,7 @@ export const EvaluationQuerySchema = z
     score: z.coerce
       .number()
       .int({ message: "整数で入力してください" })
+      .positive({ message: "正の数を入力してください" })
       .optional(),
     sort: z
       .enum(["name", "score", "createdAt", "updatedAt"])
