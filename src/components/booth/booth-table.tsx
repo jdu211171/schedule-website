@@ -7,7 +7,7 @@ import { Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/data-table";
 import { useBooths } from "@/hooks/useBoothQuery";
-import { useBoothDelete } from "@/hooks/useBoothMutation";
+import { useBoothDelete, getResolvedBoothId } from "@/hooks/useBoothMutation";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -64,21 +64,26 @@ export function BoothTable() {
       id: "actions",
       header: "操作",
       cell: ({ row }) => {
+        // Type-safe check for _optimistic property
+        const isOptimistic = (row.original as Booth & { _optimistic?: boolean })._optimistic;
+
         return (
           <div className="flex gap-2">
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setBoothToEdit(row.original)}
+              // disabled={isOptimistic}
             >
-              <Pencil className="h-4 w-4" />
+              <Pencil className={`h-4 w-4 ${isOptimistic ? 'opacity-70' : ''}`} />
             </Button>
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setBoothToDelete(row.original)}
+              // disabled={isOptimistic}
             >
-              <Trash2 className="h-4 w-4 text-destructive" />
+              <Trash2 className={`h-4 w-4 text-destructive ${isOptimistic ? 'opacity-70' : ''}`} />
             </Button>
           </div>
         );
@@ -89,10 +94,9 @@ export function BoothTable() {
   const handleDeleteBooth = () => {
     if (boothToDelete) {
       // Close the dialog immediately for better UX
-      const boothId = boothToDelete.boothId;
+      // Use getResolvedBoothId to resolve temp/server IDs
+      const boothId = getResolvedBoothId(boothToDelete.boothId);
       setBoothToDelete(null);
-
-      // Then trigger the deletion
       deleteBoothMutation.mutate(boothId);
     }
   };
@@ -151,8 +155,11 @@ export function BoothTable() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>キャンセル</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteBooth}>
-              削除
+            <AlertDialogAction
+              onClick={handleDeleteBooth}
+              disabled={deleteBoothMutation.isPending}
+            >
+              {deleteBoothMutation.isPending ? "削除中..." : "削除"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -36,10 +36,15 @@ type BoothMutationContext = {
   tempId?: string;
 };
 
+// Maintain a mapping between temporary IDs and server IDs
+const tempToServerIdMap = new Map<string, string>();
+
+export function getResolvedBoothId(id: string): string {
+  return tempToServerIdMap.get(id) || id;
+}
+
 export function useBoothCreate() {
   const queryClient = useQueryClient();
-  // Store tempId for use in onSuccess
-  let tempIdRef: string | undefined;
   return useMutation<
     CreateBoothResponse,
     Error,
@@ -63,16 +68,18 @@ export function useBoothCreate() {
         }
       });
       const tempId = `temp-${Date.now()}`;
-      tempIdRef = tempId;
       queries.forEach(([queryKey]) => {
         const currentData = queryClient.getQueryData<BoothsQueryData>(queryKey);
         if (currentData) {
           const optimisticBooth: Booth = {
             ...newBooth,
             boothId: tempId,
+            // Add extra metadata for tracking
+            _optimistic: true, // Flag to identify optimistic entries
             createdAt: new Date(),
             updatedAt: new Date(),
-          } as Booth;
+          } as Booth & { _optimistic?: boolean };
+
           queryClient.setQueryData<BoothsQueryData>(queryKey, {
             ...currentData,
             data: [optimisticBooth, ...currentData.data],
@@ -94,11 +101,23 @@ export function useBoothCreate() {
           }
         );
       }
+
+      // Clean up the ID mapping if we created one
+      if (context?.tempId) {
+        tempToServerIdMap.delete(context.tempId);
+      }
+
       toast.error("ブースの追加に失敗しました", {
         description: error.message,
       });
     },
-    onSuccess: (data) => {
+    onSuccess: (response, _, context) => {
+      if (!context?.tempId) return;
+
+      // Store the mapping between temporary ID and server ID
+      tempToServerIdMap.set(context.tempId, response.data.boothId);
+
+      // Update all booth queries
       const queries = queryClient.getQueriesData<BoothsQueryData>({
         queryKey: ["booths"],
       });
@@ -108,13 +127,13 @@ export function useBoothCreate() {
           queryClient.setQueryData<BoothsQueryData>(queryKey, {
             ...currentData,
             data: currentData.data.map((booth) =>
-              booth.boothId === tempIdRef ? data.data : booth
+              booth.boothId === context.tempId ? response.data : booth
             ),
           });
         }
       });
       toast.success("ブースを追加しました", {
-        description: data.message,
+        description: response.message,
       });
     },
     onSettled: () => {
@@ -134,15 +153,23 @@ export function useBoothUpdate() {
     UpdateBoothInput,
     BoothMutationContext
   >({
-    mutationFn: ({ boothId, ...data }) =>
-      fetcher(`/api/booth`, {
+    mutationFn: ({ boothId, ...data }) => {
+      // Resolve the ID before sending to the server
+      const resolvedId = getResolvedBoothId(boothId);
+
+      return fetcher(`/api/booth`, {
         method: "PUT",
-        body: JSON.stringify({ boothId, ...data }),
-      }),
+        body: JSON.stringify({ boothId: resolvedId, ...data }),
+      });
+    },
     onMutate: async (updatedBooth) => {
       await queryClient.cancelQueries({ queryKey: ["booths"] });
+
+      // Resolve ID for any potential temporary ID
+      const resolvedId = getResolvedBoothId(updatedBooth.boothId);
+
       await queryClient.cancelQueries({
-        queryKey: ["booth", updatedBooth.boothId],
+        queryKey: ["booth", resolvedId],
       });
       const queries = queryClient.getQueriesData<BoothsQueryData>({
         queryKey: ["booths"],
@@ -154,8 +181,7 @@ export function useBoothUpdate() {
         }
       });
       const previousBooth = queryClient.getQueryData<Booth>([
-        "booth",
-        updatedBooth.boothId,
+        "booth", resolvedId,
       ]);
       queries.forEach(([queryKey]) => {
         const currentData = queryClient.getQueryData<BoothsQueryData>(queryKey);
@@ -171,7 +197,7 @@ export function useBoothUpdate() {
         }
       });
       if (previousBooth) {
-        queryClient.setQueryData<Booth>(["booth", updatedBooth.boothId], {
+        queryClient.setQueryData<Booth>(["booth", resolvedId], {
           ...previousBooth,
           ...updatedBooth,
           updatedAt: new Date(),
@@ -188,9 +214,13 @@ export function useBoothUpdate() {
           }
         );
       }
+
+      // Resolve the ID for restoring the single booth query
+      const resolvedId = getResolvedBoothId(variables.boothId);
+
       if (context?.previousBooth) {
         queryClient.setQueryData(
-          ["booth", variables.boothId],
+          ["booth", resolvedId],
           context.previousBooth
         );
       }
@@ -204,12 +234,15 @@ export function useBoothUpdate() {
       });
     },
     onSettled: (_, __, variables) => {
+      // Resolve ID for proper invalidation
+      const resolvedId = getResolvedBoothId(variables.boothId);
+
       queryClient.invalidateQueries({
         queryKey: ["booths"],
         refetchType: "none",
       });
       queryClient.invalidateQueries({
-        queryKey: ["booth", variables.boothId],
+        queryKey: ["booth", resolvedId],
         refetchType: "none",
       });
     },
@@ -219,14 +252,22 @@ export function useBoothUpdate() {
 export function useBoothDelete() {
   const queryClient = useQueryClient();
   return useMutation<DeleteBoothResponse, Error, string, BoothMutationContext>({
-    mutationFn: (boothId) =>
-      fetcher(`/api/booth?boothId=${boothId}`, {
+    mutationFn: (boothId) => {
+      // Resolve the ID before sending to the server
+      const resolvedId = getResolvedBoothId(boothId);
+
+      return fetcher(`/api/booth?boothId=${resolvedId}`, {
         method: "DELETE",
-      }),
+      });
+    },
     onMutate: async (boothId) => {
       // Cancel any outgoing refetches
       await queryClient.cancelQueries({ queryKey: ["booths"] });
-      await queryClient.cancelQueries({ queryKey: ["booth", boothId] });
+
+      // Resolve ID for any potential temporary ID
+      const resolvedId = getResolvedBoothId(boothId);
+
+      await queryClient.cancelQueries({ queryKey: ["booth", resolvedId] });
 
       // Snapshot all booth queries
       const queries = queryClient.getQueriesData<BoothsQueryData>({
@@ -270,7 +311,12 @@ export function useBoothDelete() {
       });
 
       // Remove the individual booth query
-      queryClient.removeQueries({ queryKey: ["booth", boothId] });
+      queryClient.removeQueries({ queryKey: ["booth", resolvedId] });
+
+      // If it was a temporary ID, clean up the mapping
+      if (boothId.startsWith('temp-')) {
+        tempToServerIdMap.delete(boothId);
+      }
 
       // Return the snapshots for rollback
       return { previousBooths, deletedBooth };
@@ -286,29 +332,45 @@ export function useBoothDelete() {
         );
       }
 
+      // Restore mapping if it was removed
+      if (boothId.startsWith('temp-') && context?.deletedBooth) {
+        tempToServerIdMap.set(boothId, context.deletedBooth.boothId);
+      }
+
+      // Resolve ID for restoring the single booth query
+      const resolvedId = getResolvedBoothId(boothId);
+
       // Restore individual booth query if it existed
       if (context?.deletedBooth) {
-        queryClient.setQueryData(["booth", boothId], context.deletedBooth);
+        queryClient.setQueryData(["booth", resolvedId], context.deletedBooth);
       }
 
       toast.error("ブースの削除に失敗しました", {
         description: error.message,
       });
     },
-    onSuccess: (data) => {
+    onSuccess: (data, boothId) => {
+      // If it was a temporary ID, clean up the mapping on success
+      if (boothId.startsWith('temp-')) {
+        tempToServerIdMap.delete(boothId);
+      }
+
       toast.success("ブースを削除しました", {
         description: data.message,
       });
     },
     onSettled: (_, __, boothId) => {
+      // Resolve ID for proper invalidation
+      const resolvedId = getResolvedBoothId(boothId);
+
       // Invalidate queries in the background to ensure eventual consistency
       queryClient.invalidateQueries({
         queryKey: ["booths"],
         refetchType: "none",
       });
       queryClient.invalidateQueries({
-        queryKey: ["booth", boothId],
-        refetchType: "none",
+        queryKey: ["booth", resolvedId],
+        refetchType: "none"
       });
     },
   });
