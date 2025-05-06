@@ -69,7 +69,7 @@ export function EvaluationTable() {
               variant="ghost"
               size="icon"
               onClick={() => setEvaluationToEdit(row.original)}
-              // disabled={isOptimistic}
+              
             >
               <Pencil className={`h-4 w-4 ${isOptimistic ? 'opacity-70' : ''}`} />
             </Button>
