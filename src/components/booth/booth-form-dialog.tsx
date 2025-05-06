@@ -70,29 +70,25 @@ export function BoothFormDialog({
     }
   }, [booth, form]);
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
+  function onSubmit(values: z.infer<typeof formSchema>) {
     // Ensure the notes field is explicitly included, even if empty
     const updatedValues = {
       ...values,
       notes: values.notes ?? "", // Ensure notes is at least an empty string, not undefined
     };
 
-    try {
-      if (isEditing && booth) {
-        await updateBoothMutation.mutateAsync({
-          boothId: booth.boothId,
-          ...updatedValues,
-        });
-      } else {
-        await createBoothMutation.mutateAsync(updatedValues);
-      }
+    // Close the dialog immediately for better UX
+    onOpenChange(false);
+    form.reset();
 
-      // Close the dialog immediately after successful mutation
-      onOpenChange(false);
-      form.reset();
-    } catch (error) {
-      // Handle error if needed
-      console.error("Error during mutation:", error);
+    // Then trigger the mutation
+    if (isEditing && booth) {
+      updateBoothMutation.mutate({
+        boothId: booth.boothId,
+        ...updatedValues,
+      });
+    } else {
+      createBoothMutation.mutate(updatedValues);
     }
   }
 
@@ -166,13 +162,8 @@ export function BoothFormDialog({
               )}
             />
             <DialogFooter>
-              <Button
-                type="submit"
-                disabled={createBoothMutation.isPending || updateBoothMutation.isPending}
-              >
-                {(createBoothMutation.isPending || updateBoothMutation.isPending)
-                  ? "保存中..."
-                  : isEditing ? "変更を保存" : "作成"}
+              <Button type="submit">
+                {isEditing ? "変更を保存" : "作成"}
               </Button>
             </DialogFooter>
           </form>
