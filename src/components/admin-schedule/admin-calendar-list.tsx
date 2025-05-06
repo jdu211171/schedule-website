@@ -1,6 +1,7 @@
+
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import {
@@ -69,8 +70,12 @@ type TemplateWithRelations = {
   }[];
 };
 
-export default function AdminCalendarList() {
-  // Состояние для пагинации и фильтрации
+type AdminCalendarListProps = {
+  mode?: 'view' | 'create';
+};
+
+export default function AdminCalendarList({ mode = 'view' }: AdminCalendarListProps) {
+  const [safeTemplates, setSafeTemplates] = useState<TemplateWithRelations[]>([]);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [searchTerm, setSearchTerm] = useState('');
@@ -85,11 +90,27 @@ export default function AdminCalendarList() {
   const [deleteTemplateId, setDeleteTemplateId] = useState<string | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
-  // Получение данных
-  const { data: templates, isLoading, error } = useRegularClassTemplates({
+  // Получение данных с дополнительной безопасностью
+  const { data, isLoading, error } = useRegularClassTemplates({
     page,
     // pageSize
-  }) as { data: TemplateWithRelations[] | undefined, isLoading: boolean, error: Error | null };
+  }) as any;
+
+  // Безопасно обновляем локальное состояние когда данные меняются
+  useEffect(() => {
+    if (data) {
+      try {
+        // Проверяем, является ли data массивом
+        const templatesArray = Array.isArray(data) ? data : [];
+        setSafeTemplates(templatesArray);
+      } catch (e) {
+        console.error('Error processing templates data:', e);
+        setSafeTemplates([]);
+      }
+    } else {
+      setSafeTemplates([]);
+    }
+  }, [data]);
 
   // Мутации для удаления
   const deleteTemplateMutation = useRegularClassTemplateDelete();
@@ -104,12 +125,15 @@ export default function AdminCalendarList() {
           : 'asc',
     }));
   };
-  
-  // Сортировка текущих данных
+
+  // Сортировка текущих данных с безопасной проверкой
   const sortedTemplates = React.useMemo(() => {
-    if (!templates) return [];
-    
-    return [...templates].sort((a, b) => {
+    // Всегда проверяем, что у нас есть массив для работы
+    if (!Array.isArray(safeTemplates) || safeTemplates.length === 0) return [];
+
+    return [...safeTemplates].sort((a, b) => {
+      if (!a || !b) return 0;
+
       switch (sortConfig.key) {
         case 'dayOfWeek':
           const dayOrder: Record<string, number> = {
@@ -121,38 +145,48 @@ export default function AdminCalendarList() {
             'saturday': 5,
             'sunday': 6
           };
-          const dayA = dayOrder[a.dayOfWeek.toLowerCase()] ?? 999;
-          const dayB = dayOrder[b.dayOfWeek.toLowerCase()] ?? 999;
+          const dayA = a.dayOfWeek && dayOrder[a.dayOfWeek.toLowerCase()] !== undefined ? dayOrder[a.dayOfWeek.toLowerCase()] : 999;
+          const dayB = b.dayOfWeek && dayOrder[b.dayOfWeek.toLowerCase()] !== undefined ? dayOrder[b.dayOfWeek.toLowerCase()] : 999;
           return sortConfig.direction === 'asc'
             ? dayA - dayB
             : dayB - dayA;
-        
+
         case 'startTime':
+          const startTimeA = a.startTime instanceof Date ? a.startTime.getTime() : 0;
+          const startTimeB = b.startTime instanceof Date ? b.startTime.getTime() : 0;
           return sortConfig.direction === 'asc'
-            ? a.startTime.getTime() - b.startTime.getTime()
-            : b.startTime.getTime() - a.startTime.getTime();
-        
+            ? startTimeA - startTimeB
+            : startTimeB - startTimeA;
+
         case 'endTime':
+          const endTimeA = a.endTime instanceof Date ? a.endTime.getTime() : 0;
+          const endTimeB = b.endTime instanceof Date ? b.endTime.getTime() : 0;
           return sortConfig.direction === 'asc'
-            ? a.endTime.getTime() - b.endTime.getTime()
-            : b.endTime.getTime() - a.endTime.getTime();
-        
+            ? endTimeA - endTimeB
+            : endTimeB - endTimeA;
+
         case 'boothId':
           const boothNameA = a.booth?.name || '';
           const boothNameB = b.booth?.name || '';
           return sortConfig.direction === 'asc'
             ? boothNameA.localeCompare(boothNameB)
             : boothNameB.localeCompare(boothNameA);
-        
+
         default:
           return 0;
       }
     });
-  }, [templates, sortConfig]);
+  }, [safeTemplates, sortConfig]);
 
-  // Формат времени
-  const formatTime = (date: Date) => {
-    return format(date, 'HH:mm', { locale: ja });
+  // Формат времени с безопасной проверкой
+  const formatTime = (date: Date | null | undefined) => {
+    if (!date || !(date instanceof Date)) return '--:--';
+    try {
+      return format(date, 'HH:mm', { locale: ja });
+    } catch (e) {
+      console.error('Error formatting time:', e);
+      return '--:--';
+    }
   };
 
   // Обработчик удаления
@@ -185,14 +219,15 @@ export default function AdminCalendarList() {
     'sunday': '日曜日',
   };
 
-  // Отображение дня недели
-  const displayDayOfWeek = (day: string) => {
+  // Отображение дня недели с безопасной проверкой
+  const displayDayOfWeek = (day: string | null | undefined) => {
+    if (!day) return '---';
     return dayOfWeekMap[day.toLowerCase()] || day;
   };
 
   // Расчет страниц
-  const totalItems = templates ? templates.length : 0;
-  const totalPages = Math.ceil(totalItems / pageSize);
+  const totalItems = Array.isArray(safeTemplates) ? safeTemplates.length : 0;
+  const totalPages = Math.ceil(totalItems / pageSize) || 1;
 
   // Состояние загрузки и ошибки
   if (isLoading) {
@@ -202,7 +237,7 @@ export default function AdminCalendarList() {
   if (error) {
     return (
       <div className="text-center py-8 text-red-500">
-        エラーが発生しました: {error.message}
+        エラーが発生しました: {error.message || 'Unknown error'}
       </div>
     );
   }
@@ -251,98 +286,98 @@ export default function AdminCalendarList() {
             <TableHeader>
               <TableRow>
                 <TableHead className="relative w-24">
-                  <div 
+                  <div
                     className="cursor-pointer px-2 py-3 hover:bg-muted/50 flex items-center justify-between"
                     onClick={() => handleSort('dayOfWeek')}
                   >
                     <span>曜日</span>
                     <div className="flex flex-col -space-y-1">
-                      <ChevronUp 
+                      <ChevronUp
                         className={`h-4 w-4 ${
-                          sortConfig.key === 'dayOfWeek' && sortConfig.direction === 'asc' 
-                            ? 'text-foreground' 
+                          sortConfig.key === 'dayOfWeek' && sortConfig.direction === 'asc'
+                            ? 'text-foreground'
                             : 'text-muted-foreground'
-                        }`} 
+                        }`}
                       />
-                      <ChevronDown 
+                      <ChevronDown
                         className={`h-4 w-4 ${
-                          sortConfig.key === 'dayOfWeek' && sortConfig.direction === 'desc' 
-                            ? 'text-foreground' 
+                          sortConfig.key === 'dayOfWeek' && sortConfig.direction === 'desc'
+                            ? 'text-foreground'
                             : 'text-muted-foreground'
-                        }`} 
+                        }`}
                       />
                     </div>
                   </div>
                 </TableHead>
                 <TableHead className="relative">
                   <div className="flex items-center">
-                    <div 
+                    <div
                       className="cursor-pointer px-2 py-3 hover:bg-muted/50 flex items-center justify-between w-16"
                       onClick={() => handleSort('startTime')}
                     >
                       <span>開始</span>
                       <div className="flex flex-col -space-y-1">
-                        <ChevronUp 
+                        <ChevronUp
                           className={`h-4 w-4 ${
-                            sortConfig.key === 'startTime' && sortConfig.direction === 'asc' 
-                              ? 'text-foreground' 
+                            sortConfig.key === 'startTime' && sortConfig.direction === 'asc'
+                              ? 'text-foreground'
                               : 'text-muted-foreground'
-                          }`} 
+                          }`}
                         />
-                        <ChevronDown 
+                        <ChevronDown
                           className={`h-4 w-4 ${
-                            sortConfig.key === 'startTime' && sortConfig.direction === 'desc' 
-                              ? 'text-foreground' 
+                            sortConfig.key === 'startTime' && sortConfig.direction === 'desc'
+                              ? 'text-foreground'
                               : 'text-muted-foreground'
-                          }`} 
+                          }`}
                         />
                       </div>
                     </div>
                     <span className="mx-1">-</span>
-                    <div 
+                    <div
                       className="cursor-pointer px-2 py-3 hover:bg-muted/50 flex items-center justify-between w-16"
                       onClick={() => handleSort('endTime')}
                     >
                       <span>終了</span>
                       <div className="flex flex-col -space-y-1">
-                        <ChevronUp 
+                        <ChevronUp
                           className={`h-4 w-4 ${
-                            sortConfig.key === 'endTime' && sortConfig.direction === 'asc' 
-                              ? 'text-foreground' 
+                            sortConfig.key === 'endTime' && sortConfig.direction === 'asc'
+                              ? 'text-foreground'
                               : 'text-muted-foreground'
-                          }`} 
+                          }`}
                         />
-                        <ChevronDown 
+                        <ChevronDown
                           className={`h-4 w-4 ${
-                            sortConfig.key === 'endTime' && sortConfig.direction === 'desc' 
-                              ? 'text-foreground' 
+                            sortConfig.key === 'endTime' && sortConfig.direction === 'desc'
+                              ? 'text-foreground'
                               : 'text-muted-foreground'
-                          }`} 
+                          }`}
                         />
                       </div>
                     </div>
                   </div>
                 </TableHead>
                 <TableHead className="relative">
-                  <div 
+                  <div
                     className="cursor-pointer px-2 py-3 hover:bg-muted/50 flex items-center justify-between"
                     onClick={() => handleSort('boothId')}
                   >
                     <span>教室</span>
                     <div className="flex flex-col -space-y-1">
-                      <ChevronUp 
+                      <ChevronUp
                         className={`h-4 w-4 ${
-                          sortConfig.key === 'boothId' && sortConfig.direction === 'asc' 
-                            ? 'text-foreground' 
+                          sortConfig.key === 'boothId' && sortConfig.direction === 'asc'
+                            ? 'text-foreground'
                             : 'text-muted-foreground'
-                        }`} 
+                        }`}
                       />
-                      <ChevronDown 
+                      <ChevronDown
                         className={`h-4 w-4 ${
-                          sortConfig.key === 'boothId' && sortConfig.direction === 'desc' 
-                            ? 'text-foreground' 
+                          sortConfig.key === 'boothId' && sortConfig.direction === 'desc'
+                            ? 'text-foreground'
                             : 'text-muted-foreground'
-                        }`} 
+                        }`}
                       />
                     </div>
                   </div>
@@ -365,7 +400,7 @@ export default function AdminCalendarList() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sortedTemplates && sortedTemplates.length > 0 ? (
+              {Array.isArray(sortedTemplates) && sortedTemplates.length > 0 ? (
                 sortedTemplates.map((template: TemplateWithRelations) => (
                   <TableRow key={template.templateId}>
                     <TableCell>{displayDayOfWeek(template.dayOfWeek)}</TableCell>
@@ -386,9 +421,12 @@ export default function AdminCalendarList() {
                       {template.subject?.name || '---'}
                     </TableCell>
                     <TableCell>
-                      {template.templateStudentAssignments?.map((assignment: {student: {name: string} | null}) => 
-                        assignment.student?.name
-                      ).filter(Boolean).join(', ') || '---'}
+                      {Array.isArray(template.templateStudentAssignments)
+                        ? template.templateStudentAssignments
+                        .map(assignment => assignment?.student?.name)
+                        .filter(Boolean)
+                        .join(', ') || '---'
+                        : '---'}
                     </TableCell>
                     <TableCell className="w-32 max-w-[8rem] truncate">
                       {template.notes || '---'}
@@ -431,7 +469,7 @@ export default function AdminCalendarList() {
                 className={page === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
               />
             </PaginationItem>
-            
+
             {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
               let pageToShow: number;
               if (totalPages <= 5) {
@@ -443,7 +481,7 @@ export default function AdminCalendarList() {
               } else {
                 pageToShow = page - 2 + i;
               }
-              
+
               return (
                 <PaginationItem key={pageToShow}>
                   <PaginationLink
@@ -455,7 +493,7 @@ export default function AdminCalendarList() {
                 </PaginationItem>
               );
             })}
-            
+
             <PaginationItem>
               <PaginationNext
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
@@ -476,7 +514,7 @@ export default function AdminCalendarList() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>キャンセル</AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogAction
               onClick={confirmDelete}
               className="bg-red-500 hover:bg-red-600"
             >
