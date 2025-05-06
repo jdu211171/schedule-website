@@ -28,7 +28,6 @@ export function BoothTable() {
   const {
     data: booths,
     isLoading,
-    isFetching,
   } = useBooths({
     page,
     limit: pageSize,
@@ -87,14 +86,14 @@ export function BoothTable() {
     },
   ];
 
-  const handleDeleteBooth = async () => {
+  const handleDeleteBooth = () => {
     if (boothToDelete) {
-      try {
-        await deleteBoothMutation.mutateAsync(boothToDelete.boothId);
-        setBoothToDelete(null);
-      } catch (error) {
-        console.error("ブースの削除に失敗しました:", error);
-      }
+      // Close the dialog immediately for better UX
+      const boothId = boothToDelete.boothId;
+      setBoothToDelete(null);
+
+      // Then trigger the deletion
+      deleteBoothMutation.mutate(boothId);
     }
   };
 
@@ -109,7 +108,7 @@ export function BoothTable() {
       <DataTable
         columns={columns}
         data={typedBooths || []}
-        isLoading={isLoading || isFetching}
+        isLoading={isLoading && !typedBooths} // Only show loading state on initial load
         searchPlaceholder="ブースを検索..."
         onSearch={setSearchTerm}
         searchValue={searchTerm}
@@ -152,8 +151,11 @@ export function BoothTable() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>キャンセル</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteBooth}>
-              削除
+            <AlertDialogAction
+              onClick={handleDeleteBooth}
+              disabled={deleteBoothMutation.isPending}
+            >
+              {deleteBoothMutation.isPending ? "削除中..." : "削除"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
