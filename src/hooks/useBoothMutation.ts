@@ -32,6 +32,8 @@ type BoothsQueryData = {
 type BoothMutationContext = {
   previousBooths?: BoothsQueryData;
   previousBooth?: Booth;
+  deletedBooth?: Booth;
+  tempId?: string;
 };
 
 export function useBoothCreate() {
@@ -56,28 +58,33 @@ export function useBoothCreate() {
         "booths",
       ]);
 
+      // Generate a temporary ID for optimistic update
+      const tempId = `temp-${Date.now()}`;
+
       // Optimistically update to the new value
       if (previousBooths) {
-        queryClient.setQueryData<BoothsQueryData>(["booths"], {
-          ...previousBooths,
-          data: [
-            ...previousBooths.data,
-            {
-              ...newBooth,
-              boothId: `temp-${Date.now()}`, // Temporary ID until server responds
-              createdAt: new Date(),
-              updatedAt: new Date(),
-            } as Booth,
-          ],
-          pagination: {
-            ...previousBooths.pagination,
-            total: previousBooths.pagination.total + 1,
-          },
+        const optimisticBooth: Booth = {
+          ...newBooth,
+          boothId: tempId,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        } as Booth;
+
+        queryClient.setQueryData<BoothsQueryData>(["booths"], (old) => {
+          if (!old) return previousBooths;
+          return {
+            ...old,
+            data: [...old.data, optimisticBooth],
+            pagination: {
+              ...old.pagination,
+              total: old.pagination.total + 1,
+            },
+          };
         });
       }
 
-      // Return the snapshot for rollback
-      return { previousBooths };
+      // Return the snapshot and temp ID for rollback
+      return { previousBooths, tempId };
     },
     onError: (error, _, context) => {
       // Rollback on error
@@ -90,19 +97,7 @@ export function useBoothCreate() {
       });
     },
     onSuccess: (data) => {
-      // Directly update the cache with the response data
-      const boothsData = queryClient.getQueryData<BoothsQueryData>(["booths"]);
-      if (boothsData) {
-        queryClient.setQueryData<BoothsQueryData>(["booths"], {
-          ...boothsData,
-          data: [...boothsData.data.filter(b => b.boothId !== `temp-${Date.now()}`), data.data],
-          pagination: {
-            ...boothsData.pagination,
-            total: boothsData.pagination.total,
-          },
-        });
-      }
-
+      // No need to manually update the cache here, we'll rely on invalidation
       toast.success("ブースを追加しました", {
         description: data.message,
       });
@@ -143,25 +138,34 @@ export function useBoothUpdate() {
         updatedBooth.boothId,
       ]);
 
+      // Create optimistic update with current timestamp
+      const optimisticBooth = {
+        ...(previousBooth || {}),
+        ...updatedBooth,
+        updatedAt: new Date(),
+      };
+
       // Optimistically update to the new value
       if (previousBooths) {
-        queryClient.setQueryData<BoothsQueryData>(["booths"], {
-          ...previousBooths,
-          data: previousBooths.data.map((booth) =>
-            booth.boothId === updatedBooth.boothId
-              ? { ...booth, ...updatedBooth, updatedAt: new Date() }
-              : booth
-          ),
+        queryClient.setQueryData<BoothsQueryData>(["booths"], (old) => {
+          if (!old) return previousBooths;
+          return {
+            ...old,
+            data: old.data.map((booth) =>
+              booth.boothId === updatedBooth.boothId
+                ? (optimisticBooth as Booth)
+                : booth
+            ),
+          };
         });
       }
 
       // Also update the single booth query if it exists
       if (previousBooth) {
-        queryClient.setQueryData<Booth>(["booth", updatedBooth.boothId], {
-          ...previousBooth,
-          ...updatedBooth,
-          updatedAt: new Date(),
-        });
+        queryClient.setQueryData<Booth>(
+          ["booth", updatedBooth.boothId],
+          optimisticBooth as Booth
+        );
       }
 
       // Return the snapshots for rollback
@@ -184,27 +188,8 @@ export function useBoothUpdate() {
         description: error.message,
       });
     },
-    onSuccess: (data, variables) => {
-      // Update the cache with the actual server response data
-      const updatedBooth = data.data;
-
-      // Update booth list cache if it exists
-      const boothsData = queryClient.getQueryData<BoothsQueryData>(["booths"]);
-      if (boothsData) {
-        queryClient.setQueryData<BoothsQueryData>(["booths"], {
-          ...boothsData,
-          data: boothsData.data.map((booth) =>
-            booth.boothId === updatedBooth.boothId ? updatedBooth : booth
-          ),
-        });
-      }
-
-      // Update single booth cache
-      queryClient.setQueryData<Booth>(
-        ["booth", variables.boothId],
-        updatedBooth
-      );
-
+    onSuccess: (data) => {
+      // No need to manually update cache here
       toast.success("ブースを更新しました", {
         description: data.message,
       });
@@ -212,7 +197,9 @@ export function useBoothUpdate() {
     onSettled: (_, __, variables) => {
       // Always invalidate queries to ensure consistency
       queryClient.invalidateQueries({ queryKey: ["booths"] });
-      queryClient.invalidateQueries({ queryKey: ["booth", variables.boothId] });
+      queryClient.invalidateQueries({
+        queryKey: ["booth", variables.boothId],
+      });
     },
   });
 }
@@ -234,30 +221,41 @@ export function useBoothDelete() {
         "booths",
       ]);
 
+      // Save the booth being deleted for potential rollback
+      const deletedBooth = previousBooths?.data.find(
+        (booth) => booth.boothId === boothId
+      );
+
       // Optimistically update by removing the booth
       if (previousBooths) {
-        queryClient.setQueryData<BoothsQueryData>(["booths"], {
-          ...previousBooths,
-          data: previousBooths.data.filter(
-            (booth) => booth.boothId !== boothId
-          ),
-          pagination: {
-            ...previousBooths.pagination,
-            total: previousBooths.pagination.total - 1,
-          },
+        queryClient.setQueryData<BoothsQueryData>(["booths"], (old) => {
+          if (!old) return previousBooths;
+          return {
+            ...old,
+            data: old.data.filter((booth) => booth.boothId !== boothId),
+            pagination: {
+              ...old.pagination,
+              total: old.pagination.total - 1,
+            },
+          };
         });
       }
 
       // Remove the single booth query if it exists
       queryClient.removeQueries({ queryKey: ["booth", boothId] });
 
-      // Return the snapshot for rollback
-      return { previousBooths };
+      // Return the snapshot and deleted booth for rollback
+      return { previousBooths, deletedBooth };
     },
     onError: (error, boothId, context) => {
       // Rollback on error
       if (context?.previousBooths) {
         queryClient.setQueryData(["booths"], context.previousBooths);
+      }
+
+      // If we have the deleted booth, restore it to the single query
+      if (context?.deletedBooth) {
+        queryClient.setQueryData(["booth", boothId], context.deletedBooth);
       }
 
       toast.error("ブースの削除に失敗しました", {
