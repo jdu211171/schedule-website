@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { useEffect, useState } from "react"; // Added useState
+import { useEffect } from "react"; // Added useState
 
 import { Button } from "@/components/ui/button";
 import {
@@ -41,9 +41,6 @@ export function BoothFormDialog({
 }: BoothFormDialogProps) {
   const createBoothMutation = useBoothCreate();
   const updateBoothMutation = useBoothUpdate();
-  const [localSubmitting, setLocalSubmitting] = useState(false); // Added local state
-  const isSubmitting =
-    localSubmitting || createBoothMutation.isPending || updateBoothMutation.isPending;
   const isEditing = !!booth;
 
   const formSchema = CreateBoothSchema;
@@ -74,32 +71,24 @@ export function BoothFormDialog({
   }, [booth, form]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    // Immediately set submitting to true to prevent multiple clicks
-    setLocalSubmitting(true);
+    // Ensure the notes field is explicitly included, even if empty
+    const updatedValues = {
+      ...values,
+      notes: values.notes ?? "", // Ensure notes is at least an empty string, not undefined
+    };
 
-    try {
-      // Ensure the notes field is explicitly included, even if empty
-      const updatedValues = {
-        ...values,
-        notes: values.notes ?? "", // Ensure notes is at least an empty string, not undefined
-      };
-
-      if (isEditing && booth) {
-        await updateBoothMutation.mutateAsync({
-          boothId: booth.boothId,
-          ...updatedValues,
-        });
-      } else {
-        await createBoothMutation.mutateAsync(updatedValues);
-      }
-      onOpenChange(false);
-      form.reset();
-    } catch (error) {
-      console.error("ブースの保存に失敗しました:", error);
-    } finally {
-      // Ensure we reset the submitting state even if there's an error
-      setLocalSubmitting(false);
+    if (isEditing && booth) {
+      updateBoothMutation.mutate({
+        boothId: booth.boothId,
+        ...updatedValues,
+      });
+    } else {
+      createBoothMutation.mutate(updatedValues);
     }
+
+    // Close the dialog immediately for better user experience
+    onOpenChange(false);
+    form.reset();
   }
 
   return (
@@ -172,8 +161,13 @@ export function BoothFormDialog({
               )}
             />
             <DialogFooter>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "保存中..." : isEditing ? "変更を保存" : "作成"}
+              <Button
+                type="submit"
+                disabled={createBoothMutation.isPending || updateBoothMutation.isPending}
+              >
+                {(createBoothMutation.isPending || updateBoothMutation.isPending)
+                  ? "保存中..."
+                  : isEditing ? "変更を保存" : "作成"}
               </Button>
             </DialogFooter>
           </form>
