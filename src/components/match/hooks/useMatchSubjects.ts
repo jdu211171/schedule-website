@@ -4,10 +4,9 @@ import { fetchSubjects } from '../api-client';
 import { PaginationParams } from '../types';
 
 export function useMatchSubjects(params: PaginationParams = {}) {
-  const { page = 1, limit = 10 } = params;
-  
   return useQuery({
     queryKey: ['matchSubjects', params],
-    queryFn: () => fetchSubjects({ ...params, page, limit }),
+    queryFn: () => fetchSubjects(params),
+    staleTime: 30 * 60 * 1000, // Кеширование на 30 минут (редко меняющиеся данные)
   });
 }
