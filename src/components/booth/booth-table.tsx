@@ -151,11 +151,8 @@ export function BoothTable() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>キャンセル</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteBooth}
-              disabled={deleteBoothMutation.isPending}
-            >
-              {deleteBoothMutation.isPending ? "削除中..." : "削除"}
+            <AlertDialogAction onClick={handleDeleteBooth}>
+              削除
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
