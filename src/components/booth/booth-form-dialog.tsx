@@ -77,18 +77,23 @@ export function BoothFormDialog({
       notes: values.notes ?? "", // Ensure notes is at least an empty string, not undefined
     };
 
-    if (isEditing && booth) {
-      updateBoothMutation.mutate({
-        boothId: booth.boothId,
-        ...updatedValues,
-      });
-    } else {
-      createBoothMutation.mutate(updatedValues);
-    }
+    try {
+      if (isEditing && booth) {
+        await updateBoothMutation.mutateAsync({
+          boothId: booth.boothId,
+          ...updatedValues,
+        });
+      } else {
+        await createBoothMutation.mutateAsync(updatedValues);
+      }
 
-    // Close the dialog immediately for better user experience
-    onOpenChange(false);
-    form.reset();
+      // Close the dialog immediately after successful mutation
+      onOpenChange(false);
+      form.reset();
+    } catch (error) {
+      // Handle error if needed
+      console.error("Error during mutation:", error);
+    }
   }
 
   return (

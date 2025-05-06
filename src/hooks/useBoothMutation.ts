@@ -30,7 +30,7 @@ type BoothsQueryData = {
 
 // Define context types for mutations
 type BoothMutationContext = {
-  previousBooths?: BoothsQueryData;
+  previousBooths?: Record<string, BoothsQueryData>;
   previousBooth?: Booth;
   deletedBooth?: Booth;
   tempId?: string;
@@ -38,6 +38,8 @@ type BoothMutationContext = {
 
 export function useBoothCreate() {
   const queryClient = useQueryClient();
+  // Store tempId for use in onSuccess
+  let tempIdRef: string | undefined;
   return useMutation<
     CreateBoothResponse,
     Error,
@@ -50,61 +52,76 @@ export function useBoothCreate() {
         body: JSON.stringify(data),
       }),
     onMutate: async (newBooth) => {
-      // Cancel any outgoing refetches
       await queryClient.cancelQueries({ queryKey: ["booths"] });
-
-      // Snapshot the previous value
-      const previousBooths = queryClient.getQueryData<BoothsQueryData>([
-        "booths",
-      ]);
-
-      // Generate a temporary ID for optimistic update
+      const queries = queryClient.getQueriesData<BoothsQueryData>({
+        queryKey: ["booths"],
+      });
+      const previousBooths: Record<string, BoothsQueryData> = {};
+      queries.forEach(([queryKey, data]) => {
+        if (data) {
+          previousBooths[JSON.stringify(queryKey)] = data;
+        }
+      });
       const tempId = `temp-${Date.now()}`;
-
-      // Optimistically update to the new value
-      if (previousBooths) {
-        const optimisticBooth: Booth = {
-          ...newBooth,
-          boothId: tempId,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        } as Booth;
-
-        queryClient.setQueryData<BoothsQueryData>(["booths"], (old) => {
-          if (!old) return previousBooths;
-          return {
-            ...old,
-            data: [...old.data, optimisticBooth],
+      tempIdRef = tempId;
+      queries.forEach(([queryKey]) => {
+        const currentData = queryClient.getQueryData<BoothsQueryData>(queryKey);
+        if (currentData) {
+          const optimisticBooth: Booth = {
+            ...newBooth,
+            boothId: tempId,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          } as Booth;
+          queryClient.setQueryData<BoothsQueryData>(queryKey, {
+            ...currentData,
+            data: [optimisticBooth, ...currentData.data],
             pagination: {
-              ...old.pagination,
-              total: old.pagination.total + 1,
+              ...currentData.pagination,
+              total: currentData.pagination.total + 1,
             },
-          };
-        });
-      }
-
-      // Return the snapshot and temp ID for rollback
+          });
+        }
+      });
       return { previousBooths, tempId };
     },
     onError: (error, _, context) => {
-      // Rollback on error
       if (context?.previousBooths) {
-        queryClient.setQueryData(["booths"], context.previousBooths);
+        Object.entries(context.previousBooths).forEach(
+          ([queryKeyStr, data]) => {
+            const queryKey = JSON.parse(queryKeyStr);
+            queryClient.setQueryData(queryKey, data);
+          }
+        );
       }
-
       toast.error("ブースの追加に失敗しました", {
         description: error.message,
       });
     },
     onSuccess: (data) => {
-      // No need to manually update the cache here, we'll rely on invalidation
+      const queries = queryClient.getQueriesData<BoothsQueryData>({
+        queryKey: ["booths"],
+      });
+      queries.forEach(([queryKey]) => {
+        const currentData = queryClient.getQueryData<BoothsQueryData>(queryKey);
+        if (currentData) {
+          queryClient.setQueryData<BoothsQueryData>(queryKey, {
+            ...currentData,
+            data: currentData.data.map((booth) =>
+              booth.boothId === tempIdRef ? data.data : booth
+            ),
+          });
+        }
+      });
       toast.success("ブースを追加しました", {
         description: data.message,
       });
     },
     onSettled: () => {
-      // Always invalidate queries to ensure consistency
-      queryClient.invalidateQueries({ queryKey: ["booths"] });
+      queryClient.invalidateQueries({
+        queryKey: ["booths"],
+        refetchType: "none",
+      });
     },
   });
 }
@@ -123,82 +140,77 @@ export function useBoothUpdate() {
         body: JSON.stringify({ boothId, ...data }),
       }),
     onMutate: async (updatedBooth) => {
-      // Cancel any outgoing refetches
       await queryClient.cancelQueries({ queryKey: ["booths"] });
       await queryClient.cancelQueries({
         queryKey: ["booth", updatedBooth.boothId],
       });
-
-      // Snapshot the previous values
-      const previousBooths = queryClient.getQueryData<BoothsQueryData>([
-        "booths",
-      ]);
+      const queries = queryClient.getQueriesData<BoothsQueryData>({
+        queryKey: ["booths"],
+      });
+      const previousBooths: Record<string, BoothsQueryData> = {};
+      queries.forEach(([queryKey, data]) => {
+        if (data) {
+          previousBooths[JSON.stringify(queryKey)] = data;
+        }
+      });
       const previousBooth = queryClient.getQueryData<Booth>([
         "booth",
         updatedBooth.boothId,
       ]);
-
-      // Create optimistic update with current timestamp
-      const optimisticBooth = {
-        ...(previousBooth || {}),
-        ...updatedBooth,
-        updatedAt: new Date(),
-      };
-
-      // Optimistically update to the new value
-      if (previousBooths) {
-        queryClient.setQueryData<BoothsQueryData>(["booths"], (old) => {
-          if (!old) return previousBooths;
-          return {
-            ...old,
-            data: old.data.map((booth) =>
+      queries.forEach(([queryKey]) => {
+        const currentData = queryClient.getQueryData<BoothsQueryData>(queryKey);
+        if (currentData) {
+          queryClient.setQueryData<BoothsQueryData>(queryKey, {
+            ...currentData,
+            data: currentData.data.map((booth) =>
               booth.boothId === updatedBooth.boothId
-                ? (optimisticBooth as Booth)
+                ? { ...booth, ...updatedBooth, updatedAt: new Date() }
                 : booth
             ),
-          };
+          });
+        }
+      });
+      if (previousBooth) {
+        queryClient.setQueryData<Booth>(["booth", updatedBooth.boothId], {
+          ...previousBooth,
+          ...updatedBooth,
+          updatedAt: new Date(),
         });
       }
-
-      // Also update the single booth query if it exists
-      if (previousBooth) {
-        queryClient.setQueryData<Booth>(
-          ["booth", updatedBooth.boothId],
-          optimisticBooth as Booth
-        );
-      }
-
-      // Return the snapshots for rollback
       return { previousBooths, previousBooth };
     },
     onError: (error, variables, context) => {
-      // Rollback on error
       if (context?.previousBooths) {
-        queryClient.setQueryData(["booths"], context.previousBooths);
+        Object.entries(context.previousBooths).forEach(
+          ([queryKeyStr, data]) => {
+            const queryKey = JSON.parse(queryKeyStr);
+            queryClient.setQueryData(queryKey, data);
+          }
+        );
       }
-
       if (context?.previousBooth) {
         queryClient.setQueryData(
           ["booth", variables.boothId],
           context.previousBooth
         );
       }
-
       toast.error("ブースの更新に失敗しました", {
         description: error.message,
       });
     },
     onSuccess: (data) => {
-      // No need to manually update cache here
       toast.success("ブースを更新しました", {
         description: data.message,
       });
     },
     onSettled: (_, __, variables) => {
-      // Always invalidate queries to ensure consistency
-      queryClient.invalidateQueries({ queryKey: ["booths"] });
+      queryClient.invalidateQueries({
+        queryKey: ["booths"],
+        refetchType: "none",
+      });
       queryClient.invalidateQueries({
         queryKey: ["booth", variables.boothId],
+        refetchType: "none",
       });
     },
   });
@@ -216,44 +228,65 @@ export function useBoothDelete() {
       await queryClient.cancelQueries({ queryKey: ["booths"] });
       await queryClient.cancelQueries({ queryKey: ["booth", boothId] });
 
-      // Snapshot the previous value
-      const previousBooths = queryClient.getQueryData<BoothsQueryData>([
-        "booths",
-      ]);
+      // Snapshot all booth queries
+      const queries = queryClient.getQueriesData<BoothsQueryData>({
+        queryKey: ["booths"],
+      });
+      const previousBooths: Record<string, BoothsQueryData> = {};
 
-      // Save the booth being deleted for potential rollback
-      const deletedBooth = previousBooths?.data.find(
-        (booth) => booth.boothId === boothId
-      );
+      // Save all booth queries for potential rollback
+      queries.forEach(([queryKey, data]) => {
+        if (data) {
+          previousBooths[JSON.stringify(queryKey)] = data;
+        }
+      });
 
-      // Optimistically update by removing the booth
-      if (previousBooths) {
-        queryClient.setQueryData<BoothsQueryData>(["booths"], (old) => {
-          if (!old) return previousBooths;
-          return {
-            ...old,
-            data: old.data.filter((booth) => booth.boothId !== boothId),
-            pagination: {
-              ...old.pagination,
-              total: old.pagination.total - 1,
-            },
-          };
-        });
+      // Save the booth being deleted
+      let deletedBooth: Booth | undefined;
+      for (const [, data] of queries) {
+        if (data) {
+          const found = data.data.find((booth) => booth.boothId === boothId);
+          if (found) {
+            deletedBooth = found;
+            break;
+          }
+        }
       }
 
-      // Remove the single booth query if it exists
+      // Optimistically update all booth queries
+      queries.forEach(([queryKey]) => {
+        const currentData = queryClient.getQueryData<BoothsQueryData>(queryKey);
+
+        if (currentData) {
+          queryClient.setQueryData<BoothsQueryData>(queryKey, {
+            ...currentData,
+            data: currentData.data.filter((booth) => booth.boothId !== boothId),
+            pagination: {
+              ...currentData.pagination,
+              total: Math.max(0, currentData.pagination.total - 1),
+            },
+          });
+        }
+      });
+
+      // Remove the individual booth query
       queryClient.removeQueries({ queryKey: ["booth", boothId] });
 
-      // Return the snapshot and deleted booth for rollback
+      // Return the snapshots for rollback
       return { previousBooths, deletedBooth };
     },
     onError: (error, boothId, context) => {
-      // Rollback on error
+      // Rollback booth list queries
       if (context?.previousBooths) {
-        queryClient.setQueryData(["booths"], context.previousBooths);
+        Object.entries(context.previousBooths).forEach(
+          ([queryKeyStr, data]) => {
+            const queryKey = JSON.parse(queryKeyStr);
+            queryClient.setQueryData(queryKey, data);
+          }
+        );
       }
 
-      // If we have the deleted booth, restore it to the single query
+      // Restore individual booth query if it existed
       if (context?.deletedBooth) {
         queryClient.setQueryData(["booth", boothId], context.deletedBooth);
       }
@@ -268,9 +301,15 @@ export function useBoothDelete() {
       });
     },
     onSettled: (_, __, boothId) => {
-      // Always invalidate queries to ensure consistency
-      queryClient.invalidateQueries({ queryKey: ["booths"] });
-      queryClient.invalidateQueries({ queryKey: ["booth", boothId] });
+      // Invalidate queries in the background to ensure eventual consistency
+      queryClient.invalidateQueries({
+        queryKey: ["booths"],
+        refetchType: "none",
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["booth", boothId],
+        refetchType: "none",
+      });
     },
   });
 }
