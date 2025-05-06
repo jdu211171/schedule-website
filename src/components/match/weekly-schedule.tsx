@@ -6,6 +6,7 @@ import { DisplayLesson } from "./types";
 interface WeeklyScheduleProps {
   lessons: DisplayLesson[];
   onLessonClick?: (lesson: DisplayLesson) => void;
+  onLessonDelete?: (lesson: DisplayLesson) => void;
   currentTeacherId: string;
   currentStudentId: string;
   teacherName: string;
@@ -15,6 +16,7 @@ interface WeeklyScheduleProps {
 export default function WeeklySchedule({ 
   lessons, 
   onLessonClick, 
+  onLessonDelete,
   currentTeacherId,
   currentStudentId,
   teacherName,
@@ -122,6 +124,7 @@ export default function WeeklySchedule({
                           key={uniqueKey} 
                           lesson={lesson} 
                           onLessonClick={onLessonClick}
+                          onLessonDelete={onLessonDelete}
                           isEditable={isEditable}
                           cardType={cardType}
                           teacherName={teacherName}
@@ -142,7 +145,7 @@ export default function WeeklySchedule({
       <div className="flex justify-center mt-4 text-sm">
         <div className="flex items-center mr-4">
           <div className="w-4 h-4 bg-white border border-gray-300 mr-1"></div>
-          <span>共通の授業</span>
+          <span>共通の授業 (編集可能)</span>
         </div>
         <div className="flex items-center mr-4">
           <div className="w-4 h-4 bg-green-50 border border-gray-300 mr-1"></div>
