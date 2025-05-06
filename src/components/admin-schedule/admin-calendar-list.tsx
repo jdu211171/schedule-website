@@ -37,9 +37,11 @@ import {
 import { useClassSessions } from '@/components/match/hooks/useClassSessions'; // Путь относительно файла
 
 type ClassSession = {
-  teacherStudent: string;
+  teacher: string;
+  student: string;
   subject: string;
-  time: string;
+  startTime: string;
+  endTime: string;
   day: string;
   date: number;
   status: string;
@@ -56,17 +58,17 @@ export default function AdminCalendarList({ mode = 'view' }: AdminCalendarListPr
   const [searchTerm, setSearchTerm] = useState('');
 
   const [sortConfig, setSortConfig] = useState<{
-    key: string;
+    key: keyof ClassSession;
     direction: 'asc' | 'desc';
   }>( {
-    key: 'dayOfWeek',
+    key: 'day',
     direction: 'asc',
   });
 
   const [deleteTemplateId, setDeleteTemplateId] = useState<string | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
-  const handleSort = (key: string) => {
+  const handleSort = (key: keyof ClassSession) => {
     setSortConfig((prevConfig) => ({
       key,
       direction:
@@ -83,7 +85,7 @@ export default function AdminCalendarList({ mode = 'view' }: AdminCalendarListPr
       if (!a || !b) return 0;
 
       switch (sortConfig.key) {
-        case 'dayOfWeek':
+        case 'day':
           const dayOrder: Record<string, number> = {
             'monday': 0,
             'tuesday': 1,
@@ -98,21 +100,34 @@ export default function AdminCalendarList({ mode = 'view' }: AdminCalendarListPr
           return sortConfig.direction === 'asc'
             ? dayA - dayB
             : dayB - dayA;
-
         case 'startTime':
-          const timeAStart = a.time ? a.time.split(' - ')[0] : '';
-          const timeBStart = b.time ? b.time.split(' - ')[0] : '';
           return sortConfig.direction === 'asc'
-            ? timeAStart.localeCompare(timeBStart)
-            : timeBStart.localeCompare(timeAStart);
-
+            ? a.startTime.localeCompare(b.startTime)
+            : b.startTime.localeCompare(a.startTime);
         case 'endTime':
-          const timeAEnd = a.time ? a.time.split(' - ')[1] : '';
-          const timeBEnd = b.time ? b.time.split(' - ')[1] : '';
           return sortConfig.direction === 'asc'
-            ? timeAEnd.localeCompare(timeBEnd)
-            : timeBEnd.localeCompare(timeAEnd);
-
+            ? a.endTime.localeCompare(b.endTime)
+            : b.endTime.localeCompare(a.endTime);
+        case 'subject':
+          return sortConfig.direction === 'asc'
+            ? a.subject.localeCompare(b.subject)
+            : b.subject.localeCompare(a.subject);
+        case 'teacher':
+          return sortConfig.direction === 'asc'
+            ? a.teacher.localeCompare(b.teacher)
+            : b.teacher.localeCompare(a.teacher);
+        case 'student':
+          return sortConfig.direction === 'asc'
+            ? a.student.localeCompare(b.student)
+            : b.student.localeCompare(a.student);
+        case 'date':
+          return sortConfig.direction === 'asc'
+            ? a.date - b.date
+            : b.date - a.date;
+        case 'status':
+          return sortConfig.direction === 'asc'
+            ? a.status.localeCompare(b.status)
+            : b.status.localeCompare(a.status);
         default:
           return 0;
       }
@@ -123,13 +138,14 @@ export default function AdminCalendarList({ mode = 'view' }: AdminCalendarListPr
     setDeleteTemplateId(templateId);
     setIsDeleteDialogOpen(true);
   };
-
+  useEffect(() => {
+    console.log('Data from useClassSessions:', templates);
+  }, [templates]);
   const confirmDelete = async () => {
     if (deleteTemplateId) {
       try {
         await fetch(`/api/templates/${deleteTemplateId}`, { method: 'DELETE' });
         // TODO: Обновить состояние templates после удаления
-        // Для обновления состояния, возможно, потребуется повторно вызвать хук или обновить кэш
         console.log(`Template with ID ${deleteTemplateId} deleted`);
       } catch (error) {
         console.error('Ошибка при удалении шаблона', error);
@@ -206,103 +222,125 @@ export default function AdminCalendarList({ mode = 'view' }: AdminCalendarListPr
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="relative w-24">
+                <TableHead className="relative w-32">
                   <div
                     className="cursor-pointer px-2 py-3 hover:bg-muted/50 flex items-center justify-between"
-                    onClick={() => handleSort('dayOfWeek')}
+                    onClick={() => handleSort('teacher')}
                   >
-                    <span>曜日</span>
+                    <span>教師</span>
                     <div className="flex flex-col -space-y-1">
-                      <ChevronUp
-                        className={`h-4 w-4 ${
-                          sortConfig.key === 'dayOfWeek' && sortConfig.direction === 'asc'
-                            ? 'text-foreground'
-                            : 'text-muted-foreground'
-                        }`}
-                      />
-                      <ChevronDown
-                        className={`h-4 w-4 ${
-                          sortConfig.key === 'dayOfWeek' && sortConfig.direction === 'desc'
-                            ? 'text-foreground'
-                            : 'text-muted-foreground'
-                        }`}
-                      />
+                      <ChevronUp className={`h-4 w-4 ${sortConfig.key === 'teacher' && sortConfig.direction === 'asc' ? 'text-foreground' : 'text-muted-foreground'}`} />
+                      <ChevronDown className={`h-4 w-4 ${sortConfig.key === 'teacher' && sortConfig.direction === 'desc' ? 'text-foreground' : 'text-muted-foreground'}`} />
                     </div>
                   </div>
                 </TableHead>
-
+                <TableHead className="relative w-40">
+                  <div
+                    className="cursor-pointer px-2 py-3 hover:bg-muted/50 flex items-center justify-between"
+                    onClick={() => handleSort('student')}
+                  >
+                    <span>生徒</span>
+                    <div className="flex flex-col -space-y-1">
+                      <ChevronUp className={`h-4 w-4 ${sortConfig.key === 'student' && sortConfig.direction === 'asc' ? 'text-foreground' : 'text-muted-foreground'}`} />
+                      <ChevronDown className={`h-4 w-4 ${sortConfig.key === 'student' && sortConfig.direction === 'desc' ? 'text-foreground' : 'text-muted-foreground'}`} />
+                    </div>
+                  </div>
+                </TableHead>
+                <TableHead className="relative w-32">
+                  <div
+                    className="cursor-pointer px-2 py-3 hover:bg-muted/50 flex items-center justify-between"
+                    onClick={() => handleSort('subject')}
+                  >
+                    <span>科目</span>
+                    <div className="flex flex-col -space-y-1">
+                      <ChevronUp className={`h-4 w-4 ${sortConfig.key === 'subject' && sortConfig.direction === 'asc' ? 'text-foreground' : 'text-muted-foreground'}`} />
+                      <ChevronDown className={`h-4 w-4 ${sortConfig.key === 'subject' && sortConfig.direction === 'desc' ? 'text-foreground' : 'text-muted-foreground'}`} />
+                    </div>
+                  </div>
+                </TableHead>
                 <TableHead className="relative w-32">
                   <div
                     className="cursor-pointer px-2 py-3 hover:bg-muted/50 flex items-center justify-between"
                     onClick={() => handleSort('startTime')}
                   >
-                    <span>開始時間</span>
+                    <span>開始</span>
                     <div className="flex flex-col -space-y-1">
-                      <ChevronUp
-                        className={`h-4 w-4 ${
-                          sortConfig.key === 'startTime' && sortConfig.direction === 'asc'
-                            ? 'text-foreground'
-                            : 'text-muted-foreground'
-                        }`}
-                      />
-                      <ChevronDown
-                        className={`h-4 w-4 ${
-                          sortConfig.key === 'startTime' && sortConfig.direction === 'desc'
-                            ? 'text-foreground'
-                            : 'text-muted-foreground'
-                        }`}
-                      />
+                      <ChevronUp className={`h-4 w-4 ${sortConfig.key === 'startTime' && sortConfig.direction === 'asc' ? 'text-foreground' : 'text-muted-foreground'}`} />
+                      <ChevronDown className={`h-4 w-4 ${sortConfig.key === 'startTime' && sortConfig.direction === 'desc' ? 'text-foreground' : 'text-muted-foreground'}`} />
                     </div>
                   </div>
                 </TableHead>
-
                 <TableHead className="relative w-32">
                   <div
                     className="cursor-pointer px-2 py-3 hover:bg-muted/50 flex items-center justify-between"
                     onClick={() => handleSort('endTime')}
                   >
-                    <span>終了時間</span>
+                    <span>終了</span>
                     <div className="flex flex-col -space-y-1">
-                      <ChevronUp
-                        className={`h-4 w-4 ${
-                          sortConfig.key === 'endTime' && sortConfig.direction === 'asc'
-                            ? 'text-foreground'
-                            : 'text-muted-foreground'
-                        }`}
-                      />
-                      <ChevronDown
-                        className={`h-4 w-4 ${
-                          sortConfig.key === 'endTime' && sortConfig.direction === 'desc'
-                            ? 'text-foreground'
-                            : 'text-muted-foreground'
-                        }`}
-                      />
+                      <ChevronUp className={`h-4 w-4 ${sortConfig.key === 'endTime' && sortConfig.direction === 'asc' ? 'text-foreground' : 'text-muted-foreground'}`} />
+                      <ChevronDown className={`h-4 w-4 ${sortConfig.key === 'endTime' && sortConfig.direction === 'desc' ? 'text-foreground' : 'text-muted-foreground'}`} />
                     </div>
                   </div>
                 </TableHead>
-
-                <TableHead className="relative w-32">教師</TableHead>
-                <TableHead className="relative w-40">生徒</TableHead>
+                <TableHead className="relative w-24">
+                  <div
+                    className="cursor-pointer px-2 py-3 hover:bg-muted/50 flex items-center justify-between"
+                    onClick={() => handleSort('day')}
+                  >
+                    <span>曜日</span>
+                    <div className="flex flex-col -space-y-1">
+                      <ChevronUp className={`h-4 w-4 ${sortConfig.key === 'day' && sortConfig.direction === 'asc' ? 'text-foreground' : 'text-muted-foreground'}`} />
+                      <ChevronDown className={`h-4 w-4 ${sortConfig.key === 'day' && sortConfig.direction === 'desc' ? 'text-foreground' : 'text-muted-foreground'}`} />
+                    </div>
+                  </div>
+                </TableHead>
+                <TableHead className="relative w-16">
+                  <div
+                    className="cursor-pointer px-2 py-3 hover:bg-muted/50 flex items-center justify-between"
+                    onClick={() => handleSort('date')}
+                  >
+                    <span>日付</span>
+                    <div className="flex flex-col -space-y-1">
+                      <ChevronUp className={`h-4 w-4 ${sortConfig.key === 'date' && sortConfig.direction === 'asc' ? 'text-foreground' : 'text-muted-foreground'}`} />
+                      <ChevronDown className={`h-4 w-4 ${sortConfig.key === 'date' && sortConfig.direction === 'desc' ? 'text-foreground' : 'text-muted-foreground'}`} />
+                    </div>
+                  </div>
+                </TableHead>
+                <TableHead className="relative w-20">
+                  <div
+                    className="cursor-pointer px-2 py-3 hover:bg-muted/50 flex items-center justify-between"
+                    onClick={() => handleSort('status')}
+                  >
+                    <span>ステータス</span>
+                    <div className="flex flex-col -space-y-1">
+                      <ChevronUp className={`h-4 w-4 ${sortConfig.key === 'status' && sortConfig.direction === 'asc' ? 'text-foreground' : 'text-muted-foreground'}`} />
+                      <ChevronDown className={`h-4 w-4 ${sortConfig.key === 'status' && sortConfig.direction === 'desc' ? 'text-foreground' : 'text-muted-foreground'}`} />
+                    </div>
+                  </div>
+                </TableHead>
                 <TableHead className="relative w-16">編集</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center">読み込み中...</TableCell>
+                  <TableCell colSpan={9} className="text-center">読み込み中...</TableCell>
                 </TableRow>
               ) : error ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center">エラーが発生しました。</TableCell>
+                  <TableCell colSpan={9} className="text-center">エラーが発生しました。</TableCell>
                 </TableRow>
               ) : displayedTemplates.length > 0 ? (
                 displayedTemplates.map((template) => (
-                  <TableRow key={template.teacherStudent}>
-                    <TableCell>{template.day}</TableCell>
-                    <TableCell>{template.time.split(' - ')[0]}</TableCell>
-                    <TableCell>{template.time.split(' - ')[1]}</TableCell>
-                    <TableCell>{template.teacherStudent.split(' - ')[0]}</TableCell>
-                    <TableCell>{template.teacherStudent.split(' - ')[1]}</TableCell>
+                  <TableRow key={template.teacher + template.student + template.date + template.startTime}>
+                    <TableCell>{template.teacher}</TableCell>
+                    <TableCell>{template.student}</TableCell>
+                    <TableCell>{template.subject}</TableCell>
+                    <TableCell>{template.startTime}</TableCell>
+                    <TableCell>{template.endTime}</TableCell>
+                    <TableCell>{displayDayOfWeek(template.day)}</TableCell>
+                    <TableCell>{template.date}</TableCell>
+                    <TableCell>{template.status}</TableCell>
                     <TableCell className="flex gap-2">
                       <Button variant="outline" size="icon" onClick={() => console.log('Edit')}>
                         <Edit className="h-4 w-4" />
@@ -310,7 +348,7 @@ export default function AdminCalendarList({ mode = 'view' }: AdminCalendarListPr
                       <Button
                         variant="destructive"
                         size="icon"
-                        onClick={() => handleDeleteClick(/* template.templateId */ 'test-id')} // Замени на реальный ID
+                        onClick={() => handleDeleteClick(/* template.classId */ 'test-id')} // Замени на реальный ID
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -319,7 +357,7 @@ export default function AdminCalendarList({ mode = 'view' }: AdminCalendarListPr
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center">データがありません。</TableCell>
+                  <TableCell colSpan={9} className="text-center">データがありません。</TableCell>
                 </TableRow>
               )}
             </TableBody>
