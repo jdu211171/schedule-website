@@ -7,7 +7,7 @@ import { Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/data-table";
 import { useEvaluations } from "@/hooks/useEvaluationQuery";
-import { useEvaluationDelete } from "@/hooks/useEvaluationMutation";
+import { useEvaluationDelete, getResolvedEvaluationId } from "@/hooks/useEvaluationMutation";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,7 +28,6 @@ export function EvaluationTable() {
   const {
     data: evaluations,
     isLoading,
-    isFetching,
   } = useEvaluations({
     page,
     limit: pageSize,
@@ -61,21 +60,26 @@ export function EvaluationTable() {
       id: "actions",
       header: "操作",
       cell: ({ row }) => {
+        // Type-safe check for _optimistic property
+        const isOptimistic = (row.original as Evaluation & { _optimistic?: boolean })._optimistic;
+
         return (
           <div className="flex gap-2">
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setEvaluationToEdit(row.original)}
+              
             >
-              <Pencil className="h-4 w-4" />
+              <Pencil className={`h-4 w-4 ${isOptimistic ? 'opacity-70' : ''}`} />
             </Button>
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setEvaluationToDelete(row.original)}
+              // disabled={isOptimistic}
             >
-              <Trash2 className="h-4 w-4 text-destructive" />
+              <Trash2 className={`h-4 w-4 text-destructive ${isOptimistic ? 'opacity-70' : ''}`} />
             </Button>
           </div>
         );
@@ -83,16 +87,13 @@ export function EvaluationTable() {
     },
   ];
 
-  const handleDeleteEvaluation = async () => {
+  const handleDeleteEvaluation = () => {
     if (evaluationToDelete) {
-      try {
-        await deleteEvaluationMutation.mutateAsync(
-          evaluationToDelete.evaluationId
-        );
-        setEvaluationToDelete(null);
-      } catch (error) {
-        console.error("Failed to delete evaluation:", error);
-      }
+      // Close the dialog immediately for better UX
+      // Use getResolvedEvaluationId to resolve temp/server IDs
+      const evaluationId = getResolvedEvaluationId(evaluationToDelete.evaluationId);
+      setEvaluationToDelete(null);
+      deleteEvaluationMutation.mutate(evaluationId);
     }
   };
 
@@ -107,7 +108,7 @@ export function EvaluationTable() {
       <DataTable
         columns={columns}
         data={evaluations?.data || []}
-        isLoading={isLoading || isFetching}
+        isLoading={isLoading && !evaluations} // Only show loading state on initial load
         searchPlaceholder="評価を検索..."
         onSearch={setSearchTerm}
         searchValue={searchTerm}
@@ -150,8 +151,11 @@ export function EvaluationTable() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>キャンセル</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteEvaluation}>
-              削除
+            <AlertDialogAction
+              onClick={handleDeleteEvaluation}
+              disabled={deleteEvaluationMutation.isPending}
+            >
+              {deleteEvaluationMutation.isPending ? "削除中..." : "削除"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
