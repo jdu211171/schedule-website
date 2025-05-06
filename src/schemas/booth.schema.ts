@@ -2,13 +2,16 @@ import { z } from "zod";
 
 // Base schema with common fields
 const BoothBaseSchema = z.object({
-  name: z.string().min(1).max(100),
+  name: z
+    .string()
+    .min(1, { message: "入力は必須です" })
+    .max(100, { message: "100文字以内で入力してください" }),
   status: z.boolean().optional().default(true),
   notes: z
     .string()
-    .max(255)
-    .optional()
-    .transform((val) => (val === "" ? undefined : val)),
+    .max(255, { message: "255文字以内で入力してください" })
+    .nullable()
+    .default(""),
 });
 
 // Complete booth schema (includes all fields from the database)
@@ -29,7 +32,7 @@ export const UpdateBoothSchema = BoothBaseSchema.extend({
 // Schema for retrieving a single booth by ID
 export const BoothIdSchema = z
   .object({
-    boothId: z.string(),
+    boothId: z.string({ required_error: "IDは必須です" }),
   })
   .strict();
 
@@ -37,7 +40,7 @@ export const BoothIdSchema = z
 export const BoothQuerySchema = z
   .object({
     page: z.coerce.number().int().positive().optional().default(1),
-    limit: z.coerce.number().int().positive().max(100).optional().default(10),
+    limit: z.coerce.number().int().positive().max(100, { message: "100以下の値を入力してください" }).optional().default(10),
     name: z.string().optional(),
     status: z.enum(["true", "false"]).optional(),
     sort: z.enum(["name", "createdAt", "updatedAt"]).optional().default("createdAt"),
