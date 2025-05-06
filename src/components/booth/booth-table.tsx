@@ -73,7 +73,7 @@ export function BoothTable() {
               variant="ghost"
               size="icon"
               onClick={() => setBoothToEdit(row.original)}
-              // disabled={isOptimistic}
+              
             >
               <Pencil className={`h-4 w-4 ${isOptimistic ? 'opacity-70' : ''}`} />
             </Button>
