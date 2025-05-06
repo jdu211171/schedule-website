@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { useEffect } from "react"; // Add this import
+import { useEffect, useState } from "react"; // Added useState
 
 import { Button } from "@/components/ui/button";
 import {
@@ -25,7 +25,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { useBoothCreate, useBoothUpdate } from "@/hooks/useBoothMutation";
-import { useBooth } from "@/hooks/useBoothQuery";
 import { CreateBoothSchema } from "@/schemas/booth.schema";
 import { Booth } from "@prisma/client";
 
@@ -42,52 +41,78 @@ export function BoothFormDialog({
 }: BoothFormDialogProps) {
   const createBoothMutation = useBoothCreate();
   const updateBoothMutation = useBoothUpdate();
+  const [localSubmitting, setLocalSubmitting] = useState(false); // Added local state
   const isSubmitting =
-    createBoothMutation.isPending || updateBoothMutation.isPending;
+    localSubmitting || createBoothMutation.isPending || updateBoothMutation.isPending;
   const isEditing = !!booth;
 
   const formSchema = CreateBoothSchema;
 
-  const { data: boothData } = useBooth(booth?.boothId || "");
-
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: "",
-      status: true,
-      notes: "",
+      name: booth?.name || "",
+      status: booth?.status ?? true,
+      notes: booth?.notes ?? "", // Use empty string when null
     },
   });
 
   useEffect(() => {
-    if (boothData) {
+    if (booth) {
       form.reset({
-        name: boothData.name || "",
-        status: boothData.status ?? true,
-        notes: boothData.notes || "",
+        name: booth.name || "",
+        status: booth.status ?? true,
+        notes: booth.notes ?? "", // Use empty string when null
+      });
+    } else {
+      form.reset({
+        name: "",
+        status: true,
+        notes: "",
       });
     }
-  }, [boothData, form]);
+  }, [booth, form]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
+    // Immediately set submitting to true to prevent multiple clicks
+    setLocalSubmitting(true);
+
     try {
+      // Ensure the notes field is explicitly included, even if empty
+      const updatedValues = {
+        ...values,
+        notes: values.notes ?? "", // Ensure notes is at least an empty string, not undefined
+      };
+
       if (isEditing && booth) {
         await updateBoothMutation.mutateAsync({
           boothId: booth.boothId,
-          ...values,
+          ...updatedValues,
         });
       } else {
-        await createBoothMutation.mutateAsync(values);
+        await createBoothMutation.mutateAsync(updatedValues);
       }
       onOpenChange(false);
       form.reset();
     } catch (error) {
       console.error("ブースの保存に失敗しました:", error);
+    } finally {
+      // Ensure we reset the submitting state even if there's an error
+      setLocalSubmitting(false);
     }
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(open) => {
+        if (!open) {
+          // Reset form when dialog is closed, just like in student-form-dialog
+          form.reset();
+        }
+        onOpenChange(open);
+      }}
+    >
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>
@@ -139,7 +164,7 @@ export function BoothFormDialog({
                     <Textarea
                       placeholder="メモを入力してください（任意）"
                       {...field}
-                      value={field.value || ""}
+                      value={field.value ?? ""} // Ensure value is never null
                     />
                   </FormControl>
                   <FormMessage />
