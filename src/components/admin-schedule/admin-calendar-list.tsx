@@ -1,8 +1,6 @@
 'use client';
-
+import { cn } from '@/lib/utils';
 import React, { useState, useEffect } from 'react';
-import { format } from 'date-fns';
-import { ja } from 'date-fns/locale';
 import {
   Table,
   TableBody,
@@ -33,8 +31,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
-// Правильный путь для импорта хука
-import { useClassSessions } from '@/components/match/hooks/useClassSessions'; // Путь относительно файла
+import { useClassSessions } from '@/components/match/hooks/useClassSessions';
 
 type ClassSession = {
   teacher: string;
@@ -45,14 +42,11 @@ type ClassSession = {
   day: string;
   date: number;
   status: string;
+  classId: string;
 };
 
-type AdminCalendarListProps = {
-  mode?: 'view' | 'create';
-};
-
-export default function AdminCalendarList({ mode = 'view' }: AdminCalendarListProps) {
-  const { data: templates, isLoading, error } = useClassSessions(); // Используем хук для получения сессий
+export default function AdminCalendarList() {
+  const { data: templates, isLoading, error } = useClassSessions();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [searchTerm, setSearchTerm] = useState('');
@@ -81,7 +75,7 @@ export default function AdminCalendarList({ mode = 'view' }: AdminCalendarListPr
   const sortedTemplates = React.useMemo(() => {
     if (!Array.isArray(templates) || templates === undefined || templates.length === 0) return [];
 
-    return [...(templates || [])].sort((a: ClassSession, b: ClassSession) => {
+    return [...(templates as ClassSession[])].sort((a, b) => {
       if (!a || !b) return 0;
 
       switch (sortConfig.key) {
@@ -144,11 +138,29 @@ export default function AdminCalendarList({ mode = 'view' }: AdminCalendarListPr
   const confirmDelete = async () => {
     if (deleteTemplateId) {
       try {
-        await fetch(`/api/templates/${deleteTemplateId}`, { method: 'DELETE' });
-        // TODO: Обновить состояние templates после удаления
-        console.log(`Template with ID ${deleteTemplateId} deleted`);
+        const response = await fetch(
+          `/api/class-session?classId=${deleteTemplateId}`,
+          {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json',
+              // 'Cookie': document.cookie,
+            },
+          }
+        );
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error('Ошибка при удалении сессии класса:', errorData);
+          // TODO: Показать пользователю сообщение об ошибке
+          return;
+        }
+
+        console.log(`Сессия класса с ID ${deleteTemplateId} успешно удалена`);
+        // TODO: Обновить состояние templates после успешного удаления
       } catch (error) {
-        console.error('Ошибка при удалении шаблона', error);
+        console.error('Ошибка при отправке запроса на удаление:', error);
+        // TODO: Показать пользователю сообщение об ошибке
       } finally {
         setIsDeleteDialogOpen(false);
         setDeleteTemplateId(null);
@@ -348,7 +360,7 @@ export default function AdminCalendarList({ mode = 'view' }: AdminCalendarListPr
                       <Button
                         variant="destructive"
                         size="icon"
-                        onClick={() => handleDeleteClick(/* template.classId */ 'test-id')} // Замени на реальный ID
+                        onClick={() => handleDeleteClick(template.classId)}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -367,25 +379,61 @@ export default function AdminCalendarList({ mode = 'view' }: AdminCalendarListPr
 
       <Pagination>
         <PaginationContent>
-          <PaginationItem disabled={page <= 1}>
-            <PaginationLink onClick={() => setPage(1)}>{'<<'}</PaginationLink>
-          </PaginationItem>
-          <PaginationItem disabled={page <= 1}>
-            <PaginationLink onClick={() => setPage(page - 1)}>{'<'}</PaginationLink>
+          <PaginationItem>
+            <PaginationLink
+              className={cn({ 'opacity-50 cursor-not-allowed': page <= 1 })}
+              onClick={() => {
+                if (page > 1) {
+                  setPage(1);
+                }
+              }}
+            >
+              {'<<'}
+            </PaginationLink>
           </PaginationItem>
           <PaginationItem>
-            <PaginationLink>{page}</PaginationLink>
+            <PaginationLink
+              className={cn({ 'opacity-50 cursor-not-allowed': page <= 1 })}
+              onClick={() => {
+                if (page > 1) {
+                  setPage(page - 1);
+                }
+              }}
+            >
+              {'<'}
+            </PaginationLink>
           </PaginationItem>
-          <PaginationItem disabled={page >= totalPages}>
-            <PaginationLink onClick={() => setPage(page + 1)}>{'>'}</PaginationLink>
+          <PaginationItem>
+            <PaginationLink isActive={true}>
+              {page}
+            </PaginationLink>
           </PaginationItem>
-          <PaginationItem disabled={page >= totalPages}>
-            <PaginationLink onClick={() => setPage(totalPages)}>{'>>'}</PaginationLink>
+          <PaginationItem>
+            <PaginationLink
+              className={cn({ 'opacity-50 cursor-not-allowed': page >= totalPages })}
+              onClick={() => {
+                if (page < totalPages) {
+                  setPage(page + 1);
+                }
+              }}
+            >
+              {'>'}
+            </PaginationLink>
+          </PaginationItem>
+          <PaginationItem>
+            <PaginationLink
+              className={cn({ 'opacity-50 cursor-not-allowed': page >= totalPages })}
+              onClick={() => {
+                if (page < totalPages) {
+                  setPage(totalPages);
+                }
+              }}
+            >
+              {'>>'}
+            </PaginationLink>
           </PaginationItem>
         </PaginationContent>
       </Pagination>
-
-      {/* Диалог удаления */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>

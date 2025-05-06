@@ -1,4 +1,3 @@
-// C:\schedule-website\src\components\match\hooks\useClassSessions.ts
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { format } from 'date-fns';
@@ -20,8 +19,8 @@ type ClassSessionRaw = {
   subject: { name: string } | null;
   teacher: { name: string } | null;
   student: { name: string } | null;
-  regularClassTemplate: any | null; // Тип может быть более конкретным, если известен
-  studentClassEnrollments: any[]; // Тип может быть более конкретным, если известен
+  regularClassTemplate: string | null;
+  studentClassEnrollments: unknown[];
 };
 
 type ClassSessionProcessed = {
@@ -35,40 +34,33 @@ type ClassSessionProcessed = {
   status: string;
 };
 
-// Функция для получения данных о сессиях классов
 const fetchClassSessions = async () => {
   try {
-    const response = await axios.get('http://localhost:3000/api/class-session');
-
-    // Логируем ответ для отладки
-    console.log('Response from API:', response);
-
-    // Проверка на успешный статус ответа
+    const response = await axios.get<{ data: ClassSessionRaw[] }>('http://localhost:3000/api/class-session');
     if (response.status !== 200) {
       throw new Error(`Ошибка сервера, статус: ${response.status}`);
     }
-
-    // Возвращаем данные, если статус 200 OK
-    return response.data.data as ClassSessionRaw[];
-  } catch (error: any) {
-    // Логируем ошибку
-    console.error('Ошибка при запросе данных:', error.message);
-    throw error; // Перебрасываем ошибку, чтобы обработать ее в хук
+    return response.data.data;
+  } catch (error: unknown) {
+    if (error instanceof Error) {
+      console.error('Ошибка при запросе данных:', error.message);
+    } else {
+      console.error('Неизвестная ошибка при запросе данных:', error);
+    }
+    throw error;
   }
 };
 
-// Хук для получения данных о сессиях
 export const useClassSessions = (): { data: ClassSessionProcessed[] | undefined; isLoading: boolean; error: string | null } => {
-  const [data, setData] = useState<ClassSessionProcessed[] | undefined>(undefined); // Данные сессий классов
-  const [isLoading, setIsLoading] = useState<boolean>(true); // Статус загрузки
-  const [error, setError] = useState<string | null>(null); // Ошибка
+  const [data, setData] = useState<ClassSessionProcessed[] | undefined>(undefined);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Запрос к API
     const fetchData = async () => {
       try {
-        setIsLoading(true); // Устанавливаем статус загрузки в true
-        const result = await fetchClassSessions(); // Получаем данные
+        setIsLoading(true);
+        const result = await fetchClassSessions();
         const processedData: ClassSessionProcessed[] = result.map((session) => {
           const date = new Date(session.date);
           const startTime = new Date(session.startTime);
@@ -82,21 +74,24 @@ export const useClassSessions = (): { data: ClassSessionProcessed[] | undefined;
             endTime: format(endTime, 'HH:mm', { locale: ja }),
             day: date.toLocaleDateString('en-GB', { weekday: 'long' }),
             date: date.getDate(),
-            status: session.regularClassTemplate , // Берем значение из regularClassTemplate
+            status: session.regularClassTemplate || '---',
           };
         });
-        setData(processedData); // Устанавливаем обработанные данные
-      } catch (error: any) {
-        // Обрабатываем ошибку
-        setError('クラスセッションの読み込みに失敗しました'); // Сообщение об ошибке
-        console.error('Ошибка при получении данных о сессиях:', error.message);
+        setData(processedData);
+      } catch (error: unknown) {
+        setError('クラスセッションの読み込みに失敗しました');
+        if (error instanceof Error) {
+          console.error('Ошибка при получении данных о сессиях:', error.message);
+        } else {
+          console.error('Неизвестная ошибка при получении данных о сессиях:', error);
+        }
       } finally {
-        setIsLoading(false); // Завершаем загрузку
+        setIsLoading(false);
       }
     };
 
-    fetchData(); // Вызов асинхронной функции для загрузки данных
-  }, []); // Пустой массив зависимостей для загрузки данных один раз
+    fetchData();
+  }, []);
 
   return { data, isLoading, error };
 };
