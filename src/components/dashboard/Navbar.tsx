@@ -19,8 +19,9 @@ import {
   MapPin,
   LucideIcon,
   GraduationCap,
+  Table,
 } from "lucide-react";
-import UserProfileMenu from "@/components/user-profile-menu"; 
+import UserProfileMenu from "@/components/user-profile-menu";
 import { ThemeToggle } from "../theme-toggle";
 
 interface NavItemType {
@@ -32,30 +33,24 @@ interface NavItemType {
 
 const dashboardNavItems: NavItemType[] = [
   {
-    title: "個人スケジュール",
-    href: "/dashboard",
-    icon: CalendarIcon,
-    exact: true,
-  },
-  {
     title: "総合スケジュール",
     href: "/dashboard/schedules",
     icon: CalendarDays,
   },
   {
-    title: "部屋マッピング",
+    title: "マッチング",
+    href: "/dashboard/matching",
+    icon: Table,
+  },
+  {
+    title: "マッチング管理",
     href: "/dashboard/match",
     icon: MapPin,
   },
   {
-    title: "タスク管理",
+    title: "マスターデータ管理",
     href: "/dashboard/master",
     icon: LayoutDashboard,
-  },
-  {
-    title: "設定",
-    href: "/dashboard/settings",
-    icon: Settings,
   },
 ];
 
@@ -78,7 +73,6 @@ const teacherNavItems: NavItemType[] = [
   },
 ];
 
-
 const studentNavItems: NavItemType[] = [
   {
     title: "学生",
@@ -100,20 +94,20 @@ const studentNavItems: NavItemType[] = [
 
 export default function Navbar() {
   const pathname = usePathname();
-  const isTeacherRoute = pathname.startsWith('/teacher');
-  const isStudentRoute = pathname.startsWith('/student');
-  
+  const isTeacherRoute = pathname.startsWith("/teacher");
+  const isStudentRoute = pathname.startsWith("/student");
+
   let navItems = dashboardNavItems;
   if (isTeacherRoute) {
     navItems = teacherNavItems;
   } else if (isStudentRoute) {
     navItems = studentNavItems;
   }
-  let homeLink = '/dashboard';
+  let homeLink = "/dashboard";
   if (isTeacherRoute) {
-    homeLink = '/teacher';
+    homeLink = "/teacher";
   } else if (isStudentRoute) {
-    homeLink = '/student';
+    homeLink = "/student";
   }
 
   const isActive = (item: NavItemType): boolean => {
