@@ -17,6 +17,7 @@ import WeeklySchedule from "./weekly-schedule";
 import LessonModalSelects from "./lesson-modal-selects";
 import { useModalSelects } from "./hooks/useModalSelects";
 import { ClassSession, DisplayLesson } from "./types";
+import { ClassSession, DisplayLesson } from "./types";
 import { useRegularLessons } from "./hooks/useRegularLessons";
 import { deleteRegularClassTemplate, updateRegularClassTemplate } from "./api-client";
 import { AxiosError } from 'axios';
@@ -245,6 +246,7 @@ export default function LessonScheduleModal({
   const handleSaveLesson = async () => {
     if (!selectedSubject || !selectedDay || !selectedStartTime || !selectedEndTime || !selectedBooth) {
       setErrorMessage("すべての必須フィールドを入力してください");
+      setErrorMessage("すべての必須フィールドを入力してください");
       return;
     }
     
@@ -279,6 +281,7 @@ export default function LessonScheduleModal({
         setErrorMessage(`授業の保存に失敗しました: ${error.response.data.message}`);
       } else {
         setErrorMessage("授業の保存に失敗しました。後でもう一度お試しください。");
+        setErrorMessage("授業の保存に失敗しました。後でもう一度お試しください。");
       }
     }
   };
@@ -310,6 +313,17 @@ export default function LessonScheduleModal({
     }
   }, [successMessage]);
   
+  // Success message auto-close
+  useEffect(() => {
+    if (successMessage) {
+      const timer = setTimeout(() => {
+        setSuccessMessage("");
+      }, 3000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [successMessage]);
+  
   if (!open) return null;
   
   return (
@@ -327,6 +341,13 @@ export default function LessonScheduleModal({
           onClose={() => setSuccessMessage("")}
         />
       )}
+      
+      {successMessage && (
+        <SuccessNotification
+          message={successMessage}
+          onClose={() => setSuccessMessage("")}
+        />
+      )}
 
       <div className="bg-white w-[85%] max-w-[1200px] max-h-[95vh] rounded-lg shadow-lg flex flex-col">
         {/* Header */}
@@ -334,6 +355,7 @@ export default function LessonScheduleModal({
           <div>
             <h2 className="flex items-center text-xl font-bold">
               <BookOpen className="mr-2 h-5 w-5" />
+              {isEditMode ? "授業を編集" : "授業設定"}
               {isEditMode ? "授業を編集" : "授業設定"}
             </h2>
             <div className="text-sm text-gray-500 flex items-center space-x-2">
@@ -427,11 +449,39 @@ export default function LessonScheduleModal({
               {isEditMode ? "授業を更新" : "授業を追加"}
             </Button>
           </div>
+          {/* Add/Edit lesson button */}
+          <div className="flex space-x-2 w-full my-5">
+            {isEditMode && (
+              <Button
+                variant="outline"
+                className="py-6 cursor-pointer flex-1"
+                onClick={cancelEdit}
+              >
+                キャンセル
+              </Button>
+            )}
+            
+            <Button
+              className={`py-6 cursor-pointer flex-1 ${
+                hasNoMatchingOptions || !selectedSubject || !selectedDay || !selectedStartTime || !selectedBooth
+                  ? 'bg-gray-300 hover:bg-gray-400 text-gray-600 cursor-not-allowed'
+                  : isEditMode 
+                    ? 'bg-yellow-600 hover:bg-yellow-700 text-white'
+                    : 'bg-black hover:bg-gray-800 text-white'
+              }`}
+              onClick={handleSaveLesson}
+              disabled={hasNoMatchingOptions || !selectedSubject || !selectedDay || !selectedStartTime || !selectedBooth || loading}
+            >
+              {isEditMode ? "授業を更新" : "授業を追加"}
+            </Button>
+          </div>
 
           {/* Weekly schedule with updated logic for different lesson types */}
           <div className="mt-2 border-t pt-2">
             <WeeklySchedule
               lessons={lessons}
+              onLessonClick={handleLessonClick}
+              onLessonDelete={handleLessonDelete}
               onLessonClick={handleLessonClick}
               onLessonDelete={handleLessonDelete}
               currentTeacherId={teacherId}
