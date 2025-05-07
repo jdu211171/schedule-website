@@ -3,11 +3,17 @@ import { hashSync } from "bcryptjs";
 
 const prisma = new PrismaClient();
 
+// 手動で Enum を作る（参考）
+/*
+CREATE TYPE "DayOfWeek" AS ENUM
+  ('MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY','SUNDAY');
+*/
+
 // ---------- サンプル固定データ ----------
 const studentTypeSeeds = [
-  { name: "小学生", description: "小学1–6年", maxYears: 6 },
-  { name: "中学生", description: "中学1–3年", maxYears: 3 },
-  { name: "高校生", description: "高校1–3年", maxYears: 3 },
+  { name: "小学生", description: "小学1–6年" },
+  { name: "中学生", description: "中学1–3年" },
+  { name: "高校生", description: "高校1–3年" },
 ];
 
 const gradeSeeds = [
@@ -17,57 +23,17 @@ const gradeSeeds = [
 ];
 
 const subjectTypeSeeds = [
-  { name: "小学生", notes: "小学生向けの科目" },
-  { name: "中学受験生", notes: "中学受験を目指す小学生向けの科目" },
-  { name: "中学生", notes: "中学生向けの科目" },
-  { name: "高校受験生", notes: "高校受験を目指す中学生向けの科目" },
-  { name: "高校生", notes: "高校生向けの科目" },
-  { name: "大学受験生", notes: "大学受験を目指す高校生向けの科目" },
-  { name: "大人", notes: "大人向けの科目" },
+  { name: "言語", notes: "国語・英語など" },
+  { name: "数学", notes: "算数・数学" },
+  { name: "理科", notes: "物理・化学・生物" },
 ];
 
 const subjectSeeds = [
-  { name: "国語" },
-  { name: "算数" },
-  { name: "数学" },
-  { name: "英語" },
-  { name: "理科" },
-  { name: "社会" },
-  { name: "書道" },
-];
-
-const subjectToSubjectTypeSeeds = [
-  { subjectName: "国語", subjectTypeName: "小学生" },
-  { subjectName: "国語", subjectTypeName: "中学受験生" },
-  { subjectName: "国語", subjectTypeName: "中学生" },
-  { subjectName: "国語", subjectTypeName: "高校受験生" },
-  { subjectName: "国語", subjectTypeName: "高校生" },
-  { subjectName: "国語", subjectTypeName: "大学受験生" },
-  { subjectName: "国語", subjectTypeName: "大人" },
-  { subjectName: "算数", subjectTypeName: "小学生" },
-  { subjectName: "算数", subjectTypeName: "中学受験生" },
-  { subjectName: "数学", subjectTypeName: "中学生" },
-  { subjectName: "数学", subjectTypeName: "高校受験生" },
-  { subjectName: "数学", subjectTypeName: "高校生" },
-  { subjectName: "数学", subjectTypeName: "大学受験生" },
-  { subjectName: "英語", subjectTypeName: "中学生" },
-  { subjectName: "英語", subjectTypeName: "高校受験生" },
-  { subjectName: "英語", subjectTypeName: "高校生" },
-  { subjectName: "英語", subjectTypeName: "大学受験生" },
-  { subjectName: "英語", subjectTypeName: "大人" },
-  { subjectName: "理科", subjectTypeName: "小学生" },
-  { subjectName: "理科", subjectTypeName: "中学受験生" },
-  { subjectName: "理科", subjectTypeName: "中学生" },
-  { subjectName: "理科", subjectTypeName: "高校受験生" },
-  { subjectName: "社会", subjectTypeName: "小学生" },
-  { subjectName: "社会", subjectTypeName: "中学受験生" },
-  { subjectName: "社会", subjectTypeName: "中学生" },
-  { subjectName: "社会", subjectTypeName: "高校受験生" },
-  { subjectName: "社会", subjectTypeName: "高校生" },
-  { subjectName: "社会", subjectTypeName: "大学受験生" },
-  { subjectName: "書道", subjectTypeName: "中学生" },
-  { subjectName: "書道", subjectTypeName: "高校生" },
-  { subjectName: "書道", subjectTypeName: "大人" },
+  { name: "国語", type: "言語" },
+  { name: "数学", type: "数学" },
+  { name: "英語", type: "言語" },
+  { name: "物理", type: "理科" },
+  { name: "理科", type: "理科" }, // Added for Teacher 3
 ];
 
 const classTypeSeeds = [
@@ -113,7 +79,7 @@ async function main() {
         name: "山田 太郎",
         email: "teacher@example.com",
         username: "TEACHER01",
-        passwordHash: hashSync("teacher123", 10),
+        passwordHash: "teacher123",
         role: UserRole.TEACHER,
       },
     }),
@@ -122,16 +88,17 @@ async function main() {
         name: "佐藤 花子",
         email: "student@example.com",
         username: "STUDENT01",
-        passwordHash: hashSync("student123", 10),
+        passwordHash: ("student123"),
         role: UserRole.STUDENT,
       },
     }),
+    // New Teacher Users
     prisma.user.create({
       data: {
         name: "鈴木 次郎",
         email: "teacher2@example.com",
         username: "TEACHER02",
-        passwordHash: hashSync("teacher123", 10),
+        passwordHash: ("teacher123"),
         role: UserRole.TEACHER,
       },
     }),
@@ -140,16 +107,17 @@ async function main() {
         name: "田中 三郎",
         email: "teacher3@example.com",
         username: "TEACHER03",
-        passwordHash: hashSync("teacher123", 10),
+        passwordHash: "teacher123",
         role: UserRole.TEACHER,
       },
     }),
+    // New Student Users
     prisma.user.create({
       data: {
         name: "高橋 健太",
         email: "student2@example.com",
         username: "STUDENT02",
-        passwordHash: hashSync("student123", 10),
+        passwordHash: "student123",
         role: UserRole.STUDENT,
       },
     }),
@@ -158,14 +126,14 @@ async function main() {
         name: "伊藤 美咲",
         email: "student3@example.com",
         username: "STUDENT03",
-        passwordHash: hashSync("student123", 10),
+        passwordHash: "student123",
         role: UserRole.STUDENT,
       },
     }),
   ]);
 
   /* 2-a. StudentType */
-  await prisma.studentType.createMany({
+  const studentTypes = await prisma.studentType.createMany({
     data: studentTypeSeeds,
     skipDuplicates: true,
   });
@@ -206,46 +174,19 @@ async function main() {
       st.subjectTypeId,
     ])
   );
-
   await prisma.subject.createMany({
-    data: subjectSeeds,
-    skipDuplicates: true,
-  });
-  const [
-    jpSubject,
-    arithSubject,
-    mathSubject,
-    enSubject,
-    sciSubject,
-    socSubject,
-    calSubject,
-  ] = await prisma.subject.findMany({
-    where: {
-      name: { in: ["国語", "算数", "数学", "英語", "理科", "社会", "書道"] },
-    },
-  });
-
-  /* 2-d. SubjectToSubjectType */
-  const subjectMap = {
-    国語: jpSubject.subjectId,
-    算数: arithSubject.subjectId,
-    数学: mathSubject.subjectId,
-    英語: enSubject.subjectId,
-    理科: sciSubject.subjectId,
-    社会: socSubject.subjectId,
-    書道: calSubject.subjectId,
-  };
-
-  await prisma.subjectToSubjectType.createMany({
-    data: subjectToSubjectTypeSeeds.map((s) => ({
-      subjectId: subjectMap[s.subjectName as keyof typeof subjectMap],
-      subjectTypeId:
-        subjectTypeMap[s.subjectTypeName as keyof typeof subjectTypeMap],
+    data: subjectSeeds.map((s) => ({
+      name: s.name,
+      subjectTypeId: subjectTypeMap[s.type],
     })),
     skipDuplicates: true,
   });
+  const [jpSubject, mathSubject, enSubject, phySubject, sciSubject] =
+    await prisma.subject.findMany({
+      where: { name: { in: ["国語", "数学", "英語", "物理", "理科"] } },
+    });
 
-  /* 2-e. ClassType */
+  /* 2-d. ClassType */
   await prisma.classType.createMany({
     data: classTypeSeeds,
     skipDuplicates: true,
@@ -254,7 +195,7 @@ async function main() {
     where: { name: "通常授業" },
   });
 
-  /* 2-f. Evaluation */
+  /* 2-e. Evaluation */
   await prisma.evaluation.createMany({
     data: evaluationSeeds,
     skipDuplicates: true,
@@ -263,7 +204,7 @@ async function main() {
     where: { name: "S" },
   });
 
-  /* 2-g. Booth */
+  /* 2-f. Booth */
   await prisma.booth.createMany({ data: boothSeeds, skipDuplicates: true });
   const boothA = await prisma.booth.findFirstOrThrow({
     where: { name: "Booth-A" },
@@ -286,6 +227,7 @@ async function main() {
     },
   });
 
+  // New Teachers
   const teacher2 = await prisma.teacher.create({
     data: {
       name: "鈴木 次郎",
@@ -334,6 +276,7 @@ async function main() {
     },
   });
 
+  // New Students
   const student2 = await prisma.student.create({
     data: {
       name: "高橋 健太",
@@ -367,36 +310,14 @@ async function main() {
   /* 5. TeacherSubject (講師が教えられる科目) */
   await prisma.teacherSubject.createMany({
     data: [
-      {
-        teacherId: teacher.teacherId,
-        subjectId: jpSubject.subjectId,
-        subjectTypeId: subjectTypeMap["高校生"],
-      },
-      {
-        teacherId: teacher.teacherId,
-        subjectId: mathSubject.subjectId,
-        subjectTypeId: subjectTypeMap["高校生"],
-      },
-      {
-        teacherId: teacher2.teacherId,
-        subjectId: enSubject.subjectId,
-        subjectTypeId: subjectTypeMap["中学生"],
-      },
-      {
-        teacherId: teacher2.teacherId,
-        subjectId: calSubject.subjectId,
-        subjectTypeId: subjectTypeMap["高校生"],
-      },
-      {
-        teacherId: teacher3.teacherId,
-        subjectId: arithSubject.subjectId,
-        subjectTypeId: subjectTypeMap["小学生"],
-      },
-      {
-        teacherId: teacher3.teacherId,
-        subjectId: sciSubject.subjectId,
-        subjectTypeId: subjectTypeMap["小学生"],
-      },
+      { teacherId: teacher.teacherId, subjectId: jpSubject.subjectId },
+      { teacherId: teacher.teacherId, subjectId: mathSubject.subjectId },
+      // Teacher 2 Subjects
+      { teacherId: teacher2.teacherId, subjectId: enSubject.subjectId },
+      { teacherId: teacher2.teacherId, subjectId: phySubject.subjectId },
+      // Teacher 3 Subjects
+      { teacherId: teacher3.teacherId, subjectId: mathSubject.subjectId },
+      { teacherId: teacher3.teacherId, subjectId: sciSubject.subjectId },
     ],
     skipDuplicates: true,
   });
@@ -407,11 +328,10 @@ async function main() {
       classTypeId: normalClassType.classTypeId, // <-- added this line
       dayOfWeek: DayOfWeek.MONDAY,
       subjectId: mathSubject.subjectId,
-      subjectTypeId: subjectTypeMap["高校生"],
       boothId: boothA.boothId,
       teacherId: teacher.teacherId,
-      startTime: new Date("1970-01-01T15:00:00Z"),
-      endTime: new Date("1970-01-01T16:30:00Z"),
+      startTime: new Date("1970-01-01T15:00:00Z"), // 15:00
+      endTime: new Date("1970-01-01T16:30:00Z"), // 16:30
       startDate: new Date("2025-05-01"),
       endDate: new Date("2026-03-31"),
       notes: "高3数学 週次枠",
@@ -428,18 +348,20 @@ async function main() {
         endTime: new Date("1970-01-01T18:00:00Z"),
         notes: "月曜午後在室",
       },
+      // Teacher 2 Shift
       {
         teacherId: teacher2.teacherId,
         dayOfWeek: DayOfWeek.TUESDAY,
-        startTime: new Date("1970-01-01T13:00:00Z"),
-        endTime: new Date("1970-01-01T17:00:00Z"),
+        startTime: new Date("1970-01-01T13:00:00Z"), // 13:00
+        endTime: new Date("1970-01-01T17:00:00Z"), // 17:00
         notes: "火曜午後在室",
       },
+      // Teacher 3 Shift
       {
         teacherId: teacher3.teacherId,
         dayOfWeek: DayOfWeek.WEDNESDAY,
-        startTime: new Date("1970-01-01T09:00:00Z"),
-        endTime: new Date("1970-01-01T12:00:00Z"),
+        startTime: new Date("1970-01-01T09:00:00Z"), // 09:00
+        endTime: new Date("1970-01-01T12:00:00Z"), // 12:00
         notes: "水曜午前在室",
       },
     ],
@@ -466,7 +388,6 @@ async function main() {
     data: {
       studentPreferenceId: preference.preferenceId,
       subjectId: mathSubject.subjectId,
-      subjectTypeId: subjectTypeMap["高校生"],
     },
   });
   await prisma.studentPreferenceTeacher.create({
@@ -476,61 +397,61 @@ async function main() {
     },
   });
 
+  // Student 2 Preference
   const preference2 = await prisma.studentPreference.create({
     data: {
       studentId: student2.studentId,
       classTypeId: normalClassType.classTypeId,
-      notes: "算数の基礎を強化したい",
+      notes: "英語の基礎を強化したい",
     },
   });
   await prisma.studentPreferenceTimeSlot.create({
     data: {
       preferenceId: preference2.preferenceId,
       dayOfWeek: DayOfWeek.TUESDAY,
-      startTime: new Date("1970-01-01T14:00:00Z"),
-      endTime: new Date("1970-01-01T15:30:00Z"),
+      startTime: new Date("1970-01-01T14:00:00Z"), // 14:00
+      endTime: new Date("1970-01-01T15:30:00Z"), // 15:30
     },
   });
   await prisma.studentPreferenceSubject.create({
     data: {
       studentPreferenceId: preference2.preferenceId,
-      subjectId: arithSubject.subjectId,
-      subjectTypeId: subjectTypeMap["小学生"],
+      subjectId: enSubject.subjectId,
     },
   });
   await prisma.studentPreferenceTeacher.create({
     data: {
       studentPreferenceId: preference2.preferenceId,
-      teacherId: teacher3.teacherId,
+      teacherId: teacher2.teacherId,
     },
   });
 
+  // Student 3 Preference
   const preference3 = await prisma.studentPreference.create({
     data: {
       studentId: student3.studentId,
       classTypeId: normalClassType.classTypeId,
-      notes: "英語の基礎を学びたい",
+      notes: "数学の応用問題に挑戦したい",
     },
   });
   await prisma.studentPreferenceTimeSlot.create({
     data: {
       preferenceId: preference3.preferenceId,
       dayOfWeek: DayOfWeek.WEDNESDAY,
-      startTime: new Date("1970-01-01T10:00:00Z"),
-      endTime: new Date("1970-01-01T11:30:00Z"),
+      startTime: new Date("1970-01-01T10:00:00Z"), // 10:00
+      endTime: new Date("1970-01-01T11:30:00Z"), // 11:30
     },
   });
   await prisma.studentPreferenceSubject.create({
     data: {
       studentPreferenceId: preference3.preferenceId,
-      subjectId: enSubject.subjectId,
-      subjectTypeId: subjectTypeMap["中学生"],
+      subjectId: mathSubject.subjectId,
     },
   });
   await prisma.studentPreferenceTeacher.create({
     data: {
       studentPreferenceId: preference3.preferenceId,
-      teacherId: teacher2.teacherId,
+      teacherId: teacher3.teacherId,
     },
   });
 
@@ -544,7 +465,6 @@ async function main() {
       teacherId: teacher.teacherId,
       studentId: student.studentId,
       subjectId: jpSubject.subjectId,
-      subjectTypeId: subjectTypeMap["高校生"],
       boothId: boothA.boothId,
       classTypeId: normalClassType.classTypeId,
       notes: "国語の定期テスト対策",
@@ -578,7 +498,6 @@ async function main() {
       teacherId: teacher.teacherId,
       studentId: student.studentId,
       subjectId: mathSubject.subjectId,
-      subjectTypeId: subjectTypeMap["高校生"],
       boothId: boothA.boothId,
       classTypeId: normalClassType.classTypeId,
       templateId: template.templateId,
@@ -596,7 +515,6 @@ async function main() {
       teacherId: teacher.teacherId,
       studentId: student.studentId,
       subjectId: mathSubject.subjectId,
-      subjectTypeId: subjectTypeMap["高校生"],
       boothId: boothA.boothId,
       classTypeId: normalClassType.classTypeId,
       notes: "スタンドアロンの特別授業",
