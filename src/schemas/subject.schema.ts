@@ -8,13 +8,16 @@ import { RegularClassTemplate, StudentPreferenceSubject } from "@prisma/client";
 
 // Base schema with common fields
 const SubjectBaseSchema = z.object({
-  name: z.string().min(1).max(100),
-  subjectTypeId: z.string(),
+  name: z
+    .string({ required_error: "入力は必須です" })
+    .min(1, { message: "入力は必須です" })
+    .max(100, { message: "100文字以内で入力してください" }),
+  subjectTypeId: z.string({ required_error: "科目種別IDは必須です" }),
   notes: z
-    .string()
-    .max(255)
-    .optional()
-    .transform((val) => (val === "" ? undefined : val)),
+    .string({ invalid_type_error: "255文字以内で入力してください" })
+    .max(255, { message: "255文字以内で入力してください" })
+    .nullable()
+    .default("")
 });
 
 // Complete subject schema (includes all fields from the database)
@@ -28,14 +31,23 @@ export const SubjectSchema = SubjectBaseSchema.extend({
 export const CreateSubjectSchema = SubjectBaseSchema.strict();
 
 // Schema for updating an existing subject (requires subjectId)
-export const UpdateSubjectSchema = SubjectBaseSchema.extend({
-  subjectId: z.string(),
-}).strict();
+export const UpdateSubjectSchema = z
+  .object({
+    subjectId: z.string({ required_error: "IDは必須です" }),
+    name: z.string().min(1, { message: "入力は必須です" }).max(100, { message: "100文字以内で入力してください" }).optional(),
+    subjectTypeId: z.string().optional(),
+    notes: z
+      .string({ invalid_type_error: "255文字以内で入力してください" })
+      .max(255, { message: "255文字以内で入力してください" })
+      .nullable()
+      .default("")
+  })
+  .strict();
 
 // Schema for retrieving a single subject by ID
 export const SubjectIdSchema = z
   .object({
-    subjectId: z.string(),
+    subjectId: z.string({ required_error: "IDは必須です" }),
   })
   .strict();
 
@@ -43,13 +55,11 @@ export const SubjectIdSchema = z
 export const SubjectQuerySchema = z
   .object({
     page: z.coerce.number().int().positive().optional().default(1),
-    limit: z.coerce.number().int().positive().max(100).optional().default(10),
+    limit: z.coerce.number().int().positive().max(100, { message: "100以下の値を入力してください" }).optional().default(10),
     name: z.string().optional(),
     subjectTypeId: z.string().optional(),
     sort: z
-      .enum(["name", "subjectTypeId", "createdAt", "updatedAt"])
-      .optional()
-      .default("name"),
+      .enum(["name", "subjectTypeId", "createdAt", "updatedAt"]).optional().default("name"),
     order: z.enum(["asc", "desc"]).optional().default("desc"),
   })
   .strict();

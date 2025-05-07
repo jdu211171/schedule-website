@@ -310,14 +310,14 @@ async function main() {
   /* 5. TeacherSubject (講師が教えられる科目) */
   await prisma.teacherSubject.createMany({
     data: [
-      { teacherId: teacher.teacherId, subjectId: jpSubject.subjectId },
-      { teacherId: teacher.teacherId, subjectId: mathSubject.subjectId },
+      { teacherId: teacher.teacherId, subjectId: jpSubject.subjectId, subjectTypeId: jpSubject.subjectTypeId },
+      { teacherId: teacher.teacherId, subjectId: mathSubject.subjectId, subjectTypeId: mathSubject.subjectTypeId },
       // Teacher 2 Subjects
-      { teacherId: teacher2.teacherId, subjectId: enSubject.subjectId },
-      { teacherId: teacher2.teacherId, subjectId: phySubject.subjectId },
+      { teacherId: teacher2.teacherId, subjectId: enSubject.subjectId, subjectTypeId: enSubject.subjectTypeId },
+      { teacherId: teacher2.teacherId, subjectId: phySubject.subjectId, subjectTypeId: phySubject.subjectTypeId },
       // Teacher 3 Subjects
-      { teacherId: teacher3.teacherId, subjectId: mathSubject.subjectId },
-      { teacherId: teacher3.teacherId, subjectId: sciSubject.subjectId },
+      { teacherId: teacher3.teacherId, subjectId: mathSubject.subjectId, subjectTypeId: mathSubject.subjectTypeId },
+      { teacherId: teacher3.teacherId, subjectId: sciSubject.subjectId, subjectTypeId: sciSubject.subjectTypeId },
     ],
     skipDuplicates: true,
   });
@@ -328,6 +328,7 @@ async function main() {
       classTypeId: normalClassType.classTypeId, // <-- added this line
       dayOfWeek: DayOfWeek.MONDAY,
       subjectId: mathSubject.subjectId,
+      subjectTypeId: mathSubject.subjectTypeId,
       boothId: boothA.boothId,
       teacherId: teacher.teacherId,
       startTime: new Date("1970-01-01T15:00:00Z"), // 15:00
@@ -388,6 +389,7 @@ async function main() {
     data: {
       studentPreferenceId: preference.preferenceId,
       subjectId: mathSubject.subjectId,
+      subjectTypeId: mathSubject.subjectTypeId,
     },
   });
   await prisma.studentPreferenceTeacher.create({
@@ -417,6 +419,7 @@ async function main() {
     data: {
       studentPreferenceId: preference2.preferenceId,
       subjectId: enSubject.subjectId,
+      subjectTypeId: enSubject.subjectTypeId,
     },
   });
   await prisma.studentPreferenceTeacher.create({
@@ -446,6 +449,7 @@ async function main() {
     data: {
       studentPreferenceId: preference3.preferenceId,
       subjectId: mathSubject.subjectId,
+      subjectTypeId: mathSubject.subjectTypeId,
     },
   });
   await prisma.studentPreferenceTeacher.create({
@@ -465,6 +469,7 @@ async function main() {
       teacherId: teacher.teacherId,
       studentId: student.studentId,
       subjectId: jpSubject.subjectId,
+      subjectTypeId: jpSubject.subjectTypeId,
       boothId: boothA.boothId,
       classTypeId: normalClassType.classTypeId,
       notes: "国語の定期テスト対策",
@@ -498,6 +503,7 @@ async function main() {
       teacherId: teacher.teacherId,
       studentId: student.studentId,
       subjectId: mathSubject.subjectId,
+      subjectTypeId: mathSubject.subjectTypeId,
       boothId: boothA.boothId,
       classTypeId: normalClassType.classTypeId,
       templateId: template.templateId,
@@ -515,6 +521,7 @@ async function main() {
       teacherId: teacher.teacherId,
       studentId: student.studentId,
       subjectId: mathSubject.subjectId,
+      subjectTypeId: mathSubject.subjectTypeId,
       boothId: boothA.boothId,
       classTypeId: normalClassType.classTypeId,
       notes: "スタンドアロンの特別授業",
