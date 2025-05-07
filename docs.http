@@ -619,6 +619,31 @@ GET {{url}}/subject-type
 Content-Type: application/json
 Cookie: {{cookie}}
 
+### Get all subject types:
+GET {{url}}/subject-type
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get a specific subject type:
+GET {{url}}/subject-type/cmae1202c000d1044be0rpdjq
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Create a new subject type:
+POST {{url}}/subject-type
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "name": "専門科目",
+  "notes": "専門的な技術科目"
+}
+
+### Delete a subject type:
+DELETE {{url}}/subject-type?subjectTypeId=cmae1202c000d1044be0rpdjq
+Content-Type: application/json
+Cookie: {{cookie}}
+
 ### Get a single subject type by ID
 # Replace SUBJECT_TYPE_ID with an actual ID from your database
 GET {{url}}/subject-type/cma6fzd7m000dvi7krd27jfox

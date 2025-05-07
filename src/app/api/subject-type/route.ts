@@ -46,6 +46,13 @@ export async function GET(request: Request) {
             name: true,
           },
         },
+        StudentPreferenceSubject: {
+          select: {
+            id: true,
+            studentPreferenceId: true,
+            subjectId: true,
+          },
+        },
       },
     });
 
@@ -61,12 +68,12 @@ export async function GET(request: Request) {
   } catch (error) {
     if (error instanceof ZodError) {
       return Response.json(
-        { error: "Invalid query parameters", details: error.errors },
+        { error: "無効なクエリパラメータ", details: error.errors },
         { status: 400 }
       );
     }
     return Response.json(
-      { error: "Failed to fetch subject types" },
+      { error: "科目タイプの取得に失敗しました" },
       { status: 500 }
     );
   }
@@ -89,7 +96,7 @@ export async function POST(request: Request) {
 
     return Response.json(
       {
-        message: "Subject type created successfully",
+        message: "科目タイプを作成しました",
         data: subjectType,
       },
       { status: 201 }
@@ -97,12 +104,12 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof ZodError) {
       return Response.json(
-        { error: "Validation failed", details: error.errors },
+        { error: "入力値の検証に失敗しました", details: error.errors },
         { status: 400 }
       );
     }
     return Response.json(
-      { error: "Failed to create subject type" },
+      { error: "科目タイプの作成に失敗しました" },
       { status: 500 }
     );
   }
@@ -127,7 +134,7 @@ export async function PUT(request: Request) {
 
     if (!existingSubjectType) {
       return Response.json(
-        { error: "Subject type not found" },
+        { error: "科目タイプが見つかりません" },
         { status: 404 }
       );
     }
@@ -138,18 +145,18 @@ export async function PUT(request: Request) {
     });
 
     return Response.json({
-      message: "Subject type updated successfully",
+      message: "科目タイプを更新しました",
       data: subjectType,
     });
   } catch (error) {
     if (error instanceof ZodError) {
       return Response.json(
-        { error: "Validation failed", details: error.errors },
+        { error: "入力値の検証に失敗しました", details: error.errors },
         { status: 400 }
       );
     }
     return Response.json(
-      { error: "Failed to update subject type" },
+      { error: "科目タイプの更新に失敗しました" },
       { status: 500 }
     );
   }
@@ -170,7 +177,7 @@ export async function DELETE(request: Request) {
 
     if (!subjectTypeId) {
       return Response.json(
-        { error: "Subject type ID is required" },
+        { error: "科目タイプIDは必須です" },
         { status: 400 }
       );
     }
@@ -181,7 +188,7 @@ export async function DELETE(request: Request) {
 
     if (!existingSubjectType) {
       return Response.json(
-        { error: "Subject type not found" },
+        { error: "科目タイプが見つかりません" },
         { status: 404 }
       );
     }
@@ -194,7 +201,23 @@ export async function DELETE(request: Request) {
     if (hasRelatedSubjects) {
       return Response.json(
         {
-          error: "Cannot delete subject type with related subjects",
+          error: "このタイプを参照している科目があるため削除できません",
+        },
+        { status: 409 }
+      );
+    }
+
+    // Check for related StudentPreferenceSubject records
+    const hasRelatedStudentPreferences =
+      await prisma.studentPreferenceSubject.findFirst({
+        where: { subjectTypeId },
+      });
+
+    if (hasRelatedStudentPreferences) {
+      return Response.json(
+        {
+          error:
+            "このタイプを参照している生徒の希望科目があるため削除できません",
         },
         { status: 409 }
       );
@@ -203,12 +226,12 @@ export async function DELETE(request: Request) {
     await prisma.subjectType.delete({ where: { subjectTypeId } });
 
     return Response.json({
-      message: "Subject type deleted successfully",
+      message: "科目タイプを削除しました",
     });
   } catch (error) {
     console.error("Error deleting subject type:", error);
     return Response.json(
-      { error: "Failed to delete subject type" },
+      { error: "科目タイプの削除に失敗しました" },
       { status: 500 }
     );
   }

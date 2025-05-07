@@ -13,9 +13,6 @@ export async function GET(
   try {
     const { subjectTypeId } = await params;
 
-    // No need for explicit schema validation here, as Next.js' dynamic route
-    // parameter already guarantees we have a string
-
     // Fetch the subject type with related data
     const subjectType = await prisma.subjectType.findUnique({
       where: { subjectTypeId },
@@ -26,12 +23,20 @@ export async function GET(
             name: true,
           },
         },
+        StudentPreferenceSubject: {
+          select: {
+            id: true,
+            studentPreferenceId: true,
+            subjectId: true,
+          },
+          take: 10, // Limit to prevent large response payloads
+        },
       },
     });
 
     if (!subjectType) {
       return Response.json(
-        { error: "Subject type not found" },
+        { error: "科目タイプが見つかりません" },
         { status: 404 }
       );
     }
@@ -40,7 +45,7 @@ export async function GET(
   } catch (error) {
     console.error("Error fetching subject type:", error);
     return Response.json(
-      { error: "Failed to fetch subject type" },
+      { error: "科目タイプの取得に失敗しました" },
       { status: 500 }
     );
   }
