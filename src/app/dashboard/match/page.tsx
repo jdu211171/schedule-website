@@ -37,11 +37,13 @@ import {
 } from "@/components/match/types";
 
 export default function LessonManagementPage() {
+  // Состояние выбора
   const [selectedTeacherId, setSelectedTeacherId] = useState<string | null>(null);
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [firstSelection, setFirstSelection] = useState<"teacher" | "student" | null>(null);
 
+  // Состояние совместимости
   const [cachedFilteredTeachers, setCachedFilteredTeachers] = useState<Teacher[]>([]);
   const [cachedFilteredStudents, setCachedFilteredStudents] = useState<StudentWithPreference[]>([]);
   const [studentKibouSubjects, setStudentKibouSubjects] = useState<Subject[]>([]);
@@ -87,48 +89,48 @@ export default function LessonManagementPage() {
     []
   );
 
-/* -------------------- Обработчик серверной фильтрации студентов -------------------- */
-const handleStudentFiltersChange = useCallback(
-  (params: StudentFilterParams) => {
-    if ('preferredSubjectId' in params) {
-      if (params.preferredSubjectId) {
-        setStudentSubjectFilters([...params.preferredSubjectId]);
-      } else {
+  /* -------------------- Обработчик серверной фильтрации студентов -------------------- */
+  const handleStudentFiltersChange = useCallback(
+    (params: StudentFilterParams) => {
+      if ('preferredSubjectId' in params) {
+        if (params.preferredSubjectId) {
+          setStudentSubjectFilters([...params.preferredSubjectId]);
+        } else {
+          setStudentSubjectFilters([]);
+        }
+      }
+      
+      if ('gradeId' in params) {
+        if (params.gradeId !== undefined) {
+          setStudentGradeFilter(params.gradeId);
+        }
+      }
+
+      if ('studentTypeId' in params) {
+        if (params.studentTypeId) {
+          setStudentTypeFilters([...params.studentTypeId]);
+        } else {
+          setStudentTypeFilters([]);
+        }
+      }
+      
+      if ('schoolType' in params) {
+        if (params.schoolType !== undefined) {
+          setStudentSchoolTypeFilter(params.schoolType);
+        }
+      }
+      
+      if (Object.keys(params).length === 0) {
         setStudentSubjectFilters([]);
-      }
-    }
-    
-    if ('gradeId' in params) {
-      if (params.gradeId !== undefined) {
-        setStudentGradeFilter(params.gradeId);
-      }
-    }
-
-    if ('studentTypeId' in params) {
-      if (params.studentTypeId) {
-        setStudentTypeFilters([...params.studentTypeId]);
-      } else {
+        setStudentGradeFilter(null);
         setStudentTypeFilters([]);
+        setStudentSchoolTypeFilter(null);
       }
-    }
-    
-    if ('schoolType' in params) {
-      if (params.schoolType !== undefined) {
-        setStudentSchoolTypeFilter(params.schoolType);
-      }
-    }
-    
-    if (Object.keys(params).length === 0) {
-      setStudentSubjectFilters([]);
-      setStudentGradeFilter(null);
-      setStudentTypeFilters([]);
-      setStudentSchoolTypeFilter(null);
-    }
-  },
-  []
-);
+    },
+    []
+  );
 
-  // Запрос учителей с фильтрами
+  // Запрос учителей с фильтрами - высокий приоритет
   const { data: teachersData, isLoading: teachersLoading } = useMatchTeachers({
     page: 1,
     limit: 100,
@@ -137,7 +139,7 @@ const handleStudentFiltersChange = useCallback(
   });
   const teachers = useMemo(() => teachersData?.data || [], [teachersData]);
 
-  // Запрос студентов с фильтрами
+  // Запрос студентов с фильтрами - высокий приоритет
   const { data: studentsData, isLoading: studentsLoading } = useMatchStudents({
     page: 1,
     limit: 100,
@@ -148,37 +150,40 @@ const handleStudentFiltersChange = useCallback(
   });
   const studentsFromApi = useMemo(() => studentsData?.data || [], [studentsData]);
 
-  const { data: subjectsData, isLoading: subjectsLoading } = useMatchSubjects({
+  // Запросы справочников - средний приоритет
+  const { data: subjectsData } = useMatchSubjects({
     page: 1,
     limit: 100,
   });
   const subjects = useMemo(() => subjectsData?.data || [], [subjectsData]);
 
-  const { data: gradesData, isLoading: gradesLoading } = useMatchGrades({
+  const { data: gradesData } = useMatchGrades({
     page: 1,
     limit: 100,
   });
   const grades = gradesData?.data || [];
 
-  const { data: evaluationsData, isLoading: evaluationsLoading } = useMatchEvaluations({
+  const { data: evaluationsData } = useMatchEvaluations({
     page: 1,
     limit: 100,
   });
   const evaluations = evaluationsData?.data || [];
 
-  const { data: teacherSubjectsData, isLoading: teacherSubjectsLoading } = useMatchTeacherSubjects({
+  const { data: teacherSubjectsData } = useMatchTeacherSubjects({
     page: 1,
     limit: 100,
   });
   const teacherSubjects = useMemo(() => teacherSubjectsData?.data || [], [teacherSubjectsData]);
-  const { data: classSessionsData, isLoading: classSessionsLoading } = useMatchClassSessions({});
-  const classSessions = useMemo(() => classSessionsData?.data || [], [classSessionsData]);
 
-  const { data: studentTypesData, isLoading: studentTypesLoading } = useMatchStudentTypes({
+  const { data: studentTypesData } = useMatchStudentTypes({
     page: 1,
     limit: 100,
   });
   const studentTypes = studentTypesData?.data || [];
+
+  // Запрос уроков - низкий приоритет
+  const { data: classSessionsData } = useMatchClassSessions({});
+  const classSessions = useMemo(() => classSessionsData?.data || [], [classSessionsData]);
 
   // Обогащение данных о студентах информацией о предпочтениях
   const students = useMemo(() => studentsFromApi.map((student: Student) => ({
@@ -196,63 +201,63 @@ const handleStudentFiltersChange = useCallback(
   })), [studentsFromApi]);
 
   // Получение предметов студента с добавленными типами
- const getStudentSubjects = useCallback((studentId: string | null): Subject[] => {
-  if (!studentId) return [];
-  
-  const student = students.find((s: StudentWithPreference) => s.studentId === studentId);
-  if (!student) return [];
-  
-  const subjectIds = new Set<string>();
-  const studentSubjectsList: Subject[] = [];
-  
-  if (student.preference && student.preference.preferredSubjects) {
-    student.preference.preferredSubjects.forEach((subjectId: string) => {
-      if (!subjectIds.has(subjectId)) {
-        const subject = subjects.find((s: Subject) => s.subjectId === subjectId);
-        if (subject) {
-          subjectIds.add(subjectId);
+  const getStudentSubjects = useCallback((studentId: string | null): Subject[] => {
+    if (!studentId) return [];
+    
+    const student = students.find((s: StudentWithPreference) => s.studentId === studentId);
+    if (!student) return [];
+    
+    const subjectIds = new Set<string>();
+    const studentSubjectsList: Subject[] = [];
+    
+    if (student.preference && student.preference.preferredSubjects) {
+      student.preference.preferredSubjects.forEach((subjectId: string) => {
+        if (!subjectIds.has(subjectId)) {
+          const subject = subjects.find((s: Subject) => s.subjectId === subjectId);
+          if (subject) {
+            subjectIds.add(subjectId);
+            studentSubjectsList.push(subject);
+          }
+        }
+      });
+    }
+    
+    if (student.StudentPreference) {
+      student.StudentPreference.forEach((pref: StudentPreferenceItem) => {
+        if (pref.subjects) {
+          pref.subjects.forEach((subjectItem: StudentPreferenceSubject) => {
+            if (subjectItem.subjectId && !subjectIds.has(subjectItem.subjectId)) {
+              const subject = subjects.find((s: Subject) => s.subjectId === subjectItem.subjectId);
+              if (subject) {
+                subjectIds.add(subjectItem.subjectId);
+                studentSubjectsList.push(subject);
+              } else if (subjectItem.subject) {
+                subjectIds.add(subjectItem.subject.subjectId);
+                studentSubjectsList.push(subjectItem.subject);
+              }
+            }
+          });
+        }
+      });
+    }
+    
+    const studentLessons = classSessions.filter(lesson => lesson.studentId === studentId);
+    
+    studentLessons.forEach(lesson => {
+      if (lesson.subject && !subjectIds.has(lesson.subject.subjectId)) {
+        subjectIds.add(lesson.subject.subjectId);
+        studentSubjectsList.push(lesson.subject);
+      } else if (lesson.subjectId && !subjectIds.has(lesson.subjectId)) {
+        const subject = subjects.find((s: Subject) => s.subjectId === lesson.subjectId);
+        if (subject && !subjectIds.has(subject.subjectId)) {
+          subjectIds.add(subject.subjectId);
           studentSubjectsList.push(subject);
         }
       }
     });
-  }
-  
-  if (student.StudentPreference) {
-    student.StudentPreference.forEach((pref: StudentPreferenceItem) => {
-      if (pref.subjects) {
-        pref.subjects.forEach((subjectItem: StudentPreferenceSubject) => {
-          if (subjectItem.subjectId && !subjectIds.has(subjectItem.subjectId)) {
-            const subject = subjects.find((s: Subject) => s.subjectId === subjectItem.subjectId);
-            if (subject) {
-              subjectIds.add(subjectItem.subjectId);
-              studentSubjectsList.push(subject);
-            } else if (subjectItem.subject) {
-              subjectIds.add(subjectItem.subject.subjectId);
-              studentSubjectsList.push(subjectItem.subject);
-            }
-          }
-        });
-      }
-    });
-  }
-  
-  const studentLessons = classSessions.filter(lesson => lesson.studentId === studentId);
-  
-  studentLessons.forEach(lesson => {
-    if (lesson.subject && !subjectIds.has(lesson.subject.subjectId)) {
-      subjectIds.add(lesson.subject.subjectId);
-      studentSubjectsList.push(lesson.subject);
-    } else if (lesson.subjectId && !subjectIds.has(lesson.subjectId)) {
-      const subject = subjects.find((s: Subject) => s.subjectId === lesson.subjectId);
-      if (subject && !subjectIds.has(subject.subjectId)) {
-        subjectIds.add(subject.subjectId);
-        studentSubjectsList.push(subject);
-      }
-    }
-  });
-  
-  return studentSubjectsList;
-}, [students, subjects, classSessions]);
+    
+    return studentSubjectsList;
+  }, [students, subjects, classSessions]);
 
   // Получение предметов учителя
   const getTeacherSubjects = useCallback((teacherId: string | null): Subject[] => {
@@ -266,7 +271,7 @@ const handleStudentFiltersChange = useCallback(
     return subjects.filter(subject => subjectIds.includes(subject.subjectId));
   }, [teacherSubjects, subjects]);
 
-  // Получение совместимых учителей и студентов
+  // Получение совместимых учителей и студентов - только когда выбран студент/учитель
   const { 
     data: compatibleTeachersData, 
     isLoading: compatibleTeachersLoading 
@@ -301,7 +306,8 @@ const handleStudentFiltersChange = useCallback(
   useEffect(() => {
     setIsLoadingStudentCompatibility(compatibleStudentsLoading);
     
-    if (compatibleStudentsData && !compatibleStudentsLoading) {
+    if (compatibleStudentsData && !compatibleStudentsLoading && selectedTeacherId) {
+      // Обновляем отфильтрованных студентов только если есть данные и выбран учитель
       setCachedFilteredStudents(compatibleStudentsData.filteredStudents || []);
       
       if (compatibleStudentsData.kibouSubjects && compatibleStudentsData.kibouSubjects.length > 0) {
@@ -313,6 +319,7 @@ const handleStudentFiltersChange = useCallback(
         }
       }
     } else if (!selectedTeacherId) {
+      // Сбрасываем список, если учитель не выбран
       setCachedFilteredStudents([]);
       setTeacherKibouSubjects([]);
     }
@@ -322,7 +329,8 @@ const handleStudentFiltersChange = useCallback(
   useEffect(() => {
     setIsLoadingTeacherCompatibility(compatibleTeachersLoading);
     
-    if (compatibleTeachersData && !compatibleTeachersLoading) {
+    if (compatibleTeachersData && !compatibleTeachersLoading && selectedStudentId) {
+      // Обновляем отфильтрованных учителей только если есть данные и выбран студент
       setCachedFilteredTeachers(compatibleTeachersData.filteredTeachers || []);
       
       if (compatibleTeachersData.kibouSubjects && compatibleTeachersData.kibouSubjects.length > 0) {
@@ -334,6 +342,7 @@ const handleStudentFiltersChange = useCallback(
         }
       }
     } else if (!selectedStudentId) {
+      // Сбрасываем список, если студент не выбран
       setCachedFilteredTeachers([]);
       setStudentKibouSubjects([]);
     }
@@ -394,17 +403,8 @@ const handleStudentFiltersChange = useCallback(
     // Логика добавления сессии
   }, []);
 
-  const isLoading =
-    teachersLoading ||
-    studentsLoading ||
-    classSessionsLoading ||
-    subjectsLoading ||
-    gradesLoading ||
-    evaluationsLoading ||
-    teacherSubjectsLoading ||
-    studentTypesLoading;
-
-  if (isLoading) {
+  // Отображаем загрузку только если основные данные не загружены 
+  if (teachersLoading || studentsLoading) {
     return (
       <div className="container mx-auto p-6">
         <h1 className="text-2xl font-bold mb-6">授業管理</h1>
@@ -520,20 +520,20 @@ const handleStudentFiltersChange = useCallback(
       </div>
 
       {isModalOpen && (
-  <LessonScheduleModal
-    open={isModalOpen}
-    onClose={closeModal}
-    teacherId={selectedTeacherId || ""}
-    studentId={selectedStudentId || ""}
-    teacherName={
-      teachers.find((t: Teacher) => t.teacherId === selectedTeacherId)?.name || ""
-    }
-    studentName={
-      students.find((s: Student) => s.studentId === selectedStudentId)?.name || ""
-    }
-    onAddLesson={handleAddClassSession}
-  />
-)}
+        <LessonScheduleModal
+          open={isModalOpen}
+          onClose={closeModal}
+          teacherId={selectedTeacherId || ""}
+          studentId={selectedStudentId || ""}
+          teacherName={
+            teachers.find((t: Teacher) => t.teacherId === selectedTeacherId)?.name || ""
+          }
+          studentName={
+            students.find((s: Student) => s.studentId === selectedStudentId)?.name || ""
+          }
+          onAddLesson={handleAddClassSession}
+        />
+      )}
     </div>
   );
 }

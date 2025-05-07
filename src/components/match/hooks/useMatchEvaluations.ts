@@ -4,10 +4,9 @@ import { fetchEvaluations } from '../api-client';
 import { PaginationParams } from '../types';
 
 export function useMatchEvaluations(params: PaginationParams = {}) {
-  const { page = 1, limit = 10 } = params;
-  
   return useQuery({
     queryKey: ['matchEvaluations', params],
-    queryFn: () => fetchEvaluations({ ...params, page, limit }),
+    queryFn: () => fetchEvaluations(params),
+    staleTime: 30 * 60 * 1000, // Кеширование на 30 минут (редко меняющиеся данные)
   });
 }
