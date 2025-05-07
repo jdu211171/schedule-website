@@ -173,6 +173,7 @@ export async function GET(request: Request) {
             subjects: {
               include: {
                 subject: true,
+                subjectType: true,
               },
             },
             teachers: {
@@ -242,7 +243,7 @@ export async function POST(request: Request) {
     }
 
     // Check if grade exists if provided
-    if (studentData.gradeId) {
+    if (studentData.gradeId && studentData.gradeId !== "") {
       const gradeExists = await prisma.grade.findUnique({
         where: { gradeId: studentData.gradeId },
       });
@@ -253,8 +254,8 @@ export async function POST(request: Request) {
     }
 
     // Verify subjects and teachers exist before starting transaction
-    if (preferences?.subjects?.length) {
-      const subjectIds = preferences.subjects;
+    if (preferences?.subjects && preferences.subjects.length > 0) {
+      const subjectIds = preferences.subjects.map(subj => subj.subjectId);
       const existingSubjects = await prisma.subject.findMany({
         where: { subjectId: { in: subjectIds } },
         select: { subjectId: true },
@@ -273,9 +274,26 @@ export async function POST(request: Request) {
           { status: 400 }
         );
       }
+
+      // Verify subject types
+      for (const subject of preferences.subjects) {
+        const subjectTypeExists = await prisma.subjectType.findUnique({
+          where: { subjectTypeId: subject.subjectTypeId },
+        });
+
+        if (!subjectTypeExists) {
+          return Response.json(
+            {
+              error: "Invalid subject type ID",
+              message: `The subject type ID ${subject.subjectTypeId} does not exist`,
+            },
+            { status: 400 }
+          );
+        }
+      }
     }
 
-    if (preferences?.teachers?.length) {
+    if (preferences?.teachers && preferences.teachers.length > 0) {
       const teacherIds = preferences.teachers;
       const existingTeachers = await prisma.teacher.findMany({
         where: { teacherId: { in: teacherIds } },
@@ -298,7 +316,7 @@ export async function POST(request: Request) {
     }
 
     // Verify classType if provided
-    if (preferences?.classTypeId) {
+    if (preferences?.classTypeId && preferences.classTypeId !== null) {
       const classTypeExists = await prisma.classType.findUnique({
         where: { classTypeId: preferences.classTypeId },
       });
@@ -339,18 +357,22 @@ export async function POST(request: Request) {
         "UNIVERSITY",
         "OTHER",
       ];
+
+      // Clean up empty strings to be null
       const fixedStudentData = {
         ...studentData,
+        // Convert empty strings to null
+        gradeId: studentData.gradeId && studentData.gradeId !== "" ? studentData.gradeId : null,
         // Only set examSchoolType if valid
         examSchoolType: validSchoolTypes.includes(studentData.examSchoolType!)
           ? studentData.examSchoolType
-          : undefined,
+          : null,
         // Only set examSchoolCategoryType if valid
         examSchoolCategoryType: validExamSchoolCategoryTypes.includes(
           studentData.examSchoolCategoryType!
         )
           ? studentData.examSchoolCategoryType
-          : undefined,
+          : null,
       };
 
       const student = await tx.student.create({
@@ -374,19 +396,20 @@ export async function POST(request: Request) {
         const preference = await tx.studentPreference.create({
           data: {
             studentId: student.studentId,
-            classTypeId,
-            notes,
+            classTypeId: classTypeId || null,
+            notes: notes || null,
           },
         });
 
         // Create subject preferences
-        if (subjects.length > 0) {
+        if (subjects && subjects.length > 0) {
           await Promise.all(
-            subjects.map((subjectId: string) =>
+            subjects.map((subject) =>
               tx.studentPreferenceSubject.create({
                 data: {
                   studentPreferenceId: preference.preferenceId,
-                  subjectId,
+                  subjectId: subject.subjectId,
+                  subjectTypeId: subject.subjectTypeId,
                 },
               })
             )
@@ -394,7 +417,7 @@ export async function POST(request: Request) {
         }
 
         // Create teacher preferences
-        if (teachers.length > 0) {
+        if (teachers && teachers.length > 0) {
           await Promise.all(
             teachers.map((teacherId: string) =>
               tx.studentPreferenceTeacher.create({
@@ -408,22 +431,26 @@ export async function POST(request: Request) {
         }
 
         // Create time slot preferences
-        if (timeSlots.length > 0) {
+        if (timeSlots && timeSlots.length > 0) {
           await Promise.all(
             timeSlots.map(
               (slot: {
-                dayOfWeek: string;
+                dayOfWeek: string | null;
                 startTime: string;
                 endTime: string;
-              }) =>
-                tx.studentPreferenceTimeSlot.create({
+              }) => {
+                if (!slot.dayOfWeek) {
+                  return Promise.resolve(); // Skip if dayOfWeek is null
+                }
+                return tx.studentPreferenceTimeSlot.create({
                   data: {
                     preferenceId: preference.preferenceId,
                     dayOfWeek: slot.dayOfWeek as DayOfWeek,
                     startTime: new Date(`1970-01-01T${slot.startTime}`),
                     endTime: new Date(`1970-01-01T${slot.endTime}`),
                   },
-                })
+                });
+              }
             )
           );
         }
@@ -440,6 +467,7 @@ export async function POST(request: Request) {
               subjects: {
                 include: {
                   subject: true,
+                  subjectType: true,
                 },
               },
               teachers: {
@@ -512,7 +540,7 @@ export async function PUT(request: Request) {
     }
 
     // If gradeId is provided, check if it exists
-    if (studentData.gradeId) {
+    if (studentData.gradeId && studentData.gradeId !== "") {
       const gradeExists = await prisma.grade.findUnique({
         where: { gradeId: studentData.gradeId },
       });
@@ -523,8 +551,8 @@ export async function PUT(request: Request) {
     }
 
     // Verify subjects, teachers, and classType if provided
-    if (preferences?.subjects?.length) {
-      const subjectIds = preferences.subjects;
+    if (preferences?.subjects && preferences.subjects.length > 0) {
+      const subjectIds = preferences.subjects.map(subj => subj.subjectId);
       const existingSubjects = await prisma.subject.findMany({
         where: { subjectId: { in: subjectIds } },
         select: { subjectId: true },
@@ -543,9 +571,26 @@ export async function PUT(request: Request) {
           { status: 400 }
         );
       }
+
+      // Verify subject types
+      for (const subject of preferences.subjects) {
+        const subjectTypeExists = await prisma.subjectType.findUnique({
+          where: { subjectTypeId: subject.subjectTypeId },
+        });
+
+        if (!subjectTypeExists) {
+          return Response.json(
+            {
+              error: "Invalid subject type ID",
+              message: `The subject type ID ${subject.subjectTypeId} does not exist`,
+            },
+            { status: 400 }
+          );
+        }
+      }
     }
 
-    if (preferences?.teachers?.length) {
+    if (preferences?.teachers && preferences.teachers.length > 0) {
       const teacherIds = preferences.teachers;
       const existingTeachers = await prisma.teacher.findMany({
         where: { teacherId: { in: teacherIds } },
@@ -567,7 +612,7 @@ export async function PUT(request: Request) {
       }
     }
 
-    if (preferences?.classTypeId) {
+    if (preferences?.classTypeId && preferences.classTypeId !== null) {
       const classTypeExists = await prisma.classType.findUnique({
         where: { classTypeId: preferences.classTypeId },
       });
@@ -589,6 +634,13 @@ export async function PUT(request: Request) {
       const updateData = Object.fromEntries(
         Object.entries(studentData).filter(([, value]) => value !== undefined)
       );
+
+      // Convert empty strings to null for database
+      Object.keys(updateData).forEach((key) => {
+        if (updateData[key] === "") {
+          updateData[key] = null;
+        }
+      });
 
       // Update without storing the result since we don't use it
       await tx.student.update({
@@ -615,8 +667,8 @@ export async function PUT(request: Request) {
           const newPreference = await tx.studentPreference.create({
             data: {
               studentId,
-              classTypeId: preferences.classTypeId,
-              notes: preferences.notes,
+              classTypeId: preferences.classTypeId || null,
+              notes: preferences.notes || null,
             },
           });
 
@@ -632,8 +684,8 @@ export async function PUT(request: Request) {
           await tx.studentPreference.update({
             where: { preferenceId: preferenceRecord.preferenceId },
             data: {
-              classTypeId: preferences.classTypeId,
-              notes: preferences.notes,
+              classTypeId: preferences.classTypeId || null,
+              notes: preferences.notes || null,
             },
           });
         }
@@ -648,13 +700,14 @@ export async function PUT(request: Request) {
           }
 
           // Create new subject preferences
-          if (preferences.subjects.length > 0) {
+          if (preferences.subjects && preferences.subjects.length > 0) {
             await Promise.all(
-              preferences.subjects.map((subjectId) =>
+              preferences.subjects.map((subject) =>
                 tx.studentPreferenceSubject.create({
                   data: {
                     studentPreferenceId: preferenceRecord.preferenceId,
-                    subjectId,
+                    subjectId: subject.subjectId,
+                    subjectTypeId: subject.subjectTypeId,
                   },
                 })
               )
@@ -672,7 +725,7 @@ export async function PUT(request: Request) {
           }
 
           // Create new teacher preferences
-          if (preferences.teachers.length > 0) {
+          if (preferences.teachers && preferences.teachers.length > 0) {
             await Promise.all(
               preferences.teachers.map((teacherId) =>
                 tx.studentPreferenceTeacher.create({
@@ -696,18 +749,21 @@ export async function PUT(request: Request) {
           }
 
           // Create new time slots
-          if (preferences.timeSlots.length > 0) {
+          if (preferences.timeSlots && preferences.timeSlots.length > 0) {
             await Promise.all(
-              preferences.timeSlots.map((slot) =>
-                tx.studentPreferenceTimeSlot.create({
+              preferences.timeSlots.map((slot) => {
+                if (!slot.dayOfWeek) {
+                  return Promise.resolve(); // Skip if dayOfWeek is null
+                }
+                return tx.studentPreferenceTimeSlot.create({
                   data: {
                     preferenceId: preferenceRecord.preferenceId,
                     dayOfWeek: slot.dayOfWeek as DayOfWeek,
                     startTime: new Date(`1970-01-01T${slot.startTime}`),
                     endTime: new Date(`1970-01-01T${slot.endTime}`),
                   },
-                })
-              )
+                });
+              })
             );
           }
         }
@@ -724,6 +780,7 @@ export async function PUT(request: Request) {
               subjects: {
                 include: {
                   subject: true,
+                  subjectType: true,
                 },
               },
               teachers: {

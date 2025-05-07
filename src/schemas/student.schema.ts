@@ -2,78 +2,65 @@ import { Prisma } from "@prisma/client";
 import { z } from "zod";
 
 // Enum for school type
-const SchoolTypeEnum = z.enum(["PUBLIC", "PRIVATE"]);
+const SchoolTypeEnum = z.enum(["PUBLIC", "PRIVATE"], {
+  required_error: "学校タイプは必須です",
+});
 
 // Enum for exam school type
-const ExamSchoolTypeEnum = z.enum([
-  "ELEMENTARY",
-  "MIDDLE",
-  "HIGH",
-  "UNIVERSITY",
-  "OTHER",
-]);
+const ExamSchoolTypeEnum = z.enum(
+  ["ELEMENTARY", "MIDDLE", "HIGH", "UNIVERSITY", "OTHER"],
+  { required_error: "受験学校区分は必須です" }
+);
 
-// Base schema with common fields
+// Base schema with common fields (Japanese error messages)
 const StudentBaseSchema = z.object({
-  name: z.string().min(1).max(100),
+  name: z
+    .string({ required_error: "名前は必須です" })
+    .min(1, { message: "入力は必須です" })
+    .max(100, { message: "100文字以内で入力してください" }),
   kanaName: z
-    .string()
-    .max(100)
-    .optional()
-    .transform((val) => (val === "" ? undefined : val)),
-  gradeId: z
-    .string()
-    .optional()
-    .transform((val) => (val === "" ? undefined : val)),
+    .string({ required_error: "名前(カナ)は任意です" })
+    .max(100, { message: "100文字以内で入力してください" })
+    .nullish(),
+  gradeId: z.string().nullish(),
   schoolName: z
     .string()
-    .max(100)
-    .optional()
-    .transform((val) => (val === "" ? undefined : val)),
-  schoolType: SchoolTypeEnum.optional(),
-  examSchoolType: SchoolTypeEnum.optional(), // <-- PUBLIC/PRIVATE only
-  examSchoolCategoryType: ExamSchoolTypeEnum.optional(), // <-- ELEMENTARY/MIDDLE/HIGH/UNIVERSITY/OTHER
+    .max(100, { message: "100文字以内で入力してください" })
+    .nullish(),
+  schoolType: SchoolTypeEnum.nullish(),
+  examSchoolType: SchoolTypeEnum.nullish(),
+  examSchoolCategoryType: ExamSchoolTypeEnum.nullish(),
   firstChoiceSchool: z
     .string()
-    .max(100)
-    .optional()
-    .transform((val) => (val === "" ? undefined : val)),
+    .max(100, { message: "100文字以内で入力してください" })
+    .nullish(),
   secondChoiceSchool: z
     .string()
-    .max(100)
-    .optional()
-    .transform((val) => (val === "" ? undefined : val)),
-  enrollmentDate: z
-    .string()
-    .optional()
-    .transform((val) => (val ? new Date(val) : undefined)),
-  birthDate: z.string().transform((val) => new Date(val)),
+    .max(100, { message: "100文字以内で入力してください" })
+    .nullish(),
+  enrollmentDate: z.string().nullish(),
+  birthDate: z.string({ required_error: "生年月日は必須です" }).transform((val) => new Date(val)),
   homePhone: z
     .string()
-    .max(20)
-    .optional()
-    .transform((val) => (val === "" ? undefined : val)),
+    .max(20, { message: "20文字以内で入力してください" })
+    .nullish(),
   parentMobile: z
     .string()
-    .max(20)
-    .optional()
-    .transform((val) => (val === "" ? undefined : val)),
+    .max(20, { message: "20文字以内で入力してください" })
+    .nullish(),
   studentMobile: z
     .string()
-    .max(20)
-    .optional()
-    .transform((val) => (val === "" ? undefined : val)),
+    .max(20, { message: "20文字以内で入力してください" })
+    .nullish(),
   parentEmail: z
     .string()
-    .max(100)
-    .email()
-    .optional()
-    .transform((val) => (val === "" ? undefined : val)),
+    .max(100, { message: "100文字以内で入力してください" })
+    .email({ message: "有効なメールアドレスを入力してください" })
+    .nullish(),
   notes: z
     .string()
-    .max(255)
-    .optional()
-    .transform((val) => (val === "" ? undefined : val)),
+    .max(255, { message: "255文字以内で入力してください" })
+    .nullish(),
 });
 
 // Complete student schema (includes all fields from the database)
@@ -88,86 +75,27 @@ export const StudentSchema = StudentBaseSchema.extend({
 export const CreateStudentSchema = StudentBaseSchema.strict();
 
 // Schema for updating an existing student
-export const UpdateStudentSchema = z
-  .object({
-    studentId: z.string(),
-    name: z.string().min(1).max(100).optional(),
-    kanaName: z
-      .string()
-      .max(100)
-      .optional()
-      .transform((val) => (val === "" ? undefined : val)),
-    gradeId: z
-      .string()
-      .optional()
-      .transform((val) => (val === "" ? undefined : val)),
-    schoolName: z
-      .string()
-      .max(100)
-      .optional()
-      .transform((val) => (val === "" ? undefined : val)),
-    schoolType: SchoolTypeEnum.optional(),
-    examSchoolType: SchoolTypeEnum.optional(),
-    examSchoolCategoryType: ExamSchoolTypeEnum.optional(),
-    firstChoiceSchool: z
-      .string()
-      .max(100)
-      .optional()
-      .transform((val) => (val === "" ? undefined : val)),
-    secondChoiceSchool: z
-      .string()
-      .max(100)
-      .optional()
-      .transform((val) => (val === "" ? undefined : val)),
-    enrollmentDate: z
-      .string()
-      .optional()
-      .transform((val) => (val ? new Date(val) : undefined)),
-    birthDate: z
-      .string()
-      .optional()
-      .transform((val) => (val ? new Date(val) : undefined)),
-    homePhone: z
-      .string()
-      .max(20)
-      .optional()
-      .transform((val) => (val === "" ? undefined : val)),
-    parentMobile: z
-      .string()
-      .max(20)
-      .optional()
-      .transform((val) => (val === "" ? undefined : val)),
-    studentMobile: z
-      .string()
-      .max(20)
-      .optional()
-      .transform((val) => (val === "" ? undefined : val)),
-    parentEmail: z
-      .string()
-      .max(100)
-      .email()
-      .optional()
-      .transform((val) => (val === "" ? undefined : val)),
-    notes: z
-      .string()
-      .max(255)
-      .optional()
-      .transform((val) => (val === "" ? undefined : val)),
-  })
-  .strict();
+export const UpdateStudentSchema = StudentBaseSchema.extend({
+  studentId: z.string({ required_error: "IDは必須です" }),
+}).strict();
 
 // Schema for retrieving a single student by ID
 export const StudentIdSchema = z
   .object({
-    studentId: z.string(),
+    studentId: z.string({ required_error: "IDは必須です" }),
   })
   .strict();
 
 // Schema for querying students with filtering, pagination, and sorting
 export const StudentQuerySchema = z
   .object({
-    page: z.coerce.number().int().positive().optional().default(1),
-    limit: z.coerce.number().int().positive().max(100).optional().default(10),
+    page: z.coerce.number().int().positive().default(1),
+    limit: z
+      .coerce.number()
+      .int()
+      .positive()
+      .max(100, { message: "100以下の値を入力してください" })
+      .default(10),
     name: z.string().optional(),
     gradeName: z.string().optional(),
     gradeId: z.union([z.string(), z.array(z.string())]).optional(),
@@ -177,9 +105,7 @@ export const StudentQuerySchema = z
     examSchoolType: z
       .union([
         z.enum(["ELEMENTARY", "MIDDLE", "HIGH", "UNIVERSITY", "OTHER"]),
-        z.array(
-          z.enum(["ELEMENTARY", "MIDDLE", "HIGH", "UNIVERSITY", "OTHER"])
-        ),
+        z.array(z.enum(["ELEMENTARY", "MIDDLE", "HIGH", "UNIVERSITY", "OTHER"])),
       ])
       .optional(),
     preferredSubjectId: z.union([z.string(), z.array(z.string())]).optional(),
@@ -192,101 +118,47 @@ export const StudentQuerySchema = z
         "createdAt",
         "updatedAt",
       ])
-      .optional()
       .default("name"),
-    order: z.enum(["asc", "desc"]).optional().default("desc"),
+    order: z.enum(["asc", "desc"]).default("desc"),
   })
   .strict();
 
+// Define the schema for subject preference
+const SubjectPreferenceSchema = z.object({
+  subjectId: z.string({ required_error: "科目IDは必須です" }),
+  subjectTypeId: z.string({ required_error: "科目種別IDは必須です" }),
+});
 
 // Schema for creating a user+student
-export const CreateUserStudentSchema = z.object({
-  // User fields
-  username: z.string().min(3).max(50),
-  password: z.string().min(6),
-
-  // Student base fields (reusing the existing schema without userId)
-  name: z.string().min(1).max(100),
-  kanaName: z
-    .string()
-    .max(100)
-    .optional()
-    .transform((val) => (val === "" ? undefined : val)),
-  gradeId: z
-    .string()
-    .optional()
-    .transform((val) => (val === "" ? undefined : val)),
-  schoolName: z
-    .string()
-    .max(100)
-    .optional()
-    .transform((val) => (val === "" ? undefined : val)),
-  schoolType: SchoolTypeEnum.optional(),
-  examSchoolType: SchoolTypeEnum.optional(),
-  examSchoolCategoryType: ExamSchoolTypeEnum.optional(),
-  firstChoiceSchool: z
-    .string()
-    .max(100)
-    .optional()
-    .transform((val) => (val === "" ? undefined : val)),
-  secondChoiceSchool: z
-    .string()
-    .max(100)
-    .optional()
-    .transform((val) => (val === "" ? undefined : val)),
-  enrollmentDate: z
-    .string()
-    .optional()
-    .transform((val) => (val ? new Date(val) : undefined)),
-  birthDate: z.string().transform((val) => new Date(val)),
-  homePhone: z
-    .string()
-    .max(20)
-    .optional()
-    .transform((val) => (val === "" ? undefined : val)),
-  parentMobile: z
-    .string()
-    .max(20)
-    .optional()
-    .transform((val) => (val === "" ? undefined : val)),
-  studentMobile: z
-    .string()
-    .max(20)
-    .optional()
-    .transform((val) => (val === "" ? undefined : val)),
-  parentEmail: z
-    .string()
-    .max(100)
-    .email()
-    .optional()
-    .transform((val) => (val === "" ? undefined : val)),
-  notes: z
-    .string()
-    .max(255)
-    .optional()
-    .transform((val) => (val === "" ? undefined : val)),
-
-  // Optional preferences
+export const CreateUserStudentSchema = StudentBaseSchema.extend({
+  username: z
+    .string({ required_error: "ユーザー名は必須です" })
+    .min(3, { message: "3文字以上で入力してください" })
+    .max(50, { message: "50文字以内で入力してください" }),
+  password: z
+    .string({ required_error: "パスワードは必須です" })
+    .min(6, { message: "6文字以上で入力してください" }),
   preferences: z
     .object({
-      classTypeId: z.string().optional(),
-      notes: z.string().optional(),
-      subjects: z.array(z.string()).optional(),
+      classTypeId: z.string().nullish(),
+      notes: z.string().nullish(),
+      subjects: z.array(SubjectPreferenceSchema).optional(),
       teachers: z.array(z.string()).optional(),
       timeSlots: z
         .array(
           z.object({
-            dayOfWeek: z.enum([
-              "MONDAY",
-              "TUESDAY",
-              "WEDNESDAY",
-              "THURSDAY",
-              "FRIDAY",
-              "SATURDAY",
-              "SUNDAY",
-            ]),
-            startTime: z.string(),
-            endTime: z.string(),
+            dayOfWeek: z
+              .enum([
+                "MONDAY",
+                "TUESDAY",
+                "WEDNESDAY",
+                "THURSDAY",
+                "FRIDAY",
+                "SATURDAY",
+                "SUNDAY",
+              ]),
+            startTime: z.string({ required_error: "開始時刻は必須です" }),
+            endTime: z.string({ required_error: "終了時刻は必須です" }),
           })
         )
         .optional(),
@@ -294,103 +166,32 @@ export const CreateUserStudentSchema = z.object({
     .optional(),
 });
 
-export const UpdateStudentWithPreferencesSchema = z.object({
-  studentId: z.string(),
-
-  // Basic student fields (all optional)
-  name: z.string().min(1).max(100).optional(),
-  // User fields
-  password: z.string().min(6).optional(),
-  kanaName: z
+export const UpdateStudentWithPreferencesSchema = UpdateStudentSchema.extend({
+  password: z
     .string()
-    .max(100)
-    .optional()
-    .transform((val) => (val === "" ? undefined : val)),
-  gradeId: z
-    .string()
-    .optional()
-    .transform((val) => (val === "" ? undefined : val)),
-  schoolName: z
-    .string()
-    .max(100)
-    .optional()
-    .transform((val) => (val === "" ? undefined : val)),
-  schoolType: SchoolTypeEnum.optional(),
-  examSchoolType: SchoolTypeEnum.optional(),
-  examSchoolCategoryType: ExamSchoolTypeEnum.optional(),
-  firstChoiceSchool: z
-    .string()
-    .max(100)
-    .optional()
-    .transform((val) => (val === "" ? undefined : val)),
-  secondChoiceSchool: z
-    .string()
-    .max(100)
-    .optional()
-    .transform((val) => (val === "" ? undefined : val)),
-  enrollmentDate: z
-    .string()
-    .optional()
-    .transform((val) => (val ? new Date(val) : undefined)),
-  birthDate: z
-    .string()
-    .optional()
-    .transform((val) => (val ? new Date(val) : undefined)),
-  homePhone: z
-    .string()
-    .max(20)
-    .optional()
-    .transform((val) => (val === "" ? undefined : val)),
-  parentMobile: z
-    .string()
-    .max(20)
-    .optional()
-    .transform((val) => (val === "" ? undefined : val)),
-  studentMobile: z
-    .string()
-    .max(20)
-    .optional()
-    .transform((val) => (val === "" ? undefined : val)),
-  parentEmail: z
-    .string()
-    .max(100)
-    .email()
-    .optional()
-    .transform((val) => (val === "" ? undefined : val)),
-  notes: z
-    .string()
-    .max(255)
-    .optional()
-    .transform((val) => (val === "" ? undefined : val)),
-
-  // Preferences (optional)
+    .min(6, { message: "6文字以上で入力してください" })
+    .optional(),
   preferences: z
     .object({
-      classTypeId: z.string().optional(),
-      notes: z.string().optional(),
-      subjects: z
-        .array(
-          z.object({
-            subjectId: z.string(),
-            subjectTypeId: z.string(),
-          })
-        )
-        .optional(),
+      classTypeId: z.string().nullish(),
+      notes: z.string().nullish(),
+      subjects: z.array(SubjectPreferenceSchema).optional(),
       teachers: z.array(z.string()).optional(),
       timeSlots: z
         .array(
           z.object({
-            dayOfWeek: z.enum([
-              "MONDAY",
-              "TUESDAY",
-              "WEDNESDAY",
-              "THURSDAY",
-              "FRIDAY",
-              "SATURDAY",
-              "SUNDAY",
-            ]),
-            startTime: z.string(),
-            endTime: z.string(),
+            dayOfWeek: z
+              .enum([
+                "MONDAY",
+                "TUESDAY",
+                "WEDNESDAY",
+                "THURSDAY",
+                "FRIDAY",
+                "SATURDAY",
+                "SUNDAY",
+              ]),
+            startTime: z.string({ required_error: "開始時刻は必須です" }),
+            endTime: z.string({ required_error: "終了時刻は必須です" }),
           })
         )
         .optional(),

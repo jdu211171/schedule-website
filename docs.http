@@ -305,26 +305,79 @@ Cookie: {{cookie}}
   "password": "securepassword123",
   "name": "Takahashi Yuki",
   "kanaName": "タカハシ ユキ",
-  "gradeId": "cma144m54000a104qkhcfnvzl",
+  "gradeId": "cmae12026000c1044hpwm6cno",
   "schoolName": "Tokyo Metropolitan High School",
-  "schoolType": "PUBLIC",
-  "examSchoolType": "HIGH",
+  "schoolType": "PRIVATE",
+  "examSchoolType": "PUBLIC",
   "birthDate": "2005-06-15",
   "parentEmail": "parent@example.com",
   "preferences": {
-    "subjects": [
-      "cma144m5g000g104qhle1xh2y",
-      "cma144m5g000h104q011r76l4"
-      ],
+  "subjects": [
+    {
+      "subjectId": "cmae1202f000h1044ji0eqxll",
+      "subjectTypeId": "cmae1202c000e10448viuodn0"
+    },
+    {
+      "subjectId": "cmae1202f000i1044xudmngqc",
+      "subjectTypeId": "cmae1202c000d1044be0rpdjq"
+    }
+  ],
     "teachers": [
-      "cma144m5w000w104q8cncwj26",
-       "cma144m5u000u104qsqx0wjex"
+      "cmae1202r000u1044fjnt5ko5",
+      "cmae1202t000w10447vl3z4j0"
        ],
     "timeSlots": [
       {
         "dayOfWeek": "MONDAY",
         "startTime": "14:00:00",
         "endTime": "16:00:00"
+      }
+    ]
+  }
+}
+
+### Create a new student with the updated subject preferences format
+POST {{url}}/student
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "username": "yamada_ken",
+  "password": "securepassword123",
+  "name": "Yamada Ken",
+  "kanaName": "ヤマダ ケン",
+  "gradeId": "cmae12026000c1044hpwm6cno",
+  "schoolName": "Tashkent International School",
+  "schoolType": "PUBLIC",
+  "examSchoolType": "PRIVATE",
+  "birthDate": "2007-09-22T00:00:00.000Z",
+  "parentEmail": "yamada.parent@example.com",
+  "preferences": {
+    "classTypeId": "cmae1202j000l1044qihej6k0",
+    "subjects": [
+      {
+        "subjectId": "cmae1202f000h1044ji0eqxll",
+        "subjectTypeId": "cmae1202c000e10448viuodn0"
+      },
+      {
+        "subjectId": "cmae1202f000i1044xudmngqc",
+        "subjectTypeId": "cmae1202c000d1044be0rpdjq"
+      }
+    ],
+    "teachers": [
+      "cmae1202r000u1044fjnt5ko5",
+      "cmae1202t000w10447vl3z4j0"
+    ],
+    "timeSlots": [
+      {
+        "dayOfWeek": "MONDAY",
+        "startTime": "15:00:00",
+        "endTime": "16:30:00"
+      },
+      {
+        "dayOfWeek": "WEDNESDAY",
+        "startTime": "15:00:00",
+        "endTime": "16:30:00"
       }
     ]
   }
@@ -345,9 +398,15 @@ Cookie: {{cookie}}
   "schoolName": "Tokyo Metropolitan Advanced High School",
     "preferences": {
     "subjects": [
-      "cma144m5g000g104qhle1xh2y",
-      "cma144m5g000h104q011r76l4"
-      ],
+      {
+        "subjectId": "cmae1202f000h1044ji0eqxll",
+        "subjectTypeId": "cmae1202c000e10448viuodn0"
+      },
+      {
+        "subjectId": "cmae1202f000i1044xudmngqc",
+        "subjectTypeId": "cmae1202c000d1044be0rpdjq"
+      }
+    ],
     "teachers": [
       "cma144m5w000w104q8cncwj26",
       "cma144m5u000u104qsqx0wjex"
