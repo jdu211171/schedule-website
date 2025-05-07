@@ -14,6 +14,7 @@ export async function requireAuth() {
 }
 
 export async function loginUser(usernameOrEmail: string, password: string) {
+  "use client";
   try {
     const res = await signIn("credentials", { usernameOrEmail, password, redirect: false, });
 
