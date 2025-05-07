@@ -476,6 +476,50 @@ GET {{url}}/teacher-subjects
 Content-Type: application/json
 Cookie: {{cookie}}
 
+### Get all teacher-subject relationships
+GET {{url}}/teacher-subjects
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get teacher-subject relationships with filtering
+GET {{url}}/teacher-subjects?teacherId=cmae1202r000u1044fjnt5ko5&subjectTypeId=cmae1202c000e10448viuodn0
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Create a new teacher-subject relationship
+POST {{url}}/teacher-subjects
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "teacherId": "cmae1202r000u1044fjnt5ko5",
+  "subjectId": "cmae1202f000i1044xudmngqc",
+  "subjectTypeId": "cmae1202c000d1044be0rpdjq",
+  "notes": "英語担当、中級レベル以上"
+}
+
+### Update an existing teacher-subject relationship
+PUT {{url}}/teacher-subjects
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "teacherId": "cmae1202r000u1044fjnt5ko5",
+  "subjectId": "cmae1202f000h1044ji0eqxll",
+  "subjectTypeId": "cmae1202c000e10448viuodn0",
+  "notes": "数学担当、高校レベル専門"
+}
+
+### Delete a teacher-subject relationship
+DELETE {{url}}/teacher-subjects?teacherId=cmae1202r000u1044fjnt5ko5&subjectId=cmae1202f000h1044ji0eqxll&subjectTypeId=cmae1202c000e10448viuodn0
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get a specific teacher-subject relationship
+GET {{url}}/teacher-subjects/cmae1202r000u1044fjnt5ko5/cmae1202f000h1044ji0eqxll
+Content-Type: application/json
+Cookie: {{cookie}}
+
 ### Get a single teacher-subject relationship by composite ID
 # Replace TEACHER_ID and SUBJECT_ID with actual IDs from your database
 GET {{url}}/teacher-subjects/cma6fzd7z000uvi7k4uc6q8m3/cma6fzd7o000gvi7kafpxtmb8
