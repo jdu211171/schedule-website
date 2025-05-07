@@ -1,6 +1,6 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
 import { Button } from "../ui/button";
-import { useForm } from "react-hook-form";
+import { FieldErrors, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { UpdateRegularClassTemplateSchema } from "@/schemas/regular-class-template.schema";
 import { Form } from "../ui/form";
@@ -26,6 +26,7 @@ import { useRegularClassTemplateUpdate } from "@/hooks/useRegularClassTemplateMu
 import { useTeachers } from "@/hooks/useTeacherQuery";
 import { useStudents } from "@/hooks/useStudentQuery";
 import { z } from "zod";
+import { toast } from "sonner";
 
 type MatchingFormDialogProps = {
   isOpen: boolean;
@@ -38,21 +39,54 @@ export function MatchingFormDialog({
   onOpenChange,
   template = null,
 }: MatchingFormDialogProps) {
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [studentSearchTerm, setStudentSearchTerm] = useState("");
+  const [showStudentDropdown, setShowStudentDropdown] = useState(false);
   const updateTemplateMutation = useRegularClassTemplateUpdate();
   const { data: teachers } = useTeachers();
-  const { data: students } = useStudents();
+  const { data: students = [] } = useStudents();
+  const isSubmitting = updateTemplateMutation.isPending;
+
+  const studentList = Array.isArray(students) ? students : students?.data ?? [];
+
+  const formatDateInput = (date: string | Date | undefined | null) => {
+    if (!date) return "";
+    if (typeof date === "string") {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(date)) return date;
+      if (/^\d{4}-\d{2}-\d{2}T/.test(date)) return date.slice(0, 10);
+      const d = new Date(date);
+      if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+      return "";
+    }
+    if (date instanceof Date && !isNaN(date.getTime())) {
+      return date.toISOString().slice(0, 10);
+    }
+    return "";
+  };
+
+  const formatTimeInput = (time: string | Date | undefined | null) => {
+    if (!time) return "";
+    if (typeof time === "string") {
+      const parsedTime = new Date(time);
+      if (!isNaN(parsedTime.getTime())) {
+        return parsedTime.toISOString().slice(11, 16); // Extract HH:mm
+      }
+      return time; // Return as-is if parsing fails
+    }
+    if (time instanceof Date && !isNaN(time.getTime())) {
+      return time.toISOString().slice(11, 16); // Extract HH:mm
+    }
+    return "";
+  };
 
   const form = useForm({
     resolver: zodResolver(UpdateRegularClassTemplateSchema),
     defaultValues: {
+      templateId: template?.templateId ?? "",
       dayOfWeek: template?.dayOfWeek ?? "MONDAY",
-      startTime: template?.startTime
-        ? template.startTime.toISOString()
-        : undefined,
-      endTime: template?.endTime.toISOString() ?? "",
-      startDate: template?.startDate?.toISOString() ?? undefined,
-      endDate: template?.endDate?.toISOString() ?? undefined,
+      startTime: formatTimeInput(template?.startTime),
+      endTime: formatTimeInput(template?.endTime),
+      startDate: formatDateInput(template?.startDate),
+      endDate: formatDateInput(template?.endDate),
       teacherId: template?.teacherId ?? "",
       subjectId: template?.subjectId ?? "",
       boothId: template?.boothId ?? undefined,
@@ -65,11 +99,12 @@ export function MatchingFormDialog({
   useEffect(() => {
     if (template) {
       form.reset({
+        templateId: template.templateId,
         dayOfWeek: template.dayOfWeek,
-        startTime: template.startTime?.toISOString(),
-        endTime: template.endTime?.toISOString(),
-        startDate: template.startDate?.toISOString(),
-        endDate: template.endDate?.toISOString(),
+        startTime: formatTimeInput(template.startTime),
+        endTime: formatTimeInput(template.endTime),
+        startDate: formatDateInput(template.startDate),
+        endDate: formatDateInput(template.endDate),
         teacherId: template.teacherId,
         subjectId: template.subjectId,
         boothId: template.boothId,
@@ -83,7 +118,7 @@ export function MatchingFormDialog({
   async function onSubmit(
     values: z.infer<typeof UpdateRegularClassTemplateSchema>
   ) {
-    setIsSubmitting(true);
+    console.log("hello");
     try {
       await updateTemplateMutation.mutateAsync({
         ...values,
@@ -93,20 +128,45 @@ export function MatchingFormDialog({
       form.reset();
     } catch (error) {
       console.error("Error updating template:", error);
-    } finally {
-      setIsSubmitting(false);
     }
+  }
+
+  function onFormInvalid(
+    error: FieldErrors<z.infer<typeof UpdateRegularClassTemplateSchema>>
+  ) {
+    toast.error("エラーが発生しました", {
+      description: Object.values(error)
+        .map((e) => e.message)
+        .join(", "),
+    });
   }
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-h-[90vh] overflow-auto">
         <DialogHeader>
           <DialogTitle>通常授業テンプレートの更新</DialogTitle>
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form
+            onSubmit={form.handleSubmit(onSubmit, onFormInvalid)}
+            className="space-y-4"
+          >
+            <FormField
+              control={form.control}
+              name="templateId"
+              render={({ field }) => (
+                <FormItem className="hidden">
+                  <FormLabel>テンプレートID</FormLabel>
+                  <FormControl>
+                    <Input type="text" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <FormField
               control={form.control}
               name="dayOfWeek"
@@ -173,7 +233,7 @@ export function MatchingFormDialog({
                   <FormLabel>講師</FormLabel>
                   <FormControl>
                     <Select
-                      onValueChange={field.onChange}
+                      onValueChange={(value) => field.onChange(value || "")}
                       value={field.value || ""}
                     >
                       <SelectTrigger>
@@ -202,29 +262,95 @@ export function MatchingFormDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>生徒</FormLabel>
-                  <FormControl>
-                    <select
-                      onChange={(e) =>
-                        field.onChange(
-                          Array.from(
-                            e.target.selectedOptions,
-                            (option) => option.value
+                  <div className="relative">
+                    <FormControl>
+                      <Input
+                        placeholder="生徒を検索..."
+                        className="w-full"
+                        value={studentSearchTerm}
+                        onChange={(e) => {
+                          setStudentSearchTerm(e.target.value);
+                          setShowStudentDropdown(e.target.value.trim() !== "");
+                        }}
+                        onFocus={() => {
+                          if (studentSearchTerm.trim() !== "") {
+                            setShowStudentDropdown(true);
+                          }
+                        }}
+                        onBlur={() => {
+                          setTimeout(() => setShowStudentDropdown(false), 200);
+                        }}
+                      />
+                    </FormControl>
+                    {showStudentDropdown && (
+                      <div className="absolute z-10 w-full mt-1 bg-background border rounded-md shadow-lg max-h-60 overflow-auto">
+                        {studentList
+                          .filter((student) =>
+                            student.name
+                              .toLowerCase()
+                              .includes(studentSearchTerm.toLowerCase())
                           )
-                        )
-                      }
-                      value={field.value || []}
-                      className="border rounded p-2 w-full"
-                    >
-                      {students?.data?.map((student) => (
-                        <option
-                          key={student.studentId}
-                          value={student.studentId}
+                          .map((student) => (
+                            <div
+                              key={student.studentId}
+                              className="p-2 hover:bg-accent cursor-pointer"
+                              onClick={() => {
+                                const currentValues = field.value || [];
+                                if (
+                                  !currentValues.includes(student.studentId)
+                                ) {
+                                  field.onChange([
+                                    ...currentValues,
+                                    student.studentId,
+                                  ]);
+                                }
+                                setStudentSearchTerm("");
+                                setShowStudentDropdown(false);
+                              }}
+                            >
+                              {student.name}
+                            </div>
+                          ))}
+                        {studentList.filter((student) =>
+                          student.name
+                            .toLowerCase()
+                            .includes(studentSearchTerm.toLowerCase())
+                        ).length === 0 && (
+                          <div className="p-2 text-muted-foreground">
+                            該当する生徒が見つかりません
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {(field.value || []).map((studentId, index) => {
+                      const student = studentList.find(
+                        (s) => s.studentId === studentId
+                      );
+                      return (
+                        <div
+                          key={index}
+                          className="flex items-center bg-accent rounded-md px-2 py-1"
                         >
-                          {student.name}
-                        </option>
-                      ))}
-                    </select>
-                  </FormControl>
+                          <span>{student ? student.name : studentId}</span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-4 w-4 p-0 ml-1"
+                            onClick={() => {
+                              const newValues = [...(field.value || [])];
+                              newValues.splice(index, 1);
+                              field.onChange(newValues);
+                            }}
+                          >
+                            ×
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}

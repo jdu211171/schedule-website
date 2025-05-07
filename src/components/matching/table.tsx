@@ -35,7 +35,6 @@ export function MatchingTable() {
     useState<RegularClassTemplateWithRelations | null>(null);
   const [templateToDelete, setTemplateToDelete] =
     useState<RegularClassTemplateWithRelations | null>(null);
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const deleteTemplateMutation = useRegularClassTemplateDelete();
 
   const columns: ColumnDef<RegularClassTemplateWithRelations>[] = [
@@ -111,7 +110,6 @@ export function MatchingTable() {
             size="icon"
             onClick={() => {
               setTemplateToEdit(row.original);
-              setIsCreateDialogOpen(true);
             }}
           >
             <Pencil className="h-4 w-4" />
@@ -157,8 +155,8 @@ export function MatchingTable() {
 
       {templateToEdit && (
         <MatchingFormDialog
-          isOpen={isCreateDialogOpen}
-          onOpenChange={setIsCreateDialogOpen}
+          isOpen={!!templateToEdit}
+          onOpenChange={() => setTemplateToEdit(null)}
           template={templateToEdit}
         />
       )}
