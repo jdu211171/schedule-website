@@ -129,6 +129,9 @@ export function GradeFormDialog({
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
+      // Close the dialog immediately for better UX
+      onOpenChange(false);
+
       if (isEditing && grade) {
         await updateGradeMutation.mutateAsync({
           gradeId: grade.gradeId,
@@ -137,7 +140,7 @@ export function GradeFormDialog({
       } else {
         await createGradeMutation.mutateAsync(values);
       }
-      onOpenChange(false);
+
       form.reset();
       setIsNameManuallyEdited(false); // Reset for next time dialog opens
     } catch (error) {
