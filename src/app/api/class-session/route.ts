@@ -258,12 +258,12 @@ export async function GET(request: Request) {
   } catch (error) {
     if (error instanceof ZodError) {
       return Response.json(
-        { error: "Invalid query parameters", details: error.errors },
+        { error: "無効なクエリパラメータ", details: error.errors },
         { status: 400 }
       );
     }
     return Response.json(
-      { error: "Failed to fetch class sessions" },
+      { error: "授業セッションの取得に失敗しました" },
       { status: 500 }
     );
   }
@@ -485,6 +485,7 @@ export async function POST(request: Request) {
               teacherId: template.teacherId,
               studentId: assignment.studentId,
               subjectId: template.subjectId,
+              subjectTypeId: template.subjectTypeId, // <-- add this line
               boothId: classBoothId,
               classTypeId: template.classTypeId, // <-- use the template's classTypeId
               templateId: templateId,
@@ -556,23 +557,29 @@ export async function POST(request: Request) {
       ]);
 
       if (!teacherExists) {
-        return Response.json({ error: "Teacher not found" }, { status: 404 });
+        return Response.json({ error: "先生が見つかりません" }, { status: 404 });
       }
       if (!studentExists) {
-        return Response.json({ error: "Student not found" }, { status: 404 });
+        return Response.json({ error: "生徒が見つかりません" }, { status: 404 });
       }
       if (!subjectExists) {
-        return Response.json({ error: "Subject not found" }, { status: 404 });
+        return Response.json(
+          { error: "科目が見つかりません" },
+          { status: 404 }
+        );
       }
       if (!subjectTypeExists) {
-        return Response.json({ error: "Subject type not found" }, { status: 404 });
+        return Response.json(
+          { error: "科目タイプが見つかりません" },
+          { status: 404 }
+        );
       }
       if (!boothExists) {
-        return Response.json({ error: "Booth not found" }, { status: 404 });
+        return Response.json({ error: "ブーズが見つかりません" }, { status: 404 });
       }
       if (!classTypeExists) {
         return Response.json(
-          { error: "Class type not found" },
+          { error: "授業タイプが見つかりません" },
           { status: 404 }
         );
       }
@@ -772,14 +779,14 @@ export async function POST(request: Request) {
     console.error("Error creating class session:", error);
     if (error instanceof ZodError) {
       return Response.json(
-        { error: "Invalid request data", issues: error.issues },
+        { error: "無効なリクエストデータ", issues: error.issues },
         { status: 400 }
       );
     }
     return Response.json(
       {
-        error: "Failed to create class session",
-        message: error instanceof Error ? error.message : "Unknown error",
+        error: "授業セッションの作成に失敗しました",
+        message: error instanceof Error ? error.message : "不明なエラー",
       },
       { status: 500 }
     );

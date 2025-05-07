@@ -1766,6 +1766,82 @@ GET {{url}}/class-session?subjectId=cma8l10zf000hsbli2q544ji2&subjectId=cma8l10z
 Content-Type: application/json
 Cookie: {{cookie}}
 
+
+### ### 1. Get all class sessions:
+GET {{url}}/class-session
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### 2. Get class sessions with filtering:
+GET {{url}}/class-session?subjectTypeId=cmae1202c000e10448viuodn0&teacherId=cmae1202r000u1044fjnt5ko5
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### 3. Create a new standalone class session:
+POST {{url}}/class-session
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "date": "2025-06-15",
+  "startTime": "13:00:00",
+  "endTime": "14:30:00",
+  "teacherId": "cmae1202r000u1044fjnt5ko5",
+  "studentId": "cmae1202x001010449uhc5eaf",
+  "subjectId": "cmae1202f000h1044ji0eqxll",
+  "subjectTypeId": "cmae1202c000e10448viuodn0",
+  "boothId": "cmae1202o000q1044qjazirnf",
+  "classTypeId": "cmae1202j000l1044qihej6k0",
+  "notes": "定期テスト対策の特別授業"
+}
+
+### 4. Create a class session from template:
+POST {{url}}/class-session
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "templateId": "cmae120340016104440z5fnxt",
+  "date": "2025-06-16",
+  "boothId": "cmae1202o000q1044qjazirnf",
+  "notes": "テンプレートから生成された授業"
+}
+
+### 5. Update a standalone class session:
+PUT {{url}}/class-session
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "classId": "cmae1203x00271044akacj2vq",
+  "startTime": "10:30:00",
+  "endTime": "12:00:00",
+  "subjectTypeId": "cmae1202c000e10448viuodn0",
+  "notes": "時間変更あり"
+}
+
+### 6. Update a template-based class session:
+PUT {{url}}/class-session
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "classId": "cmae1203v00251044mhaq6uf5",
+  "boothId": "cmae1202o000q1044qjazirnf",
+  "subjectTypeId": "cmae1202c000e10448viuodn0",
+  "notes": "ブース変更あり"
+}
+
+### 7. Delete a class session:
+DELETE {{url}}/class-session?classId=cmae1203x00271044akacj2vq
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### 8. Get a specific class session:
+GET {{url}}/class-session/cmae1203v00251044mhaq6uf5
+Content-Type: application/json
+Cookie: {{cookie}}
+
 ### Create a new standalone class session
 POST {{url}}/class-session
 Content-Type: application/json
