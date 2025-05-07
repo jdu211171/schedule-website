@@ -32,6 +32,7 @@ type ClassSessionProcessed = {
   day: string;
   date: number;
   status: string;
+  classTypeName: string;
 };
 
 const fetchClassSessions = async () => {
@@ -75,6 +76,7 @@ export const useClassSessions = (): { data: ClassSessionProcessed[] | undefined;
             day: date.toLocaleDateString('en-GB', { weekday: 'long' }),
             date: date.getDate(),
             status: session.regularClassTemplate || '---',
+            classTypeName: session.classType?.name || '---',
           };
         });
         setData(processedData);

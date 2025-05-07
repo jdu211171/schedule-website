@@ -43,6 +43,7 @@ type ClassSession = {
   date: number;
   status: string;
   classId: string;
+  classTypeName: string;
 };
 
 export default function AdminCalendarList() {
@@ -330,17 +331,22 @@ export default function AdminCalendarList() {
                     </div>
                   </div>
                 </TableHead>
+                <TableHead className="relative w-32">
+                  <div className="px-2 py-3">
+                    <span>タイプ</span>
+                  </div>
+                </TableHead>
                 <TableHead className="relative w-16">編集</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center">読み込み中...</TableCell>
+                  <TableCell colSpan={10} className="text-center">読み込み中...</TableCell>
                 </TableRow>
               ) : error ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center">エラーが発生しました。</TableCell>
+                  <TableCell colSpan={10} className="text-center">エラーが発生しました。</TableCell>
                 </TableRow>
               ) : displayedTemplates.length > 0 ? (
                 displayedTemplates.map((template) => (
@@ -353,6 +359,7 @@ export default function AdminCalendarList() {
                     <TableCell>{displayDayOfWeek(template.day)}</TableCell>
                     <TableCell>{template.date}</TableCell>
                     <TableCell>{template.status}</TableCell>
+                    <TableCell>{template.classTypeName}</TableCell>
                     <TableCell className="flex gap-2">
                       <Button variant="outline" size="icon" onClick={() => console.log('Edit')}>
                         <Edit className="h-4 w-4" />
@@ -369,7 +376,7 @@ export default function AdminCalendarList() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center">データがありません。</TableCell>
+                  <TableCell colSpan={10} className="text-center">データがありません。</TableCell>
                 </TableRow>
               )}
             </TableBody>
