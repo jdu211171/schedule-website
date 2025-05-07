@@ -31,26 +31,29 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
-import { useClassSessions } from '@/components/match/hooks/useClassSessions';
+import {
+  ClassSessionProcessed,
+  useClassSessions,
+} from '@/components/match/hooks/useClassSessions';
+import { EditClassSessionForm } from '@/components/admin-schedule/edit-class-session-form';
 
-type ClassSession = {
-  teacher: string;
-  student: string;
-  subject: string;
-  startTime: string;
-  endTime: string;
-  day: string;
-  date: number;
-  status: string;
-  classId: string;
-  classTypeName: string;
+type ClassSession = ClassSessionProcessed & {
+  templateId: string | null;
+  teacherId?: string;
+  studentId?: string;
+  subjectId?: string;
+  boothId?: string;
+  classTypeId?: string;
+  notes?: string;
 };
 
 export default function AdminCalendarList() {
-  const { data: templates, isLoading, error } = useClassSessions();
+  const { data: templates, isLoading, error, setTemplates } = useClassSessions();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingSession, setEditingSession] = useState<ClassSession | null>(null);
 
   const [sortConfig, setSortConfig] = useState<{
     key: keyof ClassSession;
@@ -61,7 +64,7 @@ export default function AdminCalendarList() {
   });
 
   const [deleteTemplateId, setDeleteTemplateId] = useState<string | null>(null);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDeleteDialogOpenForDelete, setIsDeleteDialogOpenForDelete] = useState(false);
 
   const handleSort = (key: keyof ClassSession) => {
     setSortConfig((prevConfig) => ({
@@ -129,10 +132,15 @@ export default function AdminCalendarList() {
     });
   }, [templates, sortConfig]);
 
+  const handleEditClick = (session: ClassSession) => {
+    setEditingSession(session);
+    setIsEditDialogOpen(true);
+  };
+
   const handleDeleteClick = (templateId: string) => {
     console.log('Вызвана функция handleDeleteClick с ID:', templateId);
     setDeleteTemplateId(templateId);
-    setIsDeleteDialogOpen(true);
+    setIsDeleteDialogOpenForDelete(true);
   };
   useEffect(() => {
     console.log('Data from useClassSessions:', templates);
@@ -160,16 +168,30 @@ export default function AdminCalendarList() {
 
         console.log(`Сессия класса с ID ${deleteTemplateId} успешно удалена`);
         // TODO: Обновить состояние templates после успешного удаления
+        const updatedTemplates = (templates as ClassSession[]).filter(
+          (template) => template.classId !== deleteTemplateId
+        );
+        setTemplates(updatedTemplates);
       } catch (error) {
         console.error('Ошибка при отправке запроса на удаление:', error);
         // TODO: Показать пользователю сообщение об ошибке
       } finally {
-        setIsDeleteDialogOpen(false);
+        setIsDeleteDialogOpenForDelete(false);
         setDeleteTemplateId(null);
       }
     }
   };
-
+  const handleSessionUpdated = async () => {
+    // После успешного обновления данных, заново запросите список сессий
+    const response = await fetch('/api/class-session');
+    if (response.ok) {
+      const result: { data: ClassSessionProcessed[] } = await response.json();
+      setTemplates(result.data as ClassSession[]);
+    } else {
+      console.error('Ошибка при обновлении списка сессий');
+      // TODO: Обработать ошибку
+    }
+  };
   const dayOfWeekMap: Record<string, string> = {
     'monday': '月曜日',
     'tuesday': '火曜日',
@@ -362,7 +384,11 @@ export default function AdminCalendarList() {
                     <TableCell>{template.status}</TableCell>
                     <TableCell>{template.classTypeName}</TableCell>
                     <TableCell className="flex gap-2">
-                      <Button variant="outline" size="icon" onClick={() => console.log('Edit')}>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => handleEditClick(template)}
+                      >
                         <Edit className="h-4 w-4" />
                       </Button>
                       <Button
@@ -442,7 +468,15 @@ export default function AdminCalendarList() {
           </PaginationItem>
         </PaginationContent>
       </Pagination>
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+      {editingSession && (
+        <EditClassSessionForm
+          open={isEditDialogOpen}
+          onOpenChange={setIsEditDialogOpen}
+          session={editingSession}
+          onSessionUpdated={handleSessionUpdated}
+        />
+      )}
+      <AlertDialog open={isDeleteDialogOpenForDelete} onOpenChange={setIsDeleteDialogOpenForDelete}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>テンプレートを削除しますか？</AlertDialogTitle>

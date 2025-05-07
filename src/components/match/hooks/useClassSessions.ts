@@ -14,7 +14,7 @@ type ClassSessionRaw = {
   classType?: { name?: string };
 };
 
-type ClassSessionProcessed = {
+export type ClassSessionProcessed = {
   teacher: string;
   student: string;
   subject: string;
