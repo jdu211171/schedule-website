@@ -19,6 +19,23 @@ import { useModalSelects } from "./hooks/useModalSelects";
 import { ClassSession, DisplayLesson } from "./types";
 import { useRegularLessons } from "./hooks/useRegularLessons";
 import { deleteRegularClassTemplate, updateRegularClassTemplate } from "./api-client";
+import { AxiosError } from 'axios';
+
+// API error data type
+interface ApiErrorData {
+  message?: string;
+  [key: string]: unknown;
+}
+
+// Utility function to check if error is an Axios error
+function isAxiosError<T = unknown>(error: unknown): error is AxiosError<T> {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'isAxiosError' in error &&
+    (error as {isAxiosError?: boolean}).isAxiosError === true
+  );
+}
 
 // Component for displaying error notification
 function ErrorNotification({ message, onClose }: { message: string; onClose: () => void }) {
@@ -154,14 +171,14 @@ export default function LessonScheduleModal({
     }
   }, [selectedSubject, selectedBooth]);
   
-  // Функция для выхода из режима редактирования
+  // Cancel edit mode
   const cancelEdit = () => {
     setIsEditMode(false);
     setEditingLesson(null);
     resetForm();
   };
   
-  // Функция для установки урока в режим редактирования
+  // Handle lesson click to enter edit mode
   const handleLessonClick = (lesson: DisplayLesson) => {
     if (!lesson.templateId) {
       setErrorMessage("このレッスンには編集可能なIDがありません");
@@ -171,11 +188,10 @@ export default function LessonScheduleModal({
     setIsEditMode(true);
     setEditingLesson(lesson);
     
-    // Устанавливаем все поля в соответствии с данными урока
     setSelectedSubject(lesson.subjectId || "");
     setSelectedDay(lesson.dayOfWeek);
     
-    // Определяем длительность
+    // Calculate duration from start and end time
     const startMinutes = timeToMinutes(lesson.startTime);
     const endMinutes = timeToMinutes(lesson.endTime);
     const durationMinutes = endMinutes - startMinutes;
@@ -187,22 +203,22 @@ export default function LessonScheduleModal({
     } else if (durationMinutes === 120) {
       setSelectedDuration("120分");
     } else {
-      setSelectedDuration("90分"); // По умолчанию
+      setSelectedDuration("90分");
     }
     
     setSelectedStartTime(lesson.startTime);
     setSelectedBooth(lesson.boothId || "");
     
-    setHasChanges(false); // Изначально изменений нет
+    setHasChanges(false);
   };
   
-  // Функция для преобразования времени в минуты
+  // Utility to convert time to minutes
   const timeToMinutes = (time: string): number => {
     const [hours, minutes] = time.split(':').map(Number);
     return hours * 60 + minutes;
   };
   
-  // Функция для удаления урока
+  // Delete lesson handler
   const handleLessonDelete = async (lesson: DisplayLesson) => {
     if (!lesson.templateId) {
       setErrorMessage("このレッスンには削除可能なIDがありません");
@@ -213,13 +229,11 @@ export default function LessonScheduleModal({
       await deleteRegularClassTemplate(lesson.templateId);
       setSuccessMessage("授業が削除されました");
       
-      // Обновляем список уроков
       await refetchLessons();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error deleting lesson:", error);
       
-      // Улучшенная обработка ошибок удаления
-      if (error.response && error.response.data && error.response.data.message) {
+      if (isAxiosError<ApiErrorData>(error) && error.response?.data?.message) {
         setErrorMessage(`授業の削除に失敗しました: ${error.response.data.message}`);
       } else {
         setErrorMessage("授業の削除に失敗しました。後でもう一度お試しください。");
@@ -227,7 +241,7 @@ export default function LessonScheduleModal({
     }
   };
   
-  // Lesson add/update handler с улучшенной обработкой ошибок
+  // Save/update lesson handler
   const handleSaveLesson = async () => {
     if (!selectedSubject || !selectedDay || !selectedStartTime || !selectedEndTime || !selectedBooth) {
       setErrorMessage("すべての必須フィールドを入力してください");
@@ -236,7 +250,6 @@ export default function LessonScheduleModal({
     
     try {
       if (isEditMode && editingLesson?.templateId) {
-        // Обновляем существующий урок
         await updateRegularClassTemplate({
           templateId: editingLesson.templateId,
           dayOfWeek: selectedDay,
@@ -252,36 +265,18 @@ export default function LessonScheduleModal({
         setIsEditMode(false);
         setEditingLesson(null);
       } else {
-        // Создаем новый урок
         await createClassSession();
         setSuccessMessage("授業が追加されました");
       }
       
-      // Обновляем список уроков
       await refetchLessons();
       setHasChanges(true);
       resetForm();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error saving lesson:", error);
       
-      // Улучшенная обработка ошибок конфликтов
-      if (error.response && error.response.data) {
-        const errorData = error.response.data;
-        
-        // Проверяем наличие сообщения об ошибке
-        if (errorData.message) {
-          if (errorData.message.includes("teacher") || errorData.message.includes("先生")) {
-            setErrorMessage("先生はこの時間帯に既に授業があります。別の時間を選択してください。");
-          } else if (errorData.message.includes("student") || errorData.message.includes("生徒")) {
-            setErrorMessage("生徒はこの時間帯に既に授業があります。別の時間を選択してください。");
-          } else if (errorData.message.includes("booth") || errorData.message.includes("ブース")) {
-            setErrorMessage("選択したブースはこの時間帯に既に使用されています。別のブースを選択してください。");
-          } else {
-            setErrorMessage(`授業の保存に失敗しました: ${errorData.message}`);
-          }
-        } else {
-          setErrorMessage("スケジュールの競合があります。別の時間またはブースを選択してください。");
-        }
+      if (isAxiosError<ApiErrorData>(error) && error.response?.data?.message) {
+        setErrorMessage(`授業の保存に失敗しました: ${error.response.data.message}`);
       } else {
         setErrorMessage("授業の保存に失敗しました。後でもう一度お試しください。");
       }
