@@ -122,19 +122,19 @@ export function StudentFormDialog({
       kanaName: student?.kanaName || "",
       gradeId: student?.gradeId || "",
       schoolName: student?.schoolName || "",
-      schoolType: safeEnum(student?.schoolType, ["PUBLIC", "PRIVATE"]),
+      schoolType: safeEnum(student?.schoolType, ["PUBLIC", "PRIVATE"]) as "PUBLIC" | "PRIVATE" | null | undefined,
       // Only set examSchoolType if it matches the correct API enum, otherwise undefined
       examSchoolType: safeEnum(student?.examSchoolType, [
         "PUBLIC",
         "PRIVATE"
-      ]) ?? undefined,
+      ]) as "PUBLIC" | "PRIVATE" | null | undefined,
       examSchoolCategoryType: safeEnum(student?.examSchoolCategoryType, [
         "ELEMENTARY",
         "MIDDLE",
         "HIGH",
         "UNIVERSITY",
         "OTHER"
-      ]) ?? undefined,
+      ]) as "ELEMENTARY" | "MIDDLE" | "HIGH" | "UNIVERSITY" | "OTHER" | null | undefined,
       birthDate: student?.birthDate ? new Date(student.birthDate) : undefined,
       parentMobile: student?.parentMobile || "",
       studentMobile: student?.studentMobile || "",
@@ -320,21 +320,31 @@ export function StudentFormDialog({
         if (d instanceof Date && !isNaN(d.getTime())) return d.toISOString().slice(0, 10);
         return undefined;
       };
+      // Convert nulls to undefined for all string fields to match schema types
+      const cleanString = (v: string | null | undefined) => v == null ? undefined : v;
+      // Helper to cast enum fields safely
+      const castEnum = <T extends string>(val: unknown, allowed: readonly T[]): T | undefined =>
+        typeof val === "string" && allowed.includes(val as T) ? (val as T) : undefined;
       const payload = {
         ...values,
+        gradeId: cleanString(values.gradeId),
+        kanaName: cleanString(values.kanaName),
+        schoolName: cleanString(values.schoolName),
+        schoolType: castEnum(values.schoolType, ["PUBLIC", "PRIVATE"]) as "PUBLIC" | "PRIVATE" | undefined,
+        examSchoolType: castEnum(values.examSchoolType, ["PUBLIC", "PRIVATE"]) as "PUBLIC" | "PRIVATE" | undefined,
+        examSchoolCategoryType: castEnum(
+          values.examSchoolCategoryType,
+          ["ELEMENTARY", "MIDDLE", "HIGH", "UNIVERSITY", "OTHER"]
+        ) as "ELEMENTARY" | "MIDDLE" | "HIGH" | "UNIVERSITY" | "OTHER" | undefined,
+        firstChoiceSchool: cleanString(values.firstChoiceSchool),
+        secondChoiceSchool: cleanString(values.secondChoiceSchool),
+        homePhone: cleanString(values.homePhone),
+        parentMobile: cleanString(values.parentMobile),
+        studentMobile: cleanString(values.studentMobile),
+        parentEmail: cleanString(values.parentEmail),
+        notes: cleanString(values.notes),
         birthDate: formatDateString(values.birthDate),
-        enrollmentDate: formatDateString((values as { enrollmentDate?: string | Date }).enrollmentDate),
-        examSchoolType: safeEnum(values.examSchoolType, [
-          "PUBLIC",
-          "PRIVATE"
-        ]),
-        examSchoolCategoryType: safeEnum(values.examSchoolCategoryType, [
-          "ELEMENTARY",
-          "MIDDLE",
-          "HIGH",
-          "UNIVERSITY",
-          "OTHER"
-        ]),
+        enrollmentDate: formatDateString(values.enrollmentDate ?? undefined),
         preferences,
       };
 

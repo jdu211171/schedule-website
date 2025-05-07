@@ -66,14 +66,14 @@ export function SubjectTable() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setSubjectToEdit(row.original)}
+            onClick={() => setSubjectToEdit(normalizeSubjectNotes(row.original))}
           >
             <Pencil className="h-4 w-4" />
           </Button>
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setSubjectToDelete(row.original)}
+            onClick={() => setSubjectToDelete(normalizeSubjectNotes(row.original))}
           >
             <Trash2 className="h-4 w-4 text-destructive" />
           </Button>
@@ -98,6 +98,14 @@ export function SubjectTable() {
   };
 
   const totalPages = Math.ceil(totalCount / pageSize);
+
+  // Helper to normalize notes to string | null
+  function normalizeSubjectNotes(subject: SubjectWithRelations) {
+    return {
+      ...subject,
+      notes: subject.notes ?? null,
+    };
+  }
 
   return (
     <>

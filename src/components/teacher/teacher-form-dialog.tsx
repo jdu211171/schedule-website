@@ -123,7 +123,7 @@ export function TeacherFormDialog({
       notes: teacher?.notes || "",
       username: defaultUsername, // Set default username for edit mode
       password: "",
-      subjects: teacherSubjectIds || [],
+      subjects: (teacherSubjectIds || []).map((subjectId) => ({ subjectId })),
     },
   });
 
