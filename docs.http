@@ -1249,6 +1249,59 @@ GET {{url}}/regular-class-templates?page=1&limit=10
 Content-Type: application/json
 Cookie: {{cookie}}
 
+### Get all regular class templates:
+GET {{url}}/regular-class-templates
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### 2. Get templates with filtering:
+GET {{url}}/regular-class-templates?dayOfWeek=MONDAY&teacherId=cmae1202r000u1044fjnt5ko5
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### 3. Create a new template:
+POST {{url}}/regular-class-templates
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "dayOfWeek": "WEDNESDAY",
+  "startTime": "15:00",
+  "endTime": "16:30",
+  "teacherId": "cmae1202r000u1044fjnt5ko5",
+  "subjectId": "cmae1202f000h1044ji0eqxll",
+  "subjectTypeId": "cmae1202c000e10448viuodn0",
+  "boothId": "cmae1202o000q1044qjazirnf",
+  "classTypeId": "cmae1202j000l1044qihej6k0",
+  "startDate": "2025-06-01",
+  "endDate": "2026-03-31",
+  "notes": "水曜日の定期数学授業",
+  "studentIds": ["cmae1202x001010449uhc5eaf"]
+}
+
+### 4. Update an existing template:
+PUT {{url}}/regular-class-templates
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "templateId": "cmae120340016104440z5fnxt",
+  "startTime": "14:30",
+  "endTime": "16:00",
+  "notes": "時間を変更した数学授業",
+  "studentIds": ["cmae1202x001010449uhc5eaf"]
+}
+### 5. Delete a template:
+DELETE {{url}}/regular-class-templates?templateId=cmae120340016104440z5fnxt
+Content-Type: application/json
+Cookie: {{cookie}}
+
+####6. Get a specific template:
+GET {{url}}/regular-class-templates/cmae120340016104440z5fnxt
+Content-Type: application/json
+Cookie: {{cookie}}
+
+
 ### Get templates with filtering by day of week
 GET {{url}}/regular-class-templates?dayOfWeek=MONDAY
 Content-Type: application/json

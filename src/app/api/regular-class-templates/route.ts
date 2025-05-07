@@ -607,12 +607,15 @@ export async function GET(request: Request) {
   } catch (error) {
     if (error instanceof ZodError) {
       return Response.json(
-        { error: "Invalid parameters", details: error.errors },
+        { error: "無効なパラメータ", details: error.errors },
         { status: 400 }
       );
     }
-    console.error("Error fetching data:", error);
-    return Response.json({ error: "Failed to fetch data" }, { status: 500 });
+    console.error("データの取得中にエラーが発生しました:", error);
+    return Response.json(
+      { error: "データの取得に失敗しました" },
+      { status: 500 }
+    );
   }
 }
 
@@ -729,13 +732,13 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof ZodError) {
       return Response.json(
-        { error: "Validation failed", details: error.errors },
+        { error: "入力値の検証に失敗しました", details: error.errors },
         { status: 400 }
       );
     }
-    console.error("Error creating template:", error);
+    console.error("テンプレート作成中にエラーが発生しました:", error);
     return Response.json(
-      { error: "Failed to create template" },
+      { error: "テンプレートの作成に失敗しました" },
       { status: 500 }
     );
   }
@@ -844,13 +847,13 @@ export async function PUT(request: Request) {
   } catch (error) {
     if (error instanceof ZodError) {
       return Response.json(
-        { error: "Validation failed", details: error.errors },
+        { error: "入力値の検証に失敗しました", details: error.errors },
         { status: 400 }
       );
     }
-    console.error("Error updating template:", error);
+    console.error("テンプレート更新中にエラーが発生しました:", error);
     return Response.json(
-      { error: "Failed to update template" },
+      { error: "テンプレートの更新に失敗しました" },
       { status: 500 }
     );
   }
@@ -871,7 +874,7 @@ export async function DELETE(request: Request) {
 
     if (!templateId) {
       return Response.json(
-        { error: "Template ID is required" },
+        { error: "テンプレートIDは必須です" },
         { status: 400 }
       );
     }
@@ -882,7 +885,10 @@ export async function DELETE(request: Request) {
     });
 
     if (!existingTemplate) {
-      return Response.json({ error: "Template not found" }, { status: 404 });
+      return Response.json(
+        { error: "テンプレートが見つかりません" },
+        { status: 404 }
+      );
     }
 
     // Check for related class sessions before deletion
@@ -893,7 +899,7 @@ export async function DELETE(request: Request) {
     if (hasRelatedClassSessions) {
       return Response.json(
         {
-          error: "Cannot delete template with related class sessions",
+          error: "関連する授業があるためテンプレートを削除できません",
         },
         { status: 409 }
       );
@@ -908,9 +914,9 @@ export async function DELETE(request: Request) {
       message: "Template deleted successfully",
     });
   } catch (error) {
-    console.error("Error deleting template:", error);
+    console.error("テンプレート削除中にエラーが発生しました", error);
     return Response.json(
-      { error: "Failed to delete template" },
+      { error: "テンプレートの削除に失敗しました" },
       { status: 500 }
     );
   }
