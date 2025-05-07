@@ -920,6 +920,60 @@ GET {{url}}/teacher/cma144m5u000u104qsqx0wjex
 Content-Type: application/json
 Cookie: {{cookie}}
 
+### Get a teacher by ID
+GET {{url}}/teacher/cmae1202r000u1044fjnt5ko5
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Get teachers filtered by subject
+GET {{url}}/teacher?subjectId=cmae1202f000h1044ji0eqxll
+Content-Type: application/json
+Cookie: {{cookie}}
+
+### Create a new teacher with updated subject schema
+POST {{url}}/teacher
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "username": "tanaka_sensei",
+  "password": "secure123",
+  "name": "田中 優",
+  "evaluationId": "cmae1202m000n1044s0zrjb2h",
+  "birthDate": "1985-05-15T00:00:00.000Z",
+  "mobileNumber": "080-1234-5678",
+  "email": "tanaka@example.com",
+  "highSchool": "東京都立高校",
+  "university": "東京大学",
+  "faculty": "教育学部",
+  "department": "教育科学科",
+  "enrollmentStatus": "常勤",
+  "englishProficiency": "ビジネスレベル",
+  "toeic": 850,
+  "subjects": [
+    {
+      "subjectId": "cmae1202f000h1044ji0eqxll",
+      "subjectTypeId": "cmae1202c000e10448viuodn0"
+    },
+    {
+      "subjectId": "cmae1202f000g1044xxosoeak",
+      "subjectTypeId": "cmae1202c000d1044be0rpdjq"
+    }
+  ],
+  "shifts": [
+    {
+      "dayOfWeek": "MONDAY",
+      "startTime": "13:00:00",
+      "endTime": "18:00:00"
+    },
+    {
+      "dayOfWeek": "WEDNESDAY",
+      "startTime": "13:00:00",
+      "endTime": "18:00:00"
+    }
+  ]
+}
+
 ### Create a new teacher with subjects and shifts
 POST {{url}}/teacher
 Content-Type: application/json
@@ -959,6 +1013,39 @@ Cookie: {{cookie}}
       "dayOfWeek": "FRIDAY",
       "startTime": "14:00:00",
       "endTime": "19:00:00"
+    }
+  ]
+}
+
+### Update an existing teacher
+PUT {{url}}/teacher
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "teacherId": "cmae6wjzd0002100msc46uw4g",
+  "name": "鈴木 直樹",
+  "email": "suzuki.updated@example.com",
+  "subjects": [
+    {
+      "subjectId": "cmae1202f000h1044ji0eqxll",
+      "subjectTypeId": "cmae1202c000e10448viuodn0"
+    },
+    {
+      "subjectId": "cmae1202f000i1044xudmngqc",
+      "subjectTypeId": "cmae1202c000d1044be0rpdjq"
+    }
+  ],
+  "shifts": [
+    {
+      "dayOfWeek": "TUESDAY",
+      "startTime": "09:00:00",
+      "endTime": "15:00:00"
+    },
+    {
+      "dayOfWeek": "THURSDAY",
+      "startTime": "09:00:00",
+      "endTime": "15:00:00"
     }
   ]
 }

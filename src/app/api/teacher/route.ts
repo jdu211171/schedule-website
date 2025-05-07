@@ -211,7 +211,7 @@ export async function POST(request: Request) {
 
     // Verify subjects exist before starting transaction
     if (subjects?.length) {
-      const subjectIds = subjects;
+      const subjectIds = subjects.map((s) => s.subjectId);
       const existingSubjects = await prisma.subject.findMany({
         where: { subjectId: { in: subjectIds } },
         select: { subjectId: true },
@@ -258,11 +258,12 @@ export async function POST(request: Request) {
       // 4. If subjects are provided, create teacher subject relationships
       if (subjects && subjects.length > 0) {
         await Promise.all(
-          subjects.map((subjectId: string) =>
+          subjects.map((subject) =>
             tx.teacherSubject.create({
               data: {
                 teacherId: teacher.teacherId,
-                subjectId,
+                subjectId: subject.subjectId,
+                subjectTypeId: subject.subjectTypeId,
               },
             })
           )
@@ -376,7 +377,7 @@ export async function PUT(request: Request) {
 
     // Verify subjects if provided
     if (subjects?.length) {
-      const subjectIds = subjects;
+      const subjectIds = subjects.map((s) => s.subjectId);
       const existingSubjects = await prisma.subject.findMany({
         where: { subjectId: { in: subjectIds } },
         select: { subjectId: true },
@@ -431,11 +432,12 @@ export async function PUT(request: Request) {
         // Create new subject relationships
         if (subjects.length > 0) {
           await Promise.all(
-            subjects.map((subjectId) =>
+            subjects.map((subject) =>
               tx.teacherSubject.create({
                 data: {
                   teacherId,
-                  subjectId,
+                  subjectId: subject.subjectId,
+                  subjectTypeId: subject.subjectTypeId,
                 },
               })
             )

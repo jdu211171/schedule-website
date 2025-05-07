@@ -21,6 +21,7 @@ export async function GET(
         teacherSubjects: {
           include: {
             subject: true,
+            subjectType: true,
           },
         },
         TeacherShiftReference: true,
