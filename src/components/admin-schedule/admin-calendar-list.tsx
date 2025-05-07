@@ -130,6 +130,7 @@ export default function AdminCalendarList() {
   }, [templates, sortConfig]);
 
   const handleDeleteClick = (templateId: string) => {
+    console.log('Вызвана функция handleDeleteClick с ID:', templateId);
     setDeleteTemplateId(templateId);
     setIsDeleteDialogOpen(true);
   };
