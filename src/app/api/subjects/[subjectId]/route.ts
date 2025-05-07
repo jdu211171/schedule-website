@@ -16,21 +16,16 @@ export async function GET(
     // No need for explicit schema validation here, as Next.js' dynamic route
     // parameter already guarantees we have a string
 
-    // Fetch the subject with related data
+    // Fetch the subject with all related data as defined in SubjectWithRelations
     const subject = await prisma.subject.findUnique({
       where: { subjectId },
       include: {
         subjectType: true,
-        teacherSubjects: {
-          include: {
-            teacher: {
-              select: {
-                teacherId: true,
-                name: true,
-              },
-            },
-          },
-        },
+        subjectToSubjectTypes: true,
+        classSessions: { include: { classType: true } },
+        regularClassTemplates: true,
+        teacherSubjects: true,
+        StudentPreferenceSubject: true,
       },
     });
 

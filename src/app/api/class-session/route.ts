@@ -31,6 +31,7 @@ export async function GET(request: Request) {
       teacherId,
       studentId,
       subjectId,
+      subjectTypeId,
       boothId,
       classTypeId,
       templateId,
@@ -41,6 +42,19 @@ export async function GET(request: Request) {
     } = query;
 
     const filters: Record<string, unknown> = {};
+
+    // Handle subjectTypeId filtering (single or multiple)
+    if (subjectTypeId) {
+      if (Array.isArray(subjectTypeId)) {
+        filters.subject = {
+          subjectTypeId: { in: subjectTypeId },
+        };
+      } else {
+        filters.subject = {
+          subjectTypeId: subjectTypeId,
+        };
+      }
+    }
 
     // Handle single date filter
     if (date) {
@@ -220,6 +234,7 @@ export async function GET(request: Request) {
         booth: true,
         classType: true,
         subject: true,
+        subjectType: true,
         teacher: true,
         student: true,
         regularClassTemplate: true,
@@ -517,6 +532,7 @@ export async function POST(request: Request) {
         teacherId,
         studentId,
         subjectId,
+        subjectTypeId,
         boothId,
         classTypeId,
         notes,
@@ -527,12 +543,14 @@ export async function POST(request: Request) {
         teacherExists,
         studentExists,
         subjectExists,
+        subjectTypeExists,
         boothExists,
         classTypeExists,
       ] = await Promise.all([
         prisma.teacher.findUnique({ where: { teacherId } }),
         prisma.student.findUnique({ where: { studentId } }),
         prisma.subject.findUnique({ where: { subjectId } }),
+        prisma.subjectType.findUnique({ where: { subjectTypeId } }),
         prisma.booth.findUnique({ where: { boothId } }),
         prisma.classType.findUnique({ where: { classTypeId } }),
       ]);
@@ -545,6 +563,9 @@ export async function POST(request: Request) {
       }
       if (!subjectExists) {
         return Response.json({ error: "Subject not found" }, { status: 404 });
+      }
+      if (!subjectTypeExists) {
+        return Response.json({ error: "Subject type not found" }, { status: 404 });
       }
       if (!boothExists) {
         return Response.json({ error: "Booth not found" }, { status: 404 });
@@ -712,6 +733,7 @@ export async function POST(request: Request) {
             teacherId,
             studentId,
             subjectId,
+            subjectTypeId,
             boothId,
             classTypeId,
             notes,
@@ -720,6 +742,7 @@ export async function POST(request: Request) {
             booth: true,
             classType: true,
             subject: true,
+            subjectType: true,
             teacher: true,
             student: true,
           },
@@ -801,10 +824,23 @@ export async function PUT(request: Request) {
     if (isTemplateBasedClass) {
       // For template-based class sessions, only allow modifying specific fields
       const validatedData = UpdateTemplateClassSessionSchema.parse(body);
-      const { startTime, endTime, boothId, notes } = validatedData;
+      const { startTime, endTime, boothId, subjectTypeId, notes } = validatedData;
 
       // Prepare data for update
       const updateData: Record<string, unknown> = {};
+
+      if (subjectTypeId !== undefined) {
+        const subjectTypeExists = await prisma.subjectType.findUnique({
+          where: { subjectTypeId },
+        });
+        if (!subjectTypeExists) {
+          return Response.json(
+            { error: "Subject type not found" },
+            { status: 404 }
+          );
+        }
+        updateData.subjectTypeId = subjectTypeId;
+      }
 
       if (notes !== undefined) {
         updateData.notes = notes;
@@ -927,6 +963,7 @@ export async function PUT(request: Request) {
         teacherId,
         studentId,
         subjectId,
+        subjectTypeId,
         boothId,
         classTypeId,
         notes,
@@ -964,6 +1001,15 @@ export async function PUT(request: Request) {
           return Response.json({ error: "Subject not found" }, { status: 404 });
         }
         updateData.subjectId = subjectId;
+      }
+      if (subjectTypeId !== undefined) {
+        const subjectTypeExists = await prisma.subjectType.findUnique({
+          where: { subjectTypeId },
+        });
+        if (!subjectTypeExists) {
+          return Response.json({ error: "Subject type not found" }, { status: 404 });
+        }
+        updateData.subjectTypeId = subjectTypeId;
       }
       if (boothId !== undefined) {
         const boothExists = await prisma.booth.findUnique({
@@ -1178,6 +1224,7 @@ export async function PUT(request: Request) {
             booth: true,
             classType: true,
             subject: true,
+            subjectType: true,
             teacher: true,
             student: true,
           },

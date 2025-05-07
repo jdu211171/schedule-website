@@ -44,11 +44,12 @@ export async function GET(request: Request) {
       take: limit,
       orderBy,
       include: {
-        subjectType: {
-          select: {
-            name: true,
-          },
-        },
+        subjectType: true,
+        subjectToSubjectTypes: true,
+        classSessions: { include: { classType: true } },
+        regularClassTemplates: true,
+        teacherSubjects: true,
+        StudentPreferenceSubject: true,
       },
     });
 
@@ -101,11 +102,22 @@ export async function POST(request: Request) {
     }
 
     const subject = await prisma.subject.create({ data });
-
+    // Fetch full subject with relations
+    const fullSubject = await prisma.subject.findUnique({
+      where: { subjectId: subject.subjectId },
+      include: {
+        subjectType: true,
+        subjectToSubjectTypes: true,
+        classSessions: { include: { classType: true } },
+        regularClassTemplates: true,
+        teacherSubjects: true,
+        StudentPreferenceSubject: true,
+      },
+    });
     return Response.json(
       {
         message: "Subject created successfully",
-        data: subject,
+        data: fullSubject,
       },
       { status: 201 }
     );
@@ -166,10 +178,21 @@ export async function PUT(request: Request) {
       where: { subjectId },
       data,
     });
-
+    // Fetch full subject with relations
+    const fullSubject = await prisma.subject.findUnique({
+      where: { subjectId: subject.subjectId },
+      include: {
+        subjectType: true,
+        subjectToSubjectTypes: true,
+        classSessions: { include: { classType: true } },
+        regularClassTemplates: true,
+        teacherSubjects: true,
+        StudentPreferenceSubject: true,
+      },
+    });
     return Response.json({
       message: "Subject updated successfully",
-      data: subject,
+      data: fullSubject,
     });
   } catch (error) {
     if (error instanceof ZodError) {

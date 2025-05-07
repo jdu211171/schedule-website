@@ -42,6 +42,7 @@ model ClassSession {
   teacherId               String                   @map("teacher_id") @db.VarChar(50)
   studentId               String                   @map("student_id") @db.VarChar(50)
   subjectId               String                   @map("subject_id") @db.VarChar(50)
+  subjectTypeId           String                   @map("subject_type_id") @db.VarChar(50)
   boothId                 String                   @map("booth_id") @db.VarChar(50)
   classTypeId             String                   @map("class_type_id") @db.VarChar(50)
   templateId              String?                  @map("template_id") @db.VarChar(50)
@@ -49,6 +50,7 @@ model ClassSession {
   booth                   Booth                    @relation(fields: [boothId], references: [boothId], onDelete: Restrict, onUpdate: Cascade)
   classType               ClassType                @relation(fields: [classTypeId], references: [classTypeId], onDelete: Restrict, onUpdate: Cascade)
   subject                 Subject                  @relation(fields: [subjectId], references: [subjectId], onDelete: Restrict, onUpdate: Cascade)
+  subjectType             SubjectType              @relation(fields: [subjectTypeId], references: [subjectTypeId], onDelete: Restrict, onUpdate: Cascade)
   teacher                 Teacher                  @relation(fields: [teacherId], references: [teacherId], onDelete: Restrict, onUpdate: Cascade)
   student                 Student                  @relation(fields: [studentId], references: [studentId], onDelete: Restrict, onUpdate: Cascade)
   regularClassTemplate    RegularClassTemplate?    @relation(fields: [templateId], references: [templateId], onDelete: SetNull, onUpdate: Cascade)
@@ -186,10 +188,12 @@ model StudentPreferenceSubject {
   id                  String            @id @default(cuid())
   studentPreferenceId String            @map("student_preference_id") @db.VarChar(50)
   subjectId           String            @map("subject_id") @db.VarChar(50)
+  subjectTypeId       String            @map("subject_type_id") @db.VarChar(50)
   studentPreference   StudentPreference @relation(fields: [studentPreferenceId], references: [preferenceId], onDelete: Cascade)
   subject             Subject           @relation(fields: [subjectId], references: [subjectId], onDelete: Cascade)
+  subjectType         SubjectType       @relation(fields: [subjectTypeId], references: [subjectTypeId], onDelete: Restrict, onUpdate: Cascade)
 
-  @@unique([studentPreferenceId, subjectId])
+  @@unique([studentPreferenceId, subjectId, subjectTypeId])
   @@map("student_preference_subjects")
 }
 
@@ -270,6 +274,7 @@ model RegularClassTemplate {
   templateId                 String                      @id @default(cuid()) @map("template_id")
   dayOfWeek                  DayOfWeek                   @map("day_of_week")
   subjectId                  String                      @map("subject_id") @db.VarChar(50)
+  subjectTypeId              String                      @map("subject_type_id") @db.VarChar(50)
   boothId                    String                      @map("booth_id") @db.VarChar(50)
   teacherId                  String                      @map("teacher_id") @db.VarChar(50)
   startTime                  DateTime                    @map("start_time") @db.Time(6)
@@ -279,6 +284,7 @@ model RegularClassTemplate {
   notes                      String?                     @db.VarChar(255)
   booth                      Booth                       @relation(fields: [boothId], references: [boothId], onDelete: Restrict, onUpdate: Cascade)
   subject                    Subject                     @relation(fields: [subjectId], references: [subjectId], onDelete: Restrict, onUpdate: Cascade)
+  subjectType                SubjectType                 @relation(fields: [subjectTypeId], references: [subjectTypeId], onDelete: Restrict, onUpdate: Cascade)
   teacher                    Teacher                     @relation(fields: [teacherId], references: [teacherId], onDelete: Restrict, onUpdate: Cascade)
   templateStudentAssignments TemplateStudentAssignment[]
   classSessions              ClassSession[]
@@ -313,15 +319,17 @@ model TeacherShiftReference {
  * Essential for scheduling and teacher assignment to classes.
  */
 model TeacherSubject {
-  teacherId String   @map("teacher_id") @db.VarChar(50)
-  subjectId String   @map("subject_id") @db.VarChar(50)
-  notes     String?  @db.VarChar(255)
-  subject   Subject  @relation(fields: [subjectId], references: [subjectId], onDelete: Cascade, onUpdate: Cascade)
-  teacher   Teacher  @relation(fields: [teacherId], references: [teacherId], onDelete: Cascade, onUpdate: Cascade)
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  teacherId     String      @map("teacher_id") @db.VarChar(50)
+  subjectId     String      @map("subject_id") @db.VarChar(50)
+  subjectTypeId String      @map("subject_type_id") @db.VarChar(50)
+  notes         String?     @db.VarChar(255)
+  subject       Subject     @relation(fields: [subjectId], references: [subjectId], onDelete: Cascade, onUpdate: Cascade)
+  teacher       Teacher     @relation(fields: [teacherId], references: [teacherId], onDelete: Cascade, onUpdate: Cascade)
+  subjectType   SubjectType @relation(fields: [subjectTypeId], references: [subjectTypeId], onDelete: Restrict, onUpdate: Cascade)
+  createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt     DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
-  @@id([teacherId, subjectId])
+  @@id([teacherId, subjectId, subjectTypeId])
   @@map("teacher_subjects")
 }
 
@@ -385,18 +393,40 @@ model Evaluation {
 }
 
 /**
+ * SubjectToSubjectType
+ * This junction model maps which subject types each subject can have.
+ * Essential for supporting multiple subject types per subject.
+ */
+model SubjectToSubjectType {
+  subjectId     String      @map("subject_id") @db.VarChar(50)
+  subjectTypeId String      @map("subject_type_id") @db.VarChar(50)
+  subject       Subject     @relation(fields: [subjectId], references: [subjectId], onDelete: Cascade, onUpdate: Cascade)
+  subjectType   SubjectType @relation(fields: [subjectTypeId], references: [subjectTypeId], onDelete: Cascade, onUpdate: Cascade)
+  createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt     DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  @@id([subjectId, subjectTypeId])
+  @@map("subject_to_subject_types")
+}
+
+/**
  * SubjectType -> 科目タイプ
  * CSV: 'マスタ情報  科目タイプ'
  * This model categorizes subjects into types (e.g., languages, sciences, humanities).
  * Used to group related subjects.
  */
 model SubjectType {
-  subjectTypeId String    @id @default(cuid()) @map("subject_type_id")
-  name          String    @db.VarChar(100)
-  notes         String?   @db.VarChar(255)
-  subjects      Subject[]
-  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  subjectTypeId            String                 @id @default(cuid()) @map("subject_type_id")
+  name                     String                 @db.VarChar(100)
+  notes                    String?                @db.VarChar(255)
+  subjects                 Subject[]
+  subjectToSubjectTypes    SubjectToSubjectType[]
+  classSessions            ClassSession[]
+  regularClassTemplates    RegularClassTemplate[]
+  StudentPreferenceSubject StudentPreferenceSubject[]
+  teacherSubjects          TeacherSubject[]
+  createdAt                DateTime               @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt                DateTime               @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
   @@map("subject_types")
 }
@@ -415,6 +445,7 @@ model Subject {
   classSessions            ClassSession[]
   regularClassTemplates    RegularClassTemplate[]
   subjectType              SubjectType                @relation(fields: [subjectTypeId], references: [subjectTypeId], onDelete: Restrict, onUpdate: Cascade)
+  subjectToSubjectTypes    SubjectToSubjectType[]
   teacherSubjects          TeacherSubject[]
   createdAt                DateTime                   @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt                DateTime                   @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)

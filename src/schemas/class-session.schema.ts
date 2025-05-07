@@ -10,6 +10,7 @@ export const ClassSessionSchema = z.object({
   teacherId: z.string().max(50),
   studentId: z.string().max(50),
   subjectId: z.string().max(50),
+  subjectTypeId: z.string().max(50), // <-- required
   boothId: z.string().max(50),
   classTypeId: z.string().max(50),
   templateId: z.string().max(50).optional(),
@@ -28,6 +29,7 @@ export const CreateClassSessionSchema = z.object({
   teacherId: z.string().max(50),
   studentId: z.string().max(50),
   subjectId: z.string().max(50),
+  subjectTypeId: z.string().max(50), // Added subjectTypeId to align with schema.prisma
   boothId: z.string().max(50),
   classTypeId: z.string().max(50),
   notes: z.string().max(255).optional(),
@@ -57,6 +59,7 @@ export const UpdateStandaloneClassSessionSchema = z.object({
   teacherId: z.string().max(50).optional(),
   studentId: z.string().max(50).optional(),
   subjectId: z.string().max(50).optional(),
+  subjectTypeId: z.string().max(50).optional(), // <-- Add this line
   boothId: z.string().max(50).optional(),
   classTypeId: z.string().max(50).optional(),
   notes: z.string().max(255).optional(),
@@ -68,6 +71,7 @@ export const UpdateTemplateClassSessionSchema = z.object({
   startTime: z.string().optional(),
   endTime: z.string().optional(),
   boothId: z.string().max(50).optional(),
+  subjectTypeId: z.string().max(50).optional(),
   notes: z.string().max(255).optional(),
 }).strict();
 
@@ -87,6 +91,7 @@ export const ClassSessionQuerySchema = z.object({
   teacherId: z.union([z.string(), z.array(z.string())]).optional(),
   studentId: z.union([z.string(), z.array(z.string())]).optional(),
   subjectId: z.union([z.string(), z.array(z.string())]).optional(),
+  subjectTypeId: z.union([z.string(), z.array(z.string())]).optional(), // Fixed missing optional()
   boothId: z.union([z.string(), z.array(z.string())]).optional(),
   classTypeId: z.union([z.string(), z.array(z.string())]).optional(),
   templateId: z.union([z.string(), z.array(z.string())]).optional(),
@@ -94,14 +99,8 @@ export const ClassSessionQuerySchema = z.object({
     z.enum(["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"]),
     z.array(z.enum(["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"]))
   ]).optional(),
-  isTemplateInstance: z.enum(['true', 'false']).optional(),
-  sort: z.enum([
-    "date",
-    "startTime",
-    "endTime",
-    "createdAt",
-    "updatedAt"
-  ]).optional().default("date"),
+  isTemplateInstance: z.enum(["true", "false"]).optional(),
+  sort: z.enum(["date", "startTime", "endTime", "createdAt", "updatedAt"]).optional().default("date"),
   order: z.enum(["asc", "desc"]).optional().default("asc"),
 }).strict();
 

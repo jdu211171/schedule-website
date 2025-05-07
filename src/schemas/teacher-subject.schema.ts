@@ -4,6 +4,7 @@ import { z } from "zod";
 const TeacherSubjectBaseSchema = z.object({
   teacherId: z.string(),
   subjectId: z.string(),
+  subjectTypeId: z.string(),
   notes: z
     .string()
     .max(255)
@@ -28,6 +29,7 @@ export const TeacherSubjectIdSchema = z
   .object({
     teacherId: z.string(),
     subjectId: z.string(),
+    subjectTypeId: z.string(),
   })
   .strict();
 
@@ -38,8 +40,9 @@ export const TeacherSubjectQuerySchema = z
     limit: z.coerce.number().int().positive().max(100).optional().default(10),
     teacherId: z.string().optional(),
     subjectId: z.string().optional(),
+    subjectTypeId: z.string().optional(),
     sort: z
-      .enum(["teacherId", "subjectId", "createdAt", "updatedAt"])
+      .enum(["teacherId", "subjectId", "subjectTypeId", "createdAt", "updatedAt"])
       .optional()
       .default("createdAt"),
     order: z.enum(["asc", "desc"]).optional().default("desc"),

@@ -148,7 +148,14 @@ export const CreateUserTeacherSchema = z.object({
     .transform((val) => (val === "" ? undefined : val)),
 
   // Optional teacher subjects
-  subjects: z.array(z.string()).optional(),
+  subjects: z
+    .array(
+      z.object({
+        subjectId: z.string(),
+        subjectTypeId: z.string(),
+      })
+    )
+    .optional(),
 });
 
 // Schema for updating an existing teacher
@@ -285,7 +292,14 @@ export const UpdateTeacherWithSubjectsSchema = z.object({
     .transform((val) => (val === "" ? undefined : val)),
 
   // Optional subjects
-  subjects: z.array(z.string()).optional(),
+  subjects: z
+    .array(
+      z.object({
+        subjectId: z.string(),
+        subjectTypeId: z.string(),
+      })
+    )
+    .optional(),
 });
 
 // Schema for retrieving a single teacher by ID

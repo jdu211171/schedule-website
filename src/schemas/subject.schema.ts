@@ -1,5 +1,10 @@
-import { Prisma } from "@prisma/client";
 import { z } from "zod";
+import { SubjectType } from "./subject-type.schema";
+import { SubjectToSubjectType } from "./subject-to-subject-type.schema";
+import { ClassSession } from "./class-session.schema";
+import { TeacherSubject } from "./teacher-subject.schema";
+import { ClassType } from "./class-type.schema";
+import { RegularClassTemplate, StudentPreferenceSubject } from "@prisma/client";
 
 // Base schema with common fields
 const SubjectBaseSchema = z.object({
@@ -54,8 +59,19 @@ export type Subject = z.infer<typeof SubjectSchema>;
 export type CreateSubjectInput = z.infer<typeof CreateSubjectSchema>;
 export type UpdateSubjectInput = z.infer<typeof UpdateSubjectSchema>;
 export type SubjectQuery = z.infer<typeof SubjectQuerySchema>;
-export type SubjectWithRelations = Prisma.SubjectGetPayload<{
-  include: {
-    subjectType: true;
-  };
-}>;
+
+// Updated SubjectWithRelations to match schema.prisma, using explicit types
+export type SubjectWithRelations = {
+  subjectId: string;
+  name: string;
+  subjectTypeId: string;
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  subjectType: SubjectType;
+  subjectToSubjectTypes: SubjectToSubjectType[];
+  classSessions: Array<ClassSession & { classType: ClassType }>;
+  regularClassTemplates: RegularClassTemplate[];
+  teacherSubjects: TeacherSubject[];
+  StudentPreferenceSubject: StudentPreferenceSubject[];
+};

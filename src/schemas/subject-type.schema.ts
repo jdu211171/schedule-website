@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { z } from "zod";
 
 // Base schema with common fields
@@ -48,3 +49,12 @@ export type SubjectType = z.infer<typeof SubjectTypeSchema>;
 export type CreateSubjectTypeInput = z.infer<typeof CreateSubjectTypeSchema>;
 export type UpdateSubjectTypeInput = z.infer<typeof UpdateSubjectTypeSchema>;
 export type SubjectTypeQuery = z.infer<typeof SubjectTypeQuerySchema>;
+export type SubjectTypeWithRelations = Prisma.SubjectTypeGetPayload<{
+  include: {
+    subjects: true;
+    subjectToSubjectTypes: true;
+    classSessions: true;
+    regularClassTemplates: true;
+    teacherSubjects: true;
+  };
+}>;

@@ -21,6 +21,7 @@ export async function GET(
         booth: true,
         classType: true,
         subject: true,
+        subjectType: true, // <-- Ensure subjectType is included
         teacher: true,
         student: true,
         regularClassTemplate: true,

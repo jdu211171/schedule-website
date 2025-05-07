@@ -16,6 +16,7 @@ const RegularClassTemplateBaseSchema = z.object({
   endTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
   teacherId: z.string(),
   subjectId: z.string(),
+  subjectTypeId: z.string().optional(),
   boothId: z.string(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
@@ -78,6 +79,7 @@ export const TemplateQuerySchema = z.object({
   teacherId: z.string().optional(),
   studentId: z.string().optional(),
   subjectId: z.string().optional(),
+  subjectTypeId: z.string().optional(),
   boothId: z.string().optional(),
   sort: z
     .enum(["dayOfWeek", "startTime", "endTime", "createdAt", "updatedAt"])

@@ -366,9 +366,16 @@ export const UpdateStudentWithPreferencesSchema = z.object({
   // Preferences (optional)
   preferences: z
     .object({
-      classTypeId: z.string().optional().nullable(),
+      classTypeId: z.string().optional(),
       notes: z.string().optional(),
-      subjects: z.array(z.string()).optional(),
+      subjects: z
+        .array(
+          z.object({
+            subjectId: z.string(),
+            subjectTypeId: z.string(),
+          })
+        )
+        .optional(),
       teachers: z.array(z.string()).optional(),
       timeSlots: z
         .array(
