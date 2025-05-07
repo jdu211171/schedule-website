@@ -71,13 +71,14 @@ model ClassSession {
  * Used for categorizing class sessions and student preferences.
  */
 model ClassType {
-  classTypeId               String              @id @default(cuid()) @map("class_type_id")
-  name                      String              @db.VarChar(100)
-  notes                     String?             @db.VarChar(255)
+  classTypeId               String                   @id @default(cuid()) @map("class_type_id")
+  name                      String                   @db.VarChar(100)
+  notes                     String?                  @db.VarChar(255)
   classSessions             ClassSession[]
   studentSpecialPreferences StudentPreference[]
-  createdAt                 DateTime            @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt                 DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  RegularClassTemplate      RegularClassTemplate[]
+  createdAt                 DateTime               @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt                 DateTime               @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
   @@map("class_types")
 }
@@ -272,6 +273,7 @@ enum DayOfWeek {
  */
 model RegularClassTemplate {
   templateId                 String                      @id @default(cuid()) @map("template_id")
+  classTypeId                String                      @map("class_type_id") @db.VarChar(50)
   dayOfWeek                  DayOfWeek                   @map("day_of_week")
   subjectId                  String                      @map("subject_id") @db.VarChar(50)
   subjectTypeId              String                      @map("subject_type_id") @db.VarChar(50)
@@ -282,6 +284,7 @@ model RegularClassTemplate {
   startDate                  DateTime?                   @map("start_date") @db.Date
   endDate                    DateTime?                   @map("end_date") @db.Date
   notes                      String?                     @db.VarChar(255)
+  classType                  ClassType                   @relation(fields: [classTypeId], references: [classTypeId], onDelete: Restrict, onUpdate: Cascade)
   booth                      Booth                       @relation(fields: [boothId], references: [boothId], onDelete: Restrict, onUpdate: Cascade)
   subject                    Subject                     @relation(fields: [subjectId], references: [subjectId], onDelete: Restrict, onUpdate: Cascade)
   subjectType                SubjectType                 @relation(fields: [subjectTypeId], references: [subjectTypeId], onDelete: Restrict, onUpdate: Cascade)

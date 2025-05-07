@@ -325,6 +325,7 @@ async function main() {
   /* 6. RegularClassTemplate (週次授業テンプレ) */
   const template = await prisma.regularClassTemplate.create({
     data: {
+      classTypeId: normalClassType.classTypeId, // <-- added this line
       dayOfWeek: DayOfWeek.MONDAY,
       subjectId: mathSubject.subjectId,
       boothId: boothA.boothId,
@@ -484,6 +485,39 @@ async function main() {
     data: {
       templateId: template.templateId,
       studentId: student.studentId,
+    },
+  });
+
+  /* 12. Add a regular class session (from template) */
+  const regularClassSession = await prisma.classSession.create({
+    data: {
+      date: new Date("2025-05-12"),
+      startTime: new Date("1970-01-01T15:00:00Z"),
+      endTime: new Date("1970-01-01T16:30:00Z"),
+      duration: new Date("1970-01-01T01:30:00Z"),
+      teacherId: teacher.teacherId,
+      studentId: student.studentId,
+      subjectId: mathSubject.subjectId,
+      boothId: boothA.boothId,
+      classTypeId: normalClassType.classTypeId,
+      templateId: template.templateId,
+      notes: "テンプレートから作成された通常授業",
+    },
+  });
+
+  /* 13. Add a standalone class session (not from template) */
+  const standaloneClassSession = await prisma.classSession.create({
+    data: {
+      date: new Date("2025-05-13"),
+      startTime: new Date("1970-01-01T10:00:00Z"),
+      endTime: new Date("1970-01-01T11:30:00Z"),
+      duration: new Date("1970-01-01T01:30:00Z"),
+      teacherId: teacher.teacherId,
+      studentId: student.studentId,
+      subjectId: mathSubject.subjectId,
+      boothId: boothA.boothId,
+      classTypeId: normalClassType.classTypeId,
+      notes: "スタンドアロンの特別授業",
     },
   });
 

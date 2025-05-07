@@ -486,7 +486,7 @@ export async function POST(request: Request) {
               studentId: assignment.studentId,
               subjectId: template.subjectId,
               boothId: classBoothId,
-              classTypeId: "cma144m5k000l104qnb9sfcq5", // Default class type or use a specific one
+              classTypeId: template.classTypeId, // <-- use the template's classTypeId
               templateId: templateId,
               notes: notes,
             },
