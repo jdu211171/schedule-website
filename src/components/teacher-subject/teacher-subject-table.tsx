@@ -71,16 +71,18 @@ export function TeacherSubjectTable() {
     },
   ];
 
+  // Inside your teacher-subject table component
   const handleDeleteTeacherSubject = async () => {
     if (teacherSubjectToDelete) {
       try {
         await deleteTeacherSubjectMutation.mutateAsync({
           teacherId: teacherSubjectToDelete.teacherId,
           subjectId: teacherSubjectToDelete.subjectId,
+          subjectTypeId: teacherSubjectToDelete.subjectTypeId, // Make sure this exists
         });
         setTeacherSubjectToDelete(null);
       } catch (error) {
-        console.error("講師科目割り当ての削除に失敗しました:", error);
+        console.error("教師科目の削除に失敗しました:", error);
       }
     }
   };

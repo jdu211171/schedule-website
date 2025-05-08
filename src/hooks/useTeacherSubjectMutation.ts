@@ -66,11 +66,26 @@ export function useTeacherSubjectUpdate() {
 
 export function useTeacherSubjectDelete() {
   const queryClient = useQueryClient();
-  return useMutation<DeleteTeacherSubjectResponse, Error, { teacherId: string; subjectId: string }>({
-    mutationFn: ({ teacherId, subjectId }) =>
-      fetcher(`/api/teacher-subjects?teacherId=${teacherId}&subjectId=${subjectId}`, {
-        method: "DELETE",
-      }),
+  return useMutation<
+    DeleteTeacherSubjectResponse,
+    Error,
+    { teacherId: string; subjectId: string; subjectTypeId: string }
+  >({
+    mutationFn: ({ teacherId, subjectId, subjectTypeId }) => {
+      // Check that all required parameters are provided and not undefined
+      if (!teacherId || !subjectId || !subjectTypeId) {
+        return Promise.reject(
+          new Error("講師ID、科目ID、科目タイプIDはすべて必須です")
+        );
+      }
+
+      return fetcher(
+        `/api/teacher-subjects?teacherId=${teacherId}&subjectId=${subjectId}&subjectTypeId=${subjectTypeId}`,
+        {
+          method: "DELETE",
+        }
+      );
+    },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["teacherSubjects"] });
       toast.success("教師科目を削除しました", {
