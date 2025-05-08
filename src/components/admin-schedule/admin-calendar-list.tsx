@@ -36,6 +36,8 @@ import {
   useClassSessions,
 } from '@/components/match/hooks/useClassSessions';
 import { EditClassSessionForm } from '@/components/admin-schedule/edit-class-session-form';
+import { format } from 'date-fns';
+
 
 type ClassSession = ClassSessionProcessed & {
   templateId: string | null;
@@ -120,8 +122,8 @@ export default function AdminCalendarList() {
             : b.student.localeCompare(a.student);
         case 'date':
           return sortConfig.direction === 'asc'
-            ? a.date - b.date
-            : b.date - a.date;
+            ? a.date.getTime() - b.date.getTime()
+            : b.date.getTime() - a.date.getTime();
         case 'status':
           return sortConfig.direction === 'asc'
             ? a.status.localeCompare(b.status)
@@ -207,6 +209,11 @@ export default function AdminCalendarList() {
     return dayOfWeekMap[day?.toLowerCase()] || day;
   };
 
+  const displayDate = (date: Date | null | undefined) => {
+    if (!date) return '---';
+    return format(date, 'dd.MM.yy');
+  };
+
   const totalItems = templates?.length || 0;
   const totalPages = Math.ceil(totalItems / pageSize) || 1;
 
@@ -216,7 +223,6 @@ export default function AdminCalendarList() {
     const end = start + pageSize;
     return sortedTemplates.slice(start, end);
   }, [sortedTemplates, page, pageSize, templates]);
-
   return (
     <div className="w-full flex flex-col space-y-4">
       <Card className="p-4 border-0 shadow-sm">
@@ -380,7 +386,7 @@ export default function AdminCalendarList() {
                     <TableCell>{template.startTime}</TableCell>
                     <TableCell>{template.endTime}</TableCell>
                     <TableCell>{displayDayOfWeek(template.day)}</TableCell>
-                    <TableCell>{template.date}</TableCell>
+                    <TableCell>{displayDate(template.date)}</TableCell>
                     <TableCell>{template.status}</TableCell>
                     <TableCell>{template.classTypeName}</TableCell>
                     <TableCell className="flex gap-2">

@@ -21,7 +21,7 @@ export type ClassSessionProcessed = {
   startTime: string;
   endTime: string;
   day: string;
-  date: number;
+  date: Date; // <--- Изменено на Date
   status: string;
   classTypeName: string;
   classId: string;
@@ -67,7 +67,7 @@ export const useClassSessions = (): UseClassSessionsResult => {
           startTime: format(startTime, 'HH:mm', { locale: ja }),
           endTime: format(endTime, 'HH:mm', { locale: ja }),
           day: date.toLocaleDateString('en-GB', { weekday: 'long' }),
-          date: date.getDate(),
+          date: date, // <--- Сохраняем весь объект Date
           status: status,
           classTypeName: session.classType?.name || '---',
           classId: session.classId,

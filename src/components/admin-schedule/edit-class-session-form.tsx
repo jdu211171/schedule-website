@@ -133,13 +133,13 @@ export function EditClassSessionForm({
   useEffect(() => {
     const fetchReferenceData = async () => {
       try {
-        const teachersResponse = await fetch('/api/users?role=teacher');
+        const teachersResponse = await fetch('/api/teacher');
         if (teachersResponse.ok) {
           const teachersData = await teachersResponse.json();
           setTeachers(teachersData.data as Teacher[] || []);
         }
 
-        const studentsResponse = await fetch('/api/users?role=student');
+        const studentsResponse = await fetch('/api/student');
         if (studentsResponse.ok) {
           const studentsData = await studentsResponse.json();
           setStudents(studentsData.data as Student[] || []);
@@ -151,13 +151,13 @@ export function EditClassSessionForm({
           setSubjects(subjectsData.data as Subject[] || []);
         }
 
-        const boothsResponse = await fetch('/api/booths');
+        const boothsResponse = await fetch('/api/booth');
         if (boothsResponse.ok) {
           const boothsData = await boothsResponse.json();
           setBooths(boothsData.data as Booth[] || []);
         }
 
-        const classTypesResponse = await fetch('/api/class-types');
+        const classTypesResponse = await fetch('/api/class-type');
         if (classTypesResponse.ok) {
           const classTypesData = await classTypesResponse.json();
           setClassTypes(classTypesData.data as ClassType[] || []);
@@ -168,7 +168,7 @@ export function EditClassSessionForm({
       }
     };
 
-    void fetchReferenceData(); // Исправлено игнорирование промиса
+    void fetchReferenceData();
   }, []);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
@@ -214,7 +214,6 @@ export function EditClassSessionForm({
       onSessionUpdated();
       onOpenChange(false);
     } catch (error) {
-      console.error('Error updating class session:', error);
       setErrorMessage(error instanceof Error ? error.message : '授業セッションの更新中に予期しないエラーが発生しました。');
     } finally {
       setIsSubmitting(false);
