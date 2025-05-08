@@ -14,6 +14,7 @@ const eslintConfig = [
   {
     rules: {
       "object-curly-spacing": ["error", "always"],
+      "@typescript-eslint/no-unused-vars": ["warn"],
     },
   },
 ];

@@ -4,12 +4,6 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Grade, StudentType } from "@prisma/client";
 import { toast } from "sonner";
 
-// Extend the type to include studentType
-export type GradeWithStudentType = Grade & {
-  studentType?: StudentType;
-  _optimistic?: boolean;
-};
-
 type CreateGradeResponse = {
   message: string;
   data: Grade;
@@ -25,7 +19,7 @@ type DeleteGradeResponse = {
 };
 
 type GradesQueryData = {
-  data: GradeWithStudentType[];
+  data: Grade[];
   pagination: {
     total: number;
     page: number;
@@ -54,16 +48,18 @@ export function useGradeCreate() {
   return useMutation<
   CreateGradeResponse,
     Error,
-    CreateGradeInput & { studentType: StudentType }, // Add studentType to the input
+    CreateGradeInput & { studentType: StudentType }, // Accept it here for optimistic updates
     GradeMutationContext >
       ({
-        mutationFn: (
-          data // studentType is not needed for API call
-        ) =>
-          fetcher("/api/grades", {
+        mutationFn: (data) => {
+          // Create a new object without the studentType property to send to the API
+          const { studentType, ...apiData } = data;
+
+          return fetcher("/api/grades", {
             method: "POST",
-            body: JSON.stringify(data),
-          }),
+            body: JSON.stringify(apiData), // Send only the required fields
+          });
+        },
         onMutate: async (newGrade) => {
           await queryClient.cancelQueries({ queryKey: ["grades"] });
           const queries = queryClient.getQueriesData<GradesQueryData>({
@@ -75,57 +71,19 @@ export function useGradeCreate() {
               previousGrades[JSON.stringify(queryKey)] = data;
             }
           });
-
           const tempId = `temp-${Date.now()}`;
-
-          // If studentType is not provided in the newGrade object, try to get it from the cache
-          let studentTypeObject = newGrade.studentType;
-          if (!studentTypeObject && newGrade.studentTypeId) {
-            // Try to find the student type in the cache
-            try {
-              const studentTypeData = queryClient.getQueryData<StudentType>([
-                "studentType",
-                newGrade.studentTypeId,
-              ]);
-              if (studentTypeData) {
-                studentTypeObject = studentTypeData;
-              } else {
-                // Try to find it in the studentTypes list query
-                const studentTypesQuery = queryClient.getQueryData<{ data: StudentType[] }>([
-                  "studentType",
-                ]);
-                if (studentTypesQuery?.data) {
-                  const foundType = studentTypesQuery.data.find(
-                    (st: StudentType) =>
-                      st.studentTypeId === newGrade.studentTypeId
-                  );
-                  if (foundType) {
-                    studentTypeObject = foundType;
-                  }
-                }
-              }
-            } catch (error) {
-              console.error(
-                "Failed to get student type for optimistic update",
-                error
-              );
-            }
-          }
-
           queries.forEach(([queryKey]) => {
             const currentData =
               queryClient.getQueryData<GradesQueryData>(queryKey);
             if (currentData) {
-              const optimisticGrade: GradeWithStudentType = {
+              // For optimistic updates, keep the studentType for UI display
+              const optimisticGrade = {
                 ...newGrade,
                 gradeId: tempId,
-                // Include the student type object for immediate rendering
-                studentType: studentTypeObject,
-                // Add extra metadata for tracking
-                _optimistic: true, // Flag to identify optimistic entries
+                _optimistic: true,
                 createdAt: new Date(),
                 updatedAt: new Date(),
-              };
+              } as Grade & { _optimistic?: boolean; studentType?: StudentType };
 
               queryClient.setQueryData<GradesQueryData>(queryKey, {
                 ...currentData,
@@ -175,13 +133,7 @@ export function useGradeCreate() {
               queryClient.setQueryData<GradesQueryData>(queryKey, {
                 ...currentData,
                 data: currentData.data.map((grade) =>
-                  grade.gradeId === context.tempId
-                    ? {
-                        ...response.data,
-                        // Keep the studentType from our optimistic update for UI consistency
-                        studentType: grade.studentType,
-                      }
-                    : grade
+                  grade.gradeId === context.tempId ? response.data : grade
                 ),
               });
             }
@@ -199,22 +151,21 @@ export function useGradeCreate() {
       });
 }
 
-// Similarly update the useGradeUpdate function
 export function useGradeUpdate() {
   const queryClient = useQueryClient();
   return useMutation<
   UpdateGradeResponse,
     Error,
-    UpdateGradeInput & { studentType: StudentType },
+    UpdateGradeInput & { studentType: StudentType }, // Accept it here for optimistic updates
     GradeMutationContext >
       ({
-        mutationFn: (data) => {
+        mutationFn: ({ gradeId, studentType, ...data }) => {
           // Resolve the ID before sending to the server
-          const resolvedId = getResolvedGradeId(data.gradeId);
+          const resolvedId = getResolvedGradeId(gradeId);
 
           return fetcher(`/api/grades`, {
             method: "PUT",
-            body: JSON.stringify({ ...data, gradeId: resolvedId }),
+            body: JSON.stringify({ gradeId: resolvedId, ...data }), // Don't include studentType
           });
         },
         onMutate: async (updatedGrade) => {
@@ -226,41 +177,6 @@ export function useGradeUpdate() {
           await queryClient.cancelQueries({
             queryKey: ["grade", resolvedId],
           });
-
-          // If studentType is not provided in the updatedGrade object, try to get it from the cache
-          let studentTypeObject = updatedGrade.studentType;
-          if (!studentTypeObject && updatedGrade.studentTypeId) {
-            // Try to find the student type in the cache
-            try {
-              const studentTypeData = queryClient.getQueryData<StudentType>([
-                "studentType",
-                updatedGrade.studentTypeId,
-              ]);
-              if (studentTypeData) {
-                studentTypeObject = studentTypeData;
-              } else {
-                // Try to find it in the studentTypes list query
-                const studentTypesQuery = queryClient.getQueryData<{ data: StudentType[] }>([
-                  "studentType",
-                ]);
-                if (studentTypesQuery?.data) {
-                  const foundType = studentTypesQuery.data.find(
-                    (st: StudentType) =>
-                      st.studentTypeId === updatedGrade.studentTypeId
-                  );
-                  if (foundType) {
-                    studentTypeObject = foundType;
-                  }
-                }
-              }
-            } catch (error) {
-              console.error(
-                "Failed to get student type for optimistic update",
-                error
-              );
-            }
-          }
-
           const queries = queryClient.getQueriesData<GradesQueryData>({
             queryKey: ["grades"],
           });
@@ -282,12 +198,7 @@ export function useGradeUpdate() {
                 ...currentData,
                 data: currentData.data.map((grade) =>
                   grade.gradeId === updatedGrade.gradeId
-                    ? {
-                        ...grade,
-                        ...updatedGrade,
-                        updatedAt: new Date(),
-                        studentType: studentTypeObject || grade.studentType,
-                      }
+                    ? { ...grade, ...updatedGrade, updatedAt: new Date() }
                     : grade
                 ),
               });
@@ -302,7 +213,6 @@ export function useGradeUpdate() {
           }
           return { previousGrades, previousGrade };
         },
-        // Rest of the function remains the same...
         onError: (error, variables, context) => {
           if (context?.previousGrades) {
             Object.entries(context.previousGrades).forEach(
@@ -347,9 +257,11 @@ export function useGradeUpdate() {
       });
 }
 
+// No changes needed to the delete function
 export function useGradeDelete() {
   const queryClient = useQueryClient();
   return useMutation<DeleteGradeResponse, Error, string, GradeMutationContext>({
+    // Rest of the code stays the same
     mutationFn: (gradeId) => {
       // Resolve the ID before sending to the server
       const resolvedId = getResolvedGradeId(gradeId);
