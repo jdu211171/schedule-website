@@ -1,17 +1,20 @@
 import { fetcher } from "@/lib/fetcher";
-import { CreateSubjectInput, UpdateSubjectInput } from "@/schemas/subject.schema";
+import {
+  CreateSubjectInput,
+  UpdateSubjectInput,
+  SubjectWithRelations,
+} from "@/schemas/subject.schema";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Subject } from "@prisma/client";
 import { toast } from "sonner";
 
 type CreateSubjectResponse = {
   message: string;
-  data: Subject;
+  data: SubjectWithRelations;
 };
 
 type UpdateSubjectResponse = {
   message: string;
-  data: Subject;
+  data: SubjectWithRelations;
 };
 
 type DeleteSubjectResponse = {

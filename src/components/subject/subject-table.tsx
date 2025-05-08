@@ -18,7 +18,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Subject } from "@prisma/client";
 import { SubjectFormDialog } from "@/components/subject/subject-form-dialog";
 import { SubjectWithRelations } from "@/schemas/subject.schema";
 
@@ -40,8 +39,10 @@ export function SubjectTable() {
   const totalCount = subjects?.pagination.total || 0;
   const deleteSubjectMutation = useSubjectDelete();
 
-  const [subjectToEdit, setSubjectToEdit] = useState<Subject | null>(null);
-  const [subjectToDelete, setSubjectToDelete] = useState<Subject | null>(null);
+  const [subjectToEdit, setSubjectToEdit] =
+    useState<SubjectWithRelations | null>(null);
+  const [subjectToDelete, setSubjectToDelete] =
+    useState<SubjectWithRelations | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
   const columns: ColumnDef<SubjectWithRelations>[] = [
@@ -50,9 +51,15 @@ export function SubjectTable() {
       header: "名前",
     },
     {
-      accessorKey: "subjectTypeId",
+      id: "subjectTypes",
       header: "科目タイプ",
-      cell: ({ row }) => row.original.subjectType.name || "-",
+      cell: ({ row }) => (
+        <div>
+          {row.original.subjectToSubjectTypes
+            .map((rel) => rel.subjectType?.name ?? rel.subjectTypeId)
+            .join(", ")}
+        </div>
+      ),
     },
     {
       accessorKey: "notes",
@@ -66,14 +73,18 @@ export function SubjectTable() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setSubjectToEdit(normalizeSubjectNotes(row.original))}
+            onClick={() =>
+              setSubjectToEdit(normalizeSubjectNotes(row.original))
+            }
           >
             <Pencil className="h-4 w-4" />
           </Button>
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setSubjectToDelete(normalizeSubjectNotes(row.original))}
+            onClick={() =>
+              setSubjectToDelete(normalizeSubjectNotes(row.original))
+            }
           >
             <Trash2 className="h-4 w-4 text-destructive" />
           </Button>
@@ -99,11 +110,11 @@ export function SubjectTable() {
 
   const totalPages = Math.ceil(totalCount / pageSize);
 
-  // Helper to normalize notes to string | null
+  // Helper to normalize notes to string | undefined
   function normalizeSubjectNotes(subject: SubjectWithRelations) {
     return {
       ...subject,
-      notes: subject.notes ?? null,
+      notes: subject.notes ?? undefined,
     };
   }
 

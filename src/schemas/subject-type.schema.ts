@@ -75,11 +75,14 @@ export type UpdateSubjectTypeInput = z.infer<typeof UpdateSubjectTypeSchema>;
 export type SubjectTypeQuery = z.infer<typeof SubjectTypeQuerySchema>;
 export type SubjectTypeWithRelations = Prisma.SubjectTypeGetPayload<{
   include: {
-    subjects: true;
-    subjectToSubjectTypes: true;
+    subjectToSubjectTypes: {
+      include: {
+        subject: true;
+      };
+    };
     classSessions: true;
     regularClassTemplates: true;
     teacherSubjects: true;
-    StudentPreferenceSubject: true; // Added this to reflect schema.prisma changes
+    StudentPreferenceSubject: true;
   };
 }>;

@@ -40,10 +40,14 @@ export async function GET(request: Request) {
       take: limit,
       orderBy,
       include: {
-        subjects: {
-          select: {
-            subjectId: true,
-            name: true,
+        subjectToSubjectTypes: {
+          include: {
+            subject: {
+              select: {
+                subjectId: true,
+                name: true,
+              },
+            },
           },
         },
         StudentPreferenceSubject: {
@@ -52,6 +56,7 @@ export async function GET(request: Request) {
             studentPreferenceId: true,
             subjectId: true,
           },
+          take: 10, // Limit to prevent large response payloads
         },
       },
     });
@@ -72,6 +77,7 @@ export async function GET(request: Request) {
         { status: 400 }
       );
     }
+    console.error("Error fetching subject types:", error);
     return Response.json(
       { error: "科目タイプの取得に失敗しました" },
       { status: 500 }
@@ -108,6 +114,7 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
+    console.error("Error creating subject type:", error);
     return Response.json(
       { error: "科目タイプの作成に失敗しました" },
       { status: 500 }
@@ -155,6 +162,7 @@ export async function PUT(request: Request) {
         { status: 400 }
       );
     }
+    console.error("Error updating subject type:", error);
     return Response.json(
       { error: "科目タイプの更新に失敗しました" },
       { status: 500 }
@@ -184,6 +192,10 @@ export async function DELETE(request: Request) {
 
     const existingSubjectType = await prisma.subjectType.findUnique({
       where: { subjectTypeId },
+      include: {
+        subjectToSubjectTypes: true,
+        StudentPreferenceSubject: true,
+      },
     });
 
     if (!existingSubjectType) {
@@ -193,12 +205,8 @@ export async function DELETE(request: Request) {
       );
     }
 
-    // Check for related subjects before deletion
-    const hasRelatedSubjects = await prisma.subject.findFirst({
-      where: { subjectTypeId },
-    });
-
-    if (hasRelatedSubjects) {
+    // Check for related records before deletion
+    if (existingSubjectType.subjectToSubjectTypes.length > 0) {
       return Response.json(
         {
           error: "このタイプを参照している科目があるため削除できません",
@@ -208,12 +216,7 @@ export async function DELETE(request: Request) {
     }
 
     // Check for related StudentPreferenceSubject records
-    const hasRelatedStudentPreferences =
-      await prisma.studentPreferenceSubject.findFirst({
-        where: { subjectTypeId },
-      });
-
-    if (hasRelatedStudentPreferences) {
+    if (existingSubjectType.StudentPreferenceSubject.length > 0) {
       return Response.json(
         {
           error:

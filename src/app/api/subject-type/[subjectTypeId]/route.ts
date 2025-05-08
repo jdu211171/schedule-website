@@ -17,10 +17,14 @@ export async function GET(
     const subjectType = await prisma.subjectType.findUnique({
       where: { subjectTypeId },
       include: {
-        subjects: {
-          select: {
-            subjectId: true,
-            name: true,
+        subjectToSubjectTypes: {
+          include: {
+            subject: {
+              select: {
+                subjectId: true,
+                name: true,
+              },
+            },
           },
         },
         StudentPreferenceSubject: {

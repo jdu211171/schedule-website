@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { SubjectType } from "./subject-type.schema";
 import { SubjectToSubjectType } from "./subject-to-subject-type.schema";
 import { ClassSession } from "./class-session.schema";
 import { TeacherSubject } from "./teacher-subject.schema";
@@ -78,7 +77,7 @@ export type SubjectWithRelations = {
   notes?: string;
   createdAt: Date;
   updatedAt: Date;
-  subjectToSubjectTypes: SubjectToSubjectType[];
+  subjectToSubjectTypes: Array<SubjectToSubjectType & { subjectType?: { name: string } }>;
   classSessions: Array<ClassSession & { classType: ClassType }>;
   regularClassTemplates: RegularClassTemplate[];
   teacherSubjects: TeacherSubject[];
