@@ -114,9 +114,16 @@ export function GradeFormDialog({
 
   function onSubmit(values: z.infer<typeof formSchema>) {
     // Ensure the notes field is explicitly included, even if empty
+    // Only proceed if selectedStudentType is not null
+    if (!selectedStudentType) {
+      // Optionally, show an error or return early
+      return;
+    }
+
     const updatedValues = {
       ...values,
       notes: values.notes ?? "", // Ensure notes is at least an empty string, not undefined
+      studentType: selectedStudentType
     };
 
     // Close the dialog immediately for better UX
