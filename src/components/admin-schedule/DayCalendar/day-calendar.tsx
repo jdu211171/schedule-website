@@ -20,7 +20,7 @@ interface Room {
 
 type DayCalendarProps = {
   date: Date;
-  rooms: Room[]; // Уточненный тип для комнат
+  rooms: Room[];
   timeSlots: TimeSlot[];
   classSessions: ClassSession[];
   onLessonClick: (lesson: ClassSession) => void;
@@ -28,6 +28,170 @@ type DayCalendarProps = {
   resetSelectionKey?: number;
 };
 
+// Константы вынесены за пределы компонента
+const CELL_WIDTH = 40; 
+const ROOM_LABEL_WIDTH = 100; 
+const TIME_SLOT_HEIGHT = 40;
+
+// Чистая функция для проверки выделения
+const isCellInSelection = (roomIndex: number, timeIndex: number, selectionStart: SelectionPosition | null, selectionEnd: SelectionPosition | null): boolean => {
+  if (!selectionStart || !selectionEnd) return false;
+  
+  if (roomIndex !== selectionStart.row) return false;
+  
+  const minCol = Math.min(selectionStart.col, selectionEnd.col);
+  const maxCol = Math.max(selectionStart.col, selectionEnd.col);
+  
+  return timeIndex >= minCol && timeIndex <= maxCol;
+};
+
+// Компонент ячейки календаря
+const CalendarCell = React.memo(({ 
+  roomIndex, 
+  timeSlot, 
+  isSelected,
+  isSelecting,
+  onMouseDown,
+  onMouseEnter,
+  onMouseUp 
+}: { 
+  roomIndex: number, 
+  timeSlot: TimeSlot, 
+  isSelected: boolean,
+  isSelecting: boolean,
+  onMouseDown: (e: React.MouseEvent) => void,
+  onMouseEnter: (e: React.MouseEvent) => void,
+  onMouseUp: (e: React.MouseEvent) => void
+}) => {
+  const cellKey = `cell-${roomIndex}-${timeSlot.index}`;
+  
+  return (
+    <div
+      key={cellKey}
+      id={cellKey}
+      data-room-index={roomIndex}
+      data-time-index={timeSlot.index}
+      data-start-time={timeSlot.start}
+      data-selected={isSelected ? "true" : "false"}
+      className={`
+        border-r border-b relative select-none
+        ${timeSlot.index % 4 === 0 ? "bg-gray-50" : "bg-white"}
+        ${isSelecting ? "cursor-move" : "hover:bg-gray-100 cursor-pointer"}
+        ${isSelected ? "!bg-green-200 !opacity-80 shadow-inner" : ""}
+      `}
+      style={{ 
+        width: `${CELL_WIDTH}px`, 
+        minWidth: `${CELL_WIDTH}px`,
+        height: `${TIME_SLOT_HEIGHT}px`,
+        transition: 'background-color 0.05s ease-in-out, opacity 0.05s ease-in-out'
+      }}
+      onMouseDown={onMouseDown}
+      onMouseEnter={onMouseEnter}
+      onMouseUp={onMouseUp}
+    />
+  );
+});
+
+CalendarCell.displayName = 'CalendarCell';
+
+// Компонент строки календаря
+const RoomRow = React.memo(({ 
+  room, 
+  roomIndex, 
+  timeSlots,
+  selectionStart,
+  selectionEnd,
+  isSelecting,
+  onStartSelection,
+  onCellHover,
+  onEndSelection
+}: { 
+  room: Room, 
+  roomIndex: number, 
+  timeSlots: TimeSlot[],
+  selectionStart: SelectionPosition | null,
+  selectionEnd: SelectionPosition | null,
+  isSelecting: boolean,
+  onStartSelection: (roomIndex: number, timeIndex: number, e: React.MouseEvent) => void,
+  onCellHover: (roomIndex: number, timeIndex: number, e: React.MouseEvent) => void,
+  onEndSelection: (e: React.MouseEvent) => void
+}) => {
+  return (
+    <div
+      className="flex relative"
+      style={{ height: `${TIME_SLOT_HEIGHT}px` }}
+    >
+      {/* Метка комнаты */}
+      <div
+        className="sticky left-0 flex items-center justify-center bg-white z-10 border-r border-b text-sm font-medium text-gray-700 px-2"
+        style={{ 
+          width: `${ROOM_LABEL_WIDTH}px`, 
+          minWidth: `${ROOM_LABEL_WIDTH}px`, 
+          height: `${TIME_SLOT_HEIGHT}px` 
+        }}
+      >
+        <span className="truncate">{room.name}</span>
+      </div>
+
+      {/* Ячейки времени для этой комнаты */}
+      {timeSlots.map((timeSlot) => {
+        const isSelected = isCellInSelection(roomIndex, timeSlot.index, selectionStart, selectionEnd);
+        
+        return (
+          <CalendarCell
+            key={`cell-${roomIndex}-${timeSlot.index}`}
+            roomIndex={roomIndex}
+            timeSlot={timeSlot}
+            isSelected={isSelected}
+            isSelecting={isSelecting}
+            onMouseDown={(e) => onStartSelection(roomIndex, timeSlot.index, e)}
+            onMouseEnter={(e) => onCellHover(roomIndex, timeSlot.index, e)}
+            onMouseUp={onEndSelection}
+          />
+        );
+      })}
+    </div>
+  );
+});
+
+RoomRow.displayName = 'RoomRow';
+
+// Компонент заголовка с временными слотами
+const TimeHeader = React.memo(({ timeSlots }: { timeSlots: TimeSlot[] }) => {
+  return (
+    <div className="sticky top-0 flex z-20 bg-white shadow-sm border-b">
+      <div 
+        className="sticky left-0 flex items-center justify-center font-semibold border-r text-sm text-gray-700 bg-white z-30"
+        style={{ width: `${ROOM_LABEL_WIDTH}px`, minWidth: `${ROOM_LABEL_WIDTH}px`, height: `${TIME_SLOT_HEIGHT}px` }}
+      >
+        教室
+      </div>
+      {timeSlots.map((timeSlot) => (
+        <div
+          key={`time-${timeSlot.index}`}
+          data-time-index={timeSlot.index}
+          className={`flex items-center justify-center font-semibold border-r text-xs
+            ${timeSlot.index % 4 === 0 ? "bg-gray-100" : "bg-white"}`}
+          style={{ 
+            width: `${CELL_WIDTH}px`, 
+            minWidth: `${CELL_WIDTH}px`, 
+            height: `${TIME_SLOT_HEIGHT}px`
+          }}
+        >
+          {timeSlot.index % 4 === 0 ? (
+            <div className="text-xs font-medium text-gray-600">
+              {timeSlot.start.split(':')[0]}:00
+            </div>
+          ) : null}
+        </div>
+      ))}
+    </div>
+  );
+});
+
+TimeHeader.displayName = 'TimeHeader';
+
+// Основной компонент календаря
 const DayCalendarComponent: React.FC<DayCalendarProps> = ({
   date,
   rooms,
@@ -39,51 +203,65 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(1200); 
-  const timeSlotHeight = 40; 
-
+  
   const [selectionStart, setSelectionStart] = useState<SelectionPosition | null>(null);
   const [selectionEnd, setSelectionEnd] = useState<SelectionPosition | null>(null);
   const [isSelecting, setIsSelecting] = useState(false);
-
+  
+  // Ref для отслеживания, был ли вызван onCreateLesson
+  const createLessonCalledRef = useRef(false);
+  
+  // Функция отмены выделения
   const cancelSelection = useCallback(() => {
     setSelectionStart(null);
     setSelectionEnd(null);
     setIsSelecting(false);
     document.body.classList.remove('cursor-move');
+    createLessonCalledRef.current = false;
   }, []);
 
+  // Сброс выделения при изменении resetSelectionKey
   useEffect(() => {
     if (resetSelectionKey > 0) {
       cancelSelection();
     }
   }, [resetSelectionKey, cancelSelection]);
 
+  // Начало выделения
   const handleStartSelection = useCallback((roomIndex: number, timeIndex: number, e: React.MouseEvent) => {
     e.preventDefault();
+    
+    const start = { row: roomIndex, col: timeIndex };
+    
     setIsSelecting(true);
-    setSelectionStart({ row: roomIndex, col: timeIndex });
-    setSelectionEnd({ row: roomIndex, col: timeIndex });
+    setSelectionStart(start);
+    setSelectionEnd(start);
     document.body.classList.add('cursor-move');
+    createLessonCalledRef.current = false;
   }, []);
 
+  // Обновление при перемещении мыши
   const handleCellHover = useCallback((roomIndex: number, timeIndex: number, e: React.MouseEvent) => {
     if (!isSelecting || !selectionStart) return;
     e.preventDefault();
+    
+    // Если мы перемещаемся в той же строке, что и начало выделения
     if (roomIndex === selectionStart.row) {
-      setSelectionEnd({ row: selectionStart.row, col: timeIndex });
+      const end = { row: roomIndex, col: timeIndex };
+      setSelectionEnd(end);
     }
   }, [isSelecting, selectionStart]);
 
+  // Завершение выделения - ОСНОВНОЕ МЕСТО ОПТИМИЗАЦИИ
   const handleEndSelection = useCallback((e: React.MouseEvent) => {
-    if (isSelecting && selectionStart && selectionEnd) {
+    if (isSelecting && selectionStart && selectionEnd && !createLessonCalledRef.current) {
       e.preventDefault();
-      setIsSelecting(false);
-      document.body.classList.remove('cursor-move');
-
+      
       const startCol = Math.min(selectionStart.col, selectionEnd.col);
       const endCol = Math.max(selectionStart.col, selectionEnd.col);
       const roomIndex = selectionStart.row;
-
+      
+      // Проверка, что выделение действительно имеет диапазон
       const isValidSelection = endCol > startCol; 
       if (isValidSelection) {
         if (startCol >= 0 && startCol < timeSlots.length &&
@@ -94,61 +272,63 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
           const endTime = timeSlots[endCol].end; 
           const selectedRoomId = rooms[roomIndex].boothId;
 
+          // Устанавливаем флаг, что onCreateLesson был вызван
+          createLessonCalledRef.current = true;
+          
+          // ВАЖНО: немедленно вызываем onCreateLesson без сброса состояния выделения
+          // Это устраняет задержку между завершением drag и открытием модального окна
           onCreateLesson(date, startTime, endTime, selectedRoomId);
-          // Сброс выделения не нужен здесь, так как isSelecting уже false,
-          // и selectionStart/End будут сброшены при следующем взаимодействии или через resetSelectionKey.
-          return; 
+          
+          // Сохраняем текущий вид выделения, пока диалог не откроется
+          // cancelSelection будет вызван через resetSelectionKey из родительского компонента
+          return;
         }
       }
-      setSelectionStart(null);
-      setSelectionEnd(null);
+      
+      // Если выделение не валидно, просто отменяем его
+      cancelSelection();
     }
-  }, [isSelecting, selectionStart, selectionEnd, timeSlots, rooms, onCreateLesson, date]); 
+  }, [isSelecting, selectionStart, selectionEnd, timeSlots, rooms, onCreateLesson, date, cancelSelection]); 
 
-  const isCellSelected = useCallback((roomIndex: number, timeIndex: number) => {
-    if (!selectionStart || !selectionEnd) return false;
-    const minCol = Math.min(selectionStart.col, selectionEnd.col);
-    const maxCol = Math.max(selectionStart.col, selectionEnd.col);
-    return roomIndex === selectionStart.row && timeIndex >= minCol && timeIndex <= maxCol;
-  }, [selectionStart, selectionEnd]);
-
+  // Обработка изменения размера контейнера
   useEffect(() => {
     const updateContainerWidth = () => {
       if (containerRef.current) {
         setContainerWidth(containerRef.current.clientWidth);
       }
     };
+    
     updateContainerWidth();
+    
     const resizeObserver = new ResizeObserver(updateContainerWidth);
     if (containerRef.current) {
       resizeObserver.observe(containerRef.current);
     }
+    
     return () => {
       resizeObserver.disconnect();
     };
   }, []);
 
+  // Глобальные обработчики событий
   useEffect(() => {
     const handleGlobalMouseUp = (event: MouseEvent) => {
-      if (isSelecting) {
-        // Этот обработчик срабатывает, если кнопка мыши была отпущена ВНЕ ячеек календаря,
-        // где есть свой onMouseUp. Если это произошло, отменяем выделение.
-        // Проверяем, чтобы цель события не была внутри самого календаря, чтобы не дублировать логику.
+      if (isSelecting && !createLessonCalledRef.current) {
         if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-             cancelSelection();
-        } else if (! (event.target as HTMLElement)?.closest(`[data-room-index][data-time-index]`)) {
-            // Если отпускание не на ячейке, также отменяем
-            cancelSelection();
+          cancelSelection();
+        } else if (!(event.target as HTMLElement)?.closest(`[data-room-index][data-time-index]`)) {
+          cancelSelection();
         }
-        // Если отпускание на ячейке, handleEndSelection на ячейке должен был сработать.
       }
     };
+    
     const handleGlobalRightClick = (e: MouseEvent) => {
       if (isSelecting) {
         e.preventDefault();
         cancelSelection();
       }
     };
+    
     const handleEscapeKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isSelecting) {
         cancelSelection();
@@ -158,6 +338,7 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
     document.addEventListener('mouseup', handleGlobalMouseUp);
     document.addEventListener('contextmenu', handleGlobalRightClick);
     document.addEventListener('keydown', handleEscapeKey);
+    
     return () => {
       document.removeEventListener('mouseup', handleGlobalMouseUp);
       document.removeEventListener('contextmenu', handleGlobalRightClick);
@@ -166,6 +347,7 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
     };
   }, [isSelecting, cancelSelection]);
 
+  // Фильтрация сессий для текущей даты
   const filteredSessions = useMemo(() => {
     const calendarDateStr = date.toISOString().split('T')[0];
     return classSessions.filter(session => {
@@ -174,13 +356,15 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
     });
   }, [classSessions, date]);
 
+  // Форматирование даты
   const formattedDate = useMemo(() => {
     return format(date, 'yyyy年MM月dd日 (eee)', { locale: ja });
   }, [date]);
 
-  const cellWidth = 40;
-  const totalGridWidth = timeSlots.length * cellWidth;
-  const roomLabelWidth = 100;
+  // Вычисление общей ширины сетки
+  const totalGridWidth = useMemo(() => {
+    return timeSlots.length * CELL_WIDTH;
+  }, [timeSlots.length]);
 
   return (
     <div className="border rounded-md overflow-hidden shadow-sm bg-white">
@@ -194,78 +378,30 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
         ref={containerRef}
       >
         <div
-          className="relative w-full"
+          className="relative min-w-full select-none"
           style={{
-            minWidth: `${Math.max(totalGridWidth + roomLabelWidth, containerWidth)}px`,
-            height: `${rooms.length * timeSlotHeight + timeSlotHeight}px`
-          }}
-          onMouseLeave={() => {
-            // Отмена выделения, если мышь покинула область сетки во время выделения
-            // Может быть слишком агрессивным, нужно тестировать UX
-            // if (isSelecting) {
-            //   cancelSelection();
-            // }
+            minWidth: `${Math.max(totalGridWidth + ROOM_LABEL_WIDTH, containerWidth)}px`,
+            height: `${(rooms.length + 1) * TIME_SLOT_HEIGHT}px`
           }}
         >
           {/* Заголовок с временными слотами */}
-          <div className="sticky top-0 flex z-20 bg-white shadow-sm">
-            <div className="w-[100px] min-w-[100px] flex items-center justify-center font-semibold border-b border-r text-sm text-gray-700">
-              教室
-            </div>
-            {timeSlots.map((timeSlot) => (
-              <div
-                key={timeSlot.start}
-                data-time-col
-                data-time-index={timeSlot.index}
-                className={`w-[${cellWidth}px] min-w-[${cellWidth}px] h-[${timeSlotHeight}px] flex items-center justify-center font-semibold border-b border-r text-xs
-                  ${timeSlot.index % 4 === 0 ? "bg-gray-100" : "bg-white"}`}
-              >
-                {timeSlot.index % 4 === 0 ? (
-                  <div className="text-xs font-medium text-gray-600">
-                    {timeSlot.start.split(':')[0]}:00
-                  </div>
-                ) : null}
-              </div>
-            ))}
-          </div>
+          <TimeHeader timeSlots={timeSlots} />
 
           {/* Комнаты и их ячейки времени */}
           <div className="relative z-10">
             {rooms.map((room, roomIndex) => (
-              <div
-                key={room.boothId || `room-${roomIndex}`}
-                className="flex relative"
-                style={{ height: `${timeSlotHeight}px` }}
-              >
-                {/* Метка комнаты */}
-                <div
-                  className="sticky left-0 w-[100px] min-w-[100px] flex items-center justify-center bg-white z-10 border-r border-b text-sm font-medium text-gray-700 px-2 text-center"
-                >
-                  <span className="truncate">{room.name}</span>
-                </div>
-
-                {/* Ячейки времени для этой комнаты */}
-                {timeSlots.map((timeSlot, timeIndex) => (
-                  <div
-                    key={`${room.boothId || `room-${roomIndex}`}-${timeSlot.start}`}
-                    data-room-index={roomIndex}
-                    data-time-index={timeIndex}
-                    className={`w-[${cellWidth}px] min-w-[${cellWidth}px] border-r border-b relative
-                      ${timeSlot.index % 4 === 0 ? "bg-gray-50" : "bg-white"}
-                      ${isCellSelected(roomIndex, timeIndex) ? "bg-green-200 opacity-70" : ""}
-                      ${isSelecting ? "cursor-move" : "hover:bg-gray-100 cursor-pointer"}`}
-                    onMouseDown={(e) => {
-                      handleStartSelection(roomIndex, timeIndex, e);
-                    }}
-                    onMouseEnter={(e) => {
-                      handleCellHover(roomIndex, timeIndex, e);
-                    }}
-                    onMouseUp={(e) => { 
-                        handleEndSelection(e);
-                    }}
-                  />
-                ))}
-              </div>
+              <RoomRow
+                key={`room-${room.boothId || roomIndex}`}
+                room={room}
+                roomIndex={roomIndex}
+                timeSlots={timeSlots}
+                selectionStart={selectionStart}
+                selectionEnd={selectionEnd}
+                isSelecting={isSelecting}
+                onStartSelection={handleStartSelection}
+                onCellHover={handleCellHover}
+                onEndSelection={handleEndSelection}
+              />
             ))}
           </div>
 
@@ -273,11 +409,11 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
           <div className="absolute top-0 left-0 w-full h-full pointer-events-none z-10">
             {filteredSessions.map(session => (
               <LessonCard
-                key={session.classId}
+                key={`lesson-${session.classId}`}
                 lesson={session}
                 rooms={rooms}
                 onClick={onLessonClick}
-                timeSlotHeight={timeSlotHeight}
+                timeSlotHeight={TIME_SLOT_HEIGHT}
                 timeSlots={timeSlots}
               />
             ))}

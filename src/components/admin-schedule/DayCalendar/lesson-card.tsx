@@ -1,15 +1,16 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { ClassSession } from '@/hooks/useScheduleClassSessions';
 import { TimeSlot } from './day-calendar';
 
+// Определение типа для rooms
 interface Room {
-    boothId: string;
-    name: string;
-  }
+  boothId: string;
+  name: string;
+}
 
 type LessonCardProps = {
   lesson: ClassSession;
-  rooms: Room[]; 
+  rooms: Room[];
   onClick: (lesson: ClassSession) => void;
   timeSlotHeight?: number;
   timeSlots: TimeSlot[];
@@ -22,14 +23,23 @@ type CardPosition = {
   height: number;
 };
 
+// Вынести константы за пределы компонента
+const ROOM_COLUMN_WIDTH = 100;
+const COLUMN_WIDTH = 40;
+const HEADER_HEIGHT = 40;
+const BORDER_WIDTH = 1;
+const ADJUST_LEFT = 0;
+const ADJUST_TOP = 0;
+const ADJUST_WIDTH = 0;
+const ADJUST_HEIGHT = -1;
+
+// Оптимизированная функция форматирования времени
 const formatTimeFromISO = (isoTime: string): string => {
   try {
     if (isoTime.startsWith('1970-01-01T')) {
       const timePart = isoTime.split('T')[1];
       const timeComponents = timePart.split(':');
-      const hours = timeComponents[0];
-      const minutes = timeComponents[1];
-      return `${hours}:${minutes}`;
+      return `${timeComponents[0]}:${timeComponents[1]}`;
     } 
     else if (isoTime.includes('T') && isoTime.includes(':')) {
       const date = new Date(isoTime);
@@ -40,6 +50,16 @@ const formatTimeFromISO = (isoTime: string): string => {
     return '00:00';
   } catch {
     return '00:00';
+  }
+};
+
+// Функция получения цвета для типа занятия - вынесена за пределы компонента
+const getClassTypeColor = (typeName: string): string => {
+  switch(typeName) {
+    case '通常授業': return 'bg-blue-500 border-blue-600';
+    case '特別授業': return 'bg-red-500 border-red-600';
+    case 'テスト対策': return 'bg-purple-500 border-purple-600';
+    default: return 'bg-gray-500 border-gray-600';
   }
 };
 
@@ -54,120 +74,99 @@ export const LessonCard: React.FC<LessonCardProps> = React.memo(({
   const [isVisible, setIsVisible] = useState(true);
   const cardRef = useRef<HTMLDivElement>(null);
   
-  const ROOM_COLUMN_WIDTH = 100;
-  const COLUMN_WIDTH = 40;
-  const HEADER_HEIGHT = 40;
-  const BORDER_WIDTH = 1;
+  // Мемоизируем форматированное время для избежания повторных вычислений
+  const formattedTimes = useMemo(() => {
+    return {
+      start: formatTimeFromISO(lesson.startTime),
+      end: formatTimeFromISO(lesson.endTime)
+    };
+  }, [lesson.startTime, lesson.endTime]);
   
-  const ADJUST_LEFT = 0;
-  const ADJUST_TOP = 0;
-  const ADJUST_WIDTH = 0;
-  const ADJUST_HEIGHT = -1;
-
-  const formattedStartTime = formatTimeFromISO(lesson.startTime);
-  const formattedEndTime = formatTimeFromISO(lesson.endTime);
-
+  // Мемоизируем цвет карточки
+  const cardColor = useMemo(() => {
+    return getClassTypeColor(lesson.classType?.name || '');
+  }, [lesson.classType?.name]);
+  
+  // Мемоизируем расчет позиции карточки - это самая затратная операция
   useEffect(() => {
-    const boothId = lesson.boothId;
-    
-    const roomIndex = rooms.findIndex(room => room.boothId === boothId);
-    
-    if (roomIndex === -1) {
-      return; 
+    const calculatePosition = () => {
+      const boothId = lesson.boothId;
+      const roomIndex = rooms.findIndex(room => room.boothId === boothId);
+      
+      if (roomIndex === -1) {
+        return null; 
+      }
+      
+      const startTimeParts = formattedTimes.start.split(':').map(Number);
+      const endTimeParts = formattedTimes.end.split(':').map(Number);
+      
+      const startHour = startTimeParts[0];
+      const startMinute = startTimeParts[1];
+      const endHour = endTimeParts[0];
+      const endMinute = endTimeParts[1];
+      
+      // Оптимизация: проверяем диапазоны, чтобы избежать ненужных вычислений
+      if (startHour < 8 || startHour > 22 || endHour < 8 || endHour > 22) {
+        return null;
+      }
+      
+      const startTimeIndex = (startHour - 8) * 4 + Math.floor(startMinute / 15);
+      const endTimeIndex = (endHour - 8) * 4 + (endMinute === 0 ? 0 : Math.ceil(endMinute / 15));
+      
+      if (startTimeIndex < 0 || endTimeIndex > timeSlots.length) {
+        return null;
+      }
+      
+      const left = ROOM_COLUMN_WIDTH + startTimeIndex * COLUMN_WIDTH + ADJUST_LEFT;
+      const width = (endTimeIndex - startTimeIndex) * COLUMN_WIDTH + ADJUST_WIDTH;
+      const top = HEADER_HEIGHT + roomIndex * timeSlotHeight + ADJUST_TOP;
+      const height = timeSlotHeight - BORDER_WIDTH + ADJUST_HEIGHT;
+      
+      return { top, left, width, height };
+    };
+
+    const newPosition = calculatePosition();
+    if (newPosition) {
+      setPosition(newPosition);
     }
-    
-    const startTimeParts = formattedStartTime.split(':').map(Number);
-    const endTimeParts = formattedEndTime.split(':').map(Number);
-    
-    const startHour = startTimeParts[0];
-    const startMinute = startTimeParts[1];
-    const endHour = endTimeParts[0];
-    const endMinute = endTimeParts[1];
-    
-    const startTimeIndex = (startHour - 8) * 4 + Math.floor(startMinute / 15);
-    const endTimeIndex = (endHour - 8) * 4 + (endMinute === 0 ? 0 : Math.ceil(endMinute / 15));
-    
-    if (startTimeIndex < 0 || endTimeIndex > timeSlots.length) {
-      return;
-    }
-    
-    const left = ROOM_COLUMN_WIDTH + startTimeIndex * COLUMN_WIDTH;
-    const width = (endTimeIndex - startTimeIndex) * COLUMN_WIDTH;
-    const top = HEADER_HEIGHT + roomIndex * timeSlotHeight;
-    const height = timeSlotHeight - BORDER_WIDTH;
-    
-    const adjustedLeft = left + ADJUST_LEFT;
-    const adjustedTop = top + ADJUST_TOP;
-    const adjustedWidth = width + ADJUST_WIDTH;
-    const adjustedHeight = height + ADJUST_HEIGHT;
-    
-    setPosition({
-      top: adjustedTop,
-      left: adjustedLeft,
-      width: adjustedWidth,
-      height: adjustedHeight
-    });
   }, [
-    lesson, 
-    rooms, 
-    timeSlotHeight, 
-    timeSlots, 
-    formattedStartTime, 
-    formattedEndTime, 
-    ADJUST_LEFT, 
-    ADJUST_TOP, 
-    ADJUST_WIDTH, 
-    ADJUST_HEIGHT
-  ]); 
+    lesson.boothId,
+    formattedTimes.start,
+    formattedTimes.end,
+    rooms,
+    timeSlotHeight,
+    timeSlots.length
+  ]);
   
+  // Оптимизация: используем IntersectionObserver вместо обработки скролла
   useEffect(() => {
-    if (!position || !cardRef.current) return;
+    if (!cardRef.current || !position) return;
     
-    const handleScroll = () => {
-      if (!cardRef.current) return;
-      
-      const tableContainer = cardRef.current.closest('.overflow-auto');
-      if (!tableContainer) return;
-      
-      const roomColumn = tableContainer.querySelector('.sticky.left-0.w-\\[100px\\]');
-      if (!roomColumn) return;
-      
-      const roomRect = roomColumn.getBoundingClientRect();
-      const cardRect = cardRef.current.getBoundingClientRect();
-      const shouldBeVisible = cardRect.left > roomRect.right - 5;
-      
-      setIsVisible(shouldBeVisible);
+    const handleVisibility = (entries: IntersectionObserverEntry[]) => {
+      entries.forEach(entry => {
+        setIsVisible(entry.isIntersecting);
+      });
     };
     
-    const tableContainer = cardRef.current.closest('.overflow-auto');
-    if (tableContainer) {
-      tableContainer.addEventListener('scroll', handleScroll);
-      
-      setTimeout(handleScroll, 0);
-      
-      return () => {
-        tableContainer.removeEventListener('scroll', handleScroll);
-      };
-    }
-  }, [position, ADJUST_HEIGHT]); 
-
-  const getClassTypeColor = () => {
-    const typeName = lesson.classType?.name || '';
+    const observer = new IntersectionObserver(handleVisibility, {
+      root: cardRef.current.closest('.overflow-auto'),
+      threshold: 0.1
+    });
     
-    switch(typeName) {
-      case '通常授業': return 'bg-blue-500 border-blue-600';
-      case '特別授業': return 'bg-red-500 border-red-600';
-      case 'テスト対策': return 'bg-purple-500 border-purple-600';
-      default: return 'bg-gray-500 border-gray-600';
-    }
-  };
+    observer.observe(cardRef.current);
+    
+    return () => {
+      observer.disconnect();
+    };
+  }, [position]);
 
+  // Если нет позиции, не рендерим карточку
   if (!position) return null;
   
   return (
     <div
       ref={cardRef}
-      className={`${getClassTypeColor()} rounded-none text-xs overflow-hidden absolute 
+      className={`${cardColor} rounded-none text-xs overflow-hidden absolute 
         transition-all duration-150 group hover:shadow-md hover:brightness-95 active:brightness-90 pointer-events-auto`}
       style={{
         top: `${position.top}px`,
@@ -190,7 +189,7 @@ export const LessonCard: React.FC<LessonCardProps> = React.memo(({
     >
       <div className="flex items-center justify-between h-full text-xs text-white">
         <div className="truncate font-semibold">{lesson.subject?.name || 'Без названия'}</div>
-        <div className="truncate ml-1">{formattedStartTime}-{formattedEndTime}</div>
+        <div className="truncate ml-1">{formattedTimes.start}-{formattedTimes.end}</div>
       </div>
       
       <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-70 bg-white rounded-full p-0.5 transform scale-0 group-hover:scale-100 transition-all shadow-sm">
@@ -203,4 +202,5 @@ export const LessonCard: React.FC<LessonCardProps> = React.memo(({
   );
 });
 
+// Добавляем displayName для отладки
 LessonCard.displayName = 'LessonCard';
