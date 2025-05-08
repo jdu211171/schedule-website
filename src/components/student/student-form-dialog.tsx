@@ -40,30 +40,34 @@ import { useTeacherSubjects } from "@/hooks/useTeacherSubjectQuery";
 import { StudentDesiredTimeField } from "./student-desired-time-field";
 import {
   CreateUserStudentSchema,
+  studentPreferencesSchema,
+  StudentPreference,
 } from "@/schemas/student.schema";
 import { TeacherSubject } from "@prisma/client";
-
-// Define the missing schema for student preferences
-const studentPreferencesSchema = z.object({
-  preferredSubjects: z.array(z.string()).default([]),
-  preferredTeachers: z.array(z.string()).default([]),
-  desiredTimes: z.array(z.object({
-    dayOfWeek: z.string(),
-    startTime: z.string(),
-    endTime: z.string()
-  })).default([]),
-  additionalNotes: z.string().nullable().default(null),
-  classTypeId: z.string().nullable().default(null),
-});
-
-// TypeScript type for the schema
-type StudentPreference = z.infer<typeof studentPreferencesSchema>;
 
 // Define the type for the props, including the preference structure from the API
 interface StudentFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  student?: Student | null;
+  student?:
+    | (Student & {
+        StudentPreference?: Array<{
+          preferenceId: string;
+          studentId: string;
+          classTypeId: string;
+          notes: string | null;
+          createdAt: string;
+          updatedAt: string;
+          subjects?: Array<{ subjectId: string; subjectTypeId: string }>;
+          teachers?: Array<{ teacherId: string }>;
+          timeSlots?: Array<{
+            dayOfWeek: string;
+            startTime: string;
+            endTime: string;
+          }>;
+        }>;
+      })
+    | null;
 }
 
 export function StudentFormDialog({
@@ -84,27 +88,51 @@ export function StudentFormDialog({
     useTeacherSubjects({});
 
   // Memoize arrays to avoid dependency issues in useMemo
-  const gradesArray = useMemo(() => Array.isArray(grades) ? grades : (grades?.data ?? []), [grades]);
-  const teachersArray = useMemo(() => Array.isArray(teachers) ? teachers : (teachers?.data ?? []), [teachers]);
-  const subjectsArray = useMemo(() => Array.isArray(subjects) ? subjects : (subjects?.data ?? []), [subjects]);
-  const teacherSubjectsArray = useMemo(() => Array.isArray(teacherSubjects) ? teacherSubjects : (teacherSubjects?.data ?? []), [teacherSubjects]);
+  const gradesArray = useMemo(
+    () => (Array.isArray(grades) ? grades : grades?.data ?? []),
+    [grades]
+  );
+  const teachersArray = useMemo(
+    () => (Array.isArray(teachers) ? teachers : teachers?.data ?? []),
+    [teachers]
+  );
+  const subjectsArray = useMemo(
+    () => (Array.isArray(subjects) ? subjects : subjects?.data ?? []),
+    [subjects]
+  );
+  const teacherSubjectsArray = useMemo(
+    () =>
+      Array.isArray(teacherSubjects)
+        ? teacherSubjects
+        : teacherSubjects?.data ?? [],
+    [teacherSubjects]
+  );
 
   // Helper type for subject compatibility
   interface SubjectCompat {
     subjectId: string;
     name: string;
-    subjectTypeId: string;
+    subjectTypeId?: string;
     notes?: string | null;
+    subjectToSubjectTypes?: Array<{
+      subjectTypeId: string;
+      subjectType: {
+        subjectTypeId: string;
+        name: string;
+      };
+    }>;
   }
 
   // Map subjectsArray to compatible type for filter/find
   const subjectsCompatArray: SubjectCompat[] = useMemo(
-    () => subjectsArray.map((s: SubjectCompat) => ({
-      subjectId: s.subjectId,
-      name: s.name,
-      subjectTypeId: s.subjectTypeId,
-      notes: s.notes,
-    })),
+    () =>
+      subjectsArray.map((s: any) => ({
+        subjectId: s.subjectId,
+        name: s.name,
+        subjectTypeId: s.subjectTypeId,
+        notes: s.notes,
+        subjectToSubjectTypes: s.subjectToSubjectTypes,
+      })),
     [subjectsArray]
   );
 
@@ -112,6 +140,35 @@ export function StudentFormDialog({
   const [teacherSearchTerm, setTeacherSearchTerm] = useState("");
   const [showSubjectDropdown, setShowSubjectDropdown] = useState(false);
   const [showTeacherDropdown, setShowTeacherDropdown] = useState(false);
+
+  // New state variables for subject preferences
+  const [selectedSubject, setSelectedSubject] = useState<string>("");
+  const [selectedSubjectType, setSelectedSubjectType] = useState<string>("");
+  const [availableSubjectTypes, setAvailableSubjectTypes] = useState<
+    Array<{ subjectTypeId: string; name: string }>
+  >([]);
+
+  // Add this effect to filter subject types when a subject is selected
+  useEffect(() => {
+    if (selectedSubject) {
+      // Find all subject types associated with the selected subject
+      const subjectToTypeRelations =
+        subjectsCompatArray.find((s) => s.subjectId === selectedSubject)
+          ?.subjectToSubjectTypes || [];
+
+      const types = subjectToTypeRelations.map((rel) => ({
+        subjectTypeId: rel.subjectType.subjectTypeId,
+        name: rel.subjectType.name,
+      }));
+
+      setAvailableSubjectTypes(types);
+      // Reset the selected subject type when subject changes
+      setSelectedSubjectType("");
+    } else {
+      setAvailableSubjectTypes([]);
+      setSelectedSubjectType("");
+    }
+  }, [selectedSubject, subjectsCompatArray]);
 
   const formSchema = CreateUserStudentSchema;
 
@@ -122,20 +179,31 @@ export function StudentFormDialog({
       kanaName: student?.kanaName || "",
       gradeId: student?.gradeId || "",
       schoolName: student?.schoolName || "",
-      schoolType: safeEnum(student?.schoolType, ["PUBLIC", "PRIVATE"]),
+      schoolType: safeEnum(student?.schoolType, ["PUBLIC", "PRIVATE"]) as
+        | "PUBLIC"
+        | "PRIVATE"
+        | null
+        | undefined,
       // Only set examSchoolType if it matches the correct API enum, otherwise undefined
       examSchoolType: safeEnum(student?.examSchoolType, [
         "PUBLIC",
-        "PRIVATE"
-      ]) ?? undefined,
+        "PRIVATE",
+      ]) as "PUBLIC" | "PRIVATE" | null | undefined,
       examSchoolCategoryType: safeEnum(student?.examSchoolCategoryType, [
         "ELEMENTARY",
         "MIDDLE",
         "HIGH",
         "UNIVERSITY",
-        "OTHER"
-      ]) ?? undefined,
-      birthDate: student?.birthDate ? new Date(student.birthDate) : undefined,
+        "OTHER",
+      ]) as
+        | "ELEMENTARY"
+        | "MIDDLE"
+        | "HIGH"
+        | "UNIVERSITY"
+        | "OTHER"
+        | null
+        | undefined,
+      birthDate: student?.birthDate || undefined,
       parentMobile: student?.parentMobile || "",
       studentMobile: student?.studentMobile || "",
       parentEmail: student?.parentEmail || "",
@@ -150,8 +218,8 @@ export function StudentFormDialog({
   const preferencesForm = useForm<StudentPreference>({
     resolver: zodResolver(studentPreferencesSchema),
     defaultValues: {
-      preferredSubjects: [],
       preferredTeachers: [],
+      preferredSubjects: [],
       desiredTimes: [],
       additionalNotes: "",
       classTypeId: null,
@@ -159,14 +227,78 @@ export function StudentFormDialog({
   });
 
   // Derived form for desiredTimes only
-  const desiredTimesForm = useForm<{ desiredTimes: { dayOfWeek: string; startTime: string; endTime: string }[] }>({
-    defaultValues: { desiredTimes: preferencesForm.getValues("desiredTimes") || [] },
+  const desiredTimesForm = useForm<{
+    desiredTimes: { dayOfWeek: string; startTime: string; endTime: string }[];
+  }>({
+    defaultValues: {
+      desiredTimes: preferencesForm.getValues("desiredTimes") || [],
+    },
   });
+
+  // Parse existing student preferences if available
+  useEffect(() => {
+    if (student?.StudentPreference?.length) {
+      const preferences = student.StudentPreference[0];
+
+      // Set teachers
+      const teacherIds =
+        preferences.teachers?.map((t: { teacherId: string }) => t.teacherId) ||
+        [];
+      preferencesForm.setValue("preferredTeachers", teacherIds);
+
+      // Set subject-type pairs
+      const subjectPairs =
+        preferences.subjects?.map(
+          (s: { subjectId: string; subjectTypeId: string }) => ({
+            subjectId: s.subjectId,
+            subjectTypeId: s.subjectTypeId,
+          })
+        ) || [];
+      preferencesForm.setValue("preferredSubjects", subjectPairs);
+
+      // Set time slots
+      const timeSlots =
+        preferences.timeSlots?.map(
+          (slot: {
+            dayOfWeek: string;
+            startTime: string;
+            endTime: string;
+          }) => ({
+            dayOfWeek: slot.dayOfWeek,
+            startTime: formatTimeString(slot.startTime),
+            endTime: formatTimeString(slot.endTime),
+          })
+        ) || [];
+      preferencesForm.setValue("desiredTimes", timeSlots);
+      desiredTimesForm.setValue("desiredTimes", timeSlots);
+
+      // Set additional notes and class type
+      preferencesForm.setValue("additionalNotes", preferences.notes || null);
+      preferencesForm.setValue("classTypeId", preferences.classTypeId || null);
+    }
+  }, [student, preferencesForm, desiredTimesForm]);
+
+  // Helper function to format time
+  const formatTimeString = (time: Date | string) => {
+    if (typeof time === "string") {
+      // Handle ISO string
+      if (time.includes("T")) {
+        return time.split("T")[1].substring(0, 5);
+      }
+      return time;
+    }
+    // Handle Date object
+    return time.toTimeString().substring(0, 5);
+  };
 
   // Sync from preferencesForm to desiredTimesForm
   useEffect(() => {
     const preferenceTimes = preferencesForm.watch("desiredTimes");
-    if (preferenceTimes && JSON.stringify(preferenceTimes) !== JSON.stringify(desiredTimesForm.getValues().desiredTimes)) {
+    if (
+      preferenceTimes &&
+      JSON.stringify(preferenceTimes) !==
+        JSON.stringify(desiredTimesForm.getValues().desiredTimes)
+    ) {
       desiredTimesForm.setValue("desiredTimes", preferenceTimes || []);
     }
   }, [preferencesForm, desiredTimesForm]);
@@ -175,10 +307,10 @@ export function StudentFormDialog({
   useEffect(() => {
     const desiredTimes = desiredTimesForm.watch("desiredTimes");
     if (desiredTimes && desiredTimes.length > 0) {
-      const formattedTimes = desiredTimes.map(time => ({
+      const formattedTimes = desiredTimes.map((time) => ({
         dayOfWeek: time.dayOfWeek.toUpperCase(),
         startTime: time.startTime,
-        endTime: time.endTime
+        endTime: time.endTime,
       }));
       preferencesForm.setValue("desiredTimes", formattedTimes);
     }
@@ -186,7 +318,6 @@ export function StudentFormDialog({
 
   // Watch selected subjects and teachers
   const selectedSubjects = preferencesForm.watch("preferredSubjects");
-  const selectedTeachers = preferencesForm.watch("preferredTeachers");
 
   // Create a mapping of teacherId to the subjects they teach using useMemo
   const teacherToSubjectsMap = useMemo(() => {
@@ -203,25 +334,16 @@ export function StudentFormDialog({
     return map;
   }, [teacherSubjectsArray]);
 
-  // Create a mapping of subjectId to the teachers who teach it using useMemo
-  const subjectToTeachersMap = useMemo(() => {
-    const map = new Map<string, string[]>();
-    teacherSubjectsArray.forEach((ts: TeacherSubject) => {
-      if (!map.has(ts.subjectId)) {
-        map.set(ts.subjectId, []);
-      }
-      const teachersForSubject = map.get(ts.subjectId);
-      if (teachersForSubject) {
-        teachersForSubject.push(ts.teacherId);
-      }
-    });
-    return map;
-  }, [teacherSubjectsArray]);
-
   // Compute filtered teachers based on selected subjects
   const teacherList = useMemo(() => {
     return Array.isArray(teachersArray)
-      ? teachersArray.filter((t) => typeof t === "object" && t !== null && typeof t.teacherId === "string" && t.name)
+      ? teachersArray.filter(
+          (t) =>
+            typeof t === "object" &&
+            t !== null &&
+            typeof t.teacherId === "string" &&
+            t.name
+        )
       : [];
   }, [teachersArray]);
   const filteredTeachers = useMemo(() => {
@@ -230,24 +352,11 @@ export function StudentFormDialog({
     }
     return teacherList.filter((teacher) => {
       const teacherSubjects = teacherToSubjectsMap.get(teacher.teacherId) || [];
-      return selectedSubjects.some((subjectId: string) =>
-        teacherSubjects.includes(subjectId)
+      return selectedSubjects.some((subject: { subjectId: string }) =>
+        teacherSubjects.includes(subject.subjectId)
       );
     });
   }, [teacherList, teacherToSubjectsMap, selectedSubjects]);
-
-  // Compute filtered subjects based on selected teachers
-  const filteredSubjects = useMemo(() => {
-    if (!selectedTeachers.length) {
-      return subjectsCompatArray;
-    }
-    return subjectsCompatArray.filter((subject) => {
-      const subjectTeachers = subjectToTeachersMap.get(subject.subjectId) || [];
-      return selectedTeachers.some((teacherId: string) =>
-        subjectTeachers.includes(teacherId)
-      );
-    });
-  }, [subjectsCompatArray, subjectToTeachersMap, selectedTeachers]);
 
   // Helper to format date input to YYYY-MM-DD
   const formatDateInput = (date: string | Date | undefined | null) => {
@@ -278,15 +387,18 @@ export function StudentFormDialog({
   // Function to map the preferences form data to the API format
   const mapPreferencesForApi = (preference: StudentPreference) => {
     return {
-      subjects: preference.preferredSubjects,
+      subjects: preference.preferredSubjects.map((pair) => ({
+        subjectId: pair.subjectId,
+        subjectTypeId: pair.subjectTypeId,
+      })),
       teachers: preference.preferredTeachers,
-      timeSlots: preference.desiredTimes.map(time => ({
+      timeSlots: preference.desiredTimes.map((time) => ({
         dayOfWeek: time.dayOfWeek.toUpperCase(), // Ensure uppercase enum format
         startTime: time.startTime,
-        endTime: time.endTime
+        endTime: time.endTime,
       })),
       notes: preference.additionalNotes || undefined,
-      classTypeId: preference.classTypeId || undefined
+      classTypeId: preference.classTypeId || undefined,
     };
   };
 
@@ -298,10 +410,10 @@ export function StudentFormDialog({
       const timeSlots = desiredTimesForm.getValues().desiredTimes;
 
       // Ensure the day of week is in uppercase enum format (MONDAY not Monday)
-      const formattedTimeSlots = timeSlots.map(time => ({
+      const formattedTimeSlots = timeSlots.map((time) => ({
         dayOfWeek: time.dayOfWeek.toUpperCase(), // Convert to proper enum format
         startTime: time.startTime,
-        endTime: time.endTime
+        endTime: time.endTime,
       }));
 
       // Update the preferencesForm with these values
@@ -317,31 +429,64 @@ export function StudentFormDialog({
       const formatDateString = (d: string | Date | undefined) => {
         if (!d) return undefined;
         if (typeof d === "string") return d;
-        if (d instanceof Date && !isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+        if (d instanceof Date && !isNaN(d.getTime()))
+          return d.toISOString().slice(0, 10);
         return undefined;
       };
+      // Convert nulls to undefined for all string fields to match schema types
+      const cleanString = (v: string | null | undefined) =>
+        v == null ? undefined : v;
+      // Helper to cast enum fields safely
+      const castEnum = <T extends string>(
+        val: unknown,
+        allowed: readonly T[]
+      ): T | undefined =>
+        typeof val === "string" && allowed.includes(val as T)
+          ? (val as T)
+          : undefined;
       const payload = {
         ...values,
-        birthDate: formatDateString(values.birthDate),
-        enrollmentDate: formatDateString((values as { enrollmentDate?: string | Date }).enrollmentDate),
-        examSchoolType: safeEnum(values.examSchoolType, [
+        gradeId: cleanString(values.gradeId),
+        kanaName: cleanString(values.kanaName),
+        schoolName: cleanString(values.schoolName),
+        schoolType: castEnum(values.schoolType, ["PUBLIC", "PRIVATE"]) as
+          | "PUBLIC"
+          | "PRIVATE"
+          | undefined,
+        examSchoolType: castEnum(values.examSchoolType, [
           "PUBLIC",
-          "PRIVATE"
-        ]),
-        examSchoolCategoryType: safeEnum(values.examSchoolCategoryType, [
+          "PRIVATE",
+        ]) as "PUBLIC" | "PRIVATE" | undefined,
+        examSchoolCategoryType: castEnum(values.examSchoolCategoryType, [
           "ELEMENTARY",
           "MIDDLE",
           "HIGH",
           "UNIVERSITY",
-          "OTHER"
-        ]),
+          "OTHER",
+        ]) as
+          | "ELEMENTARY"
+          | "MIDDLE"
+          | "HIGH"
+          | "UNIVERSITY"
+          | "OTHER"
+          | undefined,
+        firstChoiceSchool: cleanString(values.firstChoiceSchool),
+        secondChoiceSchool: cleanString(values.secondChoiceSchool),
+        homePhone: cleanString(values.homePhone),
+        parentMobile: cleanString(values.parentMobile),
+        studentMobile: cleanString(values.studentMobile),
+        parentEmail: cleanString(values.parentEmail),
+        notes: cleanString(values.notes),
+        birthDate: formatDateString(values.birthDate),
+        enrollmentDate: formatDateString(values.enrollmentDate ?? undefined),
         preferences,
       };
 
       if (isEditing && student) {
+        const { username, ...updatePayload } = payload;
         await updateStudentMutation.mutateAsync({
           studentId: student.studentId,
-          ...payload,
+          ...updatePayload,
         });
       } else {
         await createStudentMutation.mutateAsync(payload);
@@ -448,14 +593,16 @@ export function StudentFormDialog({
                             <SelectValue placeholder="学年を選択" />
                           </SelectTrigger>
                           <SelectContent>
-                            {gradesArray.map((grade: { gradeId: string; name: string }) => (
-                              <SelectItem
-                                key={grade.gradeId}
-                                value={grade.gradeId}
-                              >
-                                {grade.name}
-                              </SelectItem>
-                            ))}
+                            {gradesArray.map(
+                              (grade: { gradeId: string; name: string }) => (
+                                <SelectItem
+                                  key={grade.gradeId}
+                                  value={grade.gradeId}
+                                >
+                                  {grade.name}
+                                </SelectItem>
+                              )
+                            )}
                           </SelectContent>
                         </Select>
                       </FormControl>
@@ -736,105 +883,214 @@ export function StudentFormDialog({
           <TabsContent value="preferences">
             <Form {...preferencesForm}>
               <form className="space-y-4">
+                {/* Updated subject preference field */}
                 <FormField
                   control={preferencesForm.control}
                   name="preferredSubjects"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>希望科目</FormLabel>
-                      <div className="relative">
-                        <FormControl>
-                          <Input
-                            placeholder="科目を検索..."
-                            className="w-full"
-                            value={subjectSearchTerm}
-                            onChange={(e) => {
-                              setSubjectSearchTerm(e.target.value);
-                              setShowSubjectDropdown(
-                                e.target.value.trim() !== ""
-                              );
-                            }}
-                            onFocus={() => {
-                              if (subjectSearchTerm.trim() !== "") {
-                                setShowSubjectDropdown(true);
-                              }
-                            }}
-                            onBlur={() => {
-                              setTimeout(
-                                () => setShowSubjectDropdown(false),
-                                200
-                              );
-                            }}
-                          />
-                        </FormControl>
-                        {showSubjectDropdown && (
-                          <div className="absolute z-10 w-full mt-1 bg-background border rounded-md shadow-lg max-h-60 overflow-auto">
-                            {filteredSubjects
-                              .filter((subject) =>
-                                subject.name
-                                  .toLowerCase()
-                                  .includes(subjectSearchTerm.toLowerCase())
-                              )
-                              .map((subject) => (
-                                <div
-                                  key={subject.subjectId}
-                                  className="p-2 hover:bg-accent cursor-pointer"
-                                  onClick={() => {
-                                    const currentValues = field.value || [];
-                                    if (
-                                      !currentValues.includes(subject.subjectId)
-                                    ) {
-                                      field.onChange([
-                                        ...currentValues,
-                                        subject.subjectId,
-                                      ]);
+                      <FormLabel>希望科目と科目種別</FormLabel>
+                      <div className="space-y-4">
+                        <div className="flex items-end gap-2">
+                          {/* Subject selection */}
+                          <div className="flex-1">
+                            <FormLabel className="text-sm">科目</FormLabel>
+                            <div className="relative">
+                              <FormControl>
+                                <Input
+                                  placeholder="科目を検索..."
+                                  value={subjectSearchTerm}
+                                  onChange={(e) => {
+                                    setSubjectSearchTerm(e.target.value);
+                                    setShowSubjectDropdown(
+                                      e.target.value.trim() !== ""
+                                    );
+                                  }}
+                                  onFocus={() => {
+                                    if (subjectSearchTerm.trim() !== "") {
+                                      setShowSubjectDropdown(true);
                                     }
-                                    setSubjectSearchTerm("");
-                                    setShowSubjectDropdown(false);
+                                  }}
+                                  onBlur={() => {
+                                    setTimeout(
+                                      () => setShowSubjectDropdown(false),
+                                      200
+                                    );
+                                  }}
+                                />
+                              </FormControl>
+
+                              {showSubjectDropdown && (
+                                <div className="absolute z-10 w-full mt-1 bg-background border rounded-md shadow-lg max-h-60 overflow-auto">
+                                  {subjectsCompatArray
+                                    .filter((subject) =>
+                                      subject.name
+                                        .toLowerCase()
+                                        .includes(
+                                          subjectSearchTerm.toLowerCase()
+                                        )
+                                    )
+                                    .map((subject) => (
+                                      <div
+                                        key={subject.subjectId}
+                                        className="p-2 hover:bg-accent cursor-pointer"
+                                        onClick={() => {
+                                          setSelectedSubject(subject.subjectId);
+                                          setSubjectSearchTerm(subject.name);
+                                          setShowSubjectDropdown(false);
+                                        }}
+                                      >
+                                        {subject.name}
+                                      </div>
+                                    ))}
+                                  {subjectsCompatArray.filter((subject) =>
+                                    subject.name
+                                      .toLowerCase()
+                                      .includes(subjectSearchTerm.toLowerCase())
+                                  ).length === 0 && (
+                                    <div className="p-2 text-muted-foreground">
+                                      該当する科目が見つかりません
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Subject Type selection */}
+                          <div className="flex-1">
+                            <FormLabel className="text-sm">科目種別</FormLabel>
+                            <Select
+                              value={selectedSubjectType}
+                              onValueChange={setSelectedSubjectType}
+                              disabled={
+                                !selectedSubject ||
+                                availableSubjectTypes.length === 0
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="科目種別を選択" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {availableSubjectTypes.map((type) => (
+                                  <SelectItem
+                                    key={type.subjectTypeId}
+                                    value={type.subjectTypeId}
+                                  >
+                                    {type.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <Button
+                            type="button"
+                            onClick={() => {
+                              if (!selectedSubject || !selectedSubjectType)
+                                return;
+
+                              // Check if this pair already exists
+                              const pairExists = (field.value || []).some(
+                                (pair) =>
+                                  pair.subjectId === selectedSubject &&
+                                  pair.subjectTypeId === selectedSubjectType
+                              );
+
+                              if (pairExists) {
+                                alert(
+                                  "この科目と科目種別の組み合わせは既に追加されています"
+                                );
+                                return;
+                              }
+
+                              const newPair = {
+                                subjectId: selectedSubject,
+                                subjectTypeId: selectedSubjectType,
+                              };
+
+                              const updatedSubjects = [
+                                ...(field.value || []),
+                                newPair,
+                              ];
+                              field.onChange(updatedSubjects);
+
+                              // Reset selections
+                              setSelectedSubject("");
+                              setSelectedSubjectType("");
+                              setSubjectSearchTerm("");
+                            }}
+                            disabled={!selectedSubject || !selectedSubjectType}
+                          >
+                            追加
+                          </Button>
+                        </div>
+
+                        {/* Display selected subject-type pairs */}
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {(field.value || []).map((pair, index) => {
+                            const subject = subjectsCompatArray.find(
+                              (s) => s.subjectId === pair.subjectId
+                            );
+
+                            // Find the subject type name - could be in the available types or need to be found elsewhere
+                            let subjectTypeName = "";
+                            // First check if it's in available types
+                            const typeInAvailable = availableSubjectTypes.find(
+                              (t) => t.subjectTypeId === pair.subjectTypeId
+                            );
+                            if (typeInAvailable) {
+                              subjectTypeName = typeInAvailable.name;
+                            } else {
+                              // Look through all subjects to find this type
+                              for (const s of subjectsCompatArray) {
+                                if (s.subjectToSubjectTypes) {
+                                  const foundType =
+                                    s.subjectToSubjectTypes.find(
+                                      (rel) =>
+                                        rel.subjectType.subjectTypeId ===
+                                        pair.subjectTypeId
+                                    );
+                                  if (foundType) {
+                                    subjectTypeName =
+                                      foundType.subjectType.name;
+                                    break;
+                                  }
+                                }
+                              }
+                              // If still not found, just use the ID
+                              if (!subjectTypeName) {
+                                subjectTypeName = pair.subjectTypeId;
+                              }
+                            }
+
+                            return (
+                              <div
+                                key={index}
+                                className="flex items-center bg-accent rounded-md px-3 py-1"
+                              >
+                                <span>
+                                  {subject?.name || pair.subjectId} -{" "}
+                                  {subjectTypeName}
+                                </span>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-4 w-4 p-0 ml-1 hover:bg-muted"
+                                  aria-label="削除"
+                                  onClick={() => {
+                                    const newValues = [...(field.value || [])];
+                                    newValues.splice(index, 1);
+                                    field.onChange(newValues);
                                   }}
                                 >
-                                  {subject.name}
-                                </div>
-                              ))}
-                            {filteredSubjects.filter((subject) =>
-                              subject.name
-                                .toLowerCase()
-                                .includes(subjectSearchTerm.toLowerCase())
-                            ).length === 0 && (
-                              <div className="p-2 text-muted-foreground">
-                                該当する科目が見つかりません
+                                  ×
+                                </Button>
                               </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {(field.value || []).map((subjectId, index) => {
-                          const subject = subjectsCompatArray.find(
-                            (s) => s.subjectId === subjectId
-                          );
-                          return (
-                            <div
-                              key={index}
-                              className="flex items-center bg-accent rounded-md px-2 py-1"
-                            >
-                              <span>{subject ? subject.name : subjectId}</span>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="h-4 w-4 p-0 ml-1"
-                                onClick={() => {
-                                  const newValues = [...(field.value || [])];
-                                  newValues.splice(index, 1);
-                                  field.onChange(newValues);
-                                }}
-                              >
-                                ×
-                              </Button>
-                            </div>
-                          );
-                        })}
+                            );
+                          })}
+                        </div>
                       </div>
                       <FormMessage />
                     </FormItem>
@@ -979,10 +1235,10 @@ export function StudentFormDialog({
               const timeSlots = desiredTimesForm.getValues().desiredTimes;
 
               // Ensure the day of week is in uppercase enum format (MONDAY not Monday)
-              const formattedTimeSlots = timeSlots.map(time => ({
+              const formattedTimeSlots = timeSlots.map((time) => ({
                 dayOfWeek: time.dayOfWeek.toUpperCase(), // Convert to proper enum format
                 startTime: time.startTime,
-                endTime: time.endTime
+                endTime: time.endTime,
               }));
 
               // Update the preferences form with the latest time slots
@@ -995,13 +1251,17 @@ export function StudentFormDialog({
             {isSubmitting ? "保存中..." : isEditing ? "変更を保存" : "作成"}
           </Button>
         </DialogFooter>
-
       </DialogContent>
     </Dialog>
   );
 }
 
 // Helper to safely get enum value or undefined
-function safeEnum<T extends string>(val: unknown, allowed: readonly T[]): T | undefined {
-  return typeof val === "string" && allowed.includes(val as T) ? (val as T) : undefined;
+function safeEnum<T extends string>(
+  val: unknown,
+  allowed: readonly T[]
+): T | undefined {
+  return typeof val === "string" && allowed.includes(val as T)
+    ? (val as T)
+    : undefined;
 }

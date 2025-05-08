@@ -19,7 +19,8 @@ export async function GET(request: Request) {
     const query = TeacherSubjectQuerySchema.parse(
       Object.fromEntries(searchParams.entries())
     );
-    const { page, limit, teacherId, subjectId, sort, order } = query;
+    const { page, limit, teacherId, subjectId, subjectTypeId, sort, order } =
+      query;
 
     const filters: Record<string, unknown> = {};
 
@@ -29,6 +30,10 @@ export async function GET(request: Request) {
 
     if (subjectId) {
       filters.subjectId = subjectId;
+    }
+
+    if (subjectTypeId) {
+      filters.subjectTypeId = subjectTypeId;
     }
 
     const skip = (page - 1) * limit;
@@ -52,6 +57,16 @@ export async function GET(request: Request) {
         subject: {
           select: {
             name: true,
+            subjectToSubjectTypes: {
+              include: {
+                subjectType: true,
+              },
+            },
+          },
+        },
+        subjectType: {
+          select: {
+            name: true,
           },
         },
       },
@@ -69,12 +84,12 @@ export async function GET(request: Request) {
   } catch (error) {
     if (error instanceof ZodError) {
       return Response.json(
-        { error: "Invalid query parameters", details: error.errors },
+        { error: "無効なクエリパラメータ", details: error.errors },
         { status: 400 }
       );
     }
     return Response.json(
-      { error: "Failed to fetch teacher subjects" },
+      { error: "講師-科目関連の取得に失敗しました" },
       { status: 500 }
     );
   }
@@ -92,45 +107,83 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const data = CreateTeacherSubjectSchema.parse(body);
+    const { teacherId, subjectId, subjectTypeId, notes } = data;
 
     // Check if the teacher exists
     const teacher = await prisma.teacher.findUnique({
-      where: { teacherId: data.teacherId },
+      where: { teacherId },
     });
     if (!teacher) {
-      return Response.json({ error: "Teacher not found" }, { status: 404 });
+      return Response.json({ error: "講師が見つかりません" }, { status: 404 });
     }
 
     // Check if the subject exists
     const subject = await prisma.subject.findUnique({
-      where: { subjectId: data.subjectId },
+      where: { subjectId },
     });
     if (!subject) {
-      return Response.json({ error: "Subject not found" }, { status: 404 });
+      return Response.json({ error: "科目が見つかりません" }, { status: 404 });
+    }
+
+    // Check if the subject type exists
+    const subjectType = await prisma.subjectType.findUnique({
+      where: { subjectTypeId },
+    });
+    if (!subjectType) {
+      return Response.json(
+        { error: "科目タイプが見つかりません" },
+        { status: 404 }
+      );
+    }
+
+    // Check if the subject-subject type combination is valid
+    const validPair = await prisma.subjectToSubjectType.findFirst({
+      where: {
+        subjectId,
+        subjectTypeId,
+      },
+    });
+
+    if (!validPair) {
+      return Response.json(
+        {
+          error: "無効な科目と科目タイプの組み合わせ",
+          message: `科目ID ${subjectId} と科目タイプID ${subjectTypeId} の組み合わせは有効ではありません。`,
+        },
+        { status: 400 }
+      );
     }
 
     // Check if the teacher-subject relation already exists
     const existingRelation = await prisma.teacherSubject.findUnique({
       where: {
-        teacherId_subjectId: {
-          teacherId: data.teacherId,
-          subjectId: data.subjectId,
+        teacherId_subjectId_subjectTypeId: {
+          teacherId,
+          subjectId,
+          subjectTypeId,
         },
       },
     });
 
     if (existingRelation) {
       return Response.json(
-        { error: "Teacher-subject relation already exists" },
+        { error: "この講師-科目-タイプの関連はすでに存在します" },
         { status: 409 }
       );
     }
 
-    const teacherSubject = await prisma.teacherSubject.create({ data });
+    const teacherSubject = await prisma.teacherSubject.create({
+      data: {
+        teacherId,
+        subjectId,
+        subjectTypeId,
+        notes,
+      },
+    });
 
     return Response.json(
       {
-        message: "Teacher subject created successfully",
+        message: "講師-科目関連を作成しました",
         data: teacherSubject,
       },
       { status: 201 }
@@ -138,12 +191,12 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof ZodError) {
       return Response.json(
-        { error: "Validation failed", details: error.errors },
+        { error: "入力値の検証に失敗しました", details: error.errors },
         { status: 400 }
       );
     }
     return Response.json(
-      { error: "Failed to create teacher subject" },
+      { error: "講師-科目関連の作成に失敗しました" },
       { status: 500 }
     );
   }
@@ -160,49 +213,54 @@ export async function PUT(request: Request) {
 
   try {
     const body = await request.json();
-    const { teacherId, subjectId, ...data } =
+    const { teacherId, subjectId, subjectTypeId, ...data } =
       UpdateTeacherSubjectSchema.parse(body);
 
     // Check if the teacher-subject relation exists
     const existingRelation = await prisma.teacherSubject.findUnique({
       where: {
-        teacherId_subjectId: {
+        teacherId_subjectId_subjectTypeId: {
           teacherId,
           subjectId,
+          subjectTypeId,
         },
       },
     });
 
     if (!existingRelation) {
       return Response.json(
-        { error: "Teacher subject not found" },
+        { error: "講師-科目関連が見つかりません" },
         { status: 404 }
       );
     }
 
+    // The PUT endpoint is only updating notes, not changing the subject/subject type combination
+    // so we don't need to re-validate the combination
+
     const teacherSubject = await prisma.teacherSubject.update({
       where: {
-        teacherId_subjectId: {
+        teacherId_subjectId_subjectTypeId: {
           teacherId,
           subjectId,
+          subjectTypeId,
         },
       },
       data,
     });
 
     return Response.json({
-      message: "Teacher subject updated successfully",
+      message: "講師-科目関連を更新しました",
       data: teacherSubject,
     });
   } catch (error) {
     if (error instanceof ZodError) {
       return Response.json(
-        { error: "Validation failed", details: error.errors },
+        { error: "入力値の検証に失敗しました", details: error.errors },
         { status: 400 }
       );
     }
     return Response.json(
-      { error: "Failed to update teacher subject" },
+      { error: "講師-科目関連の更新に失敗しました" },
       { status: 500 }
     );
   }
@@ -221,45 +279,48 @@ export async function DELETE(request: Request) {
     const { searchParams } = new URL(request.url);
     const teacherId = searchParams.get("teacherId");
     const subjectId = searchParams.get("subjectId");
+    const subjectTypeId = searchParams.get("subjectTypeId");
 
-    if (!teacherId || !subjectId) {
+    if (!teacherId || !subjectId || !subjectTypeId) {
       return Response.json(
-        { error: "Teacher ID and Subject ID are required" },
+        { error: "講師ID、科目ID、科目タイプIDはすべて必須です" },
         { status: 400 }
       );
     }
 
     const existingRelation = await prisma.teacherSubject.findUnique({
       where: {
-        teacherId_subjectId: {
+        teacherId_subjectId_subjectTypeId: {
           teacherId,
           subjectId,
+          subjectTypeId,
         },
       },
     });
 
     if (!existingRelation) {
       return Response.json(
-        { error: "Teacher subject not found" },
+        { error: "講師-科目関連が見つかりません" },
         { status: 404 }
       );
     }
 
     await prisma.teacherSubject.delete({
       where: {
-        teacherId_subjectId: {
+        teacherId_subjectId_subjectTypeId: {
           teacherId,
           subjectId,
+          subjectTypeId,
         },
       },
     });
 
     return Response.json({
-      message: "Teacher subject deleted successfully",
+      message: "講師-科目関連を削除しました",
     });
   } catch {
     return Response.json(
-      { error: "Failed to delete teacher subject" },
+      { error: "講師-科目関連の削除に失敗しました" },
       { status: 500 }
     );
   }

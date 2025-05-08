@@ -97,7 +97,16 @@ export async function GET(request: Request) {
         evaluation: true,
         teacherSubjects: {
           include: {
-            subject: true,
+            subject: {
+              include: {
+                subjectToSubjectTypes: {
+                  include: {
+                    subjectType: true,
+                  },
+                },
+              },
+            },
+            subjectType: true,
           },
         },
         TeacherShiftReference: true,
@@ -211,7 +220,7 @@ export async function POST(request: Request) {
 
     // Verify subjects exist before starting transaction
     if (subjects?.length) {
-      const subjectIds = subjects;
+      const subjectIds = subjects.map((s) => s.subjectId);
       const existingSubjects = await prisma.subject.findMany({
         where: { subjectId: { in: subjectIds } },
         select: { subjectId: true },
@@ -226,6 +235,47 @@ export async function POST(request: Request) {
             message: `The following subject IDs do not exist: ${invalidIds.join(
               ", "
             )}`,
+          },
+          { status: 400 }
+        );
+      }
+
+      // Verify subject-subject type combinations
+      const subjectTypePairs = subjects.map((s) => ({
+        subjectId: s.subjectId,
+        subjectTypeId: s.subjectTypeId,
+      }));
+
+      // Check that each subject/subject type pair exists in SubjectToSubjectType
+      const validPairs = await prisma.subjectToSubjectType.findMany({
+        where: {
+          OR: subjectTypePairs.map((pair) => ({
+            subjectId: pair.subjectId,
+            subjectTypeId: pair.subjectTypeId,
+          })),
+        },
+        select: {
+          subjectId: true,
+          subjectTypeId: true,
+        },
+      });
+
+      // If the count of valid pairs doesn't match the requested pairs, some pairs are invalid
+      if (validPairs.length !== subjectTypePairs.length) {
+        // Find the invalid pairs by checking which requested pairs aren't in the valid pairs
+        const validPairStrings = validPairs.map(
+          (p) => `${p.subjectId}-${p.subjectTypeId}`
+        );
+        const invalidPairs = subjectTypePairs.filter(
+          (p) => !validPairStrings.includes(`${p.subjectId}-${p.subjectTypeId}`)
+        );
+
+        return Response.json(
+          {
+            error: "Invalid subject-subject type combinations",
+            message: `The following subject-subject type combinations are not valid: ${invalidPairs
+              .map((p) => `(${p.subjectId}, ${p.subjectTypeId})`)
+              .join(", ")}`,
           },
           { status: 400 }
         );
@@ -258,11 +308,12 @@ export async function POST(request: Request) {
       // 4. If subjects are provided, create teacher subject relationships
       if (subjects && subjects.length > 0) {
         await Promise.all(
-          subjects.map((subjectId: string) =>
+          subjects.map((subject) =>
             tx.teacherSubject.create({
               data: {
                 teacherId: teacher.teacherId,
-                subjectId,
+                subjectId: subject.subjectId,
+                subjectTypeId: subject.subjectTypeId,
               },
             })
           )
@@ -299,7 +350,16 @@ export async function POST(request: Request) {
           evaluation: true,
           teacherSubjects: {
             include: {
-              subject: true,
+              subject: {
+                include: {
+                  subjectToSubjectTypes: {
+                    include: {
+                      subjectType: true,
+                    },
+                  },
+                },
+              },
+              subjectType: true,
             },
           },
           TeacherShiftReference: true,
@@ -376,7 +436,7 @@ export async function PUT(request: Request) {
 
     // Verify subjects if provided
     if (subjects?.length) {
-      const subjectIds = subjects;
+      const subjectIds = subjects.map((s) => s.subjectId);
       const existingSubjects = await prisma.subject.findMany({
         where: { subjectId: { in: subjectIds } },
         select: { subjectId: true },
@@ -391,6 +451,47 @@ export async function PUT(request: Request) {
             message: `The following subject IDs do not exist: ${invalidIds.join(
               ", "
             )}`,
+          },
+          { status: 400 }
+        );
+      }
+
+      // Verify subject-subject type combinations
+      const subjectTypePairs = subjects.map((s) => ({
+        subjectId: s.subjectId,
+        subjectTypeId: s.subjectTypeId,
+      }));
+
+      // Check that each subject/subject type pair exists in SubjectToSubjectType
+      const validPairs = await prisma.subjectToSubjectType.findMany({
+        where: {
+          OR: subjectTypePairs.map((pair) => ({
+            subjectId: pair.subjectId,
+            subjectTypeId: pair.subjectTypeId,
+          })),
+        },
+        select: {
+          subjectId: true,
+          subjectTypeId: true,
+        },
+      });
+
+      // If the count of valid pairs doesn't match the requested pairs, some pairs are invalid
+      if (validPairs.length !== subjectTypePairs.length) {
+        // Find the invalid pairs by checking which requested pairs aren't in the valid pairs
+        const validPairStrings = validPairs.map(
+          (p) => `${p.subjectId}-${p.subjectTypeId}`
+        );
+        const invalidPairs = subjectTypePairs.filter(
+          (p) => !validPairStrings.includes(`${p.subjectId}-${p.subjectTypeId}`)
+        );
+
+        return Response.json(
+          {
+            error: "Invalid subject-subject type combinations",
+            message: `The following subject-subject type combinations are not valid: ${invalidPairs
+              .map((p) => `(${p.subjectId}, ${p.subjectTypeId})`)
+              .join(", ")}`,
           },
           { status: 400 }
         );
@@ -431,11 +532,12 @@ export async function PUT(request: Request) {
         // Create new subject relationships
         if (subjects.length > 0) {
           await Promise.all(
-            subjects.map((subjectId) =>
+            subjects.map((subject) =>
               tx.teacherSubject.create({
                 data: {
                   teacherId,
-                  subjectId,
+                  subjectId: subject.subjectId,
+                  subjectTypeId: subject.subjectTypeId,
                 },
               })
             )
@@ -477,7 +579,16 @@ export async function PUT(request: Request) {
           evaluation: true,
           teacherSubjects: {
             include: {
-              subject: true,
+              subject: {
+                include: {
+                  subjectToSubjectTypes: {
+                    include: {
+                      subjectType: true,
+                    },
+                  },
+                },
+              },
+              subjectType: true,
             },
           },
           TeacherShiftReference: true,

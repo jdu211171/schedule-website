@@ -54,7 +54,8 @@ export function StudentTable() {
       examSchoolCategoryType: student.examSchoolCategoryType ?? undefined,
       firstChoiceSchool: student.firstChoiceSchool ?? undefined,
       secondChoiceSchool: student.secondChoiceSchool ?? undefined,
-      enrollmentDate: student.enrollmentDate ?? undefined,
+      enrollmentDate: student.enrollmentDate ? (typeof student.enrollmentDate === "string" ? student.enrollmentDate : student.enrollmentDate.toISOString().slice(0, 10)) : undefined,
+      birthDate: student.birthDate,
       homePhone: student.homePhone ?? undefined,
       parentMobile: student.parentMobile ?? undefined,
       studentMobile: student.studentMobile ?? undefined,
@@ -124,14 +125,6 @@ export function StudentTable() {
       accessorKey: "secondChoiceSchool",
       header: "第二志望校",
       cell: ({ row }) => row.original.secondChoiceSchool || "-",
-    },
-    {
-      accessorKey: "enrollmentDate",
-      header: "入学日",
-      cell: ({ row }) =>
-        row.original.enrollmentDate
-          ? new Date(row.original.enrollmentDate).toLocaleDateString()
-          : "-",
     },
     {
       accessorKey: "birthDate",

@@ -8,6 +8,12 @@ const StudentTypeBaseSchema = z.object({
     .max(255)
     .optional()
     .transform((val) => (val === "" ? undefined : val)),
+  maxYears: z
+    .number()
+    .int()
+    .min(1)
+    .max(12)
+    .optional(), // Add maxYears as optional
 });
 
 // Complete student type schema (includes all fields from the database)

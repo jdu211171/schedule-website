@@ -25,7 +25,15 @@ export async function GET(
           include: {
             classSession: {
               include: {
-                subject: true,
+                subject: {
+                  include: {
+                    subjectToSubjectTypes: {
+                      include: {
+                        subjectType: true,
+                      },
+                    },
+                  },
+                },
                 booth: true,
                 teacher: true,
               },
@@ -38,6 +46,7 @@ export async function GET(
             subjects: {
               include: {
                 subject: true,
+                subjectType: true,
               },
             },
             teachers: {

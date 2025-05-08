@@ -1,7 +1,9 @@
 import { fetcher } from "@/lib/fetcher";
 import { useQuery } from "@tanstack/react-query";
-import { SubjectQuerySchema, SubjectWithRelations } from "@/schemas/subject.schema";
-import { Subject } from "@prisma/client";
+import {
+  SubjectQuerySchema,
+  SubjectWithRelations,
+} from "@/schemas/subject.schema";
 
 type UseSubjectsParams = {
   page?: number;
@@ -23,13 +25,20 @@ type SubjectsResponse = {
 };
 
 type SingleSubjectResponse = {
-  data: Subject;
+  data: SubjectWithRelations;
 };
 
 export function useSubjects(params: UseSubjectsParams = {}) {
   const { page = 1, limit = 10, name, subjectTypeId, sort, order } = params;
 
-  const query = SubjectQuerySchema.parse({ page, limit, name, subjectTypeId, sort, order });
+  const query = SubjectQuerySchema.parse({
+    page,
+    limit,
+    name,
+    subjectTypeId,
+    sort,
+    order,
+  });
   const searchParams = new URLSearchParams(
     Object.entries(query).reduce((acc, [key, value]) => {
       if (value !== undefined) {
@@ -41,14 +50,18 @@ export function useSubjects(params: UseSubjectsParams = {}) {
 
   return useQuery<SubjectsResponse>({
     queryKey: ["subjects", page, limit, name, subjectTypeId, sort, order],
-    queryFn: async () => await fetcher<SubjectsResponse>(`/api/subjects?${searchParams}`),
+    queryFn: async () =>
+      await fetcher<SubjectsResponse>(`/api/subjects?${searchParams}`),
   });
 }
 
 export function useSubject(subjectId: string) {
-  return useQuery<Subject>({
+  return useQuery<SubjectWithRelations>({
     queryKey: ["subject", subjectId],
-    queryFn: async () => await fetcher<SingleSubjectResponse>(`/api/subjects/${subjectId}`).then((res) => res.data),
+    queryFn: async () =>
+      await fetcher<SingleSubjectResponse>(`/api/subjects/${subjectId}`).then(
+        (res) => res.data
+      ),
     enabled: !!subjectId,
   });
 }

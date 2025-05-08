@@ -7,7 +7,7 @@ import { Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/data-table";
 import { GradeWithStudentType, useGrades } from "@/hooks/useGradeQuery";
-import { useGradeDelete } from "@/hooks/useGradeMutation";
+import { useGradeDelete, getResolvedGradeId } from "@/hooks/useGradeMutation";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,7 +28,6 @@ export function GradeTable() {
   const {
     data: gradesData,
     isLoading,
-    isFetching,
   } = useGrades({
     page,
     limit: pageSize,
@@ -52,7 +51,11 @@ export function GradeTable() {
       accessorKey: "studentTypeId",
       header: "学生タイプ",
       cell: ({ row }) => {
-        return row.original.studentType.name;
+        return (
+          <span>
+            {row.original.studentType?.name ?? "-"}
+          </span>
+        );
       },
     },
     {
@@ -69,6 +72,9 @@ export function GradeTable() {
       id: "actions",
       header: "操作",
       cell: ({ row }) => {
+        // Type-safe check for _optimistic property
+        const isOptimistic = (row.original as Grade & { _optimistic?: boolean })._optimistic;
+
         return (
           <div className="flex gap-2">
             <Button
@@ -76,14 +82,14 @@ export function GradeTable() {
               size="icon"
               onClick={() => setGradeToEdit(row.original)}
             >
-              <Pencil className="h-4 w-4" />
+              <Pencil className={`h-4 w-4 ${isOptimistic ? 'opacity-70' : ''}`} />
             </Button>
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setGradeToDelete(row.original)}
             >
-              <Trash2 className="h-4 w-4 text-destructive" />
+              <Trash2 className={`h-4 w-4 text-destructive ${isOptimistic ? 'opacity-70' : ''}`} />
             </Button>
           </div>
         );
@@ -91,14 +97,12 @@ export function GradeTable() {
     },
   ];
 
-  const handleDeleteGrade = async () => {
+  const handleDeleteGrade = () => {
     if (gradeToDelete) {
-      try {
-        await deleteGradeMutation.mutateAsync(gradeToDelete.gradeId);
-        setGradeToDelete(null);
-      } catch (error) {
-        console.error("学年の削除に失敗しました:", error);
-      }
+      // Close the dialog immediately for better UX
+      const gradeId = getResolvedGradeId(gradeToDelete.gradeId);
+      setGradeToDelete(null);
+      deleteGradeMutation.mutate(gradeId);
     }
   };
 
@@ -113,7 +117,7 @@ export function GradeTable() {
       <DataTable
         columns={columns}
         data={grades}
-        isLoading={isLoading || isFetching}
+        isLoading={isLoading && !grades.length} // Only show loading state on initial load
         searchPlaceholder="学年を検索..."
         onSearch={setSearchTerm}
         searchValue={searchTerm}

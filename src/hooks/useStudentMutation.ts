@@ -16,7 +16,7 @@ type CreateStudentInput = {
   birthDate?: string;
   parentEmail?: string;
   preferences?: {
-    subjects?: string[];
+    subjects?: { subjectId: string; subjectTypeId: string }[];
     teachers?: string[];
     timeSlots?: {
       dayOfWeek: string;
@@ -41,7 +41,7 @@ type UpdateStudentInput = {
   birthDate?: string;
   parentEmail?: string;
   preferences?: {
-    subjects?: string[];
+    subjects?: { subjectId: string; subjectTypeId: string }[];
     teachers?: string[];
     timeSlots?: {
       dayOfWeek: string;

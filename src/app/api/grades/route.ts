@@ -101,11 +101,20 @@ export async function POST(request: Request) {
     }
 
     const grade = await prisma.grade.create({ data });
+    // Fetch the grade with studentType relation for response
+    const gradeWithStudentType = await prisma.grade.findUnique({
+      where: { gradeId: grade.gradeId },
+      include: {
+        studentType: {
+          select: { name: true },
+        },
+      },
+    });
 
     return Response.json(
       {
         message: "Grade created successfully",
-        data: grade,
+        data: gradeWithStudentType,
       },
       { status: 201 }
     );
@@ -158,10 +167,19 @@ export async function PUT(request: Request) {
       where: { gradeId },
       data,
     });
+    // Fetch the grade with studentType relation for response
+    const gradeWithStudentType = await prisma.grade.findUnique({
+      where: { gradeId: grade.gradeId },
+      include: {
+        studentType: {
+          select: { name: true },
+        },
+      },
+    });
 
     return Response.json({
       message: "Grade updated successfully",
-      data: grade,
+      data: gradeWithStudentType,
     });
   } catch (error) {
     if (error instanceof ZodError) {

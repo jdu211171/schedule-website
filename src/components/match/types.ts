@@ -252,6 +252,7 @@ export interface ClassSession {
   teacherId?: string;
   studentId?: string;
   subjectId?: string;
+  subjectTypeId?: string; // <-- Add subjectTypeId to match backend
   boothId?: string;
   startTime?: string;
   endTime?: string;
@@ -259,6 +260,7 @@ export interface ClassSession {
   status?: string;
   notes?: string;
   subject?: Subject | null;
+  subjectType?: SubjectType | null; // <-- Add subjectType relation
   name?: string;
   teacherName?: string;
   studentName?: string;
@@ -458,4 +460,13 @@ export interface StudentFilterParams {
   studentTypeId?: string[];
   gradeId?: string | null;
   schoolType?: string | null;
+}
+
+// Add SubjectType interface if not present
+export interface SubjectType {
+  subjectTypeId: string;
+  name: string;
+  notes?: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
