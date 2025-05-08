@@ -36,6 +36,7 @@ export function StudentTypeFormDialog({ open, onOpenChange, studentType }: Stude
         defaultValues: {
             name: "",
             description: "",
+            maxYears: undefined,
         },
     })
 
@@ -44,6 +45,7 @@ export function StudentTypeFormDialog({ open, onOpenChange, studentType }: Stude
             form.reset({
                 name: studentTypeData.name || "",
                 description: studentTypeData.description || "",
+                maxYears: studentTypeData.maxYears ?? undefined,
             })
         }
     }, [studentTypeData, form])
@@ -81,6 +83,27 @@ export function StudentTypeFormDialog({ open, onOpenChange, studentType }: Stude
                                     <FormLabel>名前</FormLabel>
                                     <FormControl>
                                         <Input placeholder="学生タイプ名を入力" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="maxYears"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>最大学年数</FormLabel>
+                                    <FormControl>
+                                        <Input
+                                            type="number"
+                                            min={1}
+                                            max={12}
+                                            placeholder="例: 6 (小学生), 3 (中学生)"
+                                            {...field}
+                                            value={field.value ?? ""}
+                                            onChange={e => field.onChange(e.target.value === "" ? undefined : Number(e.target.value))}
+                                        />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>

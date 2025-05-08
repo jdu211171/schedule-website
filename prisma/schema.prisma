@@ -146,6 +146,7 @@ model StudentType {
   studentTypeId String   @id @default(cuid()) @map("student_type_id")
   name          String   @db.VarChar(100)
   description   String?  @db.VarChar(255)
+  maxYears      Int?      @map("max_years") // 最大学年数（例: 小学生=6, 中学生=3 など）
   Grade         Grade[]
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)

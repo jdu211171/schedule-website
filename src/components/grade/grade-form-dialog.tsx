@@ -31,7 +31,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useGradeCreate, useGradeUpdate } from "@/hooks/useGradeMutation";
-import { useGrade } from "@/hooks/useGradeQuery";
 import { CreateGradeSchema } from "@/schemas/grade.schema";
 import { Grade, StudentType } from "@prisma/client";
 import { useStudentTypes } from "@/hooks/useStudentTypeQuery";
@@ -42,38 +41,19 @@ interface GradeFormDialogProps {
   grade?: Grade | null;
 }
 
-const studentTypeGradeConfig: Record<
-  string,
-  { name: string; years: number[] | null }
-> = {
-  小学生: { name: "小学", years: [1, 2, 3, 4, 5, 6] },
-  中学生: { name: "中学", years: [1, 2, 3] },
-  高校生: { name: "高校", years: [1, 2, 3] },
-  大学生: { name: "大学", years: [1, 2, 3, 4] },
-  浪人生: { name: "浪人生", years: null },
-  大人: { name: "大人", years: null },
-};
-
 export function GradeFormDialog({
   open,
   onOpenChange,
   grade,
 }: GradeFormDialogProps) {
-  const [selectedStudentTypeName, setSelectedStudentTypeName] = useState<
-    string | null
-  >(null);
-  const [isNameManuallyEdited, setIsNameManuallyEdited] = useState(!!grade); // If editing, assume name was manually set
+  const [selectedStudentType, setSelectedStudentType] = useState<StudentType | null>(null);
+  const [isNameManuallyEdited, setIsNameManuallyEdited] = useState(!!grade);
 
   const createGradeMutation = useGradeCreate();
   const updateGradeMutation = useGradeUpdate();
-  const isSubmitting =
-    createGradeMutation.isPending || updateGradeMutation.isPending;
   const { data: studentTypes } = useStudentTypes();
-  // Still keep the query but make it non-priority
-  const { data: gradeData } = useGrade(grade?.gradeId || "");
 
   const isEditing = !!grade;
-
   const formSchema = CreateGradeSchema;
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -89,7 +69,6 @@ export function GradeFormDialog({
   const gradeYear = form.watch("gradeYear");
   const studentTypeId = form.watch("studentTypeId");
 
-  // Initialize form with the passed grade directly
   useEffect(() => {
     if (grade) {
       form.reset({
@@ -108,65 +87,45 @@ export function GradeFormDialog({
     }
   }, [grade, form]);
 
-  // Still use gradeData as a fallback for refreshed data if it becomes available
   useEffect(() => {
-    if (gradeData && isEditing) {
-      form.reset({
-        name: gradeData.name || "",
-        studentTypeId: gradeData.studentTypeId || "",
-        gradeYear: gradeData.gradeYear || 0,
-        notes: gradeData.notes || "",
-      });
-    }
-  }, [gradeData, form, isEditing]);
-
-  useEffect(() => {
-    if (studentTypeId) {
-      const studentType = studentTypes?.data.find(
-        (type) => type.studentTypeId === studentTypeId
-      );
-      setSelectedStudentTypeName(studentType?.name || null);
+    if (studentTypeId && studentTypes?.data) {
+      const found = studentTypes.data.find((type: StudentType) => type.studentTypeId === studentTypeId) || null;
+      setSelectedStudentType(found);
     } else {
-      setSelectedStudentTypeName(null);
+      setSelectedStudentType(null);
     }
   }, [form, studentTypeId, studentTypes]);
 
   // Only auto-generate name if it hasn't been manually edited
   useEffect(() => {
-    // Only auto-generate name if it hasn't been manually edited
-    if (
-      !isNameManuallyEdited &&
-      selectedStudentTypeName &&
-      studentTypeGradeConfig[selectedStudentTypeName]
-    ) {
-      const config = studentTypeGradeConfig[selectedStudentTypeName];
-
-      if (config.years === null) {
-        form.setValue("name", config.name);
-      } else if (gradeYear !== null && gradeYear !== undefined) {
-        form.setValue("name", `${config.name}${gradeYear}年生`);
+    if (!isNameManuallyEdited && selectedStudentType) {
+      if (!selectedStudentType.maxYears) {
+        form.setValue("name", selectedStudentType.name);
+      } else if (gradeYear !== null && gradeYear !== undefined && gradeYear > 0) {
+        form.setValue("name", `${selectedStudentType.name}${gradeYear}年生`);
       }
     }
-  }, [form, selectedStudentTypeName, gradeYear, isNameManuallyEdited]);
+  }, [form, selectedStudentType, gradeYear, isNameManuallyEdited]);
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
-    try {
-      // Close the dialog immediately for better UX
-      onOpenChange(false);
+  function onSubmit(values: z.infer<typeof formSchema>) {
+    // Ensure the notes field is explicitly included, even if empty
+    const updatedValues = {
+      ...values,
+      notes: values.notes ?? "", // Ensure notes is at least an empty string, not undefined
+    };
 
-      if (isEditing && grade) {
-        await updateGradeMutation.mutateAsync({
-          gradeId: grade.gradeId,
-          ...values,
-        });
-      } else {
-        await createGradeMutation.mutateAsync(values);
-      }
+    // Close the dialog immediately for better UX
+    onOpenChange(false);
+    form.reset();
 
-      form.reset();
-      setIsNameManuallyEdited(false); // Reset for next time dialog opens
-    } catch (error) {
-      console.error("学年の保存に失敗しました:", error);
+    // Then trigger the mutation
+    if (isEditing && grade) {
+      updateGradeMutation.mutate({
+        gradeId: grade.gradeId,
+        ...updatedValues,
+      });
+    } else {
+      createGradeMutation.mutate(updatedValues);
     }
   }
 
@@ -175,16 +134,17 @@ export function GradeFormDialog({
       open={open}
       onOpenChange={(open) => {
         if (!open) {
-          // Reset form when dialog is closed
+          // Reset form when dialog is closed, just like in booth-form-dialog
           form.reset();
-          setIsNameManuallyEdited(false);
         }
         onOpenChange(open);
       }}
     >
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>{isEditing ? "学年の編集" : "学年の作成"}</DialogTitle>
+          <DialogTitle>
+            {isEditing ? "学年の編集" : "学年の作成"}
+          </DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -218,7 +178,6 @@ export function GradeFormDialog({
                     <Select
                       onValueChange={(value) => {
                         field.onChange(value === "none" ? "" : value);
-                        // Reset grade year when student type changes
                         form.setValue("gradeYear", 0);
                       }}
                       value={field.value || "none"}
@@ -255,29 +214,20 @@ export function GradeFormDialog({
                         field.onChange(value === "none" ? 0 : parseInt(value))
                       }
                       value={field.value?.toString() || "none"}
-                      disabled={
-                        !selectedStudentTypeName ||
-                        !studentTypeGradeConfig[selectedStudentTypeName] ||
-                        studentTypeGradeConfig[selectedStudentTypeName]
-                          .years === null
-                      }
+                      disabled={!selectedStudentType || !selectedStudentType.maxYears}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="学年を選択" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">未選択</SelectItem>
-                        {selectedStudentTypeName &&
-                          studentTypeGradeConfig[selectedStudentTypeName] &&
-                          studentTypeGradeConfig[selectedStudentTypeName]
-                            .years &&
-                          studentTypeGradeConfig[
-                            selectedStudentTypeName
-                          ].years!.map((year) => (
-                            <SelectItem key={year} value={year.toString()}>
-                              {year}年生
-                            </SelectItem>
-                          ))}
+                        {selectedStudentType?.maxYears
+                          ? Array.from({ length: selectedStudentType.maxYears }, (_, i) => i + 1).map((year) => (
+                              <SelectItem key={year} value={year.toString()}>
+                                {year}年生
+                              </SelectItem>
+                            ))
+                          : null}
                       </SelectContent>
                     </Select>
                   </FormControl>
@@ -295,7 +245,7 @@ export function GradeFormDialog({
                     <Textarea
                       placeholder="メモを入力（任意）"
                       {...field}
-                      value={field.value || ""}
+                      value={field.value ?? ""} // Ensure value is never null
                     />
                   </FormControl>
                   <FormMessage />
@@ -303,8 +253,8 @@ export function GradeFormDialog({
               )}
             />
             <DialogFooter>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "保存中..." : isEditing ? "変更を保存" : "作成"}
+              <Button type="submit">
+                {isEditing ? "変更を保存" : "作成"}
               </Button>
             </DialogFooter>
           </form>

@@ -51,7 +51,7 @@ export function GradeTable() {
       accessorKey: "studentTypeId",
       header: "学生タイプ",
       cell: ({ row }) => {
-        return row.original.studentType.name;
+        return row.original.studentType?.name ?? "-";
       },
     },
     {
@@ -113,7 +113,7 @@ export function GradeTable() {
       <DataTable
         columns={columns}
         data={grades}
-        isLoading={isLoading && !grades.length}
+        isLoading={isLoading && !grades.length} // Only show loading state on initial load
         searchPlaceholder="学年を検索..."
         onSearch={setSearchTerm}
         searchValue={searchTerm}
