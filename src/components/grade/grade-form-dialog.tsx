@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -94,7 +94,7 @@ export function GradeFormDialog({
     } else {
       setSelectedStudentType(null);
     }
-  }, [form, studentTypeId, studentTypes]);
+  }, [studentTypeId, studentTypes]);
 
   // Only auto-generate name if it hasn't been manually edited
   useEffect(() => {
@@ -108,21 +108,9 @@ export function GradeFormDialog({
   }, [form, selectedStudentType, gradeYear, isNameManuallyEdited]);
 
   // Generate grade year options based on selectedStudentType.maxYears
-  const gradeYearOptions = useMemo(() => (
-    selectedStudentType?.maxYears
-      ? Array.from({ length: selectedStudentType.maxYears }, (_, i) => i + 1)
-      : []
-  ), [selectedStudentType?.maxYears]);
-
-  // Auto-select first grade year if options exist and gradeYear is not set
-  useEffect(() => {
-    if (
-      gradeYearOptions.length > 0 &&
-      (!gradeYear || gradeYear === 0)
-    ) {
-      form.setValue("gradeYear", gradeYearOptions[0]);
-    }
-  }, [gradeYearOptions, gradeYear, form]);
+  const gradeYearOptions = selectedStudentType?.maxYears && typeof selectedStudentType.maxYears === 'number'
+    ? Array.from({ length: selectedStudentType.maxYears }, (_, i) => i + 1)
+    : [];
 
   function onSubmit(values: z.infer<typeof formSchema>) {
     // Ensure the notes field is explicitly included, even if empty
@@ -151,8 +139,9 @@ export function GradeFormDialog({
       open={open}
       onOpenChange={(open) => {
         if (!open) {
-          // Reset form when dialog is closed, just like in booth-form-dialog
+          // Reset form when dialog is closed
           form.reset();
+          setIsNameManuallyEdited(false);
         }
         onOpenChange(open);
       }}
@@ -204,7 +193,7 @@ export function GradeFormDialog({
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">未選択</SelectItem>
-                        {studentTypes?.data.map((type: StudentType) => (
+                        {studentTypes?.data?.map((type: StudentType) => (
                           <SelectItem
                             key={type.studentTypeId}
                             value={type.studentTypeId}
@@ -219,7 +208,6 @@ export function GradeFormDialog({
                 </FormItem>
               )}
             />
-            {/* Only show 学年 select if there are options */}
             {gradeYearOptions.length > 0 && (
               <FormField
                 control={form.control}

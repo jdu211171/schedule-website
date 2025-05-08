@@ -51,7 +51,12 @@ export function GradeTable() {
       accessorKey: "studentTypeId",
       header: "学生タイプ",
       cell: ({ row }) => {
-        return row.original.studentType?.name ?? "-";
+        // Optimistic entries won't have a studentType object
+        const isOptimistic = (row.original as Grade & { _optimistic?: boolean })._optimistic;
+        if (isOptimistic) {
+          return "読み込み中...";
+        }
+        return row.original.studentType?.name ?? "—";
       },
     },
     {
