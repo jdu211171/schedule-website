@@ -7,6 +7,12 @@ import { z } from "zod";
 
 export type DayOfWeek = z.infer<typeof DayOfWeekEnum>;
 
+// Define the subject type pair interface for consistency
+export interface SubjectTypePair {
+  subjectId: string;
+  subjectTypeId: string;
+}
+
 // Input for creating a teacher (matches Zod and Prisma)
 type CreateTeacherInput = {
   name: string;
@@ -29,7 +35,7 @@ type CreateTeacherInput = {
   notes?: string | null;
   username: string;
   password: string;
-  subjects?: string[];
+  subjects?: SubjectTypePair[];
   shifts?: {
     dayOfWeek: DayOfWeek;
     startTime: string;
@@ -60,7 +66,7 @@ type UpdateTeacherInput = {
   otherCertifications?: string | null;
   notes?: string | null;
   password?: string;
-  subjects?: string[];
+  subjects?: SubjectTypePair[];
   shifts?: {
     dayOfWeek: DayOfWeek;
     startTime: string;

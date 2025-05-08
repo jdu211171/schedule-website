@@ -127,14 +127,6 @@ export function StudentTable() {
       cell: ({ row }) => row.original.secondChoiceSchool || "-",
     },
     {
-      accessorKey: "enrollmentDate",
-      header: "入学日",
-      cell: ({ row }) =>
-        row.original.enrollmentDate
-          ? new Date(row.original.enrollmentDate).toLocaleDateString()
-          : "-",
-    },
-    {
       accessorKey: "birthDate",
       header: "生年月日",
       cell: ({ row }) =>

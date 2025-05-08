@@ -167,6 +167,11 @@ export const CreateUserStudentSchema = StudentBaseSchema.extend({
 });
 
 export const UpdateStudentWithPreferencesSchema = UpdateStudentSchema.extend({
+  username: z
+    .string()
+    .min(3, { message: "3文字以上で入力してください" })
+    .max(50, { message: "50文字以内で入力してください" })
+    .optional(),
   password: z
     .string()
     .min(6, { message: "6文字以上で入力してください" })
@@ -199,7 +204,33 @@ export const UpdateStudentWithPreferencesSchema = UpdateStudentSchema.extend({
     .optional(),
 });
 
+export const studentPreferencesSchema = z.object({
+  preferredTeachers: z.array(z.string()).default([]),
+  desiredTimes: z
+    .array(
+      z.object({
+        dayOfWeek: z.string(),
+        startTime: z.string(),
+        endTime: z.string(),
+      })
+    )
+    .default([]),
+  additionalNotes: z.string().nullable().default(null),
+  classTypeId: z.string().nullable().default(null),
+  // Update this field to store subject-type pairs instead of just subjectIds
+  preferredSubjects: z
+    .array(
+      z.object({
+        subjectId: z.string(),
+        subjectTypeId: z.string(),
+      })
+    )
+    .default([]),
+});
+
 // TypeScript types derived from the schemas
+
+export type StudentPreference = z.infer<typeof studentPreferencesSchema>;
 export type Student = z.infer<typeof StudentSchema>;
 export type CreateStudentInput = z.infer<typeof CreateStudentSchema>;
 export type UpdateStudentInput = z.infer<typeof UpdateStudentSchema>;
