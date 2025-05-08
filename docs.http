@@ -1447,7 +1447,7 @@ Content-Type: application/json
 Cookie: {{cookie}}
 
 ### Get class sessions for a specific day of week (single value)
-GET {{url}}/class-session?dayOfWeek=MONDAY
+GET {{url}}/class-session?dayOfWeek=TUESDAY
 Content-Type: application/json
 Cookie: {{cookie}}
 
