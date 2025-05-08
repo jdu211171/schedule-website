@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -107,6 +107,23 @@ export function GradeFormDialog({
     }
   }, [form, selectedStudentType, gradeYear, isNameManuallyEdited]);
 
+  // Generate grade year options based on selectedStudentType.maxYears
+  const gradeYearOptions = useMemo(() => (
+    selectedStudentType?.maxYears
+      ? Array.from({ length: selectedStudentType.maxYears }, (_, i) => i + 1)
+      : []
+  ), [selectedStudentType?.maxYears]);
+
+  // Auto-select first grade year if options exist and gradeYear is not set
+  useEffect(() => {
+    if (
+      gradeYearOptions.length > 0 &&
+      (!gradeYear || gradeYear === 0)
+    ) {
+      form.setValue("gradeYear", gradeYearOptions[0]);
+    }
+  }, [gradeYearOptions, gradeYear, form]);
+
   function onSubmit(values: z.infer<typeof formSchema>) {
     // Ensure the notes field is explicitly included, even if empty
     const updatedValues = {
@@ -202,39 +219,40 @@ export function GradeFormDialog({
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="gradeYear"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>学年</FormLabel>
-                  <FormControl>
-                    <Select
-                      onValueChange={(value) =>
-                        field.onChange(value === "none" ? 0 : parseInt(value))
-                      }
-                      value={field.value?.toString() || "none"}
-                      disabled={!selectedStudentType || !selectedStudentType.maxYears}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="学年を選択" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">未選択</SelectItem>
-                        {selectedStudentType?.maxYears
-                          ? Array.from({ length: selectedStudentType.maxYears }, (_, i) => i + 1).map((year) => (
-                              <SelectItem key={year} value={year.toString()}>
-                                {year}年生
-                              </SelectItem>
-                            ))
-                          : null}
-                      </SelectContent>
-                    </Select>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {/* Only show 学年 select if there are options */}
+            {gradeYearOptions.length > 0 && (
+              <FormField
+                control={form.control}
+                name="gradeYear"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>学年</FormLabel>
+                    <FormControl>
+                      <Select
+                        onValueChange={(value) =>
+                          field.onChange(value === "none" ? 0 : parseInt(value))
+                        }
+                        value={field.value?.toString() || "none"}
+                        disabled={!selectedStudentType || !selectedStudentType.maxYears}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="学年を選択" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">未選択</SelectItem>
+                          {gradeYearOptions.map((year) => (
+                            <SelectItem key={year} value={year.toString()}>
+                              {year}年生
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
             <FormField
               control={form.control}
               name="notes"

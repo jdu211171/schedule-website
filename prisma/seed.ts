@@ -11,9 +11,9 @@ CREATE TYPE "DayOfWeek" AS ENUM
 
 // ---------- サンプル固定データ ----------
 const studentTypeSeeds = [
-  { name: "小学生", description: "小学1–6年" },
-  { name: "中学生", description: "中学1–3年" },
-  { name: "高校生", description: "高校1–3年" },
+  { name: "小学生", description: "小学1–6年", maxYears: 6 },
+  { name: "中学生", description: "中学1–3年", maxYears: 3 },
+  { name: "高校生", description: "高校1–3年", maxYears: 3 },
 ];
 
 const gradeSeeds = [
