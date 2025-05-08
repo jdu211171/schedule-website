@@ -3,13 +3,15 @@ import { useState, useEffect, useCallback } from 'react';
 import { 
   Subject, 
   RegularClassTemplate, 
-  TimeSlotPreference 
+  TimeSlotPreference,
+  ClassType
 } from '../types';
 import { 
   fetchCompatibleSubjects, 
   fetchAvailableTimeSlots, 
   fetchAvailableBooths,
   createRegularClassTemplate,
+  fetchClassTypes
 } from '../api-client';
 
 // Interface for available time slots
@@ -43,6 +45,7 @@ interface UseModalSelectsReturn {
   availableTimeSlots: AvailableTimeSlot[];
   availableStartTimes: string[];
   availableBooths: Booth[];
+  classTypes: ClassType[];
   
   selectedSubject: string;
   selectedDay: string;
@@ -50,12 +53,18 @@ interface UseModalSelectsReturn {
   selectedEndTime: string;
   selectedDuration: string;
   selectedBooth: string;
+  selectedClassType: string;
+  selectedStartDate: string | null;
+  selectedEndDate: string | null;
   
   setSelectedSubject: (subjectId: string) => void;
   setSelectedDay: (day: string) => void;
   setSelectedStartTime: (time: string) => void;
   setSelectedDuration: (duration: string) => void;
   setSelectedBooth: (boothId: string) => void;
+  setSelectedClassType: (classTypeId: string) => void;
+  setSelectedStartDate: (date: string | null) => void;
+  setSelectedEndDate: (date: string | null) => void;
   
   loading: boolean;
   error: string | null;
@@ -69,6 +78,7 @@ interface UseModalSelectsReturn {
   resetForm: () => void;
   handleTimeStep: (step: number) => void;
   createClassSession: (notes?: string) => Promise<boolean>;
+  getMinMaxDates: () => { minStartDate: Date; maxEndDate: Date };
 }
 
 // Day of week mapping to Japanese
@@ -92,6 +102,7 @@ export function useModalSelects({
   const [availableTimeSlots, setAvailableTimeSlots] = useState<AvailableTimeSlot[]>([]);
   const [availableStartTimes, setAvailableStartTimes] = useState<string[]>([]);
   const [availableBooths, setAvailableBooths] = useState<Booth[]>([]);
+  const [classTypes, setClassTypes] = useState<ClassType[]>([]);
   
   // Selected values
   const [selectedSubject, setSelectedSubject] = useState<string>('');
@@ -100,6 +111,9 @@ export function useModalSelects({
   const [selectedEndTime, setSelectedEndTime] = useState<string>('');
   const [selectedDuration, setSelectedDuration] = useState<string>('90分');
   const [selectedBooth, setSelectedBooth] = useState<string>('');
+  const [selectedClassType, setSelectedClassType] = useState<string>('');
+  const [selectedStartDate, setSelectedStartDate] = useState<string | null>(null);
+  const [selectedEndDate, setSelectedEndDate] = useState<string | null>(null);
   
   // Loading states
   const [loading, setLoading] = useState<boolean>(false);
@@ -113,6 +127,7 @@ export function useModalSelects({
     subjects?: { teacherId: string; studentId: string; data: Subject[] };
     timeSlots?: { teacherId: string; studentId: string; data: AvailableTimeSlot[] };
     booths?: { dayOfWeek: string; startTime: string; endTime: string; data: Booth[] };
+    classTypes?: { data: ClassType[] };
   }>({});
   
   // Format time string to uniform HH:MM format
@@ -181,6 +196,23 @@ export function useModalSelects({
     setSelectedEndTime(endTime);
   }, [calculateEndTime]);
   
+  // Function to get min and max dates for date pickers
+  const getMinMaxDates = useCallback(() => {
+    // Today at midnight - минимальная дата начала
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // For maxEndDate, calculate 2 years from selectedStartDate if exists, otherwise 2 years from today
+    const startDate = selectedStartDate ? new Date(selectedStartDate) : today;
+    const maxDate = new Date(startDate);
+    maxDate.setFullYear(maxDate.getFullYear() + 2);
+    
+    return {
+      minStartDate: today,
+      maxEndDate: maxDate
+    };
+  }, [selectedStartDate]);
+  
   // Method to reset the form
   const resetForm = useCallback(() => {
     setSelectedSubject('');
@@ -189,7 +221,23 @@ export function useModalSelects({
     setSelectedEndTime('');
     setSelectedDuration('90分');
     setSelectedBooth('');
-  }, []);
+    
+    // Set default class type (通常授業) if available
+    const defaultType = classTypes.find(type => type.name === '通常授業');
+    if (defaultType) {
+      setSelectedClassType(defaultType.classTypeId);
+    } else if (classTypes.length > 0) {
+      setSelectedClassType(classTypes[0].classTypeId);
+    } else {
+      setSelectedClassType('');
+    }
+    
+    // Set today as start date
+    const today = new Date();
+    const formattedDate = today.toISOString().split('T')[0];
+    setSelectedStartDate(formattedDate);
+    setSelectedEndDate(null);
+  }, [classTypes]);
   
   // Extract unique days of the week from time slots
   const extractAvailableDays = useCallback((timeSlots: AvailableTimeSlot[]) => {
@@ -313,6 +361,47 @@ export function useModalSelects({
     const newTime = `${newHours.toString().padStart(2, '0')}:${newMinutes.toString().padStart(2, '0')}`;
     setSelectedStartTime(newTime);
   }, [selectedStartTime, availableTimeSlots, availableStartTimes, formatTimeString, timeToMinutes]);
+  
+  // Load class types
+  const loadClassTypes = useCallback(async () => {
+    // If we already have cached class types, use them
+    if (cachedData.classTypes) {
+      setClassTypes(cachedData.classTypes.data);
+      
+      // Set default class type (通常授業) if available
+      const defaultType = cachedData.classTypes.data.find((type: ClassType) => type.name === '通常授業');
+      if (defaultType) {
+        setSelectedClassType(defaultType.classTypeId);
+      } else if (cachedData.classTypes.data.length > 0) {
+        setSelectedClassType(cachedData.classTypes.data[0].classTypeId);
+      }
+      
+      return;
+    }
+    
+    try {
+      const response = await fetchClassTypes();
+      const classTypesData = response.data || [];
+      setClassTypes(classTypesData);
+      
+      // Set default class type (通常授業) if available
+      const defaultType = classTypesData.find((type: ClassType) => type.name === '通常授業');
+      if (defaultType) {
+        setSelectedClassType(defaultType.classTypeId);
+      } else if (classTypesData.length > 0) {
+        setSelectedClassType(classTypesData[0].classTypeId);
+      }
+      
+      setCachedData(prev => ({
+        ...prev,
+        classTypes: {
+          data: classTypesData
+        }
+      }));
+    } catch (err) {
+      console.error('Error loading class types:', err);
+    }
+  }, [cachedData.classTypes]);
   
   // Loading compatible subjects
   const loadCompatibleSubjects = useCallback(async () => {
@@ -532,8 +621,8 @@ export function useModalSelects({
   // Function for creating regular class session
   const createClassSession = useCallback(async (notes?: string): Promise<boolean> => {
     if (!teacherId || !studentId || !selectedSubject || !selectedDay || 
-        !selectedStartTime || !selectedEndTime || !selectedBooth) {
-      setError('Please fill in all fields');
+        !selectedStartTime || !selectedEndTime || !selectedBooth || !selectedClassType) {
+      setError('すべての必須フィールドを入力してください');
       return false;
     }
     
@@ -549,8 +638,13 @@ export function useModalSelects({
         subjectId: selectedSubject,
         boothId: selectedBooth,
         studentIds: [studentId],
+        classTypeId: selectedClassType,
+        startDate: selectedStartDate || undefined,
+        endDate: selectedEndDate || undefined,
         notes: notes || `${getDayLabel(selectedDay)} ${selectedStartTime}-${selectedEndTime}`
       };
+
+      console.log('API Request:', JSON.stringify(templateData, null, 2));
       
       await createRegularClassTemplate(templateData);
       
@@ -564,8 +658,11 @@ export function useModalSelects({
     } finally {
       setLoading(false);
     }
-  }, [teacherId, studentId, selectedSubject, selectedDay, selectedStartTime, 
-      selectedEndTime, selectedBooth, getDayLabel, resetForm]);
+  }, [
+    teacherId, studentId, selectedSubject, selectedDay, selectedStartTime, 
+    selectedEndTime, selectedBooth, getDayLabel, resetForm, 
+    selectedClassType, selectedStartDate, selectedEndDate
+  ]);
   
   // Handler for changing the selected day
   const handleDayChange = useCallback((day: string) => {
@@ -590,13 +687,24 @@ export function useModalSelects({
     setSelectedBooth('');
   }, [selectedStartTime, updateEndTime]);
   
+  // Set default start date
+  useEffect(() => {
+    if (!selectedStartDate) {
+      const today = new Date();
+      const formattedDate = today.toISOString().split('T')[0];
+      setSelectedStartDate(formattedDate);
+    }
+  }, [selectedStartDate]);
+  
   // Effect for loading data when opening modal window
   useEffect(() => {
+    loadClassTypes();
+    
     if (teacherId && studentId) {
       loadCompatibleSubjects();
       loadAvailableTimeSlots();
     }
-  }, [teacherId, studentId, loadCompatibleSubjects, loadAvailableTimeSlots]);
+  }, [teacherId, studentId, loadCompatibleSubjects, loadAvailableTimeSlots, loadClassTypes]);
   
   // Effect for generating available start times when selecting a day
   useEffect(() => {
@@ -628,6 +736,7 @@ export function useModalSelects({
     availableTimeSlots,
     availableStartTimes,
     availableBooths,
+    classTypes,
     
     // Selected values
     selectedSubject,
@@ -636,6 +745,9 @@ export function useModalSelects({
     selectedEndTime,
     selectedDuration,
     selectedBooth,
+    selectedClassType,
+    selectedStartDate,
+    selectedEndDate,
     
     // Setters for selected values
     setSelectedSubject,
@@ -643,6 +755,9 @@ export function useModalSelects({
     setSelectedStartTime: handleStartTimeChange,
     setSelectedDuration: handleDurationChange,
     setSelectedBooth,
+    setSelectedClassType,
+    setSelectedStartDate,
+    setSelectedEndDate,
     
     // Loading states
     loading,
@@ -657,6 +772,7 @@ export function useModalSelects({
     getDurationOptions,
     resetForm,
     handleTimeStep,
-    createClassSession
+    createClassSession,
+    getMinMaxDates
   };
 }

@@ -8,24 +8,32 @@ import { DisplayLesson, TemplateDataFromAPI } from "./types";
  * @param lessonType Lesson type (teacher, student, current)
  * @returns DisplayLesson object
  */
-
-export function transformTemplateToDisplayLesson(
+export const transformTemplateToDisplayLesson = (
   template: TemplateDataFromAPI, 
   teacherName: string, 
   studentName: string,
   lessonType?: 'teacher' | 'student' | 'current'
-): DisplayLesson {
-  const id = template.templateId || template.id || `temp-${Math.random().toString(36).substring(2, 9)}`;
+): DisplayLesson => {
+  const id = template.templateId || template.id || `temp-${Date.now()}`;
   
   let subjectName = "Unknown Subject";
-  if (template.subject && typeof template.subject === 'object' && template.subject.name) {
+  if (template.subject && 'name' in template.subject && template.subject.name) {
     subjectName = template.subject.name;
   } else if (template.subjectName) {
     subjectName = template.subjectName;
   }
   
+  // Обработка типа класса
+  const classTypeId = template.classTypeId || "";
+  let classTypeName = "";
+  
+  // Если есть объект classType, получаем из него имя
+  if (template.classType && typeof template.classType === 'object' && template.classType !== null && 'name' in template.classType) {
+    classTypeName = template.classType.name || "";
+  }
+  
   const formatTime = (timeStr?: string): string => {
-    if (!timeStr) return "";
+    if (!timeStr) return "00:00";
     if (timeStr.includes("T")) {
       try {
         const date = new Date(timeStr);
@@ -38,47 +46,48 @@ export function transformTemplateToDisplayLesson(
     return timeStr;
   };
   
-  const studentId = Array.isArray(template.studentIds) && template.studentIds.length > 0
-    ? template.studentIds[0] 
-    : (template.studentId || "");
+  const studentId = template.studentIds?.[0] || template.studentId || "";
   
-  const room = template.booth && template.booth.name ? template.booth.name : (template.room || "");
-  
-  // Стандартизация представления dayOfWeek
-  let dayOfWeek = template.dayOfWeek !== undefined ? String(template.dayOfWeek) : "1";
-  
-  const dayOfWeekMap: Record<string, string> = {
-    "0": "SUNDAY",
-    "1": "MONDAY",
-    "2": "TUESDAY",
-    "3": "WEDNESDAY",
-    "4": "THURSDAY",
-    "5": "FRIDAY",
-    "6": "SATURDAY"
-  };
-  
-  if (dayOfWeekMap[dayOfWeek]) {
-    dayOfWeek = dayOfWeekMap[dayOfWeek];
+  let dayOfWeekStr = "MONDAY"; 
+  if (template.dayOfWeek !== undefined) {
+    const dayOfWeekMap: Record<string, string> = {
+      "0": "SUNDAY",
+      "1": "MONDAY",
+      "2": "TUESDAY",
+      "3": "WEDNESDAY",
+      "4": "THURSDAY",
+      "5": "FRIDAY",
+      "6": "SATURDAY"
+    };
+    
+    const dayVal = String(template.dayOfWeek);
+    if (dayOfWeekMap[dayVal]) {
+      dayOfWeekStr = dayOfWeekMap[dayVal];
+    } else {
+      dayOfWeekStr = dayVal;
+    }
   }
   
-  const result: DisplayLesson = {
+  return {
     id,
-    name: subjectName,
-    dayOfWeek,
-    startTime: formatTime(template.startTime) || "00:00",
-    endTime: formatTime(template.endTime) || "00:00",
-    teacherId: template.teacherId || "",
-    studentId: studentId || "",
-    status: template.status || 'active',
     templateId: template.templateId,
+    name: subjectName,
+    dayOfWeek: dayOfWeekStr,
+    startTime: formatTime(template.startTime),
+    endTime: formatTime(template.endTime),
+    status: template.status || 'active',
+    teacherId: template.teacherId || "",
+    studentId,
     subjectId: template.subjectId,
     subjectName,
-    teacherName,
-    studentName,
-    room,
+    teacherName: teacherName,
+    studentName: studentName,
+    room: template.booth?.name || "",
     boothId: template.boothId,
-    lessonType
+    classTypeId,
+    classTypeName,
+    startDate: template.startDate || undefined,
+    endDate: template.endDate || undefined,
+    lessonType: lessonType 
   };
-  
-  return result;
-}
+};

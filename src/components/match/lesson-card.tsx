@@ -63,6 +63,31 @@ export default function LessonCard({
     }
   };
   
+  // Форматирование диапазона дат (если они есть)
+  const formatDateRange = () => {
+    if (!lesson.startDate) return null;
+    
+    const startDate = new Date(lesson.startDate);
+    const formattedStartDate = `${startDate.getFullYear()}/${(startDate.getMonth() + 1).toString().padStart(2, '0')}/${startDate.getDate().toString().padStart(2, '0')}`;
+    
+    if (!lesson.endDate) {
+      return (
+        <div className="text-xs text-gray-500 truncate" title={`開始日: ${formattedStartDate}`}>
+          開始: {formattedStartDate}
+        </div>
+      );
+    }
+    
+    const endDate = new Date(lesson.endDate);
+    const formattedEndDate = `${endDate.getFullYear()}/${(endDate.getMonth() + 1).toString().padStart(2, '0')}/${endDate.getDate().toString().padStart(2, '0')}`;
+    
+    return (
+      <div className="text-xs text-gray-500 truncate" title={`期間: ${formattedStartDate} - ${formattedEndDate}`}>
+        期間: {formattedStartDate} - {formattedEndDate}
+      </div>
+    );
+  };
+  
   const handleCardClick = () => {
     if (onLessonClick && isEditable) {
       onLessonClick(lesson);
@@ -70,7 +95,7 @@ export default function LessonCard({
   };
   
   const handleDeleteClick = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Предотвращаем клик по карточке
+    e.stopPropagation(); 
     setIsDeleteDialogOpen(true);
   };
   
@@ -105,6 +130,16 @@ export default function LessonCard({
         
         {renderLessonTime()}
         {renderLessonParticipants()}
+        
+        {/* Отображение типа класса */}
+        {lesson.classTypeName && (
+          <div className="text-xs text-gray-500 truncate" title={`タイプ: ${lesson.classTypeName}`}>
+            タイプ: {lesson.classTypeName}
+          </div>
+        )}
+        
+        {/* Отображение диапазона дат */}
+        {formatDateRange()}
         
         {lesson.room && (
           <div className="text-xs text-gray-500 truncate" title={`場所: ${lesson.room}`}>
