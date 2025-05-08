@@ -8,18 +8,20 @@ import {
   eachDayOfInterval,
   isSameDay,
   parseISO,
+  isToday,
 } from "date-fns";
-import { uz } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 
 type Lesson = {
   name: string;
-  date: string; // "2025-05-06"
+  date: string;
 };
 
 type MonthViewerProps = {
   lessons: Lesson[];
   monthDate: Date;
-  setViewType: React.Dispatch<React.SetStateAction<"DAY" | "WEEK" | "MONTH">>;
+  setViewType: React.Dispatch<React.SetStateAction<"WEEK" | "MONTH">>;
+  setCurrentDate: React.Dispatch<React.SetStateAction<Date>>;
 };
 
 const daysOfWeek = ["Du", "Se", "Ch", "Pa", "Ju", "Sh", "Ya"];
@@ -27,6 +29,7 @@ export const StudentScheduleMonthViewer: React.FC<MonthViewerProps> = ({
   lessons,
   monthDate,
   setViewType,
+  setCurrentDate,
 }) => {
   const monthStart = startOfMonth(monthDate);
   const monthEnd = endOfMonth(monthDate);
@@ -46,20 +49,29 @@ export const StudentScheduleMonthViewer: React.FC<MonthViewerProps> = ({
           const dayLessons = lessons.filter((l) =>
             isSameDay(parseISO(l.date), day)
           );
+          const isCurrentDay = isToday(day);
 
           return (
             <div
               key={ind}
-              className="border rounded p-1 min-h-[80px] hover:bg-gray-100 dark:hover:bg-[#1c1c1c] cursor-pointer"
-              onClick={(e) => {
-                console.log(e);
+              className={cn(
+                "border rounded p-1 min-h-[80px] hover:bg-gray-100 dark:hover:bg-[#1c1c1c] cursor-pointer",
+                isCurrentDay
+                  ? "bg-blue-100 border-blue-400 hover:bg-blue-200"
+                  : ""
+              )}
+              onClick={() => {
+                setCurrentDate(day);
+                setViewType("WEEK");
               }}
             >
-              <div className="text-xs font-bold">{format(day, "d")}</div>
+              <div className={cn(`text-xs font-bold`, isCurrentDay ? "" : "")}>
+                {format(day, "d")}
+              </div>
               {dayLessons.map((lesson, idx) => (
                 <div
                   key={idx}
-                  className="text-xs bg-blue-100 text-blue-700 rounded px-1 mt-1"
+                  className="text-xs bg-yellow-100 text-yellow-700 rounded px-1 mt-1"
                 >
                   {lesson.name}
                 </div>

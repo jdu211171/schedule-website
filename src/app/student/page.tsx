@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { StudentScheduleMonthViewer } from "@/components/student-schedule/student-schedule-month-viewer";
 import { useState } from "react";
 import { StudentScheduleWeekViewer } from "@/components/student-schedule/student-schedule-week-viewer";
-import { StudentScheduleDayViewer } from "@/components/student-schedule/student-schedule-day-viewer";
 const lessons = [
   { name: "Math", date: "2025-05-06" },
   { name: "Biology", date: "2025-05-08" },
@@ -15,9 +14,13 @@ const lessons = [
 ];
 export default function StudentPage() {
   const [currentDate, setCurrentDate] = useState(new Date(2025, 4, 1));
-  const [viewType, setViewType] = useState<"WEEK" | "MONTH" | "DAY">("DAY");
+  const [viewType, setViewType] = useState<"WEEK" | "MONTH">("WEEK");
   return (
-    <Tabs defaultValue="DAY">
+    <Tabs
+      defaultValue="WEEK"
+      value={viewType}
+      onValueChange={(val) => setViewType(val as "WEEK" | "MONTH")}
+    >
       <div className="flex items-center justify-between">
         <div className="flex items-center justify-center gap-4">
           <Button
@@ -35,15 +38,7 @@ export default function StudentPage() {
             currentDate={currentDate}
           />
         </div>
-        <TabsList defaultValue={viewType}>
-          <TabsTrigger
-            value="DAY"
-            onClick={() => {
-              setViewType("DAY");
-            }}
-          >
-            DAY
-          </TabsTrigger>
+        <TabsList>
           <TabsTrigger
             value="WEEK"
             onClick={() => {
@@ -62,9 +57,6 @@ export default function StudentPage() {
           </TabsTrigger>
         </TabsList>
       </div>
-      <TabsContent value="DAY">
-        <StudentScheduleDayViewer lessons={lessons} date={currentDate} />
-      </TabsContent>
       <TabsContent value="WEEK">
         <StudentScheduleWeekViewer lessons={lessons} weekDate={currentDate} />
       </TabsContent>
@@ -73,6 +65,7 @@ export default function StudentPage() {
           lessons={lessons}
           monthDate={currentDate}
           setViewType={setViewType}
+          setCurrentDate={setCurrentDate}
         />
       </TabsContent>
     </Tabs>

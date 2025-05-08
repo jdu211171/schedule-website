@@ -7,6 +7,7 @@ import {
   isSameDay,
   isSameHour,
   parseISO,
+  isToday,
 } from "date-fns";
 
 type Lesson = {
@@ -34,12 +35,20 @@ export const StudentScheduleWeekViewer: React.FC<WeekViewerProps> = ({
     <div className="overflow-auto">
       <div className="grid grid-cols-[60px_repeat(7,1fr)] text-sm font-semibold">
         <div></div>
-        {days.map((day, i) => (
-          <div key={i} className="text-center px-2 py-1">
-            {daysOfWeek[i]} <br />
-            {format(day, "d")}
-          </div>
-        ))}
+        {days.map((day, i) => {
+          const currentDay = isToday(day);
+          return (
+            <div
+              key={i}
+              className={`text-center px-2 py-1 ${
+                currentDay ? "bg-blue-200 text-blue-800 font-bold" : ""
+              }`}
+            >
+              {daysOfWeek[i]} <br />
+              {format(day, "d")}
+            </div>
+          );
+        })}
       </div>
       <div className="grid grid-cols-[60px_repeat(7,1fr)] ">
         {hours.map((hour) => (
@@ -52,6 +61,7 @@ export const StudentScheduleWeekViewer: React.FC<WeekViewerProps> = ({
             {/* 7 days x 1 hour cells */}
             {days.map((day, dayIndex) => {
               const cellDate = addHours(day, hour);
+              const isCurrentDay = isToday(day);
 
               const lessonsInCell = lessons.filter(
                 (l) =>
@@ -62,12 +72,14 @@ export const StudentScheduleWeekViewer: React.FC<WeekViewerProps> = ({
               return (
                 <div
                   key={dayIndex}
-                  className="border h-[50px] text-xs p-1 relative"
+                  className={`border h-[50px] text-xs p-1 relative ${
+                    isCurrentDay ? "bg-blue-200" : ""
+                  }`}
                 >
                   {lessonsInCell.map((lesson, i) => (
                     <div
                       key={i}
-                      className="absolute top-0 left-0 right-0 bg-green-100 text-green-800 rounded px-1 text-[10px] overflow-hidden truncate m-1"
+                      className="absolute top-0 left-0 right-0 bg-yellow-100 text-yellow-800 rounded px-1 text-[10px] overflow-hidden truncate m-1"
                     >
                       {lesson.name}
                     </div>
