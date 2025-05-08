@@ -404,7 +404,7 @@ async function main() {
   /* 6. RegularClassTemplate (週次授業テンプレ) */
   const template = await prisma.regularClassTemplate.create({
     data: {
-      classTypeId: normalClassType.classTypeId,
+      classTypeId: normalClassType.classTypeId, // <-- added this line
       dayOfWeek: DayOfWeek.MONDAY,
       subjectId: mathSubject.subjectId,
       subjectTypeId: subjectTypeMap["高校生"],

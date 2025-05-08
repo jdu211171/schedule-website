@@ -523,7 +523,7 @@ export async function POST(request: Request) {
               subjectId: template.subjectId,
               subjectTypeId: classSubjectTypeId,
               boothId: classBoothId,
-              classTypeId: template.classTypeId,
+              classTypeId: template.classTypeId, // <-- use the template's classTypeId
               templateId: templateId,
               notes: notes,
             },
