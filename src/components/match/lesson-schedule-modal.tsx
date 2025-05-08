@@ -20,6 +20,7 @@ import { ClassSession, DisplayLesson } from "./types";
 import { useRegularLessons } from "./hooks/useRegularLessons";
 import { deleteRegularClassTemplate, updateRegularClassTemplate } from "./api-client";
 import { AxiosError } from 'axios';
+import { format } from "date-fns";
 
 // API error data type
 interface ApiErrorData {
@@ -122,6 +123,7 @@ export default function LessonScheduleModal({
     availableDays,
     availableStartTimes,
     availableBooths,
+    classTypes,
     
     // Selected values
     selectedSubject,
@@ -130,6 +132,9 @@ export default function LessonScheduleModal({
     selectedEndTime,
     selectedDuration,
     selectedBooth,
+    selectedClassType,
+    selectedStartDate,
+    selectedEndDate,
     
     // Setters for selected values
     setSelectedSubject,
@@ -137,6 +142,9 @@ export default function LessonScheduleModal({
     setSelectedStartTime,
     setSelectedDuration,
     setSelectedBooth,
+    setSelectedClassType,
+    setSelectedStartDate,
+    setSelectedEndDate,
     
     // Loading states
     loading,
@@ -149,7 +157,8 @@ export default function LessonScheduleModal({
     getDurationOptions,
     resetForm,
     handleTimeStep,
-    createClassSession
+    createClassSession,
+    getMinMaxDates
   } = useModalSelects({
     teacherId,
     studentId
@@ -166,16 +175,22 @@ export default function LessonScheduleModal({
   
   // Track changes for close warning
   useEffect(() => {
-    if (selectedSubject || selectedBooth) {
+    if (selectedSubject || selectedBooth || selectedClassType || selectedStartDate || selectedEndDate) {
       setHasChanges(true);
     }
-  }, [selectedSubject, selectedBooth]);
+  }, [selectedSubject, selectedBooth, selectedClassType, selectedStartDate, selectedEndDate]);
   
   // Cancel edit mode
   const cancelEdit = () => {
     setIsEditMode(false);
     setEditingLesson(null);
     resetForm();
+  };
+  
+  // Utility to convert time to minutes
+  const timeToMinutes = (time: string): number => {
+    const [hours, minutes] = time.split(':').map(Number);
+    return hours * 60 + minutes;
   };
   
   // Handle lesson click to enter edit mode
@@ -209,13 +224,30 @@ export default function LessonScheduleModal({
     setSelectedStartTime(lesson.startTime);
     setSelectedBooth(lesson.boothId || "");
     
+    // Set class type if available, otherwise default
+    if (lesson.classTypeId) {
+      setSelectedClassType(lesson.classTypeId);
+    } else {
+      // Find default class type (通常授業)
+      const defaultType = classTypes.find(type => type.name === '通常授業');
+      if (defaultType) {
+        setSelectedClassType(defaultType.classTypeId);
+      } else if (classTypes.length > 0) {
+        setSelectedClassType(classTypes[0].classTypeId);
+      }
+    }
+    
+    // Set start and end dates
+    setSelectedStartDate(lesson.startDate || formatCurrentDate());
+    setSelectedEndDate(lesson.endDate || null);
+    
     setHasChanges(false);
   };
   
-  // Utility to convert time to minutes
-  const timeToMinutes = (time: string): number => {
-    const [hours, minutes] = time.split(':').map(Number);
-    return hours * 60 + minutes;
+  // Format current date as YYYY-MM-DD
+  const formatCurrentDate = (): string => {
+    const today = new Date();
+    return format(today, 'yyyy-MM-dd');
   };
   
   // Delete lesson handler
@@ -243,7 +275,7 @@ export default function LessonScheduleModal({
   
   // Save/update lesson handler
   const handleSaveLesson = async () => {
-    if (!selectedSubject || !selectedDay || !selectedStartTime || !selectedEndTime || !selectedBooth) {
+    if (!selectedSubject || !selectedDay || !selectedStartTime || !selectedEndTime || !selectedBooth || !selectedClassType) {
       setErrorMessage("すべての必須フィールドを入力してください");
       return;
     }
@@ -258,6 +290,9 @@ export default function LessonScheduleModal({
           subjectId: selectedSubject,
           boothId: selectedBooth,
           studentIds: [studentId],
+          classTypeId: selectedClassType,
+          startDate: selectedStartDate || undefined,
+          endDate: selectedEndDate || undefined,
           notes: `編集: ${selectedDay} ${selectedStartTime}-${selectedEndTime}`
         });
         
@@ -373,6 +408,7 @@ export default function LessonScheduleModal({
             availableDays={availableDays}
             availableStartTimes={availableStartTimes}
             availableBooths={availableBooths}
+            classTypes={classTypes}
             
             // Selected values
             selectedSubject={selectedSubject}
@@ -381,6 +417,9 @@ export default function LessonScheduleModal({
             selectedEndTime={selectedEndTime}
             selectedDuration={selectedDuration}
             selectedBooth={selectedBooth}
+            selectedClassType={selectedClassType}
+            selectedStartDate={selectedStartDate}
+            selectedEndDate={selectedEndDate}
             
             // Setters for selected values
             setSelectedSubject={setSelectedSubject}
@@ -388,6 +427,9 @@ export default function LessonScheduleModal({
             setSelectedStartTime={setSelectedStartTime}
             setSelectedDuration={setSelectedDuration}
             setSelectedBooth={setSelectedBooth}
+            setSelectedClassType={setSelectedClassType}
+            setSelectedStartDate={setSelectedStartDate}
+            setSelectedEndDate={setSelectedEndDate}
             
             // Errors and statuses
             timeError={null}
@@ -399,6 +441,7 @@ export default function LessonScheduleModal({
             // Additional
             durationOptions={durationOptions}
             handleTimeStep={handleTimeStep}
+            getMinMaxDates={getMinMaxDates}
           />
 
           {/* Add/Edit lesson button */}
@@ -415,14 +458,14 @@ export default function LessonScheduleModal({
             
             <Button
               className={`py-6 cursor-pointer flex-1 ${
-                hasNoMatchingOptions || !selectedSubject || !selectedDay || !selectedStartTime || !selectedBooth
+                hasNoMatchingOptions || !selectedSubject || !selectedDay || !selectedStartTime || !selectedBooth || !selectedClassType || loading
                   ? 'bg-gray-300 hover:bg-gray-400 text-gray-600 cursor-not-allowed'
                   : isEditMode 
                     ? 'bg-yellow-600 hover:bg-yellow-700 text-white'
                     : 'bg-black hover:bg-gray-800 text-white'
               }`}
               onClick={handleSaveLesson}
-              disabled={hasNoMatchingOptions || !selectedSubject || !selectedDay || !selectedStartTime || !selectedBooth || loading}
+              disabled={hasNoMatchingOptions || !selectedSubject || !selectedDay || !selectedStartTime || !selectedBooth || !selectedClassType || loading}
             >
               {isEditMode ? "授業を更新" : "授業を追加"}
             </Button>

@@ -95,6 +95,19 @@ export const fetchStudentTypes = async (params: PaginationParams = {}): Promise<
   return data;
 };
 
+/**
+ * Получение типов классов
+ */
+export const fetchClassTypes = async (params: PaginationParams = {}) => {
+  try {
+    const { data } = await axios.get(`${API_URL}/class-type`, { params });
+    return data;
+  } catch (err) {
+    console.error('Error fetching class types:', err);
+    return { data: [] };
+  }
+};
+
 // API functions for teacher-subject relationships
 export const fetchTeacherSubjects = async (params: PaginationParams & { teacherId?: string, subjectId?: string } = {}) => {
   const { data } = await axios.get(`${API_URL}/teacher-subjects`, { params });
@@ -123,7 +136,6 @@ export const fetchCompatibleTeachers = async (studentId: string): Promise<Compat
   } catch (err) {
     console.error("Error fetching compatible teachers:", err);
     
-    // Возвращаем структуру по умолчанию в случае ошибки
     return { 
       data: {
         preferredTeachers: [],
@@ -207,7 +219,6 @@ export const fetchCompatibleSubjects = async (teacherId: string, studentId: stri
       }
     });
     
-    // Проверка на наличие данных
     if (!data || !data.data) {
       throw new Error('Invalid response data');
     }
@@ -216,7 +227,6 @@ export const fetchCompatibleSubjects = async (teacherId: string, studentId: stri
   } catch (err) {
     console.error("Error fetching compatible subjects:", err);
     
-    // Возвращаем структуру по умолчанию в случае ошибки
     return {
       data: {
         commonSubjects: [],
@@ -241,7 +251,6 @@ export const fetchAvailableTimeSlots = async (teacherId: string, studentId: stri
       }
     });
     
-    // Проверка на наличие данных
     if (!data || !data.data) {
       throw new Error('Invalid response data');
     }
@@ -250,7 +259,6 @@ export const fetchAvailableTimeSlots = async (teacherId: string, studentId: stri
   } catch (err) {
     console.error("Error fetching available time slots:", err);
     
-    // Возвращаем структуру по умолчанию в случае ошибки
     return {
       data: {
         availableSlots: [],
@@ -276,7 +284,6 @@ export const fetchAvailableBooths = async (dayOfWeek: string, startTime: string,
       }
     });
     
-    // Проверка на наличие данных
     if (!data) {
       throw new Error('Invalid response data');
     }
@@ -285,7 +292,6 @@ export const fetchAvailableBooths = async (dayOfWeek: string, startTime: string,
   } catch (err) {
     console.error("Error fetching available booths:", err);
     
-    // Возвращаем пустой массив в случае ошибки
     return { data: [] };
   }
 };
@@ -310,13 +316,14 @@ export const createRegularClassTemplate = async (templateData: RegularClassTempl
  * @param templateData Данные для обновления шаблона
  */
 export const updateRegularClassTemplate = async (templateData: {
-  templateId: string;  // ID шаблона, обязательное поле
-  dayOfWeek?: string;  // Необязательные поля ниже
+  templateId: string;  
+  dayOfWeek?: string;  
   startTime?: string;
   endTime?: string;
   teacherId?: string;
   subjectId?: string;
   boothId?: string;
+  classTypeId?: string; 
   studentIds?: string[];
   notes?: string;
   startDate?: string;

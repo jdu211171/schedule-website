@@ -12,6 +12,17 @@ import {
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
+import { ClassType } from "./types";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { format } from "date-fns";
+import { ja } from "date-fns/locale";
+import { cn } from "@/lib/utils";
+import { CalendarIcon } from "lucide-react";
 
 interface LessonModalSelectsProps {
   // Data for selects
@@ -19,6 +30,7 @@ interface LessonModalSelectsProps {
   availableDays: { value: string; label: string }[];
   availableStartTimes: string[];
   availableBooths: { boothId: string; name: string }[];
+  classTypes: ClassType[];
   
   // Selected values
   selectedSubject: string;
@@ -27,6 +39,9 @@ interface LessonModalSelectsProps {
   selectedEndTime: string;
   selectedDuration: string;
   selectedBooth: string;
+  selectedClassType: string;
+  selectedStartDate: string | null;
+  selectedEndDate: string | null;
   
   // Setters for selected values
   setSelectedSubject: (subjectId: string) => void;
@@ -34,8 +49,11 @@ interface LessonModalSelectsProps {
   setSelectedStartTime: (time: string) => void;
   setSelectedDuration: (duration: string) => void;
   setSelectedBooth: (boothId: string) => void;
+  setSelectedClassType: (classTypeId: string) => void;
+  setSelectedStartDate: (date: string | null) => void;
+  setSelectedEndDate: (date: string | null) => void;
   
-   // Errors and statuses
+  // Errors and statuses
   timeError: string | null;
   hasCommonSubjects: boolean;
   hasCommonDays: boolean;
@@ -45,6 +63,7 @@ interface LessonModalSelectsProps {
   // Дополнительно
   durationOptions: { value: string; isAvailable: boolean }[];
   handleTimeStep: (step: number) => void;
+  getMinMaxDates: () => { minStartDate: Date; maxEndDate: Date };
 }
 
 export default function LessonModalSelects({
@@ -53,6 +72,7 @@ export default function LessonModalSelects({
   availableDays,
   availableStartTimes,
   availableBooths,
+  classTypes,
   
   // Selected values
   selectedSubject,
@@ -61,6 +81,9 @@ export default function LessonModalSelects({
   selectedEndTime,
   selectedDuration,
   selectedBooth,
+  selectedClassType,
+  selectedStartDate,
+  selectedEndDate,
   
   // Setters for selected values
   setSelectedSubject,
@@ -68,6 +91,9 @@ export default function LessonModalSelects({
   setSelectedStartTime,
   setSelectedDuration,
   setSelectedBooth,
+  setSelectedClassType,
+  setSelectedStartDate,
+  setSelectedEndDate,
   
   // Errors and statuses
   timeError,
@@ -78,11 +104,26 @@ export default function LessonModalSelects({
   
   // Дополнительно
   durationOptions,
-  handleTimeStep
+  handleTimeStep,
+  getMinMaxDates
 }: LessonModalSelectsProps) {
   
   // Check for compatible options
   const hasNoMatchingOptions = !hasCommonSubjects || !hasCommonDays || !hasCommonTimeSlots;
+  
+  // Get date constraints
+  const { minStartDate, maxEndDate } = getMinMaxDates();
+  
+  // Helper function to disable dates before today for start date
+  const disableStartDate = (date: Date) => {
+    return date < minStartDate;
+  };
+  
+  // Helper function to disable dates before startDate or after 2 years for end date
+  const disableEndDate = (date: Date) => {
+    const startDate = selectedStartDate ? new Date(selectedStartDate) : minStartDate;
+    return date < startDate || date > maxEndDate;
+  };
   
   return (
     <>
@@ -98,8 +139,8 @@ export default function LessonModalSelects({
         </Alert>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 py-3">
-        {/* Selecting a subject */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 py-3">
+        {/* 1. Selecting a subject */}
         <div>
           <Label className="block text-sm font-medium mb-1">科目</Label>
           <Select
@@ -133,7 +174,7 @@ export default function LessonModalSelects({
           )}
         </div>
 
-        {/* Select day of the week */}
+        {/* 2. Select day of the week */}
         <div>
           <Label className="block text-sm font-medium mb-1">曜日</Label>
           <Select
@@ -167,32 +208,38 @@ export default function LessonModalSelects({
           )}
         </div>
 
-        {/* Select duration */}
+        {/* 3. Select class type */}
         <div>
-          <Label className="block text-sm font-medium mb-1">授業時間</Label>
-          <div className="flex space-x-3">
-            {durationOptions.map(duration => (
-              <Button
-                key={duration.value}
-                variant={selectedDuration === duration.value ? "default" : "outline"}
-                className={`flex-1 cursor-pointer ${selectedDuration === duration.value ? "bg-black text-white" : ""} ${
-                  (hasNoMatchingOptions || !duration.isAvailable || loading)
-                    ? 'opacity-50 cursor-not-allowed' : ''
-                }`}
-                onClick={() => {
-                  if (!hasNoMatchingOptions && duration.isAvailable && !loading) {
-                    setSelectedDuration(duration.value);
-                  }
-                }}
-                disabled={hasNoMatchingOptions || !duration.isAvailable || loading}
-              >
-                {duration.value}
-              </Button>
-            ))}
-          </div>
+          <Label className="block text-sm font-medium mb-1">授業タイプ</Label>
+          <Select
+            value={selectedClassType}
+            onValueChange={setSelectedClassType}
+            disabled={loading}
+          >
+            <SelectTrigger className={`w-full cursor-pointer ${loading ? 'opacity-50' : ''}`}>
+              <SelectValue placeholder="タイプを選択" />
+            </SelectTrigger>
+            <SelectContent className="cursor-pointer">
+              {classTypes.length > 0 ? (
+                classTypes.map(classType => (
+                  <SelectItem
+                    key={classType.classTypeId}
+                    value={classType.classTypeId}
+                    className="cursor-pointer"
+                  >
+                    {classType.name}
+                  </SelectItem>
+                ))
+              ) : (
+                <SelectItem value="none" disabled className="text-gray-400">
+                  利用可能な授業タイプがありません
+                </SelectItem>
+              )}
+            </SelectContent>
+          </Select>
         </div>
 
-        {/* Select start time */}
+        {/* 4. Select start time */}
         <div>
           <Label className="block text-sm font-medium mb-1">開始時刻</Label>
           <div className="relative">
@@ -254,7 +301,7 @@ export default function LessonModalSelects({
           <p className="text-xs text-gray-500 mt-1">15分単位で選択してください (00, 15, 30, 45)</p>
         </div>
 
-        {/* End time (display only) */}
+        {/* 5. End time (display only) */}
         <div>
           <Label className="block text-sm font-medium mb-1">終了時刻</Label>
           <Input
@@ -266,7 +313,100 @@ export default function LessonModalSelects({
           />
         </div>
 
-        {/* Booth */}
+        {/* 6. Select duration */}
+        <div>
+          <Label className="block text-sm font-medium mb-1">授業時間</Label>
+          <div className="flex space-x-3">
+            {durationOptions.map(duration => (
+              <Button
+                key={duration.value}
+                variant={selectedDuration === duration.value ? "default" : "outline"}
+                className={`flex-1 cursor-pointer ${selectedDuration === duration.value ? "bg-black text-white" : ""} ${
+                  (hasNoMatchingOptions || !duration.isAvailable || loading)
+                    ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
+                onClick={() => {
+                  if (!hasNoMatchingOptions && duration.isAvailable && !loading) {
+                    setSelectedDuration(duration.value);
+                  }
+                }}
+                disabled={hasNoMatchingOptions || !duration.isAvailable || loading}
+              >
+                {duration.value}
+              </Button>
+            ))}
+          </div>
+        </div>
+
+        {/* 7. Start Date */}
+        <div>
+          <Label className="block text-sm font-medium mb-1">開始日付</Label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "w-full justify-start text-left font-normal",
+                  !selectedStartDate && "text-muted-foreground"
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {selectedStartDate ? (
+                  format(new Date(selectedStartDate), 'yyyy年MM月dd日', { locale: ja })
+                ) : (
+                  <span>日付を選択</span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={selectedStartDate ? new Date(selectedStartDate) : undefined}
+                onSelect={(date) => setSelectedStartDate(date ? format(date, 'yyyy-MM-dd') : null)}
+                disabled={disableStartDate}
+                locale={ja}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
+          <p className="text-xs text-gray-500 mt-1">今日から選択可能です</p>
+        </div>
+
+        {/* 8. End Date */}
+        <div>
+          <Label className="block text-sm font-medium mb-1">終了日付</Label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "w-full justify-start text-left font-normal",
+                  !selectedEndDate && "text-muted-foreground"
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {selectedEndDate ? (
+                  format(new Date(selectedEndDate), 'yyyy年MM月dd日', { locale: ja })
+                ) : (
+                  <span>日付を選択（任意）</span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={selectedEndDate ? new Date(selectedEndDate) : undefined}
+                onSelect={(date) => setSelectedEndDate(date ? format(date, 'yyyy-MM-dd') : null)}
+                disabled={disableEndDate}
+                locale={ja}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
+          <p className="text-xs text-gray-500 mt-1">開始日付から2年以内で選択可能です</p>
+        </div>
+
+        {/* 9. Booth */}
         <div>
           <Label className="block text-sm font-medium mb-1">ブース</Label>
           <Select
