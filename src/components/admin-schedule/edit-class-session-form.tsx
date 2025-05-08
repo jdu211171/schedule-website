@@ -56,7 +56,6 @@ interface UpdateClassSessionPayload {
   classTypeId?: string;
 }
 
-// Form schema for validation
 const formSchema = z.object({
   startTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, {
     message: "時間は HH:MM 形式である必要があります",
@@ -111,25 +110,23 @@ export function EditClassSessionForm({
   const [booths, setBooths] = useState<Booth[]>([]);
   const [classTypes, setClassTypes] = useState<ClassType[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const isStandalone = session.status === 'rare';
+  const isStandalone = session?.status === 'rare';
 
-  // Initialize form with session data
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      startTime: session.startTime,
-      endTime: session.endTime,
-      teacherId: session.teacherId || '',
-      studentId: session.studentId || '',
-      subjectId: session.subjectId || '',
-      boothId: session.boothId || '',
-      classTypeId: session.classTypeId || '',
-      notes: session.notes || '',
-      date: session.date ? format(new Date(session.date), 'yyyy-MM-dd') : undefined,
-    },
-  });
+      startTime: session?.startTime || '',
+      endTime: session?.endTime || '',
+      teacherId: session?.teacher || '',
+    studentId: session?.studentId || '',
+    subjectId: session?.subjectId || '',
+    boothId: session?.boothId || '',
+    classTypeId: session?.classTypeId || '',
+    notes: session?.notes || '',
+    date: session?.date ? format(new Date(session.date), 'yyyy-MM-dd') : undefined,
+  },
+});
 
-  // Fetch reference data for dropdowns
   useEffect(() => {
     const fetchReferenceData = async () => {
       try {
@@ -416,7 +413,6 @@ export function EditClassSessionForm({
               </>
             )}
 
-            {/* Notes - Editable for both types */}
             <FormField
               control={form.control}
               name="notes"
