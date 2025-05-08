@@ -12,7 +12,6 @@ const SubjectBaseSchema = z.object({
     .string({ required_error: "入力は必須です" })
     .min(1, { message: "入力は必須です" })
     .max(100, { message: "100文字以内で入力してください" }),
-  subjectTypeId: z.string({ required_error: "科目種別IDは必須です" }),
   notes: z
     .string({ invalid_type_error: "255文字以内で入力してください" })
     .max(255, { message: "255文字以内で入力してください" })
@@ -28,19 +27,21 @@ export const SubjectSchema = SubjectBaseSchema.extend({
 });
 
 // Schema for creating a new subject (no subjectId needed as it will be generated)
-export const CreateSubjectSchema = SubjectBaseSchema.strict();
+export const CreateSubjectSchema = SubjectBaseSchema.extend({
+  subjectTypeIds: z.array(z.string()).min(1, { message: "少なくとも1つの科目種別を選択してください" })
+}).strict();
 
 // Schema for updating an existing subject (requires subjectId)
 export const UpdateSubjectSchema = z
   .object({
     subjectId: z.string({ required_error: "IDは必須です" }),
     name: z.string().min(1, { message: "入力は必須です" }).max(100, { message: "100文字以内で入力してください" }).optional(),
-    subjectTypeId: z.string().optional(),
     notes: z
       .string({ invalid_type_error: "255文字以内で入力してください" })
       .max(255, { message: "255文字以内で入力してください" })
       .nullable()
-      .default("")
+      .default(""),
+    subjectTypeIds: z.array(z.string()).min(1, { message: "少なくとも1つの科目種別を選択してください" }).optional()
   })
   .strict();
 
@@ -59,7 +60,7 @@ export const SubjectQuerySchema = z
     name: z.string().optional(),
     subjectTypeId: z.string().optional(),
     sort: z
-      .enum(["name", "subjectTypeId", "createdAt", "updatedAt"]).optional().default("name"),
+      .enum(["name", "createdAt", "updatedAt"]).optional().default("name"),
     order: z.enum(["asc", "desc"]).optional().default("desc"),
   })
   .strict();
@@ -74,11 +75,9 @@ export type SubjectQuery = z.infer<typeof SubjectQuerySchema>;
 export type SubjectWithRelations = {
   subjectId: string;
   name: string;
-  subjectTypeId: string;
   notes?: string;
   createdAt: Date;
   updatedAt: Date;
-  subjectType: SubjectType;
   subjectToSubjectTypes: SubjectToSubjectType[];
   classSessions: Array<ClassSession & { classType: ClassType }>;
   regularClassTemplates: RegularClassTemplate[];

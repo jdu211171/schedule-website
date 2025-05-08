@@ -20,8 +20,11 @@ export async function GET(
     const subject = await prisma.subject.findUnique({
       where: { subjectId },
       include: {
-        subjectType: true,
-        subjectToSubjectTypes: true,
+        subjectToSubjectTypes: {
+          include: {
+            subjectType: true,
+          },
+        },
         classSessions: { include: { classType: true } },
         regularClassTemplates: true,
         teacherSubjects: true,

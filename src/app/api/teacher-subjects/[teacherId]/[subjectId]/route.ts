@@ -42,7 +42,11 @@ export async function GET(
           select: {
             subjectId: true,
             name: true,
-            subjectType: true,
+            subjectToSubjectTypes: {
+              include: {
+                subjectType: true,
+              },
+            },
           },
         },
         subjectType: {

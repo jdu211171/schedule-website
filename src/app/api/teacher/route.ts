@@ -97,7 +97,16 @@ export async function GET(request: Request) {
         evaluation: true,
         teacherSubjects: {
           include: {
-            subject: true,
+            subject: {
+              include: {
+                subjectToSubjectTypes: {
+                  include: {
+                    subjectType: true,
+                  },
+                },
+              },
+            },
+            subjectType: true,
           },
         },
         TeacherShiftReference: true,
@@ -230,6 +239,47 @@ export async function POST(request: Request) {
           { status: 400 }
         );
       }
+
+      // Verify subject-subject type combinations
+      const subjectTypePairs = subjects.map((s) => ({
+        subjectId: s.subjectId,
+        subjectTypeId: s.subjectTypeId,
+      }));
+
+      // Check that each subject/subject type pair exists in SubjectToSubjectType
+      const validPairs = await prisma.subjectToSubjectType.findMany({
+        where: {
+          OR: subjectTypePairs.map((pair) => ({
+            subjectId: pair.subjectId,
+            subjectTypeId: pair.subjectTypeId,
+          })),
+        },
+        select: {
+          subjectId: true,
+          subjectTypeId: true,
+        },
+      });
+
+      // If the count of valid pairs doesn't match the requested pairs, some pairs are invalid
+      if (validPairs.length !== subjectTypePairs.length) {
+        // Find the invalid pairs by checking which requested pairs aren't in the valid pairs
+        const validPairStrings = validPairs.map(
+          (p) => `${p.subjectId}-${p.subjectTypeId}`
+        );
+        const invalidPairs = subjectTypePairs.filter(
+          (p) => !validPairStrings.includes(`${p.subjectId}-${p.subjectTypeId}`)
+        );
+
+        return Response.json(
+          {
+            error: "Invalid subject-subject type combinations",
+            message: `The following subject-subject type combinations are not valid: ${invalidPairs
+              .map((p) => `(${p.subjectId}, ${p.subjectTypeId})`)
+              .join(", ")}`,
+          },
+          { status: 400 }
+        );
+      }
     }
 
     // Start a transaction to create everything
@@ -300,7 +350,16 @@ export async function POST(request: Request) {
           evaluation: true,
           teacherSubjects: {
             include: {
-              subject: true,
+              subject: {
+                include: {
+                  subjectToSubjectTypes: {
+                    include: {
+                      subjectType: true,
+                    },
+                  },
+                },
+              },
+              subjectType: true,
             },
           },
           TeacherShiftReference: true,
@@ -396,6 +455,47 @@ export async function PUT(request: Request) {
           { status: 400 }
         );
       }
+
+      // Verify subject-subject type combinations
+      const subjectTypePairs = subjects.map((s) => ({
+        subjectId: s.subjectId,
+        subjectTypeId: s.subjectTypeId,
+      }));
+
+      // Check that each subject/subject type pair exists in SubjectToSubjectType
+      const validPairs = await prisma.subjectToSubjectType.findMany({
+        where: {
+          OR: subjectTypePairs.map((pair) => ({
+            subjectId: pair.subjectId,
+            subjectTypeId: pair.subjectTypeId,
+          })),
+        },
+        select: {
+          subjectId: true,
+          subjectTypeId: true,
+        },
+      });
+
+      // If the count of valid pairs doesn't match the requested pairs, some pairs are invalid
+      if (validPairs.length !== subjectTypePairs.length) {
+        // Find the invalid pairs by checking which requested pairs aren't in the valid pairs
+        const validPairStrings = validPairs.map(
+          (p) => `${p.subjectId}-${p.subjectTypeId}`
+        );
+        const invalidPairs = subjectTypePairs.filter(
+          (p) => !validPairStrings.includes(`${p.subjectId}-${p.subjectTypeId}`)
+        );
+
+        return Response.json(
+          {
+            error: "Invalid subject-subject type combinations",
+            message: `The following subject-subject type combinations are not valid: ${invalidPairs
+              .map((p) => `(${p.subjectId}, ${p.subjectTypeId})`)
+              .join(", ")}`,
+          },
+          { status: 400 }
+        );
+      }
     }
 
     // Start transaction to update everything
@@ -479,7 +579,16 @@ export async function PUT(request: Request) {
           evaluation: true,
           teacherSubjects: {
             include: {
-              subject: true,
+              subject: {
+                include: {
+                  subjectToSubjectTypes: {
+                    include: {
+                      subjectType: true,
+                    },
+                  },
+                },
+              },
+              subjectType: true,
             },
           },
           TeacherShiftReference: true,

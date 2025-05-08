@@ -20,14 +20,30 @@ export async function GET(
         evaluation: true,
         teacherSubjects: {
           include: {
-            subject: true,
+            subject: {
+              include: {
+                subjectToSubjectTypes: {
+                  include: {
+                    subjectType: true,
+                  },
+                },
+              },
+            },
             subjectType: true,
           },
         },
         TeacherShiftReference: true,
         classSessions: {
           include: {
-            subject: true,
+            subject: {
+              include: {
+                subjectToSubjectTypes: {
+                  include: {
+                    subjectType: true,
+                  },
+                },
+              },
+            },
             booth: true,
             student: true,
           },

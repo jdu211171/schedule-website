@@ -423,7 +423,6 @@ model SubjectType {
   subjectTypeId            String                 @id @default(cuid()) @map("subject_type_id")
   name                     String                 @db.VarChar(100)
   notes                    String?                @db.VarChar(255)
-  subjects                 Subject[]
   subjectToSubjectTypes    SubjectToSubjectType[]
   classSessions            ClassSession[]
   regularClassTemplates    RegularClassTemplate[]
@@ -444,11 +443,9 @@ model SubjectType {
 model Subject {
   subjectId                String                     @id @default(cuid()) @map("subject_id")
   name                     String                     @db.VarChar(100)
-  subjectTypeId            String                     @map("subject_type_id") @db.VarChar(50)
   notes                    String?                    @db.VarChar(255)
   classSessions            ClassSession[]
   regularClassTemplates    RegularClassTemplate[]
-  subjectType              SubjectType                @relation(fields: [subjectTypeId], references: [subjectTypeId], onDelete: Restrict, onUpdate: Cascade)
   subjectToSubjectTypes    SubjectToSubjectType[]
   teacherSubjects          TeacherSubject[]
   createdAt                DateTime                   @default(now()) @map("created_at") @db.Timestamp(6)

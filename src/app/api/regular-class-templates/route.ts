@@ -53,7 +53,7 @@ export async function GET(request: Request) {
       const preferredTeachers = await prisma.teacher.findMany({
         where: { teacherId: { in: preferredTeacherIds } },
         include: {
-          teacherSubjects: { include: { subject: true } },
+          teacherSubjects: { include: { subject: true, subjectType: true } },
           evaluation: true,
         },
       });
@@ -64,7 +64,7 @@ export async function GET(request: Request) {
           teacherId: { notIn: preferredTeacherIds },
         },
         include: {
-          teacherSubjects: { include: { subject: true } },
+          teacherSubjects: { include: { subject: true, subjectType: true } },
           evaluation: true,
         },
       });
@@ -79,7 +79,7 @@ export async function GET(request: Request) {
           },
         },
         include: {
-          teacherSubjects: { include: { subject: true } },
+          teacherSubjects: { include: { subject: true, subjectType: true } },
           evaluation: true,
         },
       });
@@ -122,7 +122,7 @@ export async function GET(request: Request) {
           grade: true,
           StudentPreference: {
             include: {
-              subjects: { include: { subject: true } },
+              subjects: { include: { subject: true, subjectType: true } },
               teachers: { include: { teacher: true } },
               timeSlots: true,
             },
@@ -143,7 +143,7 @@ export async function GET(request: Request) {
           grade: true,
           StudentPreference: {
             include: {
-              subjects: { include: { subject: true } },
+              subjects: { include: { subject: true, subjectType: true } },
               teachers: { include: { teacher: true } },
               timeSlots: true,
             },
@@ -164,7 +164,7 @@ export async function GET(request: Request) {
           grade: true,
           StudentPreference: {
             include: {
-              subjects: { include: { subject: true } },
+              subjects: { include: { subject: true, subjectType: true } },
               teachers: { include: { teacher: true } },
               timeSlots: true,
             },
@@ -197,14 +197,44 @@ export async function GET(request: Request) {
 
       const teacher = await prisma.teacher.findUnique({
         where: { teacherId },
-        include: { teacherSubjects: { include: { subject: true } } },
+        include: {
+          teacherSubjects: {
+            include: {
+              subject: {
+                include: {
+                  subjectToSubjectTypes: {
+                    include: {
+                      subjectType: true,
+                    },
+                  },
+                },
+              },
+              subjectType: true,
+            },
+          },
+        },
       });
 
       const student = await prisma.student.findUnique({
         where: { studentId },
         include: {
           StudentPreference: {
-            include: { subjects: { include: { subject: true } } },
+            include: {
+              subjects: {
+                include: {
+                  subject: {
+                    include: {
+                      subjectToSubjectTypes: {
+                        include: {
+                          subjectType: true,
+                        },
+                      },
+                    },
+                  },
+                  subjectType: true,
+                },
+              },
+            },
           },
         },
       });
@@ -216,23 +246,48 @@ export async function GET(request: Request) {
         );
       }
 
-      const studentSubjectIds = student.StudentPreference.flatMap((pref) =>
-        pref.subjects.map((s) => s.subjectId)
+      // Get all subject-subjectType pairs that the teacher can teach
+      const teacherSubjectPairs = teacher.teacherSubjects.map((ts) => ({
+        subjectId: ts.subjectId,
+        subjectTypeId: ts.subjectTypeId,
+        subject: ts.subject,
+        subjectType: ts.subjectType,
+      }));
+
+      // Get all subject-subjectType pairs that the student prefers
+      const studentSubjectPairs = student.StudentPreference.flatMap((pref) =>
+        pref.subjects.map((s) => ({
+          subjectId: s.subjectId,
+          subjectTypeId: s.subjectTypeId,
+          subject: s.subject,
+          subjectType: s.subjectType,
+        }))
       );
 
-      const commonSubjects = teacher.teacherSubjects
-        .filter((ts) => studentSubjectIds.includes(ts.subjectId))
-        .map((ts) => ts.subject);
+      // Find common pairs (both teacher and student have the same subject-subjectType combination)
+      const commonPairs = teacherSubjectPairs.filter((tp) =>
+        studentSubjectPairs.some(
+          (sp) =>
+            sp.subjectId === tp.subjectId &&
+            sp.subjectTypeId === tp.subjectTypeId
+        )
+      );
 
-      const otherSubjects = teacher.teacherSubjects
-        .filter((ts) => !studentSubjectIds.includes(ts.subjectId))
-        .map((ts) => ts.subject);
+      // Get other valid pairs that the teacher can teach but the student doesn't prefer
+      const otherPairs = teacherSubjectPairs.filter(
+        (tp) =>
+          !commonPairs.some(
+            (cp) =>
+              cp.subjectId === tp.subjectId &&
+              cp.subjectTypeId === tp.subjectTypeId
+          )
+      );
 
       return Response.json({
         data: {
-          commonSubjects,
-          otherSubjects,
-          allSubjects: [...commonSubjects, ...otherSubjects],
+          commonSubjectPairs: commonPairs,
+          otherSubjectPairs: otherPairs,
+          allSubjectPairs: [...commonPairs, ...otherPairs],
         },
       });
     } else if (action === "available-time-slots") {
@@ -354,6 +409,30 @@ export async function GET(request: Request) {
         };
       }
 
+      // Add subject type filter if provided
+      if (filter.subjectTypeId) {
+        if (
+          typeof teacherQuery.teacherSubjects === "object" &&
+          teacherQuery.teacherSubjects !== null
+        ) {
+          const subjectCondition = teacherQuery.teacherSubjects as Record<
+            string,
+            unknown
+          >;
+          if (
+            typeof subjectCondition.some === "object" &&
+            subjectCondition.some !== null
+          ) {
+            (subjectCondition.some as Record<string, unknown>).subjectTypeId =
+              filter.subjectTypeId;
+          }
+        } else {
+          teacherQuery.teacherSubjects = {
+            some: { subjectTypeId: filter.subjectTypeId },
+          };
+        }
+      }
+
       // Add specific teacher filter if provided
       if (filter.teacherId) {
         teacherQuery.teacherId = filter.teacherId;
@@ -370,13 +449,41 @@ export async function GET(request: Request) {
                 endTime: { gte: endTime },
               },
             },
-            ...(filter.subjectId
-              ? { subjects: { some: { subjectId: filter.subjectId } } }
-              : {}),
           },
         },
         ...(filter.studentId && { studentId: filter.studentId }),
       };
+
+      // Add subject and subject type filters if provided
+      if (filter.subjectId || filter.subjectTypeId) {
+        const subjectCondition: Record<string, unknown> = {};
+
+        if (filter.subjectId) {
+          subjectCondition.subjectId = filter.subjectId;
+        }
+
+        if (filter.subjectTypeId) {
+          subjectCondition.subjectTypeId = filter.subjectTypeId;
+        }
+
+        if (
+          typeof studentQuery.StudentPreference === "object" &&
+          studentQuery.StudentPreference !== null
+        ) {
+          const prefCondition = studentQuery.StudentPreference as Record<
+            string,
+            unknown
+          >;
+          if (
+            typeof prefCondition.some === "object" &&
+            prefCondition.some !== null
+          ) {
+            (prefCondition.some as Record<string, unknown>).subjects = {
+              some: subjectCondition,
+            };
+          }
+        }
+      }
 
       // 3. Get availability data with student preferences
       if (filter.studentId) {
@@ -386,7 +493,7 @@ export async function GET(request: Request) {
             StudentPreference: {
               include: {
                 teachers: { include: { teacher: true } },
-                subjects: { include: { subject: true } },
+                subjects: { include: { subject: true, subjectType: true } },
               },
             },
           },
@@ -418,7 +525,7 @@ export async function GET(request: Request) {
         const teacher = await prisma.teacher.findUnique({
           where: { teacherId: filter.teacherId },
           include: {
-            teacherSubjects: { include: { subject: true } },
+            teacherSubjects: { include: { subject: true, subjectType: true } },
           },
         });
 
@@ -477,12 +584,26 @@ export async function GET(request: Request) {
         compatibleStudents,
         availableBooths,
         relevantSubjects,
+        relevantSubjectTypes,
       ] = await Promise.all([
         // Get compatible teachers
         prisma.teacher.findMany({
           where: teacherQuery,
           include: {
-            teacherSubjects: { include: { subject: true } },
+            teacherSubjects: {
+              include: {
+                subject: {
+                  include: {
+                    subjectToSubjectTypes: {
+                      include: {
+                        subjectType: true,
+                      },
+                    },
+                  },
+                },
+                subjectType: true,
+              },
+            },
             TeacherShiftReference: true,
             evaluation: true,
           },
@@ -495,7 +616,20 @@ export async function GET(request: Request) {
             grade: true,
             StudentPreference: {
               include: {
-                subjects: { include: { subject: true } },
+                subjects: {
+                  include: {
+                    subject: {
+                      include: {
+                        subjectToSubjectTypes: {
+                          include: {
+                            subjectType: true,
+                          },
+                        },
+                      },
+                    },
+                    subjectType: true,
+                  },
+                },
                 teachers: { include: { teacher: true } },
                 timeSlots: true,
               },
@@ -511,7 +645,20 @@ export async function GET(request: Request) {
         // Get relevant subjects
         prisma.subject.findMany({
           where: filter.subjectId ? { subjectId: filter.subjectId } : {}, // Get all if not specified
-          include: { subjectType: true },
+          include: {
+            subjectToSubjectTypes: {
+              include: {
+                subjectType: true,
+              },
+            },
+          },
+        }),
+
+        // Get relevant subject types
+        prisma.subjectType.findMany({
+          where: filter.subjectTypeId
+            ? { subjectTypeId: filter.subjectTypeId }
+            : {}, // Get all if not specified
         }),
       ]);
 
@@ -521,6 +668,7 @@ export async function GET(request: Request) {
           students: compatibleStudents,
           booths: availableBooths,
           subjects: relevantSubjects,
+          subjectTypes: relevantSubjectTypes,
           timeSlot: {
             dayOfWeek: filter.dayOfWeek,
             startTime: filter.startTime,
@@ -541,6 +689,7 @@ export async function GET(request: Request) {
         teacherId,
         studentId,
         subjectId,
+        subjectTypeId,
         boothId,
         sort,
         order,
@@ -558,6 +707,10 @@ export async function GET(request: Request) {
 
       if (subjectId) {
         filters.subjectId = subjectId;
+      }
+
+      if (subjectTypeId) {
+        filters.subjectTypeId = subjectTypeId;
       }
 
       if (boothId) {
@@ -584,7 +737,16 @@ export async function GET(request: Request) {
         orderBy,
         include: {
           teacher: true,
-          subject: true,
+          subject: {
+            include: {
+              subjectToSubjectTypes: {
+                include: {
+                  subjectType: true,
+                },
+              },
+            },
+          },
+          subjectType: true,
           booth: true,
           templateStudentAssignments: {
             include: {
@@ -636,6 +798,47 @@ export async function POST(request: Request) {
     if (isBatch) {
       const templates = BatchCreateRegularClassTemplateSchema.parse(body);
 
+      // Before processing, validate all subject/subject type combinations
+      const subjectTypePairs = templates.map((template) => ({
+        subjectId: template.subjectId,
+        subjectTypeId: template.subjectTypeId,
+      }));
+
+      // Check that each subject/subject type pair exists in SubjectToSubjectType
+      const validPairs = await prisma.subjectToSubjectType.findMany({
+        where: {
+          OR: subjectTypePairs.map((pair) => ({
+            subjectId: pair.subjectId,
+            subjectTypeId: pair.subjectTypeId,
+          })),
+        },
+        select: {
+          subjectId: true,
+          subjectTypeId: true,
+        },
+      });
+
+      // If the count of valid pairs doesn't match the requested pairs, some pairs are invalid
+      if (validPairs.length !== subjectTypePairs.length) {
+        // Find the invalid pairs by checking which requested pairs aren't in the valid pairs
+        const validPairStrings = validPairs.map(
+          (p) => `${p.subjectId}-${p.subjectTypeId}`
+        );
+        const invalidPairs = subjectTypePairs.filter(
+          (p) => !validPairStrings.includes(`${p.subjectId}-${p.subjectTypeId}`)
+        );
+
+        return Response.json(
+          {
+            error: "Invalid subject-subject type combinations",
+            message: `The following subject-subject type combinations are not valid: ${invalidPairs
+              .map((p) => `(${p.subjectId}, ${p.subjectTypeId})`)
+              .join(", ")}`,
+          },
+          { status: 400 }
+        );
+      }
+
       // Process each template in a transaction
       const results = await prisma.$transaction(
         templates.map((template) => {
@@ -664,7 +867,16 @@ export async function POST(request: Request) {
             },
             include: {
               teacher: true,
-              subject: true,
+              subject: {
+                include: {
+                  subjectToSubjectTypes: {
+                    include: {
+                      subjectType: true,
+                    },
+                  },
+                },
+              },
+              subjectType: true,
               booth: true,
               templateStudentAssignments: {
                 include: {
@@ -695,6 +907,29 @@ export async function POST(request: Request) {
         ...templateData
       } = template;
 
+      // Validate subject/subject type combination exists
+      const subjectTypePair = {
+        subjectId: templateData.subjectId,
+        subjectTypeId: templateData.subjectTypeId,
+      };
+
+      const validPair = await prisma.subjectToSubjectType.findFirst({
+        where: {
+          subjectId: subjectTypePair.subjectId,
+          subjectTypeId: subjectTypePair.subjectTypeId,
+        },
+      });
+
+      if (!validPair) {
+        return Response.json(
+          {
+            error: "Invalid subject-subject type combination",
+            message: `The combination of subject ID ${subjectTypePair.subjectId} and subject type ID ${subjectTypePair.subjectTypeId} is not valid.`,
+          },
+          { status: 400 }
+        );
+      }
+
       // Convert time strings to Date objects
       const createdTemplate = await prisma.regularClassTemplate.create({
         data: {
@@ -711,7 +946,16 @@ export async function POST(request: Request) {
         },
         include: {
           teacher: true,
-          subject: true,
+          subject: {
+            include: {
+              subjectToSubjectTypes: {
+                include: {
+                  subjectType: true,
+                },
+              },
+            },
+          },
+          subjectType: true,
           booth: true,
           templateStudentAssignments: {
             include: {
@@ -762,6 +1006,8 @@ export async function PUT(request: Request) {
       endTime,
       startDate,
       endDate,
+      subjectId,
+      subjectTypeId,
       ...data
     } = UpdateRegularClassTemplateSchema.parse(body);
 
@@ -777,8 +1023,36 @@ export async function PUT(request: Request) {
       return Response.json({ error: "Template not found" }, { status: 404 });
     }
 
+    // If subject or subject type is being updated, validate the combination
+    if (subjectId || subjectTypeId) {
+      const newSubjectId = subjectId || existingTemplate.subjectId;
+      const newSubjectTypeId = subjectTypeId || existingTemplate.subjectTypeId;
+
+      // Check if this combination exists in SubjectToSubjectType
+      const validPair = await prisma.subjectToSubjectType.findFirst({
+        where: {
+          subjectId: newSubjectId,
+          subjectTypeId: newSubjectTypeId,
+        },
+      });
+
+      if (!validPair) {
+        return Response.json(
+          {
+            error: "Invalid subject-subject type combination",
+            message: `The combination of subject ID ${newSubjectId} and subject type ID ${newSubjectTypeId} is not valid.`,
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     // Prepare update data with time conversions
-    const updateData: Record<string, unknown> = { ...data };
+    const updateData: Record<string, unknown> = {
+      ...data,
+      ...(subjectId ? { subjectId } : {}),
+      ...(subjectTypeId ? { subjectTypeId } : {}),
+    };
 
     if (startTime) {
       updateData.startTime = new Date(`1970-01-01T${startTime}`);
@@ -829,7 +1103,16 @@ export async function PUT(request: Request) {
         where: { templateId },
         include: {
           teacher: true,
-          subject: true,
+          subject: {
+            include: {
+              subjectToSubjectTypes: {
+                include: {
+                  subjectType: true,
+                },
+              },
+            },
+          },
+          subjectType: true,
           booth: true,
           templateStudentAssignments: {
             include: {

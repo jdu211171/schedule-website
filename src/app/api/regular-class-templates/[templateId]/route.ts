@@ -1,4 +1,4 @@
-  // app/api/regular-class-templates/[templateId]/route.ts
+// app/api/regular-class-templates/[templateId]/route.ts
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -19,7 +19,16 @@ export async function GET(
       where: { templateId },
       include: {
         teacher: true,
-        subject: true,
+        subject: {
+          include: {
+            subjectToSubjectTypes: {
+              include: {
+                subjectType: true,
+              },
+            },
+          },
+        },
+        subjectType: true,
         booth: true,
         templateStudentAssignments: {
           include: {

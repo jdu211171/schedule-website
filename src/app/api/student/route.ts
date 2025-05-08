@@ -255,7 +255,7 @@ export async function POST(request: Request) {
 
     // Verify subjects and teachers exist before starting transaction
     if (preferences?.subjects && preferences.subjects.length > 0) {
-      const subjectIds = preferences.subjects.map(subj => subj.subjectId);
+      const subjectIds = preferences.subjects.map((subj) => subj.subjectId);
       const existingSubjects = await prisma.subject.findMany({
         where: { subjectId: { in: subjectIds } },
         select: { subjectId: true },
@@ -276,20 +276,44 @@ export async function POST(request: Request) {
       }
 
       // Verify subject types
-      for (const subject of preferences.subjects) {
-        const subjectTypeExists = await prisma.subjectType.findUnique({
-          where: { subjectTypeId: subject.subjectTypeId },
-        });
+      const subjectTypePairs = preferences.subjects.map((s) => ({
+        subjectId: s.subjectId,
+        subjectTypeId: s.subjectTypeId,
+      }));
 
-        if (!subjectTypeExists) {
-          return Response.json(
-            {
-              error: "Invalid subject type ID",
-              message: `The subject type ID ${subject.subjectTypeId} does not exist`,
-            },
-            { status: 400 }
-          );
-        }
+      // Check that each subject/subject type pair exists in SubjectToSubjectType
+      const validPairs = await prisma.subjectToSubjectType.findMany({
+        where: {
+          OR: subjectTypePairs.map((pair) => ({
+            subjectId: pair.subjectId,
+            subjectTypeId: pair.subjectTypeId,
+          })),
+        },
+        select: {
+          subjectId: true,
+          subjectTypeId: true,
+        },
+      });
+
+      // If the count of valid pairs doesn't match the requested pairs, some pairs are invalid
+      if (validPairs.length !== subjectTypePairs.length) {
+        // Find the invalid pairs by checking which requested pairs aren't in the valid pairs
+        const validPairStrings = validPairs.map(
+          (p) => `${p.subjectId}-${p.subjectTypeId}`
+        );
+        const invalidPairs = subjectTypePairs.filter(
+          (p) => !validPairStrings.includes(`${p.subjectId}-${p.subjectTypeId}`)
+        );
+
+        return Response.json(
+          {
+            error: "Invalid subject-subject type combinations",
+            message: `The following subject-subject type combinations are not valid: ${invalidPairs
+              .map((p) => `(${p.subjectId}, ${p.subjectTypeId})`)
+              .join(", ")}`,
+          },
+          { status: 400 }
+        );
       }
     }
 
@@ -362,7 +386,10 @@ export async function POST(request: Request) {
       const fixedStudentData = {
         ...studentData,
         // Convert empty strings to null
-        gradeId: studentData.gradeId && studentData.gradeId !== "" ? studentData.gradeId : null,
+        gradeId:
+          studentData.gradeId && studentData.gradeId !== ""
+            ? studentData.gradeId
+            : null,
         // Only set examSchoolType if valid
         examSchoolType: validSchoolTypes.includes(studentData.examSchoolType!)
           ? studentData.examSchoolType
@@ -552,7 +579,7 @@ export async function PUT(request: Request) {
 
     // Verify subjects, teachers, and classType if provided
     if (preferences?.subjects && preferences.subjects.length > 0) {
-      const subjectIds = preferences.subjects.map(subj => subj.subjectId);
+      const subjectIds = preferences.subjects.map((subj) => subj.subjectId);
       const existingSubjects = await prisma.subject.findMany({
         where: { subjectId: { in: subjectIds } },
         select: { subjectId: true },
@@ -572,21 +599,45 @@ export async function PUT(request: Request) {
         );
       }
 
-      // Verify subject types
-      for (const subject of preferences.subjects) {
-        const subjectTypeExists = await prisma.subjectType.findUnique({
-          where: { subjectTypeId: subject.subjectTypeId },
-        });
+      // Verify subject-subject type combinations
+      const subjectTypePairs = preferences.subjects.map((s) => ({
+        subjectId: s.subjectId,
+        subjectTypeId: s.subjectTypeId,
+      }));
 
-        if (!subjectTypeExists) {
-          return Response.json(
-            {
-              error: "Invalid subject type ID",
-              message: `The subject type ID ${subject.subjectTypeId} does not exist`,
-            },
-            { status: 400 }
-          );
-        }
+      // Check that each subject/subject type pair exists in SubjectToSubjectType
+      const validPairs = await prisma.subjectToSubjectType.findMany({
+        where: {
+          OR: subjectTypePairs.map((pair) => ({
+            subjectId: pair.subjectId,
+            subjectTypeId: pair.subjectTypeId,
+          })),
+        },
+        select: {
+          subjectId: true,
+          subjectTypeId: true,
+        },
+      });
+
+      // If the count of valid pairs doesn't match the requested pairs, some pairs are invalid
+      if (validPairs.length !== subjectTypePairs.length) {
+        // Find the invalid pairs by checking which requested pairs aren't in the valid pairs
+        const validPairStrings = validPairs.map(
+          (p) => `${p.subjectId}-${p.subjectTypeId}`
+        );
+        const invalidPairs = subjectTypePairs.filter(
+          (p) => !validPairStrings.includes(`${p.subjectId}-${p.subjectTypeId}`)
+        );
+
+        return Response.json(
+          {
+            error: "Invalid subject-subject type combinations",
+            message: `The following subject-subject type combinations are not valid: ${invalidPairs
+              .map((p) => `(${p.subjectId}, ${p.subjectTypeId})`)
+              .join(", ")}`,
+          },
+          { status: 400 }
+        );
       }
     }
 

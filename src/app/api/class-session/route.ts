@@ -46,19 +46,15 @@ export async function GET(request: Request) {
     // Handle subjectTypeId filtering (single or multiple)
     if (subjectTypeId) {
       if (Array.isArray(subjectTypeId)) {
-        filters.subject = {
-          subjectTypeId: { in: subjectTypeId },
-        };
+        filters.subjectTypeId = { in: subjectTypeId };
       } else {
-        filters.subject = {
-          subjectTypeId: subjectTypeId,
-        };
+        filters.subjectTypeId = subjectTypeId;
       }
     }
 
     // Handle single date filter
     if (date) {
-      const dateParts = date.split('-');
+      const dateParts = date.split("-");
       if (dateParts.length === 3) {
         // Create a Date object for the start of the day
         const startOfDay = new Date(
@@ -87,8 +83,8 @@ export async function GET(request: Request) {
 
     // Handle date range filter
     if (startDate && endDate) {
-      const startDateParts = startDate.split('-');
-      const endDateParts = endDate.split('-');
+      const startDateParts = startDate.split("-");
+      const endDateParts = endDate.split("-");
       if (startDateParts.length === 3 && endDateParts.length === 3) {
         // Create Date objects for the start and end dates
         const start = new Date(
@@ -113,7 +109,7 @@ export async function GET(request: Request) {
         };
       }
     } else if (startDate) {
-      const startDateParts = startDate.split('-');
+      const startDateParts = startDate.split("-");
       if (startDateParts.length === 3) {
         filters.date = {
           gte: new Date(
@@ -127,7 +123,7 @@ export async function GET(request: Request) {
         };
       }
     } else if (endDate) {
-      const endDateParts = endDate.split('-');
+      const endDateParts = endDate.split("-");
       if (endDateParts.length === 3) {
         filters.date = {
           lte: new Date(
@@ -200,19 +196,19 @@ export async function GET(request: Request) {
     if (dayOfWeek && !date && !startDate && !endDate) {
       if (Array.isArray(dayOfWeek)) {
         filters.regularClassTemplate = {
-          dayOfWeek: { in: dayOfWeek as DayOfWeek[] }
+          dayOfWeek: { in: dayOfWeek as DayOfWeek[] },
         };
       } else {
         filters.regularClassTemplate = {
-          dayOfWeek: dayOfWeek as DayOfWeek
+          dayOfWeek: dayOfWeek as DayOfWeek,
         };
       }
     }
 
     // Handle isTemplateInstance filter
-    if (isTemplateInstance === 'true') {
+    if (isTemplateInstance === "true") {
       filters.templateId = { not: null };
-    } else if (isTemplateInstance === 'false') {
+    } else if (isTemplateInstance === "false") {
       filters.templateId = null;
     }
 
@@ -233,7 +229,15 @@ export async function GET(request: Request) {
       include: {
         booth: true,
         classType: true,
-        subject: true,
+        subject: {
+          include: {
+            subjectToSubjectTypes: {
+              include: {
+                subjectType: true,
+              },
+            },
+          },
+        },
         subjectType: true,
         teacher: true,
         student: true,
@@ -287,16 +291,47 @@ export async function POST(request: Request) {
     if (isTemplateBasedClass) {
       // Validate template-based class session data
       const validatedData = CreateClassSessionFromTemplateSchema.parse(body);
-      const { templateId, date, startTime, endTime, boothId, notes } =
-        validatedData;
+      const {
+        templateId,
+        date,
+        startTime,
+        endTime,
+        boothId,
+        subjectTypeId,
+        notes,
+      } = validatedData;
 
       // Fetch template data
       const template = await prisma.regularClassTemplate.findUnique({
         where: { templateId },
+        include: {
+          subject: true,
+        },
       });
 
       if (!template) {
         return Response.json({ error: "Template not found" }, { status: 404 });
+      }
+
+      // If a new subject type is provided, validate it exists and is compatible with the subject
+      if (subjectTypeId) {
+        // Verify the subject-subject type combination exists
+        const validPair = await prisma.subjectToSubjectType.findFirst({
+          where: {
+            subjectId: template.subjectId,
+            subjectTypeId,
+          },
+        });
+
+        if (!validPair) {
+          return Response.json(
+            {
+              error: "Invalid subject-subject type combination",
+              message: `The subject (${template.subjectId}) cannot be associated with the specified subject type (${subjectTypeId}).`,
+            },
+            { status: 400 }
+          );
+        }
       }
 
       // Get students assigned to the template
@@ -321,6 +356,7 @@ export async function POST(request: Request) {
         ? new Date(`1970-01-01T${endTime}`)
         : template.endTime;
       const classBoothId = boothId || template.boothId;
+      const classSubjectTypeId = subjectTypeId || template.subjectTypeId;
 
       // Check if booth exists
       const boothExists = await prisma.booth.findUnique({
@@ -485,16 +521,25 @@ export async function POST(request: Request) {
               teacherId: template.teacherId,
               studentId: assignment.studentId,
               subjectId: template.subjectId,
-              subjectTypeId: template.subjectTypeId, // <-- add this line
+              subjectTypeId: classSubjectTypeId,
               boothId: classBoothId,
-              classTypeId: template.classTypeId, // <-- use the template's classTypeId
+              classTypeId: template.classTypeId,
               templateId: templateId,
               notes: notes,
             },
             include: {
               booth: true,
               classType: true,
-              subject: true,
+              subject: {
+                include: {
+                  subjectToSubjectTypes: {
+                    include: {
+                      subjectType: true,
+                    },
+                  },
+                },
+              },
+              subjectType: true,
               teacher: true,
               student: true,
               regularClassTemplate: true,
@@ -557,10 +602,16 @@ export async function POST(request: Request) {
       ]);
 
       if (!teacherExists) {
-        return Response.json({ error: "先生が見つかりません" }, { status: 404 });
+        return Response.json(
+          { error: "先生が見つかりません" },
+          { status: 404 }
+        );
       }
       if (!studentExists) {
-        return Response.json({ error: "生徒が見つかりません" }, { status: 404 });
+        return Response.json(
+          { error: "生徒が見つかりません" },
+          { status: 404 }
+        );
       }
       if (!subjectExists) {
         return Response.json(
@@ -575,12 +626,33 @@ export async function POST(request: Request) {
         );
       }
       if (!boothExists) {
-        return Response.json({ error: "ブーズが見つかりません" }, { status: 404 });
+        return Response.json(
+          { error: "ブーズが見つかりません" },
+          { status: 404 }
+        );
       }
       if (!classTypeExists) {
         return Response.json(
           { error: "授業タイプが見つかりません" },
           { status: 404 }
+        );
+      }
+
+      // Verify that the subject-subject type combination exists
+      const validPair = await prisma.subjectToSubjectType.findFirst({
+        where: {
+          subjectId,
+          subjectTypeId,
+        },
+      });
+
+      if (!validPair) {
+        return Response.json(
+          {
+            error: "Invalid subject-subject type combination",
+            message: `The subject (${subjectId}) cannot be associated with the specified subject type (${subjectTypeId}).`,
+          },
+          { status: 400 }
         );
       }
 
@@ -748,7 +820,15 @@ export async function POST(request: Request) {
           include: {
             booth: true,
             classType: true,
-            subject: true,
+            subject: {
+              include: {
+                subjectToSubjectTypes: {
+                  include: {
+                    subjectType: true,
+                  },
+                },
+              },
+            },
             subjectType: true,
             teacher: true,
             student: true,
@@ -831,21 +911,43 @@ export async function PUT(request: Request) {
     if (isTemplateBasedClass) {
       // For template-based class sessions, only allow modifying specific fields
       const validatedData = UpdateTemplateClassSessionSchema.parse(body);
-      const { startTime, endTime, boothId, subjectTypeId, notes } = validatedData;
+      const { startTime, endTime, boothId, subjectTypeId, notes } =
+        validatedData;
 
       // Prepare data for update
       const updateData: Record<string, unknown> = {};
 
       if (subjectTypeId !== undefined) {
+        // First check if the subject type exists
         const subjectTypeExists = await prisma.subjectType.findUnique({
           where: { subjectTypeId },
         });
+
         if (!subjectTypeExists) {
           return Response.json(
             { error: "Subject type not found" },
             { status: 404 }
           );
         }
+
+        // Then verify the subject-subject type combination is valid
+        const validPair = await prisma.subjectToSubjectType.findFirst({
+          where: {
+            subjectId: existingClassSession.subjectId,
+            subjectTypeId,
+          },
+        });
+
+        if (!validPair) {
+          return Response.json(
+            {
+              error: "Invalid subject-subject type combination",
+              message: `The subject (${existingClassSession.subjectId}) cannot be associated with the specified subject type (${subjectTypeId}).`,
+            },
+            { status: 400 }
+          );
+        }
+
         updateData.subjectTypeId = subjectTypeId;
       }
 
@@ -949,7 +1051,16 @@ export async function PUT(request: Request) {
         include: {
           booth: true,
           classType: true,
-          subject: true,
+          subject: {
+            include: {
+              subjectToSubjectTypes: {
+                include: {
+                  subjectType: true,
+                },
+              },
+            },
+          },
+          subjectType: true,
           teacher: true,
           student: true,
           regularClassTemplate: true,
@@ -1000,24 +1111,61 @@ export async function PUT(request: Request) {
         }
         updateData.studentId = studentId;
       }
-      if (subjectId !== undefined) {
-        const subjectExists = await prisma.subject.findUnique({
-          where: { subjectId },
-        });
-        if (!subjectExists) {
-          return Response.json({ error: "Subject not found" }, { status: 404 });
+
+      // Check subject and subject type together to ensure valid combination
+      const newSubjectId = subjectId || existingClassSession.subjectId;
+      const newSubjectTypeId =
+        subjectTypeId || existingClassSession.subjectTypeId;
+
+      // Only validate if either subject or subject type is being changed
+      if (subjectId !== undefined || subjectTypeId !== undefined) {
+        // First check if the subject exists
+        if (subjectId !== undefined) {
+          const subjectExists = await prisma.subject.findUnique({
+            where: { subjectId: newSubjectId },
+          });
+          if (!subjectExists) {
+            return Response.json(
+              { error: "Subject not found" },
+              { status: 404 }
+            );
+          }
+          updateData.subjectId = newSubjectId;
         }
-        updateData.subjectId = subjectId;
-      }
-      if (subjectTypeId !== undefined) {
-        const subjectTypeExists = await prisma.subjectType.findUnique({
-          where: { subjectTypeId },
-        });
-        if (!subjectTypeExists) {
-          return Response.json({ error: "Subject type not found" }, { status: 404 });
+
+        // Then check if the subject type exists
+        if (subjectTypeId !== undefined) {
+          const subjectTypeExists = await prisma.subjectType.findUnique({
+            where: { subjectTypeId: newSubjectTypeId },
+          });
+          if (!subjectTypeExists) {
+            return Response.json(
+              { error: "Subject type not found" },
+              { status: 404 }
+            );
+          }
+          updateData.subjectTypeId = newSubjectTypeId;
         }
-        updateData.subjectTypeId = subjectTypeId;
+
+        // Verify the combination is valid
+        const validPair = await prisma.subjectToSubjectType.findFirst({
+          where: {
+            subjectId: newSubjectId,
+            subjectTypeId: newSubjectTypeId,
+          },
+        });
+
+        if (!validPair) {
+          return Response.json(
+            {
+              error: "Invalid subject-subject type combination",
+              message: `The subject (${newSubjectId}) cannot be associated with the specified subject type (${newSubjectTypeId}).`,
+            },
+            { status: 400 }
+          );
+        }
       }
+
       if (boothId !== undefined) {
         const boothExists = await prisma.booth.findUnique({
           where: { boothId },
@@ -1074,12 +1222,12 @@ export async function PUT(request: Request) {
       if (Object.keys(updateData).length > 0) {
         const dateToCheck = date || existingClassSession.date;
         const startToCheck =
-          (updateData.startTime && updateData.startTime instanceof Date)
-            ? updateData.startTime as Date
+          updateData.startTime && updateData.startTime instanceof Date
+            ? (updateData.startTime as Date)
             : existingClassSession.startTime;
         const endToCheck =
-          (updateData.endTime && updateData.endTime instanceof Date)
-            ? updateData.endTime as Date
+          updateData.endTime && updateData.endTime instanceof Date
+            ? (updateData.endTime as Date)
             : existingClassSession.endTime;
         const boothToCheck = boothId || existingClassSession.boothId;
         const teacherToCheck = teacherId || existingClassSession.teacherId;
@@ -1230,7 +1378,15 @@ export async function PUT(request: Request) {
           include: {
             booth: true,
             classType: true,
-            subject: true,
+            subject: {
+              include: {
+                subjectToSubjectTypes: {
+                  include: {
+                    subjectType: true,
+                  },
+                },
+              },
+            },
             subjectType: true,
             teacher: true,
             student: true,

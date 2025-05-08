@@ -123,7 +123,7 @@ export const StudentQuerySchema = z
   })
   .strict();
 
-// Define the schema for subject preference
+// Define the schema for subject preference - updated to validate subject/type pairs
 const SubjectPreferenceSchema = z.object({
   subjectId: z.string({ required_error: "科目IDは必須です" }),
   subjectTypeId: z.string({ required_error: "科目種別IDは必須です" }),

@@ -57,6 +57,11 @@ export async function GET(request: Request) {
         subject: {
           select: {
             name: true,
+            subjectToSubjectTypes: {
+              include: {
+                subjectType: true,
+              },
+            },
           },
         },
         subjectType: {
@@ -102,10 +107,11 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const data = CreateTeacherSubjectSchema.parse(body);
+    const { teacherId, subjectId, subjectTypeId, notes } = data;
 
     // Check if the teacher exists
     const teacher = await prisma.teacher.findUnique({
-      where: { teacherId: data.teacherId },
+      where: { teacherId },
     });
     if (!teacher) {
       return Response.json({ error: "講師が見つかりません" }, { status: 404 });
@@ -113,7 +119,7 @@ export async function POST(request: Request) {
 
     // Check if the subject exists
     const subject = await prisma.subject.findUnique({
-      where: { subjectId: data.subjectId },
+      where: { subjectId },
     });
     if (!subject) {
       return Response.json({ error: "科目が見つかりません" }, { status: 404 });
@@ -121,7 +127,7 @@ export async function POST(request: Request) {
 
     // Check if the subject type exists
     const subjectType = await prisma.subjectType.findUnique({
-      where: { subjectTypeId: data.subjectTypeId },
+      where: { subjectTypeId },
     });
     if (!subjectType) {
       return Response.json(
@@ -130,13 +136,31 @@ export async function POST(request: Request) {
       );
     }
 
+    // Check if the subject-subject type combination is valid
+    const validPair = await prisma.subjectToSubjectType.findFirst({
+      where: {
+        subjectId,
+        subjectTypeId,
+      },
+    });
+
+    if (!validPair) {
+      return Response.json(
+        {
+          error: "無効な科目と科目タイプの組み合わせ",
+          message: `科目ID ${subjectId} と科目タイプID ${subjectTypeId} の組み合わせは有効ではありません。`,
+        },
+        { status: 400 }
+      );
+    }
+
     // Check if the teacher-subject relation already exists
     const existingRelation = await prisma.teacherSubject.findUnique({
       where: {
         teacherId_subjectId_subjectTypeId: {
-          teacherId: data.teacherId,
-          subjectId: data.subjectId,
-          subjectTypeId: data.subjectTypeId,
+          teacherId,
+          subjectId,
+          subjectTypeId,
         },
       },
     });
@@ -148,7 +172,14 @@ export async function POST(request: Request) {
       );
     }
 
-    const teacherSubject = await prisma.teacherSubject.create({ data });
+    const teacherSubject = await prisma.teacherSubject.create({
+      data: {
+        teacherId,
+        subjectId,
+        subjectTypeId,
+        notes,
+      },
+    });
 
     return Response.json(
       {
@@ -202,6 +233,9 @@ export async function PUT(request: Request) {
         { status: 404 }
       );
     }
+
+    // The PUT endpoint is only updating notes, not changing the subject/subject type combination
+    // so we don't need to re-validate the combination
 
     const teacherSubject = await prisma.teacherSubject.update({
       where: {

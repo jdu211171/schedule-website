@@ -85,6 +85,10 @@ export const CreateClassSessionFromTemplateSchema = z
       .string()
       .max(50, { message: "ブースIDは50文字以内で入力してください" })
       .optional(), // 任意のオーバーライド
+    subjectTypeId: z
+      .string()
+      .max(50, { message: "科目タイプIDは50文字以内で入力してください" })
+      .optional(), // Allow selecting different subject type
     notes: z
       .string()
       .max(255, { message: "備考は255文字以内で入力してください" })

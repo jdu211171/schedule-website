@@ -20,8 +20,16 @@ export async function GET(
       include: {
         booth: true,
         classType: true,
-        subject: true,
-        subjectType: true, // <-- Ensure subjectType is included
+        subject: {
+          include: {
+            subjectToSubjectTypes: {
+              include: {
+                subjectType: true,
+              },
+            },
+          },
+        },
+        subjectType: true,
         teacher: true,
         student: true,
         regularClassTemplate: true,
