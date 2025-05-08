@@ -51,9 +51,7 @@ export function GradeTable() {
     {
       accessorKey: "studentTypeId",
       header: "学生タイプ",
-      cell: ({ row }) => {
-        return row.original.studentType.name;
-      },
+      cell: ({ row }) => row.original.studentType?.name || "-",
     },
     {
       accessorKey: "gradeYear",
