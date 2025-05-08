@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -30,12 +30,15 @@ import {
 import { Input } from "@/components/ui/input";
 import { useTeachers } from "@/hooks/useTeacherQuery";
 import { useSubjects } from "@/hooks/useSubjectQuery";
+// import { useSubjectTypes } from "@/hooks/useSubjectTypeQuery";
 import {
   useTeacherSubjectCreate,
   useTeacherSubjectUpdate,
 } from "@/hooks/useTeacherSubjectMutation";
 import { TeacherSubject } from "@prisma/client";
 import { CreateTeacherSubjectSchema } from "@/schemas/teacher-subject.schema";
+import { fetcher } from "@/lib/fetcher";
+import { SubjectType } from "@/schemas/subject-type.schema";
 
 interface TeacherSubjectFormDialogProps {
   open: boolean;
@@ -49,12 +52,18 @@ export function TeacherSubjectFormDialog({
   teacherSubject,
 }: TeacherSubjectFormDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [subjectTypes, setSubjectTypes] = useState<SubjectType[]>([]);
+  const [selectedSubject, setSelectedSubject] = useState<string>("");
+  const [selectedTeacher, setSelectedTeacher] = useState<string>("");
+  const [existingRelationships, setExistingRelationships] = useState<TeacherSubject[]>([]);
+
   const createTeacherSubjectMutation = useTeacherSubjectCreate();
   const updateTeacherSubjectMutation = useTeacherSubjectUpdate();
 
   const isEditing = !!teacherSubject;
   const { data: teachers } = useTeachers();
   const { data: subjects } = useSubjects();
+
   console.log(updateTeacherSubjectMutation.error);
 
   const form = useForm<z.infer<typeof CreateTeacherSubjectSchema>>({
@@ -62,15 +71,117 @@ export function TeacherSubjectFormDialog({
     defaultValues: {
       teacherId: teacherSubject?.teacherId || "",
       subjectId: teacherSubject?.subjectId || "",
+      subjectTypeId: teacherSubject?.subjectTypeId || "",
       notes: teacherSubject?.notes || "",
     },
   });
+
+  // Fetch existing relationships for the selected teacher
+  useEffect(() => {
+    if (selectedTeacher) {
+      const fetchExistingRelationships = async () => {
+        try {
+          const response = await fetcher<{data: TeacherSubject[]}>(`/api/teacher-subjects?teacherId=${selectedTeacher}&limit=100`);
+          setExistingRelationships(response.data);
+        } catch (error) {
+          console.error("Failed to fetch existing relationships:", error);
+          setExistingRelationships([]);
+        }
+      };
+
+      fetchExistingRelationships();
+    } else {
+      setExistingRelationships([]);
+    }
+  }, [selectedTeacher]);
+
+  // Update available subject types when selected subject changes
+  useEffect(() => {
+    if (selectedSubject && subjects?.data) {
+      const subject = subjects.data.find(s => s.subjectId === selectedSubject);
+      if (subject && subject.subjectToSubjectTypes) {
+        // Filter out subject types that already have a relationship with this teacher and subject
+        const availableSubjectTypes = subject.subjectToSubjectTypes
+          .map(st => st.subjectType)
+          .filter((subjectType): subjectType is SubjectType => !!subjectType)
+          .filter(subjectType => {
+            // If we're editing, allow the current subject type
+            if (isEditing && teacherSubject &&
+                teacherSubject.subjectId === selectedSubject &&
+                teacherSubject.subjectTypeId === (subjectType as SubjectType)?.subjectTypeId) {
+              return true;
+            }
+
+            // Filter out subject types that already have a relationship
+            return !existingRelationships.some(rel =>
+              rel.subjectId === selectedSubject &&
+              rel.subjectTypeId === (subjectType as SubjectType)?.subjectTypeId
+            );
+          });
+
+        setSubjectTypes(availableSubjectTypes);
+      } else {
+        setSubjectTypes([]);
+      }
+    } else {
+      setSubjectTypes([]);
+    }
+  }, [selectedSubject, subjects?.data, existingRelationships, isEditing, teacherSubject]);
+
+  // Get available subjects (filter out subjects that have all their subject types assigned)
+  const getAvailableSubjects = () => {
+    if (!subjects?.data) return [];
+
+    return subjects.data.filter(subject => {
+      // If we're editing, always include the current subject
+      if (isEditing && teacherSubject && teacherSubject.subjectId === subject.subjectId) {
+        return true;
+      }
+
+      // Check if there are any subject types available for this subject
+      if (!subject.subjectToSubjectTypes || subject.subjectToSubjectTypes.length === 0) {
+        return false;
+      }
+
+      // Check if all subject types for this subject are already assigned to this teacher
+      const allTypesAssigned = subject.subjectToSubjectTypes.every(st =>
+        existingRelationships.some(rel =>
+          rel.subjectId === subject.subjectId &&
+          rel.subjectTypeId === st.subjectTypeId
+        )
+      );
+
+      // Return true if not all types are assigned (meaning there's at least one available)
+      return !allTypesAssigned;
+    });
+  };
+
+  // Watch for changes to form fields
+  useEffect(() => {
+    const subscription = form.watch((value, { name }) => {
+      if (name === "teacherId") {
+        setSelectedTeacher(value.teacherId || "");
+        // Reset subject and subject type when teacher changes
+        if (!isEditing) {
+          form.setValue("subjectId", "");
+          form.setValue("subjectTypeId", "");
+        }
+      }
+      if (name === "subjectId") {
+        setSelectedSubject(value.subjectId || "");
+        // Reset subject type when subject changes
+        if (!isEditing) {
+          form.setValue("subjectTypeId", "");
+        }
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [form, isEditing]);
 
   async function onSubmit(values: z.infer<typeof CreateTeacherSubjectSchema>) {
     setIsSubmitting(true);
     try {
       if (isEditing && teacherSubject) {
-        console.log("values: ", values);
         await updateTeacherSubjectMutation.mutateAsync(values);
       } else {
         await createTeacherSubjectMutation.mutateAsync(values);
@@ -83,6 +194,8 @@ export function TeacherSubjectFormDialog({
       setIsSubmitting(false);
     }
   }
+
+  const availableSubjects = getAvailableSubjects();
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -101,7 +214,14 @@ export function TeacherSubjectFormDialog({
                 <FormItem>
                   <FormLabel>講師</FormLabel>
                   <FormControl>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        setSelectedTeacher(value);
+                      }}
+                      value={field.value}
+                      disabled={isEditing}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="講師を選択" />
                       </SelectTrigger>
@@ -128,12 +248,16 @@ export function TeacherSubjectFormDialog({
                 <FormItem>
                   <FormLabel>科目</FormLabel>
                   <FormControl>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value}
+                      disabled={isEditing || !selectedTeacher || availableSubjects.length === 0}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="科目を選択" />
                       </SelectTrigger>
                       <SelectContent>
-                        {subjects?.data.map((subject) => (
+                        {availableSubjects.map((subject) => (
                           <SelectItem
                             key={subject.subjectId}
                             value={subject.subjectId}
@@ -144,6 +268,43 @@ export function TeacherSubjectFormDialog({
                       </SelectContent>
                     </Select>
                   </FormControl>
+                  {selectedTeacher && availableSubjects.length === 0 && (
+                    <p className="text-sm text-yellow-600">この講師に対して追加可能な科目がありません</p>
+                  )}
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="subjectTypeId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>科目タイプ</FormLabel>
+                  <FormControl>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value}
+                      disabled={isEditing || !selectedSubject || subjectTypes.length === 0}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="科目タイプを選択" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {subjectTypes.map((type) => (
+                          <SelectItem
+                            key={type.subjectTypeId}
+                            value={type.subjectTypeId}
+                          >
+                            {type.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </FormControl>
+                  {selectedSubject && subjectTypes.length === 0 && (
+                    <p className="text-sm text-yellow-600">この科目に対して追加可能な科目タイプがありません</p>
+                  )}
                   <FormMessage />
                 </FormItem>
               )}
