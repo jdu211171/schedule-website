@@ -7,10 +7,7 @@ import { Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/data-table";
 import { useStudentTypes } from "@/hooks/useStudentTypeQuery";
-import {
-  useStudentTypeDelete,
-  getResolvedStudentTypeId,
-} from "@/hooks/useStudentTypeMutation";
+import { useStudentTypeDelete, getResolvedStudentTypeId } from "@/hooks/useStudentTypeMutation";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,7 +25,10 @@ export function StudentTypeTable() {
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
   const pageSize = 10;
-  const { data: studentTypes, isLoading } = useStudentTypes({
+  const {
+    data: studentTypes,
+    isLoading,
+  } = useStudentTypes({
     page,
     limit: pageSize,
     name: searchTerm || undefined,
@@ -52,7 +52,7 @@ export function StudentTypeTable() {
     {
       accessorKey: "maxYears",
       header: "最大学年数",
-      cell: ({ row }) => row.original.maxYears || "-",
+      cell: ({ row }) => row.original.maxYears || "-"
     },
     {
       accessorKey: "description",
@@ -63,9 +63,7 @@ export function StudentTypeTable() {
       header: "操作",
       cell: ({ row }) => {
         // Type-safe check for _optimistic property
-        const isOptimistic = (
-          row.original as StudentType & { _optimistic?: boolean }
-        )._optimistic;
+        const isOptimistic = (row.original as StudentType & { _optimistic?: boolean })._optimistic;
 
         return (
           <div className="flex gap-2">
@@ -74,20 +72,14 @@ export function StudentTypeTable() {
               size="icon"
               onClick={() => setStudentTypeToEdit(row.original)}
             >
-              <Pencil
-                className={`h-4 w-4 ${isOptimistic ? "opacity-70" : ""}`}
-              />
+              <Pencil className={`h-4 w-4 ${isOptimistic ? 'opacity-70' : ''}`} />
             </Button>
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setStudentTypeToDelete(row.original)}
             >
-              <Trash2
-                className={`h-4 w-4 text-destructive ${
-                  isOptimistic ? "opacity-70" : ""
-                }`}
-              />
+              <Trash2 className={`h-4 w-4 text-destructive ${isOptimistic ? 'opacity-70' : ''}`} />
             </Button>
           </div>
         );
@@ -98,9 +90,7 @@ export function StudentTypeTable() {
   const handleDeleteStudentType = () => {
     if (studentTypeToDelete) {
       // Close the dialog immediately for better UX
-      const studentTypeId = getResolvedStudentTypeId(
-        studentTypeToDelete.studentTypeId
-      );
+      const studentTypeId = getResolvedStudentTypeId(studentTypeToDelete.studentTypeId);
       setStudentTypeToDelete(null);
       deleteStudentTypeMutation.mutate(studentTypeId);
     }

@@ -46,7 +46,8 @@ export function GradeFormDialog({
   onOpenChange,
   grade,
 }: GradeFormDialogProps) {
-  const [selectedStudentType, setSelectedStudentType] = useState<StudentType | null>(null);
+  const [selectedStudentType, setSelectedStudentType] =
+    useState<StudentType | null>(null);
   const [isNameManuallyEdited, setIsNameManuallyEdited] = useState(!!grade);
 
   const createGradeMutation = useGradeCreate();
@@ -89,7 +90,10 @@ export function GradeFormDialog({
 
   useEffect(() => {
     if (studentTypeId && studentTypes?.data) {
-      const found = studentTypes.data.find((type: StudentType) => type.studentTypeId === studentTypeId) || null;
+      const found =
+        studentTypes.data.find(
+          (type: StudentType) => type.studentTypeId === studentTypeId
+        ) || null;
       setSelectedStudentType(found);
     } else {
       setSelectedStudentType(null);
@@ -101,29 +105,28 @@ export function GradeFormDialog({
     if (!isNameManuallyEdited && selectedStudentType) {
       if (!selectedStudentType.maxYears) {
         form.setValue("name", selectedStudentType.name);
-      } else if (gradeYear !== null && gradeYear !== undefined && gradeYear > 0) {
+      } else if (
+        gradeYear !== null &&
+        gradeYear !== undefined &&
+        gradeYear > 0
+      ) {
         form.setValue("name", `${selectedStudentType.name}${gradeYear}年生`);
       }
     }
   }, [form, selectedStudentType, gradeYear, isNameManuallyEdited]);
 
   // Generate grade year options based on selectedStudentType.maxYears
-  const gradeYearOptions = selectedStudentType?.maxYears && typeof selectedStudentType.maxYears === 'number'
-    ? Array.from({ length: selectedStudentType.maxYears }, (_, i) => i + 1)
-    : [];
+  const gradeYearOptions =
+    selectedStudentType?.maxYears &&
+    typeof selectedStudentType.maxYears === "number"
+      ? Array.from({ length: selectedStudentType.maxYears }, (_, i) => i + 1)
+      : [];
 
   function onSubmit(values: z.infer<typeof formSchema>) {
     // Ensure the notes field is explicitly included, even if empty
-    // Only proceed if selectedStudentType is not null
-    if (!selectedStudentType) {
-      // Optionally, show an error or return early
-      return;
-    }
-
     const updatedValues = {
       ...values,
       notes: values.notes ?? "", // Ensure notes is at least an empty string, not undefined
-      studentType: selectedStudentType
     };
 
     // Close the dialog immediately for better UX
@@ -135,9 +138,13 @@ export function GradeFormDialog({
       updateGradeMutation.mutate({
         gradeId: grade.gradeId,
         ...updatedValues,
+        studentType: selectedStudentType as StudentType, // Ensure studentType is included
       });
     } else {
-      createGradeMutation.mutate(updatedValues);
+      createGradeMutation.mutate({
+        ...updatedValues,
+        studentType: selectedStudentType as StudentType, // Ensure studentType is included
+      });
     }
   }
 
@@ -155,9 +162,7 @@ export function GradeFormDialog({
     >
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>
-            {isEditing ? "学年の編集" : "学年の作成"}
-          </DialogTitle>
+          <DialogTitle>{isEditing ? "学年の編集" : "学年の作成"}</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -228,7 +233,9 @@ export function GradeFormDialog({
                           field.onChange(value === "none" ? 0 : parseInt(value))
                         }
                         value={field.value?.toString() || "none"}
-                        disabled={!selectedStudentType || !selectedStudentType.maxYears}
+                        disabled={
+                          !selectedStudentType || !selectedStudentType.maxYears
+                        }
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="学年を選択" />
@@ -266,9 +273,7 @@ export function GradeFormDialog({
               )}
             />
             <DialogFooter>
-              <Button type="submit">
-                {isEditing ? "変更を保存" : "作成"}
-              </Button>
+              <Button type="submit">{isEditing ? "変更を保存" : "作成"}</Button>
             </DialogFooter>
           </form>
         </Form>
