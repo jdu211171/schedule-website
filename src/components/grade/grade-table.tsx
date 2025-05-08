@@ -28,7 +28,6 @@ export function GradeTable() {
   const {
     data: gradesData,
     isLoading,
-    isFetching,
   } = useGrades({
     page,
     limit: pageSize,
@@ -51,7 +50,9 @@ export function GradeTable() {
     {
       accessorKey: "studentTypeId",
       header: "学生タイプ",
-      cell: ({ row }) => row.original.studentType?.name || "-",
+      cell: ({ row }) => {
+        return row.original.studentType.name;
+      },
     },
     {
       accessorKey: "gradeYear",
@@ -92,16 +93,12 @@ export function GradeTable() {
     },
   ];
 
-  const handleDeleteGrade = async () => {
+  const handleDeleteGrade = () => {
     if (gradeToDelete) {
-      try {
-        // Close the dialog immediately for better UX
-        const gradeId = getResolvedGradeId(gradeToDelete.gradeId);
-        setGradeToDelete(null);
-        await deleteGradeMutation.mutateAsync(gradeId);
-      } catch (error) {
-        console.error("学年の削除に失敗しました:", error);
-      }
+      // Close the dialog immediately for better UX
+      const gradeId = getResolvedGradeId(gradeToDelete.gradeId);
+      setGradeToDelete(null);
+      deleteGradeMutation.mutate(gradeId);
     }
   };
 
@@ -116,7 +113,7 @@ export function GradeTable() {
       <DataTable
         columns={columns}
         data={grades}
-        isLoading={isLoading || isFetching && !grades.length}
+        isLoading={isLoading && !grades.length}
         searchPlaceholder="学年を検索..."
         onSearch={setSearchTerm}
         searchValue={searchTerm}
@@ -159,11 +156,8 @@ export function GradeTable() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>キャンセル</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteGrade}
-              disabled={deleteGradeMutation.isPending}
-            >
-              {deleteGradeMutation.isPending ? "削除中..." : "削除"}
+            <AlertDialogAction onClick={handleDeleteGrade}>
+              削除
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

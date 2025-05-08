@@ -49,6 +49,7 @@ const studentTypeGradeConfig: Record<
   小学生: { name: "小学", years: [1, 2, 3, 4, 5, 6] },
   中学生: { name: "中学", years: [1, 2, 3] },
   高校生: { name: "高校", years: [1, 2, 3] },
+  大学生: { name: "大学", years: [1, 2, 3, 4] },
   浪人生: { name: "浪人生", years: null },
   大人: { name: "大人", years: null },
 };
@@ -68,6 +69,7 @@ export function GradeFormDialog({
   const isSubmitting =
     createGradeMutation.isPending || updateGradeMutation.isPending;
   const { data: studentTypes } = useStudentTypes();
+  // Still keep the query but make it non-priority
   const { data: gradeData } = useGrade(grade?.gradeId || "");
 
   const isEditing = !!grade;
@@ -77,18 +79,38 @@ export function GradeFormDialog({
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: "",
-      studentTypeId: "",
-      gradeYear: 0,
-      notes: "",
+      name: grade?.name || "",
+      studentTypeId: grade?.studentTypeId || "",
+      gradeYear: grade?.gradeYear || 0,
+      notes: grade?.notes || "",
     },
   });
 
   const gradeYear = form.watch("gradeYear");
   const studentTypeId = form.watch("studentTypeId");
 
+  // Initialize form with the passed grade directly
   useEffect(() => {
-    if (gradeData) {
+    if (grade) {
+      form.reset({
+        name: grade.name || "",
+        studentTypeId: grade.studentTypeId || "",
+        gradeYear: grade.gradeYear || 0,
+        notes: grade.notes || "",
+      });
+    } else {
+      form.reset({
+        name: "",
+        studentTypeId: "",
+        gradeYear: 0,
+        notes: "",
+      });
+    }
+  }, [grade, form]);
+
+  // Still use gradeData as a fallback for refreshed data if it becomes available
+  useEffect(() => {
+    if (gradeData && isEditing) {
       form.reset({
         name: gradeData.name || "",
         studentTypeId: gradeData.studentTypeId || "",
@@ -96,7 +118,7 @@ export function GradeFormDialog({
         notes: gradeData.notes || "",
       });
     }
-  }, [gradeData, form]);
+  }, [gradeData, form, isEditing]);
 
   useEffect(() => {
     if (studentTypeId) {
@@ -149,7 +171,17 @@ export function GradeFormDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(open) => {
+        if (!open) {
+          // Reset form when dialog is closed
+          form.reset();
+          setIsNameManuallyEdited(false);
+        }
+        onOpenChange(open);
+      }}
+    >
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>{isEditing ? "学年の編集" : "学年の作成"}</DialogTitle>
