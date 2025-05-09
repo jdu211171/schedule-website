@@ -75,10 +75,10 @@ export const EditTemplateClassSessionForm: React.FC<
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
 
-  // Убедимся, что classId не undefined
+  // Ensure classId is not undefined
   const classId = session?.classId || "";
 
-  // Исправленный вызов хука с явным указанием типа
+  // Fixed hook call with explicit type
   const {
     mutateAsync: updateClassSessionMutateAsync,
     isSuccess,
@@ -135,7 +135,7 @@ export const EditTemplateClassSessionForm: React.FC<
 
   useEffect(() => {
     if (isSuccess) {
-      setSuccessMsg("Занятие успешно обновлено");
+      setSuccessMsg("セッションが正常に更新されました");
       setTimeout(() => {
         onSessionUpdated();
         onOpenChange(false);
@@ -161,10 +161,10 @@ export const EditTemplateClassSessionForm: React.FC<
 
   const timeOptions = generateTimeOptions();
 
-  // Обработчик сохранения
+  // Save handler
   const handleSaveClick = async () => {
     if (!session?.classId) {
-      setApiError("Ошибка: Отсутствует идентификатор занятия");
+      setApiError("エラー: セッションIDが見つかりません");
       return;
     }
 
@@ -183,8 +183,8 @@ export const EditTemplateClassSessionForm: React.FC<
         ? formatTo24Hour(formData.endTime)
         : undefined;
 
-      // Консоль для отладки
-      console.log("Отправляемые данные:", {
+      // Console for debugging
+      console.log("Submitting data:", {
         classId: session.classId,
         startTime: startTime24,
         endTime: endTime24,
@@ -192,7 +192,7 @@ export const EditTemplateClassSessionForm: React.FC<
         notes: formData.notes,
       });
 
-      // Явно указываем classId в отправляемых данных
+      // Explicitly specify classId in the submitted data
       await updateClassSessionMutateAsync({
         classId: session.classId,
         startTime: startTime24,
@@ -201,11 +201,11 @@ export const EditTemplateClassSessionForm: React.FC<
         notes: formData.notes,
       });
     } catch (err) {
-      console.error("Ошибка при обновлении:", err);
-      let errorMessage = "Ошибка при обновлении занятия";
+      console.error("Error updating session:", err);
+      let errorMessage = "セッションの更新中にエラーが発生しました";
 
       if (err && typeof err === "object" && "message" in err) {
-        errorMessage += `: ${(err as { message?: string }).message}`;
+        errorMessage = (err as Record<string, unknown>).message as string;
       }
 
       setApiError(errorMessage);
@@ -218,21 +218,21 @@ export const EditTemplateClassSessionForm: React.FC<
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Редактировать занятие (шаблон)</AlertDialogTitle>
+          <AlertDialogTitle>テンプレート授業の編集</AlertDialogTitle>
           <AlertDialogDescription>
-            Измените время, будку или примечания и нажмите &quot;Сохранить&quot;.
+            時間、ブース、または備考を変更し、「保存」をクリックしてください。
           </AlertDialogDescription>
         </AlertDialogHeader>
 
         <div className="grid gap-4 py-4">
           <div>
-            <Label htmlFor="startTime">Время начала</Label>
+            <Label htmlFor="startTime">開始時間</Label>
             <Select
               value={startTime}
               onValueChange={(value) => setValue("startTime", value)}
             >
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="Выберите время начала" />
+                <SelectValue placeholder="開始時間を選択" />
               </SelectTrigger>
               <SelectContent className="max-h-[200px] overflow-y-auto">
                 {timeOptions.map((time) => (
@@ -250,13 +250,13 @@ export const EditTemplateClassSessionForm: React.FC<
           </div>
 
           <div>
-            <Label htmlFor="endTime">Время окончания</Label>
+            <Label htmlFor="endTime">終了時間</Label>
             <Select
               value={endTime}
               onValueChange={(value) => setValue("endTime", value)}
             >
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="Выберите время окончания" />
+                <SelectValue placeholder="終了時間を選択" />
               </SelectTrigger>
               <SelectContent className="max-h-[200px] overflow-y-auto">
                 {timeOptions.map((time) => (
@@ -274,7 +274,7 @@ export const EditTemplateClassSessionForm: React.FC<
           </div>
 
           <div>
-            <Label htmlFor="boothId">Будка</Label>
+            <Label htmlFor="boothId">ブース</Label>
             <Select
               value={selectedBoothId || "none"}
               onValueChange={(value) =>
@@ -282,13 +282,13 @@ export const EditTemplateClassSessionForm: React.FC<
               }
             >
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="Выберите будку" />
+                <SelectValue placeholder="ブースを選択" />
               </SelectTrigger>
               <SelectContent>
                 {isBoothsLoading ? (
-                  <SelectItem value="loading">Загрузка будок...</SelectItem>
+                  <SelectItem value="loading">ブースを読み込み中...</SelectItem>
                 ) : isBoothsError ? (
-                  <SelectItem value="error">Ошибка загрузки будок</SelectItem>
+                  <SelectItem value="error">ブースの読み込みエラー</SelectItem>
                 ) : booths.length > 0 ? (
                   <>
                     <SelectItem value="none">-</SelectItem>
@@ -299,7 +299,7 @@ export const EditTemplateClassSessionForm: React.FC<
                     ))}
                   </>
                 ) : (
-                  <SelectItem value="empty">Нет доступных будок</SelectItem>
+                  <SelectItem value="empty">利用可能なブースがありません</SelectItem>
                 )}
               </SelectContent>
             </Select>
@@ -311,7 +311,7 @@ export const EditTemplateClassSessionForm: React.FC<
           </div>
 
           <div>
-            <Label htmlFor="notes">Примечания</Label>
+            <Label htmlFor="notes">備考</Label>
             <Input id="notes" {...register("notes")} />
             {form.formState.errors.notes && (
               <p className="text-sm text-red-500">
@@ -320,14 +320,14 @@ export const EditTemplateClassSessionForm: React.FC<
             )}
           </div>
 
-          {/* Сообщения об успехе */}
+          {/* Success messages */}
           {successMsg && (
             <div className="p-3 rounded bg-green-50 border border-green-200 text-green-600 text-sm">
               {successMsg}
             </div>
           )}
 
-          {/* Ошибки API */}
+          {/* API Errors */}
           {apiError && (
             <div className="p-3 rounded bg-red-50 border border-red-200 text-red-600 text-sm">
               {apiError}
@@ -338,18 +338,18 @@ export const EditTemplateClassSessionForm: React.FC<
             <p className="text-sm text-red-500">
               {typeof error === "object" && "message" in error
                 ? String(error.message)
-                : "Произошла ошибка"}
+                : "エラーが発生しました"}
             </p>
           )}
 
           <AlertDialogFooter>
-            <AlertDialogCancel type="button">Отмена</AlertDialogCancel>
+            <AlertDialogCancel type="button">キャンセル</AlertDialogCancel>
             <Button
               onClick={handleSaveClick}
               disabled={isSubmitting || isBoothsLoading}
               type="button"
             >
-              {isSubmitting ? "Сохранение..." : "Сохранить"}
+              {isSubmitting ? "保存中..." : "保存"}
             </Button>
           </AlertDialogFooter>
         </div>

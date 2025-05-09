@@ -27,7 +27,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-// Определите Zod-схему, если она у вас есть для редактирования standalone session
+// Define the Zod schema if you have one for editing standalone session
 const EditStandaloneClassSessionSchema = z.object({
   startTime: z.string().optional(),
   endTime: z.string().optional(),
@@ -225,15 +225,15 @@ export function EditStandaloneClassSessionForm({
         }
 
         if (session) {
-          // Значения устанавливаются через defaultValues в useForm
+          // Values are set via defaultValues in useForm
         }
       } catch (err) {
         setError(
           err && typeof err === "object" && "message" in err
             ? String((err as { message?: string }).message)
-            : "Не удалось загрузить данные для формы."
+            : "フォームデータの読み込みに失敗しました。"
         );
-        console.error("Ошибка загрузки данных формы:", err);
+        console.error("フォームデータの読み込みエラー:", err);
       }
     };
 
@@ -287,20 +287,20 @@ export function EditStandaloneClassSessionForm({
 
       if (response.ok) {
         setIsLoading(false);
-        setSuccessMsg("Занятие успешно обновлено.");
+        setSuccessMsg("授業が正常に更新されました。");
         setTimeout(() => {
           onOpenChange(false);
           onSessionUpdated();
         }, 1000);
       } else {
         const errorData = await response.json();
-        setError(errorData?.message || "Не удалось обновить занятие.");
+        setError(errorData?.message || "授業の更新に失敗しました。");
         setIsLoading(false);
       }
     } catch (err) {
-      setError("Произошла ошибка при обновлении занятия.");
+      setError("授業の更新中にエラーが発生しました。");
       setIsLoading(false);
-      console.error("Ошибка обновления занятия:", err);
+      console.error("授業の更新エラー:", err);
     }
   };
 
@@ -326,16 +326,16 @@ export function EditStandaloneClassSessionForm({
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent className="sm:max-w-[425px]">
         <AlertDialogHeader>
-          <AlertDialogTitle>Редактировать занятие</AlertDialogTitle>
+          <AlertDialogTitle>授業の編集</AlertDialogTitle>
           <AlertDialogDescription>
-            Измените детали занятия.
+            授業の詳細を変更してください。
           </AlertDialogDescription>
         </AlertDialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4 py-4">
-          {/* Дата - только для отображения */}
+          {/* Date - display only */}
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="date" className="text-right">
-              Дата
+              日付
             </Label>
             <Input
               id="date"
@@ -357,14 +357,14 @@ export function EditStandaloneClassSessionForm({
 
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="start-time" className="text-right">
-              Начало
+              開始
             </Label>
             <Select
               value={form.watch("startTime")}
               onValueChange={(value) => setValue("startTime", value)}
             >
               <SelectTrigger className="col-span-3 w-full">
-                <SelectValue placeholder="Выберите время начала" />
+                <SelectValue placeholder="開始時間を選択" />
               </SelectTrigger>
               <SelectContent className="max-h-[200px] overflow-y-auto">
                 {timeOptions.map((time) => (
@@ -383,14 +383,14 @@ export function EditStandaloneClassSessionForm({
 
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="end-time" className="text-right">
-              Конец
+              終了
             </Label>
             <Select
               value={form.watch("endTime")}
               onValueChange={(value) => setValue("endTime", value)}
             >
               <SelectTrigger className="col-span-3 w-full">
-                <SelectValue placeholder="Выберите время окончания" />
+                <SelectValue placeholder="終了時間を選択" />
               </SelectTrigger>
               <SelectContent className="max-h-[200px] overflow-y-auto">
                 {timeOptions.map((time) => (
@@ -409,7 +409,7 @@ export function EditStandaloneClassSessionForm({
 
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="teacherId" className="text-right">
-              Преподаватель
+              講師
             </Label>
             <Select
               value={selectedTeacherId || "none"}
@@ -418,7 +418,7 @@ export function EditStandaloneClassSessionForm({
               }
             >
               <SelectTrigger className="w-full col-span-3">
-                <SelectValue placeholder="Выберите преподавателя" />
+                <SelectValue placeholder="講師を選択" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">-</SelectItem>
@@ -438,7 +438,7 @@ export function EditStandaloneClassSessionForm({
 
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="studentId" className="text-right">
-              Студент
+              生徒
             </Label>
             <Select
               value={selectedStudentId || "none"}
@@ -447,7 +447,7 @@ export function EditStandaloneClassSessionForm({
               }
             >
               <SelectTrigger className="w-full col-span-3">
-                <SelectValue placeholder="Выберите студента" />
+                <SelectValue placeholder="生徒を選択" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">-</SelectItem>
@@ -467,7 +467,7 @@ export function EditStandaloneClassSessionForm({
 
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="subjectId" className="text-right">
-              Предмет
+              科目
             </Label>
             <Select
               value={selectedSubjectId || "none"}
@@ -476,7 +476,7 @@ export function EditStandaloneClassSessionForm({
               }
             >
               <SelectTrigger className="w-full col-span-3">
-                <SelectValue placeholder="Выберите предмет" />
+                <SelectValue placeholder="科目を選択" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">-</SelectItem>
@@ -496,7 +496,7 @@ export function EditStandaloneClassSessionForm({
 
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="classTypeId" className="text-right">
-              Тип занятия
+              授業タイプ
             </Label>
             <Select
               value={selectedClassTypeId || "none"}
@@ -505,7 +505,7 @@ export function EditStandaloneClassSessionForm({
               }
             >
               <SelectTrigger className="w-full col-span-3">
-                <SelectValue placeholder="Выберите тип занятия" />
+                <SelectValue placeholder="授業タイプを選択" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">-</SelectItem>
@@ -528,7 +528,7 @@ export function EditStandaloneClassSessionForm({
 
           <div className="grid grid-cols-4 items-start gap-4">
             <Label htmlFor="notes" className="text-right mt-2">
-              Заметки
+              備考
             </Label>
             <Textarea
               id="notes"
@@ -559,10 +559,10 @@ export function EditStandaloneClassSessionForm({
               type="button"
               onClick={() => onOpenChange(false)}
             >
-              Отмена
+              キャンセル
             </AlertDialogCancel>
             <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Сохранение..." : "Сохранить"}
+              {isLoading ? "保存中..." : "保存"}
             </Button>
           </AlertDialogFooter>
         </form>

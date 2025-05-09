@@ -279,11 +279,17 @@ export default function AdminCalendarList() {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead onClick={() => handleSort("date")}>Date</TableHead>
-            <TableHead onClick={() => handleSort("startTime")}>Start</TableHead>
-            <TableHead onClick={() => handleSort("endTime")}>End</TableHead>
-            <TableHead onClick={() => handleSort("boothId")}>Booth</TableHead> {/* Changed from boothName to boothId for direct sort, or use boothName if getSortValue handles it well */}
-            <TableHead>Actions</TableHead>
+            <TableHead onClick={() => handleSort("date")}>日付</TableHead>
+            <TableHead onClick={() => handleSort("startTime")}>開始</TableHead>
+            <TableHead onClick={() => handleSort("endTime")}>終了</TableHead>
+            <TableHead onClick={() => handleSort("teacherId")}>講師</TableHead>
+            <TableHead onClick={() => handleSort("studentId")}>生徒</TableHead>
+            <TableHead onClick={() => handleSort("subjectId")}>科目</TableHead>
+            <TableHead onClick={() => handleSort("subjectTypeId")}>科目タイプ</TableHead>
+            <TableHead onClick={() => handleSort("boothId")}>ブース</TableHead>
+            <TableHead onClick={() => handleSort("classTypeId")}>授業タイプ</TableHead>
+            <TableHead>備考</TableHead>
+            <TableHead>操作</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -292,15 +298,19 @@ export default function AdminCalendarList() {
               <TableCell>{formatDate(session.date)}</TableCell>
               <TableCell>{formatTime(session.startTime)}</TableCell>
               <TableCell>{formatTime(session.endTime)}</TableCell>
-              <TableCell>
-                {session.booth?.name || "N/A"}
-              </TableCell>
+              <TableCell>{session.teacher?.name || session.teacherId || "N/A"}</TableCell>
+              <TableCell>{session.student?.name || session.studentId || "N/A"}</TableCell>
+              <TableCell>{session.subject?.name || session.subjectId || "N/A"}</TableCell>
+              <TableCell>{session.subjectType?.name || session.subjectTypeId || "N/A"}</TableCell>
+              <TableCell>{session.booth?.name || session.boothId || "N/A"}</TableCell>
+              <TableCell>{session.classType?.name || session.classTypeId || "N/A"}</TableCell>
+              <TableCell>{session.notes || ""}</TableCell>
               <TableCell>
                 <Button variant="outline" size="sm" onClick={() => openEditDialog(session)}>
-                  Edit
+                  編集
                 </Button>
                 <Button variant="destructive" size="sm" onClick={() => openDeleteDialog(session)} style={{ marginLeft: '8px' }}>
-                  Delete
+                  削除
                 </Button>
               </TableCell>
             </TableRow>
@@ -312,14 +322,14 @@ export default function AdminCalendarList() {
         <AlertDialog open onOpenChange={setIsDeleteDialogOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Confirm Deletion</AlertDialogTitle>
+              <AlertDialogTitle>削除の確認</AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to delete the session on {formatDate(sessionToDelete.date)} at {formatTime(sessionToDelete.startTime)}? This action cannot be undone.
+                {formatDate(sessionToDelete.date)}の{formatTime(sessionToDelete.startTime)}の授業を本当に削除しますか？この操作は元に戻せません。
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel onClick={closeDeleteDialog}>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={confirmDeleteSession}>Delete</AlertDialogAction>
+              <AlertDialogCancel onClick={closeDeleteDialog}>キャンセル</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmDeleteSession}>削除</AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
