@@ -15,13 +15,13 @@ export default function ScheduleManagementPage() {
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">総合授業スケジュール</h1>
         <div className="flex space-x-2">
-          <Button 
+          <Button
             variant={activeMode === 'view' ? 'default' : 'outline'}
             onClick={() => setActiveMode('view')}
           >
             スケジュール閲覧
           </Button>
-          <Button 
+          <Button
             variant={activeMode === 'create' ? 'default' : 'outline'}
             onClick={() => setActiveMode('create')}
           >

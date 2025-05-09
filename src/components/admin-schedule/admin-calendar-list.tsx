@@ -1,41 +1,9 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { format } from 'date-fns';
-import { ja } from 'date-fns/locale';
-import {
-  useRegularClassTemplates,
-} from '@/hooks/useRegularClassTemplateQuery';
-import {
-  useRegularClassTemplateDelete,
-} from '@/hooks/useRegularClassTemplateMutation';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from '@/components/ui/pagination';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Card } from '@/components/ui/card';
-import { Search, Edit, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
+import React, { useMemo, useState, useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { format } from "date-fns";
+import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -45,446 +13,327 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+} from "@/components/ui/alert-dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { useClassSessions, ClassSessionWithRelations } from "@/hooks/useClassSessionQuery";
+import { EditTemplateClassSessionForm } from "./edit-template-class-session-form";
+import { EditStandaloneClassSessionForm } from "./edit-standalone-class-session-form";
+import { UpdateStandaloneClassSessionSchema, UpdateTemplateClassSessionSchema } from "@/schemas/class-session.schema";
+import { z } from "zod";
 
+// Define specific session types for the edit forms
+type EditTemplateClassSessionFormSession = z.infer<typeof UpdateTemplateClassSessionSchema>;
+type EditStandaloneClassSessionFormSession = z.infer<typeof UpdateStandaloneClassSessionSchema>;
+
+// Define SortConfig type
 type SortConfig = {
-  key: string;
-  direction: 'asc' | 'desc';
+  key: keyof ClassSessionWithRelations | "boothName" | "subjectName"; // Updated to ClassSessionWithRelations
+  direction: "ascending" | "descending";
 };
 
-// Определение типа для шаблона с отношениями
-type TemplateWithRelations = {
-  templateId: string;
-  dayOfWeek: string;
-  startTime: Date;
-  endTime: Date;
-  notes: string | null;
-  startDate: Date | null;
-  endDate: Date | null;
-  booth: { name: string } | null;
-  teacher: { name: string } | null;
-  subject: { name: string } | null;
-  templateStudentAssignments: {
-    student: { name: string } | null;
-  }[];
+// Props for the dialogs that wrap the forms
+// These props are for the dialog components themselves, not the forms directly.
+// The forms will receive a subset of ClassSessionWithRelations.
+type EditTemplateDialogProps = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  session: EditTemplateClassSessionFormSession | null; // Specific session type
+  onSessionUpdated: () => void;
 };
+
+type EditStandaloneDialogProps = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  session: EditStandaloneClassSessionFormSession | null; // Specific session type
+  onSessionUpdated: () => void;
+};
+
+// Define the FormConfig discriminated union
+type FormConfig =
+  | {
+      type: "template";
+      component: React.FC<EditTemplateDialogProps>;
+      props: EditTemplateDialogProps;
+    }
+  | {
+      type: "standalone";
+      component: React.FC<EditStandaloneDialogProps>;
+      props: EditStandaloneDialogProps;
+    }
+  | {
+      type: null;
+      component: null;
+      props: { // Common props for the null state
+          open: boolean;
+          onOpenChange: (open: boolean) => void;
+          session: null; // Explicitly null
+          onSessionUpdated: () => void;
+      };
+    };
 
 export default function AdminCalendarList() {
-  // Состояние для пагинации и фильтрации
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
-  const [searchTerm, setSearchTerm] = useState('');
+  const queryClient = useQueryClient();
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingSession, setEditingSession] = useState<ClassSessionWithRelations | null>( // Updated type
+    null
+  );
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [sessionToDelete, setSessionToDelete] = useState<ClassSessionWithRelations | null>( // Updated type
+    null
+  );
 
-  // Состояние для сортировки
+  const { data: sessionsData, isLoading } = useClassSessions();
+  const classSessions = useMemo(() => sessionsData?.data || [], [sessionsData]);
+
   const [sortConfig, setSortConfig] = useState<SortConfig>({
-    key: 'dayOfWeek',
-    direction: 'asc',
+    key: "date",
+    direction: "ascending",
   });
 
-  // Состояние для удаления
-  const [deleteTemplateId, setDeleteTemplateId] = useState<string | null>(null);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-
-  // Получение данных
-  const { data: templates, isLoading, error } = useRegularClassTemplates({
-    page,
-    // pageSize
-  }) as { data: TemplateWithRelations[] | undefined, isLoading: boolean, error: Error | null };
-
-  // Мутации для удаления
-  const deleteTemplateMutation = useRegularClassTemplateDelete();
-
-  // Обработчик сортировки
-  const handleSort = (key: string) => {
-    setSortConfig((prevConfig) => ({
+  const handleSort = useCallback((key: SortConfig["key"]) => {
+    setSortConfig((prevConfig: SortConfig) => ({
       key,
       direction:
-        prevConfig.key === key && prevConfig.direction === 'asc'
-          ? 'desc'
-          : 'asc',
+        prevConfig.key === key && prevConfig.direction === "ascending"
+          ? "descending"
+          : "ascending",
     }));
-  };
-  
-  // Сортировка текущих данных
-  const sortedTemplates = React.useMemo(() => {
-    if (!templates) return [];
-    
-    return [...templates].sort((a, b) => {
-      switch (sortConfig.key) {
-        case 'dayOfWeek':
-          const dayOrder: Record<string, number> = {
-            'monday': 0,
-            'tuesday': 1,
-            'wednesday': 2,
-            'thursday': 3,
-            'friday': 4,
-            'saturday': 5,
-            'sunday': 6
-          };
-          const dayA = dayOrder[a.dayOfWeek.toLowerCase()] ?? 999;
-          const dayB = dayOrder[b.dayOfWeek.toLowerCase()] ?? 999;
-          return sortConfig.direction === 'asc'
-            ? dayA - dayB
-            : dayB - dayA;
-        
-        case 'startTime':
-          return sortConfig.direction === 'asc'
-            ? a.startTime.getTime() - b.startTime.getTime()
-            : b.startTime.getTime() - a.startTime.getTime();
-        
-        case 'endTime':
-          return sortConfig.direction === 'asc'
-            ? a.endTime.getTime() - b.endTime.getTime()
-            : b.endTime.getTime() - a.endTime.getTime();
-        
-        case 'boothId':
-          const boothNameA = a.booth?.name || '';
-          const boothNameB = b.booth?.name || '';
-          return sortConfig.direction === 'asc'
-            ? boothNameA.localeCompare(boothNameB)
-            : boothNameB.localeCompare(boothNameA);
-        
-        default:
-          return 0;
+  }, []);
+
+  const getSortValue = useCallback(
+    (session: ClassSessionWithRelations, key: SortConfig["key"]) => {
+      if (key === "boothName") {
+        return session.booth?.name || "";
       }
-    });
-  }, [templates, sortConfig]);
+      if (key === "subjectName") {
+        return session.subject?.name || ""; // Assuming subject is available
+      }
+      // Ensure other keys are valid for ClassSessionWithRelations
+      if (key in session) {
+        const value = session[key as keyof ClassSessionWithRelations];
+        // Handle cases where value might be a Date object for sorting
+        if (value instanceof Date) {
+          return value.toISOString();
+        }
+        return value as string | number | null | undefined;
+      }
+      return ""; // Fallback for keys not directly on session
+    },
+    [] // Removed booths from dependency array
+  );
 
-  // Формат времени
-  const formatTime = (date: Date) => {
-    return format(date, 'HH:mm', { locale: ja });
+  const sortedSessions = useMemo(() => {
+    return [...classSessions].sort((a, b) => {
+      const aValue = getSortValue(a, sortConfig.key);
+      const bValue = getSortValue(b, sortConfig.key);
+
+      if (aValue === null || aValue === undefined) return 1;
+      if (bValue === null || bValue === undefined) return -1;
+
+      if (aValue < bValue) {
+        return sortConfig.direction === "ascending" ? -1 : 1;
+      }
+      if (aValue > bValue) {
+        return sortConfig.direction === "ascending" ? 1 : -1;
+      }
+      return 0;
+    });
+  }, [classSessions, sortConfig, getSortValue]);
+
+  const openEditDialog = (session: ClassSessionWithRelations) => { // Updated type
+    setEditingSession(session);
+    setIsEditDialogOpen(true);
   };
 
-  // Обработчик удаления
-  const handleDeleteClick = (templateId: string) => {
-    setDeleteTemplateId(templateId);
+  const openDeleteDialog = (session: ClassSessionWithRelations) => { // Updated type
+    setSessionToDelete(session);
     setIsDeleteDialogOpen(true);
   };
 
-  const confirmDelete = async () => {
-    if (deleteTemplateId) {
-      try {
-        await deleteTemplateMutation.mutateAsync(deleteTemplateId);
-      } catch (error) {
-        console.error('Error deleting template:', error);
-      } finally {
-        setIsDeleteDialogOpen(false);
-        setDeleteTemplateId(null);
-      }
+  const closeDeleteDialog = () => {
+    setIsDeleteDialogOpen(false);
+    setSessionToDelete(null);
+  };
+
+  const confirmDeleteSession = useCallback(async () => {
+    if (!sessionToDelete) return;
+    console.log("Deleting session:", sessionToDelete.classId);
+    // TODO: Implement actual delete mutation
+    // For example: await deleteClassSessionMutation.mutateAsync(sessionToDelete.classId);
+    // For now, just invalidating queries and closing dialog
+    // await fetcher(`/api/class-session/${sessionToDelete.classId}`, { method: 'DELETE' });
+    queryClient.invalidateQueries({ queryKey: ["classSessions"] });
+    closeDeleteDialog();
+  }, [sessionToDelete, queryClient]);
+
+  const handleSessionUpdated = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["classSessions"] });
+    setIsEditDialogOpen(false);
+    setEditingSession(null);
+  }, [queryClient]);
+
+  const formatTimeForSchema = (date: Date | string | null | undefined): string | undefined => {
+    if (!date) return undefined;
+    try {
+      const d = new Date(date);
+      if (isNaN(d.getTime())) return undefined;
+      return format(d, "HH:mm");
+    } catch {
+      return undefined;
     }
   };
 
-  // Перевод дней недели
-  const dayOfWeekMap: Record<string, string> = {
-    'monday': '月曜日',
-    'tuesday': '火曜日',
-    'wednesday': '水曜日',
-    'thursday': '木曜日',
-    'friday': '金曜日',
-    'saturday': '土曜日',
-    'sunday': '日曜日',
-  };
+  const formConfig = useMemo<FormConfig>(() => {
+    if (!isEditDialogOpen || !editingSession) {
+      return {
+        type: null,
+        component: null,
+        props: {
+          open: false,
+          onOpenChange: setIsEditDialogOpen,
+          session: null,
+          onSessionUpdated: handleSessionUpdated,
+        },
+      };
+    }
 
-  // Отображение дня недели
-  const displayDayOfWeek = (day: string) => {
-    return dayOfWeekMap[day.toLowerCase()] || day;
-  };
+    if (typeof editingSession.templateId === "string" && editingSession.templateId !== null) {
+      const sessionForTemplateForm: EditTemplateClassSessionFormSession = {
+        classId: editingSession.classId,
+        startTime: formatTimeForSchema(editingSession.startTime),
+        endTime: formatTimeForSchema(editingSession.endTime),
+        boothId: editingSession.boothId ?? undefined,
+        subjectTypeId: editingSession.subjectTypeId ?? undefined,
+        notes: editingSession.notes ?? undefined,
+      };
+      return {
+        type: "template",
+        component: EditTemplateClassSessionForm as React.FC<EditTemplateDialogProps>,
+        props: {
+          open: isEditDialogOpen,
+          onOpenChange: setIsEditDialogOpen,
+          session: sessionForTemplateForm,
+          onSessionUpdated: handleSessionUpdated,
+        },
+      };
+    } else {
+      const sessionForStandaloneForm: EditStandaloneClassSessionFormSession = {
+        classId: editingSession.classId,
+        // date is Date | undefined in inferred type due to .transform()
+        date: editingSession.date ? (editingSession.date instanceof Date ? editingSession.date : new Date(editingSession.date)) : undefined,
+        startTime: formatTimeForSchema(editingSession.startTime),
+        endTime: formatTimeForSchema(editingSession.endTime),
+        boothId: editingSession.boothId ?? undefined,
+        classTypeId: editingSession.classTypeId ?? undefined,
+        teacherId: editingSession.teacherId ?? undefined,
+        studentId: editingSession.studentId ?? undefined,
+        subjectId: editingSession.subjectId ?? undefined, // Ensure this is correctly handled if optional in schema
+        subjectTypeId: editingSession.subjectTypeId ?? undefined,
+        notes: editingSession.notes ?? undefined,
+      };
+      return {
+        type: "standalone",
+        component: EditStandaloneClassSessionForm as React.FC<EditStandaloneDialogProps>,
+        props: {
+          open: isEditDialogOpen,
+          onOpenChange: setIsEditDialogOpen,
+          session: sessionForStandaloneForm,
+          onSessionUpdated: handleSessionUpdated,
+        },
+      };
+    }
+  }, [isEditDialogOpen, editingSession, handleSessionUpdated]);
 
-  // Расчет страниц
-  const totalItems = templates ? templates.length : 0;
-  const totalPages = Math.ceil(totalItems / pageSize);
-
-  // Состояние загрузки и ошибки
   if (isLoading) {
-    return <div className="text-center py-8">データを読み込み中...</div>;
+    return <div>Loading...</div>;
   }
 
-  if (error) {
-    return (
-      <div className="text-center py-8 text-red-500">
-        エラーが発生しました: {error.message}
-      </div>
-    );
-  }
+  const formatDate = (d: Date | string | null) => {
+    if (!d) return "N/A";
+    return format(new Date(d), "dd.MM.yy");
+  };
+
+  const formatTime = (t: Date | string | null) => {
+    if (!t) return "N/A";
+    // Check if it's already a Date object, if not, try to parse it
+    // The data from API (ClassSessionWithRelations) will have date strings
+    const dateObj = t instanceof Date ? t : new Date(t);
+    if (isNaN(dateObj.getTime())) return "Invalid time"; // Check if date parsing was successful
+    return format(dateObj, "HH:mm");
+  };
+
+  const ActiveForm = formConfig.component;
 
   return (
-    <div className="w-full flex flex-col space-y-4">
-      <Card className="p-4 border-0 shadow-sm">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-          <h2 className="font-semibold text-lg">
-            授業テンプレート一覧
-          </h2>
-          <div className="flex flex-wrap gap-2">
-            <div className="relative w-full md:w-64">
-              <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="検索..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-8"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm whitespace-nowrap">表示件数:</span>
-              <Select
-                value={String(pageSize)}
-                onValueChange={(value) => setPageSize(Number(value))}
-              >
-                <SelectTrigger className="w-16 h-8">
-                  <SelectValue placeholder="10" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="5">5</SelectItem>
-                  <SelectItem value="10">10</SelectItem>
-                  <SelectItem value="20">20</SelectItem>
-                  <SelectItem value="50">50</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </div>
-      </Card>
-
-      <Card className="overflow-hidden">
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="relative w-24">
-                  <div 
-                    className="cursor-pointer px-2 py-3 hover:bg-muted/50 flex items-center justify-between"
-                    onClick={() => handleSort('dayOfWeek')}
-                  >
-                    <span>曜日</span>
-                    <div className="flex flex-col -space-y-1">
-                      <ChevronUp 
-                        className={`h-4 w-4 ${
-                          sortConfig.key === 'dayOfWeek' && sortConfig.direction === 'asc' 
-                            ? 'text-foreground' 
-                            : 'text-muted-foreground'
-                        }`} 
-                      />
-                      <ChevronDown 
-                        className={`h-4 w-4 ${
-                          sortConfig.key === 'dayOfWeek' && sortConfig.direction === 'desc' 
-                            ? 'text-foreground' 
-                            : 'text-muted-foreground'
-                        }`} 
-                      />
-                    </div>
-                  </div>
-                </TableHead>
-                <TableHead className="relative">
-                  <div className="flex items-center">
-                    <div 
-                      className="cursor-pointer px-2 py-3 hover:bg-muted/50 flex items-center justify-between w-16"
-                      onClick={() => handleSort('startTime')}
-                    >
-                      <span>開始</span>
-                      <div className="flex flex-col -space-y-1">
-                        <ChevronUp 
-                          className={`h-4 w-4 ${
-                            sortConfig.key === 'startTime' && sortConfig.direction === 'asc' 
-                              ? 'text-foreground' 
-                              : 'text-muted-foreground'
-                          }`} 
-                        />
-                        <ChevronDown 
-                          className={`h-4 w-4 ${
-                            sortConfig.key === 'startTime' && sortConfig.direction === 'desc' 
-                              ? 'text-foreground' 
-                              : 'text-muted-foreground'
-                          }`} 
-                        />
-                      </div>
-                    </div>
-                    <span className="mx-1">-</span>
-                    <div 
-                      className="cursor-pointer px-2 py-3 hover:bg-muted/50 flex items-center justify-between w-16"
-                      onClick={() => handleSort('endTime')}
-                    >
-                      <span>終了</span>
-                      <div className="flex flex-col -space-y-1">
-                        <ChevronUp 
-                          className={`h-4 w-4 ${
-                            sortConfig.key === 'endTime' && sortConfig.direction === 'asc' 
-                              ? 'text-foreground' 
-                              : 'text-muted-foreground'
-                          }`} 
-                        />
-                        <ChevronDown 
-                          className={`h-4 w-4 ${
-                            sortConfig.key === 'endTime' && sortConfig.direction === 'desc' 
-                              ? 'text-foreground' 
-                              : 'text-muted-foreground'
-                          }`} 
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </TableHead>
-                <TableHead className="relative">
-                  <div 
-                    className="cursor-pointer px-2 py-3 hover:bg-muted/50 flex items-center justify-between"
-                    onClick={() => handleSort('boothId')}
-                  >
-                    <span>教室</span>
-                    <div className="flex flex-col -space-y-1">
-                      <ChevronUp 
-                        className={`h-4 w-4 ${
-                          sortConfig.key === 'boothId' && sortConfig.direction === 'asc' 
-                            ? 'text-foreground' 
-                            : 'text-muted-foreground'
-                        }`} 
-                      />
-                      <ChevronDown 
-                        className={`h-4 w-4 ${
-                          sortConfig.key === 'boothId' && sortConfig.direction === 'desc' 
-                            ? 'text-foreground' 
-                            : 'text-muted-foreground'
-                        }`} 
-                      />
-                    </div>
-                  </div>
-                </TableHead>
-                <TableHead className="relative">
-                  <div className="px-2 py-3">講師</div>
-                </TableHead>
-                <TableHead className="relative">
-                  <div className="px-2 py-3">科目</div>
-                </TableHead>
-                <TableHead>
-                  <div className="px-2 py-3">生徒</div>
-                </TableHead>
-                <TableHead>
-                  <div className="px-2 py-3 w-32 truncate">メモ</div>
-                </TableHead>
-                <TableHead className="text-right">
-                  <div className="px-2 py-3">操作</div>
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sortedTemplates && sortedTemplates.length > 0 ? (
-                sortedTemplates.map((template: TemplateWithRelations) => (
-                  <TableRow key={template.templateId}>
-                    <TableCell>{displayDayOfWeek(template.dayOfWeek)}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center w-32">
-                        <span className="w-12 text-center">{formatTime(template.startTime)}</span>
-                        <span className="mx-1">-</span>
-                        <span className="w-12 text-center">{formatTime(template.endTime)}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {template.booth?.name || '---'}
-                    </TableCell>
-                    <TableCell>
-                      {template.teacher?.name || '---'}
-                    </TableCell>
-                    <TableCell>
-                      {template.subject?.name || '---'}
-                    </TableCell>
-                    <TableCell>
-                      {template.templateStudentAssignments?.map((assignment: {student: {name: string} | null}) => 
-                        assignment.student?.name
-                      ).filter(Boolean).join(', ') || '---'}
-                    </TableCell>
-                    <TableCell className="w-32 max-w-[8rem] truncate">
-                      {template.notes || '---'}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0"
-                          onClick={() => handleDeleteClick(template.templateId)}
-                        >
-                          <Trash2 className="h-4 w-4 text-red-500" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={8} className="h-24 text-center">
-                    テンプレートが見つかりません
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      </Card>
-
-      {totalPages > 1 && (
-        <Pagination className="mt-4">
-          <PaginationContent>
-            <PaginationItem>
-              <PaginationPrevious
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className={page === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
-              />
-            </PaginationItem>
-            
-            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-              let pageToShow: number;
-              if (totalPages <= 5) {
-                pageToShow = i + 1;
-              } else if (page <= 3) {
-                pageToShow = i + 1;
-              } else if (page >= totalPages - 2) {
-                pageToShow = totalPages - 4 + i;
-              } else {
-                pageToShow = page - 2 + i;
-              }
-              
-              return (
-                <PaginationItem key={pageToShow}>
-                  <PaginationLink
-                    onClick={() => setPage(pageToShow)}
-                    isActive={page === pageToShow}
-                  >
-                    {pageToShow}
-                  </PaginationLink>
-                </PaginationItem>
-              );
-            })}
-            
-            <PaginationItem>
-              <PaginationNext
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                className={page === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
-              />
-            </PaginationItem>
-          </PaginationContent>
-        </Pagination>
+    <div>
+      {ActiveForm && formConfig.props.open && (
+        <ActiveForm {...formConfig.props} />
       )}
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead onClick={() => handleSort("date")}>日付</TableHead>
+            <TableHead onClick={() => handleSort("startTime")}>開始</TableHead>
+            <TableHead onClick={() => handleSort("endTime")}>終了</TableHead>
+            <TableHead onClick={() => handleSort("teacherId")}>講師</TableHead>
+            <TableHead onClick={() => handleSort("studentId")}>生徒</TableHead>
+            <TableHead onClick={() => handleSort("subjectId")}>科目</TableHead>
+            <TableHead onClick={() => handleSort("subjectTypeId")}>科目タイプ</TableHead>
+            <TableHead onClick={() => handleSort("boothId")}>ブース</TableHead>
+            <TableHead onClick={() => handleSort("classTypeId")}>授業タイプ</TableHead>
+            <TableHead>備考</TableHead>
+            <TableHead>操作</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {sortedSessions.map((session) => (
+            <TableRow key={session.classId}>
+              <TableCell>{formatDate(session.date)}</TableCell>
+              <TableCell>{formatTime(session.startTime)}</TableCell>
+              <TableCell>{formatTime(session.endTime)}</TableCell>
+              <TableCell>{session.teacher?.name || session.teacherId || "N/A"}</TableCell>
+              <TableCell>{session.student?.name || session.studentId || "N/A"}</TableCell>
+              <TableCell>{session.subject?.name || session.subjectId || "N/A"}</TableCell>
+              <TableCell>{session.subjectType?.name || session.subjectTypeId || "N/A"}</TableCell>
+              <TableCell>{session.booth?.name || session.boothId || "N/A"}</TableCell>
+              <TableCell>{session.classType?.name || session.classTypeId || "N/A"}</TableCell>
+              <TableCell>{session.notes || ""}</TableCell>
+              <TableCell>
+                <Button variant="outline" size="sm" onClick={() => openEditDialog(session)}>
+                  編集
+                </Button>
+                <Button variant="destructive" size="sm" onClick={() => openDeleteDialog(session)} style={{ marginLeft: '8px' }}>
+                  削除
+                </Button>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
 
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>テンプレートを削除</AlertDialogTitle>
-            <AlertDialogDescription>
-              本当にこのテンプレートを削除しますか？この操作は取り消せません。
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>キャンセル</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={confirmDelete}
-              className="bg-red-500 hover:bg-red-600"
-            >
-              削除
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {isDeleteDialogOpen && sessionToDelete && (
+        <AlertDialog open onOpenChange={setIsDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>削除の確認</AlertDialogTitle>
+              <AlertDialogDescription>
+                {formatDate(sessionToDelete.date)}の{formatTime(sessionToDelete.startTime)}の授業を本当に削除しますか？この操作は元に戻せません。
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={closeDeleteDialog}>キャンセル</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmDeleteSession}>削除</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </div>
   );
 }

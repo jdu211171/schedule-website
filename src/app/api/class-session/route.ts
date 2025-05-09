@@ -975,10 +975,10 @@ export async function PUT(request: Request) {
 
         // Convert strings to Date objects
         const newStart = startTime
-          ? new Date(`1970-01-01T${startTime}`)
+          ? new Date(`1970-01-01T${startTime}Z`) // Add 'Z' to specify UTC
           : originalStart;
         const newEnd = endTime
-          ? new Date(`1970-01-01T${endTime}`)
+          ? new Date(`1970-01-01T${endTime}Z`) // Add 'Z' to specify UTC
           : originalEnd;
 
         // Validate time range

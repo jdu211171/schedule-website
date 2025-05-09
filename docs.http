@@ -1,6 +1,5 @@
 @url = http://localhost:3000/api
-@cookie = NEXT_LOCALE=ru; authjs.csrf-token=096b26b8454a7cd30fbbf8c8c59c5d2a9e96df3add73f083afc82749afb1f743%7Ce76ed2284f4b8f791b15b9dac7c862b93992c79bf1e3993dfa258fbe1c3a4079; authjs.callback-url=http%3A%2F%2Flocalhost%3A3000%2F; authjs.session-token=eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2Q0JDLUhTNTEyIiwia2lkIjoiZHEzWk1MZlNQbFBtVVBxV291WWxrVXA4M2l1MDVod1phQ2U4UGdPbWZfS2t5enlmZy1JYlA0UmJ0UHdHN1NyOHQwSk9MbUxDb2gwQnF3ZHMzMGVOaEEifQ..z3OD1eD0XtgxgtBo2261XQ.JA5Yn8mfS0UkLM1HvYQPG8T5UlT_717HouuzaynJDAhAadL9iz97AkCLsR0SYWr-8dETB1QstBisONvL6cYWsW85npN8CFErlMNQWsEXEQNHHPQnjQ1dq5TROKXwZMWgPjSLe6L8olUmmXLB_TEJITqQK2fBIEcdnqxSnnlOJGhSKYs4DSyBc5krqNyGEkTyXAqgXwK0nTrfiwIunVa3K_XVew-XNjW2xJK1WDmi90_I-QKS8_9XK4f4LE4XU_Za3QG0KuSy_FGBeuj_tWKKtDbIwituXqUBwVBOdNuX6-o.TGRKqKb3sdmTVevDQkPEnzWaqhNbX781dSNeMBhg5OY
-
+@cookie = __next_hmr_refresh_hash__=738; authjs.csrf-token=fa36461f853cea294c57376d34ee7ae1408ca72a666804f4c9b39090cdb7393c%7Cd2fe282e05342c8c9aff90c7a07d8623d864997eda45a94775e26811abcbcaa1; __next_hmr_refresh_hash__=227; authjs.callback-url=http%3A%2F%2Flocalhost%3A3000%2Fdashboard%2Fschedules; authjs.session-token=eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2Q0JDLUhTNTEyIiwia2lkIjoiUzVhOHQ1TmxDbU9yMjZoTVJHdGR4M042RmRCY2JJQ1ZMY1Y2MWRfSmk0UTlHN01CbDNMQzlNSVp1UTlQb3o1UjlvaUhzS2dzcThHRWlvb05tMTU1SFEifQ..pQhpHPIq0ntNukSg51bMQQ.RWIlZixvjSp7Jri1FR-FhMWrl_vs5r67cdl-k_3cM_BX8EoWcGZZNU2F7iIqU2xSfGS0efMKWZhB8u9Boo47R2mbIPRkf3sIoDX0X3cLK8Tbv37lOXAlUjTRTvVdaFFQ0IaOdkPBLNSXkB_gLsCNZDqGPqTVZkD9BBYrIBCjkapgnaRJ_4Cobu0TZnR5Agnk_RMz2SX8HBOO8fllRcgcKOH6trMZtsDhsH6MW1QXjV-Ir6iycxAIl3WWNxkS9HrvSmxDk90uhwR-6qODPoVQY0ReT1b0-U8tEmqwdf1lhCk.vLEtrp7JJekl-fc8dCXXMc_Wk72d6yGTwQ1xqOkn5NI
 
 #########
 # BOOTH #
@@ -306,79 +305,26 @@ Cookie: {{cookie}}
   "password": "securepassword123",
   "name": "Takahashi Yuki",
   "kanaName": "タカハシ ユキ",
-  "gradeId": "cmae12026000c1044hpwm6cno",
+  "gradeId": "cma144m54000a104qkhcfnvzl",
   "schoolName": "Tokyo Metropolitan High School",
-  "schoolType": "PRIVATE",
-  "examSchoolType": "PUBLIC",
+  "schoolType": "PUBLIC",
+  "examSchoolType": "HIGH",
   "birthDate": "2005-06-15",
   "parentEmail": "parent@example.com",
   "preferences": {
-  "subjects": [
-    {
-      "subjectId": "cmae1202f000h1044ji0eqxll",
-      "subjectTypeId": "cmae1202c000e10448viuodn0"
-    },
-    {
-      "subjectId": "cmae1202f000i1044xudmngqc",
-      "subjectTypeId": "cmae1202c000d1044be0rpdjq"
-    }
-  ],
+    "subjects": [
+      "cma144m5g000g104qhle1xh2y",
+      "cma144m5g000h104q011r76l4"
+      ],
     "teachers": [
-      "cmae1202r000u1044fjnt5ko5",
-      "cmae1202t000w10447vl3z4j0"
+      "cma144m5w000w104q8cncwj26",
+       "cma144m5u000u104qsqx0wjex"
        ],
     "timeSlots": [
       {
         "dayOfWeek": "MONDAY",
         "startTime": "14:00:00",
         "endTime": "16:00:00"
-      }
-    ]
-  }
-}
-
-### Create a new student with the updated subject preferences format
-POST {{url}}/student
-Content-Type: application/json
-Cookie: {{cookie}}
-
-{
-  "username": "yamada_ken",
-  "password": "securepassword123",
-  "name": "Yamada Ken",
-  "kanaName": "ヤマダ ケン",
-  "gradeId": "cmae12026000c1044hpwm6cno",
-  "schoolName": "Tashkent International School",
-  "schoolType": "PUBLIC",
-  "examSchoolType": "PRIVATE",
-  "birthDate": "2007-09-22T00:00:00.000Z",
-  "parentEmail": "yamada.parent@example.com",
-  "preferences": {
-    "classTypeId": "cmae1202j000l1044qihej6k0",
-    "subjects": [
-      {
-        "subjectId": "cmae1202f000h1044ji0eqxll",
-        "subjectTypeId": "cmae1202c000e10448viuodn0"
-      },
-      {
-        "subjectId": "cmae1202f000i1044xudmngqc",
-        "subjectTypeId": "cmae1202c000d1044be0rpdjq"
-      }
-    ],
-    "teachers": [
-      "cmae1202r000u1044fjnt5ko5",
-      "cmae1202t000w10447vl3z4j0"
-    ],
-    "timeSlots": [
-      {
-        "dayOfWeek": "MONDAY",
-        "startTime": "15:00:00",
-        "endTime": "16:30:00"
-      },
-      {
-        "dayOfWeek": "WEDNESDAY",
-        "startTime": "15:00:00",
-        "endTime": "16:30:00"
       }
     ]
   }
@@ -399,15 +345,9 @@ Cookie: {{cookie}}
   "schoolName": "Tokyo Metropolitan Advanced High School",
     "preferences": {
     "subjects": [
-      {
-        "subjectId": "cmae1202f000h1044ji0eqxll",
-        "subjectTypeId": "cmae1202c000e10448viuodn0"
-      },
-      {
-        "subjectId": "cmae1202f000i1044xudmngqc",
-        "subjectTypeId": "cmae1202c000d1044be0rpdjq"
-      }
-    ],
+      "cma144m5g000g104qhle1xh2y",
+      "cma144m5g000h104q011r76l4"
+      ],
     "teachers": [
       "cma144m5w000w104q8cncwj26",
       "cma144m5u000u104qsqx0wjex"
@@ -474,50 +414,6 @@ Cookie: {{cookie}}
 
 ### Get all teacher subjects (basic)
 GET {{url}}/teacher-subjects
-Content-Type: application/json
-Cookie: {{cookie}}
-
-### Get all teacher-subject relationships
-GET {{url}}/teacher-subjects
-Content-Type: application/json
-Cookie: {{cookie}}
-
-### Get teacher-subject relationships with filtering
-GET {{url}}/teacher-subjects?teacherId=cmae1202r000u1044fjnt5ko5&subjectTypeId=cmae1202c000e10448viuodn0
-Content-Type: application/json
-Cookie: {{cookie}}
-
-### Create a new teacher-subject relationship
-POST {{url}}/teacher-subjects
-Content-Type: application/json
-Cookie: {{cookie}}
-
-{
-  "teacherId": "cmae1202r000u1044fjnt5ko5",
-  "subjectId": "cmae1202f000i1044xudmngqc",
-  "subjectTypeId": "cmae1202c000d1044be0rpdjq",
-  "notes": "英語担当、中級レベル以上"
-}
-
-### Update an existing teacher-subject relationship
-PUT {{url}}/teacher-subjects
-Content-Type: application/json
-Cookie: {{cookie}}
-
-{
-  "teacherId": "cmae1202r000u1044fjnt5ko5",
-  "subjectId": "cmae1202f000h1044ji0eqxll",
-  "subjectTypeId": "cmae1202c000e10448viuodn0",
-  "notes": "数学担当、高校レベル専門"
-}
-
-### Delete a teacher-subject relationship
-DELETE {{url}}/teacher-subjects?teacherId=cmae1202r000u1044fjnt5ko5&subjectId=cmae1202f000h1044ji0eqxll&subjectTypeId=cmae1202c000e10448viuodn0
-Content-Type: application/json
-Cookie: {{cookie}}
-
-### Get a specific teacher-subject relationship
-GET {{url}}/teacher-subjects/cmae1202r000u1044fjnt5ko5/cmae1202f000h1044ji0eqxll
 Content-Type: application/json
 Cookie: {{cookie}}
 
@@ -664,31 +560,6 @@ GET {{url}}/subject-type
 Content-Type: application/json
 Cookie: {{cookie}}
 
-### Get all subject types:
-GET {{url}}/subject-type
-Content-Type: application/json
-Cookie: {{cookie}}
-
-### Get a specific subject type:
-GET {{url}}/subject-type/cmae1202c000d1044be0rpdjq
-Content-Type: application/json
-Cookie: {{cookie}}
-
-### Create a new subject type:
-POST {{url}}/subject-type
-Content-Type: application/json
-Cookie: {{cookie}}
-
-{
-  "name": "専門科目",
-  "notes": "専門的な技術科目"
-}
-
-### Delete a subject type:
-DELETE {{url}}/subject-type?subjectTypeId=cmae1202c000d1044be0rpdjq
-Content-Type: application/json
-Cookie: {{cookie}}
-
 ### Get a single subject type by ID
 # Replace SUBJECT_TYPE_ID with an actual ID from your database
 GET {{url}}/subject-type/cma6fzd7m000dvi7krd27jfox
@@ -769,7 +640,7 @@ Content-Type: application/json
 Cookie: {{cookie}}
 
 ### Get subjects with filtering by subject type ID
-GET {{url}}/subjects?subjectTypeId=cmae1202c000d1044be0rpdjq
+GET {{url}}/subjects?subjectTypeId=cma6fzd7m000dvi7krd27jfox
 Content-Type: application/json
 Cookie: {{cookie}}
 
@@ -779,7 +650,7 @@ Content-Type: application/json
 Cookie: {{cookie}}
 
 ### Get subjects with multiple filters and pagination
-GET {{url}}/subjects?name=英語&subjectTypeId=cmae1202c000d1044be0rpdjq&page=1&limit=5&sort=name&order=asc
+GET {{url}}/subjects?name=英語&subjectTypeId=cma6fzd7m000dvi7krd27jfox&page=1&limit=5&sort=name&order=asc
 Content-Type: application/json
 Cookie: {{cookie}}
 
@@ -789,9 +660,9 @@ Content-Type: application/json
 Cookie: {{cookie}}
 
 {
-  "name": "化学",
-  "subjectTypeId": "cmae1202c000f1044bu1grnco",
-  "notes": "高校レベルの化学"
+  "name": "Advanced Physics",
+  "subjectTypeId": "cma144m5d000f104qxtggm46e",
+  "notes": "University preparation course for physics"
 }
 
 ### Update an existing subject
@@ -800,14 +671,14 @@ Content-Type: application/json
 Cookie: {{cookie}}
 
 {
-  "subjectId": "cmae1iayj000310gt256epgoa",
+  "subjectId": "cma144m5g000j104q9todc1hr",
   "name": "Advanced Physics",
   "subjectTypeId": "cma144m5d000f104qxtggm46e",
   "notes": "Updated university preparation course"
 }
 
 ### Delete a subject (using query parameter)
-DELETE {{url}}/subjects?subjectId=cmae1iayj000310gt256epgoa
+DELETE {{url}}/subjects?subjectId=cma144m5g000j104q9todc1hr
 Content-Type: application/json
 Cookie: {{cookie}}
 
@@ -878,7 +749,7 @@ Content-Type: application/json
 Cookie: {{cookie}}
 
 {
-  "gradeId": "cmaebwa9d000310syr3uyrrps",
+  "gradeId": "cma1x3s6o001c103697jyilas",
   "name": "Updated Second Year Junior High",
   "studentTypeId": "cma144m500008104qarmazu88",
   "gradeYear": 8,
@@ -990,60 +861,6 @@ GET {{url}}/teacher/cma144m5u000u104qsqx0wjex
 Content-Type: application/json
 Cookie: {{cookie}}
 
-### Get a teacher by ID
-GET {{url}}/teacher/cmae1202r000u1044fjnt5ko5
-Content-Type: application/json
-Cookie: {{cookie}}
-
-### Get teachers filtered by subject
-GET {{url}}/teacher?subjectId=cmae1202f000h1044ji0eqxll
-Content-Type: application/json
-Cookie: {{cookie}}
-
-### Create a new teacher with updated subject schema
-POST {{url}}/teacher
-Content-Type: application/json
-Cookie: {{cookie}}
-
-{
-  "username": "tanaka_sensei",
-  "password": "secure123",
-  "name": "田中 優",
-  "evaluationId": "cmae1202m000n1044s0zrjb2h",
-  "birthDate": "1985-05-15T00:00:00.000Z",
-  "mobileNumber": "080-1234-5678",
-  "email": "tanaka@example.com",
-  "highSchool": "東京都立高校",
-  "university": "東京大学",
-  "faculty": "教育学部",
-  "department": "教育科学科",
-  "enrollmentStatus": "常勤",
-  "englishProficiency": "ビジネスレベル",
-  "toeic": 850,
-  "subjects": [
-    {
-      "subjectId": "cmae1202f000h1044ji0eqxll",
-      "subjectTypeId": "cmae1202c000e10448viuodn0"
-    },
-    {
-      "subjectId": "cmae1202f000g1044xxosoeak",
-      "subjectTypeId": "cmae1202c000d1044be0rpdjq"
-    }
-  ],
-  "shifts": [
-    {
-      "dayOfWeek": "MONDAY",
-      "startTime": "13:00:00",
-      "endTime": "18:00:00"
-    },
-    {
-      "dayOfWeek": "WEDNESDAY",
-      "startTime": "13:00:00",
-      "endTime": "18:00:00"
-    }
-  ]
-}
-
 ### Create a new teacher with subjects and shifts
 POST {{url}}/teacher
 Content-Type: application/json
@@ -1083,39 +900,6 @@ Cookie: {{cookie}}
       "dayOfWeek": "FRIDAY",
       "startTime": "14:00:00",
       "endTime": "19:00:00"
-    }
-  ]
-}
-
-### Update an existing teacher
-PUT {{url}}/teacher
-Content-Type: application/json
-Cookie: {{cookie}}
-
-{
-  "teacherId": "cmae6wjzd0002100msc46uw4g",
-  "name": "鈴木 直樹",
-  "email": "suzuki.updated@example.com",
-  "subjects": [
-    {
-      "subjectId": "cmae1202f000h1044ji0eqxll",
-      "subjectTypeId": "cmae1202c000e10448viuodn0"
-    },
-    {
-      "subjectId": "cmae1202f000i1044xudmngqc",
-      "subjectTypeId": "cmae1202c000d1044be0rpdjq"
-    }
-  ],
-  "shifts": [
-    {
-      "dayOfWeek": "TUESDAY",
-      "startTime": "09:00:00",
-      "endTime": "15:00:00"
-    },
-    {
-      "dayOfWeek": "THURSDAY",
-      "startTime": "09:00:00",
-      "endTime": "15:00:00"
     }
   ]
 }
@@ -1249,59 +1033,6 @@ Cookie: {{cookie}}
 GET {{url}}/regular-class-templates?page=1&limit=10
 Content-Type: application/json
 Cookie: {{cookie}}
-
-### Get all regular class templates:
-GET {{url}}/regular-class-templates
-Content-Type: application/json
-Cookie: {{cookie}}
-
-### 2. Get templates with filtering:
-GET {{url}}/regular-class-templates?dayOfWeek=MONDAY&teacherId=cmae1202r000u1044fjnt5ko5
-Content-Type: application/json
-Cookie: {{cookie}}
-
-### 3. Create a new template:
-POST {{url}}/regular-class-templates
-Content-Type: application/json
-Cookie: {{cookie}}
-
-{
-  "dayOfWeek": "WEDNESDAY",
-  "startTime": "15:00",
-  "endTime": "16:30",
-  "teacherId": "cmae1202r000u1044fjnt5ko5",
-  "subjectId": "cmae1202f000h1044ji0eqxll",
-  "subjectTypeId": "cmae1202c000e10448viuodn0",
-  "boothId": "cmae1202o000q1044qjazirnf",
-  "classTypeId": "cmae1202j000l1044qihej6k0",
-  "startDate": "2025-06-01",
-  "endDate": "2026-03-31",
-  "notes": "水曜日の定期数学授業",
-  "studentIds": ["cmae1202x001010449uhc5eaf"]
-}
-
-### 4. Update an existing template:
-PUT {{url}}/regular-class-templates
-Content-Type: application/json
-Cookie: {{cookie}}
-
-{
-  "templateId": "cmae120340016104440z5fnxt",
-  "startTime": "14:30",
-  "endTime": "16:00",
-  "notes": "時間を変更した数学授業",
-  "studentIds": ["cmae1202x001010449uhc5eaf"]
-}
-### 5. Delete a template:
-DELETE {{url}}/regular-class-templates?templateId=cmae120340016104440z5fnxt
-Content-Type: application/json
-Cookie: {{cookie}}
-
-####6. Get a specific template:
-GET {{url}}/regular-class-templates/cmae120340016104440z5fnxt
-Content-Type: application/json
-Cookie: {{cookie}}
-
 
 ### Get templates with filtering by day of week
 GET {{url}}/regular-class-templates?dayOfWeek=MONDAY
@@ -1720,16 +1451,6 @@ GET {{url}}/class-session?dayOfWeek=MONDAY
 Content-Type: application/json
 Cookie: {{cookie}}
 
-### Get class sessions for a specific subject type (single value)
-GET {{url}}/class-session?subjectTypeId=SUBJECT_TYPE_ID
-Content-Type: application/json
-Cookie: {{cookie}}
-
-### Get class sessions for multiple subject types
-GET {{url}}/class-session?subjectTypeId=SUBJECT_TYPE_ID1&subjectTypeId=SUBJECT_TYPE_ID2
-Content-Type: application/json
-Cookie: {{cookie}}
-
 ### Get class sessions for multiple days of week
 GET {{url}}/class-session?dayOfWeek=MONDAY&dayOfWeek=WEDNESDAY&dayOfWeek=FRIDAY
 Content-Type: application/json
@@ -1767,82 +1488,6 @@ GET {{url}}/class-session?subjectId=cma8l10zf000hsbli2q544ji2&subjectId=cma8l10z
 Content-Type: application/json
 Cookie: {{cookie}}
 
-
-### ### 1. Get all class sessions:
-GET {{url}}/class-session
-Content-Type: application/json
-Cookie: {{cookie}}
-
-### 2. Get class sessions with filtering:
-GET {{url}}/class-session?subjectTypeId=cmae1202c000e10448viuodn0&teacherId=cmae1202r000u1044fjnt5ko5
-Content-Type: application/json
-Cookie: {{cookie}}
-
-### 3. Create a new standalone class session:
-POST {{url}}/class-session
-Content-Type: application/json
-Cookie: {{cookie}}
-
-{
-  "date": "2025-06-15",
-  "startTime": "13:00:00",
-  "endTime": "14:30:00",
-  "teacherId": "cmae1202r000u1044fjnt5ko5",
-  "studentId": "cmae1202x001010449uhc5eaf",
-  "subjectId": "cmae1202f000h1044ji0eqxll",
-  "subjectTypeId": "cmae1202c000e10448viuodn0",
-  "boothId": "cmae1202o000q1044qjazirnf",
-  "classTypeId": "cmae1202j000l1044qihej6k0",
-  "notes": "定期テスト対策の特別授業"
-}
-
-### 4. Create a class session from template:
-POST {{url}}/class-session
-Content-Type: application/json
-Cookie: {{cookie}}
-
-{
-  "templateId": "cmae120340016104440z5fnxt",
-  "date": "2025-06-16",
-  "boothId": "cmae1202o000q1044qjazirnf",
-  "notes": "テンプレートから生成された授業"
-}
-
-### 5. Update a standalone class session:
-PUT {{url}}/class-session
-Content-Type: application/json
-Cookie: {{cookie}}
-
-{
-  "classId": "cmae1203x00271044akacj2vq",
-  "startTime": "10:30:00",
-  "endTime": "12:00:00",
-  "subjectTypeId": "cmae1202c000e10448viuodn0",
-  "notes": "時間変更あり"
-}
-
-### 6. Update a template-based class session:
-PUT {{url}}/class-session
-Content-Type: application/json
-Cookie: {{cookie}}
-
-{
-  "classId": "cmae1203v00251044mhaq6uf5",
-  "boothId": "cmae1202o000q1044qjazirnf",
-  "subjectTypeId": "cmae1202c000e10448viuodn0",
-  "notes": "ブース変更あり"
-}
-
-### 7. Delete a class session:
-DELETE {{url}}/class-session?classId=cmae1203x00271044akacj2vq
-Content-Type: application/json
-Cookie: {{cookie}}
-
-### 8. Get a specific class session:
-GET {{url}}/class-session/cmae1203v00251044mhaq6uf5
-Content-Type: application/json
-Cookie: {{cookie}}
-
 ### Create a new standalone class session
 POST {{url}}/class-session
 Content-Type: application/json
@@ -1855,7 +1500,6 @@ Cookie: {{cookie}}
   "teacherId": "cma8l10zw000usblivj4xgo22",
   "studentId": "cma8l11050010sbli4bqmqkcj",
   "subjectId": "cma8l10zf000hsbli2q544ji2",
-  "subjectTypeId": "SUBJECT_TYPE_ID",
   "boothId": "cma8l10zs000qsblit27g595w",
   "classTypeId": "cma8l10zk000lsblivajzyuxu",
   "notes": "数学特別授業"
@@ -1900,7 +1544,6 @@ Cookie: {{cookie}}
   "teacherId": "cma8l10zz000wsbliwpo14tb1",
   "studentId": "cma8l11080012sbli4o8ub11s",
   "subjectId": "cma8l10zf000isbli6pbaft9f",
-  "subjectTypeId": "SUBJECT_TYPE_ID",
   "boothId": "cma8l10zs000ssblitmudm27s",
   "classTypeId": "cma8l10zk000msbli9gyyx1wh",
   "notes": "英語特別授業に変更"
@@ -1917,7 +1560,6 @@ Cookie: {{cookie}}
   "startTime": "15:30:00",
   "endTime": "17:00:00",
   "boothId": "cma8l10zs000ssblitmudm27s",
-  "subjectTypeId": "SUBJECT_TYPE_ID",
   "notes": "時間とブースの変更のみ"
 }
 
