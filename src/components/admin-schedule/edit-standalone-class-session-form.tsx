@@ -1,20 +1,45 @@
+// EditStandaloneClassSessionForm.tsx
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ClassSession } from '@/schemas/class-session.schema';
 import { Textarea } from '@/components/ui/textarea';
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+
+// Определите Zod-схему, если она у вас есть для редактирования standalone session
+const EditStandaloneClassSessionSchema = z.object({
+  startTime: z.string().optional(),
+  endTime: z.string().optional(),
+  notes: z.string().optional(),
+  teacherId: z.string().nullable().optional(),
+  studentId: z.string().nullable().optional(),
+  subjectId: z.string().nullable().optional(),
+  classTypeId: z.string().nullable().optional(),
+});
+
+type FormData = z.infer<typeof EditStandaloneClassSessionSchema>;
 
 interface EditStandaloneClassSessionFormProps {
   open: boolean;
@@ -23,89 +48,25 @@ interface EditStandaloneClassSessionFormProps {
   onSessionUpdated: () => void;
 }
 
-// ... (интерфейсы Teacher, Student, Subject, ClassType остаются без изменений)
+interface Teacher {
+  teacherId: string;
+  name: string;
+}
 
-const Dropdown = ({
-                    label,
-                    options,
-                    value,
-                    onChange,
-                    placeholder,
-                    id
-                  }: {
-  label: string;
-  options: { id: string; name: string }[];
-  value: string | null;
-  onChange: (value: string | null) => void;
-  placeholder: string;
-  id: string;
-}) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const selectedOption = options.find((option) => option.id === value);
+interface Student {
+  studentId: string;
+  name: string;
+}
 
-  const handleOptionClick = useCallback((optionId: string) => {
-    onChange(optionId);
-    setIsOpen(false);
-  }, [onChange]);
+interface Subject {
+  subjectId: string;
+  name: string;
+}
 
-  return (
-    <div className="relative">
-      <Label htmlFor={id} className="text-right block mb-2">
-        {label}
-      </Label>
-      <div
-        className={cn(
-          "flex items-center justify-between border rounded-md px-3 py-2 cursor-pointer",
-          "bg-background text-foreground",
-          "focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2",
-          "w-full"
-        )}
-        onClick={() => setIsOpen(!isOpen)}
-        role="button"
-        tabIndex={0}
-        aria-expanded={isOpen}
-        aria-label={`Select ${label}`}
-      >
-        <span>{selectedOption ? selectedOption.name : placeholder}</span>
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 20 20"
-          fill="currentColor"
-          className="w-5 h-5"
-        >
-          <path
-            fillRule="evenodd"
-            d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 011.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
-            clipRule="evenodd"
-          />
-        </svg>
-      </div>
-      {isOpen && (
-        <div className="absolute z-10 mt-1 w-full bg-card rounded-md shadow-lg border border-border" role="listbox" aria-label={label}>
-          {options.map((option) => {
-            const isSelected = value === option.id;
-            return (
-              <div
-                key={option.id}
-                className={cn(
-                  "px-4 py-2 cursor-pointer hover:bg-accent hover:text-accent-foreground",
-                  "transition-colors duration-200",
-                  isSelected && "bg-accent text-accent-foreground"
-                )}
-                onClick={() => handleOptionClick(option.id)}
-                role="option"
-                tabIndex={0}
-                aria-selected={isSelected}
-              >
-                {option.name}
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-};
+interface ClassType {
+  classTypeId: string;
+  name: string;
+}
 
 export function EditStandaloneClassSessionForm({
                                                  open,
@@ -117,81 +78,55 @@ export function EditStandaloneClassSessionForm({
   const [students, setStudents] = useState<Student[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [classTypes, setClassTypes] = useState<ClassType[]>([]);
-  const [date, setDate] = useState<string>('');
-  const [startTime, setStartTime] = useState<string>('');
-  const [endTime, setEndTime] = useState<string>('');
-  const [teacherId, setTeacherId] = useState<string | null>(null);
-  const [studentId, setStudentId] = useState<string | null>(null);
-  const [subjectId, setSubjectId] = useState<string | null>(null);
-  const [classTypeId, setClassTypeId] = useState<string | null>(null);
-  const [notes, setNotes] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  const form = useForm<FormData>({
+    resolver: zodResolver(EditStandaloneClassSessionSchema),
+    defaultValues: {
+      startTime: session?.startTime?.split('T')[1]?.slice(0, 5) || '',
+      endTime: session?.endTime?.split('T')[1]?.slice(0, 5) || '',
+      notes: session?.notes || '',
+      teacherId: session?.teacherId || null,
+      studentId: session?.studentId || null,
+      subjectId: session?.subjectId || null,
+      classTypeId: session?.classTypeId || null,
+    },
+    mode: 'onSubmit',
+  });
+
+  const { handleSubmit, register, setValue, watch, formState } = form;
+  const selectedTeacherId = watch('teacherId');
+  const selectedStudentId = watch('studentId');
+  const selectedSubjectId = watch('subjectId');
+  const selectedClassTypeId = watch('classTypeId');
 
   useEffect(() => {
     const fetchFormData = async () => {
       try {
         const teachersResponse = await fetch('/api/teacher');
-        if (!teachersResponse.ok) {
-          throw new Error(`Failed to fetch teachers: ${teachersResponse.status}`);
-        }
+        if (!teachersResponse.ok) throw new Error(`Failed to fetch teachers: ${teachersResponse.status}`);
         const teachersData = await teachersResponse.json();
-        if (teachersData && Array.isArray(teachersData.data)) {
-          setTeachers(teachersData.data.map(teacher => ({ teacherId: teacher.teacherId, name: teacher.name })));
-        } else {
-          console.error('Invalid data format for teachers:', teachersData);
-          setError('Invalid data format for teachers.');
-          setTeachers([]);
-        }
+        setTeachers(teachersData.data.map((t: any) => ({ teacherId: t.teacherId, name: t.name })));
 
         const studentsResponse = await fetch('/api/student');
-        if (!studentsResponse.ok) {
-          throw new Error(`Failed to fetch students: ${studentsResponse.status}`);
-        }
+        if (!studentsResponse.ok) throw new Error(`Failed to fetch students: ${studentsResponse.status}`);
         const studentsData = await studentsResponse.json();
-        if (studentsData && Array.isArray(studentsData.data)) {
-          setStudents(studentsData.data.map(student => ({ studentId: student.studentId, name: student.name })));
-        } else {
-          console.error('Invalid data format for students:', studentsData);
-          setError('Invalid data format for students.');
-          setStudents([]);
-        }
+        setStudents(studentsData.data.map((s: any) => ({ studentId: s.studentId, name: s.name })));
 
         const subjectsResponse = await fetch('/api/subjects');
-        if (!subjectsResponse.ok) {
-          throw new Error(`Failed to fetch subjects: ${subjectsResponse.status}`);
-        }
+        if (!subjectsResponse.ok) throw new Error(`Failed to fetch subjects: ${subjectsResponse.status}`);
         const subjectsData = await subjectsResponse.json();
-        if (subjectsData && Array.isArray(subjectsData.data)) {
-          setSubjects(subjectsData.data.map(subject => ({ subjectId: subject.subjectId, name: subject.name })));
-        } else {
-          console.error('Invalid data format for subjects:', subjectsData);
-          setError('Invalid data format for subjects.');
-          setSubjects([]);
-        }
+        setSubjects(subjectsData.data.map((s: any) => ({ subjectId: s.subjectId, name: s.name })));
 
         const classTypesResponse = await fetch('/api/class-type');
-        if (!classTypesResponse.ok) {
-          throw new Error(`Failed to fetch class types: ${classTypesResponse.status}`);
-        }
+        if (!classTypesResponse.ok) throw new Error(`Failed to fetch class types: ${classTypesResponse.status}`);
         const classTypesData = await classTypesResponse.json();
-        if (classTypesData && Array.isArray(classTypesData.data)) {
-          setClassTypes(classTypesData.data.map(classType => ({ classTypeId: classType.classTypeId, name: classType.name })));
-        } else {
-          console.error('Invalid data format for class types:', classTypesData);
-          setError('Invalid data format for class types.');
-          setClassTypes([]);
-        }
+        setClassTypes(classTypesData.data.map((ct: any) => ({ classTypeId: ct.classTypeId, name: ct.name })));
 
         if (session) {
-          setDate(session.date ? session.date.split('T')[0] : '');
-          setStartTime(session.startTime ? session.startTime.split('T')[1].slice(0, 5) : '');
-          setEndTime(session.endTime ? session.endTime.split('T')[1].slice(0, 5) : '');
-          setTeacherId(session.teacherId || null);
-          setStudentId(session.studentId || null);
-          setSubjectId(session.subjectId || null);
-          setClassTypeId(session.classTypeId || null);
-          setNotes(session.notes || '');
+          // Значения устанавливаются через defaultValues в useForm
         }
       } catch (err: any) {
         setError(err.message || 'Не удалось загрузить данные для формы.');
@@ -202,31 +137,36 @@ export function EditStandaloneClassSessionForm({
     if (open) {
       fetchFormData();
     } else {
-      // Сброс состояния при закрытии формы
-      setDate('');
-      setStartTime('');
-      setEndTime('');
-      setTeacherId(null);
-      setStudentId(null);
-      setSubjectId(null);
-      setClassTypeId(null);
-      setNotes('');
       setError(null);
+      setSuccessMsg(null);
+      form.reset({
+        startTime: '',
+        endTime: '',
+        notes: '',
+        teacherId: null,
+        studentId: null,
+        subjectId: null,
+        classTypeId: null,
+      });
     }
-  }, [open, session]);
+  }, [open, session, form]);
 
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
+  const onSubmit = async (data: FormData) => {
     if (!session) return;
 
     setIsLoading(true);
     setError(null);
+    setSuccessMsg(null);
 
     const updatedSessionData = {
       classId: session.classId,
-      startTime: startTime || null,
-      endTime: endTime || null,
-      notes: notes,
+      startTime: data.startTime || null,
+      endTime: data.endTime || null,
+      notes: data.notes,
+      teacherId: data.teacherId || null,
+      studentId: data.studentId || null,
+      subjectId: data.subjectId || null,
+      classTypeId: data.classTypeId || null,
     };
 
     try {
@@ -240,8 +180,11 @@ export function EditStandaloneClassSessionForm({
 
       if (response.ok) {
         setIsLoading(false);
-        onOpenChange(false);
-        onSessionUpdated();
+        setSuccessMsg('Занятие успешно обновлено.');
+        setTimeout(() => {
+          onOpenChange(false);
+          onSessionUpdated();
+        }, 1000);
       } else {
         const errorData = await response.json();
         setError(errorData?.message || 'Не удалось обновить занятие.');
@@ -254,138 +197,199 @@ export function EditStandaloneClassSessionForm({
     }
   };
 
-  if (error) {
-    return <div>Ошибка: {error}</div>;
-  }
-
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Редактировать занятие</DialogTitle>
-          <DialogDescription>Измените детали занятия.</DialogDescription>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="grid gap-4 py-4">
-          {/* Эти поля будут отображаться, но не будут отправляться для обновления */}
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialogContent className="sm:max-w-[425px]">
+        <AlertDialogHeader>
+          <AlertDialogTitle>Редактировать занятие</AlertDialogTitle>
+          <AlertDialogDescription>Измените детали занятия.</AlertDialogDescription>
+        </AlertDialogHeader>
+        <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4 py-4">
+          {/* Дата - только для отображения */}
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="date" className="text-right">
               Дата
             </Label>
             <Input
               id="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
+              value={session?.date?.split('T')[0] || ''}
               type="date"
               className="col-span-3"
-              disabled // Поле заблокировано для редактирования
+              disabled
             />
           </div>
+
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="start-time" className="text-right">
               Начало
             </Label>
             <Input
               id="start-time"
-              value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
               type="time"
               className="col-span-3"
+              {...register('startTime')}
             />
+            {formState.errors.startTime && (
+              <p className="text-sm text-red-500">{String(formState.errors.startTime.message)}</p>
+            )}
           </div>
+
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="end-time" className="text-right">
               Конец
             </Label>
             <Input
               id="end-time"
-              value={endTime}
-              onChange={(e) => setEndTime(e.target.value)}
               type="time"
               className="col-span-3"
+              {...register('endTime')}
             />
+            {formState.errors.endTime && (
+              <p className="text-sm text-red-500">{String(formState.errors.endTime.message)}</p>
+            )}
           </div>
+
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="teacher" className="text-right">
+            <Label htmlFor="teacherId" className="text-right">
               Преподаватель
             </Label>
-            <Dropdown
-              key="teacher-dropdown"
-              id="teacher"
-              label="Преподаватель"
-              options={teachers}
-              value={teacherId}
-              onChange={setTeacherId}
-              placeholder="Выберите преподавателя"
-              disabled // Поле заблокировано для редактирования
-            />
+            <Select
+              id="teacherId"
+              onValueChange={(value) => setValue('teacherId', value === '-' ? null : value)}
+              defaultValue={session?.teacherId || null}
+            >
+              <SelectTrigger className="w-full col-span-3">
+                <SelectValue placeholder="Выберите преподавателя" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={null}>-</SelectItem> {/* Изменено value="" на value={null} */}
+                {teachers.map((teacher) => (
+                  <SelectItem key={teacher.teacherId} value={teacher.teacherId}>
+                    {teacher.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {formState.errors.teacherId && (
+              <p className="text-sm text-red-500">{String(formState.errors.teacherId.message)}</p>
+            )}
           </div>
+
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="student" className="text-right">
+            <Label htmlFor="studentId" className="text-right">
               Студент
             </Label>
-            <Dropdown
-              key="student-dropdown"
-              id="student"
-              label="Студент"
-              options={students}
-              value={studentId}
-              onChange={setStudentId}
-              placeholder="Выберите студента"
-              disabled // Поле заблокировано для редактирования
-            />
+            <Select
+              id="studentId"
+              onValueChange={(value) => setValue('studentId', value === '-' ? null : value)}
+              defaultValue={session?.studentId || null}
+            >
+              <SelectTrigger className="w-full col-span-3">
+                <SelectValue placeholder="Выберите студента" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={null}>-</SelectItem> {/* Изменено value="" на value={null} */}
+                {students.map((student) => (
+                  <SelectItem key={student.studentId} value={student.studentId}>
+                    {student.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {formState.errors.studentId && (
+              <p className="text-sm text-red-500">{String(formState.errors.studentId.message)}</p>
+            )}
           </div>
+
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="subject" className="text-right">
+            <Label htmlFor="subjectId" className="text-right">
               Предмет
             </Label>
-            <Dropdown
-              key="subject-dropdown"
-              id="subject"
-              label="Предмет"
-              options={subjects}
-              value={subjectId}
-              onChange={setSubjectId}
-              placeholder="Выберите предмет"
-              disabled // Поле заблокировано для редактирования
-            />
+            <Select
+              id="subjectId"
+              onValueChange={(value) => setValue('subjectId', value === '-' ? null : value)}
+              defaultValue={session?.subjectId || null}
+            >
+              <SelectTrigger className="w-full col-span-3">
+                <SelectValue placeholder="Выберите предмет" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={null}>-</SelectItem> {/* Изменено value="" на value={null} */}
+                {subjects.map((subject) => (
+                  <SelectItem key={subject.subjectId} value={subject.subjectId}>
+                    {subject.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {formState.errors.subjectId && (
+              <p className="text-sm text-red-500">{String(formState.errors.subjectId.message)}</p>
+            )}
           </div>
+
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="class-type" className="text-right">
+            <Label htmlFor="classTypeId" className="text-right">
               Тип занятия
             </Label>
-            <Dropdown
-              key="class-type-dropdown"
-              id="class-type"
-              label="Тип занятия"
-              options={classTypes}
-              value={classTypeId}
-              onChange={setClassTypeId}
-              placeholder="Выберите тип занятия"
-              disabled // Поле заблокировано для редактирования
-            />
+            <Select
+              id="classTypeId"
+              onValueChange={(value) => setValue('classTypeId', value === '-' ? null : value)}
+              defaultValue={session?.classTypeId || null}
+            >
+              <SelectTrigger className="w-full col-span-3">
+                <SelectValue placeholder="Выберите тип занятия" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={null}>-</SelectItem> {/* Изменено value="" на value={null} */}
+                {classTypes.map((classType) => (
+                  <SelectItem key={classType.classTypeId} value={classType.classTypeId}>
+                    {classType.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {formState.errors.classTypeId && (
+              <p className="text-sm text-red-500">{String(formState.errors.classTypeId.message)}</p>
+            )}
           </div>
+
           <div className="grid grid-cols-4 items-start gap-4">
             <Label htmlFor="notes" className="text-right mt-2">
               Заметки
             </Label>
             <Textarea
               id="notes"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
               className="col-span-3"
+              {...register('notes')}
             />
+            {formState.errors.notes && (
+              <p className="text-sm text-red-500">{String(formState.errors.notes.message)}</p>
+            )}
           </div>
-          <DialogFooter>
-            <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
+
+          {successMsg && (
+            <div className="p-3 rounded bg-green-50 border border-green-200 text-green-600 text-sm">
+              {successMsg}
+            </div>
+          )}
+
+          {error && (
+            <div className="p-3 rounded bg-red-50 border border-red-200 text-red-600 text-sm">
+              {error}
+            </div>
+          )}
+
+          <AlertDialogFooter>
+            <AlertDialogCancel type="button" onClick={() => onOpenChange(false)}>
               Отмена
-            </Button>
+            </AlertDialogCancel>
             <Button type="submit" disabled={isLoading}>
               {isLoading ? 'Сохранение...' : 'Сохранить'}
             </Button>
-          </DialogFooter>
+          </AlertDialogFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
 
