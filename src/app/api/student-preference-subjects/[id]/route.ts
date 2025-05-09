@@ -6,7 +6,7 @@ export async function GET(
   {
     params,
   }: {
-    params: { id: string };
+    params: Promise<{ id: string }>;
   }
 ) {
   const session = await auth();
@@ -15,7 +15,7 @@ export async function GET(
   }
 
   try {
-    const { id } = params;
+    const { id } = await params; // Added await here
 
     // Fetch the student-subject relationship with related data
     const studentPreferenceSubject =
