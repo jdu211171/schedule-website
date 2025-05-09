@@ -110,25 +110,54 @@ export const EditTemplateClassSessionForm: React.FC<
 
   const defaultBoothId = session?.boothId || "";
 
-  // Format the time from ISO to 12h AM/PM format for display
-  const formatTimeFromISOTo12Hour = (isoTime: string | undefined): string => {
-    if (!isoTime) return "";
-    const timePart = isoTime.split("T")[1]?.substring(0, 5) || "";
-    return formatTo12Hour(timePart);
+  // Helper function to format time from a Date-like object or ISO string to 12h AM/PM format for display
+  // Fix 1: Improve time formatting function
+  const formatSessionTimeForDisplay = (timeValue: any): string => {
+    if (!timeValue) return "";
+
+    let hours: number, minutes: number;
+
+    if (typeof timeValue === "string") {
+      if (timeValue.includes("T")) {
+        // Handle ISO date string
+        const d = new Date(timeValue);
+        if (isNaN(d.getTime())) return "";
+        hours = d.getHours();
+        minutes = d.getMinutes();
+      } else {
+        // Handle HH:MM format
+        const parts = timeValue.split(":");
+        if (parts.length < 2) return "";
+        hours = parseInt(parts[0], 10);
+        minutes = parseInt(parts[1], 10);
+        if (isNaN(hours) || isNaN(minutes)) return "";
+      }
+    } else if (timeValue instanceof Date) {
+      if (isNaN(timeValue.getTime())) return "";
+      hours = timeValue.getHours();
+      minutes = timeValue.getMinutes();
+    } else {
+      return "";
+    }
+
+    const time24 = `${String(hours).padStart(2, "0")}:${String(
+      minutes
+    ).padStart(2, "0")}`;
+    return formatTo12Hour(time24);
   };
 
   const form = useForm<FormData>({
     resolver: zodResolver(UpdateTemplateClassSessionSchema),
     defaultValues: {
       classId: session?.classId || "",
-      startTime: formatTimeFromISOTo12Hour(session?.startTime),
-      endTime: formatTimeFromISOTo12Hour(session?.endTime),
+      startTime: formatSessionTimeForDisplay(session?.startTime),
+      endTime: formatSessionTimeForDisplay(session?.endTime),
       boothId: defaultBoothId,
       notes: session?.notes || "",
     },
   });
 
-  const { register, setValue, watch, getValues } = form;
+  const { register, setValue, watch, getValues, reset } = form; // Add reset here
   const selectedBoothId = watch("boothId");
   const startTime = watch("startTime");
   const endTime = watch("endTime");
@@ -142,6 +171,28 @@ export const EditTemplateClassSessionForm: React.FC<
       }, 1000);
     }
   }, [isSuccess, onSessionUpdated, onOpenChange]);
+
+  // Add this useEffect to update form values when the session prop changes
+  useEffect(() => {
+    if (session) {
+      reset({
+        classId: session.classId || "",
+        startTime: formatSessionTimeForDisplay(session.startTime),
+        endTime: formatSessionTimeForDisplay(session.endTime),
+        boothId: session.boothId || "", // Ensure consistency with how defaultBoothId was derived
+        notes: session.notes || "",
+      });
+    } else {
+      // Optionally, reset to initial empty state if session becomes null
+      reset({
+        classId: "",
+        startTime: "",
+        endTime: "",
+        boothId: "",
+        notes: "",
+      });
+    }
+  }, [session, reset]); // Dependencies: session and reset
 
   // Generate time options for dropdown
   const generateTimeOptions = () => {
@@ -175,6 +226,8 @@ export const EditTemplateClassSessionForm: React.FC<
 
       const formData = getValues();
 
+      // // Fix 2: Update form submission to properly handle time
+      // In the handleSaveClick function:
       // Convert time from 12h AM/PM format to 24h format before sending to server
       const startTime24 = formData.startTime
         ? formatTo24Hour(formData.startTime)
@@ -183,16 +236,7 @@ export const EditTemplateClassSessionForm: React.FC<
         ? formatTo24Hour(formData.endTime)
         : undefined;
 
-      // Console for debugging
-      console.log("Submitting data:", {
-        classId: session.classId,
-        startTime: startTime24,
-        endTime: endTime24,
-        boothId: formData.boothId || undefined,
-        notes: formData.notes,
-      });
-
-      // Explicitly specify classId in the submitted data
+      // Send just the time portion to align with backend expectations
       await updateClassSessionMutateAsync({
         classId: session.classId,
         startTime: startTime24,
@@ -299,7 +343,9 @@ export const EditTemplateClassSessionForm: React.FC<
                     ))}
                   </>
                 ) : (
-                  <SelectItem value="empty">利用可能なブースがありません</SelectItem>
+                  <SelectItem value="empty">
+                    利用可能なブースがありません
+                  </SelectItem>
                 )}
               </SelectContent>
             </Select>
@@ -312,7 +358,11 @@ export const EditTemplateClassSessionForm: React.FC<
 
           <div>
             <Label htmlFor="notes">備考</Label>
-            <Input id="notes" {...register("notes")} />
+            <Input
+              id="notes"
+              {...register("notes")}
+              // Remove any explicit value or onChange, let register handle both
+            />
             {form.formState.errors.notes && (
               <p className="text-sm text-red-500">
                 {String(form.formState.errors.notes.message)}

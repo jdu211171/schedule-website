@@ -29,6 +29,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 // Define the Zod schema if you have one for editing standalone session
 const EditStandaloneClassSessionSchema = z.object({
+  date: z.string().optional(), // Added date field
   startTime: z.string().optional(),
   endTime: z.string().optional(),
   notes: z.string().optional(),
@@ -94,6 +95,54 @@ function formatTo24Hour(time12: string): string {
     .padStart(2, "0")}`;
 }
 
+// Helper function to format a Date object to "YYYY-MM-DD" string
+// Fix 1: Correct the regex pattern in formatDateToYYYYMMDD
+const formatDateToYYYYMMDD = (date: Date | string | undefined | null): string => {
+  if (!date) return "";
+  if (date instanceof Date) {
+    return date.toISOString().split("T")[0];
+  }
+  if (typeof date === 'string') {
+     const parts = date.split("T");
+     // Remove the escaped \d characters from regex
+     if (parts[0].match(/^\d{4}-\d{2}-\d{2}$/)) {
+        return parts[0];
+     }
+  }
+  return "";
+};
+
+// Helper function to format time from a Date object to 12h AM/PM format
+// Fix 2: Improve time formatting function for better handling
+const formatTimeFromDateObjectTo12Hour = (dateObj: Date | string | undefined | null): string => {
+  if (!dateObj) return "";
+
+  let hours: number, minutes: number;
+
+  if (dateObj instanceof Date) {
+    hours = dateObj.getHours();
+    minutes = dateObj.getMinutes();
+  } else if (typeof dateObj === 'string') {
+    // Handle ISO string or time string format
+    if (dateObj.includes('T')) {
+      const d = new Date(dateObj);
+      hours = d.getHours();
+      minutes = d.getMinutes();
+    } else {
+      const parts = dateObj.split(':');
+      hours = parseInt(parts[0], 10);
+      minutes = parseInt(parts[1], 10);
+      if (isNaN(hours) || isNaN(minutes)) return "";
+    }
+  } else {
+    return "";
+  }
+
+  const time24 = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+  return formatTo12Hour(time24);
+};
+
+
 export function EditStandaloneClassSessionForm({
   open,
   onOpenChange,
@@ -108,26 +157,19 @@ export function EditStandaloneClassSessionForm({
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  // Format the time from ISO to 12h AM/PM format for display
-  const formatTimeFromISOTo12Hour = (isoTime: string | undefined): string => {
-    if (!isoTime) return "";
-    const timePart = isoTime.split("T")[1]?.slice(0, 5) || "";
-    return formatTo12Hour(timePart);
-  };
+  // Format the time from ISO to 12h AM/PM format for display (original one, can be removed if new one is used everywhere)
+  // const formatTimeFromISOTo12Hour = (isoTime: string | undefined): string => {
+  //   if (!isoTime) return "";
+  //   const timePart = isoTime.split("T")[1]?.slice(0, 5) || "";
+  //   return formatTo12Hour(timePart);
+  // };
 
   const form = useForm<FormData>({
     resolver: zodResolver(EditStandaloneClassSessionSchema),
     defaultValues: {
-      startTime: formatTimeFromISOTo12Hour(
-        session?.startTime instanceof Date
-          ? session?.startTime.toISOString()
-          : (session?.startTime as string | undefined)
-      ),
-      endTime: formatTimeFromISOTo12Hour(
-        session?.endTime instanceof Date
-          ? session?.endTime.toISOString()
-          : (session?.endTime as string | undefined)
-      ),
+      date: formatDateToYYYYMMDD(session?.date),
+      startTime: formatTimeFromDateObjectTo12Hour(session?.startTime),
+      endTime: formatTimeFromDateObjectTo12Hour(session?.endTime),
       notes: session?.notes || "",
       teacherId: session?.teacherId || null,
       studentId: session?.studentId || null,
@@ -239,10 +281,37 @@ export function EditStandaloneClassSessionForm({
 
     if (open) {
       fetchFormData();
+      // Reset form with session data when dialog opens or session changes
+      if (session) {
+        form.reset({
+          date: formatDateToYYYYMMDD(session.date),
+          startTime: formatTimeFromDateObjectTo12Hour(session.startTime),
+          endTime: formatTimeFromDateObjectTo12Hour(session.endTime),
+          notes: session.notes || "",
+          teacherId: session.teacherId || null,
+          studentId: session.studentId || null,
+          subjectId: session.subjectId || null,
+          classTypeId: session.classTypeId || null,
+        });
+      } else {
+        // If session is null, reset to empty/default
+        form.reset({
+          date: "",
+          startTime: "",
+          endTime: "",
+          notes: "",
+          teacherId: null,
+          studentId: null,
+          subjectId: null,
+          classTypeId: null,
+        });
+      }
     } else {
+      // Reset form when dialog closes
       setError(null);
       setSuccessMsg(null);
       form.reset({
+        date: "",
         startTime: "",
         endTime: "",
         notes: "",
@@ -252,7 +321,7 @@ export function EditStandaloneClassSessionForm({
         classTypeId: null,
       });
     }
-  }, [open, session, form]);
+  }, [open, session, form]); // Added form to dependency array
 
   const onSubmit = async (data: FormData) => {
     if (!session) return;
@@ -261,14 +330,27 @@ export function EditStandaloneClassSessionForm({
     setError(null);
     setSuccessMsg(null);
 
-    // Convert time from 12h AM/PM format to 24h format before sending to server
-    const startTime24 = data.startTime ? formatTo24Hour(data.startTime) : null;
-    const endTime24 = data.endTime ? formatTo24Hour(data.endTime) : null;
+    let finalStartTime: string | null = null;
+    if (data.date && data.startTime) {
+      const startTime24 = formatTo24Hour(data.startTime);
+      if (startTime24) {
+        finalStartTime = startTime24; // Just send HH:MM format, not a full ISO string
+      }
+    }
+
+    let finalEndTime: string | null = null;
+    if (data.date && data.endTime) {
+      const endTime24 = formatTo24Hour(data.endTime);
+      if (endTime24) {
+        finalEndTime = endTime24; // Just send HH:MM format, not a full ISO string
+      }
+    }
 
     const updatedSessionData = {
       classId: session.classId,
-      startTime: startTime24,
-      endTime: endTime24,
+      date: data.date,
+      startTime: finalStartTime,
+      endTime: finalEndTime,
       notes: data.notes,
       teacherId: data.teacherId || null,
       studentId: data.studentId || null,
@@ -339,19 +421,9 @@ export function EditStandaloneClassSessionForm({
             </Label>
             <Input
               id="date"
-              value={
-                session?.date
-                  ? session.date instanceof Date
-                    ? session.date.toISOString().split("T")[0]
-                    : typeof session.date === "string"
-                      ? (session.date as string).includes("T")
-                        ? (session.date as string).split("T")[0]
-                        : session.date as string
-                      : ""
-                  : ""
-              }
               type="date"
               className="col-span-3"
+              {...register("date")} // Use react-hook-form register
             />
           </div>
 
