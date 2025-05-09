@@ -748,6 +748,7 @@ export async function GET(request: Request) {
           },
           subjectType: true,
           booth: true,
+          classType: true, // <-- Added to include classType in response
           templateStudentAssignments: {
             include: {
               student: true,

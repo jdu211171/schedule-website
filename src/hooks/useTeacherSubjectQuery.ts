@@ -11,6 +11,7 @@ export type TeacherSubjectWithRelations = Prisma.TeacherSubjectGetPayload<{
   include: {
     subject: true;
     teacher: true;
+    subjectType: true;
   }
 }>
 
