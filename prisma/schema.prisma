@@ -194,6 +194,8 @@ model StudentPreferenceSubject {
   studentPreference   StudentPreference @relation(fields: [studentPreferenceId], references: [preferenceId], onDelete: Cascade)
   subject             Subject           @relation(fields: [subjectId], references: [subjectId], onDelete: Cascade)
   subjectType         SubjectType       @relation(fields: [subjectTypeId], references: [subjectTypeId], onDelete: Restrict, onUpdate: Cascade)
+  createdAt           DateTime          @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt           DateTime          @updatedAt @map("updated_at") @db.Timestamp(6)
 
   @@unique([studentPreferenceId, subjectId, subjectTypeId])
   @@map("student_preference_subjects")

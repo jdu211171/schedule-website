@@ -116,9 +116,6 @@ export function TeacherFormDialog({
   const [showSubjectDropdown, setShowSubjectDropdown] = useState(false);
   const [selectedSubject, setSelectedSubject] = useState<string>("");
   const [selectedSubjectType, setSelectedSubjectType] = useState<string>("");
-  const [availableSubjectTypes, setAvailableSubjectTypes] = useState<
-    Array<{ subjectTypeId: string; name: string }>
-  >([]);
 
   const isEditing = !!teacher;
 
@@ -200,26 +197,22 @@ export function TeacherFormDialog({
   });
 
   // Effect to update subject types when a subject is selected
-  useEffect(() => {
-    if (selectedSubject) {
-      // Find all subject types associated with the selected subject
-      const subjectToTypeRelations =
-        subjectsCompatArray.find((s) => s.subjectId === selectedSubject)
-          ?.subjectToSubjectTypes || [];
-
-      const types = subjectToTypeRelations.map((rel) => ({
-        subjectTypeId: rel.subjectType.subjectTypeId,
-        name: rel.subjectType.name,
-      }));
-
-      setAvailableSubjectTypes(types);
-      // Reset the selected subject type when subject changes
-      setSelectedSubjectType("");
-    } else {
-      setAvailableSubjectTypes([]);
-      setSelectedSubjectType("");
-    }
+  const availableSubjectTypes = useMemo(() => {
+    if (!selectedSubject) return [];
+    const subject = subjectsCompatArray.find(
+      (s) => s.subjectId === selectedSubject
+    );
+    if (!subject) return [];
+    return (subject.subjectToSubjectTypes || []).map((rel) => ({
+      subjectTypeId: rel.subjectType.subjectTypeId,
+      name: rel.subjectType.name,
+    }));
   }, [selectedSubject, subjectsCompatArray]);
+
+  useEffect(() => {
+    // When selectedSubject changes, reset selectedSubjectType
+    setSelectedSubjectType("");
+  }, [selectedSubject]);
 
   // Reset preferences form when teacher data changes
   useEffect(() => {
