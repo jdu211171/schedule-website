@@ -27,17 +27,65 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-// Define the Zod schema if you have one for editing standalone session
-const EditStandaloneClassSessionSchema = z.object({
-  date: z.string().optional(), // Added date field
-  startTime: z.string().optional(),
-  endTime: z.string().optional(),
-  notes: z.string().optional(),
-  teacherId: z.string().nullable().optional(),
-  studentId: z.string().nullable().optional(),
-  subjectId: z.string().nullable().optional(),
-  classTypeId: z.string().nullable().optional(),
-});
+// Define the Zod schema with Japanese validation messages
+const EditStandaloneClassSessionSchema = z
+  .object({
+    date: z.string({
+      required_error: "日付は必須です",
+      invalid_type_error: "日付の形式が正しくありません",
+    }),
+    startTime: z.string({
+      required_error: "開始時間は必須です",
+      invalid_type_error: "開始時間の形式が正しくありません",
+    }),
+    endTime: z.string({
+      required_error: "終了時間は必須です",
+      invalid_type_error: "終了時間の形式が正しくありません",
+    }),
+    notes: z
+      .string({
+        invalid_type_error: "備考の形式が正しくありません",
+      })
+      .max(255, { message: "備考は255文字以内で入力してください" })
+      .optional(),
+    teacherId: z
+      .string({
+        invalid_type_error: "講師の形式が正しくありません",
+      })
+      .nullable()
+      .optional(),
+    studentId: z
+      .string({
+        invalid_type_error: "生徒の形式が正しくありません",
+      })
+      .nullable()
+      .optional(),
+    subjectId: z
+      .string({
+        invalid_type_error: "科目の形式が正しくありません",
+      })
+      .nullable()
+      .optional(),
+    classTypeId: z
+      .string({
+        invalid_type_error: "授業タイプの形式が正しくありません",
+      })
+      .nullable()
+      .optional(),
+  })
+  .refine(
+    (data) => {
+      // Skip validation if either time is missing
+      if (!data.startTime || !data.endTime) return true;
+
+      // Compare times (simple string comparison works for 24h format)
+      return data.startTime < data.endTime;
+    },
+    {
+      message: "終了時間は開始時間より後である必要があります",
+      path: ["endTime"], // Highlight the endTime field with this error
+    }
+  );
 
 type FormData = z.infer<typeof EditStandaloneClassSessionSchema>;
 
@@ -144,7 +192,7 @@ export function EditStandaloneClassSessionForm({
       subjectId: session?.subjectId || null,
       classTypeId: session?.classTypeId || null,
     },
-    mode: "onSubmit",
+    mode: "onChange", // Change to onChange for more responsive validation
   });
 
   const { handleSubmit, register, setValue, watch, formState } = form;
@@ -238,11 +286,25 @@ export function EditStandaloneClassSessionForm({
           // Values are set via defaultValues in useForm
         }
       } catch (err) {
-        setError(
-          err && typeof err === "object" && "message" in err
-            ? String((err as { message?: string }).message)
-            : "フォームデータの読み込みに失敗しました。"
-        );
+        let errorMessage = "フォームデータの読み込みに失敗しました。";
+
+        if (err && typeof err === "object" && "message" in err) {
+          const errMsg = String((err as { message?: string }).message);
+
+          if (errMsg.includes("Failed to fetch teachers")) {
+            errorMessage = "講師情報の取得に失敗しました。";
+          } else if (errMsg.includes("Failed to fetch students")) {
+            errorMessage = "生徒情報の取得に失敗しました。";
+          } else if (errMsg.includes("Failed to fetch subjects")) {
+            errorMessage = "科目情報の取得に失敗しました。";
+          } else if (errMsg.includes("Failed to fetch class types")) {
+            errorMessage = "授業タイプの取得に失敗しました。";
+          } else {
+            errorMessage = errMsg;
+          }
+        }
+
+        setError(errorMessage);
         console.error("フォームデータの読み込みエラー:", err);
       }
     };
@@ -294,6 +356,40 @@ export function EditStandaloneClassSessionForm({
   const onSubmit = async (data: FormData) => {
     if (!session) return;
 
+    // Validate that all required fields are present
+    if (!data.date) {
+      form.setError("date", {
+        type: "required",
+        message: "日付は必須です",
+      });
+      return;
+    }
+
+    if (!data.startTime) {
+      form.setError("startTime", {
+        type: "required",
+        message: "開始時間は必須です",
+      });
+      return;
+    }
+
+    if (!data.endTime) {
+      form.setError("endTime", {
+        type: "required",
+        message: "終了時間は必須です",
+      });
+      return;
+    }
+
+    // Additional validation: end time must be after start time
+    if (data.startTime >= data.endTime) {
+      form.setError("endTime", {
+        type: "validate",
+        message: "終了時間は開始時間より後である必要があります",
+      });
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     setSuccessMsg(null);
@@ -338,11 +434,37 @@ export function EditStandaloneClassSessionForm({
         }, 1000);
       } else {
         const errorData = await response.json();
-        setError(errorData?.message || "授業の更新に失敗しました。");
+        let errorMessage = "授業の更新に失敗しました。";
+
+        if (errorData?.error === "Booth is already booked for this time") {
+          errorMessage = "指定した時間にブースが既に予約されています。";
+        } else if (
+          errorData?.error === "Teacher is already booked for this time"
+        ) {
+          errorMessage = "指定した時間に講師が既に予約されています。";
+        } else if (
+          errorData?.error === "Student is already booked for this time"
+        ) {
+          errorMessage = "指定した時間に生徒が既に予約されています。";
+        } else if (
+          errorData?.error === "Invalid subject-subject type combination"
+        ) {
+          errorMessage = "科目と科目タイプの組み合わせが無効です。";
+        } else if (errorData?.message) {
+          errorMessage = errorData.message;
+        }
+
+        setError(errorMessage);
         setIsLoading(false);
       }
     } catch (err) {
-      setError("授業の更新中にエラーが発生しました。");
+      const errorMessage = "授業の更新中にエラーが発生しました。";
+
+      if (err && typeof err === "object" && "message" in err) {
+        console.error("更新エラー詳細:", (err as { message?: string }).message);
+      }
+
+      setError(errorMessage);
       setIsLoading(false);
       console.error("授業の更新エラー:", err);
     }
@@ -377,66 +499,87 @@ export function EditStandaloneClassSessionForm({
           {/* Date - display only */}
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="date" className="text-right">
-              日付
+              日付 <span className="text-red-500">*</span>
             </Label>
-            <Input
-              id="date"
-              type="date"
-              className="col-span-3"
-              {...register("date")} // Use react-hook-form register
-            />
+            <div className="col-span-3">
+              <Input
+                id="date"
+                type="date"
+                className={`w-full ${
+                  formState.errors.date ? "border-red-500" : ""
+                }`}
+                {...register("date")} // Use react-hook-form register
+              />
+              {formState.errors.date && (
+                <p className="text-sm text-red-500 mt-1">
+                  {String(formState.errors.date.message)}
+                </p>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="start-time" className="text-right">
-              開始
+              開始 <span className="text-red-500">*</span>
             </Label>
-            <Select
-              value={form.watch("startTime")}
-              onValueChange={(value) => setValue("startTime", value)}
-            >
-              <SelectTrigger className="col-span-3 w-full">
-                <SelectValue placeholder="開始時間を選択" />
-              </SelectTrigger>
-              <SelectContent className="max-h-[200px] overflow-y-auto">
-                {timeOptions.map((time) => (
-                  <SelectItem key={time} value={time}>
-                    {time}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {formState.errors.startTime && (
-              <p className="text-sm text-red-500">
-                {String(formState.errors.startTime.message)}
-              </p>
-            )}
+            <div className="col-span-3">
+              <Select
+                value={form.watch("startTime")}
+                onValueChange={(value) => setValue("startTime", value)}
+              >
+                <SelectTrigger
+                  className={`w-full ${
+                    formState.errors.startTime ? "border-red-500" : ""
+                  }`}
+                >
+                  <SelectValue placeholder="開始時間を選択" />
+                </SelectTrigger>
+                <SelectContent className="max-h-[200px] overflow-y-auto">
+                  {timeOptions.map((time) => (
+                    <SelectItem key={time} value={time}>
+                      {time}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {formState.errors.startTime && (
+                <p className="text-sm text-red-500 mt-1">
+                  {String(formState.errors.startTime.message)}
+                </p>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="end-time" className="text-right">
-              終了
+              終了 <span className="text-red-500">*</span>
             </Label>
-            <Select
-              value={form.watch("endTime")}
-              onValueChange={(value) => setValue("endTime", value)}
-            >
-              <SelectTrigger className="col-span-3 w-full">
-                <SelectValue placeholder="終了時間を選択" />
-              </SelectTrigger>
-              <SelectContent className="max-h-[200px] overflow-y-auto">
-                {timeOptions.map((time) => (
-                  <SelectItem key={time} value={time}>
-                    {time}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {formState.errors.endTime && (
-              <p className="text-sm text-red-500">
-                {String(formState.errors.endTime.message)}
-              </p>
-            )}
+            <div className="col-span-3">
+              <Select
+                value={form.watch("endTime")}
+                onValueChange={(value) => setValue("endTime", value)}
+              >
+                <SelectTrigger
+                  className={`w-full ${
+                    formState.errors.endTime ? "border-red-500" : ""
+                  }`}
+                >
+                  <SelectValue placeholder="終了時間を選択" />
+                </SelectTrigger>
+                <SelectContent className="max-h-[200px] overflow-y-auto">
+                  {timeOptions.map((time) => (
+                    <SelectItem key={time} value={time}>
+                      {time}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {formState.errors.endTime && (
+                <p className="text-sm text-red-500 mt-1">
+                  {String(formState.errors.endTime.message)}
+                </p>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-4 items-center gap-4">

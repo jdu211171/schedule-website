@@ -12,7 +12,47 @@ import {
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { UpdateTemplateClassSessionSchema } from "@/schemas/class-session.schema";
+// Import the base schema and extend it with our own validations
+import { UpdateTemplateClassSessionSchema as BaseTemplateSchema } from "@/schemas/class-session.schema";
+
+// Extended schema with Japanese validation messages
+const UpdateTemplateClassSessionSchema = BaseTemplateSchema.extend({
+  startTime: z
+    .string({
+      required_error: "開始時間は必須です",
+      invalid_type_error: "開始時間の形式が正しくありません",
+    })
+    .optional(),
+  endTime: z
+    .string({
+      required_error: "終了時間は必須です",
+      invalid_type_error: "終了時間の形式が正しくありません",
+    })
+    .optional(),
+  notes: z
+    .string({
+      invalid_type_error: "備考の形式が正しくありません",
+    })
+    .max(255, { message: "備考は255文字以内で入力してください" })
+    .optional(),
+  boothId: z
+    .string({
+      invalid_type_error: "ブースの形式が正しくありません",
+    })
+    .optional(),
+}).refine(
+  (data) => {
+    // Skip validation if either time is missing
+    if (!data.startTime || !data.endTime) return true;
+
+    // Compare times (simple string comparison works for 24h format)
+    return data.startTime < data.endTime;
+  },
+  {
+    message: "終了時間は開始時間より後である必要があります",
+    path: ["endTime"], // Highlight the endTime field with this error
+  }
+);
 import { useClassSessionUpdate } from "@/components/match/hooks/useClassSessionMutation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -127,6 +167,7 @@ export const EditTemplateClassSessionForm: React.FC<
       boothId: defaultBoothId,
       notes: session?.notes || "",
     },
+    mode: "onChange", // Change to onChange for more responsive validation
   });
 
   const { register, setValue, watch, getValues, reset } = form; // Add reset here
@@ -189,12 +230,32 @@ export const EditTemplateClassSessionForm: React.FC<
       return;
     }
 
+    // Validate form before submission
+    const isValid = await form.trigger();
+    if (!isValid) {
+      // Form has validation errors, don't proceed
+      console.log("フォームバリデーションエラー:", form.formState.errors);
+      return;
+    }
+
+    // Manual validation for time relationship
+    const formData = getValues();
+    if (
+      formData.startTime &&
+      formData.endTime &&
+      formData.startTime >= formData.endTime
+    ) {
+      form.setError("endTime", {
+        type: "validate",
+        message: "終了時間は開始時間より後である必要があります",
+      });
+      return;
+    }
+
     try {
       setIsSubmitting(true);
       setApiError(null);
       setSuccessMsg(null);
-
-      const formData = getValues();
 
       // Time is already in 24-hour format, no conversion needed
       const startTime24 = formData.startTime;
@@ -213,7 +274,21 @@ export const EditTemplateClassSessionForm: React.FC<
       let errorMessage = "セッションの更新中にエラーが発生しました";
 
       if (err && typeof err === "object" && "message" in err) {
-        errorMessage = (err as Record<string, unknown>).message as string;
+        const errMsg = (err as Record<string, unknown>).message as string;
+
+        // Translate common error messages
+        if (errMsg.includes("There is a scheduling conflict")) {
+          errorMessage = "予定が重複しています。他の時間帯を選択してください。";
+        } else if (errMsg.includes("Booth is already booked")) {
+          errorMessage = "指定した時間にブースが既に予約されています。";
+        } else if (errMsg.includes("Invalid subject-subject type")) {
+          errorMessage = "科目と科目タイプの組み合わせが無効です。";
+        } else if (errMsg.includes("End time must be after start time")) {
+          errorMessage = "終了時間は開始時間より後である必要があります。";
+        } else {
+          // Use the original message if no specific translation
+          errorMessage = errMsg;
+        }
       }
 
       setApiError(errorMessage);
@@ -234,12 +309,18 @@ export const EditTemplateClassSessionForm: React.FC<
 
         <div className="grid gap-4 py-4">
           <div>
-            <Label htmlFor="startTime">開始時間</Label>
+            <Label htmlFor="startTime">
+              開始時間 <span className="text-red-500">*</span>
+            </Label>
             <Select
               value={startTime}
               onValueChange={(value) => setValue("startTime", value)}
             >
-              <SelectTrigger className="w-full">
+              <SelectTrigger
+                className={`w-full ${
+                  form.formState.errors.startTime ? "border-red-500" : ""
+                }`}
+              >
                 <SelectValue placeholder="開始時間を選択" />
               </SelectTrigger>
               <SelectContent className="max-h-[200px] overflow-y-auto">
@@ -251,19 +332,25 @@ export const EditTemplateClassSessionForm: React.FC<
               </SelectContent>
             </Select>
             {form.formState.errors.startTime && (
-              <p className="text-sm text-red-500">
+              <p className="text-sm text-red-500 mt-1">
                 {String(form.formState.errors.startTime.message)}
               </p>
             )}
           </div>
 
           <div>
-            <Label htmlFor="endTime">終了時間</Label>
+            <Label htmlFor="endTime">
+              終了時間 <span className="text-red-500">*</span>
+            </Label>
             <Select
               value={endTime}
               onValueChange={(value) => setValue("endTime", value)}
             >
-              <SelectTrigger className="w-full">
+              <SelectTrigger
+                className={`w-full ${
+                  form.formState.errors.endTime ? "border-red-500" : ""
+                }`}
+              >
                 <SelectValue placeholder="終了時間を選択" />
               </SelectTrigger>
               <SelectContent className="max-h-[200px] overflow-y-auto">
@@ -275,7 +362,7 @@ export const EditTemplateClassSessionForm: React.FC<
               </SelectContent>
             </Select>
             {form.formState.errors.endTime && (
-              <p className="text-sm text-red-500">
+              <p className="text-sm text-red-500 mt-1">
                 {String(form.formState.errors.endTime.message)}
               </p>
             )}
@@ -349,11 +436,24 @@ export const EditTemplateClassSessionForm: React.FC<
           )}
 
           {isError && error && (
-            <p className="text-sm text-red-500">
+            <div className="p-3 rounded bg-red-50 border border-red-200 text-red-600 text-sm">
               {typeof error === "object" && "message" in error
-                ? String(error.message)
+                ? (() => {
+                    const errMsg = String(error.message);
+                    if (errMsg.includes("There is a scheduling conflict")) {
+                      return "予定が重複しています。他の時間帯を選択してください。";
+                    } else if (errMsg.includes("Booth is already booked")) {
+                      return "指定した時間にブースが既に予約されています。";
+                    } else if (
+                      errMsg.includes("End time must be after start time")
+                    ) {
+                      return "終了時間は開始時間より後である必要があります。";
+                    } else {
+                      return errMsg;
+                    }
+                  })()
                 : "エラーが発生しました"}
-            </p>
+            </div>
           )}
 
           <AlertDialogFooter>
