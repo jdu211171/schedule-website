@@ -41,32 +41,40 @@ interface BoothResponse {
   data: Booth[];
 }
 
-// Helper function to convert 24h format to 12h AM/PM format
-function formatTo12Hour(time24: string): string {
-  if (!time24) return "";
+// Helper function to format time from a Date-like object or ISO string to 24h format
+const formatSessionTimeFor24Hour = (timeValue: any): string => {
+  if (!timeValue) return "";
 
-  const [hour, minute] = time24.split(":").map(Number);
-  const period = hour >= 12 ? "PM" : "AM";
-  const hour12 = hour % 12 || 12; // Convert 0 to 12 for 12 AM
+  let hours: number, minutes: number;
 
-  return `${hour12}:${minute.toString().padStart(2, "0")} ${period}`;
-}
+  if (typeof timeValue === "string") {
+    if (timeValue.includes("T")) {
+      // Handle ISO date string
+      const d = new Date(timeValue);
+      if (isNaN(d.getTime())) return "";
+      hours = d.getHours();
+      minutes = d.getMinutes();
+    } else {
+      // Handle HH:MM format
+      const parts = timeValue.split(":");
+      if (parts.length < 2) return "";
+      hours = parseInt(parts[0], 10);
+      minutes = parseInt(parts[1], 10);
+      if (isNaN(hours) || isNaN(minutes)) return "";
+    }
+  } else if (timeValue instanceof Date) {
+    if (isNaN(timeValue.getTime())) return "";
+    hours = timeValue.getHours();
+    minutes = timeValue.getMinutes();
+  } else {
+    return "";
+  }
 
-// Helper function to convert 12h AM/PM format to 24h format
-function formatTo24Hour(time12: string): string {
-  if (!time12) return "";
-
-  const [timePart, period] = time12.split(" ");
-  const [hour, minute] = timePart.split(":").map(Number);
-
-  let hour24 = hour;
-  if (period === "PM" && hour !== 12) hour24 += 12;
-  if (period === "AM" && hour === 12) hour24 = 0;
-
-  return `${hour24.toString().padStart(2, "0")}:${minute
-    .toString()
-    .padStart(2, "0")}`;
-}
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(
+    2,
+    "0"
+  )}`;
+};
 
 export const EditTemplateClassSessionForm: React.FC<
   EditTemplateClassSessionFormProps
@@ -110,48 +118,12 @@ export const EditTemplateClassSessionForm: React.FC<
 
   const defaultBoothId = session?.boothId || "";
 
-  // Helper function to format time from a Date-like object or ISO string to 12h AM/PM format for display
-  // Fix 1: Improve time formatting function
-  const formatSessionTimeForDisplay = (timeValue: any): string => {
-    if (!timeValue) return "";
-
-    let hours: number, minutes: number;
-
-    if (typeof timeValue === "string") {
-      if (timeValue.includes("T")) {
-        // Handle ISO date string
-        const d = new Date(timeValue);
-        if (isNaN(d.getTime())) return "";
-        hours = d.getHours();
-        minutes = d.getMinutes();
-      } else {
-        // Handle HH:MM format
-        const parts = timeValue.split(":");
-        if (parts.length < 2) return "";
-        hours = parseInt(parts[0], 10);
-        minutes = parseInt(parts[1], 10);
-        if (isNaN(hours) || isNaN(minutes)) return "";
-      }
-    } else if (timeValue instanceof Date) {
-      if (isNaN(timeValue.getTime())) return "";
-      hours = timeValue.getHours();
-      minutes = timeValue.getMinutes();
-    } else {
-      return "";
-    }
-
-    const time24 = `${String(hours).padStart(2, "0")}:${String(
-      minutes
-    ).padStart(2, "0")}`;
-    return formatTo12Hour(time24);
-  };
-
   const form = useForm<FormData>({
     resolver: zodResolver(UpdateTemplateClassSessionSchema),
     defaultValues: {
       classId: session?.classId || "",
-      startTime: formatSessionTimeForDisplay(session?.startTime),
-      endTime: formatSessionTimeForDisplay(session?.endTime),
+      startTime: formatSessionTimeFor24Hour(session?.startTime),
+      endTime: formatSessionTimeFor24Hour(session?.endTime),
       boothId: defaultBoothId,
       notes: session?.notes || "",
     },
@@ -177,8 +149,8 @@ export const EditTemplateClassSessionForm: React.FC<
     if (session) {
       reset({
         classId: session.classId || "",
-        startTime: formatSessionTimeForDisplay(session.startTime),
-        endTime: formatSessionTimeForDisplay(session.endTime),
+        startTime: formatSessionTimeFor24Hour(session.startTime),
+        endTime: formatSessionTimeFor24Hour(session.endTime),
         boothId: session.boothId || "", // Ensure consistency with how defaultBoothId was derived
         notes: session.notes || "",
       });
@@ -194,16 +166,14 @@ export const EditTemplateClassSessionForm: React.FC<
     }
   }, [session, reset]); // Dependencies: session and reset
 
-  // Generate time options for dropdown
+  // Generate time options for dropdown in 24-hour format
   const generateTimeOptions = () => {
     const options = [];
     for (let hour = 0; hour < 24; hour++) {
       for (let minute = 0; minute < 60; minute += 15) {
-        const hour12 = hour % 12 || 12;
-        const period = hour >= 12 ? "PM" : "AM";
-        const timeString = `${hour12}:${minute
+        const timeString = `${hour.toString().padStart(2, "0")}:${minute
           .toString()
-          .padStart(2, "0")} ${period}`;
+          .padStart(2, "0")}`;
         options.push(timeString);
       }
     }
@@ -226,17 +196,11 @@ export const EditTemplateClassSessionForm: React.FC<
 
       const formData = getValues();
 
-      // // Fix 2: Update form submission to properly handle time
-      // In the handleSaveClick function:
-      // Convert time from 12h AM/PM format to 24h format before sending to server
-      const startTime24 = formData.startTime
-        ? formatTo24Hour(formData.startTime)
-        : undefined;
-      const endTime24 = formData.endTime
-        ? formatTo24Hour(formData.endTime)
-        : undefined;
+      // Time is already in 24-hour format, no conversion needed
+      const startTime24 = formData.startTime;
+      const endTime24 = formData.endTime;
 
-      // Send just the time portion to align with backend expectations
+      // Send the time as is to align with backend expectations
       await updateClassSessionMutateAsync({
         classId: session.classId,
         startTime: startTime24,

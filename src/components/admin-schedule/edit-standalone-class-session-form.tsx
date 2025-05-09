@@ -68,53 +68,27 @@ interface ClassType {
   name: string;
 }
 
-// Helper function to convert 24h format to 12h AM/PM format
-function formatTo12Hour(time24: string): string {
-  if (!time24) return "";
-
-  const [hour, minute] = time24.split(":").map(Number);
-  const period = hour >= 12 ? "PM" : "AM";
-  const hour12 = hour % 12 || 12; // Convert 0 to 12 for 12 AM
-
-  return `${hour12}:${minute.toString().padStart(2, "0")} ${period}`;
-}
-
-// Helper function to convert 12h AM/PM format to 24h format
-function formatTo24Hour(time12: string): string {
-  if (!time12) return "";
-
-  const [timePart, period] = time12.split(" ");
-  const [hour, minute] = timePart.split(":").map(Number);
-
-  let hour24 = hour;
-  if (period === "PM" && hour !== 12) hour24 += 12;
-  if (period === "AM" && hour === 12) hour24 = 0;
-
-  return `${hour24.toString().padStart(2, "0")}:${minute
-    .toString()
-    .padStart(2, "0")}`;
-}
-
 // Helper function to format a Date object to "YYYY-MM-DD" string
-// Fix 1: Correct the regex pattern in formatDateToYYYYMMDD
-const formatDateToYYYYMMDD = (date: Date | string | undefined | null): string => {
+const formatDateToYYYYMMDD = (
+  date: Date | string | undefined | null
+): string => {
   if (!date) return "";
   if (date instanceof Date) {
     return date.toISOString().split("T")[0];
   }
-  if (typeof date === 'string') {
-     const parts = date.split("T");
-     // Remove the escaped \d characters from regex
-     if (parts[0].match(/^\d{4}-\d{2}-\d{2}$/)) {
-        return parts[0];
-     }
+  if (typeof date === "string") {
+    const parts = date.split("T");
+    if (parts[0].match(/^\d{4}-\d{2}-\d{2}$/)) {
+      return parts[0];
+    }
   }
   return "";
 };
 
-// Helper function to format time from a Date object to 12h AM/PM format
-// Fix 2: Improve time formatting function for better handling
-const formatTimeFromDateObjectTo12Hour = (dateObj: Date | string | undefined | null): string => {
+// Helper function to format time from a Date object to 24h format
+const formatSessionTimeFor24Hour = (
+  dateObj: Date | string | undefined | null
+): string => {
   if (!dateObj) return "";
 
   let hours: number, minutes: number;
@@ -122,14 +96,14 @@ const formatTimeFromDateObjectTo12Hour = (dateObj: Date | string | undefined | n
   if (dateObj instanceof Date) {
     hours = dateObj.getHours();
     minutes = dateObj.getMinutes();
-  } else if (typeof dateObj === 'string') {
+  } else if (typeof dateObj === "string") {
     // Handle ISO string or time string format
-    if (dateObj.includes('T')) {
+    if (dateObj.includes("T")) {
       const d = new Date(dateObj);
       hours = d.getHours();
       minutes = d.getMinutes();
     } else {
-      const parts = dateObj.split(':');
+      const parts = dateObj.split(":");
       hours = parseInt(parts[0], 10);
       minutes = parseInt(parts[1], 10);
       if (isNaN(hours) || isNaN(minutes)) return "";
@@ -138,10 +112,11 @@ const formatTimeFromDateObjectTo12Hour = (dateObj: Date | string | undefined | n
     return "";
   }
 
-  const time24 = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-  return formatTo12Hour(time24);
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(
+    2,
+    "0"
+  )}`;
 };
-
 
 export function EditStandaloneClassSessionForm({
   open,
@@ -157,19 +132,12 @@ export function EditStandaloneClassSessionForm({
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  // Format the time from ISO to 12h AM/PM format for display (original one, can be removed if new one is used everywhere)
-  // const formatTimeFromISOTo12Hour = (isoTime: string | undefined): string => {
-  //   if (!isoTime) return "";
-  //   const timePart = isoTime.split("T")[1]?.slice(0, 5) || "";
-  //   return formatTo12Hour(timePart);
-  // };
-
   const form = useForm<FormData>({
     resolver: zodResolver(EditStandaloneClassSessionSchema),
     defaultValues: {
       date: formatDateToYYYYMMDD(session?.date),
-      startTime: formatTimeFromDateObjectTo12Hour(session?.startTime),
-      endTime: formatTimeFromDateObjectTo12Hour(session?.endTime),
+      startTime: formatSessionTimeFor24Hour(session?.startTime),
+      endTime: formatSessionTimeFor24Hour(session?.endTime),
       notes: session?.notes || "",
       teacherId: session?.teacherId || null,
       studentId: session?.studentId || null,
@@ -285,8 +253,8 @@ export function EditStandaloneClassSessionForm({
       if (session) {
         form.reset({
           date: formatDateToYYYYMMDD(session.date),
-          startTime: formatTimeFromDateObjectTo12Hour(session.startTime),
-          endTime: formatTimeFromDateObjectTo12Hour(session.endTime),
+          startTime: formatSessionTimeFor24Hour(session.startTime),
+          endTime: formatSessionTimeFor24Hour(session.endTime),
           notes: session.notes || "",
           teacherId: session.teacherId || null,
           studentId: session.studentId || null,
@@ -332,18 +300,12 @@ export function EditStandaloneClassSessionForm({
 
     let finalStartTime: string | null = null;
     if (data.date && data.startTime) {
-      const startTime24 = formatTo24Hour(data.startTime);
-      if (startTime24) {
-        finalStartTime = startTime24; // Just send HH:MM format, not a full ISO string
-      }
+      finalStartTime = data.startTime; // Already in 24-hour format
     }
 
     let finalEndTime: string | null = null;
     if (data.date && data.endTime) {
-      const endTime24 = formatTo24Hour(data.endTime);
-      if (endTime24) {
-        finalEndTime = endTime24; // Just send HH:MM format, not a full ISO string
-      }
+      finalEndTime = data.endTime; // Already in 24-hour format
     }
 
     const updatedSessionData = {
@@ -386,16 +348,14 @@ export function EditStandaloneClassSessionForm({
     }
   };
 
-  // Generate time options for dropdown
+  // Generate time options for dropdown in 24-hour format
   const generateTimeOptions = () => {
     const options = [];
     for (let hour = 0; hour < 24; hour++) {
       for (let minute = 0; minute < 60; minute += 15) {
-        const hour12 = hour % 12 || 12;
-        const period = hour >= 12 ? "PM" : "AM";
-        const timeString = `${hour12}:${minute
+        const timeString = `${hour.toString().padStart(2, "0")}:${minute
           .toString()
-          .padStart(2, "0")} ${period}`;
+          .padStart(2, "0")}`;
         options.push(timeString);
       }
     }
