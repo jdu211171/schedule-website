@@ -15,6 +15,7 @@ const tabs = [
     { name: '学生タイプ', href: '/dashboard/master/student-type' },
     { name: '講師', href: '/dashboard/master/teacher' },
     { name: '講師科目', href: '/dashboard/master/teacher-subjects' },
+    { name: '学生希望科目', href: '/dashboard/master/student-subjects' },
 ]
 
 export default function TabsNav() {
