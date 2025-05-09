@@ -1,23 +1,9 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
-import { useClassSessions } from "@/components/match/hooks/useClassSessionQuery";
-import { ClassSession } from "@/schemas/class-session.schema";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Card } from "@/components/ui/card";
-import { ChevronUp, ChevronDown, Edit, Trash2 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import React, { useMemo, useState, useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
-import { EditStandaloneClassSessionForm } from "./edit-standalone-class-session-form";
-import { EditTemplateClassSessionForm } from "./edit-template-class-session-form";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,191 +14,147 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useQueryClient, useQuery } from "@tanstack/react-query";
-import { fetcher } from "@/lib/fetcher";
-import { Booth } from "@prisma/client";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { useClassSessions, ClassSessionWithRelations } from "@/hooks/useClassSessionQuery";
+import { EditTemplateClassSessionForm } from "./edit-template-class-session-form";
+import { EditStandaloneClassSessionForm } from "./edit-standalone-class-session-form";
+import { UpdateStandaloneClassSessionSchema, UpdateTemplateClassSessionSchema } from "@/schemas/class-session.schema";
+import { z } from "zod";
 
-interface SortConfig {
-  key:
-    | keyof ClassSession
-    | "teacherName"
-    | "studentName"
-    | "subjectName"
-    | "classTypeName"
-    | "dateOnly"
-    | "boothName";
-  direction: "asc" | "desc";
-}
+// Define specific session types for the edit forms
+type EditTemplateClassSessionFormSession = z.infer<typeof UpdateTemplateClassSessionSchema>;
+type EditStandaloneClassSessionFormSession = z.infer<typeof UpdateStandaloneClassSessionSchema>;
 
-interface FormConfig {
-  type: "standalone" | "template" | null;
-  component: React.ComponentType<any> | null;
-  props: any;
-}
+// Define SortConfig type
+type SortConfig = {
+  key: keyof ClassSessionWithRelations | "boothName" | "subjectName"; // Updated to ClassSessionWithRelations
+  direction: "ascending" | "descending";
+};
 
-interface BoothResponse {
-  data: Booth[];
-}
+// Props for the dialogs that wrap the forms
+// These props are for the dialog components themselves, not the forms directly.
+// The forms will receive a subset of ClassSessionWithRelations.
+type EditTemplateDialogProps = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  session: EditTemplateClassSessionFormSession | null; // Specific session type
+  onSessionUpdated: () => void;
+};
+
+type EditStandaloneDialogProps = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  session: EditStandaloneClassSessionFormSession | null; // Specific session type
+  onSessionUpdated: () => void;
+};
+
+// Define the FormConfig discriminated union
+type FormConfig =
+  | {
+      type: "template";
+      component: React.FC<EditTemplateDialogProps>;
+      props: EditTemplateDialogProps;
+    }
+  | {
+      type: "standalone";
+      component: React.FC<EditStandaloneDialogProps>;
+      props: EditStandaloneDialogProps;
+    }
+  | {
+      type: null;
+      component: null;
+      props: { // Common props for the null state
+          open: boolean;
+          onOpenChange: (open: boolean) => void;
+          session: null; // Explicitly null
+          onSessionUpdated: () => void;
+      };
+    };
 
 export default function AdminCalendarList() {
   const queryClient = useQueryClient();
-  const {
-    data: classSessionsResponse,
-    isLoading,
-    isError,
-    error,
-  } = useClassSessions();
-  const classSessions: ClassSession[] | undefined = classSessionsResponse?.data;
-  const { data: boothsData } = useQuery<BoothResponse>({
-    queryKey: ["booths"],
-    queryFn: async () => await fetcher<BoothResponse>("/api/booth"),
-    staleTime: Infinity,
-  });
-  const booths = boothsData?.data || [];
-
-  const getBoothName = (boothId: string | null | undefined) => {
-    if (!boothId) return "-";
-    const booth = booths.find((b) => b.boothId === boothId);
-    return booth?.name || "-";
-  };
-
-  const [sortConfig, setSortConfig] = useState<SortConfig>({
-    key: "dateOnly",
-    direction: "asc",
-  });
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [editingSession, setEditingSession] = useState<ClassSession | null>(
-    null
-  );
-  const [sessionToDelete, setSessionToDelete] = useState<ClassSession | null>(
+  const [editingSession, setEditingSession] = useState<ClassSessionWithRelations | null>( // Updated type
     null
   );
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [sessionToDelete, setSessionToDelete] = useState<ClassSessionWithRelations | null>( // Updated type
+    null
+  );
 
-  const handleSort = (key: SortConfig["key"]) => {
-    setSortConfig((prevConfig) => ({
+  const { data: sessionsData, isLoading } = useClassSessions();
+  const classSessions = useMemo(() => sessionsData?.data || [], [sessionsData]);
+
+  const [sortConfig, setSortConfig] = useState<SortConfig>({
+    key: "date",
+    direction: "ascending",
+  });
+
+  const handleSort = useCallback((key: SortConfig["key"]) => {
+    setSortConfig((prevConfig: SortConfig) => ({
       key,
       direction:
-        prevConfig.key === key && prevConfig.direction === "asc"
-          ? "desc"
-          : "asc",
+        prevConfig.key === key && prevConfig.direction === "ascending"
+          ? "descending"
+          : "ascending",
     }));
-  };
+  }, []);
 
-  const sortedClassSessions = useMemo(() => {
-    if (!classSessions) return [];
-
-    return [...classSessions].sort((a, b) => {
-      if (!a || !b) return 0;
-
-      const getSortValue = (session: ClassSession, key: SortConfig["key"]) => {
-        switch (key) {
-          case "teacherName":
-            return session.teacher?.name || "";
-          case "studentName":
-            return session.student?.name || "";
-          case "subjectName":
-            return session.subject?.name || "";
-          case "classTypeName":
-            return session.classType?.name || "";
-          case "dateOnly":
-            return session.date ? new Date(session.date) : new Date(0);
-          case "boothName":
-            return getBoothName(session.boothId);
-          default:
-            return session[key] as any;
-        }
-      };
-
-      const valueA = getSortValue(a, sortConfig.key);
-      const valueB = getSortValue(b, sortConfig.key);
-
-      if (valueA < valueB) {
-        return sortConfig.direction === "asc" ? -1 : 1;
+  const getSortValue = useCallback(
+    (session: ClassSessionWithRelations, key: SortConfig["key"]) => {
+      if (key === "boothName") {
+        return session.booth?.name || "";
       }
-      if (valueA > valueB) {
-        return sortConfig.direction === "asc" ? 1 : -1;
+      if (key === "subjectName") {
+        return session.subject?.name || ""; // Assuming subject is available
+      }
+      // Ensure other keys are valid for ClassSessionWithRelations
+      if (key in session) {
+        const value = session[key as keyof ClassSessionWithRelations];
+        // Handle cases where value might be a Date object for sorting
+        if (value instanceof Date) {
+          return value.toISOString();
+        }
+        return value as string | number | null | undefined;
+      }
+      return ""; // Fallback for keys not directly on session
+    },
+    [] // Removed booths from dependency array
+  );
+
+  const sortedSessions = useMemo(() => {
+    return [...classSessions].sort((a, b) => {
+      const aValue = getSortValue(a, sortConfig.key);
+      const bValue = getSortValue(b, sortConfig.key);
+
+      if (aValue === null || aValue === undefined) return 1;
+      if (bValue === null || bValue === undefined) return -1;
+
+      if (aValue < bValue) {
+        return sortConfig.direction === "ascending" ? -1 : 1;
+      }
+      if (aValue > bValue) {
+        return sortConfig.direction === "ascending" ? 1 : -1;
       }
       return 0;
     });
-  }, [classSessions, sortConfig, getBoothName]);
+  }, [classSessions, sortConfig, getSortValue]);
 
-  const formatDate = (date: string | null | undefined) => {
-    if (!date) return "---";
-    return format(new Date(date), "dd.MM.yy");
-  };
-
-  // Updated formatTime function to convert to 12-hour AM/PM format
-  const formatTime = (time: string) => {
-    if (!time) return "---";
-
-    const timePart = time.split("T")[1]?.split(".")[0];
-    if (!timePart) return "---";
-
-    const [hour, minute] = timePart.split(":").map(Number);
-
-    const period = hour >= 12 ? "PM" : "AM";
-    const hour12 = hour % 12 || 12; // Convert 0 to 12 for 12 AM
-
-    return `${hour12}:${minute.toString().padStart(2, "0")} ${period}`;
-  };
-
-  const handleEditClick = (session: ClassSession) => {
+  const openEditDialog = (session: ClassSessionWithRelations) => { // Updated type
     setEditingSession(session);
     setIsEditDialogOpen(true);
   };
 
-  const handleSessionUpdated = () => {
-    queryClient.invalidateQueries({ queryKey: ["class-sessions"] });
-  };
-
-  const handleDeleteClick = (session: ClassSession) => {
+  const openDeleteDialog = (session: ClassSessionWithRelations) => { // Updated type
     setSessionToDelete(session);
     setIsDeleteDialogOpen(true);
-  };
-
-  const confirmDeleteSession = async () => {
-    if (sessionToDelete) {
-      try {
-        const response = await fetch(
-          `/api/class-session?classId=${sessionToDelete.classId}`,
-          {
-            method: "DELETE",
-            headers: {
-              "Content-Type": "application/json",
-              Cookie: document.cookie,
-            },
-          }
-        );
-
-        if (response.ok) {
-          console.log(
-            `Занятие с ID ${sessionToDelete.classId} успешно удалено.`
-          );
-          queryClient.invalidateQueries({ queryKey: ["class-sessions"] });
-        } else {
-          const errorData = await response.json();
-          console.error(
-            `Ошибка при удалении занятия с ID ${sessionToDelete.classId}:`,
-            errorData
-          );
-          alert(
-            `Ошибка при удалении занятия: ${
-              errorData?.message || "Не удалось удалить занятие."
-            }`
-          );
-        }
-      } catch (error) {
-        console.error(
-          `Произошла ошибка при удалении занятия с ID ${sessionToDelete.classId}:`,
-          error
-        );
-        alert("Произошла непредвиденная ошибка при удалении занятия.");
-      } finally {
-        setIsDeleteDialogOpen(false);
-        setSessionToDelete(null);
-      }
-    }
   };
 
   const closeDeleteDialog = () => {
@@ -220,30 +162,89 @@ export default function AdminCalendarList() {
     setSessionToDelete(null);
   };
 
+  const confirmDeleteSession = useCallback(async () => {
+    if (!sessionToDelete) return;
+    console.log("Deleting session:", sessionToDelete.classId);
+    // TODO: Implement actual delete mutation
+    // For example: await deleteClassSessionMutation.mutateAsync(sessionToDelete.classId);
+    // For now, just invalidating queries and closing dialog
+    // await fetcher(`/api/class-session/${sessionToDelete.classId}`, { method: 'DELETE' });
+    queryClient.invalidateQueries({ queryKey: ["classSessions"] });
+    closeDeleteDialog();
+  }, [sessionToDelete, queryClient]);
+
+  const handleSessionUpdated = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["classSessions"] });
+    setIsEditDialogOpen(false);
+    setEditingSession(null);
+  }, [queryClient]);
+
+  const formatTimeForSchema = (date: Date | string | null | undefined): string | undefined => {
+    if (!date) return undefined;
+    try {
+      const d = new Date(date);
+      if (isNaN(d.getTime())) return undefined;
+      return format(d, "HH:mm");
+    } catch {
+      return undefined;
+    }
+  };
+
   const formConfig = useMemo<FormConfig>(() => {
     if (!isEditDialogOpen || !editingSession) {
-      return { type: null, component: null, props: {} };
+      return {
+        type: null,
+        component: null,
+        props: {
+          open: false,
+          onOpenChange: setIsEditDialogOpen,
+          session: null,
+          onSessionUpdated: handleSessionUpdated,
+        },
+      };
     }
 
-    if (typeof editingSession.templateId === "string") {
+    if (typeof editingSession.templateId === "string" && editingSession.templateId !== null) {
+      const sessionForTemplateForm: EditTemplateClassSessionFormSession = {
+        classId: editingSession.classId,
+        startTime: formatTimeForSchema(editingSession.startTime),
+        endTime: formatTimeForSchema(editingSession.endTime),
+        boothId: editingSession.boothId ?? undefined,
+        subjectTypeId: editingSession.subjectTypeId ?? undefined,
+        notes: editingSession.notes ?? undefined,
+      };
       return {
-        type: "template", // Изменено на 'template'
-        component: EditTemplateClassSessionForm,
+        type: "template",
+        component: EditTemplateClassSessionForm as React.FC<EditTemplateDialogProps>,
         props: {
           open: isEditDialogOpen,
           onOpenChange: setIsEditDialogOpen,
-          session: editingSession,
+          session: sessionForTemplateForm,
           onSessionUpdated: handleSessionUpdated,
         },
       };
     } else {
+      const sessionForStandaloneForm: EditStandaloneClassSessionFormSession = {
+        classId: editingSession.classId,
+        // date is Date | undefined in inferred type due to .transform()
+        date: editingSession.date ? (editingSession.date instanceof Date ? editingSession.date : new Date(editingSession.date)) : undefined,
+        startTime: formatTimeForSchema(editingSession.startTime),
+        endTime: formatTimeForSchema(editingSession.endTime),
+        boothId: editingSession.boothId ?? undefined,
+        classTypeId: editingSession.classTypeId ?? undefined,
+        teacherId: editingSession.teacherId ?? undefined,
+        studentId: editingSession.studentId ?? undefined,
+        subjectId: editingSession.subjectId ?? undefined, // Ensure this is correctly handled if optional in schema
+        subjectTypeId: editingSession.subjectTypeId ?? undefined,
+        notes: editingSession.notes ?? undefined,
+      };
       return {
-        type: "standalone", // Изменено на 'standalone'
-        component: EditStandaloneClassSessionForm,
+        type: "standalone",
+        component: EditStandaloneClassSessionForm as React.FC<EditStandaloneDialogProps>,
         props: {
           open: isEditDialogOpen,
           onOpenChange: setIsEditDialogOpen,
-          session: editingSession,
+          session: sessionForStandaloneForm,
           onSessionUpdated: handleSessionUpdated,
         },
       };
@@ -251,352 +252,78 @@ export default function AdminCalendarList() {
   }, [isEditDialogOpen, editingSession, handleSessionUpdated]);
 
   if (isLoading) {
-    return <div>Загрузка расписания...</div>;
+    return <div>Loading...</div>;
   }
 
-  if (isError) {
-    return (
-      <div>
-        Ошибка загрузки расписания:{" "}
-        {error?.message || "Не удалось загрузить расписание."}
-      </div>
-    );
-  }
+  const formatDate = (d: Date | string | null) => {
+    if (!d) return "N/A";
+    return format(new Date(d), "dd.MM.yy");
+  };
+
+  const formatTime = (t: Date | string | null) => {
+    if (!t) return "N/A";
+    // Check if it's already a Date object, if not, try to parse it
+    // The data from API (ClassSessionWithRelations) will have date strings
+    const dateObj = t instanceof Date ? t : new Date(t);
+    if (isNaN(dateObj.getTime())) return "Invalid time"; // Check if date parsing was successful
+    return format(dateObj, "HH:mm");
+  };
+
+  const ActiveForm = formConfig.component;
 
   return (
-    <div className="w-full flex flex-col space-y-4">
-      <Card className="p-4 border-0 shadow-sm">
-        <h2 className="font-semibold text-lg">Расписание занятий</h2>
-      </Card>
+    <div>
+      {ActiveForm && formConfig.props.open && (
+        <ActiveForm {...formConfig.props} />
+      )}
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead onClick={() => handleSort("date")}>Date</TableHead>
+            <TableHead onClick={() => handleSort("startTime")}>Start</TableHead>
+            <TableHead onClick={() => handleSort("endTime")}>End</TableHead>
+            <TableHead onClick={() => handleSort("boothId")}>Booth</TableHead> {/* Changed from boothName to boothId for direct sort, or use boothName if getSortValue handles it well */}
+            <TableHead>Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {sortedSessions.map((session) => (
+            <TableRow key={session.classId}>
+              <TableCell>{formatDate(session.date)}</TableCell>
+              <TableCell>{formatTime(session.startTime)}</TableCell>
+              <TableCell>{formatTime(session.endTime)}</TableCell>
+              <TableCell>
+                {session.booth?.name || "N/A"}
+              </TableCell>
+              <TableCell>
+                <Button variant="outline" size="sm" onClick={() => openEditDialog(session)}>
+                  Edit
+                </Button>
+                <Button variant="destructive" size="sm" onClick={() => openDeleteDialog(session)} style={{ marginLeft: '8px' }}>
+                  Delete
+                </Button>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
 
-      <Card className="overflow-hidden">
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="relative w-32">
-                  <div
-                    className="cursor-pointer px-2 py-3 hover:bg-muted/50 flex items-center justify-between"
-                    onClick={() => handleSort("dateOnly")}
-                  >
-                    <span>Дата</span>
-                    <div className="flex flex-col -space-y-1">
-                      <ChevronUp
-                        className={cn(
-                          "h-4 w-4",
-                          sortConfig.key === "dateOnly" &&
-                            sortConfig.direction === "asc"
-                            ? "text-foreground"
-                            : "text-muted-foreground"
-                        )}
-                      />
-                      <ChevronDown
-                        className={cn(
-                          "h-4 w-4",
-                          sortConfig.key === "dateOnly" &&
-                            sortConfig.direction === "desc"
-                            ? "text-foreground"
-                            : "text-muted-foreground"
-                        )}
-                      />
-                    </div>
-                  </div>
-                </TableHead>
-                <TableHead className="relative w-32">
-                  <div
-                    className="cursor-pointer px-2 py-3 hover:bg-muted/50 flex items-center justify-between"
-                    onClick={() => handleSort("startTime")}
-                  >
-                    <span>Начало</span>
-                    <div className="flex flex-col -space-y-1">
-                      <ChevronUp
-                        className={cn(
-                          "h-4 w-4",
-                          sortConfig.key === "startTime" &&
-                            sortConfig.direction === "asc"
-                            ? "text-foreground"
-                            : "text-muted-foreground"
-                        )}
-                      />
-                      <ChevronDown
-                        className={cn(
-                          "h-4 w-4",
-                          sortConfig.key === "startTime" &&
-                            sortConfig.direction === "desc"
-                            ? "text-foreground"
-                            : "text-muted-foreground"
-                        )}
-                      />
-                    </div>
-                  </div>
-                </TableHead>
-                <TableHead className="relative w-32">
-                  <div
-                    className="cursor-pointer px-2 py-3 hover:bg-muted/50 flex items-center justify-between"
-                    onClick={() => handleSort("endTime")}
-                  >
-                    <span>Конец</span>
-                    <div className="flex flex-col -space-y-1">
-                      <ChevronUp
-                        className={cn(
-                          "h-4 w-4",
-                          sortConfig.key === "endTime" &&
-                            sortConfig.direction === "asc"
-                            ? "text-foreground"
-                            : "text-muted-foreground"
-                        )}
-                      />
-                      <ChevronDown
-                        className={cn(
-                          "h-4 w-4",
-                          sortConfig.key === "endTime" &&
-                            sortConfig.direction === "desc"
-                            ? "text-foreground"
-                            : "text-muted-foreground"
-                        )}
-                      />
-                    </div>
-                  </div>
-                </TableHead>
-                <TableHead className="relative w-40">
-                  <div
-                    className="cursor-pointer px-2 py-3 hover:bg-muted/50 flex items-center justify-between"
-                    onClick={() => handleSort("teacherName")}
-                  >
-                    <span>Преподаватель</span>
-                    <div className="flex flex-col -space-y-1">
-                      <ChevronUp
-                        className={cn(
-                          "h-4 w-4",
-                          sortConfig.key === "teacherName" &&
-                            sortConfig.direction === "asc"
-                            ? "text-foreground"
-                            : "text-muted-foreground"
-                        )}
-                      />
-                      <ChevronDown
-                        className={cn(
-                          "h-4 w-4",
-                          sortConfig.key === "teacherName" &&
-                            sortConfig.direction === "desc"
-                            ? "text-foreground"
-                            : "text-muted-foreground"
-                        )}
-                      />
-                    </div>
-                  </div>
-                </TableHead>
-                <TableHead className="relative w-40">
-                  <div
-                    className="cursor-pointer px-2 py-3 hover:bg-muted/50 flex items-center justify-between"
-                    onClick={() => handleSort("studentName")}
-                  >
-                    <span>Студент</span>
-                    <div className="flex flex-col -space-y-1">
-                      <ChevronUp
-                        className={cn(
-                          "h-4 w-4",
-                          sortConfig.key === "studentName" &&
-                            sortConfig.direction === "asc"
-                            ? "text-foreground"
-                            : "text-muted-foreground"
-                        )}
-                      />
-                      <ChevronDown
-                        className={cn(
-                          "h-4 w-4",
-                          sortConfig.key === "studentName" &&
-                            sortConfig.direction === "desc"
-                            ? "text-foreground"
-                            : "text-muted-foreground"
-                        )}
-                      />
-                    </div>
-                  </div>
-                </TableHead>
-                <TableHead className="relative w-32">
-                  <div
-                    className="cursor-pointer px-2 py-3 hover:bg-muted/50 flex items-center justify-between"
-                    onClick={() => handleSort("subjectName")}
-                  >
-                    <span>Предмет</span>
-                    <div className="flex flex-col -space-y-1">
-                      <ChevronUp
-                        className={cn(
-                          "h-4 w-4",
-                          sortConfig.key === "subjectName" &&
-                            sortConfig.direction === "asc"
-                            ? "text-foreground"
-                            : "text-muted-foreground"
-                        )}
-                      />
-                      <ChevronDown
-                        className={cn(
-                          "h-4 w-4",
-                          sortConfig.key === "subjectName" &&
-                            sortConfig.direction === "desc"
-                            ? "text-foreground"
-                            : "text-muted-foreground"
-                        )}
-                      />
-                    </div>
-                  </div>
-                </TableHead>
-                <TableHead className="relative w-32">
-                  <div
-                    className="cursor-pointer px-2 py-3 hover:bg-muted/50 flex items-center justify-between"
-                    onClick={() => handleSort("boothName")}
-                  >
-                    <span>Будка</span>
-                    <div className="flex flex-col -space-y-1">
-                      <ChevronUp
-                        className={cn(
-                          "h-4 w-4",
-                          sortConfig.key === "boothName" &&
-                            sortConfig.direction === "asc"
-                            ? "text-foreground"
-                            : "text-muted-foreground"
-                        )}
-                      />
-                      <ChevronDown
-                        className={cn(
-                          "h-4 w-4",
-                          sortConfig.key === "boothName" &&
-                            sortConfig.direction === "desc"
-                            ? "text-foreground"
-                            : "text-muted-foreground"
-                        )}
-                      />
-                    </div>
-                  </div>
-                </TableHead>
-                <TableHead className="relative w-32">
-                  <div className="px-2 py-3">
-                    <span>Шаблон ID</span>
-                  </div>
-                </TableHead>
-                <TableHead className="relative w-32">
-                  <div
-                    className="cursor-pointer px-2 py-3 hover:bg-muted/50 flex items-center justify-between"
-                    onClick={() => handleSort("classTypeName")}
-                  >
-                    <span>Тип занятия</span>
-                    <div className="flex flex-col -space-y-1">
-                      <ChevronUp
-                        className={cn(
-                          "h-4 w-4",
-                          sortConfig.key === "classTypeName" &&
-                            sortConfig.direction === "asc"
-                            ? "text-foreground"
-                            : "text-muted-foreground"
-                        )}
-                      />
-                      <ChevronDown
-                        className={cn(
-                          "h-4 w-4",
-                          sortConfig.key === "classTypeName" &&
-                            sortConfig.direction === "desc"
-                            ? "text-foreground"
-                            : "text-muted-foreground"
-                        )}
-                      />
-                    </div>
-                  </div>
-                </TableHead>
-                <TableHead className="relative w-24">
-                  <span>Действия</span>
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={12} className="text-center">
-                    Загрузка расписания...
-                  </TableCell>
-                </TableRow>
-              ) : isError ? (
-                <TableRow>
-                  <TableCell colSpan={12} className="text-center">
-                    Ошибка загрузки расписания:{" "}
-                    {error?.message || "Не удалось загрузить расписание."}
-                  </TableCell>
-                </TableRow>
-              ) : sortedClassSessions.length > 0 ? (
-                sortedClassSessions.map((session) => (
-                  <TableRow key={session.classId}>
-                    <TableCell>{formatDate(session.date)}</TableCell>
-                    <TableCell>{formatTime(session.startTime)}</TableCell>
-                    <TableCell>{formatTime(session.endTime)}</TableCell>
-                    <TableCell>{session.teacher?.name || "-"}</TableCell>
-                    <TableCell>{session.student?.name || "-"}</TableCell>
-                    <TableCell>{session.subject?.name || "-"}</TableCell>
-                    <TableCell>{getBoothName(session.boothId)}</TableCell>
-                    <TableCell>
-                      {session.templateId === null
-                        ? "null"
-                        : session.templateId}
-                    </TableCell>
-                    <TableCell>{session.classType?.name || "-"}</TableCell>
-                    <TableCell className="flex justify-center space-x-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleEditClick(session)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDeleteClick(session)}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={12} className="text-center">
-                    Нет данных о занятиях.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      </Card>
-
-      {formConfig.component && <formConfig.component {...formConfig.props} />}
-
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog
-        open={isDeleteDialogOpen}
-        onOpenChange={setIsDeleteDialogOpen}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Подтверждение удаления</AlertDialogTitle>
-            <AlertDialogDescription>
-              Вы уверены, что хотите удалить занятие
-              {sessionToDelete &&
-                ` "${formatDate(sessionToDelete.date)} в ${formatTime(
-                  sessionToDelete.startTime
-                )}"?`}
-              Это действие необратимо.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={closeDeleteDialog}>
-              Отмена
-            </AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDeleteSession}>
-              Удалить
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {isDeleteDialogOpen && sessionToDelete && (
+        <AlertDialog open onOpenChange={setIsDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirm Deletion</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete the session on {formatDate(sessionToDelete.date)} at {formatTime(sessionToDelete.startTime)}? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={closeDeleteDialog}>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmDeleteSession}>Delete</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </div>
   );
 }

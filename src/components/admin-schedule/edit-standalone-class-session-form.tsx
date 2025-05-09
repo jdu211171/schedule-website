@@ -1,7 +1,7 @@
 // EditStandaloneClassSessionForm.tsx
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -15,7 +15,6 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { ClassSession } from "@/schemas/class-session.schema";
 import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
 import {
   Select,
   SelectContent,
@@ -119,8 +118,16 @@ export function EditStandaloneClassSessionForm({
   const form = useForm<FormData>({
     resolver: zodResolver(EditStandaloneClassSessionSchema),
     defaultValues: {
-      startTime: formatTimeFromISOTo12Hour(session?.startTime),
-      endTime: formatTimeFromISOTo12Hour(session?.endTime),
+      startTime: formatTimeFromISOTo12Hour(
+        session?.startTime instanceof Date
+          ? session?.startTime.toISOString()
+          : (session?.startTime as string | undefined)
+      ),
+      endTime: formatTimeFromISOTo12Hour(
+        session?.endTime instanceof Date
+          ? session?.endTime.toISOString()
+          : (session?.endTime as string | undefined)
+      ),
       notes: session?.notes || "",
       teacherId: session?.teacherId || null,
       studentId: session?.studentId || null,
@@ -147,10 +154,12 @@ export function EditStandaloneClassSessionForm({
           );
         const teachersData = await teachersResponse.json();
         setTeachers(
-          teachersData.data.map((t: any) => ({
-            teacherId: t.teacherId,
-            name: t.name,
-          }))
+          Array.isArray(teachersData.data)
+            ? teachersData.data.map((t: Teacher) => ({
+                teacherId: t.teacherId,
+                name: t.name,
+              }))
+            : []
         );
 
         // Fetch students
@@ -161,10 +170,12 @@ export function EditStandaloneClassSessionForm({
           );
         const studentsData = await studentsResponse.json();
         setStudents(
-          studentsData.data.map((s: any) => ({
-            studentId: s.studentId,
-            name: s.name,
-          }))
+          Array.isArray(studentsData.data)
+            ? studentsData.data.map((s: Student) => ({
+                studentId: s.studentId,
+                name: s.name,
+              }))
+            : []
         );
 
         // Fetch subjects - Updated API call
@@ -178,10 +189,12 @@ export function EditStandaloneClassSessionForm({
 
         if (subjectsData && Array.isArray(subjectsData.data)) {
           setSubjects(
-            subjectsData.data.map((s: any) => ({
-              subjectId: s.subjectId,
-              name: s.name,
-            }))
+            Array.isArray(subjectsData.data)
+              ? subjectsData.data.map((s: Subject) => ({
+                  subjectId: s.subjectId,
+                  name: s.name,
+                }))
+              : []
           );
         } else {
           console.error("Unexpected subjects data format:", subjectsData);
@@ -199,10 +212,12 @@ export function EditStandaloneClassSessionForm({
 
         if (classTypesData && Array.isArray(classTypesData.data)) {
           setClassTypes(
-            classTypesData.data.map((ct: any) => ({
-              classTypeId: ct.classTypeId,
-              name: ct.name,
-            }))
+            Array.isArray(classTypesData.data)
+              ? classTypesData.data.map((ct: ClassType) => ({
+                  classTypeId: ct.classTypeId,
+                  name: ct.name,
+                }))
+              : []
           );
         } else {
           console.error("Unexpected class types data format:", classTypesData);
@@ -212,8 +227,12 @@ export function EditStandaloneClassSessionForm({
         if (session) {
           // Значения устанавливаются через defaultValues в useForm
         }
-      } catch (err: any) {
-        setError(err.message || "Не удалось загрузить данные для формы.");
+      } catch (err) {
+        setError(
+          err && typeof err === "object" && "message" in err
+            ? String((err as { message?: string }).message)
+            : "Не удалось загрузить данные для формы."
+        );
         console.error("Ошибка загрузки данных формы:", err);
       }
     };
@@ -278,7 +297,7 @@ export function EditStandaloneClassSessionForm({
         setError(errorData?.message || "Не удалось обновить занятие.");
         setIsLoading(false);
       }
-    } catch (err: any) {
+    } catch (err) {
       setError("Произошла ошибка при обновлении занятия.");
       setIsLoading(false);
       console.error("Ошибка обновления занятия:", err);
@@ -320,7 +339,17 @@ export function EditStandaloneClassSessionForm({
             </Label>
             <Input
               id="date"
-              value={session?.date?.split("T")[0] || ""}
+              value={
+                session?.date
+                  ? session.date instanceof Date
+                    ? session.date.toISOString().split("T")[0]
+                    : typeof session.date === "string"
+                      ? (session.date as string).includes("T")
+                        ? (session.date as string).split("T")[0]
+                        : session.date as string
+                      : ""
+                  : ""
+              }
               type="date"
               className="col-span-3"
             />

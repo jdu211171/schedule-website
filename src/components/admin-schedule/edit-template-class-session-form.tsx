@@ -178,17 +178,17 @@ export const EditTemplateClassSessionForm: React.FC<
       // Convert time from 12h AM/PM format to 24h format before sending to server
       const startTime24 = formData.startTime
         ? formatTo24Hour(formData.startTime)
-        : null;
+        : undefined;
       const endTime24 = formData.endTime
         ? formatTo24Hour(formData.endTime)
-        : null;
+        : undefined;
 
       // Консоль для отладки
       console.log("Отправляемые данные:", {
         classId: session.classId,
         startTime: startTime24,
         endTime: endTime24,
-        boothId: formData.boothId,
+        boothId: formData.boothId || undefined,
         notes: formData.notes,
       });
 
@@ -197,15 +197,15 @@ export const EditTemplateClassSessionForm: React.FC<
         classId: session.classId,
         startTime: startTime24,
         endTime: endTime24,
-        boothId: formData.boothId,
+        boothId: formData.boothId || undefined,
         notes: formData.notes,
       });
-    } catch (err: any) {
+    } catch (err) {
       console.error("Ошибка при обновлении:", err);
       let errorMessage = "Ошибка при обновлении занятия";
 
-      if (err?.message) {
-        errorMessage += `: ${err.message}`;
+      if (err && typeof err === "object" && "message" in err) {
+        errorMessage += `: ${(err as { message?: string }).message}`;
       }
 
       setApiError(errorMessage);
@@ -220,7 +220,7 @@ export const EditTemplateClassSessionForm: React.FC<
         <AlertDialogHeader>
           <AlertDialogTitle>Редактировать занятие (шаблон)</AlertDialogTitle>
           <AlertDialogDescription>
-            Измените время, будку или примечания и нажмите "Сохранить".
+            Измените время, будку или примечания и нажмите &quot;Сохранить&quot;.
           </AlertDialogDescription>
         </AlertDialogHeader>
 
@@ -278,7 +278,7 @@ export const EditTemplateClassSessionForm: React.FC<
             <Select
               value={selectedBoothId || "none"}
               onValueChange={(value) =>
-                setValue("boothId", value === "none" ? null : value)
+                setValue("boothId", value === "none" ? undefined : value)
               }
             >
               <SelectTrigger className="w-full">

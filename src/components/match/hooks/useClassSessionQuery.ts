@@ -19,7 +19,12 @@ type SingleClassSessionResponse = {
   data: ClassSession;
 };
 
-export function useClassSessions(params: UseClassSessionsParams = {}) {
+export function useClassSessions(params: UseClassSessionsParams = {
+  page: 1,
+  limit: 10,
+  sort: "date",
+  order: "asc"
+}) {
   const query = ClassSessionQuerySchema.parse(params);
   const searchParams = new URLSearchParams(
       Object.entries(query).reduce((acc, [key, value]) => {
