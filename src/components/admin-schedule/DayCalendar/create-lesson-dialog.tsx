@@ -65,7 +65,6 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
 
   const handleSubmit = () => {
     if (!subjectId || !teacherId || !studentId) {
-      console.error("Не все поля выбраны для создания урока.");
       return;
     }
 

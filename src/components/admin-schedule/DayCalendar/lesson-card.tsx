@@ -1,17 +1,17 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { ClassSession } from '@/hooks/useScheduleClassSessions';
-import { TimeSlot } from './day-calendar';
+import { ClassSessionWithRelations } from '@/hooks/useClassSessionQuery';
+import { TimeSlot } from './admin-calendar-day';
+import { formatToJapanTime, isTimeInDisplayRange, calculateTimeSlotIndex } from '../date';
 
-// Определение типа для rooms
 interface Room {
   boothId: string;
   name: string;
 }
 
 type LessonCardProps = {
-  lesson: ClassSession;
+  lesson: ClassSessionWithRelations;
   rooms: Room[];
-  onClick: (lesson: ClassSession) => void;
+  onClick: (lesson: ClassSessionWithRelations) => void;
   timeSlotHeight?: number;
   timeSlots: TimeSlot[];
 };
@@ -23,7 +23,6 @@ type CardPosition = {
   height: number;
 };
 
-// Вынести константы за пределы компонента
 const ROOM_COLUMN_WIDTH = 100;
 const COLUMN_WIDTH = 40;
 const HEADER_HEIGHT = 40;
@@ -33,27 +32,6 @@ const ADJUST_TOP = 0;
 const ADJUST_WIDTH = 0;
 const ADJUST_HEIGHT = -1;
 
-// Оптимизированная функция форматирования времени
-const formatTimeFromISO = (isoTime: string): string => {
-  try {
-    if (isoTime.startsWith('1970-01-01T')) {
-      const timePart = isoTime.split('T')[1];
-      const timeComponents = timePart.split(':');
-      return `${timeComponents[0]}:${timeComponents[1]}`;
-    } 
-    else if (isoTime.includes('T') && isoTime.includes(':')) {
-      const date = new Date(isoTime);
-      return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
-    } else if (isoTime.includes(':')) {
-      return isoTime.split(':').slice(0, 2).join(':');
-    }
-    return '00:00';
-  } catch {
-    return '00:00';
-  }
-};
-
-// Функция получения цвета для типа занятия - вынесена за пределы компонента
 const getClassTypeColor = (typeName: string): string => {
   switch(typeName) {
     case '通常授業': return 'bg-blue-500 border-blue-600';
@@ -74,18 +52,23 @@ export const LessonCard: React.FC<LessonCardProps> = React.memo(({
   const [isVisible, setIsVisible] = useState(true);
   const cardRef = useRef<HTMLDivElement>(null);
   
-  // Мемоизируем форматированное время для избежания повторных вычислений
-  const formattedTimes = useMemo(() => {
-    return {
-      start: formatTimeFromISO(lesson.startTime),
-      end: formatTimeFromISO(lesson.endTime)
-    };
-  }, [lesson.startTime, lesson.endTime]);
   
-  // Мемоизируем цвет карточки
+  // Форматируем время из UTC в японское время
+  const formattedTimes = useMemo(() => {
+    const start = formatToJapanTime(lesson.startTime);
+    const end = formatToJapanTime(lesson.endTime);
+    
+    console.log(`Formatted times for lesson ${lesson.classId}: ${start}-${end} (Japan time)`);
+    
+    return { start, end };
+  }, [lesson.startTime, lesson.endTime, lesson.classId]);
+  
   const cardColor = useMemo(() => {
     return getClassTypeColor(lesson.classType?.name || '');
   }, [lesson.classType?.name]);
+  
+  const teacherName = useMemo(() => lesson.teacher?.name || '教師不明', [lesson.teacher]);
+  const studentName = useMemo(() => lesson.student?.name || '生徒不明', [lesson.student]);
   
   // Мемоизируем расчет позиции карточки - это самая затратная операция
   useEffect(() => {
@@ -94,29 +77,24 @@ export const LessonCard: React.FC<LessonCardProps> = React.memo(({
       const roomIndex = rooms.findIndex(room => room.boothId === boothId);
       
       if (roomIndex === -1) {
+        console.warn(`Room with ID ${boothId} not found for lesson ${lesson.classId}`);
         return null; 
       }
       
-      const startTimeParts = formattedTimes.start.split(':').map(Number);
-      const endTimeParts = formattedTimes.end.split(':').map(Number);
-      
-      const startHour = startTimeParts[0];
-      const startMinute = startTimeParts[1];
-      const endHour = endTimeParts[0];
-      const endMinute = endTimeParts[1];
-      
-      // Оптимизация: проверяем диапазоны, чтобы избежать ненужных вычислений
-      if (startHour < 8 || startHour > 22 || endHour < 8 || endHour > 22) {
+      if (!isTimeInDisplayRange(formattedTimes.start) || !isTimeInDisplayRange(formattedTimes.end)) {
+        console.warn(`Time out of display range for lesson ${lesson.classId}: ${formattedTimes.start}-${formattedTimes.end}`);
         return null;
       }
       
-      const startTimeIndex = (startHour - 8) * 4 + Math.floor(startMinute / 15);
-      const endTimeIndex = (endHour - 8) * 4 + (endMinute === 0 ? 0 : Math.ceil(endMinute / 15));
+      const startTimeIndex = calculateTimeSlotIndex(formattedTimes.start);
+      const endTimeIndex = calculateTimeSlotIndex(formattedTimes.end);
       
       if (startTimeIndex < 0 || endTimeIndex > timeSlots.length) {
+        console.warn(`Time index out of bounds for lesson ${lesson.classId}`);
         return null;
       }
       
+      // Вычисляем позицию и размеры карточки
       const left = ROOM_COLUMN_WIDTH + startTimeIndex * COLUMN_WIDTH + ADJUST_LEFT;
       const width = (endTimeIndex - startTimeIndex) * COLUMN_WIDTH + ADJUST_WIDTH;
       const top = HEADER_HEIGHT + roomIndex * timeSlotHeight + ADJUST_TOP;
@@ -128,9 +106,12 @@ export const LessonCard: React.FC<LessonCardProps> = React.memo(({
     const newPosition = calculatePosition();
     if (newPosition) {
       setPosition(newPosition);
+    } else {
+      console.warn(`Could not calculate position for lesson ${lesson.classId}`);
     }
   }, [
     lesson.boothId,
+    lesson.classId,
     formattedTimes.start,
     formattedTimes.end,
     rooms,
@@ -138,7 +119,7 @@ export const LessonCard: React.FC<LessonCardProps> = React.memo(({
     timeSlots.length
   ]);
   
-  // Оптимизация: используем IntersectionObserver вместо обработки скролла
+  // Наблюдатель для отслеживания видимости карточки
   useEffect(() => {
     if (!cardRef.current || !position) return;
     
@@ -160,7 +141,6 @@ export const LessonCard: React.FC<LessonCardProps> = React.memo(({
     };
   }, [position]);
 
-  // Если нет позиции, не рендерим карточку
   if (!position) return null;
   
   return (
@@ -187,9 +167,17 @@ export const LessonCard: React.FC<LessonCardProps> = React.memo(({
         onClick(lesson);
       }}
     >
-      <div className="flex items-center justify-between h-full text-xs text-white">
-        <div className="truncate font-semibold">{lesson.subject?.name || 'Без названия'}</div>
-        <div className="truncate ml-1">{formattedTimes.start}-{formattedTimes.end}</div>
+      <div className="flex flex-col justify-between h-full text-xs text-white">
+        <div className="flex justify-between items-center">
+          <div className="truncate font-semibold">{lesson.subject?.name || '不明'}</div>
+          <div className="truncate text-xs whitespace-nowrap">{formattedTimes.start}-{formattedTimes.end}</div>
+        </div>
+        
+        {/* Имена учителя и студента */}
+        <div className="flex justify-between items-center text-xs opacity-80">
+          <div className="truncate">👨‍🏫 {teacherName}</div>
+          <div className="truncate">👨‍🎓 {studentName}</div>
+        </div>
       </div>
       
       <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-70 bg-white rounded-full p-0.5 transform scale-0 group-hover:scale-100 transition-all shadow-sm">
@@ -202,5 +190,4 @@ export const LessonCard: React.FC<LessonCardProps> = React.memo(({
   );
 });
 
-// Добавляем displayName для отладки
 LessonCard.displayName = 'LessonCard';

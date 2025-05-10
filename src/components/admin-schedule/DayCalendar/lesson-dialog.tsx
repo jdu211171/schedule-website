@@ -10,59 +10,30 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ClassSession } from '@/hooks/useScheduleClassSessions';
+import { ClassSessionWithRelations } from '@/hooks/useClassSessionQuery';
 import { useSubjects } from '@/hooks/useSubjectQuery';
 import { useTeachers } from '@/hooks/useTeacherQuery';
 import { useStudents } from '@/hooks/useStudentQuery';
+import { formatToJapanTime, convertJapanTimeToUTC } from '../date';
 
 interface Room {
   boothId: string;
   name: string;
 }
 
-interface EditableLesson extends Partial<ClassSession> {
+interface EditableLesson extends Partial<ClassSessionWithRelations> {
   formattedStartTime?: string;
   formattedEndTime?: string;
 }
 
-interface ExpectedUpdatePayload extends Partial<ClassSession> {
+interface ExpectedUpdatePayload extends Partial<ClassSessionWithRelations> {
   classId: string; 
 }
-
-// Функция форматирования времени из ISO (или HH:MM) в HH:MM
-const formatTimeFromISO = (isoTime: string | undefined): string => {
-  if (!isoTime) return '';
-  try {
-    if (isoTime.includes('T') && isoTime.includes(':')) {
-      const date = new Date(isoTime);
-      return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
-    } else if (isoTime.includes(':')) {
-      const parts = isoTime.split(':');
-      return `${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0')}`;
-    }
-    return '';
-  } catch (error) {
-    console.error('Ошибка форматирования времени:', error);
-    return '';
-  }
-};
-
-// Функция конвертации времени HH:MM в "фиктивный" ISO (только время важно для API)
-const convertTimeToISO = (time: string): string => {
-  try {
-    const [hours, minutes] = time.split(':').map(Number);
-    const date = new Date(1970, 0, 1, hours, minutes);
-    return date.toISOString();
-  } catch (error) {
-    console.error('Ошибка преобразования времени в ISO:', error);
-    return new Date(1970, 0, 1, 0, 0).toISOString();
-  }
-};
 
 type LessonDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  lesson: ClassSession;
+  lesson: ClassSessionWithRelations;
   mode: 'view' | 'edit';
   onModeChange: (mode: 'view' | 'edit') => void;
   onSave: (updatedLesson: ExpectedUpdatePayload) => void; 
@@ -93,10 +64,11 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
 
   useEffect(() => {
     if (lesson && open) {
+      // Устанавливаем начальные значения с временем, сконвертированным в японское
       setEditedLesson({
         ...lesson,
-        formattedStartTime: formatTimeFromISO(lesson.startTime),
-        formattedEndTime: formatTimeFromISO(lesson.endTime)
+        formattedStartTime: formatToJapanTime(lesson.startTime),
+        formattedEndTime: formatToJapanTime(lesson.endTime)
       });
     } else if (!open) {
       setEditedLesson(null);
@@ -114,21 +86,24 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
 
   const handleSave = () => {
     if (!editedLesson || !editedLesson.classId) { 
-        console.error("Ошибка: ID урока отсутствует в редактируемых данных.");
         return;
     }
 
     const lessonToSave: ExpectedUpdatePayload = {
       ...editedLesson,
-      classId: editedLesson.classId, 
-      startTime: editedLesson.formattedStartTime
-        ? convertTimeToISO(editedLesson.formattedStartTime)
-        : editedLesson.startTime,
-      endTime: editedLesson.formattedEndTime
-        ? convertTimeToISO(editedLesson.formattedEndTime)
-        : editedLesson.endTime,
+      classId: editedLesson.classId
     };
 
+    // Преобразуем японское время в UTC для API при изменении
+    if (editedLesson.formattedStartTime) {
+      lessonToSave.startTime = convertJapanTimeToUTC(editedLesson.formattedStartTime);
+    }
+    
+    if (editedLesson.formattedEndTime) {
+      lessonToSave.endTime = convertJapanTimeToUTC(editedLesson.formattedEndTime);
+    }
+
+    // Удаляем временные поля
     delete (lessonToSave as EditableLesson).formattedStartTime;
     delete (lessonToSave as EditableLesson).formattedEndTime;
 
@@ -148,6 +123,10 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
   
   const isLoading = isLoadingSubjects || isLoadingTeachers || isLoadingStudents;
 
+  const displayDate = lesson.date instanceof Date 
+    ? lesson.date 
+    : new Date(lesson.date);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
@@ -165,7 +144,7 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
             <div>
               <label className="text-sm font-medium">日付</label>
               <div className="border rounded-md p-2 mt-1 bg-gray-50 text-gray-700">
-                {format(new Date(lesson.date), 'yyyy年MM月dd日', { locale: ja })}
+                {format(displayDate, 'yyyy年MM月dd日', { locale: ja })}
               </div>
             </div>
             <div>
@@ -289,7 +268,7 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
                 />
               ) : (
                 <div className="border rounded-md p-2 mt-1 bg-gray-50 text-gray-700">
-                  {formatTimeFromISO(lesson.startTime)}
+                  {formatToJapanTime(lesson.startTime)}
                 </div>
               )}
             </div>
@@ -304,7 +283,7 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
                 />
               ) : (
                 <div className="border rounded-md p-2 mt-1 bg-gray-50 text-gray-700">
-                  {formatTimeFromISO(lesson.endTime)}
+                  {formatToJapanTime(lesson.endTime)}
                 </div>
               )}
             </div>
@@ -350,8 +329,8 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
                     if (lesson) {
                          setEditedLesson({
                             ...lesson,
-                            formattedStartTime: formatTimeFromISO(lesson.startTime),
-                            formattedEndTime: formatTimeFromISO(lesson.endTime)
+                            formattedStartTime: formatToJapanTime(lesson.startTime),
+                            formattedEndTime: formatToJapanTime(lesson.endTime)
                           });
                     }
                   }}
@@ -363,7 +342,7 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
                   onClick={handleSave}
                   disabled={isLoading || !editedLesson.subjectId || !editedLesson.teacherId || !editedLesson.studentId}
                 >
-                  {isLoading ? "保存中..." : "保存"}
+                  {isLoading ? "読み込み中..." : "保存"}
                 </Button>
               </div>
             </>

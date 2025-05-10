@@ -14,20 +14,21 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { FilterBar, type DateRangeFilterConfig, type AnyFilterConfig } from "@/components/filter-bar"
-import { EnhancedTableHeader } from "@/components/enhanced-table-header"
-import { useClassSessions, type ClassSessionWithRelations } from "@/hooks/useClassSessionQuery"
-import { EditTemplateClassSessionForm } from "./edit-template-class-session-form"
-import { EditStandaloneClassSessionForm } from "./edit-standalone-class-session-form"
-import type {
-  UpdateStandaloneClassSessionSchema,
-  UpdateTemplateClassSessionSchema,
-} from "@/schemas/class-session.schema"
-import type { z } from "zod"
-import type { DateRange } from "react-day-picker"
-import { cn } from "@/lib/utils"
+} from "@/components/ui/alert-dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { useClassSessions, ClassSessionWithRelations } from "@/hooks/useClassSessionQuery";
+import { EditTemplateClassSessionForm } from "./edit-template-class-session-form";
+import { EditStandaloneClassSessionForm } from "./edit-standalone-class-session-form";
+import { UpdateStandaloneClassSessionSchema, UpdateTemplateClassSessionSchema } from "@/schemas/class-session.schema";
+import { formatToJapanTime } from "./date";
+import { z } from "zod";
 
 // Define specific session types for the edit forms
 type EditTemplateClassSessionFormSession = z.infer<typeof UpdateTemplateClassSessionSchema>
@@ -35,27 +36,24 @@ type EditStandaloneClassSessionFormSession = z.infer<typeof UpdateStandaloneClas
 
 // Define SortConfig type
 type SortConfig = {
-  key: keyof ClassSessionWithRelations | "boothName" | "subjectName"
-  direction: "ascending" | "descending" | null
-}
-
-// Define FilterState type
-type FilterState = Record<string, string[]>
+  key: keyof ClassSessionWithRelations | "boothName" | "subjectName";
+  direction: "ascending" | "descending";
+};
 
 // Props for the dialogs that wrap the forms
 type EditTemplateDialogProps = {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  session: EditTemplateClassSessionFormSession | null
-  onSessionUpdated: () => void
-}
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  session: EditTemplateClassSessionFormSession | null;
+  onSessionUpdated: () => void;
+};
 
 type EditStandaloneDialogProps = {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  session: EditStandaloneClassSessionFormSession | null
-  onSessionUpdated: () => void
-}
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  session: EditStandaloneClassSessionFormSession | null;
+  onSessionUpdated: () => void;
+};
 
 // Define the FormConfig discriminated union
 type FormConfig =
@@ -70,15 +68,25 @@ type FormConfig =
   props: EditStandaloneDialogProps
 }
   | {
-  type: null
-  component: null
-  props: {
-    open: boolean
-    onOpenChange: (open: boolean) => void
-    session: null
-    onSessionUpdated: () => void
-  }
-}
+      type: null;
+      component: null;
+      props: {
+          open: boolean;
+          onOpenChange: (open: boolean) => void;
+          session: null;
+          onSessionUpdated: () => void;
+      };
+    };
+
+export default function AdminCalendarList() {
+  const queryClient = useQueryClient();
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingSession, setEditingSession] = useState<ClassSessionWithRelations | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [sessionToDelete, setSessionToDelete] = useState<ClassSessionWithRelations | null>(null);
+
+  const { data: sessionsData, isLoading } = useClassSessions();
+  const classSessions = useMemo(() => sessionsData?.data || [], [sessionsData]);
 
 export default function AdminCalendarListEnhanced() {
   const queryClient = useQueryClient()
@@ -239,104 +247,20 @@ export default function AdminCalendarListEnhanced() {
       if (value instanceof Date) {
         return value.toISOString()
       }
-      return value as string | number | null | undefined
-    }
-    return ""
-  }, [])
-
-  // Function to check if a specific field matches active filters
-  const isFieldFiltered = useCallback(
-    (session: ClassSessionWithRelations, field: string): boolean => {
-      switch (field) {
-        case "date":
-          if (!dateRange?.from) return false
-          const sessionDate = session.date instanceof Date ? session.date : new Date(session.date || "")
-          if (dateRange.to) {
-            return isWithinInterval(sessionDate, {
-              start: startOfDay(dateRange.from),
-              end: endOfDay(dateRange.to),
-            })
-          }
-          return sessionDate >= startOfDay(dateRange.from)
-
-        case "teacher":
-          return filters.teacherIds.length > 0 && !!session.teacherId && filters.teacherIds.includes(session.teacherId)
-
-        case "student":
-          return filters.studentIds.length > 0 && !!session.studentId && filters.studentIds.includes(session.studentId)
-
-        case "subject":
-          return filters.subjectIds.length > 0 && !!session.subjectId && filters.subjectIds.includes(session.subjectId)
-
-        case "subjectType":
-          return (
-            filters.subjectTypeIds.length > 0 &&
-            !!session.subjectTypeId &&
-            filters.subjectTypeIds.includes(session.subjectTypeId)
-          )
-
-        case "booth":
-          return filters.boothIds.length > 0 && !!session.boothId && filters.boothIds.includes(session.boothId)
-
-        case "classType":
-          return (
-            filters.classTypeIds.length > 0 &&
-            !!session.classTypeId &&
-            filters.classTypeIds.includes(session.classTypeId)
-          )
-
-        default:
-          return false
+      if (key === "subjectName") {
+        return session.subject?.name || "";
       }
-    },
-    [filters, dateRange],
-  )
-
-  // Apply filters before sorting
-  const filteredSessions = useMemo(() => {
-    return classSessions.filter((session) => {
-      // For each filter category, check if no filters are selected or if the session matches any selected filter
-      const teacherMatch =
-        filters.teacherIds.length === 0 || (session.teacherId && filters.teacherIds.includes(session.teacherId))
-
-      const studentMatch =
-        filters.studentIds.length === 0 || (session.studentId && filters.studentIds.includes(session.studentId))
-
-      const subjectMatch =
-        filters.subjectIds.length === 0 || (session.subjectId && filters.subjectIds.includes(session.subjectId))
-
-      const subjectTypeMatch =
-        filters.subjectTypeIds.length === 0 ||
-        (session.subjectTypeId && filters.subjectTypeIds.includes(session.subjectTypeId))
-
-      const boothMatch =
-        filters.boothIds.length === 0 || (session.boothId && filters.boothIds.includes(session.boothId))
-
-      const classTypeMatch =
-        filters.classTypeIds.length === 0 || (session.classTypeId && filters.classTypeIds.includes(session.classTypeId))
-
-      // Date range filter
-      let dateMatch = true
-      if (dateRange?.from) {
-        const sessionDate = session.date instanceof Date ? session.date : new Date(session.date || "")
-
-        if (dateRange.to) {
-          // If we have a complete range, check if the session date is within that range
-          dateMatch = isWithinInterval(sessionDate, {
-            start: startOfDay(dateRange.from),
-            end: endOfDay(dateRange.to),
-          })
-        } else {
-          // If we only have a start date, check if the session date is on or after that date
-          dateMatch = sessionDate >= startOfDay(dateRange.from)
+      if (key in session) {
+        const value = session[key as keyof ClassSessionWithRelations];
+        if (value instanceof Date) {
+          return value.toISOString();
         }
+        return value as string | number | null | undefined;
       }
-
-      return (
-        teacherMatch && studentMatch && subjectMatch && subjectTypeMatch && boothMatch && classTypeMatch && dateMatch
-      )
-    })
-  }, [classSessions, filters, dateRange])
+      return "";
+    },
+    []
+  );
 
   const sortedSessions = useMemo(() => {
     if (!sortConfig.direction) return filteredSessions
@@ -359,14 +283,14 @@ export default function AdminCalendarListEnhanced() {
   }, [filteredSessions, sortConfig, getSortValue])
 
   const openEditDialog = (session: ClassSessionWithRelations) => {
-    setEditingSession(session)
-    setIsEditDialogOpen(true)
-  }
+    setEditingSession(session);
+    setIsEditDialogOpen(true);
+  };
 
   const openDeleteDialog = (session: ClassSessionWithRelations) => {
-    setSessionToDelete(session)
-    setIsDeleteDialogOpen(true)
-  }
+    setSessionToDelete(session);
+    setIsDeleteDialogOpen(true);
+  };
 
   const closeDeleteDialog = () => {
     setIsDeleteDialogOpen(false)
@@ -374,11 +298,12 @@ export default function AdminCalendarListEnhanced() {
   }
 
   const confirmDeleteSession = useCallback(async () => {
-    if (!sessionToDelete) return
-    console.log("Deleting session:", sessionToDelete.classId)
-    queryClient.invalidateQueries({ queryKey: ["classSessions"] })
-    closeDeleteDialog()
-  }, [sessionToDelete, queryClient])
+    if (!sessionToDelete) return;
+    console.log("Deleting session:", sessionToDelete.classId);
+    // TODO: Implement actual delete mutation
+    queryClient.invalidateQueries({ queryKey: ["classSessions"] });
+    closeDeleteDialog();
+  }, [sessionToDelete, queryClient]);
 
   const handleSessionUpdated = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["classSessions"] })
@@ -433,11 +358,7 @@ export default function AdminCalendarListEnhanced() {
     } else {
       const sessionForStandaloneForm: EditStandaloneClassSessionFormSession = {
         classId: editingSession.classId,
-        date: editingSession.date
-          ? editingSession.date instanceof Date
-            ? editingSession.date
-            : new Date(editingSession.date)
-          : undefined,
+        date: editingSession.date ? (editingSession.date instanceof Date ? editingSession.date : new Date(editingSession.date)) : undefined,
         startTime: formatTimeForSchema(editingSession.startTime),
         endTime: formatTimeForSchema(editingSession.endTime),
         boothId: editingSession.boothId ?? undefined,
@@ -471,11 +392,9 @@ export default function AdminCalendarListEnhanced() {
   }
 
   const formatTime = (t: Date | string | null) => {
-    if (!t) return "N/A"
-    const dateObj = t instanceof Date ? t : new Date(t)
-    if (isNaN(dateObj.getTime())) return "Invalid time"
-    return format(dateObj, "HH:mm")
-  }
+    if (!t) return "N/A";
+    return formatToJapanTime(t) || "Invalid time";
+  };
 
   // Check if any filters are active
   const hasActiveFilters = Object.values(filters).some((filterValues) => filterValues.length > 0) || !!dateRange?.from
@@ -712,5 +631,5 @@ export default function AdminCalendarListEnhanced() {
         </AlertDialog>
       )}
     </div>
-  )
+  );
 }

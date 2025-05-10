@@ -1,17 +1,9 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
-import { ClassSession } from '@/hooks/useScheduleClassSessions'; 
-import { SelectionPosition } from './admin-calendar-day'; 
+import { ClassSessionWithRelations } from '@/hooks/useClassSessionQuery'; 
+import { SelectionPosition, TimeSlot } from './admin-calendar-day'; 
 import { LessonCard } from './lesson-card'; 
-
-export type TimeSlot = {
-  index: number;
-  start: string;
-  end: string;
-  display: string;
-  shortDisplay: string;
-};
 
 interface Room {
   boothId: string;
@@ -22,18 +14,27 @@ type DayCalendarProps = {
   date: Date;
   rooms: Room[];
   timeSlots: TimeSlot[];
-  classSessions: ClassSession[];
-  onLessonClick: (lesson: ClassSession) => void;
+  classSessions: ClassSessionWithRelations[];
+  onLessonClick: (lesson: ClassSessionWithRelations) => void;
   onCreateLesson: (date: Date, startTime: string, endTime: string, roomId: string) => void;
   resetSelectionKey?: number;
 };
 
-// Константы вынесены за пределы компонента
 const CELL_WIDTH = 40; 
 const ROOM_LABEL_WIDTH = 100; 
 const TIME_SLOT_HEIGHT = 40;
 
-// Чистая функция для проверки выделения
+const isSameDay = (date1: string | Date, date2: string | Date): boolean => {
+  const d1 = date1 instanceof Date ? date1 : new Date(date1);
+  const d2 = date2 instanceof Date ? date2 : new Date(date2);
+  
+  return (
+    d1.getFullYear() === d2.getFullYear() &&
+    d1.getMonth() === d2.getMonth() &&
+    d1.getDate() === d2.getDate()
+  );
+};
+
 const isCellInSelection = (roomIndex: number, timeIndex: number, selectionStart: SelectionPosition | null, selectionEnd: SelectionPosition | null): boolean => {
   if (!selectionStart || !selectionEnd) return false;
   
@@ -45,7 +46,6 @@ const isCellInSelection = (roomIndex: number, timeIndex: number, selectionStart:
   return timeIndex >= minCol && timeIndex <= maxCol;
 };
 
-// Компонент ячейки календаря
 const CalendarCell = React.memo(({ 
   roomIndex, 
   timeSlot, 
@@ -94,7 +94,6 @@ const CalendarCell = React.memo(({
 
 CalendarCell.displayName = 'CalendarCell';
 
-// Компонент строки календаря
 const RoomRow = React.memo(({ 
   room, 
   roomIndex, 
@@ -121,7 +120,6 @@ const RoomRow = React.memo(({
       className="flex relative"
       style={{ height: `${TIME_SLOT_HEIGHT}px` }}
     >
-      {/* Метка комнаты */}
       <div
         className="sticky left-0 flex items-center justify-center bg-white z-10 border-r border-b text-sm font-medium text-gray-700 px-2"
         style={{ 
@@ -133,7 +131,6 @@ const RoomRow = React.memo(({
         <span className="truncate">{room.name}</span>
       </div>
 
-      {/* Ячейки времени для этой комнаты */}
       {timeSlots.map((timeSlot) => {
         const isSelected = isCellInSelection(roomIndex, timeSlot.index, selectionStart, selectionEnd);
         
@@ -156,7 +153,6 @@ const RoomRow = React.memo(({
 
 RoomRow.displayName = 'RoomRow';
 
-// Компонент заголовка с временными слотами
 const TimeHeader = React.memo(({ timeSlots }: { timeSlots: TimeSlot[] }) => {
   return (
     <div className="sticky top-0 flex z-20 bg-white shadow-sm border-b">
@@ -191,7 +187,6 @@ const TimeHeader = React.memo(({ timeSlots }: { timeSlots: TimeSlot[] }) => {
 
 TimeHeader.displayName = 'TimeHeader';
 
-// Основной компонент календаря
 const DayCalendarComponent: React.FC<DayCalendarProps> = ({
   date,
   rooms,
@@ -208,10 +203,13 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
   const [selectionEnd, setSelectionEnd] = useState<SelectionPosition | null>(null);
   const [isSelecting, setIsSelecting] = useState(false);
   
-  // Ref для отслеживания, был ли вызван onCreateLesson
   const createLessonCalledRef = useRef(false);
   
-  // Функция отмены выделения
+  // DEBUG: Логируем, сколько сессий у нас для этого дня
+  useEffect(() => {
+    console.log(`DayCalendar for ${date.toISOString().substring(0, 10)} has ${classSessions.length} sessions`);
+  }, [date, classSessions]);
+  
   const cancelSelection = useCallback(() => {
     setSelectionStart(null);
     setSelectionEnd(null);
@@ -220,14 +218,12 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
     createLessonCalledRef.current = false;
   }, []);
 
-  // Сброс выделения при изменении resetSelectionKey
   useEffect(() => {
     if (resetSelectionKey > 0) {
       cancelSelection();
     }
   }, [resetSelectionKey, cancelSelection]);
 
-  // Начало выделения
   const handleStartSelection = useCallback((roomIndex: number, timeIndex: number, e: React.MouseEvent) => {
     e.preventDefault();
     
@@ -240,19 +236,16 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
     createLessonCalledRef.current = false;
   }, []);
 
-  // Обновление при перемещении мыши
   const handleCellHover = useCallback((roomIndex: number, timeIndex: number, e: React.MouseEvent) => {
     if (!isSelecting || !selectionStart) return;
     e.preventDefault();
     
-    // Если мы перемещаемся в той же строке, что и начало выделения
     if (roomIndex === selectionStart.row) {
       const end = { row: roomIndex, col: timeIndex };
       setSelectionEnd(end);
     }
   }, [isSelecting, selectionStart]);
 
-  // Завершение выделения - ОСНОВНОЕ МЕСТО ОПТИМИЗАЦИИ
   const handleEndSelection = useCallback((e: React.MouseEvent) => {
     if (isSelecting && selectionStart && selectionEnd && !createLessonCalledRef.current) {
       e.preventDefault();
@@ -261,7 +254,6 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
       const endCol = Math.max(selectionStart.col, selectionEnd.col);
       const roomIndex = selectionStart.row;
       
-      // Проверка, что выделение действительно имеет диапазон
       const isValidSelection = endCol > startCol; 
       if (isValidSelection) {
         if (startCol >= 0 && startCol < timeSlots.length &&
@@ -272,25 +264,18 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
           const endTime = timeSlots[endCol].end; 
           const selectedRoomId = rooms[roomIndex].boothId;
 
-          // Устанавливаем флаг, что onCreateLesson был вызван
           createLessonCalledRef.current = true;
           
-          // ВАЖНО: немедленно вызываем onCreateLesson без сброса состояния выделения
-          // Это устраняет задержку между завершением drag и открытием модального окна
           onCreateLesson(date, startTime, endTime, selectedRoomId);
           
-          // Сохраняем текущий вид выделения, пока диалог не откроется
-          // cancelSelection будет вызван через resetSelectionKey из родительского компонента
           return;
         }
       }
       
-      // Если выделение не валидно, просто отменяем его
       cancelSelection();
     }
   }, [isSelecting, selectionStart, selectionEnd, timeSlots, rooms, onCreateLesson, date, cancelSelection]); 
 
-  // Обработка изменения размера контейнера
   useEffect(() => {
     const updateContainerWidth = () => {
       if (containerRef.current) {
@@ -310,13 +295,12 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
     };
   }, []);
 
-  // Глобальные обработчики событий
   useEffect(() => {
     const handleGlobalMouseUp = (event: MouseEvent) => {
       if (isSelecting && !createLessonCalledRef.current) {
         if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
           cancelSelection();
-        } else if (!(event.target as HTMLElement)?.closest(`[data-room-index][data-time-index]`)) {
+        } else if (!(event.target as HTMLElement)?.closest('[data-room-index][data-time-index]')) {
           cancelSelection();
         }
       }
@@ -347,21 +331,16 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
     };
   }, [isSelecting, cancelSelection]);
 
-  // Фильтрация сессий для текущей даты
   const filteredSessions = useMemo(() => {
-    const calendarDateStr = date.toISOString().split('T')[0];
     return classSessions.filter(session => {
-      const sessionDateStr = session.date.split('T')[0];
-      return sessionDateStr === calendarDateStr;
+      return isSameDay(session.date, date);
     });
   }, [classSessions, date]);
 
-  // Форматирование даты
   const formattedDate = useMemo(() => {
     return format(date, 'yyyy年MM月dd日 (eee)', { locale: ja });
   }, [date]);
 
-  // Вычисление общей ширины сетки
   const totalGridWidth = useMemo(() => {
     return timeSlots.length * CELL_WIDTH;
   }, [timeSlots.length]);
@@ -370,6 +349,16 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
     <div className="border rounded-md overflow-hidden shadow-sm bg-white">
       <div className="p-3 border-b bg-gray-50">
         <h3 className="font-medium text-lg">{formattedDate}</h3>
+        {filteredSessions.length === 0 && (
+          <div className="text-xs text-gray-500 mt-1">
+            この日の授業はまだありません
+          </div>
+        )}
+        {filteredSessions.length > 0 && (
+          <div className="text-xs text-gray-500 mt-1">
+            授業数: {filteredSessions.length}
+          </div>
+        )}
       </div>
 
       <div
@@ -384,10 +373,8 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
             height: `${(rooms.length + 1) * TIME_SLOT_HEIGHT}px`
           }}
         >
-          {/* Заголовок с временными слотами */}
           <TimeHeader timeSlots={timeSlots} />
 
-          {/* Комнаты и их ячейки времени */}
           <div className="relative z-10">
             {rooms.map((room, roomIndex) => (
               <RoomRow
@@ -405,7 +392,6 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
             ))}
           </div>
 
-          {/* Слой для отображения карточек уроков */}
           <div className="absolute top-0 left-0 w-full h-full pointer-events-none z-10">
             {filteredSessions.map(session => (
               <LessonCard
