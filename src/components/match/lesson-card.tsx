@@ -16,8 +16,8 @@ interface LessonCardProps {
   studentName: string;
 }
 
-export default function LessonCard({ 
-  lesson, 
+export default function LessonCard({
+  lesson,
   onLessonClick,
   onLessonDelete,
   isEditable = false,
@@ -26,13 +26,13 @@ export default function LessonCard({
   studentName
 }: LessonCardProps) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  
+
   const cardTypeClasses = {
-    current: "bg-white border-gray-300 hover:border-gray-400",
-    teacher: "bg-green-50 border-green-200 hover:border-green-300",
-    student: "bg-blue-50 border-blue-200 hover:border-blue-300",
+    current: "bg-white dark:bg-gray-800 border-input hover:bg-accent/50 dark:hover:bg-accent/20",
+    teacher: "bg-green-50 dark:bg-green-900/20 border-input",
+    student: "bg-blue-50 dark:bg-blue-900/20 border-input",
   };
-  
+
   const renderLessonTime = () => {
     return (
       <div className="text-xs font-medium">
@@ -40,7 +40,7 @@ export default function LessonCard({
       </div>
     );
   };
-  
+
   const renderLessonParticipants = () => {
     if (cardType === "teacher") {
       return (
@@ -62,14 +62,14 @@ export default function LessonCard({
       );
     }
   };
-  
+
   // Форматирование диапазона дат (если они есть)
   const formatDateRange = () => {
     if (!lesson.startDate) return null;
-    
+
     const startDate = new Date(lesson.startDate);
     const formattedStartDate = `${startDate.getFullYear()}/${(startDate.getMonth() + 1).toString().padStart(2, '0')}/${startDate.getDate().toString().padStart(2, '0')}`;
-    
+
     if (!lesson.endDate) {
       return (
         <div className="text-xs text-gray-500 truncate" title={`開始日: ${formattedStartDate}`}>
@@ -77,38 +77,38 @@ export default function LessonCard({
         </div>
       );
     }
-    
+
     const endDate = new Date(lesson.endDate);
     const formattedEndDate = `${endDate.getFullYear()}/${(endDate.getMonth() + 1).toString().padStart(2, '0')}/${endDate.getDate().toString().padStart(2, '0')}`;
-    
+
     return (
       <div className="text-xs text-gray-500 truncate" title={`期間: ${formattedStartDate} - ${formattedEndDate}`}>
         期間: {formattedStartDate} - {formattedEndDate}
       </div>
     );
   };
-  
+
   const handleCardClick = () => {
     if (onLessonClick && isEditable) {
       onLessonClick(lesson);
     }
   };
-  
+
   const handleDeleteClick = (e: React.MouseEvent) => {
-    e.stopPropagation(); 
+    e.stopPropagation();
     setIsDeleteDialogOpen(true);
   };
-  
+
   const confirmDelete = () => {
     if (onLessonDelete) {
       onLessonDelete(lesson);
     }
     setIsDeleteDialogOpen(false);
   };
-  
+
   return (
     <>
-      <div 
+      <div
         className={`mb-1 p-1.5 rounded border text-sm shadow-sm ${cardTypeClasses[cardType]} ${isEditable ? 'cursor-pointer' : ''}`}
         onClick={handleCardClick}
       >
@@ -116,9 +116,9 @@ export default function LessonCard({
           <div className="font-medium truncate mr-1" title={lesson.name}>
             {lesson.name}
           </div>
-          
+
           {isEditable && onLessonDelete && (
-            <button 
+            <button
               onClick={handleDeleteClick}
               className="text-red-500 hover:text-red-700 transition-colors"
               title="削除"
@@ -127,27 +127,27 @@ export default function LessonCard({
             </button>
           )}
         </div>
-        
+
         {renderLessonTime()}
         {renderLessonParticipants()}
-        
+
         {/* Отображение типа класса */}
         {lesson.classTypeName && (
           <div className="text-xs text-gray-500 truncate" title={`タイプ: ${lesson.classTypeName}`}>
             タイプ: {lesson.classTypeName}
           </div>
         )}
-        
+
         {/* Отображение диапазона дат */}
         {formatDateRange()}
-        
+
         {lesson.room && (
           <div className="text-xs text-gray-500 truncate" title={`場所: ${lesson.room}`}>
             場所: {lesson.room}
           </div>
         )}
       </div>
-      
+
       {/* Диалог подтверждения удаления */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">

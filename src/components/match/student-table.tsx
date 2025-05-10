@@ -43,7 +43,7 @@ interface StudentTableProps {
   selectedTeacherId: string | null;
   filteredStudents?: StudentWithPreference[];
   kibouSubjects?: Subject[];
-  
+
   onStudentFiltersChange?: (params: StudentFilterParams) => void;
   currentSubjectFilters?: string[];
   currentGradeFilter?: string | null;
@@ -87,7 +87,7 @@ export default function StudentTable({
   const getStudentSubjects = useCallback((student: StudentWithPreference) => {
     const subjectIds = new Set<string>();
     const studentSubjectsList: Subject[] = [];
-  
+
     if (student.preference?.preferredSubjects) {
       student.preference.preferredSubjects.forEach(subjectId => {
         if (!subjectIds.has(subjectId)) {
@@ -99,7 +99,7 @@ export default function StudentTable({
         }
       });
     }
-  
+
     if (student.StudentPreference) {
       student.StudentPreference.forEach(pref => {
         if (pref.subjects) {
@@ -118,9 +118,9 @@ export default function StudentTable({
         }
       });
     }
-  
+
     const studentLessons = lessons.filter(lesson => lesson.studentId === student.studentId);
-  
+
     studentLessons.forEach(lesson => {
       if (lesson.subject && !subjectIds.has(lesson.subject.subjectId)) {
         subjectIds.add(lesson.subject.subjectId);
@@ -133,14 +133,14 @@ export default function StudentTable({
         }
       }
     });
-  
+
     return studentSubjectsList;
   }, [lessons, subjects]);
 
   // Обработчик фильтров студентов
   const handleFiltersChange = (filters: StudentFilterParams) => {
     setCurrentPage(1);
-    
+
     if (onStudentFiltersChange) {
       onStudentFiltersChange(filters);
     }
@@ -156,9 +156,9 @@ export default function StudentTable({
       const studentType = (grade?.studentTypeId && studentTypes.length > 0)
         ? studentTypes.find(st => st.studentTypeId === grade.studentTypeId) || null
         : null;
-      
+
       const studentSubjects = getStudentSubjects(student);
-      
+
       return {
         ...student,
         grade,
@@ -173,7 +173,7 @@ export default function StudentTable({
     if (!searchTerm.trim()) {
       return enrichedStudents;
     }
-    
+
     return enrichedStudents.filter((student) => {
       const matchesSearch =
         student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -199,60 +199,60 @@ export default function StudentTable({
 
   // Проверка, применены ли фильтры
   const isFilterActive = (
-    currentSubjectFilters.length > 0 || 
-    currentStudentTypeFilters.length > 0 || 
-    currentGradeFilter !== null || 
+    currentSubjectFilters.length > 0 ||
+    currentStudentTypeFilters.length > 0 ||
+    currentGradeFilter !== null ||
     currentSchoolTypeFilter !== null
   );
 
   // Форматирование списка активных фильтров для отображения
   const getActiveFiltersDisplay = () => {
     const activeFilters: React.ReactNode[] = [];
-    
+
     if (currentSubjectFilters.length > 0) {
-      const subjectNames = currentSubjectFilters.map(id => 
+      const subjectNames = currentSubjectFilters.map(id =>
         subjects.find(s => s.subjectId === id)?.name || 'Unknown'
       );
-      
+
       activeFilters.push(
-        <Badge key="subjects" className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
+        <Badge key="subjects" className="bg-accent/20 dark:bg-accent/10 text-foreground px-2 py-1 rounded-full text-xs">
           科目: {subjectNames.join(', ')}
         </Badge>
       );
     }
-    
+
     if (currentStudentTypeFilters.length > 0) {
-      const typeNames = currentStudentTypeFilters.map(id => 
+      const typeNames = currentStudentTypeFilters.map(id =>
         studentTypes.find(t => t.studentTypeId === id)?.name || 'Unknown'
       );
-      
+
       activeFilters.push(
-        <Badge key="studentTypes" className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
+        <Badge key="studentTypes" className="bg-accent/20 dark:bg-accent/10 text-foreground px-2 py-1 rounded-full text-xs">
           生徒タイプ: {typeNames.join(', ')}
         </Badge>
       );
     }
-    
+
     if (currentGradeFilter) {
       const gradeName = grades.find(g => g.gradeId === currentGradeFilter)?.name || 'Unknown';
-      
+
       activeFilters.push(
         <Badge key="grade" className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
           学年: {gradeName}
         </Badge>
       );
     }
-    
+
     if (currentSchoolTypeFilter) {
       const schoolTypeLabel = getSchoolTypeLabel(currentSchoolTypeFilter);
-      
+
       activeFilters.push(
         <Badge key="schoolType" className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
           学校タイプ: {schoolTypeLabel}
         </Badge>
       );
     }
-    
+
     return activeFilters;
   };
 
@@ -275,10 +275,10 @@ export default function StudentTable({
   };
 
   return (
-    <div className="rounded-md border h-full flex flex-col bg-white">
+    <div className="rounded-md border h-full flex flex-col ">
       {selectedTeacherId && (
-        <div className="bg-blue-50 p-2 border-b flex flex-wrap items-center gap-2">
-          <span className="text-blue-800 text-sm font-medium">担当可能科目：</span>
+        <div className="bg-accent/20 dark:bg-accent/10 p-2 border-b flex flex-wrap items-center gap-2">
+          <span className="text-foreground text-sm font-medium">担当可能科目：</span>
           {kibouSubjects.length > 0 ? (
             kibouSubjects.map((subject) => (
               <SubjectBadge
@@ -288,21 +288,21 @@ export default function StudentTable({
               />
             ))
           ) : (
-            <span className="text-blue-600 text-xs italic">...</span>
+            <span className="text-muted-foreground text-xs italic">...</span>
           )}
         </div>
       )}
 
       {/* Отображаем информацию об активных фильтрах */}
       {isFilterActive && (
-        <div className="bg-blue-50 p-2 border-b">
+        <div className="bg-accent/10 dark:bg-accent/5 p-2 border-b">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-blue-800 text-sm font-medium">アクティブフィルター：</span>
+            <span className="text-foreground text-sm font-medium">アクティブフィルター：</span>
             {getActiveFiltersDisplay()}
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="h-6 px-2 text-xs text-blue-600 hover:text-blue-800"
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
               onClick={clearAllFilters}
             >
               クリア
@@ -329,7 +329,7 @@ export default function StudentTable({
                 setSearchTerm("");
                 setCurrentPage(1);
               }}
-              className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 "
             >
               <X size={16} />
             </button>
@@ -351,7 +351,7 @@ export default function StudentTable({
 
       <ScrollArea className="flex-grow">
         <Table>
-          <TableHeader className="bg-gray-50 sticky top-0 z-10">
+          <TableHeader className="sticky top-0 z-10">
             <TableRow>
               <TableHead>生徒名</TableHead>
               <TableHead>学年</TableHead>
@@ -366,8 +366,8 @@ export default function StudentTable({
                 onClick={() => onStudentSelect(student.studentId)}
                 className={`cursor-pointer ${
                   selectedStudentId === student.studentId
-                    ? "bg-blue-100 hover:bg-blue-200"
-                    : "hover:bg-gray-100"
+                    ? "bg-muted hover:bg-muted/90 dark:bg-muted/50 dark:hover:bg-muted/60"
+                    : "hover:bg-accent/50 dark:hover:bg-accent/20"
                 }`}
               >
                 <TableCell className="font-medium">
@@ -375,18 +375,18 @@ export default function StudentTable({
                     {student.name}
                   </div>
                   {student.kanaName && (
-                    <div className="text-xs text-gray-500">{student.kanaName}</div>
+                    <div className="text-xs ">{student.kanaName}</div>
                   )}
                 </TableCell>
                 <TableCell className="text-sm">
                   <div className="flex flex-col gap-1">
                     {student.examSchoolCategoryType && (
-                      <Badge className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-xs">
+                      <Badge className="bg-accent/20 dark:bg-accent/10 text-foreground px-2 py-0.5 rounded-full text-xs">
                         {student.examSchoolCategoryType}
                       </Badge>
                     )}
                     {student.grade && (
-                      <div className="text-xs text-gray-500">{student.grade.name}</div>
+                      <div className="text-xs ">{student.grade.name}</div>
                     )}
                   </div>
                 </TableCell>
@@ -401,7 +401,7 @@ export default function StudentTable({
                       />
                     ))}
                     {(student.subjects || []).length > 3 && (
-                      <Badge variant="outline" className="bg-gray-100 text-gray-800 px-1.5 py-0.5 text-xs rounded-full">
+                      <Badge variant="outline" className=" text-gray-800 px-1.5 py-0.5 text-xs rounded-full">
                         +{student.subjects.length - 3}
                       </Badge>
                     )}
@@ -421,7 +421,7 @@ export default function StudentTable({
                       setIsDetailDialogOpen(true);
                     }}
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500 hover:text-gray-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500 ">
                       <circle cx="12" cy="12" r="1" />
                       <circle cx="19" cy="12" r="1" />
                       <circle cx="5" cy="12" r="1" />

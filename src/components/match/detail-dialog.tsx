@@ -44,15 +44,15 @@ interface DetailDialogProps {
 }
 
 export default function DetailDialog({
-  entity,
-  type,
-  subjects,
-  evaluation = null,
-  grade = null,
-  studentType = null,
-  open,
-  onClose,
-}: DetailDialogProps) {
+                                       entity,
+                                       type,
+                                       subjects,
+                                       evaluation = null,
+                                       grade = null,
+                                       studentType = null,
+                                       open,
+                                       onClose,
+                                     }: DetailDialogProps) {
   const formatDate = (date: Date | string | null) => {
     if (!date) return "未入力";
     return new Date(date).toLocaleDateString("ja-JP", {
@@ -71,7 +71,7 @@ export default function DetailDialog({
   const getStatusBadge = () => {
     const status = isStudent ? "活躍" : "活性";
     return (
-      <Badge className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-medium">
+      <Badge className="bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-200 px-3 py-1 rounded-full text-xs font-medium">
         {status}
       </Badge>
     );
@@ -85,7 +85,7 @@ export default function DetailDialog({
             <div>
               <DialogTitle className="text-xl font-bold">{entity.name}</DialogTitle>
               {isStudent && (student as StudentWithPreference).kanaName && (
-                <p className="text-gray-500 text-sm mt-1">{(student as StudentWithPreference).kanaName}</p>
+                <p className="text-muted-foreground text-sm mt-1">{(student as StudentWithPreference).kanaName}</p>
               )}
             </div>
             {getStatusBadge()}
@@ -99,20 +99,20 @@ export default function DetailDialog({
               {/* Образование */}
               <div className="flex group">
                 <div className="w-1/4 flex items-start">
-                  <GraduationCap className="h-5 w-5 text-blue-500 mr-2" />
-                  <span className="text-sm font-medium text-gray-700">教育</span>
+                  <GraduationCap className="h-5 w-5 text-gray-500 dark:text-gray-400 mr-2" />
+                  <span className="text-sm font-medium text-foreground">教育</span>
                 </div>
                 <div className="w-3/4 space-y-1 pl-2 border-l-2 border-gray-100 ">
                   {teacher.university ? (
-                    <p className="text-sm font-medium">{teacher.university}</p>
+                    <p className="text-sm font-medium text-foreground">{teacher.university}</p>
                   ) : (
-                    <p className="text-sm text-gray-500">未入力</p>
+                    <p className="text-sm text-muted-foreground">未入力</p>
                   )}
                   {teacher.faculty && (
-                    <p className="text-sm text-gray-600">{teacher.faculty}{teacher.department ? ` / ${teacher.department}` : ''}</p>
+                    <p className="text-sm text-muted-foreground">{teacher.faculty}{teacher.department ? ` / ${teacher.department}` : ''}</p>
                   )}
                   {teacher.enrollmentStatus && (
-                    <p className="text-sm text-gray-600">{teacher.enrollmentStatus}</p>
+                    <p className="text-sm text-muted-foreground">{teacher.enrollmentStatus}</p>
                   )}
                 </div>
               </div>
@@ -120,8 +120,8 @@ export default function DetailDialog({
               {/* Предметы */}
               <div className="flex group">
                 <div className="w-1/4 flex items-start">
-                  <BookOpen className="h-5 w-5 text-green-500 mr-2" />
-                  <span className="text-sm font-medium text-gray-700">科目</span>
+                  <BookOpen className="h-5 w-5 text-gray-500 dark:text-gray-400 mr-2" />
+                  <span className="text-sm font-medium text-foreground">科目</span>
                 </div>
                 <div className="w-3/4 pl-2 border-l-2 border-gray-100 ">
                   <div className="flex flex-wrap gap-1">
@@ -130,7 +130,7 @@ export default function DetailDialog({
                         <SubjectBadge key={subject.subjectId} subject={subject} />
                       ))
                     ) : (
-                      <p className="text-sm text-gray-500">未入力</p>
+                      <p className="text-sm text-muted-foreground">未入力</p>
                     )}
                   </div>
                 </div>
@@ -140,15 +140,15 @@ export default function DetailDialog({
               {evaluation && (
                 <div className="flex group">
                   <div className="w-1/4 flex items-start">
-                    <Award className="h-5 w-5 text-purple-500 mr-2" />
-                    <span className="text-sm font-medium text-gray-700">評価</span>
+                    <Award className="h-5 w-5 text-gray-500 dark:text-gray-400 mr-2" />
+                    <span className="text-sm font-medium text-foreground">評価</span>
                   </div>
                   <div className="w-3/4 space-y-1 pl-2 border-l-2 border-gray-100">
-                    <p className="text-sm">
+                    <p className="text-sm text-foreground">
                       {evaluation.name}{evaluation.score ? ` (${evaluation.score})` : ''}
                     </p>
                     {evaluation.notes && (
-                      <p className="text-sm text-gray-600">{evaluation.notes}</p>
+                      <p className="text-sm text-muted-foreground">{evaluation.notes}</p>
                     )}
                   </div>
                 </div>
@@ -157,14 +157,14 @@ export default function DetailDialog({
               {/* Контактная информация */}
               <div className="flex group">
                 <div className="w-1/4 flex items-start">
-                  <Phone className="h-5 w-5 text-red-500 mr-2" />
-                  <span className="text-sm font-medium text-gray-700">連絡先</span>
+                  <Phone className="h-5 w-5 text-gray-500 dark:text-gray-400 mr-2" />
+                  <span className="text-sm font-medium text-foreground">連絡先</span>
                 </div>
                 <div className="w-3/4 space-y-1 pl-2 border-l-2 border-gray-100 ">
-                  {teacher.email && <p className="text-sm">メール: <span className="font-medium">{teacher.email}</span></p>}
-                  {teacher.mobileNumber && <p className="text-sm">電話: <span className="font-medium">{teacher.mobileNumber}</span></p>}
+                  {teacher.email && <p className="text-sm text-foreground">メール: <span className="font-medium">{teacher.email}</span></p>}
+                  {teacher.mobileNumber && <p className="text-sm text-foreground">電話: <span className="font-medium">{teacher.mobileNumber}</span></p>}
                   {!teacher.email && !teacher.mobileNumber && (
-                    <p className="text-sm text-gray-500">未入力</p>
+                    <p className="text-sm text-muted-foreground">未入力</p>
                   )}
                 </div>
               </div>
@@ -177,17 +177,17 @@ export default function DetailDialog({
               {/* Школа и класс */}
               <div className="flex group">
                 <div className="w-1/4 flex items-start">
-                  <School className="h-5 w-5 text-blue-500 mr-2" />
-                  <span className="text-sm font-medium text-gray-700">学校と学年</span>
+                  <School className="h-5 w-5 text-gray-500 dark:text-gray-400 mr-2" />
+                  <span className="text-sm font-medium text-foreground">学校と学年</span>
                 </div>
                 <div className="w-3/4 space-y-2 pl-2 border-l-2 border-gray-100 ">
                   {student.examSchoolCategoryType && (
                     <div>
-                      <span className="text-sm bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
+                      <span className="text-sm bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200 px-2 py-0.5 rounded-full">
                         {student.examSchoolCategoryType}
                       </span>
                       {student.examSchoolType && (
-                        <span className="text-sm ml-2">
+                        <span className="text-sm text-foreground ml-2">
                           {student.examSchoolType === "PUBLIC" ? "公立" : "私立"}
                         </span>
                       )}
@@ -195,23 +195,23 @@ export default function DetailDialog({
                   )}
 
                   {student.schoolName && (
-                    <p className="text-sm font-medium">{student.schoolName}</p>
+                    <p className="text-sm font-medium text-foreground">{student.schoolName}</p>
                   )}
 
                   {grade && (
-                    <p className="text-sm">
+                    <p className="text-sm text-foreground">
                       {grade.name}
                     </p>
                   )}
 
                   {studentType && (
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-muted-foreground">
                       {studentType.name}
                     </p>
                   )}
 
                   {!student.examSchoolCategoryType && !student.schoolName && !grade && (
-                    <p className="text-sm text-gray-500">未入力</p>
+                    <p className="text-sm text-muted-foreground">未入力</p>
                   )}
                 </div>
               </div>
@@ -219,8 +219,8 @@ export default function DetailDialog({
               {/* Предметы */}
               <div className="flex group">
                 <div className="w-1/4 flex items-start">
-                  <BookOpen className="h-5 w-5 text-green-500 mr-2" />
-                  <span className="text-sm font-medium text-gray-700">希望科目</span>
+                  <BookOpen className="h-5 w-5 text-gray-500 dark:text-gray-400 mr-2" />
+                  <span className="text-sm font-medium text-foreground">希望科目</span>
                 </div>
                 <div className="w-3/4 pl-2 border-l-2 border-gray-100 ">
                   <div className="flex flex-wrap gap-1">
@@ -229,7 +229,7 @@ export default function DetailDialog({
                         <SubjectBadge key={subject.subjectId} subject={subject} />
                       ))
                     ) : (
-                      <p className="text-sm text-gray-500">未入力</p>
+                      <p className="text-sm text-muted-foreground">未入力</p>
                     )}
                   </div>
                 </div>
@@ -238,18 +238,18 @@ export default function DetailDialog({
               {/* Предпочтения по школам */}
               <div className="flex group">
                 <div className="w-1/4 flex items-start">
-                  <Bookmark className="h-5 w-5 text-yellow-500 mr-2" />
-                  <span className="text-sm font-medium text-gray-700">希望学校</span>
+                  <Bookmark className="h-5 w-5 text-gray-500 dark:text-gray-400 mr-2" />
+                  <span className="text-sm font-medium text-foreground">希望学校</span>
                 </div>
-                <div className="w-3/4 space-y-1 pl-2 border-l-2 border-gray-100 group-hover:border-yellow-100">
+                <div className="w-3/4 space-y-1 pl-2 border-l-2 border-gray-100">
                   {student.firstChoiceSchool && (
-                    <p className="text-sm">第一志望: <span className="font-medium">{student.firstChoiceSchool}</span></p>
+                    <p className="text-sm text-foreground">第一志望: <span className="font-medium">{student.firstChoiceSchool}</span></p>
                   )}
                   {student.secondChoiceSchool && (
-                    <p className="text-sm">第二志望: <span className="font-medium">{student.secondChoiceSchool}</span></p>
+                    <p className="text-sm text-foreground">第二志望: <span className="font-medium">{student.secondChoiceSchool}</span></p>
                   )}
                   {!student.firstChoiceSchool && !student.secondChoiceSchool && (
-                    <p className="text-sm text-gray-500">未入力</p>
+                    <p className="text-sm text-muted-foreground">未入力</p>
                   )}
                 </div>
               </div>
@@ -257,18 +257,18 @@ export default function DetailDialog({
               {/* Даты */}
               <div className="flex group">
                 <div className="w-1/4 flex items-start">
-                  <Calendar className="h-5 w-5 text-purple-500 mr-2" />
-                  <span className="text-sm font-medium text-gray-700">日付</span>
+                  <Calendar className="h-5 w-5 text-gray-500 dark:text-gray-400 mr-2" />
+                  <span className="text-sm font-medium text-foreground">日付</span>
                 </div>
-                <div className="w-3/4 space-y-1 pl-2 border-l-2 border-gray-100 group-hover:border-purple-100">
+                <div className="w-3/4 space-y-1 pl-2 border-l-2 border-gray-100">
                   {student.birthDate && (
-                    <p className="text-sm">誕生日: <span className="font-medium">{formatDate(student.birthDate)}</span></p>
+                    <p className="text-sm text-foreground">誕生日: <span className="font-medium">{formatDate(student.birthDate)}</span></p>
                   )}
                   {student.enrollmentDate && (
-                    <p className="text-sm">入学日: <span className="font-medium">{formatDate(student.enrollmentDate)}</span></p>
+                    <p className="text-sm text-foreground">入学日: <span className="font-medium">{formatDate(student.enrollmentDate)}</span></p>
                   )}
                   {!student.birthDate && !student.enrollmentDate && (
-                    <p className="text-sm text-gray-500">未入力</p>
+                    <p className="text-sm text-muted-foreground">未入力</p>
                   )}
                 </div>
               </div>
@@ -276,16 +276,16 @@ export default function DetailDialog({
               {/* Контактная информация */}
               <div className="flex group">
                 <div className="w-1/4 flex items-start">
-                  <Phone className="h-5 w-5 text-red-500 mr-2" />
-                  <span className="text-sm font-medium text-gray-700">連絡先</span>
+                  <Phone className="h-5 w-5 text-gray-500 dark:text-gray-400 mr-2" />
+                  <span className="text-sm font-medium text-foreground">連絡先</span>
                 </div>
-                <div className="w-3/4 space-y-1 pl-2 border-l-2 border-gray-100 group-hover:border-red-100">
-                  {student.parentEmail && <p className="text-sm">親のメール: <span className="font-medium">{student.parentEmail}</span></p>}
-                  {student.homePhone && <p className="text-sm">自宅電話: <span className="font-medium">{student.homePhone}</span></p>}
-                  {student.parentMobile && <p className="text-sm">親の携帯: <span className="font-medium">{student.parentMobile}</span></p>}
-                  {student.studentMobile && <p className="text-sm">生徒の携帯: <span className="font-medium">{student.studentMobile}</span></p>}
+                <div className="w-3/4 space-y-1 pl-2 border-l-2 border-gray-100">
+                  {student.parentEmail && <p className="text-sm text-foreground">親のメール: <span className="font-medium">{student.parentEmail}</span></p>}
+                  {student.homePhone && <p className="text-sm text-foreground">自宅電話: <span className="font-medium">{student.homePhone}</span></p>}
+                  {student.parentMobile && <p className="text-sm text-foreground">親の携帯: <span className="font-medium">{student.parentMobile}</span></p>}
+                  {student.studentMobile && <p className="text-sm text-foreground">生徒の携帯: <span className="font-medium">{student.studentMobile}</span></p>}
                   {!student.parentEmail && !student.homePhone && !student.parentMobile && !student.studentMobile && (
-                    <p className="text-sm text-gray-500">未入力</p>
+                    <p className="text-sm text-muted-foreground">未入力</p>
                   )}
                 </div>
               </div>
@@ -296,11 +296,11 @@ export default function DetailDialog({
           {entity.notes && (
             <div className="flex group">
               <div className="w-1/4 flex items-start">
-                <MessageSquare className="h-5 w-5 text-pink-500 mr-2" />
-                <span className="text-sm font-medium text-gray-700">メモ</span>
+                <MessageSquare className="h-5 w-5 text-gray-500 dark:text-gray-400 mr-2" />
+                <span className="text-sm font-medium text-foreground">メモ</span>
               </div>
               <div className="w-3/4 pl-2 border-l-2 border-gray-100">
-                <p className="text-sm whitespace-pre-wrap">{entity.notes}</p>
+                <p className="text-sm text-foreground whitespace-pre-wrap">{entity.notes}</p>
               </div>
             </div>
           )}

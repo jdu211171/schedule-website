@@ -5,56 +5,57 @@ import { Badge } from "@/components/ui/badge";
 interface SubjectBadgeProps {
   subject: Subject;
   size?: "sm" | "md" | "lg";
-  highlight?: boolean; 
+  highlight?: boolean;
 }
 
-export default function SubjectBadge({ 
-  subject, 
-  size = "md",
-  highlight = false
-}: SubjectBadgeProps) {
-  const getSubjectColor = (subjectName: string) => {
-    const nameHash = subjectName.split('').reduce((acc, char) => {
+export default function SubjectBadge({
+                                       subject,
+                                       size = "md",
+                                       highlight = false
+                                     }: SubjectBadgeProps) {
+  // Монохромная палитра вместо цветной
+  const getMonochromeStyle = () => {
+    // Генерируем разные оттенки серого на основе имени предмета
+    const nameHash = subject.name.split('').reduce((acc, char) => {
       return acc + char.charCodeAt(0);
     }, 0);
-    
-    const colors = [
-      { bg: "bg-blue-100", text: "text-blue-800" },
-      { bg: "bg-green-100", text: "text-green-800" },
-      { bg: "bg-yellow-100", text: "text-yellow-800" },
-      { bg: "bg-red-100", text: "text-red-800" },
-      { bg: "bg-purple-100", text: "text-purple-800" },
-      { bg: "bg-indigo-100", text: "text-indigo-800" },
-      { bg: "bg-pink-100", text: "text-pink-800" },
-      { bg: "bg-teal-100", text: "text-teal-800" },
+
+    // Разные уровни серого для светлой и темной темы
+    const lightModeVariations = [
+      { bg: "bg-gray-100", text: "text-gray-800" },
+      { bg: "bg-gray-200", text: "text-gray-900" },
+      { bg: "bg-gray-50", text: "text-gray-700" },
+      { bg: "bg-stone-100", text: "text-stone-800" },
+      { bg: "bg-zinc-100", text: "text-zinc-800" },
+      { bg: "bg-slate-100", text: "text-slate-800" }
     ];
-    
-    const colorIndex = nameHash % colors.length;
-    return colors[colorIndex];
+
+    // Используем хеш для выбора вариации
+    const variationIndex = nameHash % lightModeVariations.length;
+    return lightModeVariations[variationIndex];
   };
-  
-  const { bg, text } = getSubjectColor(subject.name);
-  
-  const highlightBg = highlight ? bg.replace('-100', '-200') : bg;
-  const highlightText = highlight ? text : text;
-  const highlightBorder = highlight ? 'border-2 border-yellow-400' : '';
-  
+
+  const { bg, text } = getMonochromeStyle();
+
   const sizeClass = {
     sm: "px-1.5 py-0.5 text-xs",
     md: "px-2 py-1 text-sm",
     lg: "px-3 py-1.5 text-base"
   }[size];
-  
+
   return (
-    <Badge 
-      variant="outline" 
+    <Badge
+      variant="outline"
       className={cn(
-        highlightBg, 
-        highlightText,
-        sizeClass,
         "rounded-full font-medium whitespace-nowrap",
-        highlightBorder, 
-        highlight && "shadow-md" 
+        sizeClass,
+        // Свветлая тема
+        bg,
+        text,
+        // Темная тема
+        "dark:bg-gray-800 dark:text-gray-200",
+        // Стиль при выделении
+        highlight && "border dark:border-gray-600 shadow-sm bg-gray-200 dark:bg-gray-700"
       )}
     >
       {subject.name}
