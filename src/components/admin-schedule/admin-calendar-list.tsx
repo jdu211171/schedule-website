@@ -22,6 +22,21 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { useClassSessions, ClassSessionWithRelations } from "@/hooks/useClassSessionQuery";
 import { EditTemplateClassSessionForm } from "./edit-template-class-session-form";
 import { EditStandaloneClassSessionForm } from "./edit-standalone-class-session-form";
@@ -34,68 +49,127 @@ type EditStandaloneClassSessionFormSession = z.infer<typeof UpdateStandaloneClas
 
 // Define SortConfig type
 type SortConfig = {
-  key: keyof ClassSessionWithRelations | "boothName" | "subjectName"; // Updated to ClassSessionWithRelations
+  key: keyof ClassSessionWithRelations | "boothName" | "subjectName";
   direction: "ascending" | "descending";
 };
 
+// Define FilterState type
+type FilterState = {
+  teacherId: string | null;
+  studentId: string | null;
+  subjectId: string | null;
+  subjectTypeId: string | null;
+  boothId: string | null;
+  classTypeId: string | null;
+};
+
 // Props for the dialogs that wrap the forms
-// These props are for the dialog components themselves, not the forms directly.
-// The forms will receive a subset of ClassSessionWithRelations.
 type EditTemplateDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  session: EditTemplateClassSessionFormSession | null; // Specific session type
+  session: EditTemplateClassSessionFormSession | null;
   onSessionUpdated: () => void;
 };
 
 type EditStandaloneDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  session: EditStandaloneClassSessionFormSession | null; // Specific session type
+  session: EditStandaloneClassSessionFormSession | null;
   onSessionUpdated: () => void;
 };
 
 // Define the FormConfig discriminated union
 type FormConfig =
   | {
-      type: "template";
-      component: React.FC<EditTemplateDialogProps>;
-      props: EditTemplateDialogProps;
-    }
+  type: "template";
+  component: React.FC<EditTemplateDialogProps>;
+  props: EditTemplateDialogProps;
+}
   | {
-      type: "standalone";
-      component: React.FC<EditStandaloneDialogProps>;
-      props: EditStandaloneDialogProps;
-    }
+  type: "standalone";
+  component: React.FC<EditStandaloneDialogProps>;
+  props: EditStandaloneDialogProps;
+}
   | {
-      type: null;
-      component: null;
-      props: { // Common props for the null state
-          open: boolean;
-          onOpenChange: (open: boolean) => void;
-          session: null; // Explicitly null
-          onSessionUpdated: () => void;
-      };
-    };
+  type: null;
+  component: null;
+  props: {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    session: null;
+    onSessionUpdated: () => void;
+  };
+};
 
 export default function AdminCalendarList() {
   const queryClient = useQueryClient();
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [editingSession, setEditingSession] = useState<ClassSessionWithRelations | null>( // Updated type
-    null
-  );
+  const [editingSession, setEditingSession] = useState<ClassSessionWithRelations | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [sessionToDelete, setSessionToDelete] = useState<ClassSessionWithRelations | null>( // Updated type
-    null
-  );
-
-  const { data: sessionsData, isLoading } = useClassSessions();
-  const classSessions = useMemo(() => sessionsData?.data || [], [sessionsData]);
-
+  const [sessionToDelete, setSessionToDelete] = useState<ClassSessionWithRelations | null>(null);
   const [sortConfig, setSortConfig] = useState<SortConfig>({
     key: "date",
     direction: "ascending",
   });
+  // Initialize filter state
+  const [filters, setFilters] = useState<FilterState>({
+    teacherId: null,
+    studentId: null,
+    subjectId: null,
+    subjectTypeId: null,
+    boothId: null,
+    classTypeId: null,
+  });
+
+  const { data: sessionsData, isLoading } = useClassSessions();
+  const classSessions = useMemo(() => sessionsData?.data || [], [sessionsData]);
+
+  // Extract unique filter options
+  const filterOptions = useMemo(() => {
+    const teachers = Array.from(
+      new Set(classSessions.map((s) => s.teacherId).filter((id): id is string => !!id))
+    ).map((id) => ({
+      value: id,
+      label: classSessions.find((s) => s.teacherId === id)?.teacher?.name || id,
+    }));
+
+    const students = Array.from(
+      new Set(classSessions.map((s) => s.studentId).filter((id): id is string => !!id))
+    ).map((id) => ({
+      value: id,
+      label: classSessions.find((s) => s.studentId === id)?.student?.name || id,
+    }));
+
+    const subjects = Array.from(
+      new Set(classSessions.map((s) => s.subjectId).filter((id): id is string => !!id))
+    ).map((id) => ({
+      value: id,
+      label: classSessions.find((s) => s.subjectId === id)?.subject?.name || id,
+    }));
+
+    const subjectTypes = Array.from(
+      new Set(classSessions.map((s) => s.subjectTypeId).filter((id): id is string => !!id))
+    ).map((id) => ({
+      value: id,
+      label: classSessions.find((s) => s.subjectTypeId === id)?.subjectType?.name || id,
+    }));
+
+    const booths = Array.from(
+      new Set(classSessions.map((s) => s.boothId).filter((id): id is string => !!id))
+    ).map((id) => ({
+      value: id,
+      label: classSessions.find((s) => s.boothId === id)?.booth?.name || id,
+    }));
+
+    const classTypes = Array.from(
+      new Set(classSessions.map((s) => s.classTypeId).filter((id): id is string => !!id))
+    ).map((id) => ({
+      value: id,
+      label: classSessions.find((s) => s.classTypeId === id)?.classType?.name || id,
+    }));
+
+    return { teachers, students, subjects, subjectTypes, booths, classTypes };
+  }, [classSessions]);
 
   const handleSort = useCallback((key: SortConfig["key"]) => {
     setSortConfig((prevConfig: SortConfig) => ({
@@ -113,24 +187,36 @@ export default function AdminCalendarList() {
         return session.booth?.name || "";
       }
       if (key === "subjectName") {
-        return session.subject?.name || ""; // Assuming subject is available
+        return session.subject?.name || "";
       }
-      // Ensure other keys are valid for ClassSessionWithRelations
       if (key in session) {
         const value = session[key as keyof ClassSessionWithRelations];
-        // Handle cases where value might be a Date object for sorting
         if (value instanceof Date) {
           return value.toISOString();
         }
         return value as string | number | null | undefined;
       }
-      return ""; // Fallback for keys not directly on session
+      return "";
     },
-    [] // Removed booths from dependency array
+    []
   );
 
+  // Apply filters before sorting
+  const filteredSessions = useMemo(() => {
+    return classSessions.filter((session) => {
+      return (
+        (!filters.teacherId || session.teacherId === filters.teacherId) &&
+        (!filters.studentId || session.studentId === filters.studentId) &&
+        (!filters.subjectId || session.subjectId === filters.subjectId) &&
+        (!filters.subjectTypeId || session.subjectTypeId === filters.subjectTypeId) &&
+        (!filters.boothId || session.boothId === filters.boothId) &&
+        (!filters.classTypeId || session.classTypeId === filters.classTypeId)
+      );
+    });
+  }, [classSessions, filters]);
+
   const sortedSessions = useMemo(() => {
-    return [...classSessions].sort((a, b) => {
+    return [...filteredSessions].sort((a, b) => {
       const aValue = getSortValue(a, sortConfig.key);
       const bValue = getSortValue(b, sortConfig.key);
 
@@ -145,14 +231,14 @@ export default function AdminCalendarList() {
       }
       return 0;
     });
-  }, [classSessions, sortConfig, getSortValue]);
+  }, [filteredSessions, sortConfig, getSortValue]);
 
-  const openEditDialog = (session: ClassSessionWithRelations) => { // Updated type
+  const openEditDialog = (session: ClassSessionWithRelations) => {
     setEditingSession(session);
     setIsEditDialogOpen(true);
   };
 
-  const openDeleteDialog = (session: ClassSessionWithRelations) => { // Updated type
+  const openDeleteDialog = (session: ClassSessionWithRelations) => {
     setSessionToDelete(session);
     setIsDeleteDialogOpen(true);
   };
@@ -165,10 +251,6 @@ export default function AdminCalendarList() {
   const confirmDeleteSession = useCallback(async () => {
     if (!sessionToDelete) return;
     console.log("Deleting session:", sessionToDelete.classId);
-    // TODO: Implement actual delete mutation
-    // For example: await deleteClassSessionMutation.mutateAsync(sessionToDelete.classId);
-    // For now, just invalidating queries and closing dialog
-    // await fetcher(`/api/class-session/${sessionToDelete.classId}`, { method: 'DELETE' });
     queryClient.invalidateQueries({ queryKey: ["classSessions"] });
     closeDeleteDialog();
   }, [sessionToDelete, queryClient]);
@@ -226,7 +308,6 @@ export default function AdminCalendarList() {
     } else {
       const sessionForStandaloneForm: EditStandaloneClassSessionFormSession = {
         classId: editingSession.classId,
-        // date is Date | undefined in inferred type due to .transform()
         date: editingSession.date ? (editingSession.date instanceof Date ? editingSession.date : new Date(editingSession.date)) : undefined,
         startTime: formatTimeForSchema(editingSession.startTime),
         endTime: formatTimeForSchema(editingSession.endTime),
@@ -234,7 +315,7 @@ export default function AdminCalendarList() {
         classTypeId: editingSession.classTypeId ?? undefined,
         teacherId: editingSession.teacherId ?? undefined,
         studentId: editingSession.studentId ?? undefined,
-        subjectId: editingSession.subjectId ?? undefined, // Ensure this is correctly handled if optional in schema
+        subjectId: editingSession.subjectId ?? undefined,
         subjectTypeId: editingSession.subjectTypeId ?? undefined,
         notes: editingSession.notes ?? undefined,
       };
@@ -262,20 +343,145 @@ export default function AdminCalendarList() {
 
   const formatTime = (t: Date | string | null) => {
     if (!t) return "N/A";
-    // Check if it's already a Date object, if not, try to parse it
-    // The data from API (ClassSessionWithRelations) will have date strings
     const dateObj = t instanceof Date ? t : new Date(t);
-    if (isNaN(dateObj.getTime())) return "Invalid time"; // Check if date parsing was successful
+    if (isNaN(dateObj.getTime())) return "Invalid time";
     return format(dateObj, "HH:mm");
+  };
+
+  // Combobox component for filters
+  type ComboboxProps = {
+    options: { value: string; label: string }[];
+    value: string | null;
+    onChange: (value: string | null) => void;
+    placeholder: string;
+  };
+
+  const Combobox: React.FC<ComboboxProps> = ({ options, value, onChange, placeholder }) => {
+    const [open, setOpen] = useState(false);
+
+    return (
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            role="combobox"
+            className={cn("w-[200px] justify-between", !value && "text-muted-foreground")}
+          >
+            {value
+              ? options.find((option) => option.value === value)?.label
+              : placeholder}
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[200px] p-0">
+          <Command>
+            <CommandInput placeholder="Search..." className="h-9" />
+            <CommandList>
+              <CommandEmpty>No options found.</CommandEmpty>
+              <CommandGroup>
+                <CommandItem
+                  value=""
+                  onSelect={() => {
+                    onChange(null);
+                    setOpen(false);
+                  }}
+                >
+                  Clear
+                  <Check
+                    className={cn(
+                      "ml-auto h-4 w-4",
+                      value === null ? "opacity-100" : "opacity-0"
+                    )}
+                  />
+                </CommandItem>
+                {options.map((option) => (
+                  <CommandItem
+                    key={option.value}
+                    value={option.label}
+                    onSelect={() => {
+                      onChange(option.value);
+                      setOpen(false);
+                    }}
+                  >
+                    {option.label}
+                    <Check
+                      className={cn(
+                        "ml-auto h-4 w-4",
+                        value === option.value ? "opacity-100" : "opacity-0"
+                      )}
+                    />
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+    );
   };
 
   const ActiveForm = formConfig.component;
 
   return (
     <div>
-      {ActiveForm && formConfig.props.open && (
-        <ActiveForm {...formConfig.props} />
-      )}
+      {ActiveForm && formConfig.props.open && <ActiveForm {...formConfig.props} />}
+      {/* Filter Section */}
+      <div className="mb-6 flex flex-wrap gap-4">
+        <div>
+          <label className="text-sm font-medium">講師</label>
+          <Combobox
+            options={filterOptions.teachers}
+            value={filters.teacherId}
+            onChange={(value) => setFilters((prev) => ({ ...prev, teacherId: value }))}
+            placeholder="Select teacher"
+          />
+        </div>
+        <div>
+          <label className="text-sm font-medium">生徒</label>
+          <Combobox
+            options={filterOptions.students}
+            value={filters.studentId}
+            onChange={(value) => setFilters((prev) => ({ ...prev, studentId: value }))}
+            placeholder="Select student"
+          />
+        </div>
+        <div>
+          <label className="text-sm font-medium">科目</label>
+          <Combobox
+            options={filterOptions.subjects}
+            value={filters.subjectId}
+            onChange={(value) => setFilters((prev) => ({ ...prev, subjectId: value }))}
+            placeholder="Select subject"
+          />
+        </div>
+        <div>
+          <label className="text-sm font-medium">科目タイプ</label>
+          <Combobox
+            options={filterOptions.subjectTypes}
+            value={filters.subjectTypeId}
+            onChange={(value) => setFilters((prev) => ({ ...prev, subjectTypeId: value }))}
+            placeholder="Select subject type"
+          />
+        </div>
+        <div>
+          <label className="text-sm font-medium">ブース</label>
+          <Combobox
+            options={filterOptions.booths}
+            value={filters.boothId}
+            onChange={(value) => setFilters((prev) => ({ ...prev, boothId: value }))}
+            placeholder="Select booth"
+          />
+        </div>
+        <div>
+          <label className="text-sm font-medium">授業タイプ</label>
+          <Combobox
+            options={filterOptions.classTypes}
+            value={filters.classTypeId}
+            onChange={(value) => setFilters((prev) => ({ ...prev, classTypeId: value }))}
+            placeholder="Select class type"
+          />
+        </div>
+      </div>
       <Table>
         <TableHeader>
           <TableRow>
@@ -309,7 +515,12 @@ export default function AdminCalendarList() {
                 <Button variant="outline" size="sm" onClick={() => openEditDialog(session)}>
                   編集
                 </Button>
-                <Button variant="destructive" size="sm" onClick={() => openDeleteDialog(session)} style={{ marginLeft: '8px' }}>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => openDeleteDialog(session)}
+                  style={{ marginLeft: "8px" }}
+                >
                   削除
                 </Button>
               </TableCell>
