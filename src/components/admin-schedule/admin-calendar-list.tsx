@@ -160,48 +160,48 @@ export default function AdminCalendarListEnhanced() {
       {
         id: "teacherIds",
         label: "講師",
-        placeholder: "Select teachers",
+        placeholder: "講師を選択",
         options: filterOptions.teachers,
       },
       {
         id: "studentIds",
         label: "生徒",
-        placeholder: "Select students",
+        placeholder: "生徒を選択",
         options: filterOptions.students,
       },
       {
         id: "subjectIds",
         label: "科目",
-        placeholder: "Select subjects",
+        placeholder: "科目を選択",
         options: filterOptions.subjects,
       },
       {
         id: "subjectTypeIds",
         label: "科目タイプ",
-        placeholder: "Select subject types",
+        placeholder: "科目タイプを選択",
         options: filterOptions.subjectTypes,
       },
       {
         id: "boothIds",
         label: "ブース",
-        placeholder: "Select booths",
+        placeholder: "ブースを選択",
         options: filterOptions.booths,
       },
       {
         id: "classTypeIds",
         label: "授業タイプ",
-        placeholder: "Select class types",
+        placeholder: "授業タイプを選択",
         options: filterOptions.classTypes,
       },
       {
         id: "dateRange",
         label: "日付",
         type: "date-range",
+        placeholder: "授業タイプを選択",
       } as DateRangeFilterConfig,
     ],
     [filterOptions],
   )
-
   const handleSort = useCallback((key: SortConfig["key"]) => {
     setSortConfig((prevConfig) => ({
       key,
@@ -488,7 +488,7 @@ export default function AdminCalendarListEnhanced() {
 
       {/* Enhanced Filter Section */}
       <div className="mb-6">
-        <h3 className="text-lg font-medium mb-3">Filters</h3>
+        <h3 className="text-lg font-medium mb-3"/>
         <FilterBar
           filters={filterConfigs}
           selectedFilters={filters}

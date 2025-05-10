@@ -39,8 +39,8 @@ export function MultiSelectFilter({
                                     onChange,
                                     placeholder,
                                     label,
-                                    searchPlaceholder = "Search options...",
-                                    emptySearchText = "No options found.",
+                                    searchPlaceholder = "検索オプション...",
+                                    emptySearchText = "オプションが見つかりません。",
                                     maxHeight = 300,
                                     className,
                                   }: MultiSelectFilterProps) {
@@ -174,7 +174,7 @@ export function MultiSelectFilter({
                   <CommandSeparator />
                   <CommandGroup>
                     <CommandItem onSelect={handleClear} className="justify-center text-center">
-                      Clear filters
+                      フィルターをクリア
                     </CommandItem>
                   </CommandGroup>
                 </>

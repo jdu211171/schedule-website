@@ -47,7 +47,7 @@ export function DateRangePicker({ dateRange, onChange, label, className }: DateR
                   format(dateRange.from, "yyyy/MM/dd")
                 )
               ) : (
-                <span>Select date range</span>
+                <span>日付の範囲を選択</span>
               )}
             </div>
             {dateRange?.from && (
