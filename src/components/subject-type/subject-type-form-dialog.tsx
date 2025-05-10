@@ -67,20 +67,19 @@ export function SubjectTypeFormDialog({
     }
   }, [subjectType, form]);
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
-    try {
-      if (isEditing && subjectType) {
-        await updateSubjectTypeMutation.mutateAsync({
-          subjectTypeId: subjectType.subjectTypeId,
-          ...values,
-        });
-      } else {
-        await createSubjectTypeMutation.mutateAsync(values);
-      }
-      onOpenChange(false);
-      form.reset();
-    } catch (error) {
-      console.error("科目タイプの保存に失敗しました:", error);
+  function onSubmit(values: z.infer<typeof formSchema>) {
+    // Close the dialog immediately for better UX
+    onOpenChange(false);
+    form.reset();
+
+    // Then trigger the mutation
+    if (isEditing && subjectType) {
+      updateSubjectTypeMutation.mutate({
+        subjectTypeId: subjectType.subjectTypeId,
+        ...values,
+      });
+    } else {
+      createSubjectTypeMutation.mutate(values);
     }
   }
 
