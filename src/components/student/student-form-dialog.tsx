@@ -394,103 +394,98 @@ export function StudentFormDialog({
     };
   };
 
-  // Handle form submission
-  async function onSubmit(values: z.infer<typeof formSchema>) {
-    setIsSubmitting(true);
-    try {
-      // Get the latest time slots from the desiredTimesForm
-      const timeSlots = desiredTimesForm.getValues().desiredTimes;
+  // Handle form submission - OPTIMIZED to close dialog immediately
+  function onSubmit(values: z.infer<typeof formSchema>) {
+    // Get the latest time slots from the desiredTimesForm
+    const timeSlots = desiredTimesForm.getValues().desiredTimes;
 
-      // Ensure the day of week is in uppercase enum format (MONDAY not Monday)
-      const formattedTimeSlots = timeSlots.map((time) => ({
-        dayOfWeek: time.dayOfWeek.toUpperCase(), // Convert to proper enum format
-        startTime: time.startTime,
-        endTime: time.endTime,
-      }));
+    // Ensure the day of week is in uppercase enum format (MONDAY not Monday)
+    const formattedTimeSlots = timeSlots.map((time) => ({
+      dayOfWeek: time.dayOfWeek.toUpperCase(), // Convert to proper enum format
+      startTime: time.startTime,
+      endTime: time.endTime,
+    }));
 
-      // Update the preferencesForm with these values
-      preferencesForm.setValue("desiredTimes", formattedTimeSlots);
+    // Update the preferencesForm with these values
+    preferencesForm.setValue("desiredTimes", formattedTimeSlots);
 
-      const preferenceData = preferencesForm.getValues();
-      const preferences = mapPreferencesForApi(preferenceData);
+    const preferenceData = preferencesForm.getValues();
+    const preferences = mapPreferencesForApi(preferenceData);
 
-      // Log the actual data being sent to verify
-      console.log("Submitting with time slots:", preferences.timeSlots);
+    // Convert Date objects to string (YYYY-MM-DD) for API
+    const formatDateString = (d: string | Date | undefined) => {
+      if (!d) return undefined;
+      if (typeof d === "string") return d;
+      if (d instanceof Date && !isNaN(d.getTime()))
+        return d.toISOString().slice(0, 10);
+      return undefined;
+    };
+    // Convert nulls to undefined for all string fields to match schema types
+    const cleanString = (v: string | null | undefined) =>
+      v == null ? undefined : v;
+    // Helper to cast enum fields safely
+    const castEnum = <T extends string>(
+      val: unknown,
+      allowed: readonly T[]
+    ): T | undefined =>
+      typeof val === "string" && allowed.includes(val as T)
+        ? (val as T)
+        : undefined;
+    const payload = {
+      ...values,
+      gradeId: cleanString(values.gradeId),
+      kanaName: cleanString(values.kanaName),
+      schoolName: cleanString(values.schoolName),
+      schoolType: castEnum(values.schoolType, ["PUBLIC", "PRIVATE"]) as
+        | "PUBLIC"
+        | "PRIVATE"
+        | undefined,
+      examSchoolType: castEnum(values.examSchoolType, ["PUBLIC", "PRIVATE"]) as
+        | "PUBLIC"
+        | "PRIVATE"
+        | undefined,
+      examSchoolCategoryType: castEnum(values.examSchoolCategoryType, [
+        "ELEMENTARY",
+        "MIDDLE",
+        "HIGH",
+        "UNIVERSITY",
+        "OTHER",
+      ]) as
+        | "ELEMENTARY"
+        | "MIDDLE"
+        | "HIGH"
+        | "UNIVERSITY"
+        | "OTHER"
+        | undefined,
+      firstChoiceSchool: cleanString(values.firstChoiceSchool),
+      secondChoiceSchool: cleanString(values.secondChoiceSchool),
+      homePhone: cleanString(values.homePhone),
+      parentMobile: cleanString(values.parentMobile),
+      studentMobile: cleanString(values.studentMobile),
+      parentEmail: cleanString(values.parentEmail),
+      notes: cleanString(values.notes),
+      birthDate: formatDateString(values.birthDate),
+      enrollmentDate: formatDateString(values.enrollmentDate ?? undefined),
+      preferences,
+    };
 
-      // Convert Date objects to string (YYYY-MM-DD) for API
-      const formatDateString = (d: string | Date | undefined) => {
-        if (!d) return undefined;
-        if (typeof d === "string") return d;
-        if (d instanceof Date && !isNaN(d.getTime()))
-          return d.toISOString().slice(0, 10);
-        return undefined;
-      };
-      // Convert nulls to undefined for all string fields to match schema types
-      const cleanString = (v: string | null | undefined) =>
-        v == null ? undefined : v;
-      // Helper to cast enum fields safely
-      const castEnum = <T extends string>(
-        val: unknown,
-        allowed: readonly T[]
-      ): T | undefined =>
-        typeof val === "string" && allowed.includes(val as T)
-          ? (val as T)
-          : undefined;
-      const payload = {
-        ...values,
-        gradeId: cleanString(values.gradeId),
-        kanaName: cleanString(values.kanaName),
-        schoolName: cleanString(values.schoolName),
-        schoolType: castEnum(values.schoolType, ["PUBLIC", "PRIVATE"]) as
-          | "PUBLIC"
-          | "PRIVATE"
-          | undefined,
-        examSchoolType: castEnum(values.examSchoolType, [
-          "PUBLIC",
-          "PRIVATE",
-        ]) as "PUBLIC" | "PRIVATE" | undefined,
-        examSchoolCategoryType: castEnum(values.examSchoolCategoryType, [
-          "ELEMENTARY",
-          "MIDDLE",
-          "HIGH",
-          "UNIVERSITY",
-          "OTHER",
-        ]) as
-          | "ELEMENTARY"
-          | "MIDDLE"
-          | "HIGH"
-          | "UNIVERSITY"
-          | "OTHER"
-          | undefined,
-        firstChoiceSchool: cleanString(values.firstChoiceSchool),
-        secondChoiceSchool: cleanString(values.secondChoiceSchool),
-        homePhone: cleanString(values.homePhone),
-        parentMobile: cleanString(values.parentMobile),
-        studentMobile: cleanString(values.studentMobile),
-        parentEmail: cleanString(values.parentEmail),
-        notes: cleanString(values.notes),
-        birthDate: formatDateString(values.birthDate),
-        enrollmentDate: formatDateString(values.enrollmentDate ?? undefined),
-        preferences,
-      };
+    // Close the dialog immediately for better UX
+    onOpenChange(false);
 
-      if (isEditing && student) {
-        const { username, ...updatePayload } = payload;
-        await updateStudentMutation.mutateAsync({
-          studentId: student.studentId,
-          ...updatePayload,
-        });
-      } else {
-        await createStudentMutation.mutateAsync(payload);
-      }
-      onOpenChange(false);
-      form.reset();
-      preferencesForm.reset();
-      desiredTimesForm.reset();
-    } catch (error) {
-      console.error("Failed to save student:", error);
-    } finally {
-      setIsSubmitting(false);
+    // Reset all forms
+    form.reset();
+    preferencesForm.reset();
+    desiredTimesForm.reset();
+
+    // Then trigger the mutation without waiting for result
+    if (isEditing && student) {
+      const { username, ...updatePayload } = payload;
+      updateStudentMutation.mutate({
+        studentId: student.studentId,
+        ...updatePayload,
+      });
+    } else {
+      createStudentMutation.mutate(payload);
     }
   }
 
