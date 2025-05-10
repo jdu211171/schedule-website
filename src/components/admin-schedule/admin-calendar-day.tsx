@@ -63,19 +63,19 @@ export default function AdminCalendarDay({ mode = 'view' }: AdminCalendarDayProp
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [containerWidth, setContainerWidth] = useState<number>(1200);
   const timeSlotHeight = 40; // Высота строки комнаты
-  
+
   const [selectionStart, setSelectionStart] = useState<{row: number, col: number} | null>(null);
   const [selectionEnd, setSelectionEnd] = useState<{row: number, col: number} | null>(null);
   const [isSelecting, setIsSelecting] = useState(false);
   const [lastHoveredCell, setLastHoveredCell] = useState<{ row: number, col: number } | null>(null);
-  
+
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [newLessonData, setNewLessonData] = useState<{
     startTime: string;
     endTime: string;
     roomId: string;
   } | null>(null);
-  
+
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
   const [showLessonDialog, setShowLessonDialog] = useState(false);
   const [lessonDialogMode, setLessonDialogMode] = useState<'view' | 'edit'>('view');
@@ -89,7 +89,7 @@ export default function AdminCalendarDay({ mode = 'view' }: AdminCalendarDayProp
     const styleElement = document.createElement('style');
     styleElement.textContent = styles;
     document.head.appendChild(styleElement);
-    
+
     return () => {
       document.head.removeChild(styleElement);
     };
@@ -99,7 +99,7 @@ export default function AdminCalendarDay({ mode = 'view' }: AdminCalendarDayProp
   useEffect(() => {
     setMounted(true);
   }, []);
-  
+
   // Обновление ширины контейнера при изменении размера окна
   useEffect(() => {
     const updateContainerWidth = () => {
@@ -109,7 +109,7 @@ export default function AdminCalendarDay({ mode = 'view' }: AdminCalendarDayProp
     };
     updateContainerWidth();
     window.addEventListener('resize', updateContainerWidth);
-    
+
     return () => {
       window.removeEventListener('resize', updateContainerWidth);
     };
@@ -127,7 +127,7 @@ export default function AdminCalendarDay({ mode = 'view' }: AdminCalendarDayProp
       endHours = hours;
       endMinutes = startMinutes + 15;
     }
-    
+
     return {
       index: i,
       start: `${hours.toString().padStart(2, '0')}:${startMinutes.toString().padStart(2, '0')}`,
@@ -139,7 +139,7 @@ export default function AdminCalendarDay({ mode = 'view' }: AdminCalendarDayProp
 
   // Загрузка списка комнат
   useEffect(() => {
-    // API 
+    // API
     setRooms(Array.from({ length: 15 }, (_, i) => ({
       id: `${i + 101}`,
       name: `教室 ${i + 101}`
@@ -149,7 +149,7 @@ export default function AdminCalendarDay({ mode = 'view' }: AdminCalendarDayProp
 
   // Загрузка занятий
   useEffect(() => {
-    // API 
+    // API
     const fakeData: Lesson[] = [
       {
         id: '1',
@@ -200,10 +200,10 @@ export default function AdminCalendarDay({ mode = 'view' }: AdminCalendarDayProp
     setTimeout(() => {
       const currentTime = new Date();
       const today = new Date();
-      const isSameDay = selectedDate.getDate() === today.getDate() && 
-                        selectedDate.getMonth() === today.getMonth() && 
+      const isSameDay = selectedDate.getDate() === today.getDate() &&
+                        selectedDate.getMonth() === today.getMonth() &&
                         selectedDate.getFullYear() === today.getFullYear();
-      
+
       if (tableContainerRef.current && isSameDay) {
         const hours = currentTime.getHours();
         const minutes = currentTime.getMinutes();
@@ -211,14 +211,14 @@ export default function AdminCalendarDay({ mode = 'view' }: AdminCalendarDayProp
           const hourIndex = hours - 8;
           const quarterIndex = Math.floor(minutes / 15);
           const columnIndex = hourIndex * 4 + quarterIndex;
-    
+
           const oldLine = document.querySelector('.current-time-line');
           if (oldLine) {
             oldLine.remove();
           }
-      
+
           const timeCols = document.querySelectorAll('[data-time-col]');
-          
+
           // Проверяем, что элементы существуют и индекс в допустимом диапазоне
           if (timeCols && timeCols.length > columnIndex && columnIndex >= 0) {
             const targetCol = timeCols[columnIndex];
@@ -226,17 +226,17 @@ export default function AdminCalendarDay({ mode = 'view' }: AdminCalendarDayProp
               const rect = targetCol.getBoundingClientRect();
               const containerRect = tableContainerRef.current.getBoundingClientRect();
               const leftOffset = rect.left - containerRect.left + tableContainerRef.current.scrollLeft;
-              
+
               const line = document.createElement('div');
               line.className = 'current-time-line absolute border-l-2 border-red-500 z-30';
               line.style.left = `${leftOffset}px`;
-              line.style.top = '0'; 
-              line.style.height = `${(selectedRooms.length * timeSlotHeight) + 40}px`; 
-              
+              line.style.top = '0';
+              line.style.height = `${(selectedRooms.length * timeSlotHeight) + 40}px`;
+
               const timeMarker = document.createElement('div');
               timeMarker.className = 'absolute -left-2 top-0 w-4 h-4 rounded-full bg-red-500 z-30';
               line.appendChild(timeMarker);
-              
+
               tableContainerRef.current.appendChild(line);
             }
           }
@@ -252,29 +252,29 @@ export default function AdminCalendarDay({ mode = 'view' }: AdminCalendarDayProp
         const earliestLesson = lessons.reduce((earliest, current) => {
           return current.startTime < earliest.startTime ? current : earliest;
         }, lessons[0]);
-        
+
         const hours = earliestLesson.startTime.getHours();
         const minutes = earliestLesson.startTime.getMinutes();
-        
+
         const hourIndex = hours - 8;
         const quarterIndex = Math.floor(minutes / 15);
         const columnIndex = hourIndex * 4 + quarterIndex;
         const timeCols = document.querySelectorAll('[data-time-col]');
-        
+
         if (timeCols && timeCols.length > columnIndex && columnIndex >= 0) {
           const targetCol = timeCols[columnIndex];
           if (targetCol) {
             const rect = targetCol.getBoundingClientRect();
             const containerRect = tableContainerRef.current.getBoundingClientRect();
             const leftOffset = rect.left - containerRect.left;
-            
+
             tableContainerRef.current.scrollLeft = Math.max(0, leftOffset - 100);
           }
         }
       }
     }, 300); // задержка 300мс
   }, [lessons, tableContainerRef]);
-  
+
   // Отображение текущего времени и прокрутка к текущему уроку
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -292,17 +292,17 @@ export default function AdminCalendarDay({ mode = 'view' }: AdminCalendarDayProp
         } else {
           const currentTime = new Date();
           const today = new Date();
-          const isSameDay = selectedDate.getDate() === today.getDate() && 
-                          selectedDate.getMonth() === today.getMonth() && 
+          const isSameDay = selectedDate.getDate() === today.getDate() &&
+                          selectedDate.getMonth() === today.getMonth() &&
                           selectedDate.getFullYear() === today.getFullYear();
-                          
+
           if (isSameDay && tableContainerRef.current) {
             const hours = currentTime.getHours();
             const minutes = currentTime.getMinutes();
             const hourIndex = hours - 8;
             const quarterIndex = Math.floor(minutes / 15);
             const columnIndex = hourIndex * 4 + quarterIndex;
-            
+
             const timeCols = document.querySelectorAll('[data-time-col]');
             if (timeCols && timeCols.length > columnIndex && columnIndex >= 0) {
               const targetCol = timeCols[columnIndex];
@@ -310,7 +310,7 @@ export default function AdminCalendarDay({ mode = 'view' }: AdminCalendarDayProp
                 const rect = targetCol.getBoundingClientRect();
                 const containerRect = tableContainerRef.current.getBoundingClientRect();
                 const leftOffset = rect.left - containerRect.left;
-                
+
                 tableContainerRef.current.scrollLeft = Math.max(0, leftOffset - 200);
               }
             }
@@ -318,14 +318,14 @@ export default function AdminCalendarDay({ mode = 'view' }: AdminCalendarDayProp
         }
       }
     }, 500);
-    
+
     return () => {
       clearTimeout(timelineTimer);
       clearTimeout(scrollTimer);
       clearInterval(interval);
     };
   }, [updateTimeLine, scrollToEarliestLesson, lessons, selectedDate, mounted]);
-  
+
   // Функция для отмены выделения - объявляем её первой, так как она используется в других функциях
   const cancelSelection = useCallback(() => {
     setSelectionStart(null);
@@ -375,31 +375,31 @@ export default function AdminCalendarDay({ mode = 'view' }: AdminCalendarDayProp
         setIsSelecting(false);
         document.body.classList.remove('cursor-move');
         const isValidSelection = Math.abs(selectionEnd.col - selectionStart.col) > 0;
-        
+
         if (isValidSelection) {
           console.log('Обработка выделения...');
           console.log('selectionStart:', selectionStart);
           console.log('selectionEnd:', selectionEnd);
-          
+
           const startTimeIndex = Math.min(selectionStart.col, selectionEnd.col);
           const endTimeIndex = Math.max(selectionStart.col, selectionEnd.col);
-          const roomIndex = selectionStart.row; 
-          if (startTimeIndex >= 0 && startTimeIndex < timeSlots.length && 
+          const roomIndex = selectionStart.row;
+          if (startTimeIndex >= 0 && startTimeIndex < timeSlots.length &&
               endTimeIndex >= 0 && endTimeIndex < timeSlots.length) {
             const startTime = timeSlots[startTimeIndex].start;
             const endTime = timeSlots[endTimeIndex].end;
             const roomId = selectedRooms[roomIndex];
-  
+
             console.log('Создание нового урока:');
             console.log('- Комната:', roomId, '(индекс:', roomIndex, ')');
             console.log('- Время:', startTime, '-', endTime);
-            
+
             const newData = {
               startTime,
               endTime,
               roomId
             };
-  
+
             setSelectionStart(null);
             setSelectionEnd(null);
             setIsSelecting(false);
@@ -408,14 +408,14 @@ export default function AdminCalendarDay({ mode = 'view' }: AdminCalendarDayProp
             setTimeout(() => {
               setShowCreateDialog(true);
             }, 50);
-            
-            return; 
+
+            return;
           }
         }
         cancelSelection();
       }
     };
-  
+
     // Функция для обработки правой кнопки мыши для отмены выделения
     const handleGlobalRightClick = (e: MouseEvent) => {
       if (isSelecting || selectionStart) {
@@ -424,7 +424,7 @@ export default function AdminCalendarDay({ mode = 'view' }: AdminCalendarDayProp
         cancelSelection();
       }
     };
-  
+
     // обработчики событий
     document.addEventListener('mouseup', handleGlobalMouseUp);
     document.addEventListener('contextmenu', handleGlobalRightClick);
@@ -472,8 +472,8 @@ export default function AdminCalendarDay({ mode = 'view' }: AdminCalendarDayProp
 
   // Обработчики для диалогов уроков
   const handleSaveLesson = (updatedLesson: Lesson) => {
-    setLessons(prevLessons => 
-      prevLessons.map(lesson => 
+    setLessons(prevLessons =>
+      prevLessons.map(lesson =>
         lesson.id === updatedLesson.id ? updatedLesson : lesson
       )
     );
@@ -481,38 +481,38 @@ export default function AdminCalendarDay({ mode = 'view' }: AdminCalendarDayProp
   };
 
   const handleDeleteLesson = (lessonId: string) => {
-    setLessons(prevLessons => 
+    setLessons(prevLessons =>
       prevLessons.filter(lesson => lesson.id !== lessonId)
     );
-    
-    // API 
+
+    // API
     setShowLessonDialog(false);
   };
-  
+
   // Обработчик для сохранения нового урока
   const handleSaveNewLesson = (newLessonData: NewLessonData) => {
     if (!newLessonData || !newLessonData.subject || !newLessonData.startTime || !newLessonData.endTime) {
       console.error('Недостаточно данных для создания урока', newLessonData);
       return;
     }
-  
+
     console.log('handleSaveNewLesson - данные урока:', newLessonData);
-    
+
     const color = getSubjectColor(newLessonData.subject);
-    
+
     // Создание объекта нового урока
     const newLesson: Lesson = {
-      id: `temp-${Date.now()}`, 
+      id: `temp-${Date.now()}`,
       subject: newLessonData.subject,
       teacher: newLessonData.teacher || 'Не указан',
       student: newLessonData.student || 'Не указан',
-      room: newLessonData.room, 
+      room: newLessonData.room,
       startTime: new Date(
         selectedDate.getFullYear(),
         selectedDate.getMonth(),
         selectedDate.getDate(),
-        typeof newLessonData.startTime === 'string' 
-          ? parseInt(newLessonData.startTime.split(':')[0]) 
+        typeof newLessonData.startTime === 'string'
+          ? parseInt(newLessonData.startTime.split(':')[0])
           : newLessonData.startTime.getHours(),
         typeof newLessonData.startTime === 'string'
           ? parseInt(newLessonData.startTime.split(':')[1])
@@ -529,14 +529,14 @@ export default function AdminCalendarDay({ mode = 'view' }: AdminCalendarDayProp
           ? parseInt(newLessonData.endTime.split(':')[1])
           : newLessonData.endTime.getMinutes()
       ),
-      color: color 
+      color: color
     };
-    
+
     console.log(`Создан новый урок: Предмет=${newLesson.subject}, Комната=${newLesson.room}, Цвет=${color}`);
     const newLessonsArray = [...lessons, newLesson];
     console.log('Массив уроков после добавления:', newLessonsArray);
     setLessons(newLessonsArray);
-    
+
     // API-запрос
     setShowCreateDialog(false);
   };
@@ -566,10 +566,10 @@ export default function AdminCalendarDay({ mode = 'view' }: AdminCalendarDayProp
           <div className="ml-2 font-medium">
             {formatDate(selectedDate)}
           </div>
-          <Button 
-            ref={filterButtonRef} 
-            onClick={() => setShowFilters(!showFilters)} 
-            variant="outline" 
+          <Button
+            ref={filterButtonRef}
+            onClick={() => setShowFilters(!showFilters)}
+            variant="outline"
             className="ml-4"
           >
           <Filter className="w-4 h-4 mr-2" />
@@ -583,24 +583,24 @@ export default function AdminCalendarDay({ mode = 'view' }: AdminCalendarDayProp
           )}
         </div>
       </div>
-      
+
       <div className="w-full border rounded-md overflow-hidden">
-        <div 
-          className="relative overflow-hidden" 
-          style={{ 
+        <div
+          className="relative overflow-hidden"
+          style={{
             maxHeight: 'calc(100vh - 200px)',
-            overflowY: 'auto', 
+            overflowY: 'auto',
             overflowX: 'auto',
-            position: 'relative' 
-          }} 
+            position: 'relative'
+          }}
           ref={tableContainerRef}
         >
-          <div 
-            className="relative w-full" 
-            data-time-grid-container 
-            style={{ 
+          <div
+            className="relative w-full"
+            data-time-grid-container
+            style={{
               minWidth: `${Math.max(timeSlots.length * 40, containerWidth)}px`,
-              height: `${selectedRooms.length * timeSlotHeight + 40}px`, 
+              height: `${selectedRooms.length * timeSlotHeight + 40}px`,
             }}
           >
             {/* Заголовок с временными интервалами */}
@@ -609,12 +609,12 @@ export default function AdminCalendarDay({ mode = 'view' }: AdminCalendarDayProp
                 教室
               </div>
               {timeSlots.map((timeSlot) => (
-                <div 
+                <div
                   key={timeSlot.start}
                   data-time-col
                   data-time-index={timeSlot.index}
                   className={`w-[40px] min-w-[40px] flex items-center justify-center font-semibold border-b border-r
-                    ${timeSlot.index % 4 === 0 ? "bg-gray-50" : ""}`}
+                    ${timeSlot.index % 4 === 0 ? "" : ""}`}
                 >
                   {timeSlot.index % 4 === 0 ? (
                     <div className="text-xs font-medium">
@@ -624,29 +624,29 @@ export default function AdminCalendarDay({ mode = 'view' }: AdminCalendarDayProp
                 </div>
               ))}
             </div>
-            
+
             {/* Строки комнат */}
             <div className="relative z-10">
               {selectedRooms.map((roomId, roomIndex) => (
-                <div 
+                <div
                   key={roomId}
                   className="flex relative"
                   style={{ height: `${timeSlotHeight}px` }}
                 >
                   {/* Ячейка комнаты */}
-                  <div 
+                  <div
                     className="sticky left-0 w-[100px] min-w-[100px] flex items-center justify-center bg-card z-30 border-r border-b"
                   >
                     <span className="z-50">教室 {roomId}</span>
                   </div>
-                  
+
                   {/* Ячейки времени для этой комнаты */}
                   {timeSlots.map((timeSlot, timeIndex) => (
-                    <div 
+                    <div
                       key={`${roomId}-${timeSlot.start}`}
                       data-time-index={timeSlot.index}
                       className={`w-[40px] min-w-[40px] border-r border-b
-                        ${timeSlot.index % 4 === 0 ? "bg-gray-50" : ""}
+                        ${timeSlot.index % 4 === 0 ? "" : ""}
                         ${isCellSelected(roomIndex, timeIndex) ? "bg-green-100" : ""}
                         ${isRowHighlighted(roomIndex) && !isCellSelected(roomIndex, timeIndex) ? "bg-blue-50" : ""}
                         ${mode === 'create' ? "cursor-default" : ""}
@@ -667,7 +667,7 @@ export default function AdminCalendarDay({ mode = 'view' }: AdminCalendarDayProp
                 </div>
               ))}
             </div>
-            
+
             {/* Слой для уроков */}
             {mounted && (
               <div className="absolute top-0 left-0 w-full h-full pointer-events-auto">
@@ -686,10 +686,10 @@ export default function AdminCalendarDay({ mode = 'view' }: AdminCalendarDayProp
           </div>
         </div>
       </div>
-      
+
       {/* Фильтры  */}
       {showFilters && (
-        <CalendarFilters 
+        <CalendarFilters
         selectedDate={selectedDate}
         onDateChange={setSelectedDate}
         rooms={rooms}
@@ -713,7 +713,7 @@ export default function AdminCalendarDay({ mode = 'view' }: AdminCalendarDayProp
         selectedRooms={selectedRooms}
         onSave={handleSaveNewLesson}
       />
-      
+
       {/* EditLessonDialog */}
       <EditLessonDialog
         open={showLessonDialog}

@@ -48,7 +48,7 @@ export default function LessonManagementPage() {
   const [cachedFilteredStudents, setCachedFilteredStudents] = useState<StudentWithPreference[]>([]);
   const [studentKibouSubjects, setStudentKibouSubjects] = useState<Subject[]>([]);
   const [teacherKibouSubjects, setTeacherKibouSubjects] = useState<Subject[]>([]);
-  
+
   const [isLoadingTeacherCompatibility, setIsLoadingTeacherCompatibility] = useState(false);
   const [isLoadingStudentCompatibility, setIsLoadingStudentCompatibility] = useState(false);
 
@@ -72,7 +72,7 @@ export default function LessonManagementPage() {
           setTeacherSubjectFilters([]);
         }
       }
-      
+
       if ('evaluationId' in params) {
         if (params.evaluationId) {
           setTeacherEvaluationFilters([...params.evaluationId]);
@@ -80,7 +80,7 @@ export default function LessonManagementPage() {
           setTeacherEvaluationFilters([]);
         }
       }
-      
+
       if (Object.keys(params).length === 0) {
         setTeacherSubjectFilters([]);
         setTeacherEvaluationFilters([]);
@@ -99,7 +99,7 @@ export default function LessonManagementPage() {
           setStudentSubjectFilters([]);
         }
       }
-      
+
       if ('gradeId' in params) {
         if (params.gradeId !== undefined) {
           setStudentGradeFilter(params.gradeId);
@@ -113,13 +113,13 @@ export default function LessonManagementPage() {
           setStudentTypeFilters([]);
         }
       }
-      
+
       if ('schoolType' in params) {
         if (params.schoolType !== undefined) {
           setStudentSchoolTypeFilter(params.schoolType);
         }
       }
-      
+
       if (Object.keys(params).length === 0) {
         setStudentSubjectFilters([]);
         setStudentGradeFilter(null);
@@ -203,13 +203,13 @@ export default function LessonManagementPage() {
   // Получение предметов студента с добавленными типами
   const getStudentSubjects = useCallback((studentId: string | null): Subject[] => {
     if (!studentId) return [];
-    
+
     const student = students.find((s: StudentWithPreference) => s.studentId === studentId);
     if (!student) return [];
-    
+
     const subjectIds = new Set<string>();
     const studentSubjectsList: Subject[] = [];
-    
+
     if (student.preference && student.preference.preferredSubjects) {
       student.preference.preferredSubjects.forEach((subjectId: string) => {
         if (!subjectIds.has(subjectId)) {
@@ -221,7 +221,7 @@ export default function LessonManagementPage() {
         }
       });
     }
-    
+
     if (student.StudentPreference) {
       student.StudentPreference.forEach((pref: StudentPreferenceItem) => {
         if (pref.subjects) {
@@ -240,9 +240,9 @@ export default function LessonManagementPage() {
         }
       });
     }
-    
+
     const studentLessons = classSessions.filter(lesson => lesson.studentId === studentId);
-    
+
     studentLessons.forEach(lesson => {
       if (lesson.subject && !subjectIds.has(lesson.subject.subjectId)) {
         subjectIds.add(lesson.subject.subjectId);
@@ -255,31 +255,31 @@ export default function LessonManagementPage() {
         }
       }
     });
-    
+
     return studentSubjectsList;
   }, [students, subjects, classSessions]);
 
   // Получение предметов учителя
   const getTeacherSubjects = useCallback((teacherId: string | null): Subject[] => {
     if (!teacherId) return [];
-    
+
     const teacherSubjectsData = teacherSubjects.filter(
       (ts: TeacherSubject) => ts.teacherId === teacherId
     );
     const subjectIds = teacherSubjectsData.map((ts: TeacherSubject) => ts.subjectId);
-    
+
     return subjects.filter(subject => subjectIds.includes(subject.subjectId));
   }, [teacherSubjects, subjects]);
 
   // Получение совместимых учителей и студентов - только когда выбран студент/учитель
-  const { 
-    data: compatibleTeachersData, 
-    isLoading: compatibleTeachersLoading 
+  const {
+    data: compatibleTeachersData,
+    isLoading: compatibleTeachersLoading
   } = useCompatibleTeachers(selectedStudentId);
-  
-  const { 
-    data: compatibleStudentsData, 
-    isLoading: compatibleStudentsLoading 
+
+  const {
+    data: compatibleStudentsData,
+    isLoading: compatibleStudentsLoading
   } = useCompatibleStudents(selectedTeacherId);
 
   // Обновление предметов студента при выборе студента
@@ -305,11 +305,11 @@ export default function LessonManagementPage() {
   // Обработка данных о совместимых студентах
   useEffect(() => {
     setIsLoadingStudentCompatibility(compatibleStudentsLoading);
-    
+
     if (compatibleStudentsData && !compatibleStudentsLoading && selectedTeacherId) {
       // Обновляем отфильтрованных студентов только если есть данные и выбран учитель
       setCachedFilteredStudents(compatibleStudentsData.filteredStudents || []);
-      
+
       if (compatibleStudentsData.kibouSubjects && compatibleStudentsData.kibouSubjects.length > 0) {
         setTeacherKibouSubjects(compatibleStudentsData.kibouSubjects);
       } else {
@@ -328,11 +328,11 @@ export default function LessonManagementPage() {
   // Обработка данных о совместимых учителях
   useEffect(() => {
     setIsLoadingTeacherCompatibility(compatibleTeachersLoading);
-    
+
     if (compatibleTeachersData && !compatibleTeachersLoading && selectedStudentId) {
       // Обновляем отфильтрованных учителей только если есть данные и выбран студент
       setCachedFilteredTeachers(compatibleTeachersData.filteredTeachers || []);
-      
+
       if (compatibleTeachersData.kibouSubjects && compatibleTeachersData.kibouSubjects.length > 0) {
         setStudentKibouSubjects(compatibleTeachersData.kibouSubjects);
       } else {
@@ -403,7 +403,7 @@ export default function LessonManagementPage() {
     // Логика добавления сессии
   }, []);
 
-  // Отображаем загрузку только если основные данные не загружены 
+  // Отображаем загрузку только если основные данные не загружены
   if (teachersLoading || studentsLoading) {
     return (
       <div className="container mx-auto p-6">
@@ -469,7 +469,7 @@ export default function LessonManagementPage() {
         <div className="flex flex-col h-full">
           <div className="flex-grow">
             {isLoadingTeacherCompatibility && shouldFilterTeachers && (
-              <div className="py-2 px-4 mb-2 bg-blue-50 text-blue-700 rounded shadow-sm">
+              <div className="py-2 px-4 mb-2 bg-red-50 text-blue-700 rounded shadow-sm">
                 互換性のある先生を検索中...
               </div>
             )}
