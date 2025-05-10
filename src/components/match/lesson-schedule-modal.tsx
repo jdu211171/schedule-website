@@ -517,7 +517,7 @@ export default function LessonScheduleModal({
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>キャンセル</AlertDialogCancel>
-              <AlertDialogAction onClick={handleConfirmChanges}>保存</AlertDialogAction>
+              <AlertDialogAction onClick={handleConfirmChanges}>続行</AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
