@@ -1,7 +1,7 @@
 import { fetcher } from "@/lib/fetcher";
 import { ClassSessionQuerySchema } from "@/schemas/class-session.schema";
 import { Prisma } from "@prisma/client";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueries, UseQueryResult } from "@tanstack/react-query";
 
 // Define the include object for ClassSession relations
 // Based on: /home/user/Development/schedule-website/src/app/api/class-session/[classSessionId]/route.ts
@@ -112,5 +112,23 @@ export function useClassSession(classSessionId: string | undefined | null) {
       return response.data;
     },
     enabled: !!classSessionId,
+  });
+}
+
+/**
+ * Hook for simultaneously fetching class sessions data for multiple individual dates
+ * Unlike useClassSessions, this hook creates a separate request for each date,
+ * which helps avoid duplicate data loading when selecting multiple days
+ */
+export function useMultipleDaysClassSessions(dates: string[]): UseQueryResult<ClassSessionsResponse, Error>[] {
+  return useQueries({
+    queries: dates.map(dateStr => ({
+      queryKey: ['classSessions', 'byDate', dateStr],
+      queryFn: async () => {
+        const url = `/api/class-session?date=${dateStr}&limit=100&sort=startTime&order=asc`;
+        return await fetcher<ClassSessionsResponse>(url);
+      },
+      staleTime: 1000 * 60 * 5, 
+    }))
   });
 }
