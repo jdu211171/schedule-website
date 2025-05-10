@@ -3,7 +3,7 @@
 import type React from "react"
 import { useMemo, useState, useCallback } from "react"
 import { useQueryClient } from "@tanstack/react-query"
-import { format } from "date-fns"
+import { format, isWithinInterval, startOfDay, endOfDay } from "date-fns"
 import { Button } from "@/components/ui/button"
 import {
   AlertDialog,
@@ -16,7 +16,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { FilterBar, type FilterConfig } from "@/components/filter-bar"
+import { FilterBar, type DateRangeFilterConfig, type AnyFilterConfig } from "@/components/filter-bar"
 import { EnhancedTableHeader } from "@/components/enhanced-table-header"
 import { useClassSessions, type ClassSessionWithRelations } from "@/hooks/useClassSessionQuery"
 import { EditTemplateClassSessionForm } from "./edit-template-class-session-form"
@@ -26,6 +26,8 @@ import type {
   UpdateTemplateClassSessionSchema,
 } from "@/schemas/class-session.schema"
 import type { z } from "zod"
+import type { DateRange } from "react-day-picker"
+import { cn } from "@/lib/utils"
 
 // Define specific session types for the edit forms
 type EditTemplateClassSessionFormSession = z.infer<typeof UpdateTemplateClassSessionSchema>
@@ -99,6 +101,9 @@ export default function AdminCalendarListEnhanced() {
     classTypeIds: [],
   })
 
+  // Add date range filter state
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined)
+
   const { data: sessionsData, isLoading } = useClassSessions()
   const classSessions = useMemo(() => sessionsData?.data || [], [sessionsData])
 
@@ -150,7 +155,7 @@ export default function AdminCalendarListEnhanced() {
   }, [classSessions])
 
   // Create filter configurations
-  const filterConfigs = useMemo<FilterConfig[]>(
+  const filterConfigs = useMemo<AnyFilterConfig[]>(
     () => [
       {
         id: "teacherIds",
@@ -188,6 +193,11 @@ export default function AdminCalendarListEnhanced() {
         placeholder: "Select class types",
         options: filterOptions.classTypes,
       },
+      {
+        id: "dateRange",
+        label: "日付",
+        type: "date-range",
+      } as DateRangeFilterConfig,
     ],
     [filterOptions],
   )
@@ -213,6 +223,10 @@ export default function AdminCalendarListEnhanced() {
     }))
   }, [])
 
+  const handleDateRangeChange = useCallback((filterId: string, range: DateRange | undefined) => {
+    setDateRange(range)
+  }, [])
+
   const getSortValue = useCallback((session: ClassSessionWithRelations, key: SortConfig["key"]) => {
     if (key === "boothName") {
       return session.booth?.name || ""
@@ -229,6 +243,54 @@ export default function AdminCalendarListEnhanced() {
     }
     return ""
   }, [])
+
+  // Function to check if a specific field matches active filters
+  const isFieldFiltered = useCallback(
+    (session: ClassSessionWithRelations, field: string): boolean => {
+      switch (field) {
+        case "date":
+          if (!dateRange?.from) return false
+          const sessionDate = session.date instanceof Date ? session.date : new Date(session.date || "")
+          if (dateRange.to) {
+            return isWithinInterval(sessionDate, {
+              start: startOfDay(dateRange.from),
+              end: endOfDay(dateRange.to),
+            })
+          }
+          return sessionDate >= startOfDay(dateRange.from)
+
+        case "teacher":
+          return filters.teacherIds.length > 0 && !!session.teacherId && filters.teacherIds.includes(session.teacherId)
+
+        case "student":
+          return filters.studentIds.length > 0 && !!session.studentId && filters.studentIds.includes(session.studentId)
+
+        case "subject":
+          return filters.subjectIds.length > 0 && !!session.subjectId && filters.subjectIds.includes(session.subjectId)
+
+        case "subjectType":
+          return (
+            filters.subjectTypeIds.length > 0 &&
+            !!session.subjectTypeId &&
+            filters.subjectTypeIds.includes(session.subjectTypeId)
+          )
+
+        case "booth":
+          return filters.boothIds.length > 0 && !!session.boothId && filters.boothIds.includes(session.boothId)
+
+        case "classType":
+          return (
+            filters.classTypeIds.length > 0 &&
+            !!session.classTypeId &&
+            filters.classTypeIds.includes(session.classTypeId)
+          )
+
+        default:
+          return false
+      }
+    },
+    [filters, dateRange],
+  )
 
   // Apply filters before sorting
   const filteredSessions = useMemo(() => {
@@ -253,9 +315,28 @@ export default function AdminCalendarListEnhanced() {
       const classTypeMatch =
         filters.classTypeIds.length === 0 || (session.classTypeId && filters.classTypeIds.includes(session.classTypeId))
 
-      return teacherMatch && studentMatch && subjectMatch && subjectTypeMatch && boothMatch && classTypeMatch
+      // Date range filter
+      let dateMatch = true
+      if (dateRange?.from) {
+        const sessionDate = session.date instanceof Date ? session.date : new Date(session.date || "")
+
+        if (dateRange.to) {
+          // If we have a complete range, check if the session date is within that range
+          dateMatch = isWithinInterval(sessionDate, {
+            start: startOfDay(dateRange.from),
+            end: endOfDay(dateRange.to),
+          })
+        } else {
+          // If we only have a start date, check if the session date is on or after that date
+          dateMatch = sessionDate >= startOfDay(dateRange.from)
+        }
+      }
+
+      return (
+        teacherMatch && studentMatch && subjectMatch && subjectTypeMatch && boothMatch && classTypeMatch && dateMatch
+      )
     })
-  }, [classSessions, filters])
+  }, [classSessions, filters, dateRange])
 
   const sortedSessions = useMemo(() => {
     if (!sortConfig.direction) return filteredSessions
@@ -396,6 +477,9 @@ export default function AdminCalendarListEnhanced() {
     return format(dateObj, "HH:mm")
   }
 
+  // Check if any filters are active
+  const hasActiveFilters = Object.values(filters).some((filterValues) => filterValues.length > 0) || !!dateRange?.from
+
   const ActiveForm = formConfig.component
 
   return (
@@ -405,7 +489,13 @@ export default function AdminCalendarListEnhanced() {
       {/* Enhanced Filter Section */}
       <div className="mb-6">
         <h3 className="text-lg font-medium mb-3">Filters</h3>
-        <FilterBar filters={filterConfigs} selectedFilters={filters} onFilterChange={handleFilterChange} />
+        <FilterBar
+          filters={filterConfigs}
+          selectedFilters={filters}
+          dateRangeFilter={{ id: "dateRange", value: dateRange }}
+          onFilterChange={handleFilterChange}
+          onDateRangeChange={handleDateRangeChange}
+        />
       </div>
 
       <div className="rounded-md border">
@@ -418,7 +508,7 @@ export default function AdminCalendarListEnhanced() {
                   sortKey="date"
                   currentSortKey={sortConfig.key}
                   currentSortDirection={sortConfig.direction}
-                  onSort={handleSort}
+                  onSort={(key: string) => handleSort(key as SortConfig["key"])}
                 />
               </TableHead>
               <TableHead>
@@ -427,7 +517,7 @@ export default function AdminCalendarListEnhanced() {
                   sortKey="startTime"
                   currentSortKey={sortConfig.key}
                   currentSortDirection={sortConfig.direction}
-                  onSort={handleSort}
+                  onSort={(key: string) => handleSort(key as SortConfig["key"])}
                 />
               </TableHead>
               <TableHead>
@@ -436,7 +526,7 @@ export default function AdminCalendarListEnhanced() {
                   sortKey="endTime"
                   currentSortKey={sortConfig.key}
                   currentSortDirection={sortConfig.direction}
-                  onSort={handleSort}
+                  onSort={(key: string) => handleSort(key as SortConfig["key"])}
                 />
               </TableHead>
               <TableHead>
@@ -445,7 +535,7 @@ export default function AdminCalendarListEnhanced() {
                   sortKey="teacherId"
                   currentSortKey={sortConfig.key}
                   currentSortDirection={sortConfig.direction}
-                  onSort={handleSort}
+                  onSort={(key: string) => handleSort(key as SortConfig["key"])}
                 />
               </TableHead>
               <TableHead>
@@ -454,7 +544,7 @@ export default function AdminCalendarListEnhanced() {
                   sortKey="studentId"
                   currentSortKey={sortConfig.key}
                   currentSortDirection={sortConfig.direction}
-                  onSort={handleSort}
+                  onSort={(key: string) => handleSort(key as SortConfig["key"])}
                 />
               </TableHead>
               <TableHead>
@@ -463,7 +553,7 @@ export default function AdminCalendarListEnhanced() {
                   sortKey="subjectId"
                   currentSortKey={sortConfig.key}
                   currentSortDirection={sortConfig.direction}
-                  onSort={handleSort}
+                  onSort={(key: string) => handleSort(key as SortConfig["key"])}
                 />
               </TableHead>
               <TableHead>
@@ -472,7 +562,7 @@ export default function AdminCalendarListEnhanced() {
                   sortKey="subjectTypeId"
                   currentSortKey={sortConfig.key}
                   currentSortDirection={sortConfig.direction}
-                  onSort={handleSort}
+                  onSort={(key: string) => handleSort(key as SortConfig["key"])}
                 />
               </TableHead>
               <TableHead>
@@ -481,7 +571,7 @@ export default function AdminCalendarListEnhanced() {
                   sortKey="boothId"
                   currentSortKey={sortConfig.key}
                   currentSortDirection={sortConfig.direction}
-                  onSort={handleSort}
+                  onSort={(key: string) => handleSort(key as SortConfig["key"])}
                 />
               </TableHead>
               <TableHead>
@@ -490,7 +580,7 @@ export default function AdminCalendarListEnhanced() {
                   sortKey="classTypeId"
                   currentSortKey={sortConfig.key}
                   currentSortDirection={sortConfig.direction}
-                  onSort={handleSort}
+                  onSort={(key: string) => handleSort(key as SortConfig["key"])}
                 />
               </TableHead>
               <TableHead>備考</TableHead>
@@ -507,15 +597,85 @@ export default function AdminCalendarListEnhanced() {
             ) : (
               sortedSessions.map((session) => (
                 <TableRow key={session.classId}>
-                  <TableCell>{formatDate(session.date)}</TableCell>
+                  <TableCell>
+                    <span
+                      className={cn(
+                        hasActiveFilters &&
+                        isFieldFiltered(session, "date") &&
+                        "underline decoration-2 underline-offset-4",
+                      )}
+                    >
+                      {formatDate(session.date)}
+                    </span>
+                  </TableCell>
                   <TableCell>{formatTime(session.startTime)}</TableCell>
                   <TableCell>{formatTime(session.endTime)}</TableCell>
-                  <TableCell>{session.teacher?.name || session.teacherId || "N/A"}</TableCell>
-                  <TableCell>{session.student?.name || session.studentId || "N/A"}</TableCell>
-                  <TableCell>{session.subject?.name || session.subjectId || "N/A"}</TableCell>
-                  <TableCell>{session.subjectType?.name || session.subjectTypeId || "N/A"}</TableCell>
-                  <TableCell>{session.booth?.name || session.boothId || "N/A"}</TableCell>
-                  <TableCell>{session.classType?.name || session.classTypeId || "N/A"}</TableCell>
+                  <TableCell>
+                    <span
+                      className={cn(
+                        hasActiveFilters &&
+                        isFieldFiltered(session, "teacher") &&
+                        "underline decoration-2 underline-offset-4",
+                      )}
+                    >
+                      {session.teacher?.name || session.teacherId || "N/A"}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <span
+                      className={cn(
+                        hasActiveFilters &&
+                        isFieldFiltered(session, "student") &&
+                        "underline decoration-2 underline-offset-4",
+                      )}
+                    >
+                      {session.student?.name || session.studentId || "N/A"}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <span
+                      className={cn(
+                        hasActiveFilters &&
+                        isFieldFiltered(session, "subject") &&
+                        "underline decoration-2 underline-offset-4",
+                      )}
+                    >
+                      {session.subject?.name || session.subjectId || "N/A"}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <span
+                      className={cn(
+                        hasActiveFilters &&
+                        isFieldFiltered(session, "subjectType") &&
+                        "underline decoration-2 underline-offset-4",
+                      )}
+                    >
+                      {session.subjectType?.name || session.subjectTypeId || "N/A"}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <span
+                      className={cn(
+                        hasActiveFilters &&
+                        isFieldFiltered(session, "booth") &&
+                        "underline decoration-2 underline-offset-4",
+                      )}
+                    >
+                      {session.booth?.name || session.boothId || "N/A"}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <span
+                      className={cn(
+                        hasActiveFilters &&
+                        isFieldFiltered(session, "classType") &&
+                        "underline decoration-2 underline-offset-4",
+                      )}
+                    >
+                      {session.classType?.name || session.classTypeId || "N/A"}
+                    </span>
+                  </TableCell>
                   <TableCell>{session.notes || ""}</TableCell>
                   <TableCell>
                     <div className="flex space-x-2">

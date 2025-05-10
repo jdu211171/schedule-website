@@ -17,13 +17,13 @@ type EnhancedTableHeaderProps = {
 }
 
 export function EnhancedTableHeader({
-  label,
-  sortKey,
-  currentSortKey,
-  currentSortDirection,
-  onSort,
-  className,
-}: EnhancedTableHeaderProps) {
+                                      label,
+                                      sortKey,
+                                      currentSortKey,
+                                      currentSortDirection,
+                                      onSort,
+                                      className,
+                                    }: EnhancedTableHeaderProps) {
   const isSorted = sortKey && currentSortKey === sortKey
 
   const handleSort = React.useCallback(() => {
