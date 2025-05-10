@@ -8,7 +8,7 @@ import {
   ClassSessionQuerySchema,
 } from "@/schemas/class-session.schema";
 import { ZodError } from "zod";
-import { DayOfWeek } from "@prisma/client";
+import { DayOfWeek, Prisma } from "@prisma/client";
 
 export async function GET(request: Request) {
   const session = await auth();
@@ -915,7 +915,7 @@ export async function PUT(request: Request) {
         validatedData;
 
       // Prepare data for update
-      const updateData: Record<string, unknown> = {};
+      const updateData: Prisma.ClassSessionUpdateInput = {};
 
       if (subjectTypeId !== undefined) {
         // First check if the subject type exists
@@ -948,7 +948,7 @@ export async function PUT(request: Request) {
           );
         }
 
-        updateData.subjectTypeId = subjectTypeId;
+        updateData.subjectType = { connect: { subjectTypeId } };
       }
 
       if (notes !== undefined) {
@@ -965,7 +965,7 @@ export async function PUT(request: Request) {
           return Response.json({ error: "ブースが見つかりません" }, { status: 404 }); // "Booth not found"
         }
 
-        updateData.boothId = boothId;
+        updateData.booth = { connect: { boothId } };
       }
 
       // Handle time updates
@@ -1172,17 +1172,14 @@ export async function PUT(request: Request) {
         notes,
       } = validatedData;
 
-      // Prepare data for update
-      const updateData: Record<string, unknown> = {};
+      const updateData: Prisma.ClassSessionUpdateInput = {};
 
-      if (date !== undefined) {
-        updateData.date = date;
+      if (date) {
+        updateData.date = new Date(date);
       }
       if (notes !== undefined) {
         updateData.notes = notes;
       }
-
-      // Validate all entities exist if they are being updated
       if (teacherId !== undefined) {
         const teacherExists = await prisma.teacher.findUnique({
           where: { teacherId },
@@ -1193,9 +1190,8 @@ export async function PUT(request: Request) {
             { status: 404 }
           );
         }
-        updateData.teacherId = teacherId;
+        updateData.teacher = { connect: { teacherId } };
       }
-
       if (studentId !== undefined) {
         const studentExists = await prisma.student.findUnique({
           where: { studentId },
@@ -1206,7 +1202,7 @@ export async function PUT(request: Request) {
             { status: 404 }
           );
         }
-        updateData.studentId = studentId;
+        updateData.student = { connect: { studentId } };
 
         // Update enrollment if studentId changes
         if (studentId !== existingClassSession.studentId) {
@@ -1216,7 +1212,6 @@ export async function PUT(request: Request) {
           });
         }
       }
-
       if (subjectId !== undefined) {
         const subjectExists = await prisma.subject.findUnique({
           where: { subjectId },
@@ -1227,9 +1222,8 @@ export async function PUT(request: Request) {
             { status: 404 }
           );
         }
-        updateData.subjectId = subjectId;
+        updateData.subject = { connect: { subjectId } };
       }
-
       if (subjectTypeId !== undefined) {
         const subjectTypeExists = await prisma.subjectType.findUnique({
           where: { subjectTypeId },
@@ -1240,9 +1234,8 @@ export async function PUT(request: Request) {
             { status: 404 }
           );
         }
-        updateData.subjectTypeId = subjectTypeId;
+        updateData.subjectType = { connect: { subjectTypeId } };
       }
-
       if (boothId !== undefined) {
         const boothExists = await prisma.booth.findUnique({
           where: { boothId },
@@ -1253,9 +1246,8 @@ export async function PUT(request: Request) {
             { status: 404 }
           );
         }
-        updateData.boothId = boothId;
+        updateData.booth = { connect: { boothId } };
       }
-
       if (classTypeId !== undefined) {
         const classTypeExists = await prisma.classType.findUnique({
           where: { classTypeId },
@@ -1266,19 +1258,19 @@ export async function PUT(request: Request) {
             { status: 404 }
           );
         }
-        updateData.classTypeId = classTypeId;
+        updateData.classType = { connect: { classTypeId } };
       }
 
       // Verify subject-subject type combination if either is updated
-      const finalSubjectId = subjectId || existingClassSession.subjectId;
-      const finalSubjectTypeId =
+      const finalSubjectIdToCheck = subjectId || existingClassSession.subjectId;
+      const finalSubjectTypeIdToCheck =
         subjectTypeId || existingClassSession.subjectTypeId;
 
       if (subjectId !== undefined || subjectTypeId !== undefined) {
         const validPair = await prisma.subjectToSubjectType.findFirst({
           where: {
-            subjectId: finalSubjectId,
-            subjectTypeId: finalSubjectTypeId,
+            subjectId: finalSubjectIdToCheck,
+            subjectTypeId: finalSubjectTypeIdToCheck,
           },
         });
 
@@ -1286,7 +1278,7 @@ export async function PUT(request: Request) {
           return Response.json(
             {
               error: "無効な科目と科目タイプの組み合わせです", // "Invalid subject-subject type combination"
-              message: `科目 (${finalSubjectId}) は指定された科目タイプ (${finalSubjectTypeId}) に関連付けることができません。`, // `The subject (${finalSubjectId}) cannot be associated with the specified subject type (${finalSubjectTypeId}).`
+              message: `科目 (${finalSubjectIdToCheck}) は指定された科目タイプ (${finalSubjectTypeIdToCheck}) に関連付けることができません。`, // `The subject (${finalSubjectIdToCheck}) cannot be associated with the specified subject type (${finalSubjectTypeIdToCheck}).`
             },
             { status: 400 }
           );
@@ -1299,10 +1291,10 @@ export async function PUT(request: Request) {
         const originalEnd = existingClassSession.endTime;
 
         const newStart = startTime
-          ? new Date(`1970-01-01T${startTime}Z`)
+          ? new Date(`1970-01-01T${startTime}Z`) // Add 'Z' to specify UTC
           : originalStart;
         const newEnd = endTime
-          ? new Date(`1970-01-01T${endTime}Z`)
+          ? new Date(`1970-01-01T${endTime}Z`) // Add 'Z' to specify UTC
           : originalEnd;
 
         if (newEnd <= newStart) {
@@ -1321,13 +1313,14 @@ export async function PUT(request: Request) {
       }
 
       // Check for conflicts if date, time, booth, teacher, or student is changed
-      const finalDate = date || existingClassSession.date;
-      const finalStartTime =
-        updateData.startTime || existingClassSession.startTime;
-      const finalEndTime = updateData.endTime || existingClassSession.endTime;
-      const finalBoothId = boothId || existingClassSession.boothId;
-      const finalTeacherId = teacherId || existingClassSession.teacherId;
-      const finalStudentId = studentId || existingClassSession.studentId;
+      const finalDate: Date = date ? new Date(date) : existingClassSession.date;
+      const finalStartTime: Date =
+        (updateData.startTime as Date | undefined) || existingClassSession.startTime;
+      const finalEndTime: Date =
+        (updateData.endTime as Date | undefined) || existingClassSession.endTime;
+      const finalBoothId: string = boothId || existingClassSession.boothId;
+      const finalTeacherId: string = teacherId || existingClassSession.teacherId;
+      const finalStudentId: string = studentId || existingClassSession.studentId;
 
       // Booth conflicts
       const boothConflicts = await prisma.classSession.findMany({
