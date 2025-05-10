@@ -7,7 +7,9 @@ const GradeBaseSchema = z.object({
     .min(1, { message: "名前は必須です" })
     .max(100, { message: "名前は100文字以内で入力してください" }),
   studentTypeId: z.string().min(1, { message: "学生タイプを選択してください" }),
-  gradeYear: z.number().int({ message: "正しい学年を入力してください" }),
+  gradeYear: z
+    .number({ invalid_type_error: "学年は数値で入力してください" })
+    .int({ message: "学年は整数で入力してください" }),
   notes: z
     .string()
     .max(255, { message: "メモは255文字以内で入力してください" })
@@ -27,13 +29,19 @@ export const CreateGradeSchema = GradeBaseSchema.strict();
 
 // Schema for updating an existing grade (requires gradeId)
 export const UpdateGradeSchema = GradeBaseSchema.extend({
-  gradeId: z.string({ required_error: "学年IDは必須です" }),
+  gradeId: z.string({
+    required_error: "学年IDは必須です",
+    invalid_type_error: "学年IDは文字列で入力してください",
+  }),
 }).strict();
 
 // Schema for retrieving a single grade by ID
 export const GradeIdSchema = z
   .object({
-    gradeId: z.string({ required_error: "学年IDは必須です" }),
+    gradeId: z.string({
+      required_error: "学年IDは必須です",
+      invalid_type_error: "学年IDは文字列で入力してください",
+    }),
   })
   .strict();
 
@@ -41,14 +49,14 @@ export const GradeIdSchema = z
 export const GradeQuerySchema = z
   .object({
     page: z.coerce
-      .number()
-      .int({ message: "有効なページ番号を入力してください" })
+      .number({ invalid_type_error: "ページ番号は数値で入力してください" })
+      .int({ message: "ページ番号は整数で入力してください" })
       .positive({ message: "ページ番号は正の整数でなければなりません" })
       .optional()
       .default(1),
     limit: z.coerce
-      .number()
-      .int({ message: "有効な件数を入力してください" })
+      .number({ invalid_type_error: "表示件数は数値で入力してください" })
+      .int({ message: "表示件数は整数で入力してください" })
       .positive({ message: "表示件数は正の整数でなければなりません" })
       .max(100, { message: "表示件数は100件以下にしてください" })
       .optional()
@@ -56,7 +64,7 @@ export const GradeQuerySchema = z
     name: z.string().optional(),
     studentTypeId: z.string().optional(),
     gradeYear: z.coerce
-      .number()
+      .number({ invalid_type_error: "学年は数値で入力してください" })
       .int({ message: "学年は整数で入力してください" })
       .optional(),
     sort: z
