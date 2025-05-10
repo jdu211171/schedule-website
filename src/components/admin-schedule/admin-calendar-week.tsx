@@ -7,13 +7,13 @@ import { ChevronLeft, ChevronRight, CalendarDays, Filter } from 'lucide-react';
 import WeekLessonCard, { Lesson } from './week-lesson-card';
 import { mockLessons as importedMockLessons } from './mock-lessons';
 import CalendarFilters from './calendar-filters';
-import { 
-  SUBJECTS, 
-  SUBJECTS_LIST, 
-  TEACHERS, 
-  TEACHERS_LIST, 
-  STUDENTS, 
-  STUDENTS_LIST 
+import {
+  SUBJECTS,
+  SUBJECTS_LIST,
+  TEACHERS,
+  TEACHERS_LIST,
+  STUDENTS,
+  STUDENTS_LIST
 } from './subjectUtils';
 
 type Room = {
@@ -35,13 +35,13 @@ type AdminCalendarWeekProps = {
 
 
 const weekDaysJa = [
-  '月', 
-  '火', 
-  '水', 
-  '木', 
-  '金', 
-  '土', 
-  '日', 
+  '月',
+  '火',
+  '水',
+  '木',
+  '金',
+  '土',
+  '日',
 ];
 
 const defaultRooms = Array.from({ length: 15 }, (_, i) => ({
@@ -60,13 +60,13 @@ const AdminCalendarWeek: React.FC<AdminCalendarWeekProps> = ({
   const [expandedLessonId, setExpandedLessonId] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState<boolean>(false);
   const filterButtonRef = useRef<HTMLButtonElement>(null);
-  
+
   // Состояния для фильтров
   const [selectedRooms, setSelectedRooms] = useState<string[]>(rooms.map(room => room.id));
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>(Object.keys(SUBJECTS));
   const [selectedTeachers, setSelectedTeachers] = useState<string[]>(Object.keys(TEACHERS));
   const [selectedStudents, setSelectedStudents] = useState<string[]>(Object.keys(STUDENTS));
-  
+
   // Отфильтрованные уроки
   const filteredLessons = useMemo(() => {
     return lessons.filter(lesson => {
@@ -82,15 +82,15 @@ const AdminCalendarWeek: React.FC<AdminCalendarWeekProps> = ({
       if (selectedStudents.length > 0 && !selectedStudents.includes(lesson.student)) {
         return false;
       }
-      
+
       return true;
     });
   }, [lessons, selectedRooms, selectedSubjects, selectedTeachers, selectedStudents]);
-  
+
   const startOfCurrentWeek = useMemo(() => {
     return startOfWeek(selectedDate, { weekStartsOn: 1 });
   }, [selectedDate]);
-  
+
   const weekDays = useMemo(() => {
     return Array.from({ length: 7 }, (_, i) => {
       const day = addDays(startOfCurrentWeek, i);
@@ -118,7 +118,7 @@ const AdminCalendarWeek: React.FC<AdminCalendarWeekProps> = ({
   const goToToday = useCallback(() => {
     setSelectedDate(new Date());
   }, []);
-  
+
   // Функция для форматирования времени в формате HH:mm
   const formatTime = useCallback((date: Date) => {
     return format(date, 'HH:mm');
@@ -128,11 +128,11 @@ const AdminCalendarWeek: React.FC<AdminCalendarWeekProps> = ({
   const getLessonsForDay = useCallback((date: Date) => {
     const dayStart = new Date(date);
     dayStart.setHours(0, 0, 0, 0);
-    
+
     const dayEnd = new Date(date);
     dayEnd.setHours(23, 59, 59, 999);
-    
-    return filteredLessons.filter(lesson => 
+
+    return filteredLessons.filter(lesson =>
       isWithinInterval(lesson.startTime, { start: dayStart, end: dayEnd })
     );
   }, [filteredLessons]);
@@ -140,7 +140,7 @@ const AdminCalendarWeek: React.FC<AdminCalendarWeekProps> = ({
   // Группировка занятий по времени начала
   const groupLessonsByTime = useCallback((dayLessons: Lesson[]): GroupedLessons => {
     const grouped: GroupedLessons = {};
-    const sortedLessons = [...dayLessons].sort((a, b) => 
+    const sortedLessons = [...dayLessons].sort((a, b) =>
       a.startTime.getTime() - b.startTime.getTime()
     );
     sortedLessons.forEach(lesson => {
@@ -150,7 +150,7 @@ const AdminCalendarWeek: React.FC<AdminCalendarWeekProps> = ({
       }
       grouped[timeKey].push(lesson);
     });
-    
+
     return grouped;
   }, [formatTime]);
 
@@ -164,21 +164,21 @@ const AdminCalendarWeek: React.FC<AdminCalendarWeekProps> = ({
       }
     }
   }, [expandedLessonId, filteredLessons, onLessonSelect]);
-  
+
   // Сброс расширенной карточки при изменении недели
   useEffect(() => {
     setExpandedLessonId(null);
   }, [selectedDate]);
-  
+
   // Преобразование SUBJECTS_LIST в формат для компонента фильтра
   const formattedSubjects = useMemo(() => {
     return SUBJECTS_LIST.map(subject => ({
       id: subject.id,
       name: subject.name,
-      color: subject.color.split(' ')[0].replace('bg-', '') 
+      color: subject.color.split(' ')[0].replace('bg-', '')
     }));
   }, []);
-  
+
   // Преобразование TEACHERS_LIST в формат для компонента фильтра
   const formattedTeachers = useMemo(() => {
     return TEACHERS_LIST.map(teacher => ({
@@ -186,7 +186,7 @@ const AdminCalendarWeek: React.FC<AdminCalendarWeekProps> = ({
       name: teacher.name
     }));
   }, []);
-  
+
   // Преобразование STUDENTS_LIST в формат для компонента фильтра
   const formattedStudents = useMemo(() => {
     return STUDENTS_LIST.map(student => ({
@@ -203,8 +203,8 @@ const AdminCalendarWeek: React.FC<AdminCalendarWeekProps> = ({
     if (lessonsCount <= 8) return { rows: 2, itemsPerRow: 4 };
     if (lessonsCount === 9) return { rows: 3, itemsPerRow: 3 };
     if (lessonsCount <= 10) return { rows: 2, itemsPerRow: 5 };
-    
-    return { 
+
+    return {
       rows: Math.ceil(lessonsCount / 5),
       itemsPerRow: 5
     };
@@ -219,26 +219,26 @@ const AdminCalendarWeek: React.FC<AdminCalendarWeekProps> = ({
           </h2>
           <div className="flex flex-wrap gap-2 items-center">
             <div className="flex space-x-1">
-              <Button 
-                onClick={goToPreviousWeek} 
-                variant="outline" 
+              <Button
+                onClick={goToPreviousWeek}
+                variant="outline"
                 size="sm"
                 aria-label="前週"
               >
                 <ChevronLeft className="w-4 h-4" />
               </Button>
-              <Button 
-                onClick={goToToday} 
-                variant="outline" 
+              <Button
+                onClick={goToToday}
+                variant="outline"
                 size="sm"
                 className="flex items-center"
               >
                 <CalendarDays className="w-4 h-4 mr-1" />
                 <span>今日</span>
               </Button>
-              <Button 
-                onClick={goToNextWeek} 
-                variant="outline" 
+              <Button
+                onClick={goToNextWeek}
+                variant="outline"
                 size="sm"
                 aria-label="次週"
               >
@@ -248,10 +248,10 @@ const AdminCalendarWeek: React.FC<AdminCalendarWeekProps> = ({
             <div className="font-medium text-sm sm:text-base ml-0 sm:ml-2">
               {format(startOfCurrentWeek, 'd日M月', { locale: ja })} - {format(addDays(startOfCurrentWeek, 6), 'd日M月 yyyy年', { locale: ja })}
             </div>
-            <Button 
+            <Button
               ref={filterButtonRef}
-              onClick={() => setShowFilters(!showFilters)} 
-              variant="outline" 
+              onClick={() => setShowFilters(!showFilters)}
+              variant="outline"
               size="sm"
               className="ml-1 flex items-center"
             >
@@ -266,9 +266,9 @@ const AdminCalendarWeek: React.FC<AdminCalendarWeekProps> = ({
         {/* Заголовки дней недели */}
         <div className="grid grid-cols-7 border-b bg-muted">
           {weekDays.map((day) => (
-            <div 
-              key={day.date.toString()} 
-              className={`text-center p-2 border-r last:border-r-0 font-medium ${day.isToday ? 'bg-blue-50' : ''}`}
+            <div
+              key={day.date.toString()}
+              className={`text-center p-2 border-r last:border-r-0 font-medium ${day.isToday ? '' : ''}`}
             >
               <div className="mb-1">{day.dayName}曜日</div>
               <div className="text-base sm:text-lg">{day.dayNumber}</div>
@@ -281,21 +281,21 @@ const AdminCalendarWeek: React.FC<AdminCalendarWeekProps> = ({
           {weekDays.map((day) => {
             const dayLessons = getLessonsForDay(day.date);
             const groupedLessons = groupLessonsByTime(dayLessons);
-            
+
             return (
-              <div 
-                key={day.date.toString()} 
+              <div
+                key={day.date.toString()}
                 className={`border-r last:border-r-0 p-2 h-full ${day.isToday ? 'bg-blue-50/30' : ''}`}
               >
                 {/* Контейнер для карточек занятий */}
                 <div className="space-y-3">
                   {Object.entries(groupedLessons).map(([timeSlot, lessonsAtTime]) => {
                     const { rows, itemsPerRow } = calculateLayout(lessonsAtTime.length);
-                    
+
                     return (
                       <div key={timeSlot} className="mb-2">
                         <div className="text-xs font-medium mb-1 pl-1">{timeSlot}</div>
-                        
+
                         {expandedLessonId && lessonsAtTime.some(lesson => lesson.id === expandedLessonId) ? (
                           // Если есть развернутая карточка, показываем только ее
                           <div className="w-full">
@@ -314,21 +314,21 @@ const AdminCalendarWeek: React.FC<AdminCalendarWeekProps> = ({
                                 rowIndex * itemsPerRow,
                                 (rowIndex + 1) * itemsPerRow
                               );
-                              
+
                               return (
-                                <div key={rowIndex} className="grid mb-1" style={{ 
+                                <div key={rowIndex} className="grid mb-1" style={{
                                   gridTemplateColumns: `repeat(${itemsPerRow}, minmax(0, 1fr))`,
                                   gap: '2px'
                                 }}>
                                   {rowLessons.map(lesson => {
                                     // правильный режим отображения на основе количества элементов в ряду
                                     let displayMode: 'full' | 'compact-2' | 'compact-3' | 'compact-5' | 'compact-many' = 'full';
-                                    
+
                                     if (itemsPerRow === 2) displayMode = 'compact-2';
                                     else if (itemsPerRow === 3) displayMode = 'compact-3';
                                     else if (itemsPerRow === 5) displayMode = 'compact-5';
                                     else if (itemsPerRow > 5) displayMode = 'compact-many';
-                                    
+
                                     return (
                                       <WeekLessonCard
                                         key={lesson.id}
@@ -347,7 +347,7 @@ const AdminCalendarWeek: React.FC<AdminCalendarWeekProps> = ({
                       </div>
                     );
                   })}
-                  
+
                   {/* Сообщение, если нет занятий */}
                   {Object.keys(groupedLessons).length === 0 && (
                     <div className="text-center text-gray-400 py-8 text-sm">
@@ -360,7 +360,7 @@ const AdminCalendarWeek: React.FC<AdminCalendarWeekProps> = ({
           })}
         </div>
       </div>
-      
+
       {/* Фильтры календаря */}
       {showFilters && (
         <CalendarFilters

@@ -42,7 +42,7 @@ interface TeacherTableProps {
   selectedStudentId: string | null;
   filteredTeachers?: Teacher[];
   kibouSubjects?: Subject[];
-  
+
   onTeacherFiltersChange?: (params: TeacherFilterParams) => void;
   currentSubjectFilters?: string[];
   currentEvaluationFilters?: string[];
@@ -75,7 +75,7 @@ export default function TeacherTable({
   // Обработчик фильтров - теперь единый для всех типов фильтров
   const handleFiltersChange = (filters: TeacherFilterParams) => {
     setCurrentPage(1);
-    
+
     if (onTeacherFiltersChange) {
       onTeacherFiltersChange(filters);
     }
@@ -120,7 +120,7 @@ export default function TeacherTable({
     if (!searchTerm.trim()) {
       return enrichedTeachers;
     }
-    
+
     return enrichedTeachers.filter((teacher) => {
       const matchesSearch =
         teacher.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -153,31 +153,31 @@ export default function TeacherTable({
   // Форматирование списка активных фильтров для отображения
   const getActiveFiltersDisplay = () => {
     const activeFilters: React.ReactNode[] = [];
-    
+
     if (currentSubjectFilters.length > 0) {
-      const subjectNames = currentSubjectFilters.map(id => 
+      const subjectNames = currentSubjectFilters.map(id =>
         subjects.find(s => s.subjectId === id)?.name || 'Unknown'
       );
-      
+
       activeFilters.push(
-        <Badge key="subjects" className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
+        <Badge key="subjects" className="bg-accent/20 dark:bg-accent/10 text-foreground px-2 py-1 rounded-full text-xs">
           科目: {subjectNames.join(', ')}
         </Badge>
       );
     }
-    
+
     if (currentEvaluationFilters.length > 0) {
-      const evaluationNames = currentEvaluationFilters.map(id => 
+      const evaluationNames = currentEvaluationFilters.map(id =>
         evaluations.find(e => e.evaluationId === id)?.name || 'Unknown'
       );
-      
+
       activeFilters.push(
-        <Badge key="evaluations" className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
+        <Badge key="evaluations" className="bg-accent/20 dark:bg-accent/10 text-foreground px-2 py-1 rounded-full text-xs">
           評価: {evaluationNames.join(', ')}
         </Badge>
       );
     }
-    
+
     return activeFilters;
   };
 
@@ -189,31 +189,31 @@ export default function TeacherTable({
   };
 
   return (
-    <div className="rounded-md border h-full flex flex-col bg-white">
+    <div className="rounded-md border h-full flex flex-col">
       {/* Показываем заголовок с предпочитаемыми предметами, если выбран ученик */}
       {selectedStudentId && (
-        <div className="bg-green-50 p-2 border-b flex flex-wrap items-center gap-2">
-          <span className="text-green-800 text-sm font-medium">希望科目：</span>
+        <div className="bg-accent/20 dark:bg-accent/10 p-2 border-b flex flex-wrap items-center gap-2">
+          <span className="text-foreground font-medium text-sm">希望科目：</span>
           {kibouSubjects.length > 0 ? (
             kibouSubjects.map((subject) => (
               <SubjectBadge key={subject.subjectId} subject={subject} size="sm" />
             ))
           ) : (
-            <span className="text-green-600 text-xs italic">...</span>
+            <span className="text-muted-foreground text-xs italic">...</span>
           )}
         </div>
       )}
 
       {/* Отображаем информацию об активных фильтрах */}
       {isFilterActive && (
-        <div className="bg-blue-50 p-2 border-b">
+        <div className="bg-accent/10 dark:bg-accent/5 p-2 border-b">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-blue-800 text-sm font-medium">アクティブフィルター：</span>
+            <span className="text-foreground text-sm font-medium">アクティブフィルター：</span>
             {getActiveFiltersDisplay()}
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="h-6 px-2 text-xs text-blue-600 hover:text-blue-800"
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
               onClick={clearAllFilters}
             >
               クリア
@@ -240,7 +240,7 @@ export default function TeacherTable({
                 setSearchTerm("");
                 setCurrentPage(1);
               }}
-              className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 "
             >
               <X size={16} />
             </button>
@@ -259,7 +259,7 @@ export default function TeacherTable({
 
       <ScrollArea className="flex-grow">
         <Table>
-          <TableHeader className="bg-gray-50 sticky top-0 z-10">
+          <TableHeader className="sticky top-0 z-10">
             <TableRow>
               <TableHead>先生名</TableHead>
               <TableHead>科目</TableHead>
@@ -277,8 +277,8 @@ export default function TeacherTable({
                   onClick={() => onTeacherSelect(teacher.teacherId)}
                   className={`cursor-pointer ${
                     selectedTeacherId === teacher.teacherId
-                      ? "bg-green-100 hover:bg-green-200"
-                      : "hover:bg-gray-100"
+                      ? "bg-muted hover:bg-muted/90 dark:bg-muted/50 dark:hover:bg-muted/60"
+                      : "hover:bg-accent/50 dark:hover:bg-accent/20"
                   }`}
                 >
                   <TableCell className="font-medium">{teacher.name}</TableCell>
@@ -306,17 +306,9 @@ export default function TeacherTable({
                     {teacher.evaluation ? (
                       <Badge
                         className={`
-                          ${
-                            teacher.evaluation.score && teacher.evaluation.score >= 4
-                              ? "bg-green-100 text-green-800"
-                              : teacher.evaluation.score && teacher.evaluation.score >= 3
-                              ? "bg-blue-100 text-blue-800"
-                              : teacher.evaluation.score && teacher.evaluation.score >= 2
-                              ? "bg-yellow-100 text-yellow-800"
-                              : "bg-gray-100 text-gray-800"
-                          }
-                          px-2 py-1 rounded-full text-xs
-                        `}
+    bg-accent/20 dark:bg-accent/10 text-foreground
+    px-2 py-1 rounded-full text-xs
+  `}
                       >
                         {teacher.evaluation.name}
                       </Badge>
@@ -328,7 +320,7 @@ export default function TeacherTable({
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-8 w-8 p-0 hover:bg-gray-200 "
+                      className="h-8 w-8 p-0  "
                       onClick={(e) => {
                         e.stopPropagation();
                         setDetailsTeacher(teacher);
@@ -345,7 +337,7 @@ export default function TeacherTable({
                         strokeWidth="2"
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                        className="text-gray-500 hover:text-gray-700"
+                        className="text-gray-500 "
                       >
                         <circle cx="12" cy="12" r="1" />
                         <circle cx="19" cy="12" r="1" />
