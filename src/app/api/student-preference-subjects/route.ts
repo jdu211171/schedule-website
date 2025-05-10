@@ -10,7 +10,7 @@ import { ZodError } from "zod";
 export async function GET(request: Request) {
   const session = await auth();
   if (!session) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+    return Response.json({ error: "権限がありません" }, { status: 401 }); // "Unauthorized"
   }
 
   const { searchParams } = new URL(request.url);
@@ -119,11 +119,11 @@ export async function GET(request: Request) {
       },
     });
   } catch (error) {
-    console.error("Error fetching student preference subjects:", error);
-    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
+    console.error("生徒の科目設定の取得エラー:", error); // "Error fetching student preference subjects:"
+    const errorMessage = error instanceof Error ? error.message : "不明なエラーが発生しました"; // "An unknown error occurred"
     const errorStack = error instanceof Error ? error.stack : undefined;
     return Response.json(
-      { error: "生徒科目関連の取得に失敗しました", details: errorMessage, stack: errorStack },
+      { error: "生徒の科目設定の取得に失敗しました", details: errorMessage, stack: errorStack }, // "Failed to fetch student preference subjects"
       { status: 500 }
     );
   }
@@ -132,10 +132,10 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const session = await auth();
   if (!session) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+    return Response.json({ error: "権限がありません" }, { status: 401 }); // "Unauthorized"
   }
   if (session.user?.role !== "ADMIN") {
-    return Response.json({ error: "Forbidden" }, { status: 403 });
+    return Response.json({ error: "禁止されています" }, { status: 403 }); // "Forbidden"
   }
 
   try {
@@ -148,7 +148,7 @@ export async function POST(request: Request) {
       where: { studentId },
     });
     if (!student) {
-      return Response.json({ error: "生徒が見つかりません" }, { status: 404 });
+      return Response.json({ error: "生徒が見つかりません" }, { status: 404 }); // "Student not found"
     }
 
     // Check if the subject exists
@@ -156,7 +156,7 @@ export async function POST(request: Request) {
       where: { subjectId },
     });
     if (!subject) {
-      return Response.json({ error: "科目が見つかりません" }, { status: 404 });
+      return Response.json({ error: "科目が見つかりません" }, { status: 404 }); // "Subject not found"
     }
 
     // Check if the subject type exists
@@ -165,7 +165,7 @@ export async function POST(request: Request) {
     });
     if (!subjectType) {
       return Response.json(
-        { error: "科目タイプが見つかりません" },
+        { error: "科目タイプが見つかりません" }, // "Subject type not found"
         { status: 404 }
       );
     }
@@ -181,8 +181,8 @@ export async function POST(request: Request) {
     if (!validPair) {
       return Response.json(
         {
-          error: "無効な科目と科目タイプの組み合わせ",
-          message: `科目ID ${subjectId} と科目タイプID ${subjectTypeId} の組み合わせは有効ではありません。`,
+          error: "無効な科目と科目タイプの組み合わせです", // "Invalid subject-subject type combination"
+          message: `科目ID ${subjectId} と科目タイプID ${subjectTypeId} の組み合わせは有効ではありません。`, // `The combination of subject ID ${subjectId} and subject type ID ${subjectTypeId} is not valid.`
         },
         { status: 400 }
       );
@@ -197,7 +197,7 @@ export async function POST(request: Request) {
 
       if (!preference) {
         return Response.json(
-          { error: "指定された学生の設定が見つかりません" },
+          { error: "指定された生徒の設定が見つかりません" }, // "Specified student preference not found"
           { status: 404 }
         );
       }
@@ -205,7 +205,7 @@ export async function POST(request: Request) {
       // Make sure the preference belongs to the student
       if (preference.studentId !== studentId) {
         return Response.json(
-          { error: "この学生設定は指定された学生のものではありません" },
+          { error: "この生徒設定は指定された生徒のものではありません" }, // "This student preference does not belong to the specified student"
           { status: 403 }
         );
       }
@@ -229,7 +229,7 @@ export async function POST(request: Request) {
 
     if (existingRelation) {
       return Response.json(
-        { error: "この生徒-科目-タイプの関連はすでに存在します" },
+        { error: "この生徒-科目-タイプの関連はすでに存在します" }, // "This student-subject-type relation already exists"
         { status: 409 }
       );
     }
@@ -245,7 +245,7 @@ export async function POST(request: Request) {
 
     return Response.json(
       {
-        message: "生徒科目関連を作成しました",
+        message: "生徒の科目設定が正常に作成されました", // "Student preference subject created successfully"
         data: studentPreferenceSubject,
       },
       { status: 201 }
@@ -253,13 +253,13 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof ZodError) {
       return Response.json(
-        { error: "入力値の検証に失敗しました", details: error.errors },
+        { error: "入力値の検証に失敗しました", details: error.errors }, // "Validation failed"
         { status: 400 }
       );
     }
-    console.error(error);
+    console.error("生徒の科目設定の作成エラー:", error); // "Error creating student preference subject:"
     return Response.json(
-      { error: "生徒科目関連の作成に失敗しました" },
+      { error: "生徒の科目設定の作成に失敗しました" }, // "Failed to create student preference subject"
       { status: 500 }
     );
   }
@@ -268,10 +268,10 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   const session = await auth();
   if (!session) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+    return Response.json({ error: "権限がありません" }, { status: 401 }); // "Unauthorized"
   }
   if (session.user?.role !== "ADMIN") {
-    return Response.json({ error: "Forbidden" }, { status: 403 });
+    return Response.json({ error: "禁止されています" }, { status: 403 }); // "Forbidden"
   }
 
   try {
@@ -285,7 +285,7 @@ export async function PUT(request: Request) {
 
     if (!existingRelation) {
       return Response.json(
-        { error: "生徒科目関連が見つかりません" },
+        { error: "生徒の科目設定が見つかりません" }, // "Student preference subject not found"
         { status: 404 }
       );
     }
@@ -297,18 +297,19 @@ export async function PUT(request: Request) {
       });
 
     return Response.json({
-      message: "生徒科目関連を更新しました",
+      message: "生徒の科目設定が正常に更新されました", // "Student preference subject updated successfully"
       data: studentPreferenceSubject,
     });
   } catch (error) {
     if (error instanceof ZodError) {
       return Response.json(
-        { error: "入力値の検証に失敗しました", details: error.errors },
+        { error: "入力値の検証に失敗しました", details: error.errors }, // "Validation failed"
         { status: 400 }
       );
     }
+    console.error("生徒の科目設定の更新エラー:", error); // "Error updating student preference subject:"
     return Response.json(
-      { error: "生徒科目関連の更新に失敗しました" },
+      { error: "生徒の科目設定の更新に失敗しました" }, // "Failed to update student preference subject"
       { status: 500 }
     );
   }
@@ -317,10 +318,10 @@ export async function PUT(request: Request) {
 export async function DELETE(request: Request) {
   const session = await auth();
   if (!session) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+    return Response.json({ error: "権限がありません" }, { status: 401 }); // "Unauthorized"
   }
   if (session.user?.role !== "ADMIN") {
-    return Response.json({ error: "Forbidden" }, { status: 403 });
+    return Response.json({ error: "禁止されています" }, { status: 403 }); // "Forbidden"
   }
 
   try {
@@ -328,7 +329,7 @@ export async function DELETE(request: Request) {
     const id = searchParams.get("id");
 
     if (!id) {
-      return Response.json({ error: "IDは必須です" }, { status: 400 });
+      return Response.json({ error: "IDは必須です" }, { status: 400 }); // "ID is required"
     }
 
     const existingRelation = await prisma.studentPreferenceSubject.findUnique({
@@ -337,7 +338,7 @@ export async function DELETE(request: Request) {
 
     if (!existingRelation) {
       return Response.json(
-        { error: "生徒科目関連が見つかりません" },
+        { error: "生徒の科目設定が見つかりません" }, // "Student preference subject not found"
         { status: 404 }
       );
     }
@@ -347,12 +348,12 @@ export async function DELETE(request: Request) {
     });
 
     return Response.json({
-      message: "生徒科目関連を削除しました",
+      message: "生徒の科目設定が正常に削除されました", // "Student preference subject deleted successfully"
     });
   } catch (error) {
-    console.error(error);
+    console.error("生徒の科目設定の削除エラー:", error); // "Error deleting student preference subject:"
     return Response.json(
-      { error: "生徒科目関連の削除に失敗しました" },
+      { error: "生徒の科目設定の削除に失敗しました" }, // "Failed to delete student preference subject"
       { status: 500 }
     );
   }

@@ -10,7 +10,7 @@ import { ZodError } from "zod";
 export async function GET(request: Request) {
   const session = await auth();
   if (!session) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+    return Response.json({ error: "権限がありません" }, { status: 401 }); // "Unauthorized"
   }
 
   const { searchParams } = new URL(request.url);
@@ -84,12 +84,12 @@ export async function GET(request: Request) {
   } catch (error) {
     if (error instanceof ZodError) {
       return Response.json(
-        { error: "無効なクエリパラメータ", details: error.errors },
+        { error: "無効なクエリパラメータです", details: error.errors }, // "Invalid query parameters"
         { status: 400 }
       );
     }
     return Response.json(
-      { error: "講師-科目関連の取得に失敗しました" },
+      { error: "先生の担当科目の取得に失敗しました" }, // "Failed to fetch teacher-subject relations"
       { status: 500 }
     );
   }
@@ -98,10 +98,10 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const session = await auth();
   if (!session) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+    return Response.json({ error: "権限がありません" }, { status: 401 }); // "Unauthorized"
   }
   if (session.user?.role !== "ADMIN") {
-    return Response.json({ error: "Forbidden" }, { status: 403 });
+    return Response.json({ error: "禁止されています" }, { status: 403 }); // "Forbidden"
   }
 
   try {
@@ -114,7 +114,7 @@ export async function POST(request: Request) {
       where: { teacherId },
     });
     if (!teacher) {
-      return Response.json({ error: "講師が見つかりません" }, { status: 404 });
+      return Response.json({ error: "先生が見つかりません" }, { status: 404 }); // "Teacher not found"
     }
 
     // Check if the subject exists
@@ -122,7 +122,7 @@ export async function POST(request: Request) {
       where: { subjectId },
     });
     if (!subject) {
-      return Response.json({ error: "科目が見つかりません" }, { status: 404 });
+      return Response.json({ error: "科目が見つかりません" }, { status: 404 }); // "Subject not found"
     }
 
     // Check if the subject type exists
@@ -131,7 +131,7 @@ export async function POST(request: Request) {
     });
     if (!subjectType) {
       return Response.json(
-        { error: "科目タイプが見つかりません" },
+        { error: "科目タイプが見つかりません" }, // "Subject type not found"
         { status: 404 }
       );
     }
@@ -147,8 +147,8 @@ export async function POST(request: Request) {
     if (!validPair) {
       return Response.json(
         {
-          error: "無効な科目と科目タイプの組み合わせ",
-          message: `科目ID ${subjectId} と科目タイプID ${subjectTypeId} の組み合わせは有効ではありません。`,
+          error: "無効な科目と科目タイプの組み合わせです", // "Invalid subject-subject type combination"
+          message: `科目ID ${subjectId} と科目タイプID ${subjectTypeId} の組み合わせは有効ではありません。`, // `The combination of subject ID ${subjectId} and subject type ID ${subjectTypeId} is not valid.`
         },
         { status: 400 }
       );
@@ -167,7 +167,7 @@ export async function POST(request: Request) {
 
     if (existingRelation) {
       return Response.json(
-        { error: "この講師-科目-タイプの関連はすでに存在します" },
+        { error: "この先生-科目-タイプの関連はすでに存在します" }, // "This teacher-subject-type relation already exists"
         { status: 409 }
       );
     }
@@ -183,7 +183,7 @@ export async function POST(request: Request) {
 
     return Response.json(
       {
-        message: "講師-科目関連を作成しました",
+        message: "先生の担当科目が正常に作成されました", // "Teacher-subject relation created successfully"
         data: teacherSubject,
       },
       { status: 201 }
@@ -191,12 +191,12 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof ZodError) {
       return Response.json(
-        { error: "入力値の検証に失敗しました", details: error.errors },
+        { error: "検証に失敗しました", details: error.errors }, // "Validation failed"
         { status: 400 }
       );
     }
     return Response.json(
-      { error: "講師-科目関連の作成に失敗しました" },
+      { error: "先生の担当科目の作成に失敗しました" }, // "Failed to create teacher-subject relation"
       { status: 500 }
     );
   }
@@ -205,10 +205,10 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   const session = await auth();
   if (!session) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+    return Response.json({ error: "権限がありません" }, { status: 401 }); // "Unauthorized"
   }
   if (session.user?.role !== "ADMIN") {
-    return Response.json({ error: "Forbidden" }, { status: 403 });
+    return Response.json({ error: "禁止されています" }, { status: 403 }); // "Forbidden"
   }
 
   try {
@@ -229,7 +229,7 @@ export async function PUT(request: Request) {
 
     if (!existingRelation) {
       return Response.json(
-        { error: "講師-科目関連が見つかりません" },
+        { error: "先生の担当科目が見つかりません" }, // "Teacher-subject relation not found"
         { status: 404 }
       );
     }
@@ -249,18 +249,18 @@ export async function PUT(request: Request) {
     });
 
     return Response.json({
-      message: "講師-科目関連を更新しました",
+      message: "先生の担当科目が正常に更新されました", // "Teacher-subject relation updated successfully"
       data: teacherSubject,
     });
   } catch (error) {
     if (error instanceof ZodError) {
       return Response.json(
-        { error: "入力値の検証に失敗しました", details: error.errors },
+        { error: "検証に失敗しました", details: error.errors }, // "Validation failed"
         { status: 400 }
       );
     }
     return Response.json(
-      { error: "講師-科目関連の更新に失敗しました" },
+      { error: "先生の担当科目の更新に失敗しました" }, // "Failed to update teacher-subject relation"
       { status: 500 }
     );
   }
@@ -269,10 +269,10 @@ export async function PUT(request: Request) {
 export async function DELETE(request: Request) {
   const session = await auth();
   if (!session) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+    return Response.json({ error: "権限がありません" }, { status: 401 }); // "Unauthorized"
   }
   if (session.user?.role !== "ADMIN") {
-    return Response.json({ error: "Forbidden" }, { status: 403 });
+    return Response.json({ error: "禁止されています" }, { status: 403 }); // "Forbidden"
   }
 
   try {
@@ -283,7 +283,7 @@ export async function DELETE(request: Request) {
 
     if (!teacherId || !subjectId || !subjectTypeId) {
       return Response.json(
-        { error: "講師ID、科目ID、科目タイプIDはすべて必須です" },
+        { error: "先生ID、科目ID、科目タイプIDはすべて必須です" }, // "Teacher ID, Subject ID, and Subject Type ID are all required"
         { status: 400 }
       );
     }
@@ -300,7 +300,7 @@ export async function DELETE(request: Request) {
 
     if (!existingRelation) {
       return Response.json(
-        { error: "講師-科目関連が見つかりません" },
+        { error: "先生の担当科目が見つかりません" }, // "Teacher-subject relation not found"
         { status: 404 }
       );
     }
@@ -316,11 +316,11 @@ export async function DELETE(request: Request) {
     });
 
     return Response.json({
-      message: "講師-科目関連を削除しました",
+      message: "先生の担当科目が正常に削除されました", // "Teacher-subject relation deleted successfully"
     });
   } catch {
     return Response.json(
-      { error: "講師-科目関連の削除に失敗しました" },
+      { error: "先生の担当科目の削除に失敗しました" }, // "Failed to delete teacher-subject relation"
       { status: 500 }
     );
   }

@@ -10,7 +10,7 @@ import { ZodError } from "zod";
 export async function GET(request: Request) {
   const session = await auth();
   if (!session) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+    return Response.json({ error: "権限がありません" }, { status: 401 }); // "Unauthorized"
   }
 
   const { searchParams } = new URL(request.url);
@@ -68,21 +68,21 @@ export async function GET(request: Request) {
   } catch (error) {
     if (error instanceof ZodError) {
       return Response.json(
-        { error: "Invalid query parameters", details: error.errors },
+        { error: "無効なクエリパラメータです", details: error.errors }, // "Invalid query parameters"
         { status: 400 }
       );
     }
-    return Response.json({ error: "Failed to fetch grades" }, { status: 500 });
+    return Response.json({ error: "学年の取得に失敗しました" }, { status: 500 }); // "Failed to fetch grades"
   }
 }
 
 export async function POST(request: Request) {
   const session = await auth();
   if (!session) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+    return Response.json({ error: "権限がありません" }, { status: 401 }); // "Unauthorized"
   }
   if (session.user?.role !== "ADMIN") {
-    return Response.json({ error: "Forbidden" }, { status: 403 });
+    return Response.json({ error: "禁止されています" }, { status: 403 }); // "Forbidden"
   }
 
   try {
@@ -95,7 +95,7 @@ export async function POST(request: Request) {
     });
     if (!studentType) {
       return Response.json(
-        { error: "Student type not found" },
+        { error: "生徒タイプが見つかりません" }, // "Student type not found"
         { status: 404 }
       );
     }
@@ -113,7 +113,7 @@ export async function POST(request: Request) {
 
     return Response.json(
       {
-        message: "Grade created successfully",
+        message: "学年が正常に作成されました", // "Grade created successfully"
         data: gradeWithStudentType,
       },
       { status: 201 }
@@ -121,21 +121,21 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof ZodError) {
       return Response.json(
-        { error: "Validation failed", details: error.errors },
+        { error: "検証に失敗しました", details: error.errors }, // "Validation failed"
         { status: 400 }
       );
     }
-    return Response.json({ error: "Failed to create grade" }, { status: 500 });
+    return Response.json({ error: "学年の作成に失敗しました" }, { status: 500 }); // "Failed to create grade"
   }
 }
 
 export async function PUT(request: Request) {
   const session = await auth();
   if (!session) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+    return Response.json({ error: "権限がありません" }, { status: 401 }); // "Unauthorized"
   }
   if (session.user?.role !== "ADMIN") {
-    return Response.json({ error: "Forbidden" }, { status: 403 });
+    return Response.json({ error: "禁止されています" }, { status: 403 }); // "Forbidden"
   }
 
   try {
@@ -147,7 +147,7 @@ export async function PUT(request: Request) {
     });
 
     if (!existingGrade) {
-      return Response.json({ error: "Grade not found" }, { status: 404 });
+      return Response.json({ error: "学年が見つかりません" }, { status: 404 }); // "Grade not found"
     }
 
     // Check if the studentType exists if it's being updated
@@ -157,7 +157,7 @@ export async function PUT(request: Request) {
       });
       if (!studentType) {
         return Response.json(
-          { error: "Student type not found" },
+          { error: "生徒タイプが見つかりません" }, // "Student type not found"
           { status: 404 }
         );
       }
@@ -178,27 +178,27 @@ export async function PUT(request: Request) {
     });
 
     return Response.json({
-      message: "Grade updated successfully",
+      message: "学年が正常に更新されました", // "Grade updated successfully"
       data: gradeWithStudentType,
     });
   } catch (error) {
     if (error instanceof ZodError) {
       return Response.json(
-        { error: "Validation failed", details: error.errors },
+        { error: "検証に失敗しました", details: error.errors }, // "Validation failed"
         { status: 400 }
       );
     }
-    return Response.json({ error: "Failed to update grade" }, { status: 500 });
+    return Response.json({ error: "学年の更新に失敗しました" }, { status: 500 }); // "Failed to update grade"
   }
 }
 
 export async function DELETE(request: Request) {
   const session = await auth();
   if (!session) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+    return Response.json({ error: "権限がありません" }, { status: 401 }); // "Unauthorized"
   }
   if (session.user?.role !== "ADMIN") {
-    return Response.json({ error: "Forbidden" }, { status: 403 });
+    return Response.json({ error: "禁止されています" }, { status: 403 }); // "Forbidden"
   }
 
   try {
@@ -206,7 +206,7 @@ export async function DELETE(request: Request) {
     const gradeId = searchParams.get("gradeId");
 
     if (!gradeId) {
-      return Response.json({ error: "Grade ID is required" }, { status: 400 });
+      return Response.json({ error: "学年IDは必須です" }, { status: 400 }); // "Grade ID is required"
     }
 
     const existingGrade = await prisma.grade.findUnique({
@@ -214,7 +214,7 @@ export async function DELETE(request: Request) {
     });
 
     if (!existingGrade) {
-      return Response.json({ error: "Grade not found" }, { status: 404 });
+      return Response.json({ error: "学年が見つかりません" }, { status: 404 }); // "Grade not found"
     }
 
     // Check for related students before deletion
@@ -225,7 +225,7 @@ export async function DELETE(request: Request) {
     if (hasRelatedStudents) {
       return Response.json(
         {
-          error: "Cannot delete grade with related students",
+          error: "関連する生徒がいるため、学年を削除できません", // "Cannot delete grade with related students"
         },
         { status: 409 }
       );
@@ -234,10 +234,10 @@ export async function DELETE(request: Request) {
     await prisma.grade.delete({ where: { gradeId } });
 
     return Response.json({
-      message: "Grade deleted successfully",
+      message: "学年が正常に削除されました", // "Grade deleted successfully"
     });
   } catch (error) {
-    console.error("Error deleting grade:", error);
-    return Response.json({ error: "Failed to delete grade" }, { status: 500 });
+    console.error("学年の削除エラー:", error); // "Error deleting grade:"
+    return Response.json({ error: "学年の削除に失敗しました" }, { status: 500 }); // "Failed to delete grade"
   }
 }

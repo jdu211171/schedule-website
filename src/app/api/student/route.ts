@@ -511,7 +511,7 @@ export async function POST(request: Request) {
 
     return Response.json(
       {
-        message: "User and student created successfully",
+        message: "ユーザーと生徒の作成に成功しました", // "User and student created successfully"
         data: result,
       },
       { status: 201 }
@@ -847,7 +847,7 @@ export async function PUT(request: Request) {
     });
 
     return Response.json({
-      message: "Student updated successfully",
+      message: "生徒の更新に成功しました", // "Student updated successfully"
       data: result,
     });
   } catch (error) {
@@ -960,7 +960,7 @@ export async function DELETE(request: Request) {
     });
 
     return Response.json({
-      message: "Student and associated data deleted successfully",
+      message: "生徒と関連データの削除に成功しました", // "Student and associated data deleted successfully"
     });
   } catch (error) {
     console.error("Error deleting student:", error);

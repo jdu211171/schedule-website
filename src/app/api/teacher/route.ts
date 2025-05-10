@@ -12,7 +12,7 @@ import { ZodError } from "zod";
 export async function GET(request: Request) {
   const session = await auth();
   if (!session) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+    return Response.json({ error: "権限がありません" }, { status: 401 }); // "Unauthorized"
   }
 
   const { searchParams } = new URL(request.url);
@@ -165,12 +165,12 @@ export async function GET(request: Request) {
   } catch (error) {
     if (error instanceof ZodError) {
       return Response.json(
-        { error: "Invalid query parameters", details: error.errors },
+        { error: "無効なクエリパラメータです", details: error.errors }, // "Invalid query parameters"
         { status: 400 }
       );
     }
     return Response.json(
-      { error: "Failed to fetch teachers" },
+      { error: "先生の取得に失敗しました" }, // "Failed to fetch teachers"
       { status: 500 }
     );
   }
@@ -179,10 +179,10 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const session = await auth();
   if (!session) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+    return Response.json({ error: "権限がありません" }, { status: 401 }); // "Unauthorized"
   }
   if (session.user?.role !== "ADMIN") {
-    return Response.json({ error: "Forbidden" }, { status: 403 });
+    return Response.json({ error: "禁止されています" }, { status: 403 }); // "Forbidden"
   }
 
   try {
@@ -202,8 +202,8 @@ export async function POST(request: Request) {
     if (existingUser) {
       return Response.json(
         {
-          error: "Username already taken",
-          message: "Please choose a different username",
+          error: "ユーザー名は既に使用されています", // "Username already taken"
+          message: "別のユーザー名を選択してください", // "Please choose a different username"
         },
         { status: 400 }
       );
@@ -215,7 +215,7 @@ export async function POST(request: Request) {
     });
 
     if (!evaluationExists) {
-      return Response.json({ error: "Evaluation not found" }, { status: 404 });
+      return Response.json({ error: "評価が見つかりません" }, { status: 404 }); // "Evaluation not found"
     }
 
     // Verify subjects exist before starting transaction
@@ -231,10 +231,8 @@ export async function POST(request: Request) {
         const invalidIds = subjectIds.filter((id) => !existingIds.includes(id));
         return Response.json(
           {
-            error: "Invalid subject IDs",
-            message: `The following subject IDs do not exist: ${invalidIds.join(
-              ", "
-            )}`,
+            error: "無効な科目IDです", // "Invalid subject IDs"
+            message: `次の科目IDは存在しません: ${invalidIds.join(", ")}`, // `The following subject IDs do not exist: ...`
           },
           { status: 400 }
         );
@@ -272,8 +270,8 @@ export async function POST(request: Request) {
 
         return Response.json(
           {
-            error: "Invalid subject-subject type combinations",
-            message: `The following subject-subject type combinations are not valid: ${invalidPairs
+            error: "無効な科目と科目タイプの組み合わせです", // "Invalid subject-subject type combinations"
+            message: `次の科目と科目タイプの組み合わせは無効です: ${invalidPairs // `The following subject-subject type combinations are not valid: ...`
               .map((p) => `(${p.subjectId}, ${p.subjectTypeId})`)
               .join(", ")}`,
           },
@@ -369,23 +367,23 @@ export async function POST(request: Request) {
 
     return Response.json(
       {
-        message: "User and teacher created successfully",
+        message: "ユーザーと先生が正常に作成されました", // "User and teacher created successfully"
         data: result,
       },
       { status: 201 }
     );
   } catch (error) {
-    console.error("Error creating user and teacher:", error);
+    console.error("ユーザーと先生の作成エラー:", error); // "Error creating user and teacher:"
     if (error instanceof ZodError) {
       return Response.json(
-        { error: "Invalid request data", issues: error.issues },
+        { error: "無効なリクエストデータです", issues: error.issues }, // "Invalid request data"
         { status: 400 }
       );
     }
     return Response.json(
       {
-        error: "Failed to create user and teacher",
-        message: error instanceof Error ? error.message : "Unknown error",
+        error: "ユーザーと先生の作成に失敗しました", // "Failed to create user and teacher"
+        message: error instanceof Error ? error.message : "不明なエラーです", // "Unknown error"
       },
       { status: 500 }
     );
@@ -395,10 +393,10 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   const session = await auth();
   if (!session) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+    return Response.json({ error: "権限がありません" }, { status: 401 }); // "Unauthorized"
   }
   if (session.user?.role !== "ADMIN") {
-    return Response.json({ error: "Forbidden" }, { status: 403 });
+    return Response.json({ error: "禁止されています" }, { status: 403 }); // "Forbidden"
   }
 
   try {
@@ -417,7 +415,7 @@ export async function PUT(request: Request) {
     });
 
     if (!existingTeacher) {
-      return Response.json({ error: "Teacher not found" }, { status: 404 });
+      return Response.json({ error: "先生が見つかりません" }, { status: 404 }); // "Teacher not found"
     }
 
     // If evaluationId is provided, check if it exists
@@ -428,7 +426,7 @@ export async function PUT(request: Request) {
 
       if (!evaluationExists) {
         return Response.json(
-          { error: "Evaluation not found" },
+          { error: "評価が見つかりません" }, // "Evaluation not found"
           { status: 404 }
         );
       }
@@ -447,10 +445,8 @@ export async function PUT(request: Request) {
         const invalidIds = subjectIds.filter((id) => !existingIds.includes(id));
         return Response.json(
           {
-            error: "Invalid subject IDs",
-            message: `The following subject IDs do not exist: ${invalidIds.join(
-              ", "
-            )}`,
+            error: "無効な科目IDです", // "Invalid subject IDs"
+            message: `次の科目IDは存在しません: ${invalidIds.join(", ")}`, // `The following subject IDs do not exist: ...`
           },
           { status: 400 }
         );
@@ -488,8 +484,8 @@ export async function PUT(request: Request) {
 
         return Response.json(
           {
-            error: "Invalid subject-subject type combinations",
-            message: `The following subject-subject type combinations are not valid: ${invalidPairs
+            error: "無効な科目と科目タイプの組み合わせです", // "Invalid subject-subject type combinations"
+            message: `次の科目と科目タイプの組み合わせは無効です: ${invalidPairs // `The following subject-subject type combinations are not valid: ...`
               .map((p) => `(${p.subjectId}, ${p.subjectTypeId})`)
               .join(", ")}`,
           },
@@ -597,18 +593,18 @@ export async function PUT(request: Request) {
     });
 
     return Response.json({
-      message: "Teacher updated successfully",
+      message: "先生の情報が正常に更新されました", // "Teacher updated successfully"
       data: result,
     });
   } catch (error) {
     if (error instanceof ZodError) {
       return Response.json(
-        { error: "Validation failed", details: error.errors },
+        { error: "検証に失敗しました", details: error.errors }, // "Validation failed"
         { status: 400 }
       );
     }
     return Response.json(
-      { error: "Failed to update teacher" },
+      { error: "先生の情報の更新に失敗しました" }, // "Failed to update teacher"
       { status: 500 }
     );
   }
@@ -617,10 +613,10 @@ export async function PUT(request: Request) {
 export async function DELETE(request: Request) {
   const session = await auth();
   if (!session) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+    return Response.json({ error: "権限がありません" }, { status: 401 }); // "Unauthorized"
   }
   if (session.user?.role !== "ADMIN") {
-    return Response.json({ error: "Forbidden" }, { status: 403 });
+    return Response.json({ error: "禁止されています" }, { status: 403 }); // "Forbidden"
   }
 
   try {
@@ -629,7 +625,7 @@ export async function DELETE(request: Request) {
 
     if (!teacherId) {
       return Response.json(
-        { error: "Teacher ID is required" },
+        { error: "先生IDは必須です" }, // "Teacher ID is required"
         { status: 400 }
       );
     }
@@ -640,7 +636,7 @@ export async function DELETE(request: Request) {
     });
 
     if (!existingTeacher) {
-      return Response.json({ error: "Teacher not found" }, { status: 404 });
+      return Response.json({ error: "先生が見つかりません" }, { status: 404 }); // "Teacher not found"
     }
 
     // Check for related data before deletion
@@ -665,7 +661,7 @@ export async function DELETE(request: Request) {
       return Response.json(
         {
           error:
-            "Teacher has related data and cannot be deleted (sessions, templates, or preferences exist)",
+            "先生には関連データがあり、削除できません（授業セッション、テンプレート、または設定が存在します）", // "Teacher has related data and cannot be deleted (sessions, templates, or preferences exist)"
         },
         { status: 400 }
       );
@@ -688,11 +684,11 @@ export async function DELETE(request: Request) {
     ]);
 
     return Response.json({
-      message: "Teacher deleted successfully",
+      message: "先生が正常に削除されました", // "Teacher deleted successfully"
     });
   } catch {
     return Response.json(
-      { error: "Failed to delete teacher" },
+      { error: "先生の削除に失敗しました" }, // "Failed to delete teacher"
       { status: 500 }
     );
   }

@@ -13,7 +13,7 @@ import { DayOfWeek } from "@prisma/client";
 export async function GET(request: Request) {
   const session = await auth();
   if (!session) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+    return Response.json({ error: "権限がありません" }, { status: 401 }); // "Unauthorized"
   }
 
   const { searchParams } = new URL(request.url);
@@ -262,12 +262,12 @@ export async function GET(request: Request) {
   } catch (error) {
     if (error instanceof ZodError) {
       return Response.json(
-        { error: "無効なクエリパラメータ", details: error.errors },
+        { error: "無効なクエリパラメータです", details: error.errors }, // "Invalid query parameters"
         { status: 400 }
       );
     }
     return Response.json(
-      { error: "授業セッションの取得に失敗しました" },
+      { error: "授業セッションの取得に失敗しました" }, // "Failed to fetch class sessions"
       { status: 500 }
     );
   }
@@ -276,10 +276,10 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const session = await auth();
   if (!session) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+    return Response.json({ error: "権限がありません" }, { status: 401 }); // "Unauthorized"
   }
   if (session.user?.role !== "ADMIN") {
-    return Response.json({ error: "Forbidden" }, { status: 403 });
+    return Response.json({ error: "禁止されています" }, { status: 403 }); // "Forbidden"
   }
 
   try {
@@ -310,7 +310,7 @@ export async function POST(request: Request) {
       });
 
       if (!template) {
-        return Response.json({ error: "Template not found" }, { status: 404 });
+        return Response.json({ error: "テンプレートが見つかりません" }, { status: 404 }); // "Template not found"
       }
 
       // If a new subject type is provided, validate it exists and is compatible with the subject
@@ -326,8 +326,8 @@ export async function POST(request: Request) {
         if (!validPair) {
           return Response.json(
             {
-              error: "Invalid subject-subject type combination",
-              message: `The subject (${template.subjectId}) cannot be associated with the specified subject type (${subjectTypeId}).`,
+              error: "無効な科目と科目タイプの組み合わせです", // "Invalid subject-subject type combination"
+              message: `科目 (${template.subjectId}) は指定された科目タイプ (${subjectTypeId}) に関連付けることができません。`, // `The subject (${template.subjectId}) cannot be associated with the specified subject type (${subjectTypeId}).`
             },
             { status: 400 }
           );
@@ -342,7 +342,7 @@ export async function POST(request: Request) {
 
       if (studentAssignments.length === 0) {
         return Response.json(
-          { error: "No students assigned to this template" },
+          { error: "このテンプレートに割り当てられた生徒がいません" }, // "No students assigned to this template"
           { status: 400 }
         );
       }
@@ -364,7 +364,7 @@ export async function POST(request: Request) {
       });
 
       if (!boothExists) {
-        return Response.json({ error: "Booth not found" }, { status: 404 });
+        return Response.json({ error: "ブースが見つかりません" }, { status: 404 }); // "Booth not found"
       }
 
       // Check for booth conflicts on the given date
@@ -402,7 +402,7 @@ export async function POST(request: Request) {
       if (boothConflicts.length > 0) {
         return Response.json(
           {
-            error: "Booth is already booked for this time",
+            error: "ブースは既にこの時間に予約されています", // "Booth is already booked for this time"
             conflicts: boothConflicts,
           },
           { status: 409 }
@@ -444,7 +444,7 @@ export async function POST(request: Request) {
       if (teacherConflicts.length > 0) {
         return Response.json(
           {
-            error: "Teacher is already booked for this time",
+            error: "講師は既にこの時間に予約されています", // "Teacher is already booked for this time"
             conflicts: teacherConflicts,
           },
           { status: 409 }
@@ -492,7 +492,7 @@ export async function POST(request: Request) {
           if (studentConflicts.length > 0) {
             // Skip this student but continue processing others
             console.warn(
-              `Student ${assignment.studentId} has a conflict and will be skipped`
+              `生徒 ${assignment.studentId} には競合があり、スキップされます` // `Student ${assignment.studentId} has a conflict and will be skipped`
             );
             continue;
           }
@@ -563,7 +563,7 @@ export async function POST(request: Request) {
 
       return Response.json(
         {
-          message: "Class sessions created successfully from template",
+          message: "テンプレートから授業セッションが正常に作成されました", // "Class sessions created successfully from template"
           data: result,
         },
         { status: 201 }
@@ -627,7 +627,7 @@ export async function POST(request: Request) {
       }
       if (!boothExists) {
         return Response.json(
-          { error: "ブーズが見つかりません" },
+          { error: "ブースが見つかりません" }, // Corrected typo from ブーズ to ブース
           { status: 404 }
         );
       }
@@ -649,8 +649,8 @@ export async function POST(request: Request) {
       if (!validPair) {
         return Response.json(
           {
-            error: "Invalid subject-subject type combination",
-            message: `The subject (${subjectId}) cannot be associated with the specified subject type (${subjectTypeId}).`,
+            error: "無効な科目と科目タイプの組み合わせです", // "Invalid subject-subject type combination"
+            message: `科目 (${subjectId}) は指定された科目タイプ (${subjectTypeId}) に関連付けることができません。`, // `The subject (${subjectId}) cannot be associated with the specified subject type (${subjectTypeId}).`
           },
           { status: 400 }
         );
@@ -663,7 +663,7 @@ export async function POST(request: Request) {
       // Validate time range
       if (end <= start) {
         return Response.json(
-          { error: "End time must be after start time" },
+          { error: "終了時刻は開始時刻より後でなければなりません" }, // "End time must be after start time"
           { status: 400 }
         );
       }
@@ -773,7 +773,7 @@ export async function POST(request: Request) {
       if (boothConflicts.length > 0) {
         return Response.json(
           {
-            error: "Booth is already booked for this time",
+            error: "ブースは既にこの時間に予約されています", // "Booth is already booked for this time"
             conflicts: boothConflicts,
           },
           { status: 409 }
@@ -783,7 +783,7 @@ export async function POST(request: Request) {
       if (teacherConflicts.length > 0) {
         return Response.json(
           {
-            error: "Teacher is already booked for this time",
+            error: "講師は既にこの時間に予約されています", // "Teacher is already booked for this time"
             conflicts: teacherConflicts,
           },
           { status: 409 }
@@ -793,7 +793,7 @@ export async function POST(request: Request) {
       if (studentConflicts.length > 0) {
         return Response.json(
           {
-            error: "Student is already booked for this time",
+            error: "生徒は既にこの時間に予約されています", // "Student is already booked for this time"
             conflicts: studentConflicts,
           },
           { status: 409 }
@@ -849,24 +849,24 @@ export async function POST(request: Request) {
 
       return Response.json(
         {
-          message: "Class session created successfully",
+          message: "授業セッションが正常に作成されました", // "Class session created successfully"
           data: result,
         },
         { status: 201 }
       );
     }
   } catch (error) {
-    console.error("Error creating class session:", error);
+    console.error("授業セッションの作成エラー:", error); // "Error creating class session:"
     if (error instanceof ZodError) {
       return Response.json(
-        { error: "無効なリクエストデータ", issues: error.issues },
+        { error: "無効なリクエストデータです", issues: error.issues }, // "Invalid request data"
         { status: 400 }
       );
     }
     return Response.json(
       {
         error: "授業セッションの作成に失敗しました",
-        message: error instanceof Error ? error.message : "不明なエラー",
+        message: error instanceof Error ? error.message : "不明なエラーです", // "Unknown error"
       },
       { status: 500 }
     );
@@ -876,10 +876,10 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   const session = await auth();
   if (!session) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+    return Response.json({ error: "権限がありません" }, { status: 401 }); // "Unauthorized"
   }
   if (session.user?.role !== "ADMIN") {
-    return Response.json({ error: "Forbidden" }, { status: 403 });
+    return Response.json({ error: "禁止されています" }, { status: 403 }); // "Forbidden"
   }
 
   try {
@@ -888,7 +888,7 @@ export async function PUT(request: Request) {
 
     if (!classId) {
       return Response.json(
-        { error: "Class session ID is required" },
+        { error: "授業セッションIDは必須です" }, // "Class session ID is required"
         { status: 400 }
       );
     }
@@ -900,7 +900,7 @@ export async function PUT(request: Request) {
 
     if (!existingClassSession) {
       return Response.json(
-        { error: "Class session not found" },
+        { error: "授業セッションが見つかりません" }, // "Class session not found"
         { status: 404 }
       );
     }
@@ -925,7 +925,7 @@ export async function PUT(request: Request) {
 
         if (!subjectTypeExists) {
           return Response.json(
-            { error: "Subject type not found" },
+            { error: "科目タイプが見つかりません" }, // "Subject type not found"
             { status: 404 }
           );
         }
@@ -941,8 +941,8 @@ export async function PUT(request: Request) {
         if (!validPair) {
           return Response.json(
             {
-              error: "Invalid subject-subject type combination",
-              message: `The subject (${existingClassSession.subjectId}) cannot be associated with the specified subject type (${subjectTypeId}).`,
+              error: "無効な科目と科目タイプの組み合わせです", // "Invalid subject-subject type combination"
+              message: `科目 (${existingClassSession.subjectId}) は指定された科目タイプ (${subjectTypeId}) に関連付けることができません。`, // `The subject (${existingClassSession.subjectId}) cannot be associated with the specified subject type (${subjectTypeId}).`
             },
             { status: 400 }
           );
@@ -962,7 +962,7 @@ export async function PUT(request: Request) {
         });
 
         if (!boothExists) {
-          return Response.json({ error: "Booth not found" }, { status: 404 });
+          return Response.json({ error: "ブースが見つかりません" }, { status: 404 }); // "Booth not found"
         }
 
         updateData.boothId = boothId;
@@ -984,7 +984,7 @@ export async function PUT(request: Request) {
         // Validate time range
         if (newEnd <= newStart) {
           return Response.json(
-            { error: "End time must be after start time" },
+            { error: "終了時刻は開始時刻より後でなければなりません" }, // "End time must be after start time"
             { status: 400 }
           );
         }
@@ -1000,11 +1000,11 @@ export async function PUT(request: Request) {
         // Check for conflicts with the new times and booth
         const boothToCheck = boothId || existingClassSession.boothId;
 
-        const conflicts = await prisma.classSession.findMany({
+        const boothConflicts = await prisma.classSession.findMany({
           where: {
+            classId: { not: classId }, // Exclude the current session
             date: existingClassSession.date,
             boothId: boothToCheck,
-            classId: { not: classId }, // Exclude current session
             AND: [
               {
                 OR: [
@@ -1032,12 +1032,97 @@ export async function PUT(request: Request) {
           },
         });
 
-        if (conflicts.length > 0) {
+        if (boothConflicts.length > 0) {
           return Response.json(
             {
-              error:
-                "There is a scheduling conflict with the new time or booth",
-              conflicts,
+              error: "ブースは既にこの時間に予約されています", // "Booth is already booked for this time"
+              conflicts: boothConflicts,
+            },
+            { status: 409 }
+          );
+        }
+
+        // Check for teacher conflicts
+        const teacherConflicts = await prisma.classSession.findMany({
+          where: {
+            classId: { not: classId }, // Exclude the current session
+            date: existingClassSession.date,
+            teacherId: existingClassSession.teacherId,
+            AND: [
+              {
+                OR: [
+                  {
+                    startTime: {
+                      lt: newEnd,
+                    },
+                    endTime: {
+                      gt: newStart,
+                    },
+                  },
+                  {
+                    startTime: {
+                      equals: newStart,
+                    },
+                  },
+                  {
+                    endTime: {
+                      equals: newEnd,
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        });
+
+        if (teacherConflicts.length > 0) {
+          return Response.json(
+            {
+              error: "講師は既にこの時間に予約されています", // "Teacher is already booked for this time"
+              conflicts: teacherConflicts,
+            },
+            { status: 409 }
+          );
+        }
+
+        // Check for student conflicts
+        const studentConflicts = await prisma.classSession.findMany({
+          where: {
+            classId: { not: classId }, // Exclude the current session
+            date: existingClassSession.date,
+            studentId: existingClassSession.studentId,
+            AND: [
+              {
+                OR: [
+                  {
+                    startTime: {
+                      lt: newEnd,
+                    },
+                    endTime: {
+                      gt: newStart,
+                    },
+                  },
+                  {
+                    startTime: {
+                      equals: newStart,
+                    },
+                  },
+                  {
+                    endTime: {
+                      equals: newEnd,
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        });
+
+        if (studentConflicts.length > 0) {
+          return Response.json(
+            {
+              error: "生徒は既にこの時間に予約されています", // "Student is already booked for this time"
+              conflicts: studentConflicts,
             },
             { status: 409 }
           );
@@ -1068,11 +1153,11 @@ export async function PUT(request: Request) {
       });
 
       return Response.json({
-        message: "Template-based class session updated successfully",
+        message: "テンプレートベースの授業セッションが正常に更新されました", // "Template-based class session updated successfully"
         data: updatedClassSession,
       });
     } else {
-      // For standalone class sessions, allow modifying all fields
+      // For standalone class sessions, allow modifying all relevant fields
       const validatedData = UpdateStandaloneClassSessionSchema.parse(body);
       const {
         date,
@@ -1087,83 +1172,75 @@ export async function PUT(request: Request) {
         notes,
       } = validatedData;
 
-      // Prepare update data
+      // Prepare data for update
       const updateData: Record<string, unknown> = {};
 
-      // Add fields that are present in the request
-      if (notes !== undefined) updateData.notes = notes;
-      if (date !== undefined && date !== null) updateData.date = date;
+      if (date !== undefined) {
+        updateData.date = date;
+      }
+      if (notes !== undefined) {
+        updateData.notes = notes;
+      }
+
+      // Validate all entities exist if they are being updated
       if (teacherId !== undefined) {
         const teacherExists = await prisma.teacher.findUnique({
           where: { teacherId },
         });
         if (!teacherExists) {
-          return Response.json({ error: "Teacher not found" }, { status: 404 });
+          return Response.json(
+            { error: "先生が見つかりません" }, // "Teacher not found"
+            { status: 404 }
+          );
         }
         updateData.teacherId = teacherId;
       }
+
       if (studentId !== undefined) {
         const studentExists = await prisma.student.findUnique({
           where: { studentId },
         });
         if (!studentExists) {
-          return Response.json({ error: "Student not found" }, { status: 404 });
-        }
-        updateData.studentId = studentId;
-      }
-
-      // Check subject and subject type together to ensure valid combination
-      const newSubjectId = subjectId || existingClassSession.subjectId;
-      const newSubjectTypeId =
-        subjectTypeId || existingClassSession.subjectTypeId;
-
-      // Only validate if either subject or subject type is being changed
-      if (subjectId !== undefined || subjectTypeId !== undefined) {
-        // First check if the subject exists
-        if (subjectId !== undefined) {
-          const subjectExists = await prisma.subject.findUnique({
-            where: { subjectId: newSubjectId },
-          });
-          if (!subjectExists) {
-            return Response.json(
-              { error: "Subject not found" },
-              { status: 404 }
-            );
-          }
-          updateData.subjectId = newSubjectId;
-        }
-
-        // Then check if the subject type exists
-        if (subjectTypeId !== undefined) {
-          const subjectTypeExists = await prisma.subjectType.findUnique({
-            where: { subjectTypeId: newSubjectTypeId },
-          });
-          if (!subjectTypeExists) {
-            return Response.json(
-              { error: "Subject type not found" },
-              { status: 404 }
-            );
-          }
-          updateData.subjectTypeId = newSubjectTypeId;
-        }
-
-        // Verify the combination is valid
-        const validPair = await prisma.subjectToSubjectType.findFirst({
-          where: {
-            subjectId: newSubjectId,
-            subjectTypeId: newSubjectTypeId,
-          },
-        });
-
-        if (!validPair) {
           return Response.json(
-            {
-              error: "Invalid subject-subject type combination",
-              message: `The subject (${newSubjectId}) cannot be associated with the specified subject type (${newSubjectTypeId}).`,
-            },
-            { status: 400 }
+            { error: "生徒が見つかりません" }, // "Student not found"
+            { status: 404 }
           );
         }
+        updateData.studentId = studentId;
+
+        // Update enrollment if studentId changes
+        if (studentId !== existingClassSession.studentId) {
+          await prisma.studentClassEnrollment.updateMany({
+            where: { classId: classId },
+            data: { studentId: studentId },
+          });
+        }
+      }
+
+      if (subjectId !== undefined) {
+        const subjectExists = await prisma.subject.findUnique({
+          where: { subjectId },
+        });
+        if (!subjectExists) {
+          return Response.json(
+            { error: "科目が見つかりません" }, // "Subject not found"
+            { status: 404 }
+          );
+        }
+        updateData.subjectId = subjectId;
+      }
+
+      if (subjectTypeId !== undefined) {
+        const subjectTypeExists = await prisma.subjectType.findUnique({
+          where: { subjectTypeId },
+        });
+        if (!subjectTypeExists) {
+          return Response.json(
+            { error: "科目タイプが見つかりません" }, // "Subject type not found"
+            { status: 404 }
+          );
+        }
+        updateData.subjectTypeId = subjectTypeId;
       }
 
       if (boothId !== undefined) {
@@ -1171,21 +1248,49 @@ export async function PUT(request: Request) {
           where: { boothId },
         });
         if (!boothExists) {
-          return Response.json({ error: "Booth not found" }, { status: 404 });
+          return Response.json(
+            { error: "ブースが見つかりません" }, // "Booth not found"
+            { status: 404 }
+          );
         }
         updateData.boothId = boothId;
       }
+
       if (classTypeId !== undefined) {
         const classTypeExists = await prisma.classType.findUnique({
           where: { classTypeId },
         });
         if (!classTypeExists) {
           return Response.json(
-            { error: "Class type not found" },
+            { error: "授業タイプが見つかりません" }, // "Class type not found"
             { status: 404 }
           );
         }
         updateData.classTypeId = classTypeId;
+      }
+
+      // Verify subject-subject type combination if either is updated
+      const finalSubjectId = subjectId || existingClassSession.subjectId;
+      const finalSubjectTypeId =
+        subjectTypeId || existingClassSession.subjectTypeId;
+
+      if (subjectId !== undefined || subjectTypeId !== undefined) {
+        const validPair = await prisma.subjectToSubjectType.findFirst({
+          where: {
+            subjectId: finalSubjectId,
+            subjectTypeId: finalSubjectTypeId,
+          },
+        });
+
+        if (!validPair) {
+          return Response.json(
+            {
+              error: "無効な科目と科目タイプの組み合わせです", // "Invalid subject-subject type combination"
+              message: `科目 (${finalSubjectId}) は指定された科目タイプ (${finalSubjectTypeId}) に関連付けることができません。`, // `The subject (${finalSubjectId}) cannot be associated with the specified subject type (${finalSubjectTypeId}).`
+            },
+            { status: 400 }
+          );
+        }
       }
 
       // Handle time updates
@@ -1193,243 +1298,181 @@ export async function PUT(request: Request) {
         const originalStart = existingClassSession.startTime;
         const originalEnd = existingClassSession.endTime;
 
-        // Convert strings to Date objects
         const newStart = startTime
-          ? new Date(`1970-01-01T${startTime}`)
+          ? new Date(`1970-01-01T${startTime}Z`)
           : originalStart;
         const newEnd = endTime
-          ? new Date(`1970-01-01T${endTime}`)
+          ? new Date(`1970-01-01T${endTime}Z`)
           : originalEnd;
 
-        // Validate time range
         if (newEnd <= newStart) {
           return Response.json(
-            { error: "End time must be after start time" },
+            { error: "終了時刻は開始時刻より後でなければなりません" }, // "End time must be after start time"
             { status: 400 }
           );
         }
 
-        // Calculate duration
         const durationMs = newEnd.getTime() - newStart.getTime();
         const durationDate = new Date(durationMs);
 
-        if (startTime !== undefined) updateData.startTime = newStart;
-        if (endTime !== undefined) updateData.endTime = newEnd;
+        updateData.startTime = newStart;
+        updateData.endTime = newEnd;
         updateData.duration = durationDate;
       }
 
-      // Check for conflicts
-      if (Object.keys(updateData).length > 0) {
-        const dateToCheck = date || existingClassSession.date;
-        const startToCheck =
-          updateData.startTime && updateData.startTime instanceof Date
-            ? (updateData.startTime as Date)
-            : existingClassSession.startTime;
-        const endToCheck =
-          updateData.endTime && updateData.endTime instanceof Date
-            ? (updateData.endTime as Date)
-            : existingClassSession.endTime;
-        const boothToCheck = boothId || existingClassSession.boothId;
-        const teacherToCheck = teacherId || existingClassSession.teacherId;
-        const studentToCheck = studentId || existingClassSession.studentId;
+      // Check for conflicts if date, time, booth, teacher, or student is changed
+      const finalDate = date || existingClassSession.date;
+      const finalStartTime =
+        updateData.startTime || existingClassSession.startTime;
+      const finalEndTime = updateData.endTime || existingClassSession.endTime;
+      const finalBoothId = boothId || existingClassSession.boothId;
+      const finalTeacherId = teacherId || existingClassSession.teacherId;
+      const finalStudentId = studentId || existingClassSession.studentId;
 
-        // Check for conflicts with booth
-        if (date || startTime || endTime || boothId) {
-          const boothConflicts = await prisma.classSession.findMany({
-            where: {
-              date: dateToCheck,
-              boothId: boothToCheck,
-              classId: { not: classId }, // Exclude current session
-              AND: [
+      // Booth conflicts
+      const boothConflicts = await prisma.classSession.findMany({
+        where: {
+          classId: { not: classId },
+          date: finalDate,
+          boothId: finalBoothId,
+          AND: [
+            {
+              OR: [
                 {
-                  OR: [
-                    {
-                      startTime: {
-                        lt: endToCheck,
-                      },
-                      endTime: {
-                        gt: startToCheck,
-                      },
-                    },
-                    {
-                      startTime: {
-                        equals: startToCheck,
-                      },
-                    },
-                    {
-                      endTime: {
-                        equals: endToCheck,
-                      },
-                    },
-                  ],
+                  startTime: {
+                    lt: finalEndTime,
+                  },
+                  endTime: {
+                    gt: finalStartTime,
+                  },
                 },
+                { startTime: { equals: finalStartTime } },
+                { endTime: { equals: finalEndTime } },
               ],
             },
-          });
+          ],
+        },
+      });
 
-          if (boothConflicts.length > 0) {
-            return Response.json(
-              {
-                error: "Booth is already booked for this time",
-                conflicts: boothConflicts,
-              },
-              { status: 409 }
-            );
-          }
-        }
+      if (boothConflicts.length > 0) {
+        return Response.json(
+          {
+            error: "ブースは既にこの時間に予約されています", // "Booth is already booked for this time"
+            conflicts: boothConflicts,
+          },
+          { status: 409 }
+        );
+      }
 
-        // Check for conflicts with teacher
-        if (date || startTime || endTime || teacherId) {
-          const teacherConflicts = await prisma.classSession.findMany({
-            where: {
-              date: dateToCheck,
-              teacherId: teacherToCheck,
-              classId: { not: classId }, // Exclude current session
-              AND: [
+      // Teacher conflicts
+      const teacherConflicts = await prisma.classSession.findMany({
+        where: {
+          classId: { not: classId },
+          date: finalDate,
+          teacherId: finalTeacherId,
+          AND: [
+            {
+              OR: [
                 {
-                  OR: [
-                    {
-                      startTime: {
-                        lt: endToCheck,
-                      },
-                      endTime: {
-                        gt: startToCheck,
-                      },
-                    },
-                    {
-                      startTime: {
-                        equals: startToCheck,
-                      },
-                    },
-                    {
-                      endTime: {
-                        equals: endToCheck,
-                      },
-                    },
-                  ],
+                  startTime: {
+                    lt: finalEndTime,
+                  },
+                  endTime: {
+                    gt: finalStartTime,
+                  },
                 },
+                { startTime: { equals: finalStartTime } },
+                { endTime: { equals: finalEndTime } },
               ],
             },
-          });
+          ],
+        },
+      });
 
-          if (teacherConflicts.length > 0) {
-            return Response.json(
-              {
-                error: "Teacher is already booked for this time",
-                conflicts: teacherConflicts,
-              },
-              { status: 409 }
-            );
-          }
-        }
+      if (teacherConflicts.length > 0) {
+        return Response.json(
+          {
+            error: "講師は既にこの時間に予約されています", // "Teacher is already booked for this time"
+            conflicts: teacherConflicts,
+          },
+          { status: 409 }
+        );
+      }
 
-        // Check for conflicts with student
-        if (date || startTime || endTime || studentId) {
-          const studentConflicts = await prisma.classSession.findMany({
-            where: {
-              date: dateToCheck,
-              studentId: studentToCheck,
-              classId: { not: classId }, // Exclude current session
-              AND: [
+      // Student conflicts
+      const studentConflicts = await prisma.classSession.findMany({
+        where: {
+          classId: { not: classId },
+          date: finalDate,
+          studentId: finalStudentId,
+          AND: [
+            {
+              OR: [
                 {
-                  OR: [
-                    {
-                      startTime: {
-                        lt: endToCheck,
-                      },
-                      endTime: {
-                        gt: startToCheck,
-                      },
-                    },
-                    {
-                      startTime: {
-                        equals: startToCheck,
-                      },
-                    },
-                    {
-                      endTime: {
-                        equals: endToCheck,
-                      },
-                    },
-                  ],
+                  startTime: {
+                    lt: finalEndTime,
+                  },
+                  endTime: {
+                    gt: finalStartTime,
+                  },
                 },
+                { startTime: { equals: finalStartTime } },
+                { endTime: { equals: finalEndTime } },
               ],
             },
-          });
+          ],
+        },
+      });
 
-          if (studentConflicts.length > 0) {
-            return Response.json(
-              {
-                error: "Student is already booked for this time",
-                conflicts: studentConflicts,
-              },
-              { status: 409 }
-            );
-          }
-        }
+      if (studentConflicts.length > 0) {
+        return Response.json(
+          {
+            error: "生徒は既にこの時間に予約されています", // "Student is already booked for this time"
+            conflicts: studentConflicts,
+          },
+          { status: 409 }
+        );
       }
 
       // Update the class session
-      const result = await prisma.$transaction(async (tx) => {
-        // Update the class session
-        const updatedClassSession = await tx.classSession.update({
-          where: { classId },
-          data: updateData,
-          include: {
-            booth: true,
-            classType: true,
-            subject: {
-              include: {
-                subjectToSubjectTypes: {
-                  include: {
-                    subjectType: true,
-                  },
+      const updatedClassSession = await prisma.classSession.update({
+        where: { classId },
+        data: updateData,
+        include: {
+          booth: true,
+          classType: true,
+          subject: {
+            include: {
+              subjectToSubjectTypes: {
+                include: {
+                  subjectType: true,
                 },
               },
             },
-            subjectType: true,
-            teacher: true,
-            student: true,
           },
-        });
-
-        // If student changed, update enrollment
-        if (studentId && studentId !== existingClassSession.studentId) {
-          // Delete old enrollment
-          await tx.studentClassEnrollment.deleteMany({
-            where: { classId, studentId: existingClassSession.studentId },
-          });
-
-          // Create new enrollment
-          await tx.studentClassEnrollment.create({
-            data: {
-              classId,
-              studentId,
-              status: "ENROLLED",
-            },
-          });
-        }
-
-        return updatedClassSession;
+          subjectType: true,
+          teacher: true,
+          student: true,
+        },
       });
 
       return Response.json({
-        message: "Standalone class session updated successfully",
-        data: result,
+        message: "授業セッションが正常に更新されました", // "Class session updated successfully"
+        data: updatedClassSession,
       });
     }
   } catch (error) {
-    console.error("Error updating class session:", error);
+    console.error("授業セッションの更新エラー:", error); // "Error updating class session:"
     if (error instanceof ZodError) {
       return Response.json(
-        { error: "Invalid request data", issues: error.issues },
+        { error: "無効なリクエストデータです", issues: error.issues }, // "Invalid request data"
         { status: 400 }
       );
     }
     return Response.json(
       {
-        error: "Failed to update class session",
-        message: error instanceof Error ? error.message : "Unknown error",
+        error: "授業セッションの更新に失敗しました", // "Failed to update class session"
+        message: error instanceof Error ? error.message : "不明なエラーです", // "Unknown error"
       },
       { status: 500 }
     );
@@ -1439,10 +1482,10 @@ export async function PUT(request: Request) {
 export async function DELETE(request: Request) {
   const session = await auth();
   if (!session) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+    return Response.json({ error: "権限がありません" }, { status: 401 }); // "Unauthorized"
   }
   if (session.user?.role !== "ADMIN") {
-    return Response.json({ error: "Forbidden" }, { status: 403 });
+    return Response.json({ error: "禁止されています" }, { status: 403 }); // "Forbidden"
   }
 
   try {
@@ -1451,7 +1494,7 @@ export async function DELETE(request: Request) {
 
     if (!classId) {
       return Response.json(
-        { error: "Class session ID is required" },
+        { error: "授業セッションIDは必須です" }, // "Class session ID is required"
         { status: 400 }
       );
     }
@@ -1459,42 +1502,34 @@ export async function DELETE(request: Request) {
     // Check if class session exists
     const existingClassSession = await prisma.classSession.findUnique({
       where: { classId },
-      include: {
-        studentClassEnrollments: true,
-      },
     });
 
     if (!existingClassSession) {
       return Response.json(
-        { error: "Class session not found" },
+        { error: "授業セッションが見つかりません" }, // "Class session not found"
         { status: 404 }
       );
     }
 
-    // Delete class session and related data in a transaction
-    await prisma.$transaction(async (tx) => {
-      // Delete enrollments
-      if (existingClassSession.studentClassEnrollments.length > 0) {
-        await tx.studentClassEnrollment.deleteMany({
-          where: { classId },
-        });
-      }
+    // Delete related enrollments first
+    await prisma.studentClassEnrollment.deleteMany({
+      where: { classId },
+    });
 
-      // Delete the class session
-      await tx.classSession.delete({
-        where: { classId },
-      });
+    // Then delete the class session
+    await prisma.classSession.delete({
+      where: { classId },
     });
 
     return Response.json({
-      message: "Class session deleted successfully",
+      message: "授業セッションが正常に削除されました", // "Class session deleted successfully"
     });
   } catch (error) {
-    console.error("Error deleting class session:", error);
+    console.error("授業セッションの削除エラー:", error); // "Error deleting class session:"
     return Response.json(
       {
-        error: "Failed to delete class session",
-        message: error instanceof Error ? error.message : "Unknown error",
+        error: "授業セッションの削除に失敗しました", // "Failed to delete class session"
+        message: error instanceof Error ? error.message : "不明なエラーです", // "Unknown error"
       },
       { status: 500 }
     );
