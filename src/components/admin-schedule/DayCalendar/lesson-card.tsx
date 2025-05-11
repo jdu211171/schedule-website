@@ -32,12 +32,16 @@ const ADJUST_TOP = 0;
 const ADJUST_WIDTH = 0;
 const ADJUST_HEIGHT = -1;
 
-const getClassTypeColor = (typeName: string): string => {
-  switch(typeName) {
-    case '通常授業': return 'bg-blue-500 border-blue-600';
-    case '特別授業': return 'bg-red-500 border-red-600';
-    case 'テスト対策': return 'bg-purple-500 border-purple-600';
-    default: return 'bg-gray-500 border-gray-600';
+/**
+ * Determines card color based on lesson type and source (template or not)
+ */
+const getClassTypeColor = (typeName: string, isTemplateInstance: boolean): string => {
+  if (typeName === '通常授業' || isTemplateInstance) {
+    return 'bg-blue-500 border-blue-600'; // Regular lessons - blue
+  } else if (typeName === '特別補習') {
+    return 'bg-red-500 border-red-600'; // Special lessons - red
+  } else {
+    return 'bg-gray-500 border-gray-600'; // All others - gray
   }
 };
 
@@ -52,25 +56,24 @@ export const LessonCard: React.FC<LessonCardProps> = React.memo(({
   const [isVisible, setIsVisible] = useState(true);
   const cardRef = useRef<HTMLDivElement>(null);
   
+  // Determine if the lesson is based on a template
+  const isTemplateInstance = Boolean(lesson.regularClassTemplate);
   
-  // Форматируем время из UTC в японское время
+  // Format times from UTC to Japan time
   const formattedTimes = useMemo(() => {
     const start = formatToJapanTime(lesson.startTime);
     const end = formatToJapanTime(lesson.endTime);
-    
-    console.log(`Formatted times for lesson ${lesson.classId}: ${start}-${end} (Japan time)`);
-    
     return { start, end };
-  }, [lesson.startTime, lesson.endTime, lesson.classId]);
+  }, [lesson.startTime, lesson.endTime]);
   
   const cardColor = useMemo(() => {
-    return getClassTypeColor(lesson.classType?.name || '');
-  }, [lesson.classType?.name]);
+    return getClassTypeColor(lesson.classType?.name || '', isTemplateInstance);
+  }, [lesson.classType?.name, isTemplateInstance]);
   
   const teacherName = useMemo(() => lesson.teacher?.name || '教師不明', [lesson.teacher]);
   const studentName = useMemo(() => lesson.student?.name || '生徒不明', [lesson.student]);
   
-  // Мемоизируем расчет позиции карточки - это самая затратная операция
+  // Calculate card position
   useEffect(() => {
     const calculatePosition = () => {
       const boothId = lesson.boothId;
@@ -94,7 +97,7 @@ export const LessonCard: React.FC<LessonCardProps> = React.memo(({
         return null;
       }
       
-      // Вычисляем позицию и размеры карточки
+      // Calculate position and size of the card
       const left = ROOM_COLUMN_WIDTH + startTimeIndex * COLUMN_WIDTH + ADJUST_LEFT;
       const width = (endTimeIndex - startTimeIndex) * COLUMN_WIDTH + ADJUST_WIDTH;
       const top = HEADER_HEIGHT + roomIndex * timeSlotHeight + ADJUST_TOP;
@@ -119,7 +122,7 @@ export const LessonCard: React.FC<LessonCardProps> = React.memo(({
     timeSlots.length
   ]);
   
-  // Наблюдатель для отслеживания видимости карточки
+  // Observer to track card visibility
   useEffect(() => {
     if (!cardRef.current || !position) return;
     
@@ -169,11 +172,15 @@ export const LessonCard: React.FC<LessonCardProps> = React.memo(({
     >
       <div className="flex flex-col justify-between h-full text-xs text-white">
         <div className="flex justify-between items-center">
-          <div className="truncate font-semibold">{lesson.subject?.name || '不明'}</div>
+          <div className="truncate font-semibold">
+            {lesson.subject?.name || '不明'}
+            {isTemplateInstance && (
+              <span className="ml-1 inline-block w-2 h-2 rounded-full bg-yellow-300" title="テンプレートからの授業"></span>
+            )}
+          </div>
           <div className="truncate text-xs whitespace-nowrap">{formattedTimes.start}-{formattedTimes.end}</div>
         </div>
         
-        {/* Имена учителя и студента */}
         <div className="flex justify-between items-center text-xs opacity-80">
           <div className="truncate">👨‍🏫 {teacherName}</div>
           <div className="truncate">👨‍🎓 {studentName}</div>

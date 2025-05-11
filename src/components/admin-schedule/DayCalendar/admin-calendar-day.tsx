@@ -6,7 +6,12 @@ import { DayCalendar } from './day-calendar';
 import { CreateLessonDialog } from './create-lesson-dialog';
 import { LessonDialog } from './lesson-dialog';
 import { Skeleton } from "@/components/ui/skeleton";
-import { getCurrentDateAdjusted } from '../date';
+import { 
+  getCurrentDateAdjusted, 
+  getDateString, 
+  getDateKey,
+  isDayInArray,
+} from '../date';
 
 export type SelectionPosition = {
   row: number;
@@ -24,26 +29,32 @@ interface CreateLessonPayload extends NewLessonData {
   teacherId?: string;
   studentId?: string;
   subjectId?: string;
+  subjectTypeId?: string;
   classTypeId?: string;
   notes?: string | null;
 }
 
-interface UpdateLessonPayload extends Partial<ClassSessionWithRelations> {
-  classId: string; 
+interface UpdateLessonPayload {
+  classId: string;
+  date?: string;
+  startTime?: string;
+  endTime?: string;
+  boothId?: string;
+  teacherId?: string;
+  studentId?: string;
+  subjectId?: string;
+  subjectTypeId?: string;
+  classTypeId?: string;
+  notes?: string;
+  [key: string]: any; // Allow additional fields
 }
 
-const getDateKey = (date: Date): string => {
-  return date.toISOString().substring(0, 10);
-};
-
-const isDayInArray = (day: Date, array: Date[]): boolean => {
-  return array.some(d =>
-    d.getDate() === day.getDate() &&
-    d.getMonth() === day.getMonth() &&
-    d.getFullYear() === day.getFullYear()
-  );
-};
-
+/**
+ * Generates a unique key for a date with an index
+ * @param date Date object
+ * @param index Index to append to the key
+ * @returns Unique key string
+ */
 const getUniqueKeyForDate = (date: Date, index: number): string => {
   return `${getDateKey(date)}-${index}`;
 };
@@ -165,22 +176,192 @@ export default function AdminCalendarDay() {
     setShowLessonDialog(true);
   }, []);
 
-  const handleSaveNewLesson = useCallback((_lessonData: CreateLessonPayload) => {
-    setShowCreateDialog(false);
-    refreshData();
-    setNewLessonData(null);
+  // Function to create a new lesson
+  const handleSaveNewLesson = useCallback(async (lessonData: CreateLessonPayload) => {
+    try {
+      const dateStr = getDateString(lessonData.date);
+      
+      // Проверяем формат времени и добавляем недостающие части
+      let startTime = lessonData.startTime;
+      let endTime = lessonData.endTime;
+      
+      // Проверяем, содержит ли время уже "T"
+      if (!startTime.includes('T')) {
+        startTime = `${dateStr}T${startTime}`;
+      }
+      
+      if (!endTime.includes('T')) {
+        endTime = `${dateStr}T${endTime}`;
+      }
+      
+      // Проверяем, есть ли секунды в формате
+      if (startTime.split(':').length < 3) {
+        startTime = `${startTime}:00`;
+      }
+      
+      if (endTime.split(':').length < 3) {
+        endTime = `${endTime}:00`;
+      }
+      
+      // Создаем объект запроса
+      const requestBody = {
+        date: dateStr,
+        startTime,
+        endTime,
+        boothId: lessonData.roomId,
+        teacherId: lessonData.teacherId,
+        studentId: lessonData.studentId,
+        subjectId: lessonData.subjectId,
+        subjectTypeId: lessonData.subjectTypeId,
+        classTypeId: lessonData.classTypeId,
+        notes: lessonData.notes || ""
+      };
+      
+      console.log("授業作成リクエスト:", requestBody);
+      
+      // Отправляем запрос
+      const response = await fetch('/api/class-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+      });
+  
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('授業作成エラー:', errorData);
+        let errorMessage = '授業の作成に失敗しました';
+        
+        if (errorData.message) {
+          errorMessage = errorData.message;
+        } else if (errorData.error) {
+          errorMessage = errorData.error;
+        }
+        
+        if (errorData.issues && Array.isArray(errorData.issues)) {
+          errorMessage += ': ' + errorData.issues.map((issue: any) => issue.message).join(', ');
+        }
+        
+        throw new Error(errorMessage);
+      }
+  
+      setShowCreateDialog(false);
+      refreshData();
+      setNewLessonData(null);
+    } catch (error) {
+      console.error('授業作成エラー:', error);
+      alert(`授業の作成エラー: ${error instanceof Error ? error.message : '不明なエラー'}`);
+    }
   }, [refreshData]);
 
-  const handleUpdateLesson = useCallback((_updatedLesson: UpdateLessonPayload) => {
-    setShowLessonDialog(false);
-    refreshData();
-    setSelectedLesson(null);
+  // Function to update an existing lesson
+  const handleUpdateLesson = useCallback(async (updatedLesson: UpdateLessonPayload) => {
+    try {
+      // Create a copy of the lesson to update
+      const lessonToUpdate: Record<string, any> = { ...updatedLesson };
+      
+      // Convert date to string format if it exists
+      if (lessonToUpdate.date) {
+        if (lessonToUpdate.date instanceof Date) {
+          lessonToUpdate.date = getDateString(lessonToUpdate.date);
+        }
+      }
+      
+      // Convert start and end times to ISO format if they exist
+      const dateStr = typeof lessonToUpdate.date === 'string' ? lessonToUpdate.date : '';
+      
+      if (lessonToUpdate.startTime && typeof lessonToUpdate.startTime === 'string') {
+        // Check if it already has the ISO format with 'T'
+        if (!String(lessonToUpdate.startTime).includes('T') && dateStr) {
+          lessonToUpdate.startTime = `${dateStr}T${lessonToUpdate.startTime}:00`;
+        }
+      }
+      
+      if (lessonToUpdate.endTime && typeof lessonToUpdate.endTime === 'string') {
+        // Check if it already has the ISO format with 'T'
+        if (!String(lessonToUpdate.endTime).includes('T') && dateStr) {
+          lessonToUpdate.endTime = `${dateStr}T${lessonToUpdate.endTime}:00`;
+        }
+      }
+      
+      // Convert null notes to empty string
+      if (lessonToUpdate.notes === null) {
+        lessonToUpdate.notes = "";
+      }
+      
+      console.log("授業更新リクエスト:", lessonToUpdate);
+      
+      // Send to API endpoint
+      const response = await fetch(`/api/class-session`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(lessonToUpdate),
+      });
+  
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('授業更新エラー:', errorData);
+        let errorMessage = '授業の更新に失敗しました';
+        
+        if (errorData.message) {
+          errorMessage = errorData.message;
+        } else if (errorData.error) {
+          errorMessage = errorData.error;
+        }
+        
+        if (errorData.issues && Array.isArray(errorData.issues)) {
+          errorMessage += ': ' + errorData.issues.map((issue: any) => issue.message).join(', ');
+        }
+        
+        throw new Error(errorMessage);
+      }
+  
+      setShowLessonDialog(false);
+      refreshData();
+      setSelectedLesson(null);
+    } catch (error) {
+      console.error('授業更新エラー:', error);
+      alert(`授業の更新エラー: ${error instanceof Error ? error.message : '不明なエラー'}`);
+    }
   }, [refreshData]);
 
-  const handleDeleteLesson = useCallback((_lessonId: string) => {
-    setShowLessonDialog(false);
-    refreshData();
-    setSelectedLesson(null);
+  // Function to delete a lesson
+  const handleDeleteLesson = useCallback(async (lessonId: string) => {
+    try {
+      // Ask for confirmation
+      if (!window.confirm('本当にこの授業を削除しますか？')) {
+        return;
+      }
+      
+      // Send to API endpoint
+      const response = await fetch(`/api/class-session?classId=${lessonId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('授業削除エラー:', errorData);
+        let errorMessage = '授業の削除に失敗しました';
+        
+        if (errorData.message) {
+          errorMessage = errorData.message;
+        } else if (errorData.error) {
+          errorMessage = errorData.error;
+        }
+        
+        throw new Error(errorMessage);
+      }
+
+      setShowLessonDialog(false);
+      refreshData();
+      setSelectedLesson(null);
+    } catch (error) {
+      console.error('授業削除エラー:', error);
+      alert(`授業の削除エラー: ${error instanceof Error ? error.message : '不明なエラー'}`);
+    }
   }, [refreshData]);
 
   if (isLoadingBooths) {

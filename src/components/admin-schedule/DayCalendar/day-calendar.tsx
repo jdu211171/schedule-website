@@ -4,6 +4,7 @@ import { ja } from 'date-fns/locale';
 import { ClassSessionWithRelations } from '@/hooks/useClassSessionQuery'; 
 import { SelectionPosition, TimeSlot } from './admin-calendar-day'; 
 import { LessonCard } from './lesson-card'; 
+import { isSameDay } from '../date';
 
 interface Room {
   boothId: string;
@@ -24,17 +25,9 @@ const CELL_WIDTH = 40;
 const ROOM_LABEL_WIDTH = 100; 
 const TIME_SLOT_HEIGHT = 40;
 
-const isSameDay = (date1: string | Date, date2: string | Date): boolean => {
-  const d1 = date1 instanceof Date ? date1 : new Date(date1);
-  const d2 = date2 instanceof Date ? date2 : new Date(date2);
-  
-  return (
-    d1.getFullYear() === d2.getFullYear() &&
-    d1.getMonth() === d2.getMonth() &&
-    d1.getDate() === d2.getDate()
-  );
-};
-
+/**
+ * Checks if a cell position is within the current selection
+ */
 const isCellInSelection = (roomIndex: number, timeIndex: number, selectionStart: SelectionPosition | null, selectionEnd: SelectionPosition | null): boolean => {
   if (!selectionStart || !selectionEnd) return false;
   
@@ -205,7 +198,7 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
   
   const createLessonCalledRef = useRef(false);
   
-  // DEBUG: Логируем, сколько сессий у нас для этого дня
+  // Log how many sessions we have for this day
   useEffect(() => {
     console.log(`DayCalendar for ${date.toISOString().substring(0, 10)} has ${classSessions.length} sessions`);
   }, [date, classSessions]);
