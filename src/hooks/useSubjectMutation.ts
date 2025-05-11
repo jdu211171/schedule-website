@@ -58,6 +58,31 @@ export function getResolvedSubjectId(id: string): string {
   return tempToServerIdMap.get(id) || id;
 }
 
+type SubjectsQueryData = {
+  data: SubjectWithRelations[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    pages: number;
+  };
+};
+
+// Define context types for mutations
+type SubjectMutationContext = {
+  previousSubjects?: Record<string, SubjectsQueryData>;
+  previousSubject?: SubjectWithRelations;
+  deletedSubject?: SubjectWithRelations;
+  tempId?: string;
+};
+
+// Maintain a mapping between temporary IDs and server IDs
+const tempToServerIdMap = new Map<string, string>();
+
+export function getResolvedSubjectId(id: string): string {
+  return tempToServerIdMap.get(id) || id;
+}
+
 export function useSubjectCreate() {
   const queryClient = useQueryClient();
   return useMutation<
@@ -397,8 +422,6 @@ export function useSubjectUpdate() {
         queryKey: ["subject", resolvedId],
         refetchType: "none",
       });
-    },
-  });
 }
 
 export function useSubjectDelete() {
