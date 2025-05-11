@@ -1494,16 +1494,16 @@ Content-Type: application/json
 Cookie: {{cookie}}
 
 {
-  "boothId": "cmajd3kir000rvomg9alrluot",
-  "classTypeId": "cmajd3kik000lvomgtd9c9tn3",
-  "teacherId": "cmajd3kj0000yvomgsvbgir1j",
-  "studentId": "cmajd3kj10010vomgp7l3d3pu",
-  "subjectId": "cmajd3kid000kvomga9ekmkf3",
-  "subjectTypeId": "cmajd3ki8000fvomgaplevv1i",
-  "date": "2025-05-13",
-  "endTime": "2025-05-10T09:00:00",
+  "boothId": "cmahq7mjl000q10nhi6im4yqq",
+  "classTypeId": "cmahq7ir2000l10nhdqd46dhd",
+  "teacherId": "cmahq7pe9000w10nh34bgv1ba",
+  "studentId": "cmahq7sba001210nhghg4pju6",
+  "subjectId": "cmahq7e38000i10nhtqg74h5i",
+  "subjectTypeId": "cmahq7c6m000d10nh9pls7fz8",
+  "date": "2025-05-10",
+  "endTime": "2025-05-10T18:15:00",
   "notes": "sad",
-  "startTime": "2025-05-10T10:00:00"
+  "startTime": "2025-05-10T17:00:00"
 }
 
 ### Create a new class session from a template
@@ -1512,11 +1512,11 @@ Content-Type: application/json
 Cookie: {{cookie}}
 
 {
-  "templateId": "cma8l110g0016sblicr4f6y84",
+  "templateId": "cmah6end4001610kt7n20t1sz",
   "date": "2025-05-17",
   "startTime": "15:00:00",
   "endTime": "16:30:00",
-  "boothId": "cma8l10zs000rsblikqyde80c",
+  "boothId": "cmah6enc8000q10ktybn8yhzo",
   "notes": "Booth Bに変更された数学授業"
 }
 
@@ -1526,7 +1526,7 @@ Content-Type: application/json
 Cookie: {{cookie}}
 
 {
-  "templateId": "cma8l110g0016sblicr4f6y84",
+  "templateId": "cmah6end4001610kt7n20t1sz",
   "date": "2025-05-24",
   "notes": "テンプレートのデフォルト設定を使用"
 }

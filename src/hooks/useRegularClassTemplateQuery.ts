@@ -15,6 +15,7 @@ type UseRegularClassTemplatesParams = {
 
 export type RegularClassTemplateWithRelations = Prisma.RegularClassTemplateGetPayload<{
   include: {
+    classType: true;
     booth: true;
     teacher: true;
     subject: true;

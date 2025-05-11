@@ -370,7 +370,7 @@ export function TeacherFormDialog({
     } catch (error) {
       console.error("Error saving teacher:", error);
       // Display error to user
-      alert("保存に失敗しました。入力内容を確認してください。");
+      // alert("保存に失敗しました。入力内容を確認してください。");
       setIsSubmitting(false);
     }
   }

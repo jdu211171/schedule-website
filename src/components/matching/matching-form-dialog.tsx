@@ -317,7 +317,7 @@ export function MatchingFormDialog({
                             .includes(studentSearchTerm.toLowerCase())
                         ).length === 0 && (
                           <div className="p-2 text-muted-foreground">
-                            該当する生徒が見つかりません
+                            該当する学生が見つかりません
                           </div>
                         )}
                       </div>

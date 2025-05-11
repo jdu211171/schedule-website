@@ -43,28 +43,8 @@ export const CreateClassSessionSchema = z
     date: z
       .string({ required_error: "日付は必須です" })
       .transform((val) => new Date(val)),
-    startTime: z.string({ required_error: "開始時間は必須です" }).transform((val) => {
-      // Check if val is already a full ISO string with date and time
-      if (val.includes("T")) {
-        const d = new Date(val);
-        if (!isNaN(d.getTime())) return d;
-      }
-      // Assume val is HH:mm or HH:mm:ss and prepend a fixed date
-      const d = new Date(`1970-01-01T${val}`);
-      if (!isNaN(d.getTime())) return d;
-      throw new Error("無効な開始時刻形式です"); // "Invalid start time format"
-    }),
-    endTime: z.string({ required_error: "終了時間は必須です" }).transform((val) => {
-      // Check if val is already a full ISO string with date and time
-      if (val.includes("T")) {
-        const d = new Date(val);
-        if (!isNaN(d.getTime())) return d;
-      }
-      // Assume val is HH:mm or HH:mm:ss and prepend a fixed date
-      const d = new Date(`1970-01-01T${val}`);
-      if (!isNaN(d.getTime())) return d;
-      throw new Error("無効な終了時刻形式です"); // "Invalid end time format"
-    }),
+    startTime: z.string({ required_error: "開始時間は必須です" }),
+    endTime: z.string({ required_error: "終了時間は必須です" }),
     teacherId: z
       .string({ required_error: "講師IDは必須です" })
       .max(50, { message: "講師IDは50文字以内で入力してください" }),
@@ -124,24 +104,8 @@ export const UpdateStandaloneClassSessionSchema = z
       .string()
       .transform((val) => new Date(val))
       .optional(),
-    startTime: z.string().transform((val) => {
-      if (val.includes("T")) {
-        const d = new Date(val);
-        if (!isNaN(d.getTime())) return d;
-      }
-      const d = new Date(`1970-01-01T${val}`);
-      if (!isNaN(d.getTime())) return d;
-      throw new Error("無効な開始時刻形式です");
-    }).optional(),
-    endTime: z.string().transform((val) => {
-      if (val.includes("T")) {
-        const d = new Date(val);
-        if (!isNaN(d.getTime())) return d;
-      }
-      const d = new Date(`1970-01-01T${val}`);
-      if (!isNaN(d.getTime())) return d;
-      throw new Error("無効な終了時刻形式です");
-    }).optional(),
+    startTime: z.string().optional(),
+    endTime: z.string().optional(),
     teacherId: z
       .string()
       .max(50, { message: "講師IDは50文字以内で入力してください" })
