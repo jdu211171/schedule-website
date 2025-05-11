@@ -1,47 +1,39 @@
-import React from "react";
+import { Lesson } from "@/app/student/page";
 import {
-  format,
-  startOfWeek,
-  addHours,
   addDays,
+  format,
   isSameDay,
-  isSameHour,
-  parseISO,
   isToday,
+  parseISO,
+  startOfWeek,
 } from "date-fns";
-
-type Lesson = {
-  name: string;
-  date: string; // Masalan: "2025-05-06T14:00:00"
-};
-
+import { BookOpen, Clock9, History, School, User2 } from "lucide-react";
+import React from "react";
 type WeekViewerProps = {
   lessons: Lesson[];
-  weekDate: Date; // Haftaning istalgan kuni (odatda dushanba)
+  weekDate: Date;
+  daysOfWeek: string[];
+  getColor: (subjectId: string) => string;
 };
-
-const daysOfWeek = ["Du", "Se", "Ch", "Pa", "Ju", "Sh", "Ya"];
 
 export const StudentScheduleWeekViewer: React.FC<WeekViewerProps> = ({
   lessons,
   weekDate,
+  daysOfWeek,
+  getColor,
 }) => {
   const weekStart = startOfWeek(weekDate, { weekStartsOn: 1 });
-
-  const hours = Array.from({ length: 24 }, (_, i) => i);
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
-
   return (
     <div className="overflow-auto">
-      <div className="grid grid-cols-[60px_repeat(7,1fr)] text-sm font-semibold">
-        <div></div>
+      <div className="grid grid-cols-7 text-sm font-semibold">
         {days.map((day, i) => {
           const currentDay = isToday(day);
           return (
             <div
               key={i}
               className={`text-center px-2 py-1 ${
-                currentDay ? "bg-blue-200 text-blue-800 font-bold" : ""
+                currentDay ? "bg-blue-200 font-bold" : ""
               }`}
             >
               {daysOfWeek[i]} <br />
@@ -50,45 +42,70 @@ export const StudentScheduleWeekViewer: React.FC<WeekViewerProps> = ({
           );
         })}
       </div>
-      <div className="grid grid-cols-[60px_repeat(7,1fr)] ">
-        {hours.map((hour) => (
-          <React.Fragment key={hour}>
-            {/* Time column */}
-            <div className="border text-xs h-[50px] flex items-center justify-center">
-              {String(hour).padStart(2, "0")}:00
-            </div>
+      <div className="grid grid-cols-7">
+        {days.map((day, dayIndex) => {
+          const lessonsOnDay = lessons.filter((lesson) => {
+            const lessonDate = parseISO(lesson.date);
+            return isSameDay(lessonDate, day);
+          });
 
-            {/* 7 days x 1 hour cells */}
-            {days.map((day, dayIndex) => {
-              const cellDate = addHours(day, hour);
-              const isCurrentDay = isToday(day);
-
-              const lessonsInCell = lessons.filter(
-                (l) =>
-                  isSameDay(parseISO(l.date), cellDate) &&
-                  isSameHour(parseISO(l.date), cellDate)
-              );
-
-              return (
-                <div
-                  key={dayIndex}
-                  className={`border h-[50px] text-xs p-1 relative ${
-                    isCurrentDay ? "bg-blue-200" : ""
-                  }`}
-                >
-                  {lessonsInCell.map((lesson, i) => (
-                    <div
-                      key={i}
-                      className="absolute top-0 left-0 right-0 bg-yellow-100 text-yellow-800 rounded px-1 text-[10px] overflow-hidden truncate m-1"
-                    >
-                      {lesson.name}
+          return (
+            <div
+              key={dayIndex}
+              className={`min-h-[200px] p-2 ${
+                isToday(day) ? "bg-blue-100" : ""
+              }`}
+            >
+              {lessonsOnDay.map((lesson, i) => {
+                const bgColor = getColor(lesson.subject.subjectId);
+                const start = format(parseISO(lesson.startTime), "HH:mm");
+                const end = format(parseISO(lesson.endTime), "HH:mm");
+                return (
+                  <div
+                    key={i}
+                    className="rounded-2xl p-4 bg-white border border-gray-300 hover:border-gray-500 shadow-sm hover:shadow-lg transition-all duration-300 space-y-2 my-3"
+                    style={{ backgroundColor: bgColor }}
+                  >
+                    {/* subject */}
+                    <div className="flex items-center gap-2 text-gray-900">
+                      <BookOpen className="w-5 h-5 text-gray-800" />
+                      <span className="text-base font-semibold">
+                        {lesson.subject.name}
+                      </span>
                     </div>
-                  ))}
-                </div>
-              );
-            })}
-          </React.Fragment>
-        ))}
+
+                    {/* teacer */}
+                    <div className="flex items-center gap-2 text-gray-700">
+                      <User2 className="w-4 h-4 text-gray-600" />
+                      <span className="text-sm">{lesson.teacher.name}</span>
+                    </div>
+
+                    {/* booth */}
+                    <div className="flex items-center gap-2 text-gray-700">
+                      <School className="w-4 h-4 text-gray-600" />
+                      <span className="text-sm">{lesson.booth.name}</span>
+                    </div>
+
+                    {/* time */}
+                    <div className="flex flex-col justify-center items-start gap-1 text-gray-700 border-t pt-2 border-black">
+                      <div className="flex items-center gap-2">
+                        <Clock9 className="w-4 h-4 text-gray-600" />
+                        <span className="text-sm">
+                          {start} - {end}
+                        </span>
+                      </div>
+                      {/* duration time */}
+                      <div className="text-xs text-gray-600 italic flex items-center gap-2">
+                        <History className="w-4 h-4 text-gray-600" />
+                        {format(parseISO(lesson?.duration), "HH:mm")}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

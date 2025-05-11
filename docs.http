@@ -1,5 +1,5 @@
 @url = http://localhost:3000/api
-@cookie = __next_hmr_refresh_hash__=738; authjs.csrf-token=fa36461f853cea294c57376d34ee7ae1408ca72a666804f4c9b39090cdb7393c%7Cd2fe282e05342c8c9aff90c7a07d8623d864997eda45a94775e26811abcbcaa1; __next_hmr_refresh_hash__=227; authjs.callback-url=http%3A%2F%2Flocalhost%3A3000%2Fdashboard%2Fschedules; authjs.session-token=eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2Q0JDLUhTNTEyIiwia2lkIjoiUzVhOHQ1TmxDbU9yMjZoTVJHdGR4M042RmRCY2JJQ1ZMY1Y2MWRfSmk0UTlHN01CbDNMQzlNSVp1UTlQb3o1UjlvaUhzS2dzcThHRWlvb05tMTU1SFEifQ..pQhpHPIq0ntNukSg51bMQQ.RWIlZixvjSp7Jri1FR-FhMWrl_vs5r67cdl-k_3cM_BX8EoWcGZZNU2F7iIqU2xSfGS0efMKWZhB8u9Boo47R2mbIPRkf3sIoDX0X3cLK8Tbv37lOXAlUjTRTvVdaFFQ0IaOdkPBLNSXkB_gLsCNZDqGPqTVZkD9BBYrIBCjkapgnaRJ_4Cobu0TZnR5Agnk_RMz2SX8HBOO8fllRcgcKOH6trMZtsDhsH6MW1QXjV-Ir6iycxAIl3WWNxkS9HrvSmxDk90uhwR-6qODPoVQY0ReT1b0-U8tEmqwdf1lhCk.vLEtrp7JJekl-fc8dCXXMc_Wk72d6yGTwQ1xqOkn5NI
+@cookie = NEXT_LOCALE=ru; authjs.csrf-token=026c636b080445e14717852a5f3050dc08b59c294d45332bc7ff1d3533403204%7C6bba38d45aa998a562ed9bffaa44a529cb67852907fde61c446eeb2dac200977; next_hmr_refresh_hash=894; authjs.callback-url=http%3A%2F%2Flocalhost%3A3000%2F; authjs.session-token=eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2Q0JDLUhTNTEyIiwia2lkIjoiZHEzWk1MZlNQbFBtVVBxV291WWxrVXA4M2l1MDVod1phQ2U4UGdPbWZfS2t5enlmZy1JYlA0UmJ0UHdHN1NyOHQwSk9MbUxDb2gwQnF3ZHMzMGVOaEEifQ..gZMZfXXKsU1PgGFpKdyCuw.sWZgChSMtU06Uq1O4aZDR1QSWfHrgzYSdly4ycIOMrOxdv2tVS8rd8RVZThoKDegReJUF9i2WwfeX502dj6_XXv62wRuli6WA3A-olOQogbsBO8mWahzQwlIedKvfA1J7L0vn543dGyUrght9BhpjHp9DwWT_lfyg4krjlAYBuQDPyLEkUgPsx2-KwQYhLE5g6BNM1H366-a8Q10gCUptP_2BDOW05mRHzYRRcaAhZXyfJIyIeC9vGSqPIi-nuvUje6jc_mN5hUKnKkel_tcQWx15jiyyRAYXNBemS0JBj4.A1FWdHDGF1r82WinBEZCVYeVcwdP2hgO0bo6Tddjpqg
 
 #########
 # BOOTH #
@@ -1402,7 +1402,7 @@ Content-Type: application/json
 Cookie: {{cookie}}
 
 ### Get class sessions for a specific student (single value)
-GET {{url}}/class-session?studentId=cma8l11050010sbli4bqmqkcj
+GET {{url}}/class-session?studentId=cmajd3kj10010vomgp7l3d3pu
 Content-Type: application/json
 Cookie: {{cookie}}
 
@@ -1494,16 +1494,16 @@ Content-Type: application/json
 Cookie: {{cookie}}
 
 {
-  "boothId": "cmahq7mjl000q10nhi6im4yqq",
-  "classTypeId": "cmahq7ir2000l10nhdqd46dhd",
-  "teacherId": "cmahq7pe9000w10nh34bgv1ba",
-  "studentId": "cmahq7sba001210nhghg4pju6",
-  "subjectId": "cmahq7e38000i10nhtqg74h5i",
-  "subjectTypeId": "cmahq7c6m000d10nh9pls7fz8",
-  "date": "2025-05-10",
-  "endTime": "2025-05-10T18:15:00",
+  "boothId": "cmajd3kir000rvomg9alrluot",
+  "classTypeId": "cmajd3kik000lvomgtd9c9tn3",
+  "teacherId": "cmajd3kj0000yvomgsvbgir1j",
+  "studentId": "cmajd3kj10010vomgp7l3d3pu",
+  "subjectId": "cmajd3kid000kvomga9ekmkf3",
+  "subjectTypeId": "cmajd3ki8000fvomgaplevv1i",
+  "date": "2025-05-13",
+  "endTime": "2025-05-10T09:00:00",
   "notes": "sad",
-  "startTime": "2025-05-10T17:00:00"
+  "startTime": "2025-05-10T10:00:00"
 }
 
 ### Create a new class session from a template
