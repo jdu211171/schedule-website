@@ -21,6 +21,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import { StudentPreferenceSubjectWithRelations } from "@/hooks/useStudentPreferenceSubjectQuery";
 
+// Extended type to handle optimistic UI
+type ExtendedStudentPreferenceSubject =
+  StudentPreferenceSubjectWithRelations & {
+    _optimistic?: boolean;
+    _tempId?: string;
+  };
+
 type GroupedStudentSubject = {
   studentId: string;
   studentName: string;
@@ -31,7 +38,7 @@ type GroupedStudentSubject = {
     subjectName: string;
     subjectTypeName: string;
     notes?: string;
-    original: StudentPreferenceSubjectWithRelations;
+    original: ExtendedStudentPreferenceSubject;
   }[];
 };
 
@@ -49,7 +56,7 @@ export function StudentSubjectTable() {
   });
 
   const [studentSubjectToDelete, setStudentSubjectToDelete] =
-    useState<StudentPreferenceSubjectWithRelations | null>(null);
+    useState<ExtendedStudentPreferenceSubject | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
   const deleteStudentSubjectMutation = useStudentPreferenceSubjectDelete();
@@ -73,13 +80,13 @@ export function StudentSubjectTable() {
       }
 
       groupedByStudent[studentId].subjects.push({
-        id: item.id,
+        id: (item as ExtendedStudentPreferenceSubject)._tempId || item.id,
         subjectId: item.subjectId,
         subjectTypeId: item.subjectTypeId,
         subjectName: item.subject.name,
         subjectTypeName: item.subjectType.name,
         notes: item.notes,
-        original: item,
+        original: item as ExtendedStudentPreferenceSubject,
       });
     });
 
@@ -102,10 +109,15 @@ export function StudentSubjectTable() {
   const handleDeleteStudentSubject = async () => {
     if (studentSubjectToDelete) {
       try {
-        await deleteStudentSubjectMutation.mutateAsync({
-          id: studentSubjectToDelete.id,
-        });
+        // Close the dialog immediately for better UX
+        const deleteParams = {
+          id: studentSubjectToDelete._tempId || studentSubjectToDelete.id,
+        };
+
         setStudentSubjectToDelete(null);
+
+        // Then trigger the mutation without waiting for result
+        await deleteStudentSubjectMutation.mutateAsync(deleteParams);
       } catch (error) {
         console.error("生徒科目の削除に失敗しました:", error);
       }
@@ -123,28 +135,37 @@ export function StudentSubjectTable() {
       header: "希望科目",
       cell: ({ row }) => (
         <div className="flex flex-row flex-wrap gap-2">
-          {row.original.subjects.map((subject) => (
-            <div
-              key={subject.id}
-              className="flex items-center border rounded-md p-1 bg-muted/30"
-            >
-              <span className="font-medium text-sm">{subject.subjectName}</span>
-              <span className="text-xs text-muted-foreground ml-1">
-                ({subject.subjectTypeName})
-              </span>
-              {subject.notes && (
-                <span className="text-xs italic ml-1">- {subject.notes}</span>
-              )}
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6 ml-1"
-                onClick={() => setStudentSubjectToDelete(subject.original)}
+          {row.original.subjects.map((subject) => {
+            // Check for optimistic UI flag
+            const isOptimistic = subject.original._optimistic;
+
+            return (
+              <div
+                key={subject.id}
+                className={`flex items-center border rounded-md p-1 bg-muted/30 ${
+                  isOptimistic ? "opacity-70" : ""
+                }`}
               >
-                <Trash2 className="h-3 w-3 text-destructive" />
-              </Button>
-            </div>
-          ))}
+                <span className="font-medium text-sm">
+                  {subject.subjectName}
+                </span>
+                <span className="text-xs text-muted-foreground ml-1">
+                  ({subject.subjectTypeName})
+                </span>
+                {subject.notes && (
+                  <span className="text-xs italic ml-1">- {subject.notes}</span>
+                )}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 ml-1"
+                  onClick={() => setStudentSubjectToDelete(subject.original)}
+                >
+                  <Trash2 className="h-3 w-3 text-destructive" />
+                </Button>
+              </div>
+            );
+          })}
         </div>
       ),
     },
