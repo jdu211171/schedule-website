@@ -31,16 +31,12 @@ interface SelectionState {
   end: SelectionPosition | null;
 }
 
-// Вынесено за пределы компонента для предотвращения повторных созданий
 const initialSelectionState: SelectionState = {
   isSelecting: false,
   start: null,
   end: null
 };
 
-/**
- * Checks if a cell position is within the current selection
- */
 const isCellInSelection = (
   roomIndex: number, 
   timeIndex: number, 
@@ -57,7 +53,6 @@ const isCellInSelection = (
   return timeIndex >= minCol && timeIndex <= maxCol;
 };
 
-// Оптимизированный CalendarCell с функцией сравнения для React.memo
 const CalendarCell = React.memo(({ 
   roomIndex, 
   timeSlot, 
@@ -87,9 +82,19 @@ const CalendarCell = React.memo(({
       data-selected={isSelected ? "true" : "false"}
       className={`
         border-r border-b relative select-none
-        ${timeSlot.index % 4 === 0 ? "bg-gray-50" : "bg-white"}
-        ${isSelecting ? "cursor-move" : "hover:bg-gray-100 cursor-pointer"}
-        ${isSelected ? "!bg-green-200 !opacity-80 shadow-inner" : ""}
+        ${timeSlot.index % 4 === 0 
+          ? "bg-muted dark:bg-muted" 
+          : "bg-background dark:bg-background"
+        }
+        ${isSelecting 
+          ? "cursor-move" 
+          : "hover:bg-accent dark:hover:bg-accent cursor-pointer"
+        }
+        ${isSelected 
+          ? "!bg-green-200 dark:!bg-green-900 !opacity-80 shadow-inner" 
+          : ""
+        }
+        border-border dark:border-border
       `}
       style={{ 
         width: `${CELL_WIDTH}px`, 
@@ -103,17 +108,14 @@ const CalendarCell = React.memo(({
     />
   );
 }, (prevProps, nextProps) => {
-  // Оптимизированная функция сравнения для повышения производительности
   return prevProps.roomIndex === nextProps.roomIndex &&
          prevProps.timeSlot.index === nextProps.timeSlot.index &&
          prevProps.isSelected === nextProps.isSelected &&
          prevProps.isSelecting === nextProps.isSelecting;
-  // Обработчики событий не сравниваем, так как они должны быть мемоизированы через useCallback
 });
 
 CalendarCell.displayName = 'CalendarCell';
 
-// Оптимизированный RoomRow с функцией сравнения для React.memo
 const RoomRow = React.memo(({ 
   room, 
   roomIndex, 
@@ -140,14 +142,13 @@ const RoomRow = React.memo(({
       className="flex relative"
       style={{ height: `${TIME_SLOT_HEIGHT}px` }}
     >
-      {/* Убрали position: sticky и просто сделали обычную ячейку */}
       <div
-        className="flex items-center justify-center bg-white border-r border-b text-sm font-medium text-gray-700 px-2"
+        className="flex items-center justify-center bg-background dark:bg-background border-r border-b text-sm font-medium text-foreground dark:text-foreground px-2 border-border dark:border-border"
         style={{ 
           width: `${ROOM_LABEL_WIDTH}px`, 
           minWidth: `${ROOM_LABEL_WIDTH}px`, 
           height: `${TIME_SLOT_HEIGHT}px`,
-          zIndex: 5 // Понизили z-index
+          zIndex: 5
         }}
       >
         <span className="truncate">{room.name}</span>
@@ -172,7 +173,6 @@ const RoomRow = React.memo(({
     </div>
   );
 }, (prevProps, nextProps) => {
-  // Оптимизированная функция сравнения для RoomRow
   return prevProps.roomIndex === nextProps.roomIndex &&
          prevProps.room.boothId === nextProps.room.boothId &&
          prevProps.isSelecting === nextProps.isSelecting &&
@@ -182,13 +182,11 @@ const RoomRow = React.memo(({
 
 RoomRow.displayName = 'RoomRow';
 
-// Мемоизированный заголовок времени
 const TimeHeader = React.memo(({ timeSlots }: { timeSlots: TimeSlot[] }) => {
   return (
-    <div className="flex bg-white shadow-sm border-b">
-      {/* Убрали position: sticky из заголовка */}
+    <div className="flex bg-background dark:bg-background shadow-sm border-b border-border dark:border-border">
       <div 
-        className="flex items-center justify-center font-semibold border-r text-sm text-gray-700 bg-white"
+        className="flex items-center justify-center font-semibold border-r text-sm text-foreground dark:text-foreground bg-background dark:bg-background border-border dark:border-border"
         style={{ 
           width: `${ROOM_LABEL_WIDTH}px`, 
           minWidth: `${ROOM_LABEL_WIDTH}px`, 
@@ -202,8 +200,11 @@ const TimeHeader = React.memo(({ timeSlots }: { timeSlots: TimeSlot[] }) => {
         <div
           key={`time-${timeSlot.index}`}
           data-time-index={timeSlot.index}
-          className={`flex items-center justify-center font-semibold border-r text-xs
-            ${timeSlot.index % 4 === 0 ? "bg-gray-100" : "bg-white"}`}
+          className={`flex items-center justify-center font-semibold border-r text-xs border-border dark:border-border
+            ${timeSlot.index % 4 === 0 
+              ? "bg-muted dark:bg-muted" 
+              : "bg-background dark:bg-background"
+            }`}
           style={{ 
             width: `${CELL_WIDTH}px`, 
             minWidth: `${CELL_WIDTH}px`, 
@@ -211,7 +212,7 @@ const TimeHeader = React.memo(({ timeSlots }: { timeSlots: TimeSlot[] }) => {
           }}
         >
           {timeSlot.index % 4 === 0 ? (
-            <div className="text-xs font-medium text-gray-600">
+            <div className="text-xs font-medium text-muted-foreground dark:text-muted-foreground">
               {timeSlot.start.split(':')[0]}:00
             </div>
           ) : null}
@@ -235,29 +236,23 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(1200); 
   
-  // Объединенное состояние выделения для уменьшения перерисовок
   const [selection, setSelection] = useState<SelectionState>(initialSelectionState);
   
   const createLessonCalledRef = useRef(false);
-  // Используем ref для предотвращения частых обновлений размера
   const lastResizeTime = useRef(0);
 
-  // Мемоизированная функция для фильтрации сессий на текущий день
   const filteredSessions = useMemo(() => {
     return classSessions.filter(session => isSameDay(session.date, date));
   }, [classSessions, date]);
   
-  // Вычисляем общую ширину сетки один раз
   const totalGridWidth = useMemo(() => {
     return timeSlots.length * CELL_WIDTH;
   }, [timeSlots.length]);
   
-  // Форматируем дату один раз
   const formattedDate = useMemo(() => {
     return format(date, 'yyyy年MM月dd日 (eee)', { locale: ja });
   }, [date]);
   
-  // Логгируем количество сессий только при изменении
   useEffect(() => {
     console.log(`DayCalendar for ${date.toISOString().substring(0, 10)} has ${filteredSessions.length} sessions`);
   }, [date, filteredSessions.length]);
@@ -330,21 +325,18 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
     }
   }, [selection, timeSlots, rooms, onCreateLesson, date, cancelSelection]); 
 
-  // Простая функция обновления размера без throttle
   const updateContainerWidth = useCallback(() => {
     if (containerRef.current) {
       setContainerWidth(containerRef.current.clientWidth);
     }
   }, []);
 
-  // Используем ResizeObserver без throttle
   useEffect(() => {
     updateContainerWidth();
     
     const resizeObserver = new ResizeObserver(() => {
-      // Простое ограничение частоты без сложностей throttle
       const now = Date.now();
-      if (now - lastResizeTime.current > 100) { // 100ms - минимальный интервал между обновлениями
+      if (now - lastResizeTime.current > 100) {
         lastResizeTime.current = now;
         updateContainerWidth();
       }
@@ -396,16 +388,16 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
   }, [selection.isSelecting, cancelSelection]);
 
   return (
-    <div className="border rounded-md overflow-hidden shadow-sm bg-white">
-      <div className="p-3 border-b bg-gray-50">
-        <h3 className="font-medium text-lg">{formattedDate}</h3>
+    <div className="border rounded-md overflow-hidden shadow-sm bg-background dark:bg-background border-border dark:border-border">
+      <div className="p-3 border-b bg-muted dark:bg-muted border-border dark:border-border">
+        <h3 className="font-medium text-lg text-foreground dark:text-foreground">{formattedDate}</h3>
         {filteredSessions.length === 0 && (
-          <div className="text-xs text-gray-500 mt-1">
+          <div className="text-xs text-muted-foreground dark:text-muted-foreground mt-1">
             この日の授業はまだありません
           </div>
         )}
         {filteredSessions.length > 0 && (
-          <div className="text-xs text-gray-500 mt-1">
+          <div className="text-xs text-muted-foreground dark:text-muted-foreground mt-1">
             授業数: {filteredSessions.length}
           </div>
         )}
@@ -442,7 +434,6 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
             ))}
           </div>
 
-          {/* Контейнер для карточек */}
           <div 
             className="absolute top-0 left-0 w-full h-full pointer-events-none"
             style={{ zIndex: 10 }}

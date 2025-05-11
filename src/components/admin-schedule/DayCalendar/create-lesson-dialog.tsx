@@ -222,29 +222,11 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
     if (!subjectTypeId || !subjectId || !teacherId || !studentId || !specialLessonTypeId) {
       return;
     }
-
-    // Убеждаемся что формат времени содержит секунды
-    const formatTimeWithSeconds = (time: string): string => {
-      let formattedTime = time;
-      // Добавляем двоеточие, если его нет
-      if (!formattedTime.includes(':')) {
-        formattedTime = `${formattedTime}:00`;
-      }
-      // Добавляем секунды, если их нет
-      if (formattedTime.split(':').length < 3) {
-        formattedTime = `${formattedTime}:00`;
-      }
-      return formattedTime;
-    };
     
-    // Форматируем время с секундами
-    const startTime = formatTimeWithSeconds(lessonData.startTime);
-    const endTime = formatTimeWithSeconds(lessonData.endTime);
-
     onSave({
       date: lessonData.date,
-      startTime: startTime,
-      endTime: endTime,
+      startTime: lessonData.startTime,
+      endTime: lessonData.endTime,
       roomId: lessonData.roomId,
       subjectId: subjectId,
       subjectTypeId: subjectTypeId,
@@ -273,14 +255,14 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-sm font-medium">日付</label>
-              <div className="border rounded-md p-2 mt-1 bg-gray-50 text-gray-700">
+              <label className="text-sm font-medium text-foreground">日付</label>
+              <div className="border rounded-md p-2 mt-1 bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground border-input">
                 {format(lessonData.date, 'yyyy年MM月dd日', { locale: ja })}
               </div>
             </div>
             <div>
-              <label className="text-sm font-medium">教室</label>
-              <div className="border rounded-md p-2 mt-1 bg-gray-50 text-gray-700">
+              <label className="text-sm font-medium text-foreground">教室</label>
+              <div className="border rounded-md p-2 mt-1 bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground border-input">
                 {rooms.find(room => room.boothId === lessonData.roomId)?.name || lessonData.roomId}
               </div>
             </div>
@@ -288,34 +270,34 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-sm font-medium">開始時間</label>
-              <div className="border rounded-md p-2 mt-1 bg-gray-50 text-gray-700">
+              <label className="text-sm font-medium text-foreground">開始時間</label>
+              <div className="border rounded-md p-2 mt-1 bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground border-input">
                 {lessonData.startTime}
               </div>
             </div>
             <div>
-              <label className="text-sm font-medium">終了時間</label>
-              <div className="border rounded-md p-2 mt-1 bg-gray-50 text-gray-700">
+              <label className="text-sm font-medium text-foreground">終了時間</label>
+              <div className="border rounded-md p-2 mt-1 bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground border-input">
                 {lessonData.endTime}
               </div>
             </div>
           </div>
 
           <div>
-            <label className="text-sm font-medium mb-1 block">授業タイプ</label>
-            <div className="border rounded-md p-2 bg-blue-50 text-blue-700 flex items-center">
+            <label className="text-sm font-medium mb-1 block text-foreground">授業タイプ</label>
+            <div className="border rounded-md p-2 bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary flex items-center border-input">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               {specialLessonType ? specialLessonType.name : '特別補習'}
-              <span className="text-xs ml-2">(このタイプは変更できません)</span>
+              <span className="text-xs ml-2 text-primary/80 dark:text-primary/80">(このタイプは変更できません)</span>
             </div>
           </div>
 
           <div>
-            <label htmlFor="subject-type-select" className="text-sm font-medium mb-1 block">科目タイプ <span className="text-red-500">*</span></label>
+            <label htmlFor="subject-type-select" className="text-sm font-medium mb-1 block text-foreground">科目タイプ <span className="text-destructive">*</span></label>
             <Select value={subjectTypeId} onValueChange={setSubjectTypeId} disabled={isLoadingSubjectTypes}>
-              <SelectTrigger id="subject-type-select" className="w-full transition-all duration-200 hover:bg-slate-100 cursor-pointer active:scale-[0.98]">
+              <SelectTrigger id="subject-type-select" className="w-full transition-all duration-200 hover:bg-accent hover:text-accent-foreground cursor-pointer active:scale-[0.98]">
                 <SelectValue placeholder={isLoadingSubjectTypes ? "科目タイプを読み込み中..." : "科目タイプを選択"} />
               </SelectTrigger>
               <SelectContent className="max-h-60 overflow-y-auto">
@@ -323,9 +305,9 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
                   <SelectItem
                     key={type.subjectTypeId}
                     value={type.subjectTypeId}
-                    className="cursor-pointer transition-colors duration-150 hover:bg-slate-100 focus:bg-slate-100 active:bg-slate-200 rounded-sm data-[highlighted]:bg-slate-100"
+                    className="cursor-pointer"
                   >
-                    {type.name} {type.notes && <span className="text-gray-500 text-xs ml-1">({type.notes})</span>}
+                    {type.name} {type.notes && <span className="text-muted-foreground text-xs ml-1">({type.notes})</span>}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -333,9 +315,9 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
           </div>
 
           <div>
-            <label htmlFor="subject-select" className="text-sm font-medium mb-1 block">科目 <span className="text-red-500">*</span></label>
+            <label htmlFor="subject-select" className="text-sm font-medium mb-1 block text-foreground">科目 <span className="text-destructive">*</span></label>
             <Select value={subjectId} onValueChange={setSubjectId} disabled={!subjectTypeId || subjects.length === 0}>
-              <SelectTrigger id="subject-select" className="w-full transition-all duration-200 hover:bg-slate-100 cursor-pointer active:scale-[0.98]">
+              <SelectTrigger id="subject-select" className="w-full transition-all duration-200 hover:bg-accent hover:text-accent-foreground cursor-pointer active:scale-[0.98]">
                 <SelectValue placeholder={
                   !subjectTypeId 
                     ? "先に科目タイプを選択してください" 
@@ -349,7 +331,7 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
                   <SelectItem
                     key={subject.subjectId}
                     value={subject.subjectId}
-                    className="cursor-pointer transition-colors duration-150 hover:bg-slate-100 focus:bg-slate-100 active:bg-slate-200 rounded-sm data-[highlighted]:bg-slate-100"
+                    className="cursor-pointer"
                   >
                     {subject.name}
                   </SelectItem>
@@ -359,9 +341,9 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
           </div>
 
           <div>
-            <label htmlFor="teacher-select" className="text-sm font-medium mb-1 block">講師 <span className="text-red-500">*</span></label>
+            <label htmlFor="teacher-select" className="text-sm font-medium mb-1 block text-foreground">講師 <span className="text-destructive">*</span></label>
             <Select value={teacherId} onValueChange={setTeacherId} disabled={isLoadingTeachers || !subjectId}>
-              <SelectTrigger id="teacher-select" className="w-full transition-all duration-200 hover:bg-slate-100 cursor-pointer active:scale-[0.98]">
+              <SelectTrigger id="teacher-select" className="w-full transition-all duration-200 hover:bg-accent hover:text-accent-foreground cursor-pointer active:scale-[0.98]">
                 <SelectValue placeholder={
                   isLoadingTeachers 
                     ? "講師を読み込み中..." 
@@ -377,7 +359,7 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
                   <SelectItem
                     key={teacher.teacherId}
                     value={teacher.teacherId}
-                    className="cursor-pointer transition-colors duration-150 hover:bg-slate-100 focus:bg-slate-100 active:bg-slate-200 rounded-sm data-[highlighted]:bg-slate-100"
+                    className="cursor-pointer"
                   >
                     {teacher.name}
                   </SelectItem>
@@ -387,9 +369,9 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
           </div>
 
           <div>
-            <label htmlFor="student-select" className="text-sm font-medium mb-1 block">生徒 <span className="text-red-500">*</span></label>
+            <label htmlFor="student-select" className="text-sm font-medium mb-1 block text-foreground">生徒 <span className="text-destructive">*</span></label>
             <Select value={studentId} onValueChange={setStudentId} disabled={isLoadingStudents || !subjectId}>
-              <SelectTrigger id="student-select" className="w-full transition-all duration-200 hover:bg-slate-100 cursor-pointer active:scale-[0.98]">
+              <SelectTrigger id="student-select" className="w-full transition-all duration-200 hover:bg-accent hover:text-accent-foreground cursor-pointer active:scale-[0.98]">
                 <SelectValue placeholder={
                   isLoadingStudents 
                     ? "生徒を読み込み中..." 
@@ -405,7 +387,7 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
                   <SelectItem
                     key={student.studentId}
                     value={student.studentId}
-                    className="cursor-pointer transition-colors duration-150 hover:bg-slate-100 focus:bg-slate-100 active:bg-slate-200 rounded-sm data-[highlighted]:bg-slate-100"
+                    className="cursor-pointer"
                   >
                     {student.name}
                   </SelectItem>
@@ -415,10 +397,10 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
           </div>
           
           <div>
-            <label htmlFor="notes" className="text-sm font-medium mb-1 block">メモ</label>
+            <label htmlFor="notes" className="text-sm font-medium mb-1 block text-foreground">メモ</label>
             <textarea
               id="notes"
-              className="w-full min-h-[80px] p-2 border rounded-md hover:border-slate-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
+              className="w-full min-h-[80px] p-2 border rounded-md bg-background text-foreground hover:border-accent focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors border-input"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="授業に関するメモを入力してください"
@@ -426,7 +408,7 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
           </div>
           
           {error && (
-            <div className="p-3 rounded bg-red-50 border border-red-200 text-red-600 text-sm">
+            <div className="p-3 rounded bg-destructive/10 border border-destructive/20 text-destructive text-sm">
               {error}
             </div>
           )}
@@ -435,7 +417,7 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
         <DialogFooter>
           <Button
             variant="outline"
-            className="transition-all duration-200 hover:bg-slate-100 active:scale-[0.98] focus:ring-2 focus:ring-primary/30 focus:outline-none"
+            className="transition-all duration-200 hover:bg-accent hover:text-accent-foreground active:scale-[0.98] focus:ring-2 focus:ring-primary/30 focus:outline-none"
             onClick={() => onOpenChange(false)}
           >
             キャンセル

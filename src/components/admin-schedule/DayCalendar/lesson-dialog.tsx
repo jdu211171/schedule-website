@@ -12,25 +12,17 @@ import {
 } from "@/components/ui/select";
 import { ClassSessionWithRelations } from '@/hooks/useClassSessionQuery';
 import { fetcher } from '@/lib/fetcher';
-import { formatToJapanTime, getDateString } from '../date';
+import { getDateString } from '../date';
 
 interface Room {
   boothId: string;
   name: string;
 }
 
-/**
- * Interface for a lesson being edited in UI
- * Separates UI representation from API data model
- */
 interface EditableLessonUI {
   classId: string;
-  
-  // UI-specific formatted time fields
   formattedStartTime?: string;
   formattedEndTime?: string;
-  
-  // Fields from original model that we need
   date?: string | Date;
   boothId?: string;
   teacherId?: string;
@@ -39,19 +31,14 @@ interface EditableLessonUI {
   subjectTypeId?: string;
   classTypeId?: string;
   notes?: string | null;
-  
-  // References to related entities
   booth?: { name: string; boothId: string };
   teacher?: { name: string; teacherId: string };
   student?: { name: string; studentId: string };
   subject?: { name: string; subjectId: string };
   classType?: { name: string; classTypeId: string };
-  regularClassTemplate?: any;
+  regularClassTemplate?: unknown;
 }
 
-/**
- * Interface for the payload sent to update a lesson
- */
 interface UpdateLessonPayload {
   classId: string;
   date?: string;
@@ -64,7 +51,7 @@ interface UpdateLessonPayload {
   subjectTypeId?: string;
   classTypeId?: string;
   notes?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 interface Teacher {
@@ -109,14 +96,31 @@ type LessonDialogProps = {
   rooms?: Room[];
 };
 
-/**
- * Converts API class session model to UI editable format
- */
 function convertToEditableUI(lesson: ClassSessionWithRelations): EditableLessonUI {
+  // Извлекаем время из ISOString или объекта Date
+  const getTimeFromValue = (timeValue: string | Date | undefined): string => {
+    if (!timeValue) return '';
+    try {
+      if (typeof timeValue === 'string') {
+        const timeMatch = timeValue.match(/T(\d{2}:\d{2}):/);
+        if (timeMatch && timeMatch[1]) {
+          return timeMatch[1];
+        }
+        return '';
+      } 
+      else if (timeValue instanceof Date) {
+        return `${timeValue.getUTCHours().toString().padStart(2, '0')}:${timeValue.getUTCMinutes().toString().padStart(2, '0')}`;
+      }
+      return '';
+    } catch {
+      return '';
+    }
+  };
+
   return {
     classId: lesson.classId,
-    formattedStartTime: formatToJapanTime(lesson.startTime),
-    formattedEndTime: formatToJapanTime(lesson.endTime),
+    formattedStartTime: getTimeFromValue(lesson.startTime),
+    formattedEndTime: getTimeFromValue(lesson.endTime),
     date: lesson.date,
     boothId: lesson.boothId,
     teacherId: lesson.teacherId,
@@ -146,25 +150,55 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
 }) => {
   const [editedLesson, setEditedLesson] = useState<EditableLessonUI | null>(null);
   
-  // States for storing all and filtered data
   const [subjectTypes, setSubjectTypes] = useState<SubjectType[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [classTypes, setClassTypes] = useState<ClassType[]>([]);
   
-  // Loading states
   const [isLoadingSubjectTypes, setIsLoadingSubjectTypes] = useState<boolean>(false);
   const [isLoadingTeachers, setIsLoadingTeachers] = useState<boolean>(false);
   const [isLoadingStudents, setIsLoadingStudents] = useState<boolean>(false);
   const [isLoadingClassTypes, setIsLoadingClassTypes] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Determine if the lesson is regular (通常授業) or special (特別補習)
   const isRegularLesson = Boolean(lesson.regularClassTemplate) || 
-                          (lesson.classType?.name === '通常授業');
+                         (lesson.classType?.name === '通常授業');
 
-  // Load subject types
+  const loadTeachersBySubject = useCallback(async (selectedSubjectId: string) => {
+    if (!selectedSubjectId) return;
+    
+    setIsLoadingTeachers(true);
+    setTeachers([]);
+    
+    try {
+      const response = await fetcher<{ data: Teacher[] }>(`/api/teacher?subjectId=${selectedSubjectId}`);
+      setTeachers(response.data || []);
+    } catch (err) {
+      console.error("講師の読み込みエラー:", err);
+      setError("選択した科目の講師を読み込めませんでした");
+    } finally {
+      setIsLoadingTeachers(false);
+    }
+  }, []);
+  
+  const loadStudentsBySubject = useCallback(async (selectedSubjectId: string) => {
+    if (!selectedSubjectId) return;
+    
+    setIsLoadingStudents(true);
+    setStudents([]);
+    
+    try {
+      const response = await fetcher<{ data: Student[] }>(`/api/student?preferredSubjectId=${selectedSubjectId}`);
+      setStudents(response.data || []);
+    } catch (err) {
+      console.error("生徒の読み込みエラー:", err);
+      setError("選択した科目の生徒を読み込めませんでした");
+    } finally {
+      setIsLoadingStudents(false);
+    }
+  }, []);
+
   useEffect(() => {
     const loadSubjectTypes = async () => {
       setIsLoadingSubjectTypes(true);
@@ -184,7 +218,6 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
     }
   }, [open, isRegularLesson, mode]);
 
-  // Load class types
   useEffect(() => {
     const loadClassTypes = async () => {
       setIsLoadingClassTypes(true);
@@ -204,13 +237,10 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
     }
   }, [open]);
 
-  // Initialize form values when lesson changes or dialog opens
   useEffect(() => {
     if (lesson && open) {
-      // Convert API model to UI model
       setEditedLesson(convertToEditableUI(lesson));
       
-      // If special lesson and we have loaded subject types, find subjects for the selected type
       if (!isRegularLesson && mode === 'edit' && lesson.subjectTypeId && subjectTypes.length > 0) {
         const selectedType = subjectTypes.find(type => type.subjectTypeId === lesson.subjectTypeId);
         if (selectedType && selectedType.subjectToSubjectTypes) {
@@ -223,7 +253,6 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
           
           setSubjects(filteredSubjects);
           
-          // Also load teachers and students for this subject
           if (lesson.subjectId) {
             loadTeachersBySubject(lesson.subjectId);
             loadStudentsBySubject(lesson.subjectId);
@@ -237,11 +266,12 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
       setStudents([]);
       setError(null);
     }
-  }, [lesson, open, isRegularLesson, mode, subjectTypes]);
+  }, [lesson, open, isRegularLesson, mode, subjectTypes, loadTeachersBySubject, loadStudentsBySubject]);
 
-  // Filter subjects when subject type changes
   useEffect(() => {
-    if (editedLesson?.subjectTypeId && !isRegularLesson && mode === 'edit') {
+    if (!editedLesson) return;
+    
+    if (editedLesson.subjectTypeId && !isRegularLesson && mode === 'edit') {
       const selectedType = subjectTypes.find(type => type.subjectTypeId === editedLesson.subjectTypeId);
       if (selectedType && selectedType.subjectToSubjectTypes) {
         const filteredSubjects = selectedType.subjectToSubjectTypes
@@ -253,9 +283,7 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
         
         setSubjects(filteredSubjects);
         
-        // Reset subject, teacher and student selections if subject type changed
         if (editedLesson.subjectId && !filteredSubjects.some(s => s.subjectId === editedLesson.subjectId)) {
-          // Create a new copy to avoid type issues
           const updatedLesson: EditableLessonUI = { 
             ...editedLesson,
             subjectId: undefined,
@@ -269,45 +297,8 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
         }
       }
     }
-  }, [editedLesson?.subjectTypeId, subjectTypes, isRegularLesson, mode]);
+  }, [editedLesson, editedLesson?.subjectTypeId, subjectTypes, isRegularLesson, mode]);
 
-  // Function to load teachers by selected subject
-  const loadTeachersBySubject = useCallback(async (selectedSubjectId: string) => {
-    if (!selectedSubjectId) return;
-    
-    setIsLoadingTeachers(true);
-    setTeachers([]);
-    
-    try {
-      const response = await fetcher<{ data: Teacher[] }>(`/api/teacher?subjectId=${selectedSubjectId}`);
-      setTeachers(response.data || []);
-    } catch (err) {
-      console.error("講師の読み込みエラー:", err);
-      setError("選択した科目の講師を読み込めませんでした");
-    } finally {
-      setIsLoadingTeachers(false);
-    }
-  }, []);
-  
-  // Function to load students by selected subject
-  const loadStudentsBySubject = useCallback(async (selectedSubjectId: string) => {
-    if (!selectedSubjectId) return;
-    
-    setIsLoadingStudents(true);
-    setStudents([]);
-    
-    try {
-      const response = await fetcher<{ data: Student[] }>(`/api/student?preferredSubjectId=${selectedSubjectId}`);
-      setStudents(response.data || []);
-    } catch (err) {
-      console.error("生徒の読み込みエラー:", err);
-      setError("選択した科目の生徒を読み込めませんでした");
-    } finally {
-      setIsLoadingStudents(false);
-    }
-  }, []);
-  
-  // Load teachers and students when subject changes
   useEffect(() => {
     if (editedLesson?.subjectId && !isRegularLesson && mode === 'edit') {
       loadTeachersBySubject(editedLesson.subjectId);
@@ -317,14 +308,13 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
 
   if (!lesson || !editedLesson) return null;
 
-  // Update form field values
   const handleInputChange = (field: keyof EditableLessonUI, value: string | number | boolean | null | undefined) => {
-    // Create a clone with current values
     const updatedLesson: EditableLessonUI = { ...editedLesson };
     
-    // If changing subject type, reset subject, teacher and student
     if (field === 'subjectTypeId' && editedLesson.subjectTypeId !== value) {
-      (updatedLesson as any)[field] = value;
+      if (field === 'subjectTypeId') {
+        updatedLesson.subjectTypeId = value as string | undefined;
+      }
       updatedLesson.subjectId = undefined;
       updatedLesson.teacherId = undefined;
       updatedLesson.studentId = undefined;
@@ -332,17 +322,48 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
       return;
     }
     
-    // If changing subject, reset teacher and student selection
     if (field === 'subjectId' && editedLesson.subjectId !== value) {
-      (updatedLesson as any)[field] = value;
+      if (field === 'subjectId') {
+        updatedLesson.subjectId = value as string | undefined;
+      }
       updatedLesson.teacherId = undefined;
       updatedLesson.studentId = undefined;
       setEditedLesson(updatedLesson);
       return;
     }
     
-    // For all other fields just update the value
-    (updatedLesson as any)[field] = value;
+    switch (field) {
+      case 'formattedStartTime':
+        updatedLesson.formattedStartTime = value as string | undefined;
+        break;
+      case 'formattedEndTime':
+        updatedLesson.formattedEndTime = value as string | undefined;
+        break;
+      case 'date':
+        updatedLesson.date = value as string | Date | undefined;
+        break;
+      case 'boothId':
+        updatedLesson.boothId = value as string | undefined;
+        break;
+      case 'teacherId':
+        updatedLesson.teacherId = value as string | undefined;
+        break;
+      case 'studentId':
+        updatedLesson.studentId = value as string | undefined;
+        break;
+      case 'subjectTypeId':
+        updatedLesson.subjectTypeId = value as string | undefined;
+        break;
+      case 'classTypeId':
+        updatedLesson.classTypeId = value as string | undefined;
+        break;
+      case 'notes':
+        updatedLesson.notes = value as string | null | undefined;
+        break;
+      default:
+        break;
+    }
+    
     setEditedLesson(updatedLesson);
   };
 
@@ -355,37 +376,24 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
       classId: editedLesson.classId
     };
 
-    // Функция для форматирования времени (HH:MM -> HH:MM:SS)
-    const formatTimeWithSeconds = (time: string | undefined): string | undefined => {
-      if (!time) return undefined;
-      
-      // Если уже есть секунды, возвращаем как есть
-      if (time.split(':').length >= 3) return time;
-      
-      // Добавляем секунды
-      return `${time}:00`;
-    };
-
-    // For regular lessons (通常授業) only allow changing time, room and notes
+    // Для обычных уроков (通常授業) позволяем менять только время, кабинет и заметки
     if (isRegularLesson) {
       if (editedLesson.formattedStartTime) {
-        lessonToSave.startTime = formatTimeWithSeconds(editedLesson.formattedStartTime);
+        lessonToSave.startTime = editedLesson.formattedStartTime;
       }
       
       if (editedLesson.formattedEndTime) {
-        lessonToSave.endTime = formatTimeWithSeconds(editedLesson.formattedEndTime);
+        lessonToSave.endTime = editedLesson.formattedEndTime;
       }
       
       if (editedLesson.boothId) {
         lessonToSave.boothId = editedLesson.boothId;
       }
-      
+
       if (editedLesson.notes !== undefined) {
         lessonToSave.notes = editedLesson.notes || "";
       }
     } else {
-      // For special lessons (特別補習) allow changing all fields
-      // Copy only the fields that should be sent to the API
       if (editedLesson.subjectId) lessonToSave.subjectId = editedLesson.subjectId;
       if (editedLesson.subjectTypeId) lessonToSave.subjectTypeId = editedLesson.subjectTypeId;
       if (editedLesson.teacherId) lessonToSave.teacherId = editedLesson.teacherId;
@@ -393,10 +401,8 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
       if (editedLesson.classTypeId) lessonToSave.classTypeId = editedLesson.classTypeId;
       if (editedLesson.boothId) lessonToSave.boothId = editedLesson.boothId;
       
-      // Set notes with empty string fallback
       lessonToSave.notes = editedLesson.notes || "";
       
-      // Get date string for API
       if (editedLesson.date) {
         if (editedLesson.date instanceof Date) {
           lessonToSave.date = getDateString(editedLesson.date);
@@ -404,24 +410,19 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
           lessonToSave.date = editedLesson.date;
         }
       }
-      
-      // Add time fields with seconds
       if (editedLesson.formattedStartTime) {
-        lessonToSave.startTime = formatTimeWithSeconds(editedLesson.formattedStartTime);
+        lessonToSave.startTime = editedLesson.formattedStartTime;
       }
-      
       if (editedLesson.formattedEndTime) {
-        lessonToSave.endTime = formatTimeWithSeconds(editedLesson.formattedEndTime);
+        lessonToSave.endTime = editedLesson.formattedEndTime;
       }
     }
-
     onSave(lessonToSave);
     onModeChange('view');
   };
   
   const isLoading = isLoadingSubjectTypes || isLoadingTeachers || isLoadingStudents || isLoadingClassTypes;
 
-  // Convert date for display based on its type
   const getDisplayDate = (): Date => {
     if (lesson.date instanceof Date) {
       return lesson.date;
@@ -429,15 +430,12 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
     return new Date(lesson.date as string);
   };
 
-  // Check if all required fields are filled for saving
   const canSave = () => {
     if (isLoading) return false;
     
     if (isRegularLesson) {
-      // For regular lessons only check times
       return Boolean(editedLesson.formattedStartTime && editedLesson.formattedEndTime);
     } else {
-      // For special lessons check all required fields
       return Boolean(
         editedLesson.subjectTypeId && 
         editedLesson.subjectId && 
@@ -455,8 +453,8 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
         <DialogHeader>
           <DialogTitle>
             {mode === 'view' ? '授業の詳細' : '授業の編集'}
-            {isRegularLesson && <span className="text-sm font-normal ml-2 text-blue-500">(通常授業)</span>}
-            {!isRegularLesson && <span className="text-sm font-normal ml-2 text-red-500">(特別補習)</span>}
+            {isRegularLesson && <span className="text-sm font-normal ml-2 text-blue-500 dark:text-blue-400">(通常授業)</span>}
+            {!isRegularLesson && <span className="text-sm font-normal ml-2 text-red-500 dark:text-red-400">(特別補習)</span>}
           </DialogTitle>
           <DialogDescription>
             {mode === 'view' ? '授業の詳細情報です' : '授業の情報を更新してください'}
@@ -466,19 +464,19 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-sm font-medium">日付</label>
-              <div className="border rounded-md p-2 mt-1 bg-gray-50 text-gray-700">
+              <label className="text-sm font-medium text-foreground">日付</label>
+              <div className="border rounded-md p-2 mt-1 bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground border-input">
                 {format(getDisplayDate(), 'yyyy年MM月dd日', { locale: ja })}
               </div>
             </div>
             <div>
-              <label className="text-sm font-medium">教室</label>
+              <label className="text-sm font-medium text-foreground">教室</label>
               {mode === 'edit' ? (
                 <Select
                   value={editedLesson.boothId || ''}
                   onValueChange={(value) => handleInputChange('boothId', value)}
                 >
-                  <SelectTrigger className="w-full transition-all duration-200 hover:bg-slate-100 cursor-pointer active:scale-[0.98]">
+                  <SelectTrigger className="w-full transition-all duration-200 hover:bg-accent hover:text-accent-foreground cursor-pointer active:scale-[0.98]">
                     <SelectValue placeholder="教室を選択" />
                   </SelectTrigger>
                   <SelectContent className="max-h-60 overflow-y-auto">
@@ -486,7 +484,7 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
                       <SelectItem
                         key={room.boothId}
                         value={room.boothId}
-                        className="cursor-pointer transition-colors duration-150 hover:bg-slate-100 focus:bg-slate-100 active:bg-slate-200 rounded-sm data-[highlighted]:bg-slate-100"
+                        className="cursor-pointer"
                       >
                         {room.name}
                       </SelectItem>
@@ -494,7 +492,7 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
                   </SelectContent>
                 </Select>
               ) : (
-                <div className="border rounded-md p-2 mt-1 bg-gray-50 text-gray-700">
+                <div className="border rounded-md p-2 mt-1 bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground border-input">
                   {rooms.length > 0
                     ? (rooms.find(room => room.boothId === lesson.boothId)?.name || `教室 ID: ${lesson.boothId}`)
                     : `教室 ID: ${lesson.boothId}`}
@@ -503,16 +501,15 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
             </div>
           </div>
 
-          {/* Subject type - only for special lessons in edit mode */}
           {mode === 'edit' && !isRegularLesson && (
             <div>
-              <label className="text-sm font-medium mb-1 block">科目タイプ <span className="text-red-500">*</span></label>
+              <label className="text-sm font-medium mb-1 block text-foreground">科目タイプ <span className="text-destructive">*</span></label>
               <Select
                 value={editedLesson.subjectTypeId || ''}
                 onValueChange={(value) => handleInputChange('subjectTypeId', value)}
                 disabled={isLoadingSubjectTypes}
               >
-                <SelectTrigger className="w-full transition-all duration-200 hover:bg-slate-100 cursor-pointer active:scale-[0.98]">
+                <SelectTrigger className="w-full transition-all duration-200 hover:bg-accent hover:text-accent-foreground cursor-pointer active:scale-[0.98]">
                   <SelectValue placeholder={isLoadingSubjectTypes ? "科目タイプを読み込み中..." : "科目タイプを選択"} />
                 </SelectTrigger>
                 <SelectContent className="max-h-60 overflow-y-auto">
@@ -520,9 +517,9 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
                     <SelectItem
                       key={type.subjectTypeId}
                       value={type.subjectTypeId}
-                      className="cursor-pointer transition-colors duration-150 hover:bg-slate-100 focus:bg-slate-100 active:bg-slate-200 rounded-sm data-[highlighted]:bg-slate-100"
+                      className="cursor-pointer"
                     >
-                      {type.name} {type.notes && <span className="text-gray-500 text-xs ml-1">({type.notes})</span>}
+                      {type.name} {type.notes && <span className="text-muted-foreground text-xs ml-1">({type.notes})</span>}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -532,14 +529,14 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-sm font-medium mb-1 block">科目 <span className="text-red-500">*</span></label>
+              <label className="text-sm font-medium mb-1 block text-foreground">科目 <span className="text-destructive">*</span></label>
               {mode === 'edit' && !isRegularLesson ? (
                 <Select
                   value={editedLesson.subjectId || ''}
                   onValueChange={(value) => handleInputChange('subjectId', value)}
                   disabled={isLoadingSubjectTypes || !editedLesson.subjectTypeId || subjects.length === 0}
                 >
-                  <SelectTrigger className="w-full transition-all duration-200 hover:bg-slate-100 cursor-pointer active:scale-[0.98]">
+                  <SelectTrigger className="w-full transition-all duration-200 hover:bg-accent hover:text-accent-foreground cursor-pointer active:scale-[0.98]">
                     <SelectValue placeholder={
                       isLoadingSubjectTypes 
                         ? "読み込み中..." 
@@ -555,7 +552,7 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
                       <SelectItem
                         key={subject.subjectId}
                         value={subject.subjectId}
-                        className="cursor-pointer transition-colors duration-150 hover:bg-slate-100 focus:bg-slate-100 active:bg-slate-200 rounded-sm data-[highlighted]:bg-slate-100"
+                        className="cursor-pointer"
                       >
                         {subject.name}
                       </SelectItem>
@@ -563,20 +560,20 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
                   </SelectContent>
                 </Select>
               ) : (
-                <div className="border rounded-md p-2 mt-1 bg-gray-50 text-gray-700">
+                <div className="border rounded-md p-2 mt-1 bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground border-input">
                   {lesson.subject?.name || '指定なし'}
                 </div>
               )}
             </div>
             <div>
-              <label className="text-sm font-medium mb-1 block">授業タイプ</label>
+              <label className="text-sm font-medium mb-1 block text-foreground">授業タイプ</label>
               {mode === 'edit' && !isRegularLesson ? (
                 <Select
                   value={editedLesson.classTypeId || ''}
                   onValueChange={(value) => handleInputChange('classTypeId', value)}
                   disabled={isLoadingClassTypes}
                 >
-                  <SelectTrigger className="w-full transition-all duration-200 hover:bg-slate-100 cursor-pointer active:scale-[0.98]">
+                  <SelectTrigger className="w-full transition-all duration-200 hover:bg-accent hover:text-accent-foreground cursor-pointer active:scale-[0.98]">
                     <SelectValue placeholder={isLoadingClassTypes ? "読み込み中..." : "授業タイプを選択"} />
                   </SelectTrigger>
                   <SelectContent className="max-h-60 overflow-y-auto">
@@ -584,7 +581,7 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
                       <SelectItem
                         key={type.classTypeId}
                         value={type.classTypeId}
-                        className="cursor-pointer transition-colors duration-150 hover:bg-slate-100 focus:bg-slate-100 active:bg-slate-200 rounded-sm data-[highlighted]:bg-slate-100"
+                        className="cursor-pointer"
                       >
                         {type.name}
                       </SelectItem>
@@ -592,7 +589,7 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
                   </SelectContent>
                 </Select>
               ) : (
-                <div className="border rounded-md p-2 mt-1 bg-gray-50 text-gray-700">
+                <div className="border rounded-md p-2 mt-1 bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground border-input">
                   {lesson.classType?.name || '指定なし'}
                 </div>
               )}
@@ -601,14 +598,14 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-sm font-medium mb-1 block">講師 <span className="text-red-500">*</span></label>
+              <label className="text-sm font-medium mb-1 block text-foreground">講師 <span className="text-destructive">*</span></label>
               {mode === 'edit' && !isRegularLesson ? (
                 <Select
                   value={editedLesson.teacherId || ''}
                   onValueChange={(value) => handleInputChange('teacherId', value)}
                   disabled={isLoadingTeachers || !editedLesson.subjectId || teachers.length === 0}
                 >
-                  <SelectTrigger className="w-full transition-all duration-200 hover:bg-slate-100 cursor-pointer active:scale-[0.98]">
+                  <SelectTrigger className="w-full transition-all duration-200 hover:bg-accent hover:text-accent-foreground cursor-pointer active:scale-[0.98]">
                     <SelectValue placeholder={
                       isLoadingTeachers 
                         ? "講師を読み込み中..." 
@@ -624,7 +621,7 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
                       <SelectItem
                         key={teacher.teacherId}
                         value={teacher.teacherId}
-                        className="cursor-pointer transition-colors duration-150 hover:bg-slate-100 focus:bg-slate-100 active:bg-slate-200 rounded-sm data-[highlighted]:bg-slate-100"
+                        className="cursor-pointer"
                       >
                         {teacher.name}
                       </SelectItem>
@@ -632,20 +629,20 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
                   </SelectContent>
                 </Select>
               ) : (
-                <div className="border rounded-md p-2 mt-1 bg-gray-50 text-gray-700">
+                <div className="border rounded-md p-2 mt-1 bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground border-input">
                   {lesson.teacher?.name || '指定なし'}
                 </div>
               )}
             </div>
             <div>
-              <label className="text-sm font-medium mb-1 block">生徒 <span className="text-red-500">*</span></label>
+              <label className="text-sm font-medium mb-1 block text-foreground">生徒 <span className="text-destructive">*</span></label>
               {mode === 'edit' && !isRegularLesson ? (
                 <Select
                   value={editedLesson.studentId || ''}
                   onValueChange={(value) => handleInputChange('studentId', value)}
                   disabled={isLoadingStudents || !editedLesson.subjectId || students.length === 0}
                 >
-                  <SelectTrigger className="w-full transition-all duration-200 hover:bg-slate-100 cursor-pointer active:scale-[0.98]">
+                  <SelectTrigger className="w-full transition-all duration-200 hover:bg-accent hover:text-accent-foreground cursor-pointer active:scale-[0.98]">
                     <SelectValue placeholder={
                       isLoadingStudents 
                         ? "生徒を読み込み中..." 
@@ -661,7 +658,7 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
                       <SelectItem
                         key={student.studentId}
                         value={student.studentId}
-                        className="cursor-pointer transition-colors duration-150 hover:bg-slate-100 focus:bg-slate-100 active:bg-slate-200 rounded-sm data-[highlighted]:bg-slate-100"
+                        className="cursor-pointer"
                       >
                         {student.name}
                       </SelectItem>
@@ -669,7 +666,7 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
                   </SelectContent>
                 </Select>
               ) : (
-                <div className="border rounded-md p-2 mt-1 bg-gray-50 text-gray-700">
+                <div className="border rounded-md p-2 mt-1 bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground border-input">
                   {lesson.student?.name || '指定なし'}
                 </div>
               )}
@@ -678,32 +675,32 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-sm font-medium">開始時間</label>
+              <label className="text-sm font-medium text-foreground">開始時間</label>
               {mode === 'edit' ? (
                 <input
                   type="time"
-                  className="w-full border rounded-md p-2 mt-1 hover:border-slate-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors duration-200 cursor-pointer"
+                  className="w-full border rounded-md p-2 mt-1 bg-background text-foreground hover:border-accent focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors duration-200 cursor-pointer border-input"
                   value={editedLesson.formattedStartTime || ''}
                   onChange={(e) => handleInputChange('formattedStartTime', e.target.value)}
                 />
               ) : (
-                <div className="border rounded-md p-2 mt-1 bg-gray-50 text-gray-700">
-                  {formatToJapanTime(lesson.startTime)}
+                <div className="border rounded-md p-2 mt-1 bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground border-input">
+                  {editedLesson.formattedStartTime}
                 </div>
               )}
             </div>
             <div>
-              <label className="text-sm font-medium">終了時間</label>
+              <label className="text-sm font-medium text-foreground">終了時間</label>
               {mode === 'edit' ? (
                 <input
                   type="time"
-                  className="w-full border rounded-md p-2 mt-1 hover:border-slate-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors duration-200 cursor-pointer"
+                  className="w-full border rounded-md p-2 mt-1 bg-background text-foreground hover:border-accent focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors duration-200 cursor-pointer border-input"
                   value={editedLesson.formattedEndTime || ''}
                   onChange={(e) => handleInputChange('formattedEndTime', e.target.value)}
                 />
               ) : (
-                <div className="border rounded-md p-2 mt-1 bg-gray-50 text-gray-700">
-                  {formatToJapanTime(lesson.endTime)}
+                <div className="border rounded-md p-2 mt-1 bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground border-input">
+                  {editedLesson.formattedEndTime}
                 </div>
               )}
             </div>
@@ -711,9 +708,9 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
 
           {mode === 'edit' && (
             <div>
-              <label className="text-sm font-medium">メモ</label>
+              <label className="text-sm font-medium text-foreground">メモ</label>
               <textarea
-                className="w-full border rounded-md p-2 mt-1 hover:border-slate-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors duration-200 cursor-text"
+                className="w-full border rounded-md p-2 mt-1 bg-background text-foreground hover:border-accent focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors duration-200 cursor-text border-input"
                 rows={3}
                 value={editedLesson.notes || ''}
                 onChange={(e) => handleInputChange('notes', e.target.value)}
@@ -722,15 +719,15 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
           )}
            {mode === 'view' && lesson.notes && (
              <div>
-                <label className="text-sm font-medium">メモ</label>
-                <div className="border rounded-md p-2 mt-1 bg-gray-50 text-gray-700 min-h-[60px] whitespace-pre-wrap">
+                <label className="text-sm font-medium text-foreground">メモ</label>
+                <div className="border rounded-md p-2 mt-1 bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground min-h-[60px] whitespace-pre-wrap border-input">
                     {lesson.notes}
                 </div>
             </div>
            )}
            
           {error && (
-            <div className="p-3 rounded bg-red-50 border border-red-200 text-red-600 text-sm">
+            <div className="p-3 rounded bg-destructive/10 border border-destructive/20 text-destructive text-sm">
               {error}
             </div>
           )}
@@ -749,7 +746,7 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
               <div className="flex space-x-2">
                 <Button
                   variant="outline"
-                  className="transition-all duration-200 hover:bg-slate-100 active:scale-[0.98] focus:ring-2 focus:ring-primary/30 focus:outline-none"
+                  className="transition-all duration-200 hover:bg-accent hover:text-accent-foreground active:scale-[0.98] focus:ring-2 focus:ring-primary/30 focus:outline-none"
                   onClick={() => {
                     onModeChange('view');
                     if (lesson) {
@@ -774,7 +771,7 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
               <div className="flex space-x-2">
                  <Button
                     variant="outline"
-                    className="transition-all duration-200 hover:bg-slate-100 active:scale-[0.98] focus:ring-2 focus:ring-primary/30 focus:outline-none"
+                    className="transition-all duration-200 hover:bg-accent hover:text-accent-foreground active:scale-[0.98] focus:ring-2 focus:ring-primary/30 focus:outline-none"
                     onClick={() => onOpenChange(false)}
                   >
                     閉じる
@@ -792,4 +789,4 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
       </DialogContent>
     </Dialog>
   );
-          };
+};

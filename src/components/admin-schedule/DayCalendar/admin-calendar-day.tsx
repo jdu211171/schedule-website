@@ -45,15 +45,15 @@ interface UpdateLessonPayload {
   subjectTypeId?: string;
   classTypeId?: string;
   notes?: string;
-  [key: string]: any; // Allow additional fields
+  [key: string]: unknown;
 }
 
-/**
- * Generates a unique key for a date with an index
- * @param date Date object
- * @param index Index to append to the key
- * @returns Unique key string
- */
+interface ApiErrorResponse {
+  message?: string;
+  error?: string;
+  issues?: Array<{ message: string }>;
+}
+
 const getUniqueKeyForDate = (date: Date, index: number): string => {
   return `${getDateKey(date)}-${index}`;
 };
@@ -66,7 +66,6 @@ export type TimeSlot = {
   shortDisplay: string;
 };
 
-// Вынесенные за пределы компонента константные данные для оптимизации
 const TIME_SLOTS: TimeSlot[] = Array.from({ length: 57 }, (_el, i) => { 
   const hours = Math.floor(i / 4) + 8;
   const startMinutes = (i % 4) * 15;
@@ -101,14 +100,12 @@ export default function AdminCalendarDay() {
   const { data: boothsResponse, isLoading: isLoadingBooths } = useBooths({ limit: 100 });
   const booths = useMemo(() => boothsResponse?.data || [], [boothsResponse]);
 
-  // Мемоизированные строки дат для запросов
   const selectedDatesStrings = useMemo(() => {
     return selectedDays.map(day => getDateKey(day));
   }, [selectedDays]);
 
   const classSessionQueries = useMultipleDaysClassSessions(selectedDatesStrings);
 
-  // Организация данных по дате для оптимизации доступа
   const classSessionsByDate = useMemo(() => {
     const sessionsByDate: Record<string, ClassSessionWithRelations[]> = {};
     
@@ -129,44 +126,38 @@ export default function AdminCalendarDay() {
     return classSessionQueries.some(query => query.isLoading || query.isFetching);
   }, [classSessionQueries]);
 
-  // Используем предварительно созданные временные слоты вместо пересчета
   const timeSlots = TIME_SLOTS;
 
-  // Оптимизированное обновление данных для избежания лишних запросов
   const refreshData = useCallback(() => {
     const dateToRefresh = newLessonData?.date || 
       (selectedLesson?.date instanceof Date ? 
         selectedLesson.date : 
-        selectedLesson?.date ? new Date(selectedLesson.date) : null);
+        selectedLesson?.date ? new Date(selectedLesson.date as string) : null);
     
     if (dateToRefresh) {
       const dateStrToRefresh = getDateKey(dateToRefresh);
-      // Находим и обновляем только те запросы, которые касаются этой даты
       const queryIndex = selectedDatesStrings.indexOf(dateStrToRefresh);
       
       if (queryIndex !== -1) {
         classSessionQueries[queryIndex].refetch();
-        return; // Завершаем функцию после обновления конкретного дня
+        return;
       }
     }
     
-    // Если нет конкретной даты или ее нет в выбранных, обновляем все
     classSessionQueries.forEach(query => query.refetch());
   }, [classSessionQueries, selectedDatesStrings, newLessonData, selectedLesson]);
 
-  // Оптимизированный обработчик выбора дня с использованием Set
   const handleDaySelect = useCallback((date: Date, isSelected: boolean) => {
     setSelectedDays(prev => {
-      // Создаём уникальные идентификаторы дат для быстрого поиска
       const dateStrSet = new Set(prev.map(d => getDateKey(d)));
       const dateStr = getDateKey(date);
       
       if (isSelected) {
-        if (dateStrSet.has(dateStr)) return prev; // Уже выбран, не делаем изменений
+        if (dateStrSet.has(dateStr)) return prev;
         const newDays = [...prev, date];
         return newDays.sort((a, b) => a.getTime() - b.getTime());
       } else {
-        if (!dateStrSet.has(dateStr)) return prev; // Уже не выбран, не делаем изменений
+        if (!dateStrSet.has(dateStr)) return prev;
         return prev.filter(d => getDateKey(d) !== dateStr);
       }
     });
@@ -185,46 +176,26 @@ export default function AdminCalendarDay() {
     setShowLessonDialog(true);
   }, []);
 
-  // Оптимизированное создание урока с улучшенной обработкой данных
   const handleSaveNewLesson = useCallback(async (lessonData: CreateLessonPayload) => {
     try {
-      // Получаем дату в формате YYYY-MM-DD
       const dateStr = getDateString(lessonData.date);
       
-      // Обрабатываем время, убеждаясь что оно в формате HH:MM:SS
-      const formatTimeWithSeconds = (time: string): string => {
-        let formattedTime = time;
-        // Добавляем двоеточие, если его нет
-        if (!formattedTime.includes(':')) {
-          formattedTime = `${formattedTime}:00`;
-        }
-        // Добавляем секунды, если их нет
-        if (formattedTime.split(':').length < 3) {
-          formattedTime = `${formattedTime}:00`;
-        }
-        return formattedTime;
-      };
-      
-      const startTime = formatTimeWithSeconds(lessonData.startTime);
-      const endTime = formatTimeWithSeconds(lessonData.endTime);
-      
-      // Создаем объект запроса в точном соответствии с требуемым форматом API
+      // Создаем тело запроса в точном соответствии с требуемым API форматом
       const requestBody = {
         date: dateStr,
-        startTime: startTime,
-        endTime: endTime,
+        startTime: lessonData.startTime,
+        endTime: lessonData.endTime,
+        teacherId: lessonData.teacherId || "",
+        studentId: lessonData.studentId || "",
+        subjectId: lessonData.subjectId || "",
+        subjectTypeId: lessonData.subjectTypeId || "",
         boothId: lessonData.roomId,
-        teacherId: lessonData.teacherId,
-        studentId: lessonData.studentId,
-        subjectId: lessonData.subjectId,
-        subjectTypeId: lessonData.subjectTypeId,
-        classTypeId: lessonData.classTypeId,
+        classTypeId: lessonData.classTypeId || "",
         notes: lessonData.notes || ""
       };
       
       console.log("授業作成リクエスト:", requestBody);
       
-      // Отправляем запрос
       const response = await fetch('/api/class-session', {
         method: 'POST',
         headers: {
@@ -234,7 +205,7 @@ export default function AdminCalendarDay() {
       });
   
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await response.json() as ApiErrorResponse;
         console.error('授業作成エラー:', errorData);
         let errorMessage = '授業の作成に失敗しました';
         
@@ -245,7 +216,7 @@ export default function AdminCalendarDay() {
         }
         
         if (errorData.issues && Array.isArray(errorData.issues)) {
-          errorMessage += ': ' + errorData.issues.map((issue: any) => issue.message).join(', ');
+          errorMessage += ': ' + errorData.issues.map((issue) => issue.message).join(', ');
         }
         
         throw new Error(errorMessage);
@@ -260,51 +231,20 @@ export default function AdminCalendarDay() {
     }
   }, [refreshData]);
 
-  // Оптимизированное обновление урока с более эффективной обработкой данных
   const handleUpdateLesson = useCallback(async (updatedLesson: UpdateLessonPayload) => {
     try {
-      // Создаем копию для изменения
-      const lessonToUpdate: Record<string, any> = { ...updatedLesson };
+      const lessonToUpdate: Record<string, unknown> = { ...updatedLesson };
       
-      // Преобразуем дату в строку, если это объект Date
       if (lessonToUpdate.date instanceof Date) {
         lessonToUpdate.date = getDateString(lessonToUpdate.date);
       }
       
-      // Обрабатываем время, убеждаясь что оно в формате HH:MM:SS без привязки к дате
-      if (lessonToUpdate.startTime) {
-        // Если время содержит T, извлекаем только часть времени
-        if (typeof lessonToUpdate.startTime === 'string' && lessonToUpdate.startTime.includes('T')) {
-          lessonToUpdate.startTime = lessonToUpdate.startTime.split('T')[1];
-        }
-        
-        // Добавляем секунды, если их нет
-        if (lessonToUpdate.startTime.split(':').length < 3) {
-          lessonToUpdate.startTime = `${lessonToUpdate.startTime}:00`;
-        }
-      }
-      
-      // То же самое для endTime
-      if (lessonToUpdate.endTime) {
-        // Если время содержит T, извлекаем только часть времени
-        if (typeof lessonToUpdate.endTime === 'string' && lessonToUpdate.endTime.includes('T')) {
-          lessonToUpdate.endTime = lessonToUpdate.endTime.split('T')[1];
-        }
-        
-        // Добавляем секунды, если их нет
-        if (lessonToUpdate.endTime.split(':').length < 3) {
-          lessonToUpdate.endTime = `${lessonToUpdate.endTime}:00`;
-        }
-      }
-      
-      // Преобразуем null в пустую строку для notes
       if (lessonToUpdate.notes === null) {
         lessonToUpdate.notes = "";
       }
       
       console.log("授業更新リクエスト:", lessonToUpdate);
     
-      // Отправляем запрос
       const response = await fetch(`/api/class-session`, {
         method: 'PUT',
         headers: {
@@ -312,9 +252,9 @@ export default function AdminCalendarDay() {
         },
         body: JSON.stringify(lessonToUpdate),
       });
-  
+
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await response.json() as ApiErrorResponse;
         console.error('授業更新エラー:', errorData);
         let errorMessage = '授業の更新に失敗しました';
         
@@ -325,7 +265,7 @@ export default function AdminCalendarDay() {
         }
         
         if (errorData.issues && Array.isArray(errorData.issues)) {
-          errorMessage += ': ' + errorData.issues.map((issue: any) => issue.message).join(', ');
+          errorMessage += ': ' + errorData.issues.map((issue) => issue.message).join(', ');
         }
         
         throw new Error(errorMessage);
@@ -340,21 +280,18 @@ export default function AdminCalendarDay() {
     }
   }, [refreshData]);
 
-  // Оптимизированное удаление урока
   const handleDeleteLesson = useCallback(async (lessonId: string) => {
     try {
-      // Ask for confirmation
       if (!window.confirm('本当にこの授業を削除しますか？')) {
         return;
       }
       
-      // Send to API endpoint
       const response = await fetch(`/api/class-session?classId=${lessonId}`, {
         method: 'DELETE',
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await response.json() as ApiErrorResponse;
         console.error('授業削除エラー:', errorData);
         let errorMessage = '授業の削除に失敗しました';
         
@@ -377,13 +314,13 @@ export default function AdminCalendarDay() {
   }, [refreshData]);
 
   if (isLoadingBooths) {
-    return <div className="flex justify-center p-8">教室を読み込み中...</div>;
+    return <div className="flex justify-center p-8 text-foreground dark:text-foreground">教室を読み込み中...</div>;
   }
 
   return (
     <div className="flex flex-col space-y-4 p-4">
       <div className="flex flex-col sm:flex-row justify-between items-center space-y-2 sm:space-y-0">
-        <h2 className="text-xl font-semibold">スケジュール管理</h2>
+        <h2 className="text-xl font-semibold text-foreground dark:text-foreground">スケジュール管理</h2>
         <DaySelector
           selectedDays={selectedDays}
           onSelectDay={handleDaySelect}
@@ -391,9 +328,9 @@ export default function AdminCalendarDay() {
       </div>
 
       {isLoading && (
-        <div className="text-center p-4 text-blue-600">
+        <div className="text-center p-4 text-primary dark:text-primary">
           カレンダーデータを更新中... 
-          <span className="text-xs block mt-1 text-gray-500">
+          <span className="text-xs block mt-1 text-muted-foreground dark:text-muted-foreground">
             {selectedDays.map(day => getDateKey(day)).join(', ')}
           </span>
         </div>
@@ -401,7 +338,7 @@ export default function AdminCalendarDay() {
 
       <div className="space-y-8">
         {selectedDays.length === 0 && !isLoading && (
-            <div className="text-center text-gray-500 py-10">スケジュールを表示する日を選択してください。</div>
+            <div className="text-center text-muted-foreground dark:text-muted-foreground py-10">スケジュールを表示する日を選択してください。</div>
         )}
         
         {selectedDays.map((day, index) => {
@@ -416,8 +353,8 @@ export default function AdminCalendarDay() {
 
           if (isLoadingThisDay && !sessions.length) {
             return (
-              <div key={uniqueKey} className="border rounded-lg shadow-sm overflow-hidden bg-white">
-                <div className="p-3 border-b bg-gray-50">
+              <div key={uniqueKey} className="border rounded-lg shadow-sm overflow-hidden bg-background dark:bg-background border-border dark:border-border">
+                <div className="p-3 border-b bg-muted dark:bg-muted border-border dark:border-border">
                   <Skeleton className="h-6 w-48 rounded" />
                 </div>
                 <div className="p-4 space-y-3">
