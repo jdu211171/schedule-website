@@ -10,7 +10,7 @@ import { ZodError } from "zod";
 export async function GET(request: Request) {
   const session = await auth();
   if (!session) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+    return Response.json({ error: "権限がありません" }, { status: 401 }); // "Unauthorized"
   }
 
   const { searchParams } = new URL(request.url);
@@ -53,12 +53,12 @@ export async function GET(request: Request) {
   } catch (error) {
     if (error instanceof ZodError) {
       return Response.json(
-        { error: "Invalid query parameters", details: error.errors },
+        { error: "無効なクエリパラメータです", details: error.errors }, // "Invalid query parameters"
         { status: 400 }
       );
     }
     return Response.json(
-      { error: "Failed to fetch class types" },
+      { error: "授業タイプの取得に失敗しました" }, // "Failed to fetch class types"
       { status: 500 }
     );
   }
@@ -67,10 +67,10 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const session = await auth();
   if (!session) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+    return Response.json({ error: "権限がありません" }, { status: 401 }); // "Unauthorized"
   }
   if (session.user?.role !== "ADMIN") {
-    return Response.json({ error: "Forbidden" }, { status: 403 });
+    return Response.json({ error: "禁止されています" }, { status: 403 }); // "Forbidden"
   }
 
   try {
@@ -81,7 +81,7 @@ export async function POST(request: Request) {
 
     return Response.json(
       {
-        message: "Class type created successfully",
+        message: "授業タイプが正常に作成されました", // "Class type created successfully"
         data: classType,
       },
       { status: 201 }
@@ -89,12 +89,12 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof ZodError) {
       return Response.json(
-        { error: "Validation failed", details: error.errors },
+        { error: "検証に失敗しました", details: error.errors }, // "Validation failed"
         { status: 400 }
       );
     }
     return Response.json(
-      { error: "Failed to create class type" },
+      { error: "授業タイプの作成に失敗しました" }, // "Failed to create class type"
       { status: 500 }
     );
   }
@@ -103,10 +103,10 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   const session = await auth();
   if (!session) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+    return Response.json({ error: "権限がありません" }, { status: 401 }); // "Unauthorized"
   }
   if (session.user?.role !== "ADMIN") {
-    return Response.json({ error: "Forbidden" }, { status: 403 });
+    return Response.json({ error: "禁止されています" }, { status: 403 }); // "Forbidden"
   }
 
   try {
@@ -118,7 +118,7 @@ export async function PUT(request: Request) {
     });
 
     if (!existingClassType) {
-      return Response.json({ error: "Class type not found" }, { status: 404 });
+      return Response.json({ error: "授業タイプが見つかりません" }, { status: 404 }); // "Class type not found"
     }
 
     const classType = await prisma.classType.update({
@@ -127,18 +127,18 @@ export async function PUT(request: Request) {
     });
 
     return Response.json({
-      message: "Class type updated successfully",
+      message: "授業タイプが正常に更新されました", // "Class type updated successfully"
       data: classType,
     });
   } catch (error) {
     if (error instanceof ZodError) {
       return Response.json(
-        { error: "Validation failed", details: error.errors },
+        { error: "検証に失敗しました", details: error.errors }, // "Validation failed"
         { status: 400 }
       );
     }
     return Response.json(
-      { error: "Failed to update class type" },
+      { error: "授業タイプの更新に失敗しました" }, // "Failed to update class type"
       { status: 500 }
     );
   }
@@ -147,10 +147,10 @@ export async function PUT(request: Request) {
 export async function DELETE(request: Request) {
   const session = await auth();
   if (!session) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+    return Response.json({ error: "権限がありません" }, { status: 401 }); // "Unauthorized"
   }
   if (session.user?.role !== "ADMIN") {
-    return Response.json({ error: "Forbidden" }, { status: 403 });
+    return Response.json({ error: "禁止されています" }, { status: 403 }); // "Forbidden"
   }
 
   try {
@@ -159,7 +159,7 @@ export async function DELETE(request: Request) {
 
     if (!classTypeId) {
       return Response.json(
-        { error: "Class type ID is required" },
+        { error: "授業タイプIDは必須です" }, // "Class type ID is required"
         { status: 400 }
       );
     }
@@ -169,7 +169,7 @@ export async function DELETE(request: Request) {
     });
 
     if (!existingClassType) {
-      return Response.json({ error: "Class type not found" }, { status: 404 });
+      return Response.json({ error: "授業タイプが見つかりません" }, { status: 404 }); // "Class type not found"
     }
 
     // Check for related records
@@ -186,7 +186,7 @@ export async function DELETE(request: Request) {
       return Response.json(
         {
           error:
-            "Cannot delete class type with related class sessions or student preferences",
+            "関連する授業セッションまたは生徒の希望があるため、授業タイプを削除できません", // "Cannot delete class type with related class sessions or student preferences"
         },
         { status: 409 }
       );
@@ -195,11 +195,11 @@ export async function DELETE(request: Request) {
     await prisma.classType.delete({ where: { classTypeId } });
 
     return Response.json({
-      message: "Class type deleted successfully",
+      message: "授業タイプが正常に削除されました", // "Class type deleted successfully"
     });
   } catch {
     return Response.json(
-      { error: "Failed to delete class type" },
+      { error: "授業タイプの削除に失敗しました" }, // "Failed to delete class type"
       { status: 500 }
     );
   }

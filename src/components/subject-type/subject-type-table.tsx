@@ -7,7 +7,10 @@ import { Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/data-table";
 import { useSubjectTypes } from "@/hooks/useSubjectTypeQuery";
-import { useSubjectTypeDelete } from "@/hooks/useSubjectTypeMutation";
+import {
+  useSubjectTypeDelete,
+  getResolvedSubjectTypeId,
+} from "@/hooks/useSubjectTypeMutation";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -57,34 +60,47 @@ export function SubjectTypeTable() {
     {
       id: "actions",
       header: "操作",
-      cell: ({ row }) => (
-        <div className="flex gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setSubjectTypeToEdit(row.original)}
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setSubjectTypeToDelete(row.original)}
-          >
-            <Trash2 className="h-4 w-4 text-destructive" />
-          </Button>
-        </div>
-      ),
+      cell: ({ row }) => {
+        // Type-safe check for _optimistic property
+        const isOptimistic = (row.original as any)._optimistic;
+
+        return (
+          <div className="flex gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setSubjectTypeToEdit(row.original)}
+            >
+              <Pencil
+                className={`h-4 w-4 ${isOptimistic ? "opacity-70" : ""}`}
+              />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setSubjectTypeToDelete(row.original)}
+            >
+              <Trash2
+                className={`h-4 w-4 text-destructive ${
+                  isOptimistic ? "opacity-70" : ""
+                }`}
+              />
+            </Button>
+          </div>
+        );
+      },
     },
   ];
 
   const handleDeleteSubjectType = async () => {
     if (subjectTypeToDelete) {
       try {
-        await deleteSubjectTypeMutation.mutateAsync(
+        // Close the dialog immediately for better UX
+        const subjectTypeId = getResolvedSubjectTypeId(
           subjectTypeToDelete.subjectTypeId
         );
         setSubjectTypeToDelete(null);
+        await deleteSubjectTypeMutation.mutateAsync(subjectTypeId);
       } catch (error) {
         console.error("科目タイプの削除に失敗しました:", error);
       }

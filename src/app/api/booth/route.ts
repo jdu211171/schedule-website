@@ -78,7 +78,7 @@ export async function POST(request: Request) {
 
     return Response.json(
       {
-        message: "Booth created successfully",
+        message: "ブースの作成に成功しました", // "Booth created successfully"
         data: booth,
       },
       { status: 201 }
@@ -121,7 +121,7 @@ export async function PUT(request: Request) {
     });
 
     return Response.json({
-      message: "Booth updated successfully",
+      message: "ブースの更新に成功しました", // "Booth updated successfully"
       data: booth
     });
   } catch (error) {
@@ -177,7 +177,7 @@ export async function DELETE(request: Request) {
     await prisma.booth.delete({ where: { boothId } });
 
     return Response.json({
-      message: "Booth deleted successfully",
+      message: "ブースの削除に成功しました", // "Booth deleted successfully"
     });
   } catch {
     return Response.json({ error: "Failed to delete booth" }, { status: 500 });

@@ -10,7 +10,7 @@ import { ZodError } from "zod";
 export async function GET(request: Request) {
   const session = await auth();
   if (!session) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+    return Response.json({ error: "権限がありません" }, { status: 401 }); // "Unauthorized"
   }
 
   const { searchParams } = new URL(request.url);
@@ -40,11 +40,23 @@ export async function GET(request: Request) {
       take: limit,
       orderBy,
       include: {
-        subjects: {
-          select: {
-            subjectId: true,
-            name: true,
+        subjectToSubjectTypes: {
+          include: {
+            subject: {
+              select: {
+                subjectId: true,
+                name: true,
+              },
+            },
           },
+        },
+        StudentPreferenceSubject: {
+          select: {
+            id: true,
+            studentPreferenceId: true,
+            subjectId: true,
+          },
+          take: 10, // Limit to prevent large response payloads
         },
       },
     });
@@ -61,12 +73,13 @@ export async function GET(request: Request) {
   } catch (error) {
     if (error instanceof ZodError) {
       return Response.json(
-        { error: "Invalid query parameters", details: error.errors },
+        { error: "無効なクエリパラメータです", details: error.errors }, // "Invalid query parameters"
         { status: 400 }
       );
     }
+    console.error("科目タイプの取得エラー:", error); // "Error fetching subject types:"
     return Response.json(
-      { error: "Failed to fetch subject types" },
+      { error: "科目タイプの取得に失敗しました" }, // "Failed to fetch subject types"
       { status: 500 }
     );
   }
@@ -75,10 +88,10 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const session = await auth();
   if (!session) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+    return Response.json({ error: "権限がありません" }, { status: 401 }); // "Unauthorized"
   }
   if (session.user?.role !== "ADMIN") {
-    return Response.json({ error: "Forbidden" }, { status: 403 });
+    return Response.json({ error: "禁止されています" }, { status: 403 }); // "Forbidden"
   }
 
   try {
@@ -89,7 +102,7 @@ export async function POST(request: Request) {
 
     return Response.json(
       {
-        message: "Subject type created successfully",
+        message: "科目タイプが正常に作成されました", // "Subject type created successfully"
         data: subjectType,
       },
       { status: 201 }
@@ -97,12 +110,13 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof ZodError) {
       return Response.json(
-        { error: "Validation failed", details: error.errors },
+        { error: "検証に失敗しました", details: error.errors }, // "Validation failed"
         { status: 400 }
       );
     }
+    console.error("科目タイプの作成エラー:", error); // "Error creating subject type:"
     return Response.json(
-      { error: "Failed to create subject type" },
+      { error: "科目タイプの作成に失敗しました" }, // "Failed to create subject type"
       { status: 500 }
     );
   }
@@ -111,10 +125,10 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   const session = await auth();
   if (!session) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+    return Response.json({ error: "権限がありません" }, { status: 401 }); // "Unauthorized"
   }
   if (session.user?.role !== "ADMIN") {
-    return Response.json({ error: "Forbidden" }, { status: 403 });
+    return Response.json({ error: "禁止されています" }, { status: 403 }); // "Forbidden"
   }
 
   try {
@@ -127,7 +141,7 @@ export async function PUT(request: Request) {
 
     if (!existingSubjectType) {
       return Response.json(
-        { error: "Subject type not found" },
+        { error: "科目タイプが見つかりません" }, // "Subject type not found"
         { status: 404 }
       );
     }
@@ -138,18 +152,19 @@ export async function PUT(request: Request) {
     });
 
     return Response.json({
-      message: "Subject type updated successfully",
+      message: "科目タイプが正常に更新されました", // "Subject type updated successfully"
       data: subjectType,
     });
   } catch (error) {
     if (error instanceof ZodError) {
       return Response.json(
-        { error: "Validation failed", details: error.errors },
+        { error: "検証に失敗しました", details: error.errors }, // "Validation failed"
         { status: 400 }
       );
     }
+    console.error("科目タイプの更新エラー:", error); // "Error updating subject type:"
     return Response.json(
-      { error: "Failed to update subject type" },
+      { error: "科目タイプの更新に失敗しました" }, // "Failed to update subject type"
       { status: 500 }
     );
   }
@@ -158,10 +173,10 @@ export async function PUT(request: Request) {
 export async function DELETE(request: Request) {
   const session = await auth();
   if (!session) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+    return Response.json({ error: "権限がありません" }, { status: 401 }); // "Unauthorized"
   }
   if (session.user?.role !== "ADMIN") {
-    return Response.json({ error: "Forbidden" }, { status: 403 });
+    return Response.json({ error: "禁止されています" }, { status: 403 }); // "Forbidden"
   }
 
   try {
@@ -170,31 +185,42 @@ export async function DELETE(request: Request) {
 
     if (!subjectTypeId) {
       return Response.json(
-        { error: "Subject type ID is required" },
+        { error: "科目タイプIDは必須です" }, // "Subject type ID is required"
         { status: 400 }
       );
     }
 
     const existingSubjectType = await prisma.subjectType.findUnique({
       where: { subjectTypeId },
+      include: {
+        subjectToSubjectTypes: true,
+        StudentPreferenceSubject: true,
+      },
     });
 
     if (!existingSubjectType) {
       return Response.json(
-        { error: "Subject type not found" },
+        { error: "科目タイプが見つかりません" }, // "Subject type not found"
         { status: 404 }
       );
     }
 
-    // Check for related subjects before deletion
-    const hasRelatedSubjects = await prisma.subject.findFirst({
-      where: { subjectTypeId },
-    });
-
-    if (hasRelatedSubjects) {
+    // Check for related records before deletion
+    if (existingSubjectType.subjectToSubjectTypes.length > 0) {
       return Response.json(
         {
-          error: "Cannot delete subject type with related subjects",
+          error: "このタイプを参照している科目があるため削除できません", // "Cannot delete because there are subjects referencing this type"
+        },
+        { status: 409 }
+      );
+    }
+
+    // Check for related StudentPreferenceSubject records
+    if (existingSubjectType.StudentPreferenceSubject.length > 0) {
+      return Response.json(
+        {
+          error:
+            "このタイプを参照している生徒の希望科目があるため削除できません", // "Cannot delete because there are student preference subjects referencing this type"
         },
         { status: 409 }
       );
@@ -203,12 +229,12 @@ export async function DELETE(request: Request) {
     await prisma.subjectType.delete({ where: { subjectTypeId } });
 
     return Response.json({
-      message: "Subject type deleted successfully",
+      message: "科目タイプが正常に削除されました", // "Subject type deleted successfully"
     });
   } catch (error) {
-    console.error("Error deleting subject type:", error);
+    console.error("科目タイプの削除エラー:", error); // "Error deleting subject type:"
     return Response.json(
-      { error: "Failed to delete subject type" },
+      { error: "科目タイプの削除に失敗しました" }, // "Failed to delete subject type"
       { status: 500 }
     );
   }

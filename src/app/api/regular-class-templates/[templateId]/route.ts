@@ -19,7 +19,16 @@ export async function GET(
       where: { templateId },
       include: {
         teacher: true,
-        subject: true,
+        subject: {
+          include: {
+            subjectToSubjectTypes: {
+              include: {
+                subjectType: true,
+              },
+            },
+          },
+        },
+        subjectType: true,
         booth: true,
         templateStudentAssignments: {
           include: {
@@ -30,12 +39,15 @@ export async function GET(
     });
 
     if (!template) {
-      return Response.json({ error: "Template not found" }, { status: 404 });
+      return Response.json(
+        { error: "テンプレートが見つかりません" },
+        { status: 404 }
+      );
     }
 
     return Response.json({ data: template });
   } catch (error) {
-    console.error("Error fetching template:", error);
+    console.error("テンプレート取得中にエラーが発生しました:", error);
     return Response.json(
       { error: "Failed to fetch template" },
       { status: 500 }

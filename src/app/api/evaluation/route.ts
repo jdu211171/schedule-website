@@ -10,7 +10,7 @@ import { ZodError } from "zod";
 export async function GET(request: Request) {
   const session = await auth();
   if (!session) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+    return Response.json({ error: "権限がありません" }, { status: 401 }); // "Unauthorized"
   }
 
   const { searchParams } = new URL(request.url);
@@ -57,12 +57,12 @@ export async function GET(request: Request) {
   } catch (error) {
     if (error instanceof ZodError) {
       return Response.json(
-        { error: "Invalid query parameters", details: error.errors },
+        { error: "無効なクエリパラメータです", details: error.errors }, // "Invalid query parameters"
         { status: 400 }
       );
     }
     return Response.json(
-      { error: "Failed to fetch evaluations" },
+      { error: "評価の取得に失敗しました" }, // "Failed to fetch evaluations"
       { status: 500 }
     );
   }
@@ -71,10 +71,10 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const session = await auth();
   if (!session) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+    return Response.json({ error: "権限がありません" }, { status: 401 }); // "Unauthorized"
   }
   if (session.user?.role !== "ADMIN") {
-    return Response.json({ error: "Forbidden" }, { status: 403 });
+    return Response.json({ error: "禁止されています" }, { status: 403 }); // "Forbidden"
   }
 
   try {
@@ -85,7 +85,7 @@ export async function POST(request: Request) {
 
     return Response.json(
       {
-        message: "Evaluation created successfully",
+        message: "評価が正常に作成されました", // "Evaluation created successfully"
         data: evaluation,
       },
       { status: 201 }
@@ -93,12 +93,12 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof ZodError) {
       return Response.json(
-        { error: "Validation failed", details: error.errors },
+        { error: "検証に失敗しました", details: error.errors }, // "Validation failed"
         { status: 400 }
       );
     }
     return Response.json(
-      { error: "Failed to create evaluation" },
+      { error: "評価の作成に失敗しました" }, // "Failed to create evaluation"
       { status: 500 }
     );
   }
@@ -107,10 +107,10 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   const session = await auth();
   if (!session) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+    return Response.json({ error: "権限がありません" }, { status: 401 }); // "Unauthorized"
   }
   if (session.user?.role !== "ADMIN") {
-    return Response.json({ error: "Forbidden" }, { status: 403 });
+    return Response.json({ error: "禁止されています" }, { status: 403 }); // "Forbidden"
   }
 
   try {
@@ -122,7 +122,7 @@ export async function PUT(request: Request) {
     });
 
     if (!existingEvaluation) {
-      return Response.json({ error: "Evaluation not found" }, { status: 404 });
+      return Response.json({ error: "評価が見つかりません" }, { status: 404 }); // "Evaluation not found"
     }
 
     const evaluation = await prisma.evaluation.update({
@@ -131,18 +131,18 @@ export async function PUT(request: Request) {
     });
 
     return Response.json({
-      message: "Evaluation updated successfully",
+      message: "評価が正常に更新されました", // "Evaluation updated successfully"
       data: evaluation,
     });
   } catch (error) {
     if (error instanceof ZodError) {
       return Response.json(
-        { error: "Validation failed", details: error.errors },
+        { error: "検証に失敗しました", details: error.errors }, // "Validation failed"
         { status: 400 }
       );
     }
     return Response.json(
-      { error: "Failed to update evaluation" },
+      { error: "評価の更新に失敗しました" }, // "Failed to update evaluation"
       { status: 500 }
     );
   }
@@ -151,10 +151,10 @@ export async function PUT(request: Request) {
 export async function DELETE(request: Request) {
   const session = await auth();
   if (!session) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+    return Response.json({ error: "権限がありません" }, { status: 401 }); // "Unauthorized"
   }
   if (session.user?.role !== "ADMIN") {
-    return Response.json({ error: "Forbidden" }, { status: 403 });
+    return Response.json({ error: "禁止されています" }, { status: 403 }); // "Forbidden"
   }
 
   try {
@@ -163,7 +163,7 @@ export async function DELETE(request: Request) {
 
     if (!evaluationId) {
       return Response.json(
-        { error: "Evaluation ID is required" },
+        { error: "評価IDは必須です" }, // "Evaluation ID is required"
         { status: 400 }
       );
     }
@@ -173,7 +173,7 @@ export async function DELETE(request: Request) {
     });
 
     if (!existingEvaluation) {
-      return Response.json({ error: "Evaluation not found" }, { status: 404 });
+      return Response.json({ error: "評価が見つかりません" }, { status: 404 }); // "Evaluation not found"
     }
 
     // Check for related records (teachers using this evaluation)
@@ -184,7 +184,7 @@ export async function DELETE(request: Request) {
     if (hasRelatedTeachers) {
       return Response.json(
         {
-          error: "Cannot delete evaluation with related teachers",
+          error: "関連する講師がいるため、評価を削除できません", // "Cannot delete evaluation with related teachers"
         },
         { status: 409 }
       );
@@ -193,11 +193,11 @@ export async function DELETE(request: Request) {
     await prisma.evaluation.delete({ where: { evaluationId } });
 
     return Response.json({
-      message: "Evaluation deleted successfully",
+      message: "評価が正常に削除されました", // "Evaluation deleted successfully"
     });
   } catch {
     return Response.json(
-      { error: "Failed to delete evaluation" },
+      { error: "評価の削除に失敗しました" }, // "Failed to delete evaluation"
       { status: 500 }
     );
   }

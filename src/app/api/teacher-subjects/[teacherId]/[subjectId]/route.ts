@@ -3,7 +3,15 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET(
   request: Request,
-  { params }: { params: Promise<{ teacherId: string; subjectId: string }> }
+  {
+    params,
+  }: {
+    params: Promise<{
+      teacherId: string;
+      subjectId: string;
+      subjectTypeId: string;
+    }>;
+  }
 ) {
   const session = await auth();
   if (!session) {
@@ -11,14 +19,15 @@ export async function GET(
   }
 
   try {
-    const { teacherId, subjectId } = await params;
+    const { teacherId, subjectId, subjectTypeId } = await params;
 
     // Fetch the teacher-subject relationship with related data
     const teacherSubject = await prisma.teacherSubject.findUnique({
       where: {
-        teacherId_subjectId: {
+        teacherId_subjectId_subjectTypeId: {
           teacherId,
           subjectId,
+          subjectTypeId,
         },
       },
       include: {
@@ -33,7 +42,17 @@ export async function GET(
           select: {
             subjectId: true,
             name: true,
-            subjectType: true,
+            subjectToSubjectTypes: {
+              include: {
+                subjectType: true,
+              },
+            },
+          },
+        },
+        subjectType: {
+          select: {
+            subjectTypeId: true,
+            name: true,
           },
         },
       },
@@ -41,7 +60,7 @@ export async function GET(
 
     if (!teacherSubject) {
       return Response.json(
-        { error: "Teacher-subject relationship not found" },
+        { error: "講師-科目関連が見つかりません" },
         { status: 404 }
       );
     }
@@ -50,7 +69,7 @@ export async function GET(
   } catch (error) {
     console.error("Error fetching teacher-subject relationship:", error);
     return Response.json(
-      { error: "Failed to fetch teacher-subject relationship" },
+      { error: "講師-科目関連の取得に失敗しました" },
       { status: 500 }
     );
   }

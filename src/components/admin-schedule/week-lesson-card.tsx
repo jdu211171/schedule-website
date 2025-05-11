@@ -1,14 +1,14 @@
 import React from 'react';
 import { format } from 'date-fns';
-import { 
-  Card, 
-  CardContent,  
+import {
+  Card,
+  CardContent,
 } from '@/components/ui/card';
-import { 
-  getSubjectColor, 
-  getSubjectName, 
-  getTeacherName, 
-  getStudentName, 
+import {
+  getSubjectColor,
+  getSubjectName,
+  getTeacherName,
+  getStudentName,
 } from './subjectUtils';
 import { Clock, User, Users, MapPin, AlertTriangle, CheckCircle, Clock3, Ban } from 'lucide-react';
 
@@ -54,21 +54,21 @@ const formatTime = (date: Date) => {
 };
 
 // Компонент карточки урока
-const WeekLessonCard: React.FC<WeekLessonCardProps> = ({ 
-  lesson, 
-  isExpanded, 
+const WeekLessonCard: React.FC<WeekLessonCardProps> = ({
+  lesson,
+  isExpanded,
   displayMode,
-  onClick 
+  onClick
 }) => {
   const status = lesson.status || getLessonStatus(lesson);
-  
+
   // Определяем цвета и стили в зависимости от статуса
   const colorClass = getSubjectColor(lesson.subject);
   const [bgColorClass] = colorClass.split(' ');
   const textColor = bgColorClass.includes('bg-yellow-') ? 'text-gray-800' : 'text-white';
   let statusIcon;
   let statusColor;
-  
+
   switch (status) {
     case 'ongoing':
       statusIcon = <Clock3 className="w-3 h-3 text-white" />;
@@ -90,9 +90,9 @@ const WeekLessonCard: React.FC<WeekLessonCardProps> = ({
       statusIcon = <Clock className="w-3 h-3 text-white" />;
       statusColor = 'bg-gray-400 text-white';
   }
-  
+
   if (isExpanded) {
-    // Развернутая карточка 
+    // Развернутая карточка
     return (
       <div className="w-full cursor-pointer" onClick={() => onClick(lesson.id)}>
         <Card className={`${bgColorClass} ${textColor} border-0 h-full`}>
@@ -103,21 +103,21 @@ const WeekLessonCard: React.FC<WeekLessonCardProps> = ({
                 {statusIcon}
               </div>
             </div>
-            
+
             <div className="text-sm">
               {formatTime(lesson.startTime)} - {formatTime(lesson.endTime)}
             </div>
-            
+
             <div className="flex items-center text-sm">
               <User className={`w-3 h-3 mr-2 ${textColor} opacity-75`} />
               <span>{getTeacherName(lesson.teacher)}</span>
             </div>
-            
+
             <div className="flex items-center text-sm">
               <Users className={`w-3 h-3 mr-2 ${textColor} opacity-75`} />
               <span>{getStudentName(lesson.student)}</span>
             </div>
-            
+
             <div className="flex items-center text-sm">
               <MapPin className={`w-3 h-3 mr-2 ${textColor} opacity-75`} />
               <span>ブース {lesson.room}</span>
@@ -130,13 +130,13 @@ const WeekLessonCard: React.FC<WeekLessonCardProps> = ({
     // Различные варианты свернутых карточек в зависимости от количества параллельных уроков
     switch (displayMode) {
       case 'full':
-        // Полная карточка 
+        // Полная карточка
         return (
-          <div 
+          <div
             className="w-full cursor-pointer"
             onClick={() => onClick(lesson.id)}
           >
-            <div 
+            <div
               className={`${bgColorClass} ${textColor} p-1 px-2 rounded flex justify-between items-center mb-1`}
             >
               <div className="flex-grow truncate">
@@ -152,15 +152,15 @@ const WeekLessonCard: React.FC<WeekLessonCardProps> = ({
             </div>
           </div>
         );
-        
+
       case 'compact-2':
-        // Компактная карточка 
+        // Компактная карточка
         return (
-          <div 
+          <div
             className="w-full cursor-pointer pr-0.5"
             onClick={() => onClick(lesson.id)}
           >
-            <div 
+            <div
               className={`${bgColorClass} ${textColor} p-1 rounded flex justify-between items-center mb-1`}
             >
               <div className="text-xs truncate">
@@ -172,14 +172,14 @@ const WeekLessonCard: React.FC<WeekLessonCardProps> = ({
             </div>
           </div>
         );
-        
+
       case 'compact-3':
         return (
-          <div 
+          <div
             className="w-full cursor-pointer pr-0.5"
             onClick={() => onClick(lesson.id)}
           >
-            <div 
+            <div
               className={`${bgColorClass} ${textColor} p-1 rounded flex justify-between items-center mb-1`}
             >
               <div className="text-xs truncate">
@@ -191,15 +191,15 @@ const WeekLessonCard: React.FC<WeekLessonCardProps> = ({
             </div>
           </div>
         );
-        
+
       case 'compact-5':
-        // Минимальная карточка 
+        // Минимальная карточка
         return (
-          <div 
+          <div
             className="w-full cursor-pointer pr-0.5"
             onClick={() => onClick(lesson.id)}
           >
-            <div 
+            <div
               className={`${bgColorClass} ${textColor} py-1 px-1 rounded flex justify-center items-center mb-1`}
             >
               <div className={`rounded-full p-0.5 ${statusColor}`}>
@@ -208,16 +208,16 @@ const WeekLessonCard: React.FC<WeekLessonCardProps> = ({
             </div>
           </div>
         );
-        
+
       case 'compact-many':
       default:
-        // Максимально компактная 
+        // Максимально компактная
         return (
-          <div 
+          <div
             className="w-full cursor-pointer pr-0.5"
             onClick={() => onClick(lesson.id)}
           >
-            <div 
+            <div
               className={`${bgColorClass} rounded-full flex justify-center items-center w-6 h-6 mx-auto mb-1`}
             >
               <div className={`rounded-full p-0.5 ${statusColor} scale-75`}>

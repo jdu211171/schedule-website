@@ -6,22 +6,24 @@ import { DisplayLesson } from "./types";
 interface WeeklyScheduleProps {
   lessons: DisplayLesson[];
   onLessonClick?: (lesson: DisplayLesson) => void;
+  onLessonDelete?: (lesson: DisplayLesson) => void;
   currentTeacherId: string;
   currentStudentId: string;
   teacherName: string;
   studentName: string;
 }
 
-export default function WeeklySchedule({ 
-  lessons, 
-  onLessonClick, 
-  currentTeacherId,
-  currentStudentId,
-  teacherName,
-  studentName
-}: WeeklyScheduleProps) {
+export default function WeeklySchedule({
+                                         lessons,
+                                         onLessonClick,
+                                         onLessonDelete,
+                                         currentTeacherId,
+                                         currentStudentId,
+                                         teacherName,
+                                         studentName
+                                       }: WeeklyScheduleProps) {
   // console.log("WeeklySchedule lessons:", lessons);
-  
+
   const weekdays = [
     { ja: "日曜日", en: "Sunday", short: "日", value: "SUNDAY" },
     { ja: "月曜日", en: "Monday", short: "月", value: "MONDAY" },
@@ -60,14 +62,14 @@ export default function WeeklySchedule({
         isEditable: lesson.lessonType === 'current'
       };
     }
-    
+
     // Иначе определяем тип на основе ID преподавателя и ученика
     const isCurrent = lesson.teacherId === currentTeacherId && lesson.studentId === currentStudentId;
     const isTeacherLesson = lesson.teacherId === currentTeacherId && lesson.studentId !== currentStudentId;
     const isStudentLesson = lesson.teacherId !== currentTeacherId && lesson.studentId === currentStudentId;
-    
+
     let cardType: "teacher" | "student" | "current" = "current";
-    
+
     if (isCurrent) {
       cardType = "current";
     } else if (isTeacherLesson) {
@@ -75,7 +77,7 @@ export default function WeeklySchedule({
     } else if (isStudentLesson) {
       cardType = "student";
     }
-    
+
     return {
       cardType,
       isEditable: isCurrent
@@ -87,41 +89,42 @@ export default function WeeklySchedule({
     return lessons.filter(lesson => {
       // Пытаемся преобразовать dayOfWeek к числовому значению для сравнения
       const lessonDayOfWeek = dayOfWeekMap[lesson.dayOfWeek];
-      
-      // Проверяем соответствие либо по числовому индексу, либо по строковому значению
+
+      // П checking соответствие либо по числовому индексу, либо по строковому значению
       return lessonDayOfWeek === dayIndex || lesson.dayOfWeek === dayValue;
     });
   };
 
   return (
     <div className="w-full">
-      <div className="grid grid-cols-7 gap-px border border-gray-200 rounded overflow-hidden bg-gray-200">
+      <div className="grid grid-cols-7 gap-px border border-input rounded overflow-hidden bg-muted">
         {weekdays.map((day, index) => {
           // Получаем занятия для текущего дня
           const dayLessons = getLessonsForDay(index, day.value);
-          
+
           return (
-            <div key={day.en} className="bg-white">
-              <div className={`p-2 text-center font-medium mb-px ${index === currentDayOfWeek ? 'bg-blue-100' : 'bg-gray-100'}`}>
-                <div className="text-sm">{day.ja}</div>
-                <div className="text-xs text-gray-500">{day.en}</div>
+            <div key={day.en} className="bg-white dark:bg-gray-800">
+              <div className={`p-2 text-center font-medium mb-px ${index === currentDayOfWeek ? 'bg-accent/20 dark:bg-accent/10' : 'bg-muted/50 dark:bg-muted/30'}`}>
+                <div className="text-sm text-foreground">{day.ja}</div>
+                <div className="text-xs text-muted-foreground">{day.en}</div>
               </div>
-              
+
               <div className="p-1 min-h-[30vh]">
                 {dayLessons.length > 0 ? (
                   dayLessons
                     .sort((a, b) => a.startTime.localeCompare(b.startTime))
                     .map((lesson, lessonIndex) => {
                       const { cardType, isEditable } = getLessonTypeAndEditability(lesson);
-                      
+
                       // Создаем уникальный ключ, объединяя идентификатор урока и индекс
                       const uniqueKey = `${lesson.id || lesson.templateId || 'lesson'}-${lessonIndex}`;
-                      
+
                       return (
-                        <LessonCard 
-                          key={uniqueKey} 
-                          lesson={lesson} 
+                        <LessonCard
+                          key={uniqueKey}
+                          lesson={lesson}
                           onLessonClick={onLessonClick}
+                          onLessonDelete={onLessonDelete}
                           isEditable={isEditable}
                           cardType={cardType}
                           teacherName={teacherName}
@@ -130,26 +133,26 @@ export default function WeeklySchedule({
                       );
                     })
                 ) : (
-                  <div className="text-center text-gray-400 text-sm py-2">授業なし</div>
+                  <div className="text-center text-muted-foreground text-sm py-2">授業なし</div>
                 )}
               </div>
             </div>
           );
         })}
       </div>
-      
+
       {/* Легенда для типов карточек */}
-      <div className="flex justify-center mt-4 text-sm">
+      <div className="flex justify-center mt-4 text-sm text-foreground">
         <div className="flex items-center mr-4">
-          <div className="w-4 h-4 bg-white border border-gray-300 mr-1"></div>
-          <span>共通の授業</span>
+          <div className="w-4 h-4 bg-white dark:bg-gray-800 border border-input mr-1"></div>
+          <span>共通の授業 (編集可能)</span>
         </div>
         <div className="flex items-center mr-4">
-          <div className="w-4 h-4 bg-green-50 border border-gray-300 mr-1"></div>
+          <div className="w-4 h-4 bg-green-50 dark:bg-green-900/20 border border-input mr-1"></div>
           <span>先生の授業</span>
         </div>
         <div className="flex items-center">
-          <div className="w-4 h-4 bg-blue-50 border border-gray-300 mr-1"></div>
+          <div className="w-4 h-4 bg-blue-50 dark:bg-blue-900/20 border border-input mr-1"></div>
           <span>生徒の授業</span>
         </div>
       </div>

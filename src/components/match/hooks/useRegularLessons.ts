@@ -17,7 +17,7 @@ export function useRegularLessons({
   teacherName,
   studentName
 }: UseRegularLessonsProps) {
-  // Getting all teacher's lessons
+
   const teacherLessonsQuery = useQuery<DisplayLesson[]>({
     queryKey: ['teacherLessons', teacherId],
     queryFn: async () => {

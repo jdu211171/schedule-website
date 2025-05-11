@@ -31,10 +31,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useTeacherCreate, useTeacherUpdate, DayOfWeek } from "@/hooks/useTeacherMutation";
 import {
-  CreateUserTeacherSchema,
-} from "@/schemas/teacher.schema";
+  useTeacherCreate,
+  useTeacherUpdate,
+  DayOfWeek,
+  SubjectTypePair,
+} from "@/hooks/useTeacherMutation";
+import { CreateUserTeacherSchema } from "@/schemas/teacher.schema";
 import { useEvaluations } from "@/hooks/useEvaluationQuery";
 import { TeacherDesiredTimeField } from "./teacher-desired-time-field";
 import {
@@ -43,6 +46,24 @@ import {
 } from "@/schemas/teacher-preferences.schema";
 import { TeacherWithPreference } from "@/hooks/useTeacherQuery";
 import { useSubjects } from "@/hooks/useSubjectQuery";
+
+// Define the SubjectCompat interface for proper typing
+interface SubjectCompat {
+  subjectId: string;
+  name: string;
+  subjectTypeId?: string;
+  notes?: string | null;
+  subjectToSubjectTypes?: Array<{
+    subjectTypeId: string;
+    subjectType: {
+      subjectTypeId: string;
+      name: string;
+    };
+  }>;
+}
+
+// Type for subject-type pair
+type SubjectTypePairLocal = SubjectTypePair;
 
 interface TeacherFormDialogProps {
   open: boolean;
@@ -65,19 +86,36 @@ export function TeacherFormDialog({
 
   // Create a searchable list of subjects
   const subjectList = useMemo(() => {
-    return Array.isArray(subjects)
-      ? subjects
-      : (subjects?.data ?? []);
+    return Array.isArray(subjects) ? subjects : subjects?.data ?? [];
   }, [subjects]);
 
+  // Map to a compatible format for subject operations
+  const subjectsCompatArray: SubjectCompat[] = useMemo(
+    () =>
+      subjectList.map((s: any) => ({
+        subjectId: s.subjectId,
+        name: s.name,
+        subjectTypeId: s.subjectTypeId,
+        notes: s.notes,
+        subjectToSubjectTypes: s.subjectToSubjectTypes,
+      })),
+    [subjectList]
+  );
+
   // Get teacher subjects (if editing)
-  const teacherSubjectIds = useMemo(() => {
+  const teacherSubjectPairs = useMemo(() => {
     if (!teacher || !teacher.teacherSubjects) return [];
-    return teacher.teacherSubjects.map(ts => ts.subjectId);
+    return teacher.teacherSubjects.map((ts) => ({
+      subjectId: ts.subjectId,
+      subjectTypeId: ts.subjectTypeId,
+    }));
   }, [teacher]);
 
+  // State for subject selection
   const [subjectSearchTerm, setSubjectSearchTerm] = useState("");
   const [showSubjectDropdown, setShowSubjectDropdown] = useState(false);
+  const [selectedSubject, setSelectedSubject] = useState<string>("");
+  const [selectedSubjectType, setSelectedSubjectType] = useState<string>("");
 
   const isEditing = !!teacher;
 
@@ -97,7 +135,7 @@ export function TeacherFormDialog({
   const formSchema = isEditing ? editSchema : CreateUserTeacherSchema;
 
   // Use teacher email for username if we're in edit mode
-  const defaultUsername = isEditing ? (teacher?.email || "default_username") : "";
+  const defaultUsername = isEditing ? teacher?.email || "default_username" : "";
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -105,7 +143,7 @@ export function TeacherFormDialog({
       name: teacher?.name || "",
       evaluationId: teacher?.evaluationId || undefined,
       // Ensure birthDate is a Date or undefined
-      birthDate: teacher?.birthDate ? new Date(teacher.birthDate) : undefined,
+      birthDate: teacher?.birthDate || undefined,
       mobileNumber: teacher?.mobileNumber || "",
       email: teacher?.email || "",
       highSchool: teacher?.highSchool || "",
@@ -123,7 +161,7 @@ export function TeacherFormDialog({
       notes: teacher?.notes || "",
       username: defaultUsername, // Set default username for edit mode
       password: "",
-      subjects: teacherSubjectIds || [],
+      subjects: [], // We'll handle subjects separately
     },
   });
 
@@ -131,14 +169,18 @@ export function TeacherFormDialog({
   const teacherShifts = teacher?.TeacherShiftReference || [];
 
   // Convert time format for the preferences form
-  const formattedShifts = teacherShifts.map(shift => ({
+  const formattedShifts = teacherShifts.map((shift) => ({
     dayOfWeek: shift.dayOfWeek,
     startTime: new Date(shift.startTime).toTimeString().slice(0, 5),
-    endTime: new Date(shift.endTime).toTimeString().slice(0, 5)
+    endTime: new Date(shift.endTime).toTimeString().slice(0, 5),
   }));
 
   // Preferences form
-  const preferencesForm = useForm<Omit<TeacherShiftPreferencesInput, 'additionalNotes'> & { additionalNotes: string | null }>({
+  const preferencesForm = useForm<
+    Omit<TeacherShiftPreferencesInput, "additionalNotes"> & {
+      additionalNotes: string | null;
+    }
+  >({
     resolver: zodResolver(TeacherShiftPreferencesSchema),
     defaultValues: {
       dayOfWeek: teacher?.TeacherShiftReference?.[0]?.dayOfWeek || undefined,
@@ -147,21 +189,40 @@ export function TeacherFormDialog({
     },
   });
 
-  // Subjects form
-  const subjectsForm = useForm<{ subjects: string[] }>({
+  // Subjects form with the new structure
+  const subjectsForm = useForm<{ subjectPairs: SubjectTypePairLocal[] }>({
     defaultValues: {
-      subjects: teacherSubjectIds || [],
+      subjectPairs: teacherSubjectPairs || [],
     },
   });
+
+  // Effect to update subject types when a subject is selected
+  const availableSubjectTypes = useMemo(() => {
+    if (!selectedSubject) return [];
+    const subject = subjectsCompatArray.find(
+      (s) => s.subjectId === selectedSubject
+    );
+    if (!subject) return [];
+    return (subject.subjectToSubjectTypes || []).map((rel) => ({
+      subjectTypeId: rel.subjectType.subjectTypeId,
+      name: rel.subjectType.name,
+    }));
+  }, [selectedSubject, subjectsCompatArray]);
+
+  useEffect(() => {
+    // When selectedSubject changes, reset selectedSubjectType
+    setSelectedSubjectType("");
+  }, [selectedSubject]);
 
   // Reset preferences form when teacher data changes
   useEffect(() => {
     if (teacher) {
-      const formattedShifts = teacher.TeacherShiftReference?.map(shift => ({
-        dayOfWeek: shift.dayOfWeek,
-        startTime: new Date(shift.startTime).toTimeString().slice(0, 5),
-        endTime: new Date(shift.endTime).toTimeString().slice(0, 5)
-      })) || [];
+      const formattedShifts =
+        teacher.TeacherShiftReference?.map((shift) => ({
+          dayOfWeek: shift.dayOfWeek,
+          startTime: new Date(shift.startTime).toTimeString().slice(0, 5),
+          endTime: new Date(shift.endTime).toTimeString().slice(0, 5),
+        })) || [];
 
       preferencesForm.reset({
         dayOfWeek: teacher.TeacherShiftReference?.[0]?.dayOfWeek,
@@ -169,11 +230,14 @@ export function TeacherFormDialog({
         additionalNotes: teacher.TeacherShiftReference?.[0]?.notes || null,
       });
 
-      // Reset subjects form
-      const teacherSubjectIds = teacher.teacherSubjects?.map(ts => ts.subjectId) || [];
-      subjectsForm.reset({
-        subjects: teacherSubjectIds,
-      });
+      // Reset subjects form with subject-type pairs
+      const subjectPairs =
+        teacher.teacherSubjects?.map((ts) => ({
+          subjectId: ts.subjectId,
+          subjectTypeId: ts.subjectTypeId,
+        })) || [];
+
+      subjectsForm.setValue("subjectPairs", subjectPairs);
     }
   }, [teacher, preferencesForm, subjectsForm]);
 
@@ -185,14 +249,23 @@ export function TeacherFormDialog({
   };
 
   const getBirthDateString = (value: unknown) => {
-    if (typeof value === 'string') return value.slice(0, 10);
-    if (value instanceof Date && !isNaN(value.getTime())) return formatDate(value);
+    if (typeof value === "string") return value.slice(0, 10);
+    if (value instanceof Date && !isNaN(value.getTime()))
+      return formatDate(value);
     return "";
   };
 
   // Helper function to ensure dayOfWeek is a valid enum value
   const ensureDayOfWeekEnum = (day: string): DayOfWeek => {
-    const validDays: DayOfWeek[] = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"];
+    const validDays: DayOfWeek[] = [
+      "MONDAY",
+      "TUESDAY",
+      "WEDNESDAY",
+      "THURSDAY",
+      "FRIDAY",
+      "SATURDAY",
+      "SUNDAY",
+    ];
     const upperDay = day.toUpperCase() as DayOfWeek;
 
     if (validDays.includes(upperDay)) {
@@ -204,11 +277,11 @@ export function TeacherFormDialog({
     return "MONDAY";
   };
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
+  function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
     try {
       // Get shift preferences with properly formatted dayOfWeek enum values
-      const shifts = preferencesForm.getValues().desiredTimes.map(time => {
+      const shifts = preferencesForm.getValues().desiredTimes.map((time) => {
         const noteVal = preferencesForm.getValues().additionalNotes;
         return {
           dayOfWeek: ensureDayOfWeekEnum(time.dayOfWeek),
@@ -218,18 +291,27 @@ export function TeacherFormDialog({
         };
       });
 
-      // Get selected subjects
-      const subjects = subjectsForm.getValues().subjects;
+      // Get selected subject-type pairs
+      const subjectPairs = subjectsForm.getValues().subjectPairs;
 
       // Convert birthDate to ISO string (YYYY-MM-DD)
       const birthDateStr = values.birthDate
-        ? (typeof values.birthDate === 'string'
-            ? values.birthDate
-            : values.birthDate instanceof Date
-              ? values.birthDate.toISOString().split('T')[0]
-              : '')
-        : new Date().toISOString().split('T')[0];
+        ? typeof values.birthDate === "string"
+          ? values.birthDate
+          : values.birthDate instanceof Date
+          ? values.birthDate.toISOString().split("T")[0]
+          : ""
+        : new Date().toISOString().split("T")[0];
 
+      // Close the dialog immediately for better UX
+      onOpenChange(false);
+
+      // Reset all forms
+      form.reset();
+      preferencesForm.reset();
+      subjectsForm.reset();
+
+      // Then trigger the mutation without waiting for result
       if (isEditing && teacher) {
         // Update mode: build UpdateTeacherInput
         const updatePayload = {
@@ -253,10 +335,10 @@ export function TeacherFormDialog({
           otherCertifications: values.otherCertifications || undefined,
           notes: values.notes || undefined,
           password: values.password || undefined,
-          subjects: subjects.length > 0 ? subjects : undefined,
+          subjects: subjectPairs.length > 0 ? subjectPairs : undefined,
           shifts: shifts.length > 0 ? shifts : undefined,
         };
-        await updateTeacherMutation.mutateAsync(updatePayload);
+        updateTeacherMutation.mutate(updatePayload);
       } else {
         // Create mode: build CreateTeacherInput
         const createPayload = {
@@ -279,22 +361,16 @@ export function TeacherFormDialog({
           otherCertifications: values.otherCertifications || undefined,
           notes: values.notes || undefined,
           username: values.username || values.email,
-          password: values.password || '',
-          subjects: subjects.length > 0 ? subjects : undefined,
+          password: values.password || "",
+          subjects: subjectPairs.length > 0 ? subjectPairs : undefined,
           shifts: shifts.length > 0 ? shifts : undefined,
         };
-        await createTeacherMutation.mutateAsync(createPayload);
+        createTeacherMutation.mutate(createPayload);
       }
-
-      onOpenChange(false);
-      form.reset();
-      preferencesForm.reset();
-      subjectsForm.reset();
     } catch (error) {
       console.error("Error saving teacher:", error);
       // Display error to user
       alert("保存に失敗しました。入力内容を確認してください。");
-    } finally {
       setIsSubmitting(false);
     }
   }
@@ -340,7 +416,8 @@ export function TeacherFormDialog({
 
           <TabsContent value="basic">
             <Form {...form}>
-              <form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
+              <form className="space-y-4">
+                {/* Basic information fields - unchanged */}
                 <FormField
                   control={form.control}
                   name="name"
@@ -777,103 +854,211 @@ export function TeacherFormDialog({
               <form className="space-y-4">
                 <FormField
                   control={subjectsForm.control}
-                  name="subjects"
+                  name="subjectPairs"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>担当科目</FormLabel>
-                      <div className="relative">
-                        <FormControl>
-                          <Input
-                            placeholder="科目を検索..."
-                            className="w-full"
-                            value={subjectSearchTerm}
-                            onChange={(e) => {
-                              setSubjectSearchTerm(e.target.value);
-                              setShowSubjectDropdown(
-                                e.target.value.trim() !== ""
-                              );
-                            }}
-                            onFocus={() => {
-                              if (subjectSearchTerm.trim() !== "") {
-                                setShowSubjectDropdown(true);
-                              }
-                            }}
-                            onBlur={() => {
-                              setTimeout(
-                                () => setShowSubjectDropdown(false),
-                                200
-                              );
-                            }}
-                          />
-                        </FormControl>
-                        {showSubjectDropdown && (
-                          <div className="absolute z-10 w-full mt-1 bg-background border rounded-md shadow-lg max-h-60 overflow-auto">
-                            {subjectList
-                              .filter((subject) =>
-                                subject.name
-                                  .toLowerCase()
-                                  .includes(subjectSearchTerm.toLowerCase())
-                              )
-                              .map((subject) => (
-                                <div
-                                  key={subject.subjectId}
-                                  className="p-2 hover:bg-accent cursor-pointer"
-                                  onClick={() => {
-                                    const currentValues = field.value || [];
-                                    if (
-                                      !currentValues.includes(subject.subjectId)
-                                    ) {
-                                      field.onChange([
-                                        ...currentValues,
-                                        subject.subjectId,
-                                      ]);
+                      <FormLabel>担当科目と科目種別</FormLabel>
+                      <div className="space-y-4">
+                        <div className="flex items-end gap-2">
+                          {/* Subject selection */}
+                          <div className="flex-1">
+                            <FormLabel className="text-sm">科目</FormLabel>
+                            <div className="relative">
+                              <FormControl>
+                                <Input
+                                  placeholder="科目を検索..."
+                                  value={subjectSearchTerm}
+                                  onChange={(e) => {
+                                    setSubjectSearchTerm(e.target.value);
+                                    setShowSubjectDropdown(
+                                      e.target.value.trim() !== ""
+                                    );
+                                  }}
+                                  onFocus={() => {
+                                    if (subjectSearchTerm.trim() !== "") {
+                                      setShowSubjectDropdown(true);
                                     }
-                                    setSubjectSearchTerm("");
-                                    setShowSubjectDropdown(false);
+                                  }}
+                                  onBlur={() => {
+                                    setTimeout(
+                                      () => setShowSubjectDropdown(false),
+                                      200
+                                    );
+                                  }}
+                                />
+                              </FormControl>
+
+                              {showSubjectDropdown && (
+                                <div className="absolute z-10 w-full mt-1 bg-background border rounded-md shadow-lg max-h-60 overflow-auto">
+                                  {subjectsCompatArray
+                                    .filter((subject) =>
+                                      subject.name
+                                        .toLowerCase()
+                                        .includes(
+                                          subjectSearchTerm.toLowerCase()
+                                        )
+                                    )
+                                    .map((subject) => (
+                                      <div
+                                        key={subject.subjectId}
+                                        className="p-2 hover:bg-accent cursor-pointer"
+                                        onClick={() => {
+                                          setSelectedSubject(subject.subjectId);
+                                          setSubjectSearchTerm(subject.name);
+                                          setShowSubjectDropdown(false);
+                                        }}
+                                      >
+                                        {subject.name}
+                                      </div>
+                                    ))}
+                                  {subjectsCompatArray.filter((subject) =>
+                                    subject.name
+                                      .toLowerCase()
+                                      .includes(subjectSearchTerm.toLowerCase())
+                                  ).length === 0 && (
+                                    <div className="p-2 text-muted-foreground">
+                                      該当する科目が見つかりません
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Subject Type selection */}
+                          <div className="flex-1">
+                            <FormLabel className="text-sm">科目種別</FormLabel>
+                            <Select
+                              value={selectedSubjectType}
+                              onValueChange={setSelectedSubjectType}
+                              disabled={
+                                !selectedSubject ||
+                                availableSubjectTypes.length === 0
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="科目種別を選択" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {availableSubjectTypes.map((type) => (
+                                  <SelectItem
+                                    key={type.subjectTypeId}
+                                    value={type.subjectTypeId}
+                                  >
+                                    {type.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <Button
+                            type="button"
+                            onClick={() => {
+                              if (!selectedSubject || !selectedSubjectType)
+                                return;
+
+                              // Check if this pair already exists
+                              const pairExists = (field.value || []).some(
+                                (pair) =>
+                                  pair.subjectId === selectedSubject &&
+                                  pair.subjectTypeId === selectedSubjectType
+                              );
+
+                              if (pairExists) {
+                                alert(
+                                  "この科目と科目種別の組み合わせは既に追加されています"
+                                );
+                                return;
+                              }
+
+                              const newPair = {
+                                subjectId: selectedSubject,
+                                subjectTypeId: selectedSubjectType,
+                              };
+
+                              const updatedSubjects = [
+                                ...(field.value || []),
+                                newPair,
+                              ];
+                              field.onChange(updatedSubjects);
+
+                              // Reset selections
+                              setSelectedSubject("");
+                              setSelectedSubjectType("");
+                              setSubjectSearchTerm("");
+                            }}
+                            disabled={!selectedSubject || !selectedSubjectType}
+                          >
+                            追加
+                          </Button>
+                        </div>
+
+                        {/* Display selected subject-type pairs */}
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {(field.value || []).map((pair, index) => {
+                            const subject = subjectsCompatArray.find(
+                              (s) => s.subjectId === pair.subjectId
+                            );
+
+                            // Find the subject type name
+                            let subjectTypeName = "";
+                            // First check if it's in available types
+                            const typeInAvailable = availableSubjectTypes.find(
+                              (t) => t.subjectTypeId === pair.subjectTypeId
+                            );
+                            if (typeInAvailable) {
+                              subjectTypeName = typeInAvailable.name;
+                            } else {
+                              // Look through all subjects to find this type
+                              for (const s of subjectsCompatArray) {
+                                if (s.subjectToSubjectTypes) {
+                                  const foundType =
+                                    s.subjectToSubjectTypes.find(
+                                      (rel) =>
+                                        rel.subjectType.subjectTypeId ===
+                                        pair.subjectTypeId
+                                    );
+                                  if (foundType) {
+                                    subjectTypeName =
+                                      foundType.subjectType.name;
+                                    break;
+                                  }
+                                }
+                              }
+                              // If still not found, just use the ID
+                              if (!subjectTypeName) {
+                                subjectTypeName = pair.subjectTypeId;
+                              }
+                            }
+
+                            return (
+                              <div
+                                key={index}
+                                className="flex items-center bg-accent rounded-md px-3 py-1"
+                              >
+                                <span>
+                                  {subject?.name || pair.subjectId} -{" "}
+                                  {subjectTypeName}
+                                </span>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-4 w-4 p-0 ml-1 hover:bg-muted"
+                                  aria-label="削除"
+                                  onClick={() => {
+                                    const newValues = [...(field.value || [])];
+                                    newValues.splice(index, 1);
+                                    field.onChange(newValues);
                                   }}
                                 >
-                                  {subject.name}
-                                </div>
-                              ))}
-                            {subjectList.filter((subject) =>
-                              subject.name
-                                .toLowerCase()
-                                .includes(subjectSearchTerm.toLowerCase())
-                            ).length === 0 && (
-                              <div className="p-2 text-muted-foreground">
-                                該当する科目が見つかりません
+                                  ×
+                                </Button>
                               </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {(field.value || []).map((subjectId, index) => {
-                          const subject = subjectList.find(
-                            (s) => s.subjectId === subjectId
-                          );
-                          return (
-                            <div
-                              key={index}
-                              className="flex items-center bg-accent rounded-md px-2 py-1"
-                            >
-                              <span>{subject ? subject.name : subjectId}</span>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="h-4 w-4 p-0 ml-1"
-                                onClick={() => {
-                                  const newValues = [...(field.value || [])];
-                                  newValues.splice(index, 1);
-                                  field.onChange(newValues);
-                                }}
-                              >
-                                ×
-                              </Button>
-                            </div>
-                          );
-                        })}
+                            );
+                          })}
+                        </div>
                       </div>
                       <FormMessage />
                     </FormItem>
@@ -913,130 +1098,23 @@ export function TeacherFormDialog({
           <Button
             type="button"
             disabled={isSubmitting}
-            onClick={async () => {
-              try {
-                // Set the flag to show we're starting submission process
-                setIsSubmitting(true);
-
-                console.log("Save button clicked");
-
-                // Manually validate the main form
-                const isMainFormValid = await form.trigger();
-
-                // Log the current form errors
-                console.log("Validation errors:", form.formState.errors);
-
-                // Log each specific error for debugging
-                if (form.formState.errors && Object.keys(form.formState.errors).length > 0) {
-                  console.log("Validation errors by field:");
-                  Object.entries(form.formState.errors).forEach(([field, error]) => {
-                    console.log(`Field "${field}" error:`, error);
-                  });
-                }
-
-                if (!isMainFormValid) {
-                  console.log("Main form validation failed - showing basic tab with errors");
-                  setActiveTab("basic");
-                  setIsSubmitting(false);
-                  return;
-                }
-
-                // Get form values
-                const formValues = form.getValues();
-
-                // Convert birthDate to string format
-                const birthDateStr = formValues.birthDate
-                  ? (typeof formValues.birthDate === 'string'
-                    ? formValues.birthDate
-                    : formValues.birthDate instanceof Date
-                      ? formValues.birthDate.toISOString().split('T')[0]
-                      : '')
-                  : new Date().toISOString().split('T')[0];
-
-                // Get subjects
-                const subjects = subjectsForm.getValues().subjects;
-
-                // Get shift preferences with properly formatted dayOfWeek enum values
-                const shifts = preferencesForm.getValues().desiredTimes.map(time => {
-                  const noteVal = preferencesForm.getValues().additionalNotes;
-                  return {
-                    dayOfWeek: ensureDayOfWeekEnum(time.dayOfWeek),
-                    startTime: time.startTime,
-                    endTime: time.endTime,
-                    notes: noteVal,
-                  };
-                });
-
-                // Create the complete payload
-                const payload = {
-                  ...formValues,
-                  birthDate: birthDateStr,
-                  subjects,
-                  shifts,
-                  username: formValues.username || formValues.email,
+            onClick={() => {
+              // Get the latest shifts from the preferencesForm
+              const shifts = preferencesForm.getValues().desiredTimes.map((time) => {
+                const noteVal = preferencesForm.getValues().additionalNotes;
+                return {
+                  dayOfWeek: ensureDayOfWeekEnum(time.dayOfWeek),
+                  startTime: time.startTime,
+                  endTime: time.endTime,
+                  notes: noteVal,
                 };
+              });
 
-                // Clean up the payload - remove empty values
-                const cleanedPayload: Record<string, unknown> = {};
+              // Get selected subject-type pairs
+              const subjectPairs = subjectsForm.getValues().subjectPairs;
 
-                Object.entries(payload).forEach(([key, value]) => {
-                  if (value !== undefined && value !== null && value !== '') {
-                    cleanedPayload[key] = value;
-                  }
-                });
-
-                console.log("Final payload being sent:", cleanedPayload);
-
-                // Handle edit vs create case
-                if (isEditing && teacher) {
-                  const updateData = {
-                    ...cleanedPayload,
-                    teacherId: teacher.teacherId
-                  };
-                  // No need to check or delete password property here
-                  console.log("About to update teacher with data:", updateData);
-                  await updateTeacherMutation.mutateAsync(updateData as /* UpdateTeacherInput */ typeof updateData); // Specify the correct type here
-                  console.log("Teacher update completed successfully");
-                } else {
-                  // Build a proper CreateTeacherInput object
-                  const createPayload = {
-                    name: formValues.name,
-                    evaluationId: formValues.evaluationId,
-                    birthDate: birthDateStr,
-                    mobileNumber: formValues.mobileNumber,
-                    email: formValues.email,
-                    highSchool: formValues.highSchool,
-                    university: formValues.university,
-                    faculty: formValues.faculty,
-                    department: formValues.department,
-                    enrollmentStatus: formValues.enrollmentStatus,
-                    otherUniversities: formValues.otherUniversities || undefined,
-                    englishProficiency: formValues.englishProficiency || undefined,
-                    toeic: formValues.toeic ?? undefined,
-                    toefl: formValues.toefl ?? undefined,
-                    mathCertification: formValues.mathCertification || undefined,
-                    kanjiCertification: formValues.kanjiCertification || undefined,
-                    otherCertifications: formValues.otherCertifications || undefined,
-                    notes: formValues.notes || undefined,
-                    username: formValues.username || formValues.email,
-                    password: formValues.password || '',
-                    subjects: subjects.length > 0 ? subjects : undefined,
-                    shifts: shifts.length > 0 ? shifts : undefined,
-                  };
-                  await createTeacherMutation.mutateAsync(createPayload);
-                }
-
-                // Close dialog and reset forms on success
-                onOpenChange(false);
-                form.reset();
-                preferencesForm.reset();
-                subjectsForm.reset();
-              } catch (error) {
-                console.error("Error during form submission:", error);
-                alert("保存に失敗しました。入力内容を確認してください。");
-              } finally {
-                setIsSubmitting(false);
-              }
+              // Always use the main form's submit handler
+              form.handleSubmit(onSubmit)();
             }}
           >
             {isSubmitting ? "保存中..." : isEditing ? "変更を保存" : "作成"}

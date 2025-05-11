@@ -4,10 +4,9 @@ import { fetchTeacherSubjects } from '../api-client';
 import { PaginationParams } from '../types';
 
 export function useMatchTeacherSubjects(params: PaginationParams & { teacherId?: string, subjectId?: string } = {}) {
-  const { page = 1, limit = 10 } = params;
-  
   return useQuery({
     queryKey: ['matchTeacherSubjects', params],
-    queryFn: () => fetchTeacherSubjects({ ...params, page, limit }),
+    queryFn: () => fetchTeacherSubjects(params),
+    staleTime: 10 * 60 * 1000, // Кеширование на 10 минут (меняющиеся данные, но не очень часто)
   });
 }

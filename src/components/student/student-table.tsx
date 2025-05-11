@@ -6,7 +6,10 @@ import { Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/data-table";
 import { useStudents } from "@/hooks/useStudentQuery";
-import { useStudentDelete } from "@/hooks/useStudentMutation";
+import {
+  useStudentDelete,
+  getResolvedStudentId,
+} from "@/hooks/useStudentMutation";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -54,7 +57,12 @@ export function StudentTable() {
       examSchoolCategoryType: student.examSchoolCategoryType ?? undefined,
       firstChoiceSchool: student.firstChoiceSchool ?? undefined,
       secondChoiceSchool: student.secondChoiceSchool ?? undefined,
-      enrollmentDate: student.enrollmentDate ?? undefined,
+      enrollmentDate: student.enrollmentDate
+        ? typeof student.enrollmentDate === "string"
+          ? student.enrollmentDate
+          : student.enrollmentDate.toISOString().slice(0, 10)
+        : undefined,
+      birthDate: student.birthDate,
       homePhone: student.homePhone ?? undefined,
       parentMobile: student.parentMobile ?? undefined,
       studentMobile: student.studentMobile ?? undefined,
@@ -126,14 +134,6 @@ export function StudentTable() {
       cell: ({ row }) => row.original.secondChoiceSchool || "-",
     },
     {
-      accessorKey: "enrollmentDate",
-      header: "入学日",
-      cell: ({ row }) =>
-        row.original.enrollmentDate
-          ? new Date(row.original.enrollmentDate).toLocaleDateString()
-          : "-",
-    },
-    {
       accessorKey: "birthDate",
       header: "生年月日",
       cell: ({ row }) =>
@@ -170,21 +170,34 @@ export function StudentTable() {
       id: "actions",
       header: "操作",
       cell: ({ row }) => {
+        // Type-safe check for _optimistic property
+        const isOptimistic = (row.original as any)._optimistic;
+
         return (
           <div className="flex gap-2">
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setStudentToEdit(normalizeStudentNulls(row.original))}
+              onClick={() =>
+                setStudentToEdit(normalizeStudentNulls(row.original))
+              }
             >
-              <Pencil className="h-4 w-4" />
+              <Pencil
+                className={`h-4 w-4 ${isOptimistic ? "opacity-70" : ""}`}
+              />
             </Button>
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setStudentToDelete(normalizeStudentNulls(row.original))}
+              onClick={() =>
+                setStudentToDelete(normalizeStudentNulls(row.original))
+              }
             >
-              <Trash2 className="h-4 w-4 text-destructive" />
+              <Trash2
+                className={`h-4 w-4 text-destructive ${
+                  isOptimistic ? "opacity-70" : ""
+                }`}
+              />
             </Button>
           </div>
         );
@@ -195,8 +208,10 @@ export function StudentTable() {
   const handleDeleteStudent = async () => {
     if (studentToDelete) {
       try {
-        await deleteStudentMutation.mutateAsync(studentToDelete.studentId);
+        // Close the dialog immediately for better UX
+        const studentId = getResolvedStudentId(studentToDelete.studentId);
         setStudentToDelete(null);
+        await deleteStudentMutation.mutateAsync(studentId);
       } catch (error) {
         console.error("Failed to delete student:", error);
       }

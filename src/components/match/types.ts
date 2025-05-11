@@ -239,11 +239,20 @@ export interface CompatibleStudentsResponse {
   };
 }
 
+export interface ClassType {
+  classTypeId: string;
+  name: string;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface ClassSession {
   classSessionId?: string;
   teacherId?: string;
   studentId?: string;
   subjectId?: string;
+  subjectTypeId?: string; // <-- Add subjectTypeId to match backend
   boothId?: string;
   startTime?: string;
   endTime?: string;
@@ -251,6 +260,7 @@ export interface ClassSession {
   status?: string;
   notes?: string;
   subject?: Subject | null;
+  subjectType?: SubjectType | null; // <-- Add subjectType relation
   name?: string;
   teacherName?: string;
   studentName?: string;
@@ -265,9 +275,10 @@ export interface RegularClassTemplate {
   subjectId: string;
   boothId: string;
   studentIds: string[];
+  classTypeId?: string;  
+  startDate?: string;     
+  endDate?: string;       
   notes?: string;
-  startDate?: string;
-  endDate?: string;
 }
 
 export interface ClassSessionTemplate extends ClassSession {
@@ -368,6 +379,10 @@ export interface DisplayLesson {
   studentName?: string;
   room?: string;
   boothId?: string;
+  classTypeId?: string;       
+  classTypeName?: string;     
+  startDate?: string;         
+  endDate?: string;           
   lessonType?: 'teacher' | 'student' | 'current';
 }
 
@@ -383,6 +398,16 @@ export interface TemplateDataFromAPI {
   subjectId?: string;
   boothId?: string;
   status?: string;
+  classTypeId?: string;  
+  classType?: {          
+    classTypeId?: string;
+    name?: string;
+    notes?: string | null;
+    createdAt?: string;
+    updatedAt?: string;
+  } | ClassType | null;
+  startDate?: string;    
+  endDate?: string;      
   subject?: {
     subjectId?: string;
     name?: string;
@@ -404,8 +429,6 @@ export interface TemplateDataFromAPI {
   studentName?: string;
   room?: string;
   notes?: string;
-  startDate?: string | null;
-  endDate?: string | null;
   templateStudentAssignments?: Array<unknown>;
   createdAt?: string;
   updatedAt?: string;
@@ -437,4 +460,13 @@ export interface StudentFilterParams {
   studentTypeId?: string[];
   gradeId?: string | null;
   schoolType?: string | null;
+}
+
+// Add SubjectType interface if not present
+export interface SubjectType {
+  subjectTypeId: string;
+  name: string;
+  notes?: string | null;
+  createdAt: string;
+  updatedAt: string;
 }

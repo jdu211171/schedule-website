@@ -13,7 +13,7 @@ import { ZodError } from "zod";
 export async function GET(request: Request) {
   const session = await auth();
   if (!session) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+    return Response.json({ error: "権限がありません" }, { status: 401 }); // "Unauthorized"
   }
 
   const { searchParams } = new URL(request.url);
@@ -24,7 +24,7 @@ export async function GET(request: Request) {
     if (action === "compatible-teachers") {
       const studentId = searchParams.get("studentId");
       if (!studentId)
-        return Response.json({ error: "studentId required" }, { status: 400 });
+        return Response.json({ error: "studentIdは必須です" }, { status: 400 }); // "studentId required"
 
       const student = await prisma.student.findUnique({
         where: { studentId },
@@ -39,7 +39,7 @@ export async function GET(request: Request) {
       });
 
       if (!student) {
-        return Response.json({ error: "Student not found" }, { status: 404 });
+        return Response.json({ error: "生徒が見つかりません" }, { status: 404 }); // "Student not found"
       }
 
       const preferredTeacherIds = student.StudentPreference.flatMap((pref) =>
@@ -53,7 +53,7 @@ export async function GET(request: Request) {
       const preferredTeachers = await prisma.teacher.findMany({
         where: { teacherId: { in: preferredTeacherIds } },
         include: {
-          teacherSubjects: { include: { subject: true } },
+          teacherSubjects: { include: { subject: true, subjectType: true } },
           evaluation: true,
         },
       });
@@ -64,7 +64,7 @@ export async function GET(request: Request) {
           teacherId: { notIn: preferredTeacherIds },
         },
         include: {
-          teacherSubjects: { include: { subject: true } },
+          teacherSubjects: { include: { subject: true, subjectType: true } },
           evaluation: true,
         },
       });
@@ -79,7 +79,7 @@ export async function GET(request: Request) {
           },
         },
         include: {
-          teacherSubjects: { include: { subject: true } },
+          teacherSubjects: { include: { subject: true, subjectType: true } },
           evaluation: true,
         },
       });
@@ -99,7 +99,7 @@ export async function GET(request: Request) {
     } else if (action === "compatible-students") {
       const teacherId = searchParams.get("teacherId");
       if (!teacherId)
-        return Response.json({ error: "teacherId required" }, { status: 400 });
+        return Response.json({ error: "teacherIdは必須です" }, { status: 400 }); // "teacherId required"
 
       const teacher = await prisma.teacher.findUnique({
         where: { teacherId },
@@ -107,7 +107,7 @@ export async function GET(request: Request) {
       });
 
       if (!teacher) {
-        return Response.json({ error: "Teacher not found" }, { status: 404 });
+        return Response.json({ error: "先生が見つかりません" }, { status: 404 }); // "Teacher not found"
       }
 
       const teacherSubjectIds = teacher.teacherSubjects.map(
@@ -122,7 +122,7 @@ export async function GET(request: Request) {
           grade: true,
           StudentPreference: {
             include: {
-              subjects: { include: { subject: true } },
+              subjects: { include: { subject: true, subjectType: true } },
               teachers: { include: { teacher: true } },
               timeSlots: true,
             },
@@ -143,7 +143,7 @@ export async function GET(request: Request) {
           grade: true,
           StudentPreference: {
             include: {
-              subjects: { include: { subject: true } },
+              subjects: { include: { subject: true, subjectType: true } },
               teachers: { include: { teacher: true } },
               timeSlots: true,
             },
@@ -164,7 +164,7 @@ export async function GET(request: Request) {
           grade: true,
           StudentPreference: {
             include: {
-              subjects: { include: { subject: true } },
+              subjects: { include: { subject: true, subjectType: true } },
               teachers: { include: { teacher: true } },
               timeSlots: true,
             },
@@ -190,49 +190,104 @@ export async function GET(request: Request) {
 
       if (!teacherId || !studentId) {
         return Response.json(
-          { error: "teacherId and studentId required" },
+          { error: "teacherIdとstudentIdは必須です" }, // "teacherId and studentId required"
           { status: 400 }
         );
       }
 
       const teacher = await prisma.teacher.findUnique({
         where: { teacherId },
-        include: { teacherSubjects: { include: { subject: true } } },
+        include: {
+          teacherSubjects: {
+            include: {
+              subject: {
+                include: {
+                  subjectToSubjectTypes: {
+                    include: {
+                      subjectType: true,
+                    },
+                  },
+                },
+              },
+              subjectType: true,
+            },
+          },
+        },
       });
 
       const student = await prisma.student.findUnique({
         where: { studentId },
         include: {
           StudentPreference: {
-            include: { subjects: { include: { subject: true } } },
+            include: {
+              subjects: {
+                include: {
+                  subject: {
+                    include: {
+                      subjectToSubjectTypes: {
+                        include: {
+                          subjectType: true,
+                        },
+                      },
+                    },
+                  },
+                  subjectType: true,
+                },
+              },
+            },
           },
         },
       });
 
       if (!teacher || !student) {
         return Response.json(
-          { error: "Teacher or student not found" },
+          { error: "先生または生徒が見つかりません" }, // "Teacher or student not found"
           { status: 404 }
         );
       }
 
-      const studentSubjectIds = student.StudentPreference.flatMap((pref) =>
-        pref.subjects.map((s) => s.subjectId)
+      // Get all subject-subjectType pairs that the teacher can teach
+      const teacherSubjectPairs = teacher.teacherSubjects.map((ts) => ({
+        subjectId: ts.subjectId,
+        subjectTypeId: ts.subjectTypeId,
+        subject: ts.subject,
+        subjectType: ts.subjectType,
+      }));
+
+      // Get all subject-subjectType pairs that the student prefers
+      const studentSubjectPairs = student.StudentPreference.flatMap((pref) =>
+        pref.subjects.map((s) => ({
+          subjectId: s.subjectId,
+          subjectTypeId: s.subjectTypeId,
+          subject: s.subject,
+          subjectType: s.subjectType,
+        }))
       );
 
-      const commonSubjects = teacher.teacherSubjects
-        .filter((ts) => studentSubjectIds.includes(ts.subjectId))
-        .map((ts) => ts.subject);
+      // Find common pairs (both teacher and student have the same subject-subjectType combination)
+      const commonPairs = teacherSubjectPairs.filter((tp) =>
+        studentSubjectPairs.some(
+          (sp) =>
+            sp.subjectId === tp.subjectId &&
+            sp.subjectTypeId === tp.subjectTypeId
+        )
+      );
 
-      const otherSubjects = teacher.teacherSubjects
-        .filter((ts) => !studentSubjectIds.includes(ts.subjectId))
-        .map((ts) => ts.subject);
+      // Get other valid pairs that the teacher can teach but the student doesn't prefer
+      const otherPairs = teacherSubjectPairs.filter(
+        (tp) =>
+          !commonPairs.some(
+            (cp) =>
+              cp.subjectId === tp.subjectId &&
+              cp.subjectTypeId === tp.subjectTypeId
+          )
+      );
 
       return Response.json({
         data: {
-          commonSubjects,
-          otherSubjects,
-          allSubjects: [...commonSubjects, ...otherSubjects],
+          commonSubjectPairs: commonPairs,
+          otherSubjectPairs: otherPairs,
+          allSubjectPairs: [...commonPairs, ...otherPairs],
         },
       });
     } else if (action === "available-time-slots") {
@@ -241,7 +296,7 @@ export async function GET(request: Request) {
 
       if (!teacherId || !studentId) {
         return Response.json(
-          { error: "teacherId and studentId required" },
+          { error: "teacherIdとstudentIdは必須です" }, // "teacherId and studentId required"
           { status: 400 }
         );
       }
@@ -300,7 +355,7 @@ export async function GET(request: Request) {
 
       if (!dayOfWeek || !startTime || !endTime) {
         return Response.json(
-          { error: "dayOfWeek, startTime, endTime required" },
+          { error: "dayOfWeek、startTime、endTimeは必須です" }, // "dayOfWeek, startTime, endTime required"
           { status: 400 }
         );
       }
@@ -354,6 +409,30 @@ export async function GET(request: Request) {
         };
       }
 
+      // Add subject type filter if provided
+      if (filter.subjectTypeId) {
+        if (
+          typeof teacherQuery.teacherSubjects === "object" &&
+          teacherQuery.teacherSubjects !== null
+        ) {
+          const subjectCondition = teacherQuery.teacherSubjects as Record<
+            string,
+            unknown
+          >;
+          if (
+            typeof subjectCondition.some === "object" &&
+            subjectCondition.some !== null
+          ) {
+            (subjectCondition.some as Record<string, unknown>).subjectTypeId =
+              filter.subjectTypeId;
+          }
+        } else {
+          teacherQuery.teacherSubjects = {
+            some: { subjectTypeId: filter.subjectTypeId },
+          };
+        }
+      }
+
       // Add specific teacher filter if provided
       if (filter.teacherId) {
         teacherQuery.teacherId = filter.teacherId;
@@ -370,13 +449,41 @@ export async function GET(request: Request) {
                 endTime: { gte: endTime },
               },
             },
-            ...(filter.subjectId
-              ? { subjects: { some: { subjectId: filter.subjectId } } }
-              : {}),
           },
         },
         ...(filter.studentId && { studentId: filter.studentId }),
       };
+
+      // Add subject and subject type filters if provided
+      if (filter.subjectId || filter.subjectTypeId) {
+        const subjectCondition: Record<string, unknown> = {};
+
+        if (filter.subjectId) {
+          subjectCondition.subjectId = filter.subjectId;
+        }
+
+        if (filter.subjectTypeId) {
+          subjectCondition.subjectTypeId = filter.subjectTypeId;
+        }
+
+        if (
+          typeof studentQuery.StudentPreference === "object" &&
+          studentQuery.StudentPreference !== null
+        ) {
+          const prefCondition = studentQuery.StudentPreference as Record<
+            string,
+            unknown
+          >;
+          if (
+            typeof prefCondition.some === "object" &&
+            prefCondition.some !== null
+          ) {
+            (prefCondition.some as Record<string, unknown>).subjects = {
+              some: subjectCondition,
+            };
+          }
+        }
+      }
 
       // 3. Get availability data with student preferences
       if (filter.studentId) {
@@ -386,7 +493,7 @@ export async function GET(request: Request) {
             StudentPreference: {
               include: {
                 teachers: { include: { teacher: true } },
-                subjects: { include: { subject: true } },
+                subjects: { include: { subject: true, subjectType: true } },
               },
             },
           },
@@ -418,7 +525,7 @@ export async function GET(request: Request) {
         const teacher = await prisma.teacher.findUnique({
           where: { teacherId: filter.teacherId },
           include: {
-            teacherSubjects: { include: { subject: true } },
+            teacherSubjects: { include: { subject: true, subjectType: true } },
           },
         });
 
@@ -477,12 +584,26 @@ export async function GET(request: Request) {
         compatibleStudents,
         availableBooths,
         relevantSubjects,
+        relevantSubjectTypes,
       ] = await Promise.all([
         // Get compatible teachers
         prisma.teacher.findMany({
           where: teacherQuery,
           include: {
-            teacherSubjects: { include: { subject: true } },
+            teacherSubjects: {
+              include: {
+                subject: {
+                  include: {
+                    subjectToSubjectTypes: {
+                      include: {
+                        subjectType: true,
+                      },
+                    },
+                  },
+                },
+                subjectType: true,
+              },
+            },
             TeacherShiftReference: true,
             evaluation: true,
           },
@@ -495,7 +616,20 @@ export async function GET(request: Request) {
             grade: true,
             StudentPreference: {
               include: {
-                subjects: { include: { subject: true } },
+                subjects: {
+                  include: {
+                    subject: {
+                      include: {
+                        subjectToSubjectTypes: {
+                          include: {
+                            subjectType: true,
+                          },
+                        },
+                      },
+                    },
+                    subjectType: true,
+                  },
+                },
                 teachers: { include: { teacher: true } },
                 timeSlots: true,
               },
@@ -511,7 +645,20 @@ export async function GET(request: Request) {
         // Get relevant subjects
         prisma.subject.findMany({
           where: filter.subjectId ? { subjectId: filter.subjectId } : {}, // Get all if not specified
-          include: { subjectType: true },
+          include: {
+            subjectToSubjectTypes: {
+              include: {
+                subjectType: true,
+              },
+            },
+          },
+        }),
+
+        // Get relevant subject types
+        prisma.subjectType.findMany({
+          where: filter.subjectTypeId
+            ? { subjectTypeId: filter.subjectTypeId }
+            : {}, // Get all if not specified
         }),
       ]);
 
@@ -521,6 +668,7 @@ export async function GET(request: Request) {
           students: compatibleStudents,
           booths: availableBooths,
           subjects: relevantSubjects,
+          subjectTypes: relevantSubjectTypes,
           timeSlot: {
             dayOfWeek: filter.dayOfWeek,
             startTime: filter.startTime,
@@ -541,6 +689,7 @@ export async function GET(request: Request) {
         teacherId,
         studentId,
         subjectId,
+        subjectTypeId,
         boothId,
         sort,
         order,
@@ -558,6 +707,10 @@ export async function GET(request: Request) {
 
       if (subjectId) {
         filters.subjectId = subjectId;
+      }
+
+      if (subjectTypeId) {
+        filters.subjectTypeId = subjectTypeId;
       }
 
       if (boothId) {
@@ -584,8 +737,18 @@ export async function GET(request: Request) {
         orderBy,
         include: {
           teacher: true,
-          subject: true,
+          subject: {
+            include: {
+              subjectToSubjectTypes: {
+                include: {
+                  subjectType: true,
+                },
+              },
+            },
+          },
+          subjectType: true,
           booth: true,
+          classType: true, // <-- Added to include classType in response
           templateStudentAssignments: {
             include: {
               student: true,
@@ -607,22 +770,25 @@ export async function GET(request: Request) {
   } catch (error) {
     if (error instanceof ZodError) {
       return Response.json(
-        { error: "Invalid parameters", details: error.errors },
+        { error: "無効なクエリパラメータです", details: error.errors }, // "Invalid query parameters" (Standardized from "無効なパラメータ")
         { status: 400 }
       );
     }
-    console.error("Error fetching data:", error);
-    return Response.json({ error: "Failed to fetch data" }, { status: 500 });
+    console.error("データの取得中にエラーが発生しました:", error); // Existing Japanese message
+    return Response.json(
+      { error: "データの取得に失敗しました" }, // Existing Japanese message
+      { status: 500 }
+    );
   }
 }
 
 export async function POST(request: Request) {
   const session = await auth();
   if (!session) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+    return Response.json({ error: "権限がありません" }, { status: 401 }); // "Unauthorized"
   }
   if (session.user?.role !== "ADMIN") {
-    return Response.json({ error: "Forbidden" }, { status: 403 });
+    return Response.json({ error: "禁止されています" }, { status: 403 }); // "Forbidden"
   }
 
   try {
@@ -632,6 +798,47 @@ export async function POST(request: Request) {
     // Handle single or batch template creation
     if (isBatch) {
       const templates = BatchCreateRegularClassTemplateSchema.parse(body);
+
+      // Before processing, validate all subject/subject type combinations
+      const subjectTypePairs = templates.map((template) => ({
+        subjectId: template.subjectId,
+        subjectTypeId: template.subjectTypeId,
+      }));
+
+      // Check that each subject/subject type pair exists in SubjectToSubjectType
+      const validPairs = await prisma.subjectToSubjectType.findMany({
+        where: {
+          OR: subjectTypePairs.map((pair) => ({
+            subjectId: pair.subjectId,
+            subjectTypeId: pair.subjectTypeId,
+          })),
+        },
+        select: {
+          subjectId: true,
+          subjectTypeId: true,
+        },
+      });
+
+      // If the count of valid pairs doesn't match the requested pairs, some pairs are invalid
+      if (validPairs.length !== subjectTypePairs.length) {
+        // Find the invalid pairs by checking which requested pairs aren't in the valid pairs
+        const validPairStrings = validPairs.map(
+          (p) => `${p.subjectId}-${p.subjectTypeId}`
+        );
+        const invalidPairs = subjectTypePairs.filter(
+          (p) => !validPairStrings.includes(`${p.subjectId}-${p.subjectTypeId}`)
+        );
+
+        return Response.json(
+          {
+            error: "無効な科目と科目タイプの組み合わせです", // "Invalid subject-subject type combinations"
+            message: `次の科目と科目タイプの組み合わせは無効です: ${invalidPairs // `The following subject-subject type combinations are not valid: ...`
+              .map((p) => `(${p.subjectId}, ${p.subjectTypeId})`)
+              .join(", ")}`,
+          },
+          { status: 400 }
+        );
+      }
 
       // Process each template in a transaction
       const results = await prisma.$transaction(
@@ -661,7 +868,16 @@ export async function POST(request: Request) {
             },
             include: {
               teacher: true,
-              subject: true,
+              subject: {
+                include: {
+                  subjectToSubjectTypes: {
+                    include: {
+                      subjectType: true,
+                    },
+                  },
+                },
+              },
+              subjectType: true,
               booth: true,
               templateStudentAssignments: {
                 include: {
@@ -675,7 +891,7 @@ export async function POST(request: Request) {
 
       return Response.json(
         {
-          message: `${results.length} templates created successfully`,
+          message: `${results.length}件のテンプレートが正常に作成されました`, // `${results.length} templates created successfully`
           data: results,
         },
         { status: 201 }
@@ -691,6 +907,29 @@ export async function POST(request: Request) {
         endDate,
         ...templateData
       } = template;
+
+      // Validate subject/subject type combination exists
+      const subjectTypePair = {
+        subjectId: templateData.subjectId,
+        subjectTypeId: templateData.subjectTypeId,
+      };
+
+      const validPair = await prisma.subjectToSubjectType.findFirst({
+        where: {
+          subjectId: subjectTypePair.subjectId,
+          subjectTypeId: subjectTypePair.subjectTypeId,
+        },
+      });
+
+      if (!validPair) {
+        return Response.json(
+          {
+            error: "無効な科目と科目タイプの組み合わせです", // "Invalid subject-subject type combination"
+            message: `科目ID ${subjectTypePair.subjectId} と科目タイプID ${subjectTypePair.subjectTypeId} の組み合わせは無効です。`, // `The combination of subject ID ${subjectTypePair.subjectId} and subject type ID ${subjectTypePair.subjectTypeId} is not valid.`
+          },
+          { status: 400 }
+        );
+      }
 
       // Convert time strings to Date objects
       const createdTemplate = await prisma.regularClassTemplate.create({
@@ -708,7 +947,16 @@ export async function POST(request: Request) {
         },
         include: {
           teacher: true,
-          subject: true,
+          subject: {
+            include: {
+              subjectToSubjectTypes: {
+                include: {
+                  subjectType: true,
+                },
+              },
+            },
+          },
+          subjectType: true,
           booth: true,
           templateStudentAssignments: {
             include: {
@@ -720,7 +968,7 @@ export async function POST(request: Request) {
 
       return Response.json(
         {
-          message: "Template created successfully",
+          message: "テンプレートが正常に作成されました", // "Template created successfully"
           data: createdTemplate,
         },
         { status: 201 }
@@ -729,13 +977,13 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof ZodError) {
       return Response.json(
-        { error: "Validation failed", details: error.errors },
+        { error: "入力値の検証に失敗しました", details: error.errors }, // Existing Japanese message
         { status: 400 }
       );
     }
-    console.error("Error creating template:", error);
+    console.error("テンプレート作成中にエラーが発生しました:", error); // Existing Japanese message
     return Response.json(
-      { error: "Failed to create template" },
+      { error: "テンプレートの作成に失敗しました" }, // Existing Japanese message
       { status: 500 }
     );
   }
@@ -744,10 +992,10 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   const session = await auth();
   if (!session) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+    return Response.json({ error: "権限がありません" }, { status: 401 }); // "Unauthorized"
   }
   if (session.user?.role !== "ADMIN") {
-    return Response.json({ error: "Forbidden" }, { status: 403 });
+    return Response.json({ error: "禁止されています" }, { status: 403 }); // "Forbidden"
   }
 
   try {
@@ -759,6 +1007,8 @@ export async function PUT(request: Request) {
       endTime,
       startDate,
       endDate,
+      subjectId,
+      subjectTypeId,
       ...data
     } = UpdateRegularClassTemplateSchema.parse(body);
 
@@ -771,11 +1021,39 @@ export async function PUT(request: Request) {
     });
 
     if (!existingTemplate) {
-      return Response.json({ error: "Template not found" }, { status: 404 });
+      return Response.json({ error: "テンプレートが見つかりません" }, { status: 404 }); // "Template not found"
+    }
+
+    // If subject or subject type is being updated, validate the combination
+    if (subjectId || subjectTypeId) {
+      const newSubjectId = subjectId || existingTemplate.subjectId;
+      const newSubjectTypeId = subjectTypeId || existingTemplate.subjectTypeId;
+
+      // Check if this combination exists in SubjectToSubjectType
+      const validPair = await prisma.subjectToSubjectType.findFirst({
+        where: {
+          subjectId: newSubjectId,
+          subjectTypeId: newSubjectTypeId,
+        },
+      });
+
+      if (!validPair) {
+        return Response.json(
+          {
+            error: "無効な科目と科目タイプの組み合わせです", // "Invalid subject-subject type combination"
+            message: `科目ID ${newSubjectId} と科目タイプID ${newSubjectTypeId} の組み合わせは無効です。`, // `The combination of subject ID ${newSubjectId} and subject type ID ${newSubjectTypeId} is not valid.`
+          },
+          { status: 400 }
+        );
+      }
     }
 
     // Prepare update data with time conversions
-    const updateData: Record<string, unknown> = { ...data };
+    const updateData: Record<string, unknown> = {
+      ...data,
+      ...(subjectId ? { subjectId } : {}),
+      ...(subjectTypeId ? { subjectTypeId } : {}),
+    };
 
     if (startTime) {
       updateData.startTime = new Date(`1970-01-01T${startTime}`);
@@ -826,7 +1104,16 @@ export async function PUT(request: Request) {
         where: { templateId },
         include: {
           teacher: true,
-          subject: true,
+          subject: {
+            include: {
+              subjectToSubjectTypes: {
+                include: {
+                  subjectType: true,
+                },
+              },
+            },
+          },
+          subjectType: true,
           booth: true,
           templateStudentAssignments: {
             include: {
@@ -838,19 +1125,19 @@ export async function PUT(request: Request) {
     });
 
     return Response.json({
-      message: "Template updated successfully",
+      message: "テンプレートが正常に更新されました", // "Template updated successfully"
       data: result,
     });
   } catch (error) {
     if (error instanceof ZodError) {
       return Response.json(
-        { error: "Validation failed", details: error.errors },
+        { error: "入力値の検証に失敗しました", details: error.errors }, // Existing Japanese message
         { status: 400 }
       );
     }
-    console.error("Error updating template:", error);
+    console.error("テンプレート更新中にエラーが発生しました:", error); // Existing Japanese message
     return Response.json(
-      { error: "Failed to update template" },
+      { error: "テンプレートの更新に失敗しました" }, // Existing Japanese message
       { status: 500 }
     );
   }
@@ -859,10 +1146,10 @@ export async function PUT(request: Request) {
 export async function DELETE(request: Request) {
   const session = await auth();
   if (!session) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+    return Response.json({ error: "権限がありません" }, { status: 401 }); // "Unauthorized"
   }
   if (session.user?.role !== "ADMIN") {
-    return Response.json({ error: "Forbidden" }, { status: 403 });
+    return Response.json({ error: "禁止されています" }, { status: 403 }); // "Forbidden"
   }
 
   try {
@@ -871,7 +1158,7 @@ export async function DELETE(request: Request) {
 
     if (!templateId) {
       return Response.json(
-        { error: "Template ID is required" },
+        { error: "テンプレートIDは必須です" }, // "Template ID is required"
         { status: 400 }
       );
     }
@@ -882,7 +1169,10 @@ export async function DELETE(request: Request) {
     });
 
     if (!existingTemplate) {
-      return Response.json({ error: "Template not found" }, { status: 404 });
+      return Response.json(
+        { error: "テンプレートが見つかりません" }, // "Template not found"
+        { status: 404 }
+      );
     }
 
     // Check for related class sessions before deletion
@@ -893,7 +1183,7 @@ export async function DELETE(request: Request) {
     if (hasRelatedClassSessions) {
       return Response.json(
         {
-          error: "Cannot delete template with related class sessions",
+          error: "関連する授業があるためテンプレートを削除できません", // "Cannot delete template with related class sessions"
         },
         { status: 409 }
       );
@@ -905,12 +1195,12 @@ export async function DELETE(request: Request) {
     });
 
     return Response.json({
-      message: "Template deleted successfully",
+      message: "テンプレートが正常に削除されました", // "Template deleted successfully"
     });
   } catch (error) {
-    console.error("Error deleting template:", error);
+    console.error("テンプレート削除中にエラーが発生しました", error); // Existing Japanese message
     return Response.json(
-      { error: "Failed to delete template" },
+      { error: "テンプレートの削除に失敗しました" }, // Existing Japanese message
       { status: 500 }
     );
   }

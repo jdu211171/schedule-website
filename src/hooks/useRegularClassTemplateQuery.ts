@@ -1,6 +1,6 @@
 import { fetcher } from "@/lib/fetcher";
 import { useQuery } from "@tanstack/react-query";
-import { RegularClassTemplate } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 
 type UseRegularClassTemplatesParams = {
   page?: number;
@@ -13,8 +13,21 @@ type UseRegularClassTemplatesParams = {
   order?: "asc" | "desc";
 };
 
+export type RegularClassTemplateWithRelations = Prisma.RegularClassTemplateGetPayload<{
+  include: {
+    booth: true;
+    teacher: true;
+    subject: true;
+    templateStudentAssignments: {
+      include: {
+        student: true;
+      };
+    };
+  };
+}>;
+
 type RegularClassTemplatesResponse = {
-  data: RegularClassTemplate[];
+  data: RegularClassTemplateWithRelations[];
   pagination: {
     total: number;
     page: number;
@@ -24,7 +37,7 @@ type RegularClassTemplatesResponse = {
 };
 
 type SingleRegularClassTemplateResponse = {
-  data: RegularClassTemplate;
+  data: RegularClassTemplateWithRelations;
 };
 
 export function useRegularClassTemplates(params: UseRegularClassTemplatesParams = {}) {
@@ -49,7 +62,7 @@ export function useRegularClassTemplates(params: UseRegularClassTemplatesParams 
 }
 
 export function useRegularClassTemplate(templateId: string) {
-  return useQuery<RegularClassTemplate>({
+  return useQuery<RegularClassTemplateWithRelations>({
     queryKey: ["regularClassTemplate", templateId],
     queryFn: async () => await fetcher<SingleRegularClassTemplateResponse>(`/api/regular-class-templates/${templateId}`).then((res) => res.data),
     enabled: !!templateId,

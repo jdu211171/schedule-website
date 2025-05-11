@@ -2,14 +2,19 @@ import { z } from "zod";
 
 // Base schema with common fields
 const GradeBaseSchema = z.object({
-  name: z.string().min(1).max(100),
-  studentTypeId: z.string().min(1),
-  gradeYear: z.number().int(),
+  name: z
+    .string()
+    .min(1, { message: "名前は必須です" })
+    .max(100, { message: "名前は100文字以内で入力してください" }),
+  studentTypeId: z.string().min(1, { message: "学生タイプを選択してください" }),
+  gradeYear: z
+    .number({ invalid_type_error: "学年は数値で入力してください" })
+    .int({ message: "学年は整数で入力してください" }),
   notes: z
     .string()
-    .max(255)
-    .optional()
-    .transform((val) => (val === "" ? undefined : val)),
+    .max(255, { message: "メモは255文字以内で入力してください" })
+    .nullable()
+    .default(''),
 });
 
 // Complete grade schema (includes all fields from the database)
@@ -24,29 +29,60 @@ export const CreateGradeSchema = GradeBaseSchema.strict();
 
 // Schema for updating an existing grade (requires gradeId)
 export const UpdateGradeSchema = GradeBaseSchema.extend({
-  gradeId: z.string(),
+  gradeId: z.string({
+    required_error: "学年IDは必須です",
+    invalid_type_error: "学年IDは文字列で入力してください",
+  }),
 }).strict();
 
 // Schema for retrieving a single grade by ID
 export const GradeIdSchema = z
   .object({
-    gradeId: z.string(),
+    gradeId: z.string({
+      required_error: "学年IDは必須です",
+      invalid_type_error: "学年IDは文字列で入力してください",
+    }),
   })
   .strict();
 
 // Schema for querying grades with filtering, pagination, and sorting
 export const GradeQuerySchema = z
   .object({
-    page: z.coerce.number().int().positive().optional().default(1),
-    limit: z.coerce.number().int().positive().max(100).optional().default(10),
+    page: z.coerce
+      .number({ invalid_type_error: "ページ番号は数値で入力してください" })
+      .int({ message: "ページ番号は整数で入力してください" })
+      .positive({ message: "ページ番号は正の整数でなければなりません" })
+      .optional()
+      .default(1),
+    limit: z.coerce
+      .number({ invalid_type_error: "表示件数は数値で入力してください" })
+      .int({ message: "表示件数は整数で入力してください" })
+      .positive({ message: "表示件数は正の整数でなければなりません" })
+      .max(100, { message: "表示件数は100件以下にしてください" })
+      .optional()
+      .default(10),
     name: z.string().optional(),
     studentTypeId: z.string().optional(),
-    gradeYear: z.coerce.number().int().optional(),
+    gradeYear: z.coerce
+      .number({ invalid_type_error: "学年は数値で入力してください" })
+      .int({ message: "学年は整数で入力してください" })
+      .optional(),
     sort: z
-      .enum(["name", "studentTypeId", "gradeYear", "createdAt", "updatedAt"])
+      .enum(["name", "studentTypeId", "gradeYear", "createdAt", "updatedAt"], {
+        errorMap: () => ({
+          message: "有効な並び替えフィールドを選択してください",
+        }),
+      })
       .optional()
       .default("name"),
-    order: z.enum(["asc", "desc"]).optional().default("desc"),
+    order: z
+      .enum(["asc", "desc"], {
+        errorMap: () => ({
+          message: "並び順は'asc'または'desc'を選択してください",
+        }),
+      })
+      .optional()
+      .default("desc"),
   })
   .strict();
 

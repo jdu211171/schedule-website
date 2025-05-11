@@ -6,7 +6,10 @@ import { Pencil, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/data-table";
-import { useTeacherDelete } from "@/hooks/useTeacherMutation";
+import {
+  useTeacherDelete,
+  getResolvedTeacherId,
+} from "@/hooks/useTeacherMutation";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,8 +45,10 @@ export function TeacherTable() {
   });
 
   const deleteTeacherMutation = useTeacherDelete();
-  const [teacherToEdit, setTeacherToEdit] = useState<TeacherWithPreference | null>(null);
-  const [teacherToDelete, setTeacherToDelete] = useState<TeacherWithPreference | null>(null);
+  const [teacherToEdit, setTeacherToEdit] =
+    useState<TeacherWithPreference | null>(null);
+  const [teacherToDelete, setTeacherToDelete] =
+    useState<TeacherWithPreference | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
   const columns: ColumnDef<TeacherWithPreference>[] = [
@@ -100,32 +105,45 @@ export function TeacherTable() {
     {
       id: "actions",
       header: "操作",
-      cell: ({ row }) => (
-        <div className="flex gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setTeacherToEdit(row.original)}
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setTeacherToDelete(row.original)}
-          >
-            <Trash2 className="h-4 w-4 text-destructive" />
-          </Button>
-        </div>
-      ),
+      cell: ({ row }) => {
+        // Type-safe check for _optimistic property
+        const isOptimistic = (row.original as any)._optimistic;
+
+        return (
+          <div className="flex gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setTeacherToEdit(row.original)}
+            >
+              <Pencil
+                className={`h-4 w-4 ${isOptimistic ? "opacity-70" : ""}`}
+              />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setTeacherToDelete(row.original)}
+            >
+              <Trash2
+                className={`h-4 w-4 text-destructive ${
+                  isOptimistic ? "opacity-70" : ""
+                }`}
+              />
+            </Button>
+          </div>
+        );
+      },
     },
   ];
 
   const handleDeleteTeacher = async () => {
     if (teacherToDelete) {
       try {
-        await deleteTeacherMutation.mutateAsync(teacherToDelete.teacherId);
+        // Close the dialog immediately for better UX
+        const teacherId = getResolvedTeacherId(teacherToDelete.teacherId);
         setTeacherToDelete(null);
+        await deleteTeacherMutation.mutateAsync(teacherId);
       } catch (error) {
         console.error("講師の削除に失敗しました:", error);
       }

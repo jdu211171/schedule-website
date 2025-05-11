@@ -23,23 +23,23 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Card, CardContent } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useSubjectCreate, useSubjectUpdate } from "@/hooks/useSubjectMutation";
 import { useSubjectTypes } from "@/hooks/useSubjectTypeQuery";
-import { Subject } from "@prisma/client";
-import { CreateSubjectSchema } from "@/schemas/subject.schema";
+import {
+  CreateSubjectSchema,
+  SubjectWithRelations,
+} from "@/schemas/subject.schema";
 
 interface SubjectFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  subject?: Subject | null;
+  subject?: SubjectWithRelations | null;
 }
+
+type FormValues = z.infer<typeof CreateSubjectSchema>;
 
 export function SubjectFormDialog({
   open,
@@ -48,50 +48,75 @@ export function SubjectFormDialog({
 }: SubjectFormDialogProps) {
   const createSubjectMutation = useSubjectCreate();
   const updateSubjectMutation = useSubjectUpdate();
-  const { data: subjectTypes } = useSubjectTypes();
+  const { data: subjectTypesResponse, isLoading: isSubjectTypesLoading } =
+    useSubjectTypes();
 
   const isEditing = !!subject;
 
-  const formSchema = CreateSubjectSchema;
-
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+  const form = useForm<FormValues>({
+    resolver: zodResolver(CreateSubjectSchema),
     defaultValues: {
       name: "",
       notes: "",
+      subjectTypeIds: [],
     },
   });
 
   useEffect(() => {
     if (subject) {
+      // When editing, populate the form with existing subject data
       form.reset({
-        name: subject.name || "",
-        subjectTypeId: subject.subjectTypeId || undefined,
+        name: subject.name,
         notes: subject.notes || "",
+        // Extract subjectTypeIds from the subject's subjectToSubjectTypes
+        subjectTypeIds: subject.subjectToSubjectTypes.map(
+          (relation) => relation.subjectTypeId
+        ),
+      });
+    } else {
+      // Reset form when creating a new subject
+      form.reset({
+        name: "",
+        notes: "",
+        subjectTypeIds: [],
       });
     }
   }, [subject, form]);
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
-    try {
-      if (isEditing && subject) {
-        await updateSubjectMutation.mutateAsync({
-          subjectId: subject.subjectId,
-          ...values,
-        });
-      } else {
-        await createSubjectMutation.mutateAsync(values);
-      }
-      onOpenChange(false);
-      form.reset();
-    } catch (error) {
-      console.error("科目の保存に失敗しました:", error);
+  function onSubmit(values: FormValues) {
+    // Close the dialog immediately for better UX
+    onOpenChange(false);
+
+    // Reset the form
+    form.reset();
+
+    // Create a map of subject type IDs to names
+    const subjectTypeNames: Record<string, string> = {};
+
+    // If you have access to the selected subject types with their names
+    // For example, if studentTypesResponse?.data has the full list
+    subjectTypesResponse?.data?.forEach((type) => {
+      subjectTypeNames[type.subjectTypeId] = type.name;
+    });
+
+    // Then trigger the mutation without waiting, including the names
+    if (isEditing && subject) {
+      updateSubjectMutation.mutate({
+        subjectId: subject.subjectId,
+        ...values,
+        subjectTypeNames,
+      });
+    } else {
+      createSubjectMutation.mutate({
+        ...values,
+        subjectTypeNames,
+      });
     }
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>{isEditing ? "科目の編集" : "科目の作成"}</DialogTitle>
         </DialogHeader>
@@ -110,39 +135,80 @@ export function SubjectFormDialog({
                 </FormItem>
               )}
             />
+
             <FormField
               control={form.control}
-              name="subjectTypeId"
-              render={({ field }) => (
+              name="subjectTypeIds"
+              render={() => (
                 <FormItem>
-                  <FormLabel>科目タイプ</FormLabel>
-                  <FormControl>
-                    <Select
-                      onValueChange={(value) =>
-                        field.onChange(value === "none" ? null : value)
-                      }
-                      value={field.value || "none"}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="科目タイプを選択" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">未選択</SelectItem>
-                        {subjectTypes?.data.map((type) => (
-                          <SelectItem
-                            key={type.subjectTypeId}
-                            value={type.subjectTypeId}
-                          >
-                            {type.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </FormControl>
+                  <FormLabel>科目タイプ（複数選択可）</FormLabel>
+                  <Card>
+                    <CardContent className="pt-4">
+                      <ScrollArea className="h-56 pr-4">
+                        {isSubjectTypesLoading ? (
+                          <div>読み込み中...</div>
+                        ) : (
+                          <div className="space-y-2">
+                            {subjectTypesResponse?.data.map((type) => (
+                              <FormField
+                                key={type.subjectTypeId}
+                                control={form.control}
+                                name="subjectTypeIds"
+                                render={({ field }) => {
+                                  return (
+                                    <FormItem
+                                      key={type.subjectTypeId}
+                                      className="flex flex-row items-start space-x-3 space-y-0"
+                                    >
+                                      <FormControl>
+                                        <Checkbox
+                                          checked={field.value?.includes(
+                                            type.subjectTypeId
+                                          )}
+                                          onCheckedChange={(checked) => {
+                                            const currentValues = [
+                                              ...(field.value || []),
+                                            ];
+                                            if (checked) {
+                                              if (
+                                                !currentValues.includes(
+                                                  type.subjectTypeId
+                                                )
+                                              ) {
+                                                field.onChange([
+                                                  ...currentValues,
+                                                  type.subjectTypeId,
+                                                ]);
+                                              }
+                                            } else {
+                                              field.onChange(
+                                                currentValues.filter(
+                                                  (value) =>
+                                                    value !== type.subjectTypeId
+                                                )
+                                              );
+                                            }
+                                          }}
+                                        />
+                                      </FormControl>
+                                      <FormLabel className="font-normal cursor-pointer">
+                                        {type.name}
+                                      </FormLabel>
+                                    </FormItem>
+                                  );
+                                }}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </ScrollArea>
+                    </CardContent>
+                  </Card>
                   <FormMessage />
                 </FormItem>
               )}
             />
+
             <FormField
               control={form.control}
               name="notes"
@@ -161,7 +227,9 @@ export function SubjectFormDialog({
               )}
             />
             <DialogFooter>
-              <Button type="submit">{isEditing ? "変更を保存" : "作成"}</Button>
+              <Button type="submit" disabled={isSubjectTypesLoading}>
+                {isEditing ? "変更を保存" : "作成"}
+              </Button>
             </DialogFooter>
           </form>
         </Form>

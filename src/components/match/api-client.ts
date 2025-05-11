@@ -1,3 +1,4 @@
+// Улучшенные API-функции с использованием новых эндпоинтов
 import axios from 'axios';
 import {
   TeacherParams,
@@ -12,7 +13,10 @@ import {
   CompatibleStudentsResponse,
   DisplayLesson,
   RegularClassTemplate,
-  TemplateDataFromAPI
+  TemplateDataFromAPI,
+  CompatibleSubjectsResponse, 
+  AvailableTimeSlotsResponse, 
+  AvailableBoothsResponse
 } from './types';
 
 const API_URL = '/api';
@@ -91,13 +95,29 @@ export const fetchStudentTypes = async (params: PaginationParams = {}): Promise<
   return data;
 };
 
+/**
+ * Получение типов классов
+ */
+export const fetchClassTypes = async (params: PaginationParams = {}) => {
+  try {
+    const { data } = await axios.get(`${API_URL}/class-type`, { params });
+    return data;
+  } catch (err) {
+    console.error('Error fetching class types:', err);
+    return { data: [] };
+  }
+};
+
 // API functions for teacher-subject relationships
 export const fetchTeacherSubjects = async (params: PaginationParams & { teacherId?: string, subjectId?: string } = {}) => {
   const { data } = await axios.get(`${API_URL}/teacher-subjects`, { params });
   return data;
 };
 
-// API functions for compatibility
+/**
+ * Получение совместимых учителей для студента (с приоритетом)
+ * Использует новый эндпоинт action=compatible-teachers
+ */
 export const fetchCompatibleTeachers = async (studentId: string): Promise<CompatibleTeachersResponse> => {
   try {
     const { data } = await axios.get(`${API_URL}/regular-class-templates`, {
@@ -107,11 +127,15 @@ export const fetchCompatibleTeachers = async (studentId: string): Promise<Compat
       }
     });
     
-    // console.log("API response for compatible teachers:", data);
+    // Упрощаем проверку результата
+    if (!data || !data.data) {
+      throw new Error('Invalid response data');
+    }
     
     return data;
   } catch (err) {
     console.error("Error fetching compatible teachers:", err);
+    
     return { 
       data: {
         preferredTeachers: [],
@@ -125,6 +149,10 @@ export const fetchCompatibleTeachers = async (studentId: string): Promise<Compat
   }
 };
 
+/**
+ * Получение совместимых студентов для учителя (с приоритетом)
+ * Использует новый эндпоинт action=compatible-students
+ */
 export const fetchCompatibleStudents = async (teacherId: string): Promise<CompatibleStudentsResponse> => {
   try {
     const { data } = await axios.get(`${API_URL}/regular-class-templates`, {
@@ -134,11 +162,16 @@ export const fetchCompatibleStudents = async (teacherId: string): Promise<Compat
       }
     });
     
-    // console.log("API response for compatible students:", data);
+    // Упрощаем проверку результата
+    if (!data || !data.data) {
+      throw new Error('Invalid response data');
+    }
     
     return data;
   } catch (err) {
     console.error("Error fetching compatible students:", err);
+    
+    // Возвращаем структуру по умолчанию в случае ошибки
     return { 
       data: {
         preferredStudents: [],
@@ -152,10 +185,11 @@ export const fetchCompatibleStudents = async (teacherId: string): Promise<Compat
   }
 };
 
-// Interface for compatible subjects response
-import { CompatibleSubjectsResponse, AvailableTimeSlotsResponse, AvailableBoothsResponse } from './types';
-
-// API functions for class sessions
+/**
+ * Получение регулярных шаблонов уроков (сессий) с фильтрацией
+ * @param params Параметры фильтрации
+ * @returns Список шаблонов (сессий)
+ */
 export const fetchClassSessions = async (params: PaginationParams & { 
   teacherId?: string, 
   studentId?: string,
@@ -164,7 +198,6 @@ export const fetchClassSessions = async (params: PaginationParams & {
 } = {}): Promise<ClassSessionResponse> => {
   try {
     const { data } = await axios.get(`${API_URL}/regular-class-templates`, { params });
-    // console.log('Fetched class sessions:', data);
     return data;
   } catch (err) {
     console.error('Error fetching class sessions:', err);
@@ -172,7 +205,10 @@ export const fetchClassSessions = async (params: PaginationParams & {
   }
 };
 
-// Function for fetching compatible subjects
+/**
+ * Получение совместимых предметов для учителя и студента
+ * Использует новый эндпоинт action=compatible-subjects
+ */
 export const fetchCompatibleSubjects = async (teacherId: string, studentId: string): Promise<CompatibleSubjectsResponse> => {
   try {
     const { data } = await axios.get(`${API_URL}/regular-class-templates`, {
@@ -183,11 +219,14 @@ export const fetchCompatibleSubjects = async (teacherId: string, studentId: stri
       }
     });
     
-    // console.log("API response for compatible subjects:", data);
+    if (!data || !data.data) {
+      throw new Error('Invalid response data');
+    }
     
     return data;
   } catch (err) {
     console.error("Error fetching compatible subjects:", err);
+    
     return {
       data: {
         commonSubjects: [],
@@ -198,7 +237,10 @@ export const fetchCompatibleSubjects = async (teacherId: string, studentId: stri
   }
 };
 
-// Function for fetching available time slots
+/**
+ * Получение доступных временных слотов для учителя и студента
+ * Использует новый эндпоинт action=available-time-slots
+ */
 export const fetchAvailableTimeSlots = async (teacherId: string, studentId: string): Promise<AvailableTimeSlotsResponse> => {
   try {
     const { data } = await axios.get(`${API_URL}/regular-class-templates`, {
@@ -209,11 +251,14 @@ export const fetchAvailableTimeSlots = async (teacherId: string, studentId: stri
       }
     });
     
-    // console.log("API response for available time slots:", data);
+    if (!data || !data.data) {
+      throw new Error('Invalid response data');
+    }
     
     return data;
   } catch (err) {
     console.error("Error fetching available time slots:", err);
+    
     return {
       data: {
         availableSlots: [],
@@ -224,7 +269,10 @@ export const fetchAvailableTimeSlots = async (teacherId: string, studentId: stri
   }
 };
 
-// Function for fetching available booths
+/**
+ * Получение доступных кабинетов для конкретного дня и времени
+ * Использует новый эндпоинт action=available-booths
+ */
 export const fetchAvailableBooths = async (dayOfWeek: string, startTime: string, endTime: string): Promise<AvailableBoothsResponse> => {
   try {
     const { data } = await axios.get(`${API_URL}/regular-class-templates`, {
@@ -236,20 +284,26 @@ export const fetchAvailableBooths = async (dayOfWeek: string, startTime: string,
       }
     });
     
-    // console.log("API response for available booths:", data);
+    if (!data) {
+      throw new Error('Invalid response data');
+    }
     
     return data;
   } catch (err) {
     console.error("Error fetching available booths:", err);
+    
     return { data: [] };
   }
 };
 
-// Function for creating regular class template
+/**
+ * Создание регулярного шаблона урока
+ * @param templateData Данные для создания шаблона
+ */
 export const createRegularClassTemplate = async (templateData: RegularClassTemplate) => {
   try {
     const { data } = await axios.post(`${API_URL}/regular-class-templates`, templateData);
-    // console.log("Created template:", data);
+    console.log("Created template:", data);
     return data;
   } catch (err) {
     console.error("Error creating regular class template:", err);
@@ -257,15 +311,73 @@ export const createRegularClassTemplate = async (templateData: RegularClassTempl
   }
 };
 
-// Function for transforming regular template data to DisplayLesson format
+/**
+ * Обновление существующего шаблона урока
+ * @param templateData Данные для обновления шаблона
+ */
+export const updateRegularClassTemplate = async (templateData: {
+  templateId: string;  
+  dayOfWeek?: string;  
+  startTime?: string;
+  endTime?: string;
+  teacherId?: string;
+  subjectId?: string;
+  boothId?: string;
+  classTypeId?: string; 
+  studentIds?: string[];
+  notes?: string;
+  startDate?: string;
+  endDate?: string;
+}) => {
+  try {
+    const { data } = await axios.put(`${API_URL}/regular-class-templates`, templateData);
+    console.log("Updated template:", data);
+    return data;
+  } catch (err) {
+    console.error("Error updating regular class template:", err);
+    throw err;
+  }
+};
+
+/**
+ * Удаление шаблона урока
+ * @param templateId ID шаблона для удаления
+ */
+export const deleteRegularClassTemplate = async (templateId: string) => {
+  try {
+    const { data } = await axios.delete(`${API_URL}/regular-class-templates?templateId=${templateId}`);
+    console.log("Deleted template:", data);
+    return data;
+  } catch (err) {
+    console.error("Error deleting regular class template:", err);
+    throw err;
+  }
+};
+
+/**
+ * Создание нескольких шаблонов уроков (пакетное создание)
+ * @param templates Массив шаблонов для создания
+ */
+export const createBatchRegularClassTemplates = async (templates: RegularClassTemplate[]) => {
+  try {
+    const { data } = await axios.post(`${API_URL}/regular-class-templates`, templates);
+    console.log("Created batch templates:", data);
+    return data;
+  } catch (err) {
+    console.error("Error creating batch templates:", err);
+    throw err;
+  }
+};
+
+/**
+ * Преобразование данных шаблона из API в формат DisplayLesson
+ */
 export const transformTemplateToDisplayLesson = (
   template: TemplateDataFromAPI, 
   teacherName: string, 
   studentName: string,
   lessonType?: 'teacher' | 'student' | 'current'
 ): DisplayLesson => {
-  // console.log("Transforming template:", template);
-  
   const id = template.templateId || template.id || `temp-${Date.now()}`;
   
   let subjectName = "Unknown Subject";
@@ -313,6 +425,7 @@ export const transformTemplateToDisplayLesson = (
   
   return {
     id,
+    templateId: template.templateId,
     name: subjectName,
     dayOfWeek: dayOfWeekStr,
     startTime: formatTime(template.startTime),
@@ -325,6 +438,7 @@ export const transformTemplateToDisplayLesson = (
     teacherName: teacherName,
     studentName: studentName,
     room: template.booth?.name || "",
+    boothId: template.boothId,
     lessonType: lessonType 
   };
 };
