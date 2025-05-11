@@ -1494,16 +1494,15 @@ Content-Type: application/json
 Cookie: {{cookie}}
 
 {
-  "boothId": "cmahq7mjl000q10nhi6im4yqq",
-  "classTypeId": "cmahq7ir2000l10nhdqd46dhd",
-  "teacherId": "cmahq7pe9000w10nh34bgv1ba",
-  "studentId": "cmahq7sba001210nhghg4pju6",
-  "subjectId": "cmahq7e38000i10nhtqg74h5i",
-  "subjectTypeId": "cmahq7c6m000d10nh9pls7fz8",
-  "date": "2025-05-10",
-  "endTime": "2025-05-10T18:15:00",
-  "notes": "sad",
-  "startTime": "2025-05-10T17:00:00"
+  "date": "2025-05-15",
+  "startTime": "14:00:00",
+  "endTime": "15:30:00",
+  "teacherId": "cma8l10zw000usblivj4xgo22",
+  "studentId": "cma8l11050010sbli4bqmqkcj",
+  "subjectId": "cma8l10zf000hsbli2q544ji2",
+  "boothId": "cma8l10zs000qsblit27g595w",
+  "classTypeId": "cma8l10zk000lsblivajzyuxu",
+  "notes": "数学特別授業"
 }
 
 ### Create a new class session from a template
