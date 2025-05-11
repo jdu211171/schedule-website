@@ -277,7 +277,7 @@ export function TeacherFormDialog({
     return "MONDAY";
   };
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
+  function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
     try {
       // Get shift preferences with properly formatted dayOfWeek enum values
@@ -303,6 +303,15 @@ export function TeacherFormDialog({
           : ""
         : new Date().toISOString().split("T")[0];
 
+      // Close the dialog immediately for better UX
+      onOpenChange(false);
+
+      // Reset all forms
+      form.reset();
+      preferencesForm.reset();
+      subjectsForm.reset();
+
+      // Then trigger the mutation without waiting for result
       if (isEditing && teacher) {
         // Update mode: build UpdateTeacherInput
         const updatePayload = {
@@ -329,7 +338,7 @@ export function TeacherFormDialog({
           subjects: subjectPairs.length > 0 ? subjectPairs : undefined,
           shifts: shifts.length > 0 ? shifts : undefined,
         };
-        await updateTeacherMutation.mutateAsync(updatePayload);
+        updateTeacherMutation.mutate(updatePayload);
       } else {
         // Create mode: build CreateTeacherInput
         const createPayload = {
@@ -356,18 +365,12 @@ export function TeacherFormDialog({
           subjects: subjectPairs.length > 0 ? subjectPairs : undefined,
           shifts: shifts.length > 0 ? shifts : undefined,
         };
-        await createTeacherMutation.mutateAsync(createPayload);
+        createTeacherMutation.mutate(createPayload);
       }
-
-      onOpenChange(false);
-      form.reset();
-      preferencesForm.reset();
-      subjectsForm.reset();
     } catch (error) {
       console.error("Error saving teacher:", error);
       // Display error to user
       alert("保存に失敗しました。入力内容を確認してください。");
-    } finally {
       setIsSubmitting(false);
     }
   }
@@ -413,10 +416,7 @@ export function TeacherFormDialog({
 
           <TabsContent value="basic">
             <Form {...form}>
-              <form
-                className="space-y-4"
-                onSubmit={form.handleSubmit(onSubmit)}
-              >
+              <form className="space-y-4">
                 {/* Basic information fields - unchanged */}
                 <FormField
                   control={form.control}
@@ -1098,145 +1098,23 @@ export function TeacherFormDialog({
           <Button
             type="button"
             disabled={isSubmitting}
-            onClick={async () => {
-              try {
-                // Set the flag to show we're starting submission process
-                setIsSubmitting(true);
-
-                console.log("Save button clicked");
-
-                // Manually validate the main form
-                const isMainFormValid = await form.trigger();
-
-                // Log the current form errors
-                console.log("Validation errors:", form.formState.errors);
-
-                // Log each specific error for debugging
-                if (
-                  form.formState.errors &&
-                  Object.keys(form.formState.errors).length > 0
-                ) {
-                  console.log("Validation errors by field:");
-                  Object.entries(form.formState.errors).forEach(
-                    ([field, error]) => {
-                      console.log(`Field "${field}" error:`, error);
-                    }
-                  );
-                }
-
-                if (!isMainFormValid) {
-                  console.log(
-                    "Main form validation failed - showing basic tab with errors"
-                  );
-                  setActiveTab("basic");
-                  setIsSubmitting(false);
-                  return;
-                }
-
-                // Get form values
-                const formValues = form.getValues();
-
-                // Convert birthDate to string format
-                const birthDateStr = formValues.birthDate
-                  ? typeof formValues.birthDate === "string"
-                    ? formValues.birthDate
-                    : formValues.birthDate instanceof Date
-                    ? formValues.birthDate.toISOString().split("T")[0]
-                    : ""
-                  : new Date().toISOString().split("T")[0];
-
-                // Get subjects
-                const subjectPairs = subjectsForm.getValues().subjectPairs;
-
-                // Get shift preferences with properly formatted dayOfWeek enum values
-                const shifts = preferencesForm
-                  .getValues()
-                  .desiredTimes.map((time) => {
-                    const noteVal = preferencesForm.getValues().additionalNotes;
-                    return {
-                      dayOfWeek: ensureDayOfWeekEnum(time.dayOfWeek),
-                      startTime: time.startTime,
-                      endTime: time.endTime,
-                      notes: noteVal,
-                    };
-                  });
-
-                // Create the complete payload
-                const payload = {
-                  ...formValues,
-                  birthDate: birthDateStr,
-                  subjects: subjectPairs,
-                  shifts,
-                  username: formValues.username || formValues.email,
+            onClick={() => {
+              // Get the latest shifts from the preferencesForm
+              const shifts = preferencesForm.getValues().desiredTimes.map((time) => {
+                const noteVal = preferencesForm.getValues().additionalNotes;
+                return {
+                  dayOfWeek: ensureDayOfWeekEnum(time.dayOfWeek),
+                  startTime: time.startTime,
+                  endTime: time.endTime,
+                  notes: noteVal,
                 };
+              });
 
-                // Clean up the payload - remove empty values
-                const cleanedPayload: Record<string, unknown> = {};
+              // Get selected subject-type pairs
+              const subjectPairs = subjectsForm.getValues().subjectPairs;
 
-                Object.entries(payload).forEach(([key, value]) => {
-                  if (value !== undefined && value !== null && value !== "") {
-                    cleanedPayload[key] = value;
-                  }
-                });
-
-                console.log("Final payload being sent:", cleanedPayload);
-
-                // Handle edit vs create case
-                if (isEditing && teacher) {
-                  const updateData = {
-                    ...cleanedPayload,
-                    teacherId: teacher.teacherId,
-                  };
-                  // No need to check or delete password property here
-                  console.log("About to update teacher with data:", updateData);
-                  await updateTeacherMutation.mutateAsync(updateData);
-                  console.log("Teacher update completed successfully");
-                } else {
-                  // Build a proper CreateTeacherInput object
-                  const createPayload = {
-                    name: formValues.name,
-                    evaluationId: formValues.evaluationId,
-                    birthDate: birthDateStr,
-                    mobileNumber: formValues.mobileNumber,
-                    email: formValues.email,
-                    highSchool: formValues.highSchool,
-                    university: formValues.university,
-                    faculty: formValues.faculty,
-                    department: formValues.department,
-                    enrollmentStatus: formValues.enrollmentStatus,
-                    otherUniversities:
-                      formValues.otherUniversities || undefined,
-                    englishProficiency:
-                      formValues.englishProficiency || undefined,
-                    toeic: formValues.toeic ?? undefined,
-                    toefl: formValues.toefl ?? undefined,
-                    mathCertification:
-                      formValues.mathCertification || undefined,
-                    kanjiCertification:
-                      formValues.kanjiCertification || undefined,
-                    otherCertifications:
-                      formValues.otherCertifications || undefined,
-                    notes: formValues.notes || undefined,
-                    username: formValues.username || formValues.email,
-                    password: formValues.password || "",
-                    subjects:
-                      subjectPairs.length > 0 ? subjectPairs : undefined,
-                    shifts: shifts.length > 0 ? shifts : undefined,
-                  };
-                  await createTeacherMutation.mutateAsync(createPayload);
-                }
-
-                // Close dialog and reset forms on success
-                onOpenChange(false);
-                form.reset();
-                preferencesForm.reset();
-                subjectsForm.reset();
-              } catch (error) {
-                console.error("Error during form submission:", error);
-                alert("保存に失敗しました。入力内容を確認してください。");
-              } finally {
-                setIsSubmitting(false);
-              }
+              // Always use the main form's submit handler
+              form.handleSubmit(onSubmit)();
             }}
           >
             {isSubmitting ? "保存中..." : isEditing ? "変更を保存" : "作成"}
