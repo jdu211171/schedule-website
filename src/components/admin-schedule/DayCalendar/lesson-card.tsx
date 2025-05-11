@@ -158,7 +158,7 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
           </span>
         </div>
         {!isNarrow && (
-          <div className="text-[10px] absolute bottom-0.5 left-1 right-1">
+          <div className="text-[11px] absolute bottom-0.5 left-1 right-1">
             <div className="truncate flex justify-between">
               <span className="truncate">👨‍🏫 {lesson.teacher?.name || '未定'}</span>
               <span className="mx-0.5">-</span>
