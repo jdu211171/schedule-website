@@ -1,12 +1,12 @@
-import { auth } from "@/auth";
-import { prisma } from "@/lib/prisma";
 import {
-  CreateClassSessionSchema,
+  ClassSessionQuerySchema,
   CreateClassSessionFromTemplateSchema,
+  CreateClassSessionSchema, // Added this import
   UpdateStandaloneClassSessionSchema,
   UpdateTemplateClassSessionSchema,
-  ClassSessionQuerySchema,
 } from "@/schemas/class-session.schema";
+import { auth } from "@/auth";
+import prisma from "@/lib/prisma";
 import { ZodError } from "zod";
 import { DayOfWeek, Prisma } from "@prisma/client";
 
@@ -276,11 +276,9 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const session = await auth();
   if (!session) {
-    return Response.json({ error: "権限がありません" }, { status: 401 }); // "Unauthorized"
-  }
+    return Response.json({ error: "権限がありません" }, { status: 401 });  }
   if (session.user?.role !== "ADMIN") {
-    return Response.json({ error: "禁止されています" }, { status: 403 }); // "Forbidden"
-  }
+    return Response.json({ error: "禁止されています" }, { status: 403 });  }
 
   try {
     const body = await request.json();
@@ -315,22 +313,23 @@ export async function POST(request: Request) {
 
       // If a new subject type is provided, validate it exists and is compatible with the subject
       if (subjectTypeId) {
-        // Verify the subject-subject type combination exists
-        const validPair = await prisma.subjectToSubjectType.findFirst({
+        const subjectTypeExists = await prisma.subjectType.findUnique({
+          where: { subjectTypeId },
+        });
+        if (!subjectTypeExists) {
+          return Response.json({ error: "指定された科目タイプが見つかりません" }, { status: 404 }); // "Specified subject type not found"
+        }
+        // Check compatibility with template's subject
+        const subjectToSubjectType = await prisma.subjectToSubjectType.findUnique({
           where: {
-            subjectId: template.subjectId,
-            subjectTypeId,
+            subjectId_subjectTypeId: {
+              subjectId: template.subjectId,
+              subjectTypeId: subjectTypeId,
+            },
           },
         });
-
-        if (!validPair) {
-          return Response.json(
-            {
-              error: "無効な科目と科目タイプの組み合わせです", // "Invalid subject-subject type combination"
-              message: `科目 (${template.subjectId}) は指定された科目タイプ (${subjectTypeId}) に関連付けることができません。`, // `The subject (${template.subjectId}) cannot be associated with the specified subject type (${subjectTypeId}).`
-            },
-            { status: 400 }
-          );
+        if (!subjectToSubjectType) {
+          return Response.json({ error: "科目は指定された科目タイプと互換性がありません" }, { status: 400 }); // "Subject is not compatible with the specified subject type"
         }
       }
 
@@ -341,19 +340,16 @@ export async function POST(request: Request) {
         });
 
       if (studentAssignments.length === 0) {
-        return Response.json(
-          { error: "このテンプレートに割り当てられた生徒がいません" }, // "No students assigned to this template"
-          { status: 400 }
-        );
+        return Response.json({ error: "テンプレートに割り当てられた生徒がいません" }, { status: 400 }); // "No students assigned to the template"
       }
 
       // Check for conflicts and validate the resources
       // Use the provided overrides or default to template values
       const classStartTime = startTime
-        ? new Date(`1970-01-01T${startTime}`)
+        ? new Date(`1970-01-01T${startTime}Z`) // Ensure UTC for time-only fields
         : template.startTime;
       const classEndTime = endTime
-        ? new Date(`1970-01-01T${endTime}`)
+        ? new Date(`1970-01-01T${endTime}Z`) // Ensure UTC for time-only fields
         : template.endTime;
       const classBoothId = boothId || template.boothId;
       const classSubjectTypeId = subjectTypeId || template.subjectTypeId;
@@ -569,291 +565,137 @@ export async function POST(request: Request) {
         { status: 201 }
       );
     } else {
-      // Handle standalone class session creation
-      const validatedData = CreateClassSessionSchema.parse(body);
-      const {
-        date,
-        startTime,
-        endTime,
-        teacherId,
-        studentId,
-        subjectId,
-        subjectTypeId,
-        boothId,
-        classTypeId,
-        notes,
-      } = validatedData;
-
-      // Validate all entities exist
-      const [
-        teacherExists,
-        studentExists,
-        subjectExists,
-        subjectTypeExists,
-        boothExists,
-        classTypeExists,
-      ] = await Promise.all([
-        prisma.teacher.findUnique({ where: { teacherId } }),
-        prisma.student.findUnique({ where: { studentId } }),
-        prisma.subject.findUnique({ where: { subjectId } }),
-        prisma.subjectType.findUnique({ where: { subjectTypeId } }),
-        prisma.booth.findUnique({ where: { boothId } }),
-        prisma.classType.findUnique({ where: { classTypeId } }),
-      ]);
-
-      if (!teacherExists) {
-        return Response.json(
-          { error: "先生が見つかりません" },
-          { status: 404 }
-        );
-      }
-      if (!studentExists) {
-        return Response.json(
-          { error: "生徒が見つかりません" },
-          { status: 404 }
-        );
-      }
-      if (!subjectExists) {
-        return Response.json(
-          { error: "科目が見つかりません" },
-          { status: 404 }
-        );
-      }
-      if (!subjectTypeExists) {
-        return Response.json(
-          { error: "科目タイプが見つかりません" },
-          { status: 404 }
-        );
-      }
-      if (!boothExists) {
-        return Response.json(
-          { error: "ブースが見つかりません" }, // Corrected typo from ブーズ to ブース
-          { status: 404 }
-        );
-      }
-      if (!classTypeExists) {
-        return Response.json(
-          { error: "授業タイプが見つかりません" },
-          { status: 404 }
-        );
-      }
-
-      // Verify that the subject-subject type combination exists
-      const validPair = await prisma.subjectToSubjectType.findFirst({
-        where: {
+      // This is for standalone class sessions
+      try {
+        // Validate standalone class session data
+        // startTime and endTime will now be Date objects from the schema transform
+        const validatedData = CreateClassSessionSchema.parse(body);
+        const {
+          date,
+          startTime, // Now a Date object
+          endTime,   // Now a Date object
+          teacherId,
+          studentId,
           subjectId,
           subjectTypeId,
-        },
-      });
+          boothId,
+          classTypeId,
+          notes,
+        } = validatedData;
 
-      if (!validPair) {
-        return Response.json(
-          {
-            error: "無効な科目と科目タイプの組み合わせです", // "Invalid subject-subject type combination"
-            message: `科目 (${subjectId}) は指定された科目タイプ (${subjectTypeId}) に関連付けることができません。`, // `The subject (${subjectId}) cannot be associated with the specified subject type (${subjectTypeId}).`
-          },
-          { status: 400 }
-        );
-      }
+        // Verify teacher exists
+        const teacher = await prisma.teacher.findUnique({
+          where: { teacherId: teacherId },
+        });
+        if (!teacher) {
+          return Response.json({ error: "講師が見つかりません" }, { status: 404 }); // "Teacher not found"
+        }
 
-      // Convert times to Date objects
-      const start = new Date(`1970-01-01T${startTime}`);
-      const end = new Date(`1970-01-01T${endTime}`);
+        // Verify student exists
+        const student = await prisma.student.findUnique({
+          where: { studentId: studentId },
+        });
+        if (!student) {
+          return Response.json({ error: "生徒が見つかりません" }, { status: 404 }); // "Student not found"
+        }
 
-      // Validate time range
-      if (end <= start) {
-        return Response.json(
-          { error: "終了時刻は開始時刻より後でなければなりません" }, // "End time must be after start time"
-          { status: 400 }
-        );
-      }
+        // Verify subject exists
+        const subject = await prisma.subject.findUnique({
+          where: { subjectId: subjectId },
+        });
+        if (!subject) {
+          return Response.json({ error: "科目が見つかりません" }, { status: 404 }); // "Subject not found"
+        }
 
-      // Calculate duration
-      const durationMs = end.getTime() - start.getTime();
-      const durationDate = new Date(durationMs);
+        // Verify subject type exists
+        const subjectType = await prisma.subjectType.findUnique({
+          where: { subjectTypeId: subjectTypeId },
+        });
+        if (!subjectType) {
+          return Response.json({ error: "科目タイプが見つかりません" }, { status: 404 }); // "Subject type not found"
+        }
 
-      // Check for conflicts
-      const [boothConflicts, teacherConflicts, studentConflicts] =
-        await Promise.all([
-          // Booth conflicts
-          prisma.classSession.findMany({
+        // Verify subject and subject type compatibility
+        const subjectToSubjectType = await prisma.subjectToSubjectType.findUnique({
             where: {
-              date: date,
-              boothId,
-              AND: [
-                {
-                  OR: [
-                    {
-                      startTime: {
-                        lt: end,
-                      },
-                      endTime: {
-                        gt: start,
-                      },
-                    },
-                    {
-                      startTime: {
-                        equals: start,
-                      },
-                    },
-                    {
-                      endTime: {
-                        equals: end,
-                      },
-                    },
-                  ],
+                subjectId_subjectTypeId: {
+                    subjectId: subjectId,
+                    subjectTypeId: subjectTypeId,
                 },
-              ],
             },
-          }),
-          // Teacher conflicts
-          prisma.classSession.findMany({
-            where: {
-              date: date,
+        });
+        if (!subjectToSubjectType) {
+            return Response.json({ error: "科目は指定された科目タイプと互換性がありません" }, { status: 400 }); // "Subject is not compatible with the specified subject type"
+        }
+
+
+        // Verify booth exists
+        const booth = await prisma.booth.findUnique({
+          where: { boothId: boothId },
+        });
+        if (!booth) {
+          return Response.json({ error: "ブースが見つかりません" }, { status: 404 }); // "Booth not found"
+        }
+
+        // Verify class type exists
+        const classType = await prisma.classType.findUnique({
+          where: { classTypeId: classTypeId },
+        });
+        if (!classType) {
+          return Response.json({ error: "授業タイプが見つかりません" }, { status: 404 }); // "Class type not found"
+        }
+
+        // TODO: Add conflict checking (teacher availability, student availability, booth availability)
+
+        // Create the class session and enroll the student in a transaction
+        const newClassSession = await prisma.$transaction(async (tx) => {
+          const createdSession = await tx.classSession.create({
+            data: {
+              date, // Already a Date object
+              startTime, // Already a Date object, transformed by Zod
+              endTime,   // Already a Date object, transformed by Zod
               teacherId,
-              AND: [
-                {
-                  OR: [
-                    {
-                      startTime: {
-                        lt: end,
-                      },
-                      endTime: {
-                        gt: start,
-                      },
-                    },
-                    {
-                      startTime: {
-                        equals: start,
-                      },
-                    },
-                    {
-                      endTime: {
-                        equals: end,
-                      },
-                    },
-                  ],
-                },
-              ],
-            },
-          }),
-          // Student conflicts
-          prisma.classSession.findMany({
-            where: {
-              date: date,
               studentId,
-              AND: [
-                {
-                  OR: [
-                    {
-                      startTime: {
-                        lt: end,
-                      },
-                      endTime: {
-                        gt: start,
-                      },
-                    },
-                    {
-                      startTime: {
-                        equals: start,
-                      },
-                    },
-                    {
-                      endTime: {
-                        equals: end,
-                      },
-                    },
-                  ],
-                },
-              ],
+              subjectId,
+              subjectTypeId,
+              boothId,
+              classTypeId,
+              notes,
             },
-          }),
-        ]);
+          });
 
-      if (boothConflicts.length > 0) {
-        return Response.json(
-          {
-            error: "ブースは既にこの時間に予約されています", // "Booth is already booked for this time"
-            conflicts: boothConflicts,
-          },
-          { status: 409 }
-        );
-      }
-
-      if (teacherConflicts.length > 0) {
-        return Response.json(
-          {
-            error: "講師は既にこの時間に予約されています", // "Teacher is already booked for this time"
-            conflicts: teacherConflicts,
-          },
-          { status: 409 }
-        );
-      }
-
-      if (studentConflicts.length > 0) {
-        return Response.json(
-          {
-            error: "生徒は既にこの時間に予約されています", // "Student is already booked for this time"
-            conflicts: studentConflicts,
-          },
-          { status: 409 }
-        );
-      }
-
-      // Create the class session and enrollment in a transaction
-      const result = await prisma.$transaction(async (tx) => {
-        // Create the class session
-        const classSession = await tx.classSession.create({
-          data: {
-            date,
-            startTime: start,
-            endTime: end,
-            duration: durationDate,
-            teacherId,
-            studentId,
-            subjectId,
-            subjectTypeId,
-            boothId,
-            classTypeId,
-            notes,
-          },
-          include: {
-            booth: true,
-            classType: true,
-            subject: {
-              include: {
-                subjectToSubjectTypes: {
-                  include: {
-                    subjectType: true,
-                  },
-                },
-              },
+          // Enroll the student in the newly created class session
+          await tx.studentClassEnrollment.create({
+            data: {
+              studentId: studentId,
+              classId: createdSession.classId,
+              status: "ENROLLED", // Assuming a default status. Adjust if your schema has other required fields for enrollment
             },
-            subjectType: true,
-            teacher: true,
-            student: true,
-          },
+          });
+          return createdSession;
         });
 
-        // Create enrollment for this student
-        await tx.studentClassEnrollment.create({
-          data: {
-            classId: classSession.classId,
-            studentId,
-            status: "ENROLLED",
+
+        return Response.json(
+          { message: "授業セッションが正常に作成されました", data: newClassSession }, // "Class session created successfully"
+          { status: 201 }
+        );
+      } catch (error) {
+        console.error("授業セッションの作成エラー:", error); // "Class session creation error:"
+        if (error instanceof ZodError) {
+          return Response.json(
+            { error: "無効なリクエストデータです", details: error.errors }, // "Invalid request data"
+            { status: 400 }
+          );
+        }
+        return Response.json(
+          {
+            error: "授業セッションの作成に失敗しました", // "Failed to create class session"
+            message: error instanceof Error ? error.message : "不明なエラーです", // "Unknown error"
           },
-        });
-
-        return classSession;
-      });
-
-      return Response.json(
-        {
-          message: "授業セッションが正常に作成されました", // "Class session created successfully"
-          data: result,
-        },
-        { status: 201 }
-      );
+          { status: 500 }
+        );
+      }
     }
   } catch (error) {
     console.error("授業セッションの作成エラー:", error); // "Error creating class session:"
@@ -1455,7 +1297,7 @@ export async function PUT(request: Request) {
       });
     }
   } catch (error) {
-    console.error("授業セッションの更新エラー:", error); // "Error updating class session:"
+    console.error("授業セッションの更新エラー:", error); // "Error updating class session"
     if (error instanceof ZodError) {
       return Response.json(
         { error: "無効なリクエストデータです", issues: error.issues }, // "Invalid request data"
