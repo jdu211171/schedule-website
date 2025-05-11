@@ -7,7 +7,10 @@ import { Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/data-table";
 import { useSubjects } from "@/hooks/useSubjectQuery";
-import { useSubjectDelete } from "@/hooks/useSubjectMutation";
+import {
+  useSubjectDelete,
+  getResolvedSubjectId,
+} from "@/hooks/useSubjectMutation";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -53,13 +56,27 @@ export function SubjectTable() {
     {
       id: "subjectTypes",
       header: "科目タイプ",
-      cell: ({ row }) => (
-        <div>
-          {row.original.subjectToSubjectTypes
-            .map((rel) => rel.subjectType?.name ?? rel.subjectTypeId)
-            .join(", ")}
-        </div>
-      ),
+      cell: ({ row }) => {
+        // Handle optimistic UI for subject types
+        const isOptimistic = (row.original as any)._optimistic;
+        if (isOptimistic) {
+          return (
+            <div className="opacity-70">
+              {row.original.subjectToSubjectTypes
+                .map((rel) => rel.subjectType?.name ?? rel.subjectTypeId)
+                .join(", ")}
+            </div>
+          );
+        }
+
+        return (
+          <div>
+            {row.original.subjectToSubjectTypes
+              .map((rel) => rel.subjectType?.name ?? rel.subjectTypeId)
+              .join(", ")}
+          </div>
+        );
+      },
     },
     {
       accessorKey: "notes",
@@ -68,36 +85,49 @@ export function SubjectTable() {
     {
       id: "actions",
       header: "操作",
-      cell: ({ row }) => (
-        <div className="flex gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() =>
-              setSubjectToEdit(normalizeSubjectNotes(row.original))
-            }
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() =>
-              setSubjectToDelete(normalizeSubjectNotes(row.original))
-            }
-          >
-            <Trash2 className="h-4 w-4 text-destructive" />
-          </Button>
-        </div>
-      ),
+      cell: ({ row }) => {
+        // Type-safe check for _optimistic property
+        const isOptimistic = (row.original as any)._optimistic;
+
+        return (
+          <div className="flex gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() =>
+                setSubjectToEdit(normalizeSubjectNotes(row.original))
+              }
+            >
+              <Pencil
+                className={`h-4 w-4 ${isOptimistic ? "opacity-70" : ""}`}
+              />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() =>
+                setSubjectToDelete(normalizeSubjectNotes(row.original))
+              }
+            >
+              <Trash2
+                className={`h-4 w-4 text-destructive ${
+                  isOptimistic ? "opacity-70" : ""
+                }`}
+              />
+            </Button>
+          </div>
+        );
+      },
     },
   ];
 
   const handleDeleteSubject = async () => {
     if (subjectToDelete) {
       try {
-        await deleteSubjectMutation.mutateAsync(subjectToDelete.subjectId);
+        // Close the dialog immediately for better UX
+        const subjectId = getResolvedSubjectId(subjectToDelete.subjectId);
         setSubjectToDelete(null);
+        await deleteSubjectMutation.mutateAsync(subjectId);
       } catch (error) {
         console.error("科目の削除に失敗しました:", error);
       }

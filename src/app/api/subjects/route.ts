@@ -119,7 +119,7 @@ export async function POST(request: Request) {
     }
 
     // Use a transaction to ensure both the subject and its relationships are created
-    const subject = await prisma.$transaction(async (tx) => {
+    const createdSubject = await prisma.$transaction(async (tx) => {
       // Create the subject
       const newSubject = await tx.subject.create({
         data: subjectData,
@@ -137,27 +137,30 @@ export async function POST(request: Request) {
         )
       );
 
-      // Return the created subject with its relationships
-      return await tx.subject.findUnique({
-        where: { subjectId: newSubject.subjectId },
-        include: {
-          subjectToSubjectTypes: {
-            include: {
-              subjectType: true,
-            },
+      // Return only the essential data from the transaction
+      return newSubject;
+    });
+
+    // After the transaction, fetch the complete subject data with all relations
+    const subjectWithRelations = await prisma.subject.findUnique({
+      where: { subjectId: createdSubject.subjectId },
+      include: {
+        subjectToSubjectTypes: {
+          include: {
+            subjectType: true,
           },
-          classSessions: { include: { classType: true } },
-          regularClassTemplates: true,
-          teacherSubjects: true,
-          StudentPreferenceSubject: true,
         },
-      });
+        classSessions: { include: { classType: true } },
+        regularClassTemplates: true,
+        teacherSubjects: true,
+        StudentPreferenceSubject: true,
+      },
     });
 
     return Response.json(
       {
         message: "科目が正常に作成されました", // "Subject created successfully"
-        data: subject,
+        data: subjectWithRelations, // Send the fully populated data
       },
       { status: 201 }
     );
@@ -179,11 +182,9 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   const session = await auth();
   if (!session) {
-    return Response.json({ error: "権限がありません" }, { status: 401 }); // "Unauthorized"
-  }
+    return Response.json({ error: "権限がありません" }, { status: 401 });  }
   if (session.user?.role !== "ADMIN") {
-    return Response.json({ error: "禁止されています" }, { status: 403 }); // "Forbidden"
-  }
+    return Response.json({ error: "禁止されています" }, { status: 403 });  }
 
   try {
     const body = await request.json();
@@ -193,16 +194,13 @@ export async function PUT(request: Request) {
     // Check if the subject exists
     const existingSubject = await prisma.subject.findUnique({
       where: { subjectId },
-      include: {
-        subjectToSubjectTypes: true,
-      },
     });
 
     if (!existingSubject) {
-      return Response.json({ error: "科目が見つかりません" }, { status: 404 }); // "Subject not found"
+      return Response.json({ error: "科目が存在しません" }, { status: 404 });
     }
 
-    // If subject type IDs are being updated, verify they exist
+    // Verify that all subject types exist if subjectTypeIds are provided
     if (subjectTypeIds) {
       const existingSubjectTypes = await prisma.subjectType.findMany({
         where: {
@@ -211,74 +209,71 @@ export async function PUT(request: Request) {
           },
         },
       });
-
       if (existingSubjectTypes.length !== subjectTypeIds.length) {
         return Response.json(
-          { error: "1つ以上の科目タイプが見つかりません" }, // "One or more subject types not found"
-          { status: 404 }
+          { error: "1つ以上の科目種別が存在しません" },
+          { status: 400 }
         );
       }
     }
 
-    // Use a transaction to update both the subject and its relationships
-    const subject = await prisma.$transaction(async (tx) => {
-      // Update the subject
-      const updatedSubject = await tx.subject.update({
+    const updatedSubject = await prisma.$transaction(async (tx) => {
+      // Update basic subject information
+      const subject = await tx.subject.update({
         where: { subjectId },
-        data,
-      });
-
-      // Update subject-to-subject-type relationships if provided
-      if (subjectTypeIds) {
-        // Delete existing relationships
-        await tx.subjectToSubjectType.deleteMany({
-          where: { subjectId },
-        });
-
-        // Create new relationships
-        await Promise.all(
-          subjectTypeIds.map((subjectTypeId) =>
-            tx.subjectToSubjectType.create({
-              data: {
-                subjectId,
-                subjectTypeId,
-              },
-            })
-          )
-        );
-      }
-
-      // Return the updated subject with its relationships
-      return await tx.subject.findUnique({
-        where: { subjectId: updatedSubject.subjectId },
-        include: {
-          subjectToSubjectTypes: {
-            include: {
-              subjectType: true,
-            },
-          },
-          classSessions: { include: { classType: true } },
-          regularClassTemplates: true,
-          teacherSubjects: true,
-          StudentPreferenceSubject: true,
+        data: {
+          ...data,
         },
       });
+
+      // If subjectTypeIds are provided, update the associations
+      if (subjectTypeIds) {
+        // Delete existing associations
+        await tx.subjectToSubjectType.deleteMany({
+          where: { subjectId: subject.subjectId },
+        });
+
+        // Create new associations
+        await tx.subjectToSubjectType.createMany({
+          data: subjectTypeIds.map((subjectTypeId: string) => ({
+            subjectId: subject.subjectId,
+            subjectTypeId,
+          })),
+        });
+      }
+      return subject;
     });
 
-    return Response.json({
-      message: "科目が正常に更新されました", // "Subject updated successfully"
-      data: subject,
+    // Fetch the complete subject data with all relations after the transaction
+    const subjectWithRelations = await prisma.subject.findUnique({
+      where: { subjectId: updatedSubject.subjectId },
+      include: {
+        subjectToSubjectTypes: {
+          include: {
+            subjectType: true,
+          },
+        },
+        classSessions: { include: { classType: true } },
+        regularClassTemplates: true,
+        teacherSubjects: true,
+        StudentPreferenceSubject: true,
+      },
     });
+
+    return Response.json(
+      {
+        message: "科目が正常に更新されました",
+        data: subjectWithRelations,
+      },
+      { status: 200 }
+    );
   } catch (error) {
     if (error instanceof ZodError) {
-      return Response.json(
-        { error: "検証に失敗しました", details: error.errors }, // "Validation failed"
-        { status: 400 }
-      );
+      return Response.json({ error: error.errors }, { status: 400 });
     }
-    console.error("科目の更新エラー:", error); // "Error updating subject:"
+    console.error("科目の更新エラー:", error);
     return Response.json(
-      { error: "科目の更新に失敗しました" }, // "Failed to update subject"
+      { error: "科目の更新に失敗しました" },
       { status: 500 }
     );
   }
