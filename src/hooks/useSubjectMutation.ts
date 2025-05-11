@@ -1,27 +1,32 @@
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { fetcher } from "@/lib/fetcher";
 import {
   CreateSubjectInput,
   UpdateSubjectInput,
   SubjectWithRelations,
 } from "@/schemas/subject.schema";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
 
-type CreateSubjectResponse = {
+// Define types previously imported from "@/types/subject"
+
+export const tempToServerIdMap = new Map<string, string>();
+
+export interface CreateSubjectResponse {
   message: string;
   data: SubjectWithRelations;
-};
+}
 
-type UpdateSubjectResponse = {
+export interface UpdateSubjectResponse {
   message: string;
   data: SubjectWithRelations;
-};
+}
 
-type DeleteSubjectResponse = {
+export interface DeleteSubjectResponse {
   message: string;
-};
+  subjectId?: string; // Optional: if the backend returns the ID of the deleted item
+}
 
-type SubjectsQueryData = {
+export interface SubjectsQueryData {
   data: SubjectWithRelations[];
   pagination: {
     total: number;
@@ -29,18 +34,25 @@ type SubjectsQueryData = {
     limit: number;
     pages: number;
   };
-};
+}
 
-// Define context types for mutations
-type SubjectMutationContext = {
-  previousSubjects?: Record<string, SubjectsQueryData>;
-  previousSubject?: SubjectWithRelations;
-  deletedSubject?: SubjectWithRelations;
-  tempId?: string;
-};
+export interface SubjectMutationContext {
+  previousSubjects?: Record<string, SubjectsQueryData | undefined>;
+  optimisticUpdateId?: string; // Used for create operations
+  // For update/delete, the actual subjectId can be used if needed in context
+}
 
-// Maintain a mapping between temporary IDs and server IDs
-const tempToServerIdMap = new Map<string, string>();
+// Define types for subject type cache data (seems to be correctly defined already)
+interface SubjectTypeCacheItem {
+  subjectTypeId: string;
+  name: string;
+  // Add other fields if they exist in your cached subjectType object
+}
+
+interface SubjectTypesQueryCacheData {
+  data?: SubjectTypeCacheItem[];
+  // Add other potential pagination/metadata fields if they exist
+}
 
 export function getResolvedSubjectId(id: string): string {
   return tempToServerIdMap.get(id) || id;
@@ -51,12 +63,12 @@ export function useSubjectCreate() {
   return useMutation<
   CreateSubjectResponse,
     Error,
-    CreateSubjectInput & { subjectTypeNames: Record<string, string> }, // Add subjectTypeNames here
+    CreateSubjectInput & { subjectTypeNames: Record<string, string> },
     SubjectMutationContext >
       ({
         mutationFn: (data) => {
-          // Extract subjectTypeNames from the input and exclude it from API call
-          const { subjectTypeNames, ...apiData } = data;
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const { subjectTypeNames: _subjectTypeNames, ...apiData } = data;
           return fetcher("/api/subjects", {
             method: "POST",
             body: JSON.stringify(apiData),
@@ -65,16 +77,22 @@ export function useSubjectCreate() {
         onMutate: async (newSubject) => {
           await queryClient.cancelQueries({ queryKey: ["subjects"] });
 
-          // Get subjectTypeNames from the input (passed from the form component)
           const subjectTypeNames = newSubject.subjectTypeNames || {};
 
-          // If subjectTypeNames weren't provided, try to get them from the cache
-          if (Object.keys(subjectTypeNames).length === 0) {
-            // Try to get subject type data from the cache
-            const subjectTypesData = queryClient.getQueryData(["subjectType"]);
+          if (
+            Object.keys(subjectTypeNames).length === 0 &&
+            newSubject.subjectTypeIds.length > 0
+          ) {
+            const subjectTypesData =
+              queryClient.getQueryData<SubjectTypesQueryCacheData>([
+                "subjectType",
+              ]);
             if (subjectTypesData?.data) {
-              subjectTypesData.data.forEach((type: any) => {
-                if (type.subjectTypeId && type.name) {
+              subjectTypesData.data.forEach((type: SubjectTypeCacheItem) => {
+                if (
+                  newSubject.subjectTypeIds.includes(type.subjectTypeId) &&
+                  type.name
+                ) {
                   subjectTypeNames[type.subjectTypeId] = type.name;
                 }
               });
@@ -84,118 +102,98 @@ export function useSubjectCreate() {
           const queries = queryClient.getQueriesData<SubjectsQueryData>({
             queryKey: ["subjects"],
           });
-          const previousSubjects: Record<string, SubjectsQueryData> = {};
+          const previousSubjects: Record<
+            string,
+            SubjectsQueryData | undefined
+          > = {};
           queries.forEach(([queryKey, data]) => {
-            if (data) {
-              previousSubjects[JSON.stringify(queryKey)] = data;
-            }
+            previousSubjects[JSON.stringify(queryKey)] = data;
           });
 
           const tempId = `temp-${Date.now()}`;
+
           queries.forEach(([queryKey]) => {
-            const currentData =
-              queryClient.getQueryData<SubjectsQueryData>(queryKey);
-            if (currentData) {
-              const optimisticSubject: SubjectWithRelations & {
-                _optimistic?: boolean;
-              } = {
-                subjectId: tempId,
+            queryClient.setQueryData<SubjectsQueryData>(queryKey, (oldData) => {
+              if (!oldData) return undefined; // Or return oldData if it can be undefined initially
+
+              const optimisticSubjectData = {
                 name: newSubject.name,
-                notes: newSubject.notes === null ? undefined : newSubject.notes,
+                notes: newSubject.notes || null, // Ensure notes matches schema (e.g. string | null)
+                subjectId: tempId,
                 createdAt: new Date(),
                 updatedAt: new Date(),
-                _optimistic: true,
                 subjectToSubjectTypes: newSubject.subjectTypeIds.map((id) => ({
                   subjectId: tempId,
                   subjectTypeId: id,
-                  subjectType: {
-                    name: subjectTypeNames[id] || `科目種別 ${id.slice(-4)}`,
-                  },
-                  createdAt: new Date(),
-                  updatedAt: new Date(),
+                  subjectType: { name: subjectTypeNames[id] || "Loading..." },
+                  _optimistic: true, // Custom flag
                 })),
                 classSessions: [],
                 regularClassTemplates: [],
                 teacherSubjects: [],
                 StudentPreferenceSubject: [],
+                _optimistic: true, // Custom flag
               };
 
-              queryClient.setQueryData<SubjectsQueryData>(queryKey, {
-                ...currentData,
-                data: [optimisticSubject, ...currentData.data],
+              // Cast to SubjectWithRelations, acknowledging _optimistic is an extra prop handled elsewhere
+              const optimisticSubject =
+                optimisticSubjectData as unknown as SubjectWithRelations;
+
+              return {
+                ...oldData,
+                data: [optimisticSubject, ...oldData.data],
                 pagination: {
-                  ...currentData.pagination,
-                  total: currentData.pagination.total + 1,
+                  ...oldData.pagination,
+                  total: oldData.pagination.total + 1,
                 },
-              });
-            }
+              };
+            });
           });
-          return { previousSubjects, tempId };
+          return { previousSubjects, optimisticUpdateId: tempId };
         },
-        onError: (error, _, context) => {
+        onError: (error, _variables, context) => {
+          toast.error(`科目作成エラー: ${error.message}`);
           if (context?.previousSubjects) {
-            Object.entries(context.previousSubjects).forEach(
-              ([queryKeyStr, data]) => {
-                const queryKey = JSON.parse(queryKeyStr);
-                queryClient.setQueryData(queryKey, data);
-              }
-            );
+            Object.entries(context.previousSubjects).forEach(([key, value]) => {
+              queryClient.setQueryData(JSON.parse(key), value);
+            });
           }
-
-          // Clean up the ID mapping if we created one
-          if (context?.tempId) {
-            tempToServerIdMap.delete(context.tempId);
-          }
-
-          toast.error("科目の追加に失敗しました", {
-            description: error.message,
-          });
         },
-        onSuccess: (response, _, context) => {
-          if (!context?.tempId) return;
+        onSuccess: (response, _variables, context) => {
+          toast.success(response.message);
+          const serverId = response.data.subjectId;
+          const tempId = context?.optimisticUpdateId;
 
-          tempToServerIdMap.set(context.tempId, response.data.subjectId);
+          if (tempId && serverId) {
+            tempToServerIdMap.set(tempId, serverId);
 
-          const queries = queryClient.getQueriesData<SubjectsQueryData>({
-            queryKey: ["subjects"],
-          });
-          queries.forEach(([queryKey]) => {
-            const currentData =
-              queryClient.getQueryData<SubjectsQueryData>(queryKey);
-            if (currentData) {
-              queryClient.setQueryData<SubjectsQueryData>(queryKey, {
-                ...currentData,
-                data: currentData.data.map((subject) => {
-                  const optimisticSubject = subject as SubjectWithRelations & {
-                    _optimistic?: boolean;
+            const queries = queryClient.getQueriesData<SubjectsQueryData>({
+              queryKey: ["subjects"],
+            });
+            queries.forEach(([queryKey]) => {
+              queryClient.setQueryData<SubjectsQueryData>(
+                queryKey,
+                (oldData) => {
+                  if (!oldData) return undefined;
+                  return {
+                    ...oldData,
+                    data: oldData.data.map((subject) =>
+                      subject.subjectId === tempId ? response.data : subject
+                    ),
                   };
-                  if (
-                    optimisticSubject.subjectId === context.tempId &&
-                    optimisticSubject._optimistic
-                  ) {
-                    const serverSubject = response.data;
-                    return {
-                      ...optimisticSubject,
-                      ...serverSubject,
-                      notes:
-                        serverSubject.notes === null
-                          ? undefined
-                          : serverSubject.notes,
-                      subjectId: serverSubject.subjectId,
-                      _optimistic: false,
-                    };
-                  }
-                  return subject;
-                }),
-              });
-            }
-          });
-
-          toast.success("科目を追加しました", {
-            description: response.message,
-          });
+                }
+              );
+            });
+          }
+          // Removed query invalidation here to prevent unnecessary refetching
         },
-        onSettled: () => {
+        onSettled: (_data, _error, _variables, context) => {
+          const tempId = context?.optimisticUpdateId;
+          if (tempId) {
+            // Optional: Clean up tempToServerIdMap if the tempId is confirmed or no longer needed for resolution
+            // tempToServerIdMap.delete(tempId); // Consider if getResolvedSubjectId is used long after
+          }
+          // Ensure data consistency without triggering a refetch
           queryClient.invalidateQueries({
             queryKey: ["subjects"],
             refetchType: "none",
@@ -207,158 +205,200 @@ export function useSubjectCreate() {
 export function useSubjectUpdate() {
   const queryClient = useQueryClient();
   return useMutation<
-  UpdateSubjectResponse,
+    UpdateSubjectResponse,
     Error,
-    UpdateSubjectInput & { subjectTypeNames: Record<string, string> }, // Add subjectTypeNames here
-    SubjectMutationContext >
-      ({
-        mutationFn: (data) => {
-          // Extract subjectTypeNames from the input and exclude it from API call
-          const { subjectTypeNames, ...apiData } = data;
-          return fetcher(`/api/subjects`, {
-            method: "PUT",
-            body: JSON.stringify(apiData),
-          });
-        },
-        onMutate: async (updatedSubjectData) => {
-          await queryClient.cancelQueries({ queryKey: ["subjects"] });
+    UpdateSubjectInput & { subjectTypeNames: Record<string, string> },
+    SubjectMutationContext
+  >({
+    mutationFn: async (data) => {
+      // Extract and exclude subjectTypeNames from API data
+      const { subjectTypeNames: _subjectTypeNames, ...apiData } = data;
 
-          // Get subjectTypeNames from the input (passed from the form component)
-          const subjectTypeNames = updatedSubjectData.subjectTypeNames || {};
+      // Resolve the ID before sending to the server - crucial step
+      const resolvedId = getResolvedSubjectId(apiData.subjectId);
 
-          // If subjectTypeNames weren't provided and we need them, get from cache
-          if (
-            Object.keys(subjectTypeNames).length === 0 &&
-            updatedSubjectData.subjectTypeIds
-          ) {
-            // Try to get subject type data from the cache
-            const subjectTypesData = queryClient.getQueryData(["subjectType"]);
-            if (subjectTypesData?.data) {
-              subjectTypesData.data.forEach((type: any) => {
-                if (type.subjectTypeId && type.name) {
-                  subjectTypeNames[type.subjectTypeId] = type.name;
-                }
-              });
-            }
-          }
+      // Create a new object with the resolved ID
+      const requestData = {
+        ...apiData,
+        subjectId: resolvedId,
+      };
 
-          const queries = queryClient.getQueriesData<SubjectsQueryData>({
-            queryKey: ["subjects"],
-          });
-          const previousSubjects: Record<string, SubjectsQueryData> = {};
-          queries.forEach(([queryKey, data]) => {
-            if (data) {
-              previousSubjects[JSON.stringify(queryKey)] = data;
-            }
-          });
+      // Log for debugging
+      console.log(
+        "Sending update request with ID:",
+        resolvedId,
+        "Original ID:",
+        apiData.subjectId
+      );
 
-          queries.forEach(([queryKey]) => {
-            const currentData =
-              queryClient.getQueryData<SubjectsQueryData>(queryKey);
-            if (currentData) {
-              queryClient.setQueryData<SubjectsQueryData>(queryKey, {
-                ...currentData,
-                data: currentData.data.map((subject) => {
-                  if (subject.subjectId === updatedSubjectData.subjectId) {
-                    const updatedOptimisticSubject: SubjectWithRelations & {
-                      _optimistic?: boolean;
-                    } = {
-                      ...subject,
-                      ...(updatedSubjectData.name && {
-                        name: updatedSubjectData.name,
-                      }),
-                      notes:
-                        updatedSubjectData.notes !== undefined
-                          ? updatedSubjectData.notes === null
-                            ? undefined
-                            : updatedSubjectData.notes
-                          : subject.notes,
-                      subjectToSubjectTypes: updatedSubjectData.subjectTypeIds
-                        ? updatedSubjectData.subjectTypeIds.map((typeId) => ({
-                            subjectId: subject.subjectId,
-                            subjectTypeId: typeId,
-                            subjectType: {
-                              name:
-                                subjectTypeNames[typeId] ||
-                                `科目種別 ${typeId.slice(-4)}`,
-                            },
-                            createdAt: new Date(),
-                            updatedAt: new Date(),
-                          }))
-                        : subject.subjectToSubjectTypes,
-                      updatedAt: new Date(),
-                      _optimistic: true,
-                    };
-                    return updatedOptimisticSubject;
-                  }
-                  return subject;
-                }),
-              });
-            }
-          });
-          return { previousSubjects, tempId: updatedSubjectData.subjectId };
-        },
-        onError: (error, _, context) => {
-          if (context?.previousSubjects) {
-            Object.entries(context.previousSubjects).forEach(
-              ([queryKeyStr, data]) => {
-                queryClient.setQueryData(JSON.parse(queryKeyStr), data);
-              }
-            );
-          }
-          toast.error("科目の更新に失敗しました", {
-            description: error.message,
-          });
-        },
-        onSuccess: (response, variables, context) => {
-          const queries = queryClient.getQueriesData<SubjectsQueryData>({
-            queryKey: ["subjects"],
-          });
-          queries.forEach(([queryKey]) => {
-            const currentData =
-              queryClient.getQueryData<SubjectsQueryData>(queryKey);
-            if (currentData) {
-              queryClient.setQueryData<SubjectsQueryData>(queryKey, {
-                ...currentData,
-                data: currentData.data.map((subject) => {
-                  const optimisticSubject = subject as SubjectWithRelations & {
-                    _optimistic?: boolean;
-                  };
-                  if (
-                    optimisticSubject.subjectId === context?.tempId ||
-                    optimisticSubject.subjectId === response.data.subjectId
-                  ) {
-                    const serverSubject = response.data;
-                    return {
-                      ...optimisticSubject,
-                      ...serverSubject,
-                      notes:
-                        serverSubject.notes === null
-                          ? undefined
-                          : serverSubject.notes,
-                      subjectId: serverSubject.subjectId,
-                      _optimistic: false,
-                    };
-                  }
-                  return subject;
-                }),
-              });
-            }
-          });
-
-          toast.success("科目を更新しました", {
-            description: response.message,
-          });
-        },
-        onSettled: (data, error, variables) => {
-          queryClient.invalidateQueries({ queryKey: ["subjects"] });
-          if (variables?.subjectId) {
-            queryClient.invalidateQueries({
-              queryKey: ["subject", variables.subjectId],
-            });
-          }
-        },
+      // Send the update request
+      return await fetcher(`/api/subjects`, {
+        method: "PUT",
+        body: JSON.stringify(requestData),
       });
+    },
+    onMutate: async (updatedSubjectData) => {
+      // Cancel any in-flight queries
+      await queryClient.cancelQueries({ queryKey: ["subjects"] });
+
+      // Resolve the ID before performing optimistic updates
+      const resolvedId = getResolvedSubjectId(updatedSubjectData.subjectId);
+      console.log(
+        "Optimistic update with resolved ID:",
+        resolvedId,
+        "Original ID:",
+        updatedSubjectData.subjectId
+      );
+
+      // Get subject type names from cache if not provided
+      const subjectTypeNames = updatedSubjectData.subjectTypeNames || {};
+      if (
+        Object.keys(subjectTypeNames).length === 0 &&
+        updatedSubjectData.subjectTypeIds &&
+        updatedSubjectData.subjectTypeIds.length > 0
+      ) {
+        const subjectTypesData =
+          queryClient.getQueryData<SubjectTypesQueryCacheData>(["subjectType"]);
+        if (subjectTypesData?.data) {
+          subjectTypesData.data.forEach((type) => {
+            if (
+              updatedSubjectData.subjectTypeIds!.includes(type.subjectTypeId) &&
+              type.name
+            ) {
+              subjectTypeNames[type.subjectTypeId] = type.name;
+            }
+          });
+        }
+      }
+
+      // Store previous state for potential rollback
+      const previousSubjects: Record<string, SubjectsQueryData | undefined> =
+        {};
+      const queries = queryClient.getQueriesData<SubjectsQueryData>({
+        queryKey: ["subjects"],
+      });
+
+      queries.forEach(([queryKey, data]) => {
+        previousSubjects[JSON.stringify(queryKey)] = data;
+      });
+
+      // Perform optimistic updates on all matching queries
+      queries.forEach(([queryKey, data]) => {
+        if (data) {
+          queryClient.setQueryData<SubjectsQueryData>(queryKey, (oldData) => {
+            if (!oldData) return undefined;
+
+            return {
+              ...oldData,
+              data: oldData.data.map((subject) => {
+                // Check both original and resolved IDs
+                if (
+                  subject.subjectId === updatedSubjectData.subjectId ||
+                  subject.subjectId === resolvedId
+                ) {
+                  // Handle notes correctly
+                  const correctedNotes =
+                    updatedSubjectData.notes === null
+                      ? undefined
+                      : updatedSubjectData.notes;
+
+                  // Create new subject types relations if provided
+                  let newSubjectToSubjectTypes:
+                    | SubjectWithRelations["subjectToSubjectTypes"]
+                    | undefined = undefined;
+                  if (updatedSubjectData.subjectTypeIds) {
+                    newSubjectToSubjectTypes =
+                      updatedSubjectData.subjectTypeIds.map((id) => ({
+                        subjectId: resolvedId,
+                        subjectTypeId: id,
+                        subjectType: {
+                          name: subjectTypeNames[id] || "Loading...",
+                          subjectTypeId: id,
+                        },
+                        createdAt: new Date(),
+                        updatedAt: new Date(),
+                      }));
+                  }
+
+                  // Create the optimistic subject update
+                  return {
+                    ...subject,
+                    ...updatedSubjectData,
+                    subjectId: resolvedId,
+                    notes: correctedNotes,
+                    updatedAt: new Date(),
+                    ...(newSubjectToSubjectTypes && {
+                      subjectToSubjectTypes: newSubjectToSubjectTypes,
+                    }),
+                    _optimistic: true,
+                  } as unknown as SubjectWithRelations;
+                }
+                return subject;
+              }),
+            };
+          });
+        }
+      });
+
+      // Return context for potential rollback
+      return { previousSubjects };
+    },
+    onError: (error, variables, context) => {
+      console.error(
+        "Subject update error:",
+        error,
+        "For subject ID:",
+        variables.subjectId
+      );
+      toast.error(`科目更新エラー: ${error.message}`);
+
+      // Restore previous state on error
+      if (context?.previousSubjects) {
+        Object.entries(context.previousSubjects).forEach(([key, value]) => {
+          queryClient.setQueryData(JSON.parse(key), value);
+        });
+      }
+    },
+    onSuccess: (response, variables) => {
+      toast.success(response.message);
+
+      // Get the resolved ID
+      const resolvedId = getResolvedSubjectId(variables.subjectId);
+
+      // Update all subject queries with the server response data (without _optimistic flag)
+      const queries = queryClient.getQueriesData<SubjectsQueryData>({
+        queryKey: ["subjects"],
+      });
+      queries.forEach(([queryKey]) => {
+        queryClient.setQueryData<SubjectsQueryData>(queryKey, (oldData) => {
+          if (!oldData) return undefined;
+          return {
+            ...oldData,
+            data: oldData.data.map((subject) =>
+              subject.subjectId === resolvedId ? response.data : subject
+            ),
+          };
+        });
+      });
+    },
+    onSettled: (_data, _error, variables) => {
+      // Resolve the ID for proper invalidation
+      const resolvedId = getResolvedSubjectId(variables.subjectId);
+      console.log("Subject update settled for resolved ID:", resolvedId);
+
+      // Invalidate queries without refetching
+      queryClient.invalidateQueries({
+        queryKey: ["subjects"],
+        refetchType: "none",
+      });
+
+      // Also invalidate the individual subject query if it exists
+      queryClient.invalidateQueries({
+        queryKey: ["subject", resolvedId],
+        refetchType: "none",
+      });
+    },
+  });
 }
 
 export function useSubjectDelete() {
@@ -366,137 +406,66 @@ export function useSubjectDelete() {
   return useMutation<
   DeleteSubjectResponse,
     Error,
-    string,
+    string, // Change from object to string parameter
     SubjectMutationContext >
       ({
         mutationFn: (subjectId) => {
-          // Resolve the ID before sending to the server
+          // Resolve the ID before sending to the server (like in the grade module)
           const resolvedId = getResolvedSubjectId(subjectId);
 
           return fetcher(`/api/subjects?subjectId=${resolvedId}`, {
             method: "DELETE",
           });
         },
-        onMutate: async (subjectId) => {
-          // Cancel any outgoing refetches
+        onMutate: async (subjectIdToDelete) => {
           await queryClient.cancelQueries({ queryKey: ["subjects"] });
 
-          // Resolve ID for any potential temporary ID
-          const resolvedId = getResolvedSubjectId(subjectId);
-
-          await queryClient.cancelQueries({
-            queryKey: ["subject", resolvedId],
-          });
-
-          // Snapshot all subject queries
+          const previousSubjects: Record<
+            string,
+            SubjectsQueryData | undefined
+          > = {};
           const queries = queryClient.getQueriesData<SubjectsQueryData>({
             queryKey: ["subjects"],
           });
-          const previousSubjects: Record<string, SubjectsQueryData> = {};
 
-          // Save all subject queries for potential rollback
           queries.forEach(([queryKey, data]) => {
+            previousSubjects[JSON.stringify(queryKey)] = data;
             if (data) {
-              previousSubjects[JSON.stringify(queryKey)] = data;
-            }
-          });
-
-          // Save the subject being deleted
-          let deletedSubject: SubjectWithRelations | undefined;
-          for (const [, data] of queries) {
-            if (data) {
-              const found = data.data.find(
-                (subject) => subject.subjectId === subjectId
+              // Check if data exists before trying to update
+              queryClient.setQueryData<SubjectsQueryData>(
+                queryKey,
+                (oldData) => {
+                  if (!oldData) return undefined;
+                  return {
+                    ...oldData,
+                    data: oldData.data.filter(
+                      (subject) => subject.subjectId !== subjectIdToDelete
+                    ),
+                    pagination: {
+                      ...oldData.pagination,
+                      total: oldData.pagination.total - 1,
+                    },
+                  };
+                }
               );
-              if (found) {
-                deletedSubject = found;
-                break;
-              }
-            }
-          }
-
-          // Optimistically update all subject queries
-          queries.forEach(([queryKey]) => {
-            const currentData =
-              queryClient.getQueryData<SubjectsQueryData>(queryKey);
-
-            if (currentData) {
-              queryClient.setQueryData<SubjectsQueryData>(queryKey, {
-                ...currentData,
-                data: currentData.data.filter(
-                  (subject) => subject.subjectId !== subjectId
-                ),
-                pagination: {
-                  ...currentData.pagination,
-                  total: Math.max(0, currentData.pagination.total - 1),
-                },
-              });
             }
           });
-
-          // Remove the individual subject query
-          queryClient.removeQueries({ queryKey: ["subject", resolvedId] });
-
-          // If it was a temporary ID, clean up the mapping
-          if (subjectId.startsWith("temp-")) {
-            tempToServerIdMap.delete(subjectId);
-          }
-
-          // Return the snapshots for rollback
-          return { previousSubjects, deletedSubject };
+          return { previousSubjects }; // Return the context
         },
-        onError: (error, subjectId, context) => {
-          // Rollback subject list queries
+        onError: (error, _variables, context) => {
+          toast.error(`科目削除エラー: ${error.message}`);
           if (context?.previousSubjects) {
-            Object.entries(context.previousSubjects).forEach(
-              ([queryKeyStr, data]) => {
-                const queryKey = JSON.parse(queryKeyStr);
-                queryClient.setQueryData(queryKey, data);
-              }
-            );
+            Object.entries(context.previousSubjects).forEach(([key, value]) => {
+              queryClient.setQueryData(JSON.parse(key), value);
+            });
           }
-
-          // Restore mapping if it was removed
-          if (subjectId.startsWith("temp-") && context?.deletedSubject) {
-            tempToServerIdMap.set(subjectId, context.deletedSubject.subjectId);
-          }
-
-          // Resolve ID for restoring the single subject query
-          const resolvedId = getResolvedSubjectId(subjectId);
-
-          // Restore individual subject query if it existed
-          if (context?.deletedSubject) {
-            queryClient.setQueryData(
-              ["subject", resolvedId],
-              context.deletedSubject
-            );
-          }
-
-          toast.error("科目の削除に失敗しました", {
-            description: error.message,
-          });
         },
-        onSuccess: (data, subjectId) => {
-          // If it was a temporary ID, clean up the mapping on success
-          if (subjectId.startsWith("temp-")) {
-            tempToServerIdMap.delete(subjectId);
-          }
-
-          toast.success("科目を削除しました", {
-            description: data.message,
-          });
+        onSuccess: (response) => {
+          toast.success(response.message);
         },
-        onSettled: (_, __, subjectId) => {
-          // Resolve ID for proper invalidation
-          const resolvedId = getResolvedSubjectId(subjectId);
-
-          // Invalidate queries in the background to ensure eventual consistency
+        onSettled: () => {
           queryClient.invalidateQueries({
             queryKey: ["subjects"],
-            refetchType: "none",
-          });
-          queryClient.invalidateQueries({
-            queryKey: ["subject", resolvedId],
             refetchType: "none",
           });
         },
