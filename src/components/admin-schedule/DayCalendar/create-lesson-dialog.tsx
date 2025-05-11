@@ -12,7 +12,6 @@ import {
 } from "@/components/ui/select";
 import { NewLessonData } from './admin-calendar-day';
 import { fetcher } from '@/lib/fetcher';
-import { getDateString } from '../date';
 
 interface Room {
   boothId: string;
@@ -224,27 +223,23 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
       return;
     }
 
-    // 確保時間形式が正しいことを確認
-    let startTime = lessonData.startTime;
-    let endTime = lessonData.endTime;
+    // Убеждаемся что формат времени содержит секунды
+    const formatTimeWithSeconds = (time: string): string => {
+      let formattedTime = time;
+      // Добавляем двоеточие, если его нет
+      if (!formattedTime.includes(':')) {
+        formattedTime = `${formattedTime}:00`;
+      }
+      // Добавляем секунды, если их нет
+      if (formattedTime.split(':').length < 3) {
+        formattedTime = `${formattedTime}:00`;
+      }
+      return formattedTime;
+    };
     
-    // 時間形式が "HH:MM" であることを確認
-    if (!startTime.includes(':')) {
-      startTime = `${startTime}:00`;
-    }
-    
-    if (!endTime.includes(':')) {
-      endTime = `${endTime}:00`;
-    }
-    
-    // 最終的な秒を追加（必要な場合）
-    if (startTime.split(':').length === 2) {
-      startTime = `${startTime}:00`;
-    }
-    
-    if (endTime.split(':').length === 2) {
-      endTime = `${endTime}:00`;
-    }
+    // Форматируем время с секундами
+    const startTime = formatTimeWithSeconds(lessonData.startTime);
+    const endTime = formatTimeWithSeconds(lessonData.endTime);
 
     onSave({
       date: lessonData.date,

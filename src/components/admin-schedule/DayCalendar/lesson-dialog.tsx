@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/select";
 import { ClassSessionWithRelations } from '@/hooks/useClassSessionQuery';
 import { fetcher } from '@/lib/fetcher';
-import { formatToJapanTime, convertJapanTimeToUTC } from '../date';
+import { formatToJapanTime, getDateString } from '../date';
 
 interface Room {
   boothId: string;
@@ -355,18 +355,25 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
       classId: editedLesson.classId
     };
 
+    // Функция для форматирования времени (HH:MM -> HH:MM:SS)
+    const formatTimeWithSeconds = (time: string | undefined): string | undefined => {
+      if (!time) return undefined;
+      
+      // Если уже есть секунды, возвращаем как есть
+      if (time.split(':').length >= 3) return time;
+      
+      // Добавляем секунды
+      return `${time}:00`;
+    };
+
     // For regular lessons (通常授業) only allow changing time, room and notes
     if (isRegularLesson) {
       if (editedLesson.formattedStartTime) {
-        // Convert from Japan time format to ISO string
-        const utcDate = convertJapanTimeToUTC(editedLesson.formattedStartTime);
-        lessonToSave.startTime = utcDate.toISOString();
+        lessonToSave.startTime = formatTimeWithSeconds(editedLesson.formattedStartTime);
       }
       
       if (editedLesson.formattedEndTime) {
-        // Convert from Japan time format to ISO string
-        const utcDate = convertJapanTimeToUTC(editedLesson.formattedEndTime);
-        lessonToSave.endTime = utcDate.toISOString();
+        lessonToSave.endTime = formatTimeWithSeconds(editedLesson.formattedEndTime);
       }
       
       if (editedLesson.boothId) {
@@ -389,33 +396,22 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
       // Set notes with empty string fallback
       lessonToSave.notes = editedLesson.notes || "";
       
-      // Convert Japan time to UTC for API
-      if (editedLesson.formattedStartTime) {
-        let date: Date;
-        if (typeof editedLesson.date === 'string') {
-          date = new Date(editedLesson.date);
-        } else if (editedLesson.date instanceof Date) {
-          date = editedLesson.date;
+      // Get date string for API
+      if (editedLesson.date) {
+        if (editedLesson.date instanceof Date) {
+          lessonToSave.date = getDateString(editedLesson.date);
         } else {
-          date = new Date();
+          lessonToSave.date = editedLesson.date;
         }
-        
-        const dateStr = date.toISOString().split('T')[0];
-        lessonToSave.startTime = `${dateStr}T${editedLesson.formattedStartTime}:00`;
+      }
+      
+      // Add time fields with seconds
+      if (editedLesson.formattedStartTime) {
+        lessonToSave.startTime = formatTimeWithSeconds(editedLesson.formattedStartTime);
       }
       
       if (editedLesson.formattedEndTime) {
-        let date: Date;
-        if (typeof editedLesson.date === 'string') {
-          date = new Date(editedLesson.date);
-        } else if (editedLesson.date instanceof Date) {
-          date = editedLesson.date;
-        } else {
-          date = new Date();
-        }
-        
-        const dateStr = date.toISOString().split('T')[0];
-        lessonToSave.endTime = `${dateStr}T${editedLesson.formattedEndTime}:00`;
+        lessonToSave.endTime = formatTimeWithSeconds(editedLesson.formattedEndTime);
       }
     }
 
@@ -796,4 +792,4 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
       </DialogContent>
     </Dialog>
   );
-};
+          };

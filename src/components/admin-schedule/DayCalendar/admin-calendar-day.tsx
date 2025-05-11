@@ -10,7 +10,6 @@ import {
   getCurrentDateAdjusted, 
   getDateString, 
   getDateKey,
-  isDayInArray,
 } from '../date';
 
 export type SelectionPosition = {
@@ -67,6 +66,29 @@ export type TimeSlot = {
   shortDisplay: string;
 };
 
+// Вынесенные за пределы компонента константные данные для оптимизации
+const TIME_SLOTS: TimeSlot[] = Array.from({ length: 57 }, (_el, i) => { 
+  const hours = Math.floor(i / 4) + 8;
+  const startMinutes = (i % 4) * 15;
+  let endHours, endMinutes;
+
+  if (startMinutes === 45) {
+    endHours = hours + 1;
+    endMinutes = 0;
+  } else {
+    endHours = hours;
+    endMinutes = startMinutes + 15;
+  }
+
+  return {
+    index: i,
+    start: `${hours.toString().padStart(2, '0')}:${startMinutes.toString().padStart(2, '0')}`,
+    end: `${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`,
+    display: `${hours}:${startMinutes === 0 ? '00' : startMinutes} - ${endHours}:${endMinutes === 0 ? '00' : endMinutes}`,
+    shortDisplay: i % 4 === 0 ? `${hours}:00` : ''
+  };
+});
+
 export default function AdminCalendarDay() {
   const [selectedDays, setSelectedDays] = useState<Date[]>([getCurrentDateAdjusted()]);
   const [showCreateDialog, setShowCreateDialog] = useState<boolean>(false);
@@ -79,12 +101,14 @@ export default function AdminCalendarDay() {
   const { data: boothsResponse, isLoading: isLoadingBooths } = useBooths({ limit: 100 });
   const booths = useMemo(() => boothsResponse?.data || [], [boothsResponse]);
 
+  // Мемоизированные строки дат для запросов
   const selectedDatesStrings = useMemo(() => {
     return selectedDays.map(day => getDateKey(day));
   }, [selectedDays]);
 
   const classSessionQueries = useMultipleDaysClassSessions(selectedDatesStrings);
 
+  // Организация данных по дате для оптимизации доступа
   const classSessionsByDate = useMemo(() => {
     const sessionsByDate: Record<string, ClassSessionWithRelations[]> = {};
     
@@ -105,30 +129,10 @@ export default function AdminCalendarDay() {
     return classSessionQueries.some(query => query.isLoading || query.isFetching);
   }, [classSessionQueries]);
 
-  const timeSlots = useMemo<TimeSlot[]>(() => {
-    return Array.from({ length: 57 }, (_el, i) => { 
-      const hours = Math.floor(i / 4) + 8;
-      const startMinutes = (i % 4) * 15;
-      let endHours, endMinutes;
+  // Используем предварительно созданные временные слоты вместо пересчета
+  const timeSlots = TIME_SLOTS;
 
-      if (startMinutes === 45) {
-        endHours = hours + 1;
-        endMinutes = 0;
-      } else {
-        endHours = hours;
-        endMinutes = startMinutes + 15;
-      }
-
-      return {
-        index: i,
-        start: `${hours.toString().padStart(2, '0')}:${startMinutes.toString().padStart(2, '0')}`,
-        end: `${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`,
-        display: `${hours}:${startMinutes === 0 ? '00' : startMinutes} - ${endHours}:${endMinutes === 0 ? '00' : endMinutes}`,
-        shortDisplay: i % 4 === 0 ? `${hours}:00` : ''
-      };
-    });
-  }, []);
-
+  // Оптимизированное обновление данных для избежания лишних запросов
   const refreshData = useCallback(() => {
     const dateToRefresh = newLessonData?.date || 
       (selectedLesson?.date instanceof Date ? 
@@ -137,33 +141,38 @@ export default function AdminCalendarDay() {
     
     if (dateToRefresh) {
       const dateStrToRefresh = getDateKey(dateToRefresh);
+      // Находим и обновляем только те запросы, которые касаются этой даты
       const queryIndex = selectedDatesStrings.indexOf(dateStrToRefresh);
       
       if (queryIndex !== -1) {
         classSessionQueries[queryIndex].refetch();
-      } else {
-        classSessionQueries.forEach(query => query.refetch());
+        return; // Завершаем функцию после обновления конкретного дня
       }
-    } else {
-      classSessionQueries.forEach(query => query.refetch());
     }
+    
+    // Если нет конкретной даты или ее нет в выбранных, обновляем все
+    classSessionQueries.forEach(query => query.refetch());
   }, [classSessionQueries, selectedDatesStrings, newLessonData, selectedLesson]);
 
+  // Оптимизированный обработчик выбора дня с использованием Set
   const handleDaySelect = useCallback((date: Date, isSelected: boolean) => {
-    
     setSelectedDays(prev => {
-      const dateExists = isDayInArray(date, prev);
+      // Создаём уникальные идентификаторы дат для быстрого поиска
+      const dateStrSet = new Set(prev.map(d => getDateKey(d)));
+      const dateStr = getDateKey(date);
       
       if (isSelected) {
-        return dateExists ? prev : [...prev, date].sort((a, b) => a.getTime() - b.getTime());
+        if (dateStrSet.has(dateStr)) return prev; // Уже выбран, не делаем изменений
+        const newDays = [...prev, date];
+        return newDays.sort((a, b) => a.getTime() - b.getTime());
       } else {
-        return prev.filter(d => !isDayInArray(d, [date]));
+        if (!dateStrSet.has(dateStr)) return prev; // Уже не выбран, не делаем изменений
+        return prev.filter(d => getDateKey(d) !== dateStr);
       }
     });
   }, []);
 
   const handleCreateLesson = useCallback((date: Date, startTime: string, endTime: string, roomId: string) => {
-    
     const lessonData = { date, startTime, endTime, roomId };
     setNewLessonData(lessonData);
     setShowCreateDialog(true);
@@ -176,38 +185,34 @@ export default function AdminCalendarDay() {
     setShowLessonDialog(true);
   }, []);
 
-  // Function to create a new lesson
+  // Оптимизированное создание урока с улучшенной обработкой данных
   const handleSaveNewLesson = useCallback(async (lessonData: CreateLessonPayload) => {
     try {
+      // Получаем дату в формате YYYY-MM-DD
       const dateStr = getDateString(lessonData.date);
       
-      // Проверяем формат времени и добавляем недостающие части
-      let startTime = lessonData.startTime;
-      let endTime = lessonData.endTime;
+      // Обрабатываем время, убеждаясь что оно в формате HH:MM:SS
+      const formatTimeWithSeconds = (time: string): string => {
+        let formattedTime = time;
+        // Добавляем двоеточие, если его нет
+        if (!formattedTime.includes(':')) {
+          formattedTime = `${formattedTime}:00`;
+        }
+        // Добавляем секунды, если их нет
+        if (formattedTime.split(':').length < 3) {
+          formattedTime = `${formattedTime}:00`;
+        }
+        return formattedTime;
+      };
       
-      // Проверяем, содержит ли время уже "T"
-      if (!startTime.includes('T')) {
-        startTime = `${dateStr}T${startTime}`;
-      }
+      const startTime = formatTimeWithSeconds(lessonData.startTime);
+      const endTime = formatTimeWithSeconds(lessonData.endTime);
       
-      if (!endTime.includes('T')) {
-        endTime = `${dateStr}T${endTime}`;
-      }
-      
-      // Проверяем, есть ли секунды в формате
-      if (startTime.split(':').length < 3) {
-        startTime = `${startTime}:00`;
-      }
-      
-      if (endTime.split(':').length < 3) {
-        endTime = `${endTime}:00`;
-      }
-      
-      // Создаем объект запроса
+      // Создаем объект запроса в точном соответствии с требуемым форматом API
       const requestBody = {
         date: dateStr,
-        startTime,
-        endTime,
+        startTime: startTime,
+        endTime: endTime,
         boothId: lessonData.roomId,
         teacherId: lessonData.teacherId,
         studentId: lessonData.studentId,
@@ -255,44 +260,51 @@ export default function AdminCalendarDay() {
     }
   }, [refreshData]);
 
-  // Function to update an existing lesson
+  // Оптимизированное обновление урока с более эффективной обработкой данных
   const handleUpdateLesson = useCallback(async (updatedLesson: UpdateLessonPayload) => {
     try {
-      // Create a copy of the lesson to update
+      // Создаем копию для изменения
       const lessonToUpdate: Record<string, any> = { ...updatedLesson };
       
-      // Convert date to string format if it exists
-      if (lessonToUpdate.date) {
-        if (lessonToUpdate.date instanceof Date) {
-          lessonToUpdate.date = getDateString(lessonToUpdate.date);
+      // Преобразуем дату в строку, если это объект Date
+      if (lessonToUpdate.date instanceof Date) {
+        lessonToUpdate.date = getDateString(lessonToUpdate.date);
+      }
+      
+      // Обрабатываем время, убеждаясь что оно в формате HH:MM:SS без привязки к дате
+      if (lessonToUpdate.startTime) {
+        // Если время содержит T, извлекаем только часть времени
+        if (typeof lessonToUpdate.startTime === 'string' && lessonToUpdate.startTime.includes('T')) {
+          lessonToUpdate.startTime = lessonToUpdate.startTime.split('T')[1];
+        }
+        
+        // Добавляем секунды, если их нет
+        if (lessonToUpdate.startTime.split(':').length < 3) {
+          lessonToUpdate.startTime = `${lessonToUpdate.startTime}:00`;
         }
       }
       
-      // Convert start and end times to ISO format if they exist
-      const dateStr = typeof lessonToUpdate.date === 'string' ? lessonToUpdate.date : '';
-      
-      if (lessonToUpdate.startTime && typeof lessonToUpdate.startTime === 'string') {
-        // Check if it already has the ISO format with 'T'
-        if (!String(lessonToUpdate.startTime).includes('T') && dateStr) {
-          lessonToUpdate.startTime = `${dateStr}T${lessonToUpdate.startTime}:00`;
+      // То же самое для endTime
+      if (lessonToUpdate.endTime) {
+        // Если время содержит T, извлекаем только часть времени
+        if (typeof lessonToUpdate.endTime === 'string' && lessonToUpdate.endTime.includes('T')) {
+          lessonToUpdate.endTime = lessonToUpdate.endTime.split('T')[1];
+        }
+        
+        // Добавляем секунды, если их нет
+        if (lessonToUpdate.endTime.split(':').length < 3) {
+          lessonToUpdate.endTime = `${lessonToUpdate.endTime}:00`;
         }
       }
       
-      if (lessonToUpdate.endTime && typeof lessonToUpdate.endTime === 'string') {
-        // Check if it already has the ISO format with 'T'
-        if (!String(lessonToUpdate.endTime).includes('T') && dateStr) {
-          lessonToUpdate.endTime = `${dateStr}T${lessonToUpdate.endTime}:00`;
-        }
-      }
-      
-      // Convert null notes to empty string
+      // Преобразуем null в пустую строку для notes
       if (lessonToUpdate.notes === null) {
         lessonToUpdate.notes = "";
       }
       
       console.log("授業更新リクエスト:", lessonToUpdate);
-      
-      // Send to API endpoint
+    
+      // Отправляем запрос
       const response = await fetch(`/api/class-session`, {
         method: 'PUT',
         headers: {
@@ -328,7 +340,7 @@ export default function AdminCalendarDay() {
     }
   }, [refreshData]);
 
-  // Function to delete a lesson
+  // Оптимизированное удаление урока
   const handleDeleteLesson = useCallback(async (lessonId: string) => {
     try {
       // Ask for confirmation
