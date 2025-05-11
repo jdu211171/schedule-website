@@ -83,20 +83,34 @@ export function SubjectFormDialog({
     }
   }, [subject, form]);
 
-  async function onSubmit(values: FormValues) {
-    try {
-      if (isEditing && subject) {
-        await updateSubjectMutation.mutateAsync({
-          subjectId: subject.subjectId,
-          ...values,
-        });
-      } else {
-        await createSubjectMutation.mutateAsync(values);
-      }
-      onOpenChange(false);
-      form.reset();
-    } catch (error) {
-      console.error("科目の保存に失敗しました:", error);
+  function onSubmit(values: FormValues) {
+    // Close the dialog immediately for better UX
+    onOpenChange(false);
+
+    // Reset the form
+    form.reset();
+
+    // Create a map of subject type IDs to names
+    const subjectTypeNames: Record<string, string> = {};
+
+    // If you have access to the selected subject types with their names
+    // For example, if studentTypesResponse?.data has the full list
+    subjectTypesResponse?.data?.forEach((type) => {
+      subjectTypeNames[type.subjectTypeId] = type.name;
+    });
+
+    // Then trigger the mutation without waiting, including the names
+    if (isEditing && subject) {
+      updateSubjectMutation.mutate({
+        subjectId: subject.subjectId,
+        ...values,
+        subjectTypeNames,
+      });
+    } else {
+      createSubjectMutation.mutate({
+        ...values,
+        subjectTypeNames,
+      });
     }
   }
 

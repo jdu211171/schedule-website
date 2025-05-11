@@ -119,7 +119,7 @@ export async function POST(request: Request) {
     }
 
     // Use a transaction to ensure both the subject and its relationships are created
-    const subject = await prisma.$transaction(async (tx) => {
+    const createdSubject = await prisma.$transaction(async (tx) => {
       // Create the subject
       const newSubject = await tx.subject.create({
         data: subjectData,
@@ -137,27 +137,30 @@ export async function POST(request: Request) {
         )
       );
 
-      // Return the created subject with its relationships
-      return await tx.subject.findUnique({
-        where: { subjectId: newSubject.subjectId },
-        include: {
-          subjectToSubjectTypes: {
-            include: {
-              subjectType: true,
-            },
+      // Return only the essential data from the transaction
+      return newSubject;
+    });
+
+    // After the transaction, fetch the complete subject data with all relations
+    const subjectWithRelations = await prisma.subject.findUnique({
+      where: { subjectId: createdSubject.subjectId },
+      include: {
+        subjectToSubjectTypes: {
+          include: {
+            subjectType: true,
           },
-          classSessions: { include: { classType: true } },
-          regularClassTemplates: true,
-          teacherSubjects: true,
-          StudentPreferenceSubject: true,
         },
-      });
+        classSessions: { include: { classType: true } },
+        regularClassTemplates: true,
+        teacherSubjects: true,
+        StudentPreferenceSubject: true,
+      },
     });
 
     return Response.json(
       {
         message: "科目が正常に作成されました", // "Subject created successfully"
-        data: subject,
+        data: subjectWithRelations, // Send the fully populated data
       },
       { status: 201 }
     );
