@@ -148,7 +148,7 @@ export async function POST(request: Request) {
       where: { studentId },
     });
     if (!student) {
-      return Response.json({ error: "生徒が見つかりません" }, { status: 404 }); // "Student not found"
+      return Response.json({ error: "学生が見つかりません" }, { status: 404 }); // "Student not found"
     }
 
     // Check if the subject exists

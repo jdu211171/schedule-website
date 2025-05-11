@@ -1497,11 +1497,12 @@ Cookie: {{cookie}}
   "date": "2025-05-15",
   "startTime": "14:00:00",
   "endTime": "15:30:00",
-  "teacherId": "cma8l10zw000usblivj4xgo22",
-  "studentId": "cma8l11050010sbli4bqmqkcj",
-  "subjectId": "cma8l10zf000hsbli2q544ji2",
-  "boothId": "cma8l10zs000qsblit27g595w",
-  "classTypeId": "cma8l10zk000lsblivajzyuxu",
+  "teacherId": "cmah6enci000w10ktjp96zm7r",
+  "studentId": "cmah6encu001210ktg4jtjzlt",
+  "subjectId": "cmah6enbn000j10ktj2xvve38",
+  "subjectTypeId": "cmah6enbi000f10kty02vg4dm",
+  "boothId": "cmah6enc8000q10ktybn8yhzo",
+  "classTypeId": "cmah6enbz000l10kt66sw8o57",
   "notes": "数学特別授業"
 }
 
@@ -1511,11 +1512,11 @@ Content-Type: application/json
 Cookie: {{cookie}}
 
 {
-  "templateId": "cma8l110g0016sblicr4f6y84",
+  "templateId": "cmah6end4001610kt7n20t1sz",
   "date": "2025-05-17",
   "startTime": "15:00:00",
   "endTime": "16:30:00",
-  "boothId": "cma8l10zs000rsblikqyde80c",
+  "boothId": "cmah6enc8000q10ktybn8yhzo",
   "notes": "Booth Bに変更された数学授業"
 }
 
@@ -1525,7 +1526,7 @@ Content-Type: application/json
 Cookie: {{cookie}}
 
 {
-  "templateId": "cma8l110g0016sblicr4f6y84",
+  "templateId": "cmah6end4001610kt7n20t1sz",
   "date": "2025-05-24",
   "notes": "テンプレートのデフォルト設定を使用"
 }
