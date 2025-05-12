@@ -1,5 +1,5 @@
 @url = http://localhost:3000/api
-@cookie = NEXT_LOCALE=ru; authjs.csrf-token=026c636b080445e14717852a5f3050dc08b59c294d45332bc7ff1d3533403204%7C6bba38d45aa998a562ed9bffaa44a529cb67852907fde61c446eeb2dac200977; next_hmr_refresh_hash=894; authjs.callback-url=http%3A%2F%2Flocalhost%3A3000%2F; authjs.session-token=eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2Q0JDLUhTNTEyIiwia2lkIjoiZHEzWk1MZlNQbFBtVVBxV291WWxrVXA4M2l1MDVod1phQ2U4UGdPbWZfS2t5enlmZy1JYlA0UmJ0UHdHN1NyOHQwSk9MbUxDb2gwQnF3ZHMzMGVOaEEifQ..gZMZfXXKsU1PgGFpKdyCuw.sWZgChSMtU06Uq1O4aZDR1QSWfHrgzYSdly4ycIOMrOxdv2tVS8rd8RVZThoKDegReJUF9i2WwfeX502dj6_XXv62wRuli6WA3A-olOQogbsBO8mWahzQwlIedKvfA1J7L0vn543dGyUrght9BhpjHp9DwWT_lfyg4krjlAYBuQDPyLEkUgPsx2-KwQYhLE5g6BNM1H366-a8Q10gCUptP_2BDOW05mRHzYRRcaAhZXyfJIyIeC9vGSqPIi-nuvUje6jc_mN5hUKnKkel_tcQWx15jiyyRAYXNBemS0JBj4.A1FWdHDGF1r82WinBEZCVYeVcwdP2hgO0bo6Tddjpqg
+@cookie = __next_hmr_refresh_hash__=738; authjs.csrf-token=a71e6bb98aa1f55968f4e17ddd805e3bb75cc9fcd19fb0b03c4c7f7645186af6%7Cd73c325dff7544fcff5e1fe5ed07e69be4a8c3b15bb099943442013837ea8fa6; authjs.callback-url=http%3A%2F%2Flocalhost%3A3000; authjs.session-token=eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2Q0JDLUhTNTEyIiwia2lkIjoiN2k0YkNIMDRhZHdRM0V4ZkV2ZnRNd2pEX0FWUnk3TW1PSFA1d0kxWTUtT1FFekpjQjNSV0NoUkIyWUtKdzRsZWZaWVBMTXY0T3I4amw4ZGpvZzktYncifQ..4DSoT8G2EVrWD0e9KMwLEw.AbJmJEUKTDTZLfowXZylKRKWxdoZxC1clTuMc10eSW0da2sk9hFWFiiWL4VY-ly7ednyTerny8KnXMgBfKpYw4hvcc0lQDV5KtU6ihsj35H12Ov6mu2m_SGUKlhYgix-ojadDENUjAEoPtQ1D_NLT2nOFHL8-4dhQsuffbixdqp-ikgkO3quAcFvJRcPP6Gr3YrNcDbeVB7mwFD3BhyfC0Rxtz6ePffoHkTCAGo8Wow_AVYmPGh2CfWq0sWMRuoVL60hwDi9JMJZjMV3rvobQ03MBGpcvvZ9OZYlVwu9ols.PqNvbBFo4JdWCRvUKWtAjxbI14XNdmVUEKZ_dEFmmkc
 
 #########
 # BOOTH #
@@ -179,7 +179,7 @@ Content-Type: application/json
 Cookie: {{cookie}}
 
 ### Filter students by a single preferred subject (English)
-GET {{url}}/student?preferredSubjectId=cma144m5g000i104q6edj7rri
+GET {{url}}/student?preferredSubjectId=cmahcmzwp000ivi3gnc8gm6e8
 Content-Type: application/json
 Cookie: {{cookie}}
 
@@ -792,7 +792,7 @@ Content-Type: application/json
 Cookie: {{cookie}}
 
 ### Filter teachers by a single subject (English/英語)
-GET {{url}}/teacher?subjectId=cma144m5g000i104q6edj7rri
+GET {{url}}/teacher?subjectId=cmahcmzwp000ivi3gnc8gm6e8
 Content-Type: application/json
 Cookie: {{cookie}}
 

@@ -69,7 +69,7 @@ export const DaySelector: React.FC<DaySelectorProps> = ({ selectedDays, onSelect
   
   return (
     <div className="flex space-x-2 items-center">
-      <span className="text-sm font-medium">表示する日:</span>
+      <span className="text-sm font-medium text-foreground">表示する日:</span>
       
       {daysOfWeek.map(day => {
         const isToday = day.value === currentDayOfWeek;
@@ -80,10 +80,15 @@ export const DaySelector: React.FC<DaySelectorProps> = ({ selectedDays, onSelect
           <label 
             key={day.value}
             className={`
-              inline-flex items-center justify-center w-8 h-8 rounded-full border 
-              ${isSelected ? 'bg-primary text-white' : isToday ? 'bg-gray-200' : 'bg-background'} 
+              inline-flex items-center justify-center w-8 h-8 rounded-full transition-colors
+              ${isSelected 
+                ? 'bg-primary text-primary-foreground ring-2 ring-primary' 
+                : isToday 
+                  ? 'bg-secondary text-secondary-foreground border border-input' 
+                  : 'bg-background text-foreground border border-input'
+              } 
               ${isToday ? 'font-bold' : ''}
-              cursor-pointer hover:bg-primary/10
+              cursor-pointer hover:bg-accent hover:text-accent-foreground
             `}
             title={`${getDateKey(targetDate)}`}
           >
