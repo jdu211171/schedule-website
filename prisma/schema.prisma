@@ -197,7 +197,7 @@ model StudentPreferenceSubject {
   createdAt           DateTime          @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt           DateTime          @updatedAt @map("updated_at") @db.Timestamp(6)
 
-  @@unique([studentPreferenceId, subjectId, subjectTypeId])
+  @@unique([studentPreferenceId, subjectTypeId])
   @@map("student_preference_subjects")
 }
 
@@ -335,7 +335,7 @@ model TeacherSubject {
   createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt     DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
-  @@id([teacherId, subjectId, subjectTypeId])
+  @@id([teacherId, subjectTypeId])
   @@map("teacher_subjects")
 }
 
