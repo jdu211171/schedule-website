@@ -1,31 +1,31 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 
 export async function GET(
-  request: NextRequest,
+  request: Request,
   {
     params,
   }: {
-    params: {
+    params: Promise<{
       teacherId: string;
       subjectId: string;
-    };
+    }>;
   }
 ) {
   const session = await auth();
   if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
-    const { teacherId, subjectId: subjectIdFromPath } = params;
+    const { teacherId, subjectId: subjectIdFromPath } = await params;
 
-    const subjectTypeIdFromQuery = request.nextUrl.searchParams.get("subjectTypeId");
+    const { searchParams } = new URL(request.url);
+    const subjectTypeIdFromQuery = searchParams.get("subjectTypeId");
 
     if (!subjectTypeIdFromQuery) {
-      return NextResponse.json(
+      return Response.json(
         { error: "subjectTypeId query parameter is required" },
         { status: 400 }
       );
@@ -67,25 +67,25 @@ export async function GET(
     });
 
     if (!teacherSubject) {
-      return NextResponse.json(
-        { error: "講師-科目関連が見つかりません (指定されたteacherIdとsubjectTypeIdの組み合わせに該当するレコードがありません)" },
+      return Response.json(
+        { error: "講師-科目関連が見つかりません (指定されたteacherIdとsubjectTypeIdの組に該当するレコードがありません)" },
         { status: 404 }
       );
     }
 
     if (teacherSubject.subjectId !== subjectIdFromPath) {
-      return NextResponse.json(
+      return Response.json(
         { error: "講師-科目関連が見つかりません (指定されたsubjectIdがレコードと一致しません)" },
         { status: 404 }
       );
     }
 
-    return NextResponse.json({ data: teacherSubject });
+    return Response.json({ data: teacherSubject });
   } catch (error: unknown) {
     console.error("Error fetching teacher-subject relationship:", error);
     const errorMessage =
       error instanceof Error ? error.message : "不明なエラーが発生しました";
-    return NextResponse.json(
+    return Response.json(
       { error: "講師-科目関連の取得に失敗しました", details: errorMessage },
       { status: 500 }
     );
@@ -93,24 +93,29 @@ export async function GET(
 }
 
 export async function POST(
-  request: NextRequest,
-  { params }: { params: { teacherId: string; subjectId: string } }
+  request: Request,
+  { params }: {
+    params: Promise<{
+      teacherId: string;
+      subjectId: string;
+    }>;
+  }
 ) {
   const session = await auth();
   if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   let subjectTypeIdFromBody: string | undefined;
 
   try {
-    const { teacherId: teacherIdFromPath, subjectId: subjectIdFromPath } = params;
+    const { teacherId: teacherIdFromPath, subjectId: subjectIdFromPath } = await params;
     const body = await request.json();
 
     subjectTypeIdFromBody = body.subjectTypeId;
 
     if (!subjectTypeIdFromBody || typeof subjectTypeIdFromBody !== 'string' || subjectTypeIdFromBody.trim() === '') {
-      return NextResponse.json(
+      return Response.json(
         { error: "subjectTypeId is required in the request body and must be a non-empty string" },
         { status: 400 }
       );
@@ -126,7 +131,7 @@ export async function POST(
       data: dataForCreation,
     });
 
-    return NextResponse.json({ data: newTeacherSubject }, { status: 201 });
+    return Response.json({ data: newTeacherSubject }, { status: 201 });
   } catch (error: unknown) {
     console.error("Error creating teacher-subject relationship:", error);
     let errorMessage = "講師-科目関連の作成に失敗しました";
@@ -137,8 +142,9 @@ export async function POST(
       details = error.message;
       if (error.code === 'P2002') {
         errorMessage = "この講師と科目の種類の組み合わせは既に存在します。";
+        const awaitedParams = await params;
         const targetFields = Array.isArray(error.meta?.target) ? (error.meta.target as string[]).join(', ') : String(error.meta?.target);
-        details = `A record with teacherId '${params.teacherId}' and subjectTypeId '${subjectTypeIdFromBody}' already exists. Unique constraint violated on fields: ${targetFields}.`;
+        details = `A record with teacherId '${awaitedParams.teacherId}' and subjectTypeId '${subjectTypeIdFromBody}' already exists. Unique constraint violated on fields: ${targetFields}.`;
         statusCode = 409;
       } else if (error.code === 'P2003') {
         errorMessage = "関連データが見つかりません。";
@@ -150,7 +156,7 @@ export async function POST(
       details = error.message;
     }
 
-    return NextResponse.json(
+    return Response.json(
       { error: errorMessage, details: details },
       { status: statusCode }
     );
@@ -158,20 +164,26 @@ export async function POST(
 }
 
 export async function PUT(
-  request: NextRequest,
-  { params }: { params: { teacherId: string; subjectId: string } }
+  request: Request,
+  { params }: {
+    params: Promise<{
+      teacherId: string;
+      subjectId: string;
+    }>;
+  }
 ) {
   const session = await auth();
   if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
-    const { teacherId: teacherIdFromPath, subjectId: originalSubjectIdFromPath } = params;
-    const subjectTypeIdFromQuery = request.nextUrl.searchParams.get("subjectTypeId");
+    const { teacherId: teacherIdFromPath, subjectId: originalSubjectIdFromPath } = await params;
+    const { searchParams } = new URL(request.url);
+    const subjectTypeIdFromQuery = searchParams.get("subjectTypeId");
 
     if (!subjectTypeIdFromQuery) {
-      return NextResponse.json(
+      return Response.json(
         { error: "subjectTypeId query parameter is required" },
         { status: 400 }
       );
@@ -185,7 +197,7 @@ export async function PUT(
       if (typeof body.subjectId === 'string' && body.subjectId.trim() !== '') {
         dataToUpdate.subject = { connect: { subjectId: body.subjectId } };
       } else if (body.subjectId !== undefined) { // Allow empty string if that's a valid case or handle as error
-        return NextResponse.json({ error: "New subjectId must be a non-empty string if provided" }, { status: 400 });
+        return Response.json({ error: "New subjectId must be a non-empty string if provided" }, { status: 400 });
       }
     }
 
@@ -195,12 +207,12 @@ export async function PUT(
       if (typeof body.notes === 'string' || body.notes === null) {
         dataToUpdate.notes = body.notes;
       } else if (body.notes !== undefined) {
-        return NextResponse.json({ error: "Notes must be a string or null if provided" }, { status: 400 });
+        return Response.json({ error: "Notes must be a string or null if provided" }, { status: 400 });
       }
     }
 
     if (Object.keys(dataToUpdate).length === 0) {
-      return NextResponse.json({ error: "No valid update data provided (e.g., new subjectId or notes missing)" }, { status: 400 });
+      return Response.json({ error: "No valid update data provided (e.g., new subjectId or notes missing)" }, { status: 400 });
     }
 
     const existingTeacherSubject = await prisma.teacherSubject.findUnique({
@@ -213,14 +225,14 @@ export async function PUT(
     });
 
     if (!existingTeacherSubject) {
-      return NextResponse.json(
-        { error: "講師-科目関連が見つかりません (指定されたteacherIdとsubjectTypeIdの組み合わせに該当するレコードがありません)" },
+      return Response.json(
+        { error: "講師-科目関連が見つかりません (指定されたteacherIdとsubjectTypeIdの組に該当するレコードがありません)" },
         { status: 404 }
       );
     }
 
     if (existingTeacherSubject.subjectId !== originalSubjectIdFromPath) {
-      return NextResponse.json(
+      return Response.json(
         { error: "講師-科目関連が見つかりません (URLのsubjectIdがレコードの現在のsubjectIdと一致しません)" },
         { status: 400 } // Mismatch, bad request
       );
@@ -236,7 +248,7 @@ export async function PUT(
       data: dataToUpdate,
     });
 
-    return NextResponse.json({ data: updatedTeacherSubject });
+    return Response.json({ data: updatedTeacherSubject });
   } catch (error: unknown) {
     console.error("Error updating teacher-subject relationship:", error);
     let errorMessage = "講師-科目関連の更新に失敗しました";
@@ -258,7 +270,7 @@ export async function PUT(
       details = error.message;
     }
 
-    return NextResponse.json(
+    return Response.json(
       { error: errorMessage, details: details },
       { status: statusCode }
     );
@@ -266,20 +278,26 @@ export async function PUT(
 }
 
 export async function DELETE(
-  request: NextRequest, // Keep request parameter for consistency, even if not directly used
-  { params }: { params: { teacherId: string; subjectId: string } }
+  request: Request, // Keep request parameter for consistency, even if not directly used
+  { params }: {
+    params: Promise<{
+      teacherId: string;
+      subjectId: string;
+    }>;
+  }
 ) {
   const session = await auth();
   if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
-    const { teacherId: teacherIdFromPath, subjectId: subjectIdFromPath } = params;
-    const subjectTypeIdFromQuery = request.nextUrl.searchParams.get("subjectTypeId");
+    const { teacherId: teacherIdFromPath, subjectId: subjectIdFromPath } = await params;
+    const { searchParams } = new URL(request.url);
+    const subjectTypeIdFromQuery = searchParams.get("subjectTypeId");
 
     if (!subjectTypeIdFromQuery) {
-      return NextResponse.json(
+      return Response.json(
         { error: "subjectTypeId query parameter is required" },
         { status: 400 }
       );
@@ -295,14 +313,14 @@ export async function DELETE(
     });
 
     if (!teacherSubjectToDelete) {
-      return NextResponse.json(
-        { error: "講師-科目関連が見つかりません (指定されたteacherIdとsubjectTypeIdの組み合わせに該当するレコードがありません)" },
+      return Response.json(
+        { error: "講師-科目関連が見つかりません (指定されたteacherIdとsubjectTypeIdの組に該当するレコードがありません)" },
         { status: 404 }
       );
     }
 
     if (teacherSubjectToDelete.subjectId !== subjectIdFromPath) {
-      return NextResponse.json(
+      return Response.json(
         { error: "講師-科目関連が見つかりません (指定されたsubjectIdがレコードと一致しません)" },
         { status: 400 }
       );
@@ -317,7 +335,7 @@ export async function DELETE(
       },
     });
 
-    return NextResponse.json({ message: "講師-科目関連が正常に削除されました" }, { status: 200 });
+    return Response.json({ message: "講師-科目関連が正常に削除されました" }, { status: 200 });
   } catch (error: unknown) {
     console.error("Error deleting teacher-subject relationship:", error);
     let errorMessage = "講師-科目関連の削除に失敗しました";
@@ -334,7 +352,7 @@ export async function DELETE(
       details = error.message;
     }
 
-    return NextResponse.json(
+    return Response.json(
       { error: errorMessage, details: details },
       { status: statusCode }
     );
