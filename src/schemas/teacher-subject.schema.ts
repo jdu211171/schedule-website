@@ -1,7 +1,7 @@
 import { z } from "zod";
 
-// Base schema with common fields
-const TeacherSubjectBaseSchema = z.object({
+// Base schema with common fields for creation
+const TeacherSubjectBaseCreateSchema = z.object({
   teacherId: z.string({
     required_error: "講師IDは必須です",
     invalid_type_error: "講師IDは文字列である必要があります",
@@ -24,7 +24,7 @@ const TeacherSubjectBaseSchema = z.object({
 });
 
 // Complete teacher subject schema (includes all fields from the database)
-export const TeacherSubjectSchema = TeacherSubjectBaseSchema.extend({
+export const TeacherSubjectSchema = TeacherSubjectBaseCreateSchema.extend({
   createdAt: z.date({
     required_error: "作成日は必須です",
     invalid_type_error: "作成日は有効な日付である必要があります",
@@ -36,25 +36,58 @@ export const TeacherSubjectSchema = TeacherSubjectBaseSchema.extend({
 });
 
 // Schema for creating a new teacher subject
-export const CreateTeacherSubjectSchema = TeacherSubjectBaseSchema.strict({
+export const CreateTeacherSubjectSchema = TeacherSubjectBaseCreateSchema.strict({
   message: "予期しないフィールドが含まれています",
 });
 
 // Schema for updating an existing teacher subject
-export const UpdateTeacherSubjectSchema = TeacherSubjectBaseSchema.strict({
-  message: "予期しないフィールドが含まれています",
-});
+// Identifies record by teacherId and subjectTypeId (PK)
+// Allows updating subjectId and/or notes
+export const UpdateTeacherSubjectSchema = z.object({
+  teacherId: z.string({
+    required_error: "講師IDは必須です",
+    invalid_type_error: "講師IDは文字列である必要があります",
+  }),
+  subjectTypeId: z.string({
+    required_error: "科目タイプIDは必須です",
+    invalid_type_error: "科目タイプIDは文字列である必要があります",
+  }),
+  subjectId: z.string({
+    invalid_type_error: "科目IDは文字列である必要があります",
+  }).optional(),
+  notes: z
+    .string({
+      invalid_type_error: "備考は文字列である必要があります",
+    })
+    .max(255, { message: "備考は255文字以内で入力してください" })
+    .optional()
+    .nullable() // Allow explicitly setting notes to null to clear it
+    .transform((val) => (val === "" ? undefined : val)),
+}).strict({ message: "予期しないフィールドが含まれています" })
+  .refine(data => data.subjectId !== undefined || data.notes !== undefined, {
+    message: "更新するフィールド（subjectIdまたはnotes）を少なくとも1つ指定してください",
+  });
 
-// Schema for retrieving a single teacher subject by composite ID
-export const TeacherSubjectIdSchema = z
+
+// Schema for deleting a teacher subject by composite PK
+export const DeleteTeacherSubjectSchema = z.object({
+  teacherId: z.string({
+    required_error: "講師IDは必須です",
+    invalid_type_error: "講師IDは文字列である必要があります",
+  }),
+  subjectTypeId: z.string({
+    required_error: "科目タイプIDは必須です",
+    invalid_type_error: "科目タイプIDは文字列である必要があります",
+  }),
+}).strict({ message: "予期しないフィールドが含まれています" });
+
+
+// Schema for retrieving a single teacher subject by composite PK
+export const TeacherSubjectPKSchema = z
   .object({
     teacherId: z.string({
       required_error: "講師IDは必須です",
       invalid_type_error: "講師IDは文字列である必要があります",
-    }),
-    subjectId: z.string({
-      required_error: "科目IDは必須です",
-      invalid_type_error: "科目IDは文字列である必要があります",
     }),
     subjectTypeId: z.string({
       required_error: "科目タイプIDは必須です",

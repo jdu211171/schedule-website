@@ -188,6 +188,28 @@ export async function POST(request: Request) {
       );
     }
 
+    // START OF NEW LOGIC: Check if this student already has this subjectTypeId in any of their preferences
+    const existingStudentSubjectTypePreference =
+      await prisma.studentPreferenceSubject.findFirst({
+        where: {
+          subjectTypeId: subjectTypeId,
+          studentPreference: {
+            studentId: studentId,
+          },
+        },
+      });
+
+    if (existingStudentSubjectTypePreference) {
+      return Response.json(
+        {
+          error:
+            "この生徒は既にこの科目の種類に対する希望を持っています。別の希望レコードで同じ科目の種類を重複して追加することはできません。",
+        },
+        { status: 409 } // Conflict
+      );
+    }
+    // END OF NEW LOGIC
+
     // Get or create the student preference
     let preference;
     if (preferenceId) {
@@ -218,18 +240,20 @@ export async function POST(request: Request) {
       });
     }
 
-    // Check if the student-subject-subjectType relation already exists
-    const existingRelation = await prisma.studentPreferenceSubject.findFirst({
-      where: {
-        studentPreferenceId: preference.preferenceId,
-        subjectId,
-        subjectTypeId,
-      },
-    });
+    // Check if the studentPreference-subjectType relation already exists (for @@unique([studentPreferenceId, subjectTypeId]))
+    const existingPreferenceSubjectTypeRelation =
+      await prisma.studentPreferenceSubject.findUnique({
+        where: {
+          studentPreferenceId_subjectTypeId: {
+            studentPreferenceId: preference.preferenceId,
+            subjectTypeId,
+          },
+        },
+      });
 
-    if (existingRelation) {
+    if (existingPreferenceSubjectTypeRelation) {
       return Response.json(
-        { error: "この生徒-科目-タイプの関連はすでに存在します" }, // "This student-subject-type relation already exists"
+        { error: "この生徒の希望には、指定された科目の種類の科目が既に設定されています" },
         { status: 409 }
       );
     }

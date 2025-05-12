@@ -1,5 +1,6 @@
 @url = http://localhost:3000/api
 @cookie = __next_hmr_refresh_hash__=738; authjs.csrf-token=a71e6bb98aa1f55968f4e17ddd805e3bb75cc9fcd19fb0b03c4c7f7645186af6%7Cd73c325dff7544fcff5e1fe5ed07e69be4a8c3b15bb099943442013837ea8fa6; authjs.callback-url=http%3A%2F%2Flocalhost%3A3000; authjs.session-token=eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2Q0JDLUhTNTEyIiwia2lkIjoiN2k0YkNIMDRhZHdRM0V4ZkV2ZnRNd2pEX0FWUnk3TW1PSFA1d0kxWTUtT1FFekpjQjNSV0NoUkIyWUtKdzRsZWZaWVBMTXY0T3I4amw4ZGpvZzktYncifQ..4DSoT8G2EVrWD0e9KMwLEw.AbJmJEUKTDTZLfowXZylKRKWxdoZxC1clTuMc10eSW0da2sk9hFWFiiWL4VY-ly7ednyTerny8KnXMgBfKpYw4hvcc0lQDV5KtU6ihsj35H12Ov6mu2m_SGUKlhYgix-ojadDENUjAEoPtQ1D_NLT2nOFHL8-4dhQsuffbixdqp-ikgkO3quAcFvJRcPP6Gr3YrNcDbeVB7mwFD3BhyfC0Rxtz6ePffoHkTCAGo8Wow_AVYmPGh2CfWq0sWMRuoVL60hwDi9JMJZjMV3rvobQ03MBGpcvvZ9OZYlVwu9ols.PqNvbBFo4JdWCRvUKWtAjxbI14XNdmVUEKZ_dEFmmkc
+
 #########
 # BOOTH #
 #########
@@ -1401,7 +1402,7 @@ Content-Type: application/json
 Cookie: {{cookie}}
 
 ### Get class sessions for a specific student (single value)
-GET {{url}}/class-session?studentId=cma8l11050010sbli4bqmqkcj
+GET {{url}}/class-session?studentId=cmajd3kj10010vomgp7l3d3pu
 Content-Type: application/json
 Cookie: {{cookie}}
 
@@ -1493,16 +1494,16 @@ Content-Type: application/json
 Cookie: {{cookie}}
 
 {
-  "date": "2025-05-15",
-  "startTime": "14:00:00",
-  "endTime": "15:30:00",
-  "teacherId": "cmah6enci000w10ktjp96zm7r",
-  "studentId": "cmah6encu001210ktg4jtjzlt",
-  "subjectId": "cmah6enbn000j10ktj2xvve38",
-  "subjectTypeId": "cmah6enbi000f10kty02vg4dm",
-  "boothId": "cmah6enc8000q10ktybn8yhzo",
-  "classTypeId": "cmah6enbz000l10kt66sw8o57",
-  "notes": "数学特別授業"
+  "boothId": "cmahq7mjl000q10nhi6im4yqq",
+  "classTypeId": "cmahq7ir2000l10nhdqd46dhd",
+  "teacherId": "cmahq7pe9000w10nh34bgv1ba",
+  "studentId": "cmahq7sba001210nhghg4pju6",
+  "subjectId": "cmahq7e38000i10nhtqg74h5i",
+  "subjectTypeId": "cmahq7c6m000d10nh9pls7fz8",
+  "date": "2025-05-10",
+  "endTime": "2025-05-10T18:15:00",
+  "notes": "sad",
+  "startTime": "2025-05-10T17:00:00"
 }
 
 ### Create a new class session from a template

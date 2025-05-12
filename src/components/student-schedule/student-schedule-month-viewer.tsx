@@ -1,45 +1,43 @@
-import React from "react";
-import {
-  format,
-  startOfMonth,
-  endOfMonth,
-  startOfWeek,
-  endOfWeek,
-  eachDayOfInterval,
-  isSameDay,
-  parseISO,
-  isToday,
-} from "date-fns";
+import { Lesson } from "@/app/student/page";
 import { cn } from "@/lib/utils";
-
-type Lesson = {
-  name: string;
-  date: string;
-};
+import {
+  eachDayOfInterval,
+  endOfMonth,
+  endOfWeek,
+  format,
+  isSameDay,
+  isToday,
+  parseISO,
+  startOfMonth,
+  startOfWeek,
+} from "date-fns";
+import React from "react";
 
 type MonthViewerProps = {
   lessons: Lesson[];
   monthDate: Date;
+  daysOfWeek: string[];
   setViewType: React.Dispatch<React.SetStateAction<"WEEK" | "MONTH">>;
   setCurrentDate: React.Dispatch<React.SetStateAction<Date>>;
+  getColor: (subjectId: string) => string;
 };
 
-const daysOfWeek = ["Du", "Se", "Ch", "Pa", "Ju", "Sh", "Ya"];
 export const StudentScheduleMonthViewer: React.FC<MonthViewerProps> = ({
   lessons,
   monthDate,
+  daysOfWeek,
   setViewType,
   setCurrentDate,
+  getColor,
 }) => {
   const monthStart = startOfMonth(monthDate);
   const monthEnd = endOfMonth(monthDate);
   const calendarStart = startOfWeek(monthStart, { weekStartsOn: 1 });
   const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
-
   const days = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
   return (
     <div className="p-4">
-      <div className="grid grid-cols-7 text-center font-medium mb-1">
+      <div className="grid grid-cols-7 text-center mb-1 font-semibold">
         {daysOfWeek.map((day) => (
           <div key={day}>{day}</div>
         ))}
@@ -68,14 +66,18 @@ export const StudentScheduleMonthViewer: React.FC<MonthViewerProps> = ({
               <div className={cn(`text-xs font-bold`, isCurrentDay ? "" : "")}>
                 {format(day, "d")}
               </div>
-              {dayLessons.map((lesson, idx) => (
-                <div
-                  key={idx}
-                  className="text-xs bg-yellow-100 text-yellow-700 rounded px-1 mt-1"
-                >
-                  {lesson.name}
-                </div>
-              ))}
+              {dayLessons.map((lesson, idx) => {
+                const bgColor = getColor(lesson.subject.subjectId);
+                return (
+                  <div
+                    key={idx}
+                    style={{ backgroundColor: bgColor }}
+                    className="text-xs rounded px-1 mt-1"
+                  >
+                    {lesson.subject.name}
+                  </div>
+                );
+              })}
             </div>
           );
         })}
