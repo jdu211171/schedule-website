@@ -288,9 +288,9 @@ export async function GET(request: Request) {
 
       return Response.json({
         data: {
-          commonSubjectPairs: commonPairs,
-          otherSubjectPairs: otherPairs,
-          allSubjectPairs: [...commonPairs, ...otherPairs],
+          commonSubjects: commonPairs,
+          otherSubjects: otherPairs,
+          allSubjects: [...commonPairs, ...otherPairs],
         },
       });
     } else if (action === "available-time-slots") {

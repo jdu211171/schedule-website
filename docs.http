@@ -1382,7 +1382,7 @@ Content-Type: application/json
 Cookie: {{cookie}}
 
 ### Get class sessions for a specific date
-GET {{url}}/class-session?date=2025-05-10
+GET {{url}}/class-session?date=2025-05-12&teacherId=cmakriaml000u10h9dodsr0gf
 Content-Type: application/json
 Cookie: {{cookie}}
 

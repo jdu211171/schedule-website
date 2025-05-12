@@ -40,7 +40,7 @@ export default function StudentPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewType, setViewType] = useState<"WEEK" | "MONTH">("WEEK");
   const { data, error, isPending } = useQuery(
-    createStudentClassSessionsQueryOptions("cmajd3kj10010vomgp7l3d3pu")
+    createStudentClassSessionsQueryOptions("cmakridsb001010h9phf390ai")
   );
   if (isPending) {
     return <div>Loading...</div>;
