@@ -39,7 +39,10 @@ export async function GET(request: Request) {
       });
 
       if (!student) {
-        return Response.json({ error: "生徒が見つかりません" }, { status: 404 }); // "Student not found"
+        return Response.json(
+          { error: "学生が見つかりません" },
+          { status: 404 }
+        ); // "Student not found"
       }
 
       const preferredTeacherIds = student.StudentPreference.flatMap((pref) =>
@@ -241,7 +244,7 @@ export async function GET(request: Request) {
 
       if (!teacher || !student) {
         return Response.json(
-          { error: "先生または生徒が見つかりません" }, // "Teacher or student not found"
+          { error: "先生または学生が見つかりません" }, // "Teacher or student not found"
           { status: 404 }
         );
       }
@@ -285,9 +288,9 @@ export async function GET(request: Request) {
 
       return Response.json({
         data: {
-          commonSubjectPairs: commonPairs,
-          otherSubjectPairs: otherPairs,
-          allSubjectPairs: [...commonPairs, ...otherPairs],
+          commonSubjects: commonPairs,
+          otherSubjects: otherPairs,
+          allSubjects: [...commonPairs, ...otherPairs],
         },
       });
     } else if (action === "available-time-slots") {

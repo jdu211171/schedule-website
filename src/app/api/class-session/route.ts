@@ -609,7 +609,7 @@ export async function POST(request: Request) {
       }
       if (!studentExists) {
         return Response.json(
-          { error: "生徒が見つかりません" },
+          { error: "学生が見つかりません" },
           { status: 404 }
         );
       }
@@ -1198,7 +1198,7 @@ export async function PUT(request: Request) {
         });
         if (!studentExists) {
           return Response.json(
-            { error: "生徒が見つかりません" }, // "Student not found"
+            { error: "学生が見つかりません" }, // "Student not found"
             { status: 404 }
           );
         }

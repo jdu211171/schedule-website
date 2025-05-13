@@ -1,193 +1,184 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { ClassSessionWithRelations } from '@/hooks/useClassSessionQuery';
 import { TimeSlot } from './admin-calendar-day';
-import { formatToJapanTime, isTimeInDisplayRange, calculateTimeSlotIndex } from '../date';
 
 interface Room {
   boothId: string;
   name: string;
 }
 
-type LessonCardProps = {
+interface LessonCardProps {
   lesson: ClassSessionWithRelations;
   rooms: Room[];
   onClick: (lesson: ClassSessionWithRelations) => void;
-  timeSlotHeight?: number;
+  timeSlotHeight: number;
   timeSlots: TimeSlot[];
-};
+  maxZIndex?: number;
+}
 
-type CardPosition = {
-  top: number;
-  left: number;
-  width: number;
-  height: number;
-};
-
-const ROOM_COLUMN_WIDTH = 100;
-const COLUMN_WIDTH = 40;
-const HEADER_HEIGHT = 40;
-const BORDER_WIDTH = 1;
-const ADJUST_LEFT = 0;
-const ADJUST_TOP = 0;
-const ADJUST_WIDTH = 0;
-const ADJUST_HEIGHT = -1;
-
-const getClassTypeColor = (typeName: string): string => {
-  switch(typeName) {
-    case '通常授業': return 'bg-blue-500 border-blue-600';
-    case '特別授業': return 'bg-red-500 border-red-600';
-    case 'テスト対策': return 'bg-purple-500 border-purple-600';
-    default: return 'bg-gray-500 border-gray-600';
+// Извлекает время из ISO строки или объекта Date
+const extractTime = (timeValue: string | Date | undefined): string => {
+  if (!timeValue) return '';
+  
+  try {
+    if (typeof timeValue === 'string') {
+      const timeMatch = timeValue.match(/T(\d{2}:\d{2}):/);
+      if (timeMatch && timeMatch[1]) {
+        return timeMatch[1];
+      }
+    } 
+    else if (timeValue instanceof Date) {
+      return `${timeValue.getUTCHours().toString().padStart(2, '0')}:${timeValue.getUTCMinutes().toString().padStart(2, '0')}`;
+    }
+    return '';
+  } catch {
+    return '';
   }
 };
 
-export const LessonCard: React.FC<LessonCardProps> = React.memo(({ 
+const LessonCardComponent: React.FC<LessonCardProps> = ({ 
   lesson, 
   rooms, 
-  onClick,
-  timeSlotHeight = 40, 
-  timeSlots 
+  onClick, 
+  timeSlotHeight, 
+  timeSlots,
+  maxZIndex = 10 
 }) => {
-  const [position, setPosition] = useState<CardPosition | null>(null);
-  const [isVisible, setIsVisible] = useState(true);
-  const cardRef = useRef<HTMLDivElement>(null);
+  const startTime = useMemo(() => extractTime(lesson.startTime), [lesson.startTime]);
+  const endTime = useMemo(() => extractTime(lesson.endTime), [lesson.endTime]);
   
+  const startSlotIndex = useMemo(() => {
+    return timeSlots.findIndex(slot => slot.start === startTime);
+  }, [startTime, timeSlots]);
   
-  // Форматируем время из UTC в японское время
-  const formattedTimes = useMemo(() => {
-    const start = formatToJapanTime(lesson.startTime);
-    const end = formatToJapanTime(lesson.endTime);
-    
-    console.log(`Formatted times for lesson ${lesson.classId}: ${start}-${end} (Japan time)`);
-    
-    return { start, end };
-  }, [lesson.startTime, lesson.endTime, lesson.classId]);
+  const endSlotIndex = useMemo(() => {
+    return timeSlots.findIndex(slot => slot.start === endTime);
+  }, [endTime, timeSlots]);
   
-  const cardColor = useMemo(() => {
-    return getClassTypeColor(lesson.classType?.name || '');
-  }, [lesson.classType?.name]);
+  const roomIndex = useMemo(() => {
+    return rooms.findIndex(room => room.boothId === lesson.boothId);
+  }, [rooms, lesson.boothId]);
   
-  const teacherName = useMemo(() => lesson.teacher?.name || '教師不明', [lesson.teacher]);
-  const studentName = useMemo(() => lesson.student?.name || '生徒不明', [lesson.student]);
+  const isValidPosition = useMemo(() => 
+    startSlotIndex >= 0 && endSlotIndex > startSlotIndex && roomIndex >= 0
+  , [startSlotIndex, endSlotIndex, roomIndex]);
   
-  // Мемоизируем расчет позиции карточки - это самая затратная операция
-  useEffect(() => {
-    const calculatePosition = () => {
-      const boothId = lesson.boothId;
-      const roomIndex = rooms.findIndex(room => room.boothId === boothId);
-      
-      if (roomIndex === -1) {
-        console.warn(`Room with ID ${boothId} not found for lesson ${lesson.classId}`);
-        return null; 
-      }
-      
-      if (!isTimeInDisplayRange(formattedTimes.start) || !isTimeInDisplayRange(formattedTimes.end)) {
-        console.warn(`Time out of display range for lesson ${lesson.classId}: ${formattedTimes.start}-${formattedTimes.end}`);
-        return null;
-      }
-      
-      const startTimeIndex = calculateTimeSlotIndex(formattedTimes.start);
-      const endTimeIndex = calculateTimeSlotIndex(formattedTimes.end);
-      
-      if (startTimeIndex < 0 || endTimeIndex > timeSlots.length) {
-        console.warn(`Time index out of bounds for lesson ${lesson.classId}`);
-        return null;
-      }
-      
-      // Вычисляем позицию и размеры карточки
-      const left = ROOM_COLUMN_WIDTH + startTimeIndex * COLUMN_WIDTH + ADJUST_LEFT;
-      const width = (endTimeIndex - startTimeIndex) * COLUMN_WIDTH + ADJUST_WIDTH;
-      const top = HEADER_HEIGHT + roomIndex * timeSlotHeight + ADJUST_TOP;
-      const height = timeSlotHeight - BORDER_WIDTH + ADJUST_HEIGHT;
-      
-      return { top, left, width, height };
-    };
-
-    const newPosition = calculatePosition();
-    if (newPosition) {
-      setPosition(newPosition);
-    } else {
-      console.warn(`Could not calculate position for lesson ${lesson.classId}`);
+  const { effectiveStartIndex, effectiveDuration } = useMemo(() => {
+    if (isValidPosition) {
+      return {
+        effectiveStartIndex: startSlotIndex,
+        effectiveDuration: endSlotIndex - startSlotIndex
+      };
     }
-  }, [
-    lesson.boothId,
-    lesson.classId,
-    formattedTimes.start,
-    formattedTimes.end,
-    rooms,
-    timeSlotHeight,
-    timeSlots.length
-  ]);
-  
-  // Наблюдатель для отслеживания видимости карточки
-  useEffect(() => {
-    if (!cardRef.current || !position) return;
     
-    const handleVisibility = (entries: IntersectionObserverEntry[]) => {
-      entries.forEach(entry => {
-        setIsVisible(entry.isIntersecting);
-      });
-    };
-    
-    const observer = new IntersectionObserver(handleVisibility, {
-      root: cardRef.current.closest('.overflow-auto'),
-      threshold: 0.1
+    console.warn(`Неверная позиция урока: ${lesson.classId}`, { 
+      startTime, 
+      endTime, 
+      startSlotIndex, 
+      endSlotIndex,
+      boothId: lesson.boothId, 
+      roomIndex 
     });
     
-    observer.observe(cardRef.current);
+    const fallbackStartIndex = startTime ? 
+      timeSlots.findIndex(slot => startTime >= slot.start && startTime < slot.end) : -1;
     
-    return () => {
-      observer.disconnect();
+    const fallbackEndIndex = endTime ? 
+      timeSlots.findIndex(slot => endTime >= slot.start && endTime < slot.end) : -1;
+    
+    if (fallbackStartIndex >= 0 && fallbackEndIndex >= 0) {
+      return {
+        effectiveStartIndex: fallbackStartIndex,
+        effectiveDuration: Math.max(1, fallbackEndIndex - fallbackStartIndex)
+      };
+    }
+    
+    return {
+      effectiveStartIndex: -1,
+      effectiveDuration: 0
     };
-  }, [position]);
-
-  if (!position) return null;
+  }, [isValidPosition, startSlotIndex, endSlotIndex, startTime, endTime, timeSlots, lesson.classId, roomIndex, lesson.boothId]);
   
+  const colors = useMemo(() => {
+    const isRegularLesson = Boolean(lesson.regularClassTemplate) || 
+                          (lesson.classType?.name === '通常授業');
+    
+    if (isRegularLesson) {
+      return {
+        background: 'bg-blue-100 dark:bg-blue-900/70',
+        border: 'border-blue-300 dark:border-blue-700',
+        text: 'text-blue-800 dark:text-blue-100',
+        hover: 'hover:bg-blue-200 dark:hover:bg-blue-800'
+      };
+    } else {
+      return {
+        background: 'bg-red-100 dark:bg-red-900/70',
+        border: 'border-red-300 dark:border-red-700',
+        text: 'text-red-800 dark:text-red-100',
+        hover: 'hover:bg-red-200 dark:hover:bg-red-800'
+      };
+    }
+  }, [lesson.regularClassTemplate, lesson.classType?.name]);
+  
+  // Рассчитываем CSS стиль
+  const style = useMemo(() => ({
+    position: 'absolute',
+    left: `${effectiveStartIndex * 40 + 100}px`,
+    top: `${(roomIndex + 1) * timeSlotHeight}px`,
+    width: `${effectiveDuration * 40}px`,
+    height: `${timeSlotHeight - 2}px`,
+    zIndex: maxZIndex - 1
+  } as React.CSSProperties), [effectiveStartIndex, effectiveDuration, roomIndex, timeSlotHeight, maxZIndex]);
+  
+  const isNarrow = effectiveDuration <= 1;
+  
+  if (effectiveStartIndex < 0 || roomIndex < 0) {
+    return null;
+  }
+
   return (
     <div
-      ref={cardRef}
-      className={`${cardColor} rounded-none text-xs overflow-hidden absolute 
-        transition-all duration-150 group hover:shadow-md hover:brightness-95 active:brightness-90 pointer-events-auto`}
-      style={{
-        top: `${position.top}px`,
-        left: `${position.left}px`, 
-        width: `${position.width}px`,
-        height: `${position.height}px`,
-        zIndex: isVisible ? 20 : -1,
-        cursor: 'pointer',
-        opacity: isVisible ? 1 : 0,
-        pointerEvents: isVisible ? 'auto' : 'none',
-        transition: 'opacity 0.15s ease-out, z-index 0s',
-        margin: 0,
-        padding: '2px 4px',
-        boxSizing: 'border-box'
-      }}
-      onClick={(e) => {
-        e.stopPropagation(); 
-        onClick(lesson);
-      }}
+      className={`
+        absolute rounded border shadow-sm cursor-pointer
+        transition-colors duration-100 ease-in-out transform
+        ${colors.background} ${colors.border} ${colors.text} ${colors.hover}
+        active:scale-[0.98] hover:shadow-md 
+        overflow-hidden truncate pointer-events-auto
+      `}
+      style={style}
+      onClick={() => onClick(lesson)}
     >
-      <div className="flex flex-col justify-between h-full text-xs text-white">
-        <div className="flex justify-between items-center">
-          <div className="truncate font-semibold">{lesson.subject?.name || '不明'}</div>
-          <div className="truncate text-xs whitespace-nowrap">{formattedTimes.start}-{formattedTimes.end}</div>
+      <div className="text-[11px] p-1 flex flex-col h-full justify-between">
+        <div className="font-medium truncate flex justify-between items-center">
+          <span className="truncate">
+            {lesson.subject?.name || '科目なし'}
+          </span>
+          <span className="flex-shrink-0 ml-1 font-semibold">
+            {startTime}-{endTime}
+          </span>
         </div>
-        
-        {/* Имена учителя и студента */}
-        <div className="flex justify-between items-center text-xs opacity-80">
-          <div className="truncate">👨‍🏫 {teacherName}</div>
-          <div className="truncate">👨‍🎓 {studentName}</div>
-        </div>
-      </div>
-      
-      <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-70 bg-white rounded-full p-0.5 transform scale-0 group-hover:scale-100 transition-all shadow-sm">
-        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
-          <circle cx="12" cy="12" r="3" />
-        </svg>
+        {!isNarrow && (
+          <div className="text-[11px] absolute bottom-0.5 left-1 right-1">
+            <div className="truncate flex justify-between">
+              <span className="truncate">👨‍🏫 {lesson.teacher?.name || '未定'}</span>
+              <span className="mx-0.5">-</span>
+              <span className="truncate">👨‍🎓 {lesson.student?.name || '未定'}</span>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
-});
+};
 
-LessonCard.displayName = 'LessonCard';
+LessonCardComponent.displayName = 'LessonCard';
+
+export const LessonCard = React.memo(LessonCardComponent, (prevProps, nextProps) => {
+  return (
+    prevProps.lesson.classId === nextProps.lesson.classId &&
+    prevProps.timeSlotHeight === nextProps.timeSlotHeight &&
+    prevProps.lesson.startTime === nextProps.lesson.startTime &&
+    prevProps.lesson.endTime === nextProps.lesson.endTime &&
+    prevProps.lesson.boothId === nextProps.lesson.boothId
+  );
+});

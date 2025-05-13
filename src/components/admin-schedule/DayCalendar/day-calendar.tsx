@@ -4,6 +4,7 @@ import { ja } from 'date-fns/locale';
 import { ClassSessionWithRelations } from '@/hooks/useClassSessionQuery'; 
 import { SelectionPosition, TimeSlot } from './admin-calendar-day'; 
 import { LessonCard } from './lesson-card'; 
+import { isSameDay } from '../date';
 
 interface Room {
   boothId: string;
@@ -24,18 +25,24 @@ const CELL_WIDTH = 40;
 const ROOM_LABEL_WIDTH = 100; 
 const TIME_SLOT_HEIGHT = 40;
 
-const isSameDay = (date1: string | Date, date2: string | Date): boolean => {
-  const d1 = date1 instanceof Date ? date1 : new Date(date1);
-  const d2 = date2 instanceof Date ? date2 : new Date(date2);
-  
-  return (
-    d1.getFullYear() === d2.getFullYear() &&
-    d1.getMonth() === d2.getMonth() &&
-    d1.getDate() === d2.getDate()
-  );
+interface SelectionState {
+  isSelecting: boolean;
+  start: SelectionPosition | null;
+  end: SelectionPosition | null;
+}
+
+const initialSelectionState: SelectionState = {
+  isSelecting: false,
+  start: null,
+  end: null
 };
 
-const isCellInSelection = (roomIndex: number, timeIndex: number, selectionStart: SelectionPosition | null, selectionEnd: SelectionPosition | null): boolean => {
+const isCellInSelection = (
+  roomIndex: number, 
+  timeIndex: number, 
+  selectionStart: SelectionPosition | null, 
+  selectionEnd: SelectionPosition | null
+): boolean => {
   if (!selectionStart || !selectionEnd) return false;
   
   if (roomIndex !== selectionStart.row) return false;
@@ -75,9 +82,19 @@ const CalendarCell = React.memo(({
       data-selected={isSelected ? "true" : "false"}
       className={`
         border-r border-b relative select-none
-        ${timeSlot.index % 4 === 0 ? "bg-gray-50" : "bg-white"}
-        ${isSelecting ? "cursor-move" : "hover:bg-gray-100 cursor-pointer"}
-        ${isSelected ? "!bg-green-200 !opacity-80 shadow-inner" : ""}
+        ${timeSlot.index % 4 === 0 
+          ? "bg-muted dark:bg-muted" 
+          : "bg-background dark:bg-background"
+        }
+        ${isSelecting 
+          ? "cursor-move" 
+          : "hover:bg-accent dark:hover:bg-accent cursor-pointer"
+        }
+        ${isSelected 
+          ? "!bg-green-200 dark:!bg-green-900 !opacity-80 shadow-inner" 
+          : ""
+        }
+        border-border dark:border-border
       `}
       style={{ 
         width: `${CELL_WIDTH}px`, 
@@ -90,6 +107,11 @@ const CalendarCell = React.memo(({
       onMouseUp={onMouseUp}
     />
   );
+}, (prevProps, nextProps) => {
+  return prevProps.roomIndex === nextProps.roomIndex &&
+         prevProps.timeSlot.index === nextProps.timeSlot.index &&
+         prevProps.isSelected === nextProps.isSelected &&
+         prevProps.isSelecting === nextProps.isSelecting;
 });
 
 CalendarCell.displayName = 'CalendarCell';
@@ -121,11 +143,12 @@ const RoomRow = React.memo(({
       style={{ height: `${TIME_SLOT_HEIGHT}px` }}
     >
       <div
-        className="sticky left-0 flex items-center justify-center bg-white z-10 border-r border-b text-sm font-medium text-gray-700 px-2"
+        className="flex items-center justify-center bg-background dark:bg-background border-r border-b text-sm font-medium text-foreground dark:text-foreground px-2 border-border dark:border-border"
         style={{ 
           width: `${ROOM_LABEL_WIDTH}px`, 
           minWidth: `${ROOM_LABEL_WIDTH}px`, 
-          height: `${TIME_SLOT_HEIGHT}px` 
+          height: `${TIME_SLOT_HEIGHT}px`,
+          zIndex: 5
         }}
       >
         <span className="truncate">{room.name}</span>
@@ -149,16 +172,27 @@ const RoomRow = React.memo(({
       })}
     </div>
   );
+}, (prevProps, nextProps) => {
+  return prevProps.roomIndex === nextProps.roomIndex &&
+         prevProps.room.boothId === nextProps.room.boothId &&
+         prevProps.isSelecting === nextProps.isSelecting &&
+         prevProps.selectionStart === nextProps.selectionStart &&
+         prevProps.selectionEnd === nextProps.selectionEnd;
 });
 
 RoomRow.displayName = 'RoomRow';
 
 const TimeHeader = React.memo(({ timeSlots }: { timeSlots: TimeSlot[] }) => {
   return (
-    <div className="sticky top-0 flex z-20 bg-white shadow-sm border-b">
+    <div className="flex bg-background dark:bg-background shadow-sm border-b border-border dark:border-border">
       <div 
-        className="sticky left-0 flex items-center justify-center font-semibold border-r text-sm text-gray-700 bg-white z-30"
-        style={{ width: `${ROOM_LABEL_WIDTH}px`, minWidth: `${ROOM_LABEL_WIDTH}px`, height: `${TIME_SLOT_HEIGHT}px` }}
+        className="flex items-center justify-center font-semibold border-r text-sm text-foreground dark:text-foreground bg-background dark:bg-background border-border dark:border-border"
+        style={{ 
+          width: `${ROOM_LABEL_WIDTH}px`, 
+          minWidth: `${ROOM_LABEL_WIDTH}px`, 
+          height: `${TIME_SLOT_HEIGHT}px`,
+          zIndex: 5
+        }}
       >
         教室
       </div>
@@ -166,8 +200,11 @@ const TimeHeader = React.memo(({ timeSlots }: { timeSlots: TimeSlot[] }) => {
         <div
           key={`time-${timeSlot.index}`}
           data-time-index={timeSlot.index}
-          className={`flex items-center justify-center font-semibold border-r text-xs
-            ${timeSlot.index % 4 === 0 ? "bg-gray-100" : "bg-white"}`}
+          className={`flex items-center justify-center font-semibold border-r text-xs border-border dark:border-border
+            ${timeSlot.index % 4 === 0 
+              ? "bg-muted dark:bg-muted" 
+              : "bg-background dark:bg-background"
+            }`}
           style={{ 
             width: `${CELL_WIDTH}px`, 
             minWidth: `${CELL_WIDTH}px`, 
@@ -175,7 +212,7 @@ const TimeHeader = React.memo(({ timeSlots }: { timeSlots: TimeSlot[] }) => {
           }}
         >
           {timeSlot.index % 4 === 0 ? (
-            <div className="text-xs font-medium text-gray-600">
+            <div className="text-xs font-medium text-muted-foreground dark:text-muted-foreground">
               {timeSlot.start.split(':')[0]}:00
             </div>
           ) : null}
@@ -199,21 +236,29 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(1200); 
   
-  const [selectionStart, setSelectionStart] = useState<SelectionPosition | null>(null);
-  const [selectionEnd, setSelectionEnd] = useState<SelectionPosition | null>(null);
-  const [isSelecting, setIsSelecting] = useState(false);
+  const [selection, setSelection] = useState<SelectionState>(initialSelectionState);
   
   const createLessonCalledRef = useRef(false);
+  const lastResizeTime = useRef(0);
+
+  const filteredSessions = useMemo(() => {
+    return classSessions.filter(session => isSameDay(session.date, date));
+  }, [classSessions, date]);
   
-  // DEBUG: Логируем, сколько сессий у нас для этого дня
+  const totalGridWidth = useMemo(() => {
+    return timeSlots.length * CELL_WIDTH;
+  }, [timeSlots.length]);
+  
+  const formattedDate = useMemo(() => {
+    return format(date, 'yyyy年MM月dd日 (eee)', { locale: ja });
+  }, [date]);
+  
   useEffect(() => {
-    console.log(`DayCalendar for ${date.toISOString().substring(0, 10)} has ${classSessions.length} sessions`);
-  }, [date, classSessions]);
+    console.log(`DayCalendar for ${date.toISOString().substring(0, 10)} has ${filteredSessions.length} sessions`);
+  }, [date, filteredSessions.length]);
   
   const cancelSelection = useCallback(() => {
-    setSelectionStart(null);
-    setSelectionEnd(null);
-    setIsSelecting(false);
+    setSelection(initialSelectionState);
     document.body.classList.remove('cursor-move');
     createLessonCalledRef.current = false;
   }, []);
@@ -229,30 +274,34 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
     
     const start = { row: roomIndex, col: timeIndex };
     
-    setIsSelecting(true);
-    setSelectionStart(start);
-    setSelectionEnd(start);
+    setSelection({
+      isSelecting: true,
+      start: start,
+      end: start
+    });
     document.body.classList.add('cursor-move');
     createLessonCalledRef.current = false;
   }, []);
 
   const handleCellHover = useCallback((roomIndex: number, timeIndex: number, e: React.MouseEvent) => {
-    if (!isSelecting || !selectionStart) return;
+    if (!selection.isSelecting || !selection.start) return;
     e.preventDefault();
     
-    if (roomIndex === selectionStart.row) {
-      const end = { row: roomIndex, col: timeIndex };
-      setSelectionEnd(end);
+    if (roomIndex === selection.start.row) {
+      setSelection(prev => ({
+        ...prev,
+        end: { row: roomIndex, col: timeIndex }
+      }));
     }
-  }, [isSelecting, selectionStart]);
+  }, [selection.isSelecting, selection.start]);
 
   const handleEndSelection = useCallback((e: React.MouseEvent) => {
-    if (isSelecting && selectionStart && selectionEnd && !createLessonCalledRef.current) {
+    if (selection.isSelecting && selection.start && selection.end && !createLessonCalledRef.current) {
       e.preventDefault();
       
-      const startCol = Math.min(selectionStart.col, selectionEnd.col);
-      const endCol = Math.max(selectionStart.col, selectionEnd.col);
-      const roomIndex = selectionStart.row;
+      const startCol = Math.min(selection.start.col, selection.end.col);
+      const endCol = Math.max(selection.start.col, selection.end.col);
+      const roomIndex = selection.start.row;
       
       const isValidSelection = endCol > startCol; 
       if (isValidSelection) {
@@ -274,18 +323,25 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
       
       cancelSelection();
     }
-  }, [isSelecting, selectionStart, selectionEnd, timeSlots, rooms, onCreateLesson, date, cancelSelection]); 
+  }, [selection, timeSlots, rooms, onCreateLesson, date, cancelSelection]); 
+
+  const updateContainerWidth = useCallback(() => {
+    if (containerRef.current) {
+      setContainerWidth(containerRef.current.clientWidth);
+    }
+  }, []);
 
   useEffect(() => {
-    const updateContainerWidth = () => {
-      if (containerRef.current) {
-        setContainerWidth(containerRef.current.clientWidth);
-      }
-    };
-    
     updateContainerWidth();
     
-    const resizeObserver = new ResizeObserver(updateContainerWidth);
+    const resizeObserver = new ResizeObserver(() => {
+      const now = Date.now();
+      if (now - lastResizeTime.current > 100) {
+        lastResizeTime.current = now;
+        updateContainerWidth();
+      }
+    });
+    
     if (containerRef.current) {
       resizeObserver.observe(containerRef.current);
     }
@@ -293,11 +349,11 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
     return () => {
       resizeObserver.disconnect();
     };
-  }, []);
+  }, [updateContainerWidth]);
 
   useEffect(() => {
     const handleGlobalMouseUp = (event: MouseEvent) => {
-      if (isSelecting && !createLessonCalledRef.current) {
+      if (selection.isSelecting && !createLessonCalledRef.current) {
         if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
           cancelSelection();
         } else if (!(event.target as HTMLElement)?.closest('[data-room-index][data-time-index]')) {
@@ -307,14 +363,14 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
     };
     
     const handleGlobalRightClick = (e: MouseEvent) => {
-      if (isSelecting) {
+      if (selection.isSelecting) {
         e.preventDefault();
         cancelSelection();
       }
     };
     
     const handleEscapeKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isSelecting) {
+      if (e.key === 'Escape' && selection.isSelecting) {
         cancelSelection();
       }
     };
@@ -329,33 +385,19 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
       document.removeEventListener('keydown', handleEscapeKey);
       document.body.classList.remove('cursor-move');
     };
-  }, [isSelecting, cancelSelection]);
-
-  const filteredSessions = useMemo(() => {
-    return classSessions.filter(session => {
-      return isSameDay(session.date, date);
-    });
-  }, [classSessions, date]);
-
-  const formattedDate = useMemo(() => {
-    return format(date, 'yyyy年MM月dd日 (eee)', { locale: ja });
-  }, [date]);
-
-  const totalGridWidth = useMemo(() => {
-    return timeSlots.length * CELL_WIDTH;
-  }, [timeSlots.length]);
+  }, [selection.isSelecting, cancelSelection]);
 
   return (
-    <div className="border rounded-md overflow-hidden shadow-sm bg-white">
-      <div className="p-3 border-b bg-gray-50">
-        <h3 className="font-medium text-lg">{formattedDate}</h3>
+    <div className="border rounded-md overflow-hidden shadow-sm bg-background dark:bg-background border-border dark:border-border">
+      <div className="p-3 border-b bg-muted dark:bg-muted border-border dark:border-border">
+        <h3 className="font-medium text-lg text-foreground dark:text-foreground">{formattedDate}</h3>
         {filteredSessions.length === 0 && (
-          <div className="text-xs text-gray-500 mt-1">
+          <div className="text-xs text-muted-foreground dark:text-muted-foreground mt-1">
             この日の授業はまだありません
           </div>
         )}
         {filteredSessions.length > 0 && (
-          <div className="text-xs text-gray-500 mt-1">
+          <div className="text-xs text-muted-foreground dark:text-muted-foreground mt-1">
             授業数: {filteredSessions.length}
           </div>
         )}
@@ -375,16 +417,16 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
         >
           <TimeHeader timeSlots={timeSlots} />
 
-          <div className="relative z-10">
+          <div className="relative">
             {rooms.map((room, roomIndex) => (
               <RoomRow
                 key={`room-${room.boothId || roomIndex}`}
                 room={room}
                 roomIndex={roomIndex}
                 timeSlots={timeSlots}
-                selectionStart={selectionStart}
-                selectionEnd={selectionEnd}
-                isSelecting={isSelecting}
+                selectionStart={selection.start}
+                selectionEnd={selection.end}
+                isSelecting={selection.isSelecting}
                 onStartSelection={handleStartSelection}
                 onCellHover={handleCellHover}
                 onEndSelection={handleEndSelection}
@@ -392,7 +434,10 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
             ))}
           </div>
 
-          <div className="absolute top-0 left-0 w-full h-full pointer-events-none z-10">
+          <div 
+            className="absolute top-0 left-0 w-full h-full pointer-events-none"
+            style={{ zIndex: 10 }}
+          >
             {filteredSessions.map(session => (
               <LessonCard
                 key={`lesson-${session.classId}`}
@@ -401,6 +446,7 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
                 onClick={onLessonClick}
                 timeSlotHeight={TIME_SLOT_HEIGHT}
                 timeSlots={timeSlots}
+                maxZIndex={9}
               />
             ))}
           </div>

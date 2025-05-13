@@ -128,18 +128,41 @@ export function TeacherSubjectFormDialog({
         })
       : [];
 
+  // In teacher-subject-form-dialog.tsx - update the onSubmit function
   async function onSubmit(values: FormValues) {
     setIsSubmitting(true);
+
     try {
-      if (isEditing) {
-        await updateTeacherSubjectMutation.mutateAsync(values);
-      } else {
-        await createTeacherSubjectMutation.mutateAsync(values);
-      }
+      // Get the actual names from the selected values for better optimistic UI
+      const selectedTeacher = teachers?.data?.find(
+        (t) => t.teacherId === values.teacherId
+      );
+      const selectedSubject = subjects?.data?.find(
+        (s) => s.subjectId === values.subjectId
+      );
+      const selectedSubjectType = subjectTypesResponse?.data?.find(
+        (st) => st.subjectTypeId === values.subjectTypeId
+      );
+
+      // Close dialog and reset form immediately for better UX
       onOpenChange(false);
       form.reset();
+
+      if (isEditing) {
+        // Update existing teacher subject
+        await updateTeacherSubjectMutation.mutateAsync(values);
+      } else {
+        // Create new teacher subject with display names for optimistic UI
+        await createTeacherSubjectMutation.mutateAsync({
+          ...values,
+          _teacherName: selectedTeacher?.name,
+          _subjectName: selectedSubject?.name,
+          _subjectTypeName: selectedSubjectType?.name,
+        });
+      }
     } catch (error) {
       console.error("講師科目割り当ての保存に失敗しました:", error);
+      // alert("保存に失敗しました。入力内容を確認してください。");
     } finally {
       setIsSubmitting(false);
     }
@@ -274,7 +297,20 @@ export function TeacherSubjectFormDialog({
               )}
             />
             <DialogFooter>
-              <Button type="submit" disabled={isSubmitting}>
+              <Button
+                type="submit"
+                disabled={isSubmitting}
+                onClick={() => {
+                  // Submit form without waiting for validation/submission
+                  if (!form.formState.isValid) {
+                    form.handleSubmit(onSubmit)();
+                  } else {
+                    // If form is already valid, execute submission directly
+                    const values = form.getValues();
+                    onSubmit(values);
+                  }
+                }}
+              >
                 {isSubmitting ? "保存中..." : isEditing ? "変更を保存" : "作成"}
               </Button>
             </DialogFooter>

@@ -34,6 +34,8 @@ export type TeacherSubjectWithRelations = TeacherSubject & {
     subjectTypeId: string;
     name: string;
   };
+  _optimistic?: boolean;
+  _tempId?: string;
 };
 
 type GroupedTeacherSubject = {
@@ -112,12 +114,18 @@ export function TeacherSubjectTable() {
   const handleDeleteTeacherSubject = async () => {
     if (teacherSubjectToDelete) {
       try {
-        await deleteTeacherSubjectMutation.mutateAsync({
+        const deleteParams = {
           teacherId: teacherSubjectToDelete.teacherId,
           subjectId: teacherSubjectToDelete.subjectId,
           subjectTypeId: teacherSubjectToDelete.subjectTypeId,
-        });
+          tempId: (teacherSubjectToDelete as any)._tempId, // Pass tempId if it exists
+        };
+
+        // Close the dialog immediately for better UX
         setTeacherSubjectToDelete(null);
+
+        // Then trigger the mutation without waiting for result
+        await deleteTeacherSubjectMutation.mutateAsync(deleteParams);
       } catch (error) {
         console.error("講師科目の削除に失敗しました:", error);
       }
@@ -135,28 +143,40 @@ export function TeacherSubjectTable() {
       header: "対応科目",
       cell: ({ row }) => (
         <div className="flex flex-row flex-wrap gap-2">
-          {row.original.subjects.map((subject) => (
-            <div
-              key={`${subject.subjectId}-${subject.subjectTypeId}`}
-              className="flex items-center border rounded-md p-1 bg-muted/30"
-            >
-              <span className="font-medium text-sm">{subject.subjectName}</span>
-              <span className="text-xs text-muted-foreground ml-1">
-                ({subject.subjectTypeName})
-              </span>
-              {subject.notes && (
-                <span className="text-xs italic ml-1">- {subject.notes}</span>
-              )}
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6 ml-1"
-                onClick={() => setTeacherSubjectToDelete(subject.original)}
+          {row.original.subjects.map((subject) => {
+            // Check for optimistic UI flag
+            const isOptimistic = (subject.original as any)._optimistic;
+
+            return (
+              <div
+                key={`${
+                  subject.original._tempId ||
+                  `${subject.subjectId}-${subject.subjectTypeId}-${subject.original.teacherId}`
+                }`}
+                className={`flex items-center border rounded-md p-1 bg-muted/30 ${
+                  isOptimistic ? "opacity-70" : ""
+                }`}
               >
-                <Trash2 className="h-3 w-3 text-destructive" />
-              </Button>
-            </div>
-          ))}
+                <span className="font-medium text-sm">
+                  {subject.subjectName}
+                </span>
+                <span className="text-xs text-muted-foreground ml-1">
+                  ({subject.subjectTypeName})
+                </span>
+                {subject.notes && (
+                  <span className="text-xs italic ml-1">- {subject.notes}</span>
+                )}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 ml-1"
+                  onClick={() => setTeacherSubjectToDelete(subject.original)}
+                >
+                  <Trash2 className="h-3 w-3 text-destructive" />
+                </Button>
+              </div>
+            );
+          })}
         </div>
       ),
     },

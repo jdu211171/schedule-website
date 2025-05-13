@@ -94,25 +94,34 @@ export function StudentSubjectFormDialog({
     mode: "onSubmit", // Validate on submit
   });
 
-  // Set form values when editing an existing student subject
+  // Reset form when dialog opens/closes or editing subject changes
   useEffect(() => {
-    if (studentSubject && open) {
-      form.reset({
-        studentId: studentSubject.studentPreference.student.studentId,
-        subjectId: studentSubject.subjectId,
-        subjectTypeId: studentSubject.subjectTypeId,
-        notes: studentSubject.notes || "",
-      });
-    } else if (!studentSubject && open) {
-      // Reset form when creating a new student subject
-      form.reset({
-        studentId: "",
-        subjectId: "",
-        subjectTypeId: "",
-        notes: "",
-      });
+    if (open) {
+      if (studentSubject) {
+        form.reset({
+          studentId: studentSubject.studentPreference.student.studentId,
+          subjectId: studentSubject.subjectId,
+          subjectTypeId: studentSubject.subjectTypeId,
+          notes: studentSubject.notes || "",
+        });
+      } else {
+        form.reset({
+          studentId: "",
+          subjectId: "",
+          subjectTypeId: "",
+          notes: "",
+        });
+      }
     }
   }, [studentSubject, form, open]);
+
+  // Clear form state when dialog closes
+  useEffect(() => {
+    if (!open) {
+      setIsSubmitting(false);
+      // Don't reset the form here to avoid potential flicker
+    }
+  }, [open]);
 
   // Filter subject types based on selected subject
   const selectedSubjectId = form.watch("subjectId");
@@ -128,28 +137,66 @@ export function StudentSubjectFormDialog({
         })
       : [];
 
-  async function onSubmit(values: FormValues) {
+  // Handle form submission with validation first
+  const handleSubmit = async (e: React.MouseEvent) => {
+    e.preventDefault();
+
+    // Check form validity first without triggering validation messages
+    const isValid = await form.trigger();
+    if (!isValid) {
+      // Let React Hook Form display the validation errors
+      form.handleSubmit(() => {})();
+      return;
+    }
+
+    // If form is valid, proceed with submission
     setIsSubmitting(true);
+
+    const values = form.getValues();
+
+    // Get the data for optimistic UI
+    const selectedStudent = students?.data?.find(
+      (s) => s.studentId === values.studentId
+    );
+    const selectedSubject = subjects?.data?.find(
+      (s) => s.subjectId === values.subjectId
+    );
+    const selectedSubjectType = subjectTypesResponse?.data?.find(
+      (st) => st.subjectTypeId === values.subjectTypeId
+    );
+
+    // Close the dialog first for better user experience
+    onOpenChange(false);
+
     try {
       if (isEditing && studentSubject) {
-        await updateStudentSubjectMutation.mutateAsync({
+        updateStudentSubjectMutation.mutate({
           id: studentSubject.id,
           notes: values.notes,
         });
       } else {
-        await createStudentSubjectMutation.mutateAsync(values);
+        createStudentSubjectMutation.mutate({
+          ...values,
+          _studentName: selectedStudent?.name,
+          _subjectName: selectedSubject?.name,
+          _subjectTypeName: selectedSubjectType?.name,
+        });
       }
-      onOpenChange(false);
-      form.reset();
     } catch (error) {
       console.error("生徒科目割り当ての保存に失敗しました:", error);
-    } finally {
-      setIsSubmitting(false);
     }
-  }
+  };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(newOpen) => {
+        // Only allow closing if not submitting
+        if (!isSubmitting || !newOpen) {
+          onOpenChange(newOpen);
+        }
+      }}
+    >
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
@@ -157,7 +204,7 @@ export function StudentSubjectFormDialog({
           </DialogTitle>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form className="space-y-4">
             <FormField
               control={form.control}
               name="studentId"
@@ -277,7 +324,11 @@ export function StudentSubjectFormDialog({
               )}
             />
             <DialogFooter>
-              <Button type="submit" disabled={isSubmitting}>
+              <Button
+                type="button"
+                disabled={isSubmitting}
+                onClick={handleSubmit}
+              >
                 {isSubmitting ? "保存中..." : isEditing ? "変更を保存" : "作成"}
               </Button>
             </DialogFooter>

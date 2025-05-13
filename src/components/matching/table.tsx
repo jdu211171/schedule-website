@@ -79,6 +79,13 @@ export function MatchingTable() {
       cell: ({ row }) => row.original.teacher.name,
     },
     {
+      accessorKey: "classType",
+      header: "授業タイプ",
+      cell: ({ row }) => (
+        <Badge variant={"outline"}>{row.original.classType.name}</Badge>
+      ),
+    },
+    {
       accessorKey: "student",
       header: "生徒",
       cell: ({ row }) => (
