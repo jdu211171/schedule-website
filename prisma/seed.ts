@@ -174,7 +174,7 @@ async function main() {
         name: "山田 太郎",
         email: "teacher@example.com",
         username: "TEACHER01",
-        passwordHash: hashSync("teacher123", 10),
+        passwordHash: "teacher123",
         role: UserRole.TEACHER,
       },
     }),
@@ -183,7 +183,7 @@ async function main() {
         name: "佐藤 花子",
         email: "student@example.com",
         username: "STUDENT01",
-        passwordHash: hashSync("student123", 10),
+        passwordHash: "student123",
         role: UserRole.STUDENT,
       },
     }),
@@ -192,7 +192,7 @@ async function main() {
         name: "鈴木 次郎",
         email: "teacher2@example.com",
         username: "TEACHER02",
-        passwordHash: hashSync("teacher123", 10),
+        passwordHash: "teacher123",
         role: UserRole.TEACHER,
       },
     }),
@@ -201,7 +201,7 @@ async function main() {
         name: "田中 三郎",
         email: "teacher3@example.com",
         username: "TEACHER03",
-        passwordHash: hashSync("teacher123", 10),
+        passwordHash: "teacher123",
         role: UserRole.TEACHER,
       },
     }),
@@ -210,7 +210,7 @@ async function main() {
         name: "高橋 健太",
         email: "student2@example.com",
         username: "STUDENT02",
-        passwordHash: hashSync("student123", 10),
+        passwordHash: "student123",
         role: UserRole.STUDENT,
       },
     }),
@@ -219,7 +219,7 @@ async function main() {
         name: "伊藤 美咲",
         email: "student3@example.com",
         username: "STUDENT03",
-        passwordHash: hashSync("student123", 10),
+        passwordHash: "student123",
         role: UserRole.STUDENT,
       },
     }),
@@ -228,7 +228,7 @@ async function main() {
         name: "佐々木 四郎",
         email: "teacher4@example.com",
         username: "TEACHER04",
-        passwordHash: hashSync("teacher123", 10),
+        passwordHash: "teacher123",
         role: UserRole.TEACHER,
       },
     }),
@@ -237,7 +237,7 @@ async function main() {
         name: "渡辺 五郎",
         email: "teacher5@example.com",
         username: "TEACHER05",
-        passwordHash: hashSync("teacher123", 10),
+        passwordHash: "teacher123",
         role: UserRole.TEACHER,
       },
     }),
@@ -246,7 +246,7 @@ async function main() {
         name: "小林 六美",
         email: "teacher6@example.com",
         username: "TEACHER06",
-        passwordHash: hashSync("teacher123", 10),
+        passwordHash: "teacher123",
         role: UserRole.TEACHER,
       },
     }),
@@ -255,7 +255,7 @@ async function main() {
         name: "加藤 七海",
         email: "teacher7@example.com",
         username: "TEACHER07",
-        passwordHash: hashSync("teacher123", 10),
+        passwordHash: "teacher123",
         role: UserRole.TEACHER,
       },
     }),
@@ -264,7 +264,7 @@ async function main() {
         name: "山本 八郎",
         email: "teacher8@example.com",
         username: "TEACHER08",
-        passwordHash: hashSync("teacher123", 10),
+        passwordHash: "teacher123",
         role: UserRole.TEACHER,
       },
     }),
@@ -273,7 +273,7 @@ async function main() {
         name: "中村 九子",
         email: "teacher9@example.com",
         username: "TEACHER09",
-        passwordHash: hashSync("teacher123", 10),
+        passwordHash: "teacher123",
         role: UserRole.TEACHER,
       },
     }),
@@ -282,7 +282,7 @@ async function main() {
         name: "松本 十郎",
         email: "teacher10@example.com",
         username: "TEACHER10",
-        passwordHash: hashSync("teacher123", 10),
+        passwordHash: "teacher123",
         role: UserRole.TEACHER,
       },
     }),
@@ -291,7 +291,7 @@ async function main() {
         name: "井上 十一美",
         email: "teacher11@example.com",
         username: "TEACHER11",
-        passwordHash: hashSync("teacher123", 10),
+        passwordHash: "teacher123",
         role: UserRole.TEACHER,
       },
     }),
@@ -300,7 +300,7 @@ async function main() {
         name: "木村 十二郎",
         email: "teacher12@example.com",
         username: "TEACHER12",
-        passwordHash: hashSync("teacher123", 10),
+        passwordHash: "teacher123",
         role: UserRole.TEACHER,
       },
     }),
@@ -309,7 +309,7 @@ async function main() {
         name: "林 十三子",
         email: "teacher13@example.com",
         username: "TEACHER13",
-        passwordHash: hashSync("teacher123", 10),
+        passwordHash: "teacher123",
         role: UserRole.TEACHER,
       },
     }),
@@ -318,21 +318,21 @@ async function main() {
         name: "斎藤 十四郎",
         email: "teacher14@example.com",
         username: "TEACHER14",
-        passwordHash: hashSync("teacher123", 10),
+        passwordHash: "teacher123",
         role: UserRole.TEACHER,
       },
     }),
     // new student users
-    prisma.user.create({ data: { name: "生徒4", email: "student4@example.com", username: "STUDENT04", passwordHash: hashSync("student123", 10), role: UserRole.STUDENT } }),
-    prisma.user.create({ data: { name: "生徒5", email: "student5@example.com", username: "STUDENT05", passwordHash: hashSync("student123", 10), role: UserRole.STUDENT } }),
-    prisma.user.create({ data: { name: "生徒6", email: "student6@example.com", username: "STUDENT06", passwordHash: hashSync("student123", 10), role: UserRole.STUDENT } }),
-    prisma.user.create({ data: { name: "生徒7", email: "student7@example.com", username: "STUDENT07", passwordHash: hashSync("student123", 10), role: UserRole.STUDENT } }),
-    prisma.user.create({ data: { name: "生徒8", email: "student8@example.com", username: "STUDENT08", passwordHash: hashSync("student123", 10), role: UserRole.STUDENT } }),
-    prisma.user.create({ data: { name: "生徒9", email: "student9@example.com", username: "STUDENT09", passwordHash: hashSync("student123", 10), role: UserRole.STUDENT } }),
-    prisma.user.create({ data: { name: "生徒10", email: "student10@example.com", username: "STUDENT10", passwordHash: hashSync("student123", 10), role: UserRole.STUDENT } }),
-    prisma.user.create({ data: { name: "生徒11", email: "student11@example.com", username: "STUDENT11", passwordHash: hashSync("student123", 10), role: UserRole.STUDENT } }),
-    prisma.user.create({ data: { name: "生徒12", email: "student12@example.com", username: "STUDENT12", passwordHash: hashSync("student123", 10), role: UserRole.STUDENT } }),
-    prisma.user.create({ data: { name: "生徒13", email: "student13@example.com", username: "STUDENT13", passwordHash: hashSync("student123", 10), role: UserRole.STUDENT } }),
+    prisma.user.create({ data: { name: "生徒4", email: "student4@example.com", username: "STUDENT04", passwordHash: "student123", role: UserRole.STUDENT } }),
+    prisma.user.create({ data: { name: "生徒5", email: "student5@example.com", username: "STUDENT05", passwordHash: "student123", role: UserRole.STUDENT } }),
+    prisma.user.create({ data: { name: "生徒6", email: "student6@example.com", username: "STUDENT06", passwordHash: "student123", role: UserRole.STUDENT } }),
+    prisma.user.create({ data: { name: "生徒7", email: "student7@example.com", username: "STUDENT07", passwordHash: "student123", role: UserRole.STUDENT } }),
+    prisma.user.create({ data: { name: "生徒8", email: "student8@example.com", username: "STUDENT08", passwordHash: "student123", role: UserRole.STUDENT } }),
+    prisma.user.create({ data: { name: "生徒9", email: "student9@example.com", username: "STUDENT09", passwordHash: "student123", role: UserRole.STUDENT } }),
+    prisma.user.create({ data: { name: "生徒10", email: "student10@example.com", username: "STUDENT10", passwordHash: "student123", role: UserRole.STUDENT } }),
+    prisma.user.create({ data: { name: "生徒11", email: "student11@example.com", username: "STUDENT11", passwordHash: "student123", role: UserRole.STUDENT } }),
+    prisma.user.create({ data: { name: "生徒12", email: "student12@example.com", username: "STUDENT12", passwordHash: "student123", role: UserRole.STUDENT } }),
+    prisma.user.create({ data: { name: "生徒13", email: "student13@example.com", username: "STUDENT13", passwordHash: "student123", role: UserRole.STUDENT } }),
   ]);
 
   /* 2-a. StudentType */
@@ -562,7 +562,7 @@ async function main() {
     { preferenceId: pref5.preferenceId, dayOfWeek: DayOfWeek.WEDNESDAY, startTime: new Date("1970-01-01T11:00:00Z"), endTime: new Date("1970-01-01T12:00:00Z") },
   ] });
 
-  const student6 = await prisma.student.create({ data: { userId: studentUser6.id, name: studentUser6.name!, birthDate: new Date("2012-03-20"), gradeId: gradeElem6.gradeId } });
+  await prisma.student.create({ data: { userId: studentUser6.id, name: studentUser6.name!, birthDate: new Date("2012-03-20"), gradeId: gradeElem6.gradeId } });
   // No preferences for student6
 
   const student7 = await prisma.student.create({ data: { userId: studentUser7.id, name: studentUser7.name!, birthDate: new Date("2012-04-25"), gradeId: gradeElem6.gradeId } });
@@ -571,7 +571,7 @@ async function main() {
   await prisma.studentPreferenceSubject.create({ data: { studentPreferenceId: pref7.preferenceId, subjectId: subjectMap["理科"], subjectTypeId: subjectTypeMap["小学生"] } });
   await prisma.studentPreferenceTimeSlot.create({ data: { preferenceId: pref7.preferenceId, dayOfWeek: DayOfWeek.TUESDAY, startTime: new Date("1970-01-01T13:00:00Z"), endTime: new Date("1970-01-01T14:00:00Z") } });
 
-  const student8 = await prisma.student.create({ data: { userId: studentUser8.id, name: studentUser8.name!, birthDate: new Date("2011-05-30"), gradeId: gradeMid3.gradeId } });
+  await prisma.student.create({ data: { userId: studentUser8.id, name: studentUser8.name!, birthDate: new Date("2011-05-30"), gradeId: gradeMid3.gradeId } });
   // No preferences for student8
 
   const student9 = await prisma.student.create({ data: { userId: studentUser9.id, name: studentUser9.name!, birthDate: new Date("2011-06-05"), gradeId: gradeMid3.gradeId } });
@@ -834,7 +834,7 @@ async function main() {
   });
 
   /* 12. Add a regular class session (from template) */
-  const regularClassSession = await prisma.classSession.create({
+  await prisma.classSession.create({
     data: {
       date: new Date("2025-05-12"),
       startTime: new Date("1970-01-01T15:00:00Z"),
@@ -852,7 +852,7 @@ async function main() {
   });
 
   /* 13. Add a standalone class session (not from template) */
-  const standaloneClassSession = await prisma.classSession.create({
+  await prisma.classSession.create({
     data: {
       date: new Date("2025-05-13"),
       startTime: new Date("1970-01-01T10:00:00Z"),
