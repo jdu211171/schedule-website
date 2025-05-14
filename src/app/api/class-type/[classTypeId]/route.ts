@@ -13,9 +13,6 @@ export async function GET(
   try {
     const { classTypeId } = await params;
 
-    // No need for explicit schema validation here, as Next.js' dynamic route
-    // parameter already guarantees we have a string
-
     // Fetch the class type
     const classType = await prisma.classType.findUnique({
       where: { classTypeId },
