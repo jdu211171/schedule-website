@@ -1,10 +1,11 @@
-// components/match/hooks/useModalSelects.ts
+// Обновленная версия useModalSelects.ts с исправлением типов
+
 import { useState, useEffect, useCallback } from 'react';
 import { 
   Subject, 
   RegularClassTemplate, 
   TimeSlotPreference,
-  ClassType
+  ClassType,
 } from '../types';
 import { 
   fetchCompatibleSubjects, 
@@ -40,6 +41,11 @@ interface UseModalSelectsProps {
 
 // Hook return values
 interface UseModalSelectsReturn {
+  // Поля для типов предметов
+  subjectTypes: { subjectTypeId: string; name: string }[];
+  selectedSubjectType: string;
+  setSelectedSubjectType: (typeId: string) => void;
+  
   subjects: Subject[];
   availableDays: { value: string; label: string }[];
   availableTimeSlots: AvailableTimeSlot[];
@@ -96,7 +102,7 @@ export function useModalSelects({
   teacherId,
   studentId,
 }: UseModalSelectsProps): UseModalSelectsReturn {
-  // Data for selects
+  // Состояния данных для селектов
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [availableDays, setAvailableDays] = useState<{ value: string; label: string }[]>([]);
   const [availableTimeSlots, setAvailableTimeSlots] = useState<AvailableTimeSlot[]>([]);
@@ -104,7 +110,12 @@ export function useModalSelects({
   const [availableBooths, setAvailableBooths] = useState<Booth[]>([]);
   const [classTypes, setClassTypes] = useState<ClassType[]>([]);
   
-  // Selected values
+  // Состояния для типов предметов
+  const [subjectTypes, setSubjectTypes] = useState<{ subjectTypeId: string; name: string }[]>([]);
+  const [selectedSubjectType, setSelectedSubjectType] = useState<string>('');
+  const [allSubjects, setAllSubjects] = useState<Subject[]>([]);
+  
+  // Выбранные значения
   const [selectedSubject, setSelectedSubject] = useState<string>('');
   const [selectedDay, setSelectedDay] = useState<string>('');
   const [selectedStartTime, setSelectedStartTime] = useState<string>('');
@@ -115,14 +126,14 @@ export function useModalSelects({
   const [selectedStartDate, setSelectedStartDate] = useState<string | null>(null);
   const [selectedEndDate, setSelectedEndDate] = useState<string | null>(null);
   
-  // Loading states
+  // Состояния загрузки
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [hasCommonSubjects, setHasCommonSubjects] = useState<boolean>(true);
   const [hasCommonDays, setHasCommonDays] = useState<boolean>(true);
   const [hasCommonTimeSlots, setHasCommonTimeSlots] = useState<boolean>(true);
   
-  // Data caching
+  // Кэширование данных
   const [cachedData, setCachedData] = useState<{
     subjects?: { teacherId: string; studentId: string; data: Subject[] };
     timeSlots?: { teacherId: string; studentId: string; data: AvailableTimeSlot[] };
@@ -130,9 +141,8 @@ export function useModalSelects({
     classTypes?: { data: ClassType[] };
   }>({});
   
-  // Format time string to uniform HH:MM format
+  // Форматирование строки времени
   const formatTimeString = useCallback((timeString: string): string => {
-    // If time is in ISO string format (e.g., "1970-01-01T14:00:00.000Z")
     if (timeString.includes('T')) {
       const date = new Date(timeString);
       return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
@@ -140,13 +150,42 @@ export function useModalSelects({
     return timeString;
   }, []);
   
-  // Helper function for converting time to minutes
+  // Конвертация времени в минуты
   const timeToMinutes = useCallback((time: string): number => {
     const [hours, minutes] = time.split(':').map(Number);
     return hours * 60 + minutes;
   }, []);
   
-  // Function for calculating the end time of the lesson
+// Извлечение уникальных типов предметов
+const extractSubjectTypes = useCallback((subjectsList: Subject[]) => {
+  const uniqueTypes = new Map<string, { subjectTypeId: string; name: string }>();
+  
+  subjectsList.forEach(subject => {
+    if (subject.subjectTypeId) {
+      let typeName = "";
+      
+      // Проверяем разные варианты формата данных
+      if (typeof subject.subjectType === 'object' && subject.subjectType !== null) {
+        if ('name' in subject.subjectType) {
+          typeName = subject.subjectType.name as string;
+        }
+      } else if (typeof subject.subjectType === 'string') {
+        typeName = subject.subjectType;
+      } else {
+        typeName = `Тип ${subject.subjectTypeId}`;
+      }
+      
+      uniqueTypes.set(subject.subjectTypeId, {
+        subjectTypeId: subject.subjectTypeId,
+        name: typeName
+      });
+    }
+  });
+  
+  return Array.from(uniqueTypes.values());
+}, []);
+  
+  // Расчет времени окончания занятия
   const calculateEndTime = useCallback((startTime: string, duration: string): string => {
     if (!startTime) return '';
     
@@ -168,12 +207,12 @@ export function useModalSelects({
     }
   }, []);
   
-  // Function to get day of week label
+  // Получение метки дня недели
   const getDayLabel = useCallback((dayValue: string): string => {
     return dayMapping[dayValue] || dayValue;
   }, []);
   
-  // Helper function for calculating duration
+  // Проверка соответствия длительности занятия
   const checkDurationFit = useCallback((startTime: string, durationMinutes: number, timeSlots: AvailableTimeSlot[]): boolean => {
     const startMinutes = timeToMinutes(startTime);
     const endMinutes = startMinutes + durationMinutes;
@@ -185,7 +224,7 @@ export function useModalSelects({
     });
   }, [timeToMinutes, formatTimeString]);
   
-  // Update end time when start time or duration changes
+  // Обновление времени окончания при изменении начала или длительности
   const updateEndTime = useCallback((startTime: string, duration: string) => {
     if (!startTime) {
       setSelectedEndTime('');
@@ -196,13 +235,11 @@ export function useModalSelects({
     setSelectedEndTime(endTime);
   }, [calculateEndTime]);
   
-  // Function to get min and max dates for date pickers
+  // Получение минимальной и максимальной даты для выбора
   const getMinMaxDates = useCallback(() => {
-    // Today at midnight - минимальная дата начала
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    // For maxEndDate, calculate 2 years from selectedStartDate if exists, otherwise 2 years from today
     const startDate = selectedStartDate ? new Date(selectedStartDate) : today;
     const maxDate = new Date(startDate);
     maxDate.setFullYear(maxDate.getFullYear() + 2);
@@ -213,8 +250,9 @@ export function useModalSelects({
     };
   }, [selectedStartDate]);
   
-  // Method to reset the form
+  // Сброс формы
   const resetForm = useCallback(() => {
+    setSelectedSubjectType('');
     setSelectedSubject('');
     setSelectedDay('');
     setSelectedStartTime('');
@@ -222,24 +260,19 @@ export function useModalSelects({
     setSelectedDuration('90分');
     setSelectedBooth('');
     
-    // Set default class type (通常授業) if available
-    const defaultType = classTypes.find(type => type.name === '通常授業');
-    if (defaultType) {
-      setSelectedClassType(defaultType.classTypeId);
-    } else if (classTypes.length > 0) {
-      setSelectedClassType(classTypes[0].classTypeId);
-    } else {
-      setSelectedClassType('');
-    }
-    
-    // Set today as start date
+    // Установка сегодняшней даты как даты начала
     const today = new Date();
     const formattedDate = today.toISOString().split('T')[0];
     setSelectedStartDate(formattedDate);
     setSelectedEndDate(null);
-  }, [classTypes]);
+    
+    // Фильтрация предметов по типу (сброс фильтра)
+    if (allSubjects.length > 0) {
+      setSubjects(allSubjects);
+    }
+  }, [allSubjects]);
   
-  // Extract unique days of the week from time slots
+  // Извлечение доступных дней недели из временных слотов
   const extractAvailableDays = useCallback((timeSlots: AvailableTimeSlot[]) => {
     if (!timeSlots || timeSlots.length === 0) {
       setAvailableDays([]);
@@ -267,7 +300,7 @@ export function useModalSelects({
     }
   }, []);
   
-  // Function to get duration options
+  // Получение опций длительности
   const getDurationOptions = useCallback((): { value: string; isAvailable: boolean }[] => {
     if (!selectedStartTime || !selectedDay || availableTimeSlots.length === 0) {
       return [
@@ -277,7 +310,6 @@ export function useModalSelects({
       ];
     }
     
-    // Find an available time slot that contains the selected start time
     const relevantTimeSlots = availableTimeSlots.filter(slot => {
       const slotStart = formatTimeString(slot.startTime);
       const slotEnd = formatTimeString(slot.endTime);
@@ -297,7 +329,6 @@ export function useModalSelects({
       ];
     }
     
-    // Determine which durations fit into the available slot
     return [
       { 
         value: '60分', 
@@ -314,7 +345,7 @@ export function useModalSelects({
     ];
   }, [selectedStartTime, selectedDay, availableTimeSlots, timeToMinutes, formatTimeString, checkDurationFit]);
   
-  // Handler for changing time with step
+  // Обработчик изменения времени с шагом
   const handleTimeStep = useCallback((minutesToAdd: number) => {
     if (!selectedStartTime) {
       if (availableStartTimes.length > 0) {
@@ -352,7 +383,6 @@ export function useModalSelects({
       return;
     }
     
-    // Round up to the nearest 15 minutes
     totalMinutes = Math.round(totalMinutes / 15) * 15;
     
     const newHours = Math.floor(totalMinutes / 60) % 24;
@@ -362,13 +392,11 @@ export function useModalSelects({
     setSelectedStartTime(newTime);
   }, [selectedStartTime, availableTimeSlots, availableStartTimes, formatTimeString, timeToMinutes]);
   
-  // Load class types
+  // Загрузка типов классов
   const loadClassTypes = useCallback(async () => {
-    // If we already have cached class types, use them
     if (cachedData.classTypes) {
       setClassTypes(cachedData.classTypes.data);
       
-      // Set default class type (通常授業) if available
       const defaultType = cachedData.classTypes.data.find((type: ClassType) => type.name === '通常授業');
       if (defaultType) {
         setSelectedClassType(defaultType.classTypeId);
@@ -384,7 +412,6 @@ export function useModalSelects({
       const classTypesData = response.data || [];
       setClassTypes(classTypesData);
       
-      // Set default class type (通常授業) if available
       const defaultType = classTypesData.find((type: ClassType) => type.name === '通常授業');
       if (defaultType) {
         setSelectedClassType(defaultType.classTypeId);
@@ -403,66 +430,84 @@ export function useModalSelects({
     }
   }, [cachedData.classTypes]);
   
-  // Loading compatible subjects
-  const loadCompatibleSubjects = useCallback(async () => {
-    if (!teacherId || !studentId) return;
-    
-    if (cachedData.subjects && 
-        cachedData.subjects.teacherId === teacherId && 
-        cachedData.subjects.studentId === studentId) {
-      setSubjects(cachedData.subjects.data);
-      setHasCommonSubjects(cachedData.subjects.data.length > 0);
-      
-      if (cachedData.subjects.data.length === 1) {
-        setSelectedSubject(cachedData.subjects.data[0].subjectId);
-      }
-      
-      return;
-    }
-    
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const response = await fetchCompatibleSubjects(teacherId, studentId);
-      
-      // Using only common subjects (commonSubjects)
-      const commonSubjects = response.data?.commonSubjects || [];
-      setSubjects(commonSubjects);
-      setHasCommonSubjects(commonSubjects.length > 0);
-      
-      // If there is only one item, select it automatically
-      if (commonSubjects.length === 1) {
-        setSelectedSubject(commonSubjects[0].subjectId);
-      }
-      
-      setCachedData(prev => ({
-        ...prev,
-        subjects: {
-          teacherId,
-          studentId,
-          data: commonSubjects
-        }
-      }));
-    } catch (err) {
-      console.error('Error loading compatible subjects:', err);
-      setError('Error loading available subjects');
-      setHasCommonSubjects(false);
-    } finally {
-      setLoading(false);
-    }
-  }, [teacherId, studentId, cachedData.subjects]);
+  // Загрузка совместимых предметов
+  // Модифицированная функция loadCompatibleSubjects
+const loadCompatibleSubjects = useCallback(async () => {
+  if (!teacherId || !studentId) return;
   
+  if (cachedData.subjects && 
+      cachedData.subjects.teacherId === teacherId && 
+      cachedData.subjects.studentId === studentId) {
+    setSubjects(cachedData.subjects.data);
+    setHasCommonSubjects(cachedData.subjects.data.length > 0);
+    
+    const types = extractSubjectTypes(cachedData.subjects.data);
+    setSubjectTypes(types);
+    
+    return;
+  }
+  
+  setLoading(true);
+  setError(null);
+  
+  try {
+    const response = await fetchCompatibleSubjects(teacherId, studentId);
+    
+    // Получаем сырые предметы из API
+    const rawSubjects = response.data?.commonSubjects || [];
+    
+    // Преобразуем предметы, добавляя имя, если оно отсутствует
+    const processedSubjects = rawSubjects.map(subject => {
+      // Если у предмета нет name, но есть вложенный subject с name
+      if (!subject.name && subject.subject && subject.subject.name) {
+        return {
+          ...subject,
+          name: subject.subject.name // Добавляем имя из вложенного объекта
+        };
+      }
+      return subject;
+    });
+    
+    setAllSubjects(processedSubjects);
+    setSubjects(processedSubjects);
+    setHasCommonSubjects(processedSubjects.length > 0);
+    
+    // Извлекаем уникальные типы предметов
+    const types = extractSubjectTypes(processedSubjects);
+    setSubjectTypes(types);
+    
+    // Если есть хотя бы один тип, выбираем его по умолчанию
+    if (types.length > 0) {
+      setSelectedSubjectType(types[0].subjectTypeId);
+    }
+    
+    setCachedData(prev => ({
+      ...prev,
+      subjects: {
+        teacherId,
+        studentId,
+        data: processedSubjects
+      }
+    }));
+  } catch (err) {
+    console.error('Error loading compatible subjects:', err);
+    setError('Error loading available subjects');
+    setHasCommonSubjects(false);
+  } finally {
+    setLoading(false);
+  }
+}, [teacherId, studentId, cachedData.subjects, extractSubjectTypes]);
+  
+  // Загрузка доступных временных слотов
   const loadAvailableTimeSlots = useCallback(async () => {
     if (!teacherId || !studentId) return;
     
     if (cachedData.timeSlots && 
         cachedData.timeSlots.teacherId === teacherId && 
         cachedData.timeSlots.studentId === studentId) {
+      
       setAvailableTimeSlots(cachedData.timeSlots.data);
-      
       extractAvailableDays(cachedData.timeSlots.data);
-      
       return;
     }
     
@@ -472,10 +517,8 @@ export function useModalSelects({
     try {
       const response = await fetchAvailableTimeSlots(teacherId, studentId);
       
-      // Transform data from API response to AvailableTimeSlot structure
       const timeSlots: AvailableTimeSlot[] = [];
       
-      // Convert student preferences to available slots
       const studentPreferences = response.data?.studentPreferences || [];
       studentPreferences.forEach((pref: TimeSlotPreference) => {
         if (pref.dayOfWeek && pref.startTime && pref.endTime) {
@@ -488,7 +531,6 @@ export function useModalSelects({
         }
       });
       
-      // Add available slots from API response
       const availableSlots = response.data?.availableSlots || [];
       availableSlots.forEach((slot: TimeSlotPreference) => {
         if (slot.dayOfWeek && slot.startTime && slot.endTime) {
@@ -527,7 +569,7 @@ export function useModalSelects({
     }
   }, [teacherId, studentId, cachedData.timeSlots, extractAvailableDays]);
   
-  // Generate available class start times in 15 minute increments
+  // Генерация доступных времен начала с шагом 15 минут
   const generateAvailableStartTimes = useCallback(() => {
     if (!selectedDay || availableTimeSlots.length === 0) {
       setAvailableStartTimes([]);
@@ -570,7 +612,7 @@ export function useModalSelects({
     }
   }, [selectedDay, availableTimeSlots, selectedStartTime, selectedDuration, formatTimeString, timeToMinutes, updateEndTime]);
   
-  // Loading available booths
+  // Загрузка доступных кабинетов
   const loadAvailableBooths = useCallback(async () => {
     if (!selectedDay || !selectedStartTime || !selectedEndTime) return;
     
@@ -578,6 +620,7 @@ export function useModalSelects({
         cachedData.booths.dayOfWeek === selectedDay && 
         cachedData.booths.startTime === selectedStartTime &&
         cachedData.booths.endTime === selectedEndTime) {
+      
       setAvailableBooths(cachedData.booths.data);
       
       if (cachedData.booths.data.length === 1) {
@@ -618,11 +661,25 @@ export function useModalSelects({
     }
   }, [selectedDay, selectedStartTime, selectedEndTime, cachedData.booths]);
   
-  // Function for creating regular class session
+  // Создание регулярного занятия
   const createClassSession = useCallback(async (notes?: string): Promise<boolean> => {
     if (!teacherId || !studentId || !selectedSubject || !selectedDay || 
-        !selectedStartTime || !selectedEndTime || !selectedBooth || !selectedClassType) {
+        !selectedStartTime || !selectedEndTime || !selectedBooth) {
       setError('すべての必須フィールドを入力してください');
+      return false;
+    }
+    
+    // Находим выбранный предмет для получения subjectTypeId
+    const selectedSubjectObj = allSubjects.find(s => s.subjectId === selectedSubject);
+    if (!selectedSubjectObj || !selectedSubjectObj.subjectTypeId) {
+      setError('選択された科目のタイプがありません');
+      return false;
+    }
+    
+    // Находим ID типа класса "通常授業" (обычное занятие)
+    const defaultClassType = classTypes.find(type => type.name === '通常授業');
+    if (!defaultClassType) {
+      setError('デフォルトのクラスタイプが見つかりません');
       return false;
     }
     
@@ -636,9 +693,10 @@ export function useModalSelects({
         endTime: selectedEndTime,
         teacherId: teacherId,
         subjectId: selectedSubject,
+        subjectTypeId: selectedSubjectObj.subjectTypeId,
         boothId: selectedBooth,
         studentIds: [studentId],
-        classTypeId: selectedClassType,
+        classTypeId: defaultClassType.classTypeId,
         startDate: selectedStartDate || undefined,
         endDate: selectedEndDate || undefined,
         notes: notes || `${getDayLabel(selectedDay)} ${selectedStartTime}-${selectedEndTime}`
@@ -661,10 +719,10 @@ export function useModalSelects({
   }, [
     teacherId, studentId, selectedSubject, selectedDay, selectedStartTime, 
     selectedEndTime, selectedBooth, getDayLabel, resetForm, 
-    selectedClassType, selectedStartDate, selectedEndDate
+    allSubjects, classTypes, selectedStartDate, selectedEndDate
   ]);
   
-  // Handler for changing the selected day
+  // Обработчик изменения дня
   const handleDayChange = useCallback((day: string) => {
     setSelectedDay(day);
     setSelectedStartTime('');
@@ -672,13 +730,13 @@ export function useModalSelects({
     setSelectedBooth('');
   }, []);
   
-  // Start time change handler
+  // Обработчик изменения времени начала
   const handleStartTimeChange = useCallback((time: string) => {
     setSelectedStartTime(time);
     setSelectedBooth('');
   }, []);
   
-  // Duration change handler
+  // Обработчик изменения длительности
   const handleDurationChange = useCallback((duration: string) => {
     setSelectedDuration(duration);
     if (selectedStartTime) {
@@ -687,7 +745,40 @@ export function useModalSelects({
     setSelectedBooth('');
   }, [selectedStartTime, updateEndTime]);
   
-  // Set default start date
+  // Эффект для фильтрации предметов при выборе типа предмета
+  // Эффект для фильтрации предметов по типу
+useEffect(() => {
+  if (selectedSubjectType && allSubjects.length > 0) {
+    const filtered = allSubjects.filter(
+      subject => subject.subjectTypeId === selectedSubjectType
+    );
+    
+    setSubjects(filtered);
+    
+    // Если отфильтрованный список пуст, покажем предупреждение в консоли
+    if (filtered.length === 0) {
+      console.warn('No subjects found for selected type:', selectedSubjectType);
+    }
+    
+    // Если выбранный предмет не принадлежит к выбранному типу, сбрасываем его
+    if (selectedSubject) {
+      const subjectExists = filtered.some(s => s.subjectId === selectedSubject);
+      if (!subjectExists) {
+        setSelectedSubject('');
+      }
+    }
+    
+    // Автоматически выбираем предмет, если он только один
+    if (filtered.length === 1) {
+      setSelectedSubject(filtered[0].subjectId);
+    }
+  } else if (allSubjects.length > 0) {
+    // Если тип не выбран, показываем все предметы
+    setSubjects(allSubjects);
+  }
+}, [selectedSubjectType, allSubjects, selectedSubject, setSelectedSubject]);
+  
+  // Установка даты начала по умолчанию
   useEffect(() => {
     if (!selectedStartDate) {
       const today = new Date();
@@ -696,7 +787,7 @@ export function useModalSelects({
     }
   }, [selectedStartDate]);
   
-  // Effect for loading data when opening modal window
+  // Эффект для загрузки данных при открытии модального окна
   useEffect(() => {
     loadClassTypes();
     
@@ -706,7 +797,7 @@ export function useModalSelects({
     }
   }, [teacherId, studentId, loadCompatibleSubjects, loadAvailableTimeSlots, loadClassTypes]);
   
-  // Effect for generating available start times when selecting a day
+  // Эффект для генерации доступных времен начала при выборе дня
   useEffect(() => {
     if (selectedDay) {
       generateAvailableStartTimes();
@@ -715,7 +806,7 @@ export function useModalSelects({
     }
   }, [selectedDay, generateAvailableStartTimes]);
   
-  // Effect for loading cabinets when time changes
+  // Эффект для загрузки кабинетов при изменении времени
   useEffect(() => {
     if (selectedDay && selectedStartTime && selectedEndTime) {
       loadAvailableBooths();
@@ -724,13 +815,16 @@ export function useModalSelects({
     }
   }, [selectedDay, selectedStartTime, selectedEndTime, loadAvailableBooths]);
   
-  // Effect to update end time when start time or duration changes
+  // Эффект для обновления времени окончания при изменении времени начала или длительности
   useEffect(() => {
     updateEndTime(selectedStartTime, selectedDuration);
   }, [selectedStartTime, selectedDuration, updateEndTime]);
   
   return {
-    // Data for selects
+    // Данные для селектов
+    subjectTypes,
+    selectedSubjectType,
+    setSelectedSubjectType,
     subjects,
     availableDays,
     availableTimeSlots,
@@ -738,7 +832,7 @@ export function useModalSelects({
     availableBooths,
     classTypes,
     
-    // Selected values
+    // Выбранные значения
     selectedSubject,
     selectedDay,
     selectedStartTime,
@@ -749,7 +843,7 @@ export function useModalSelects({
     selectedStartDate,
     selectedEndDate,
     
-    // Setters for selected values
+    // Сеттеры для выбранных значений
     setSelectedSubject,
     setSelectedDay: handleDayChange,
     setSelectedStartTime: handleStartTimeChange,
@@ -759,14 +853,14 @@ export function useModalSelects({
     setSelectedStartDate,
     setSelectedEndDate,
     
-    // Loading states
+    // Состояния загрузки
     loading,
     error,
     hasCommonSubjects,
     hasCommonDays,
     hasCommonTimeSlots,
     
-    // Useful methods
+    // Полезные методы
     calculateEndTime,
     getDayLabel,
     getDurationOptions,

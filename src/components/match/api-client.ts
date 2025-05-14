@@ -210,6 +210,8 @@ export const fetchClassSessions = async (params: PaginationParams & {
  * Использует новый эндпоинт action=compatible-subjects
  */
 export const fetchCompatibleSubjects = async (teacherId: string, studentId: string): Promise<CompatibleSubjectsResponse> => {
+  console.log(`Fetching compatible subjects for teacher ${teacherId} and student ${studentId}`);
+  
   try {
     const { data } = await axios.get(`${API_URL}/regular-class-templates`, {
       params: {
@@ -219,8 +221,27 @@ export const fetchCompatibleSubjects = async (teacherId: string, studentId: stri
       }
     });
     
+    console.log("Compatible subjects API response:", data);
+    
     if (!data || !data.data) {
+      console.error('Invalid response data structure:', data);
       throw new Error('Invalid response data');
+    }
+    
+    // Логирование количества найденных предметов
+    console.log(`Found ${data.data.commonSubjects?.length || 0} common subjects`);
+    console.log(`Found ${data.data.otherSubjects?.length || 0} other subjects`);
+    console.log(`Found ${data.data.allSubjects?.length || 0} total subjects`);
+    
+    // Проверка типов в полученных данных
+    if (data.data.commonSubjects && data.data.commonSubjects.length > 0) {
+      const firstSubject = data.data.commonSubjects[0];
+      console.log("Sample subject structure:", {
+        subjectId: firstSubject.subjectId,
+        name: firstSubject.name,
+        subjectTypeId: firstSubject.subjectTypeId,
+        subjectType: firstSubject.subjectType
+      });
     }
     
     return data;
@@ -322,6 +343,7 @@ export const updateRegularClassTemplate = async (templateData: {
   endTime?: string;
   teacherId?: string;
   subjectId?: string;
+  subjectTypeId?: string; 
   boothId?: string;
   classTypeId?: string; 
   studentIds?: string[];

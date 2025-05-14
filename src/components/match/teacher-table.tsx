@@ -196,7 +196,7 @@ export default function TeacherTable({
           <span className="text-foreground font-medium text-sm">希望科目：</span>
           {kibouSubjects.length > 0 ? (
             kibouSubjects.map((subject) => (
-              <SubjectBadge key={subject.subjectId} subject={subject} size="sm" />
+              <SubjectBadge key={subject.subjectId} subject={subject} size="sm"  />
             ))
           ) : (
             <span className="text-muted-foreground text-xs italic">...</span>
@@ -277,7 +277,7 @@ export default function TeacherTable({
                   onClick={() => onTeacherSelect(teacher.teacherId)}
                   className={`cursor-pointer ${
                     selectedTeacherId === teacher.teacherId
-                      ? "bg-muted hover:bg-muted/90 dark:bg-muted/50 dark:hover:bg-muted/60"
+                      ? "bg-green-50 hover:bg-green-100 dark:bg-green-800/30 dark:hover:bg-green-800/40"
                       : "hover:bg-accent/50 dark:hover:bg-accent/20"
                   }`}
                 >

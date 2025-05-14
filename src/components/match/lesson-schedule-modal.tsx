@@ -43,11 +43,11 @@ function ErrorNotification({ message, onClose }: { message: string; onClose: () 
   if (!message) return null;
 
   return (
-    <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md shadow-md flex items-center py-2 px-4 max-w-md animate-in fade-in slide-in-from-top-5">
-      <span className="text-red-600 dark:text-red-400 mr-2 flex-shrink-0">
+    <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-red-50 dark:bg-destructive/10 border border-red-200 dark:border-destructive/20 rounded-md shadow-md flex items-center py-2 px-4 max-w-md animate-in fade-in slide-in-from-top-5">
+      <span className="text-red-600 dark:text-destructive mr-2 flex-shrink-0">
         <AlertTriangle className="h-5 w-5" />
       </span>
-      <span className="text-sm text-red-700 dark:text-red-400">{message}</span>
+      <span className="text-sm text-red-700 dark:text-destructive/90">{message}</span>
       <button onClick={onClose} className="ml-3 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 flex-shrink-0">
         <X className="h-5 w-5" />
       </button>
@@ -60,14 +60,14 @@ function SuccessNotification({ message, onClose }: { message: string; onClose: (
   if (!message) return null;
 
   return (
-    <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md shadow-md flex items-center py-2 px-4 max-w-md animate-in fade-in slide-in-from-top-5">
-      <span className="text-green-600 dark:text-green-400 mr-2 flex-shrink-0">
+    <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-green-50 dark:bg-accent/20 border border-green-200 dark:border-accent/30 rounded-md shadow-md flex items-center py-2 px-4 max-w-md animate-in fade-in slide-in-from-top-5">
+      <span className="text-green-600 dark:text-accent-foreground mr-2 flex-shrink-0">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
           <polyline points="22 4 12 14.01 9 11.01"></polyline>
         </svg>
       </span>
-      <span className="text-sm text-green-700 dark:text-green-400">{message}</span>
+      <span className="text-sm text-green-700 dark:text-accent-foreground">{message}</span>
       <button onClick={onClose} className="ml-3 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 flex-shrink-0">
         <X className="h-5 w-5" />
       </button>
@@ -86,14 +86,14 @@ interface LessonScheduleModalProps {
 }
 
 export default function LessonScheduleModal({
-                                              onClose,
-                                              teacherName,
-                                              studentName,
-                                              teacherId,
-                                              studentId,
-                                              open,
-                                              onAddLesson, // eslint-disable-line @typescript-eslint/no-unused-vars
-                                            }: LessonScheduleModalProps) {
+  onClose,
+  teacherName,
+  studentName,
+  teacherId,
+  studentId,
+  open,
+  onAddLesson, // eslint-disable-line @typescript-eslint/no-unused-vars
+}: LessonScheduleModalProps) {
   // State for error display
   const [errorMessage, setErrorMessage] = useState<string>("");
   const [successMessage, setSuccessMessage] = useState<string>("");
@@ -118,6 +118,11 @@ export default function LessonScheduleModal({
 
   // Using our hook for API operations
   const {
+    // Поля для типов предметов
+    subjectTypes,
+    selectedSubjectType,
+    setSelectedSubjectType,
+    
     // Data for selects
     subjects,
     availableDays,
@@ -175,10 +180,10 @@ export default function LessonScheduleModal({
 
   // Track changes for close warning
   useEffect(() => {
-    if (selectedSubject || selectedBooth || selectedClassType || selectedStartDate || selectedEndDate) {
+    if (selectedSubjectType || selectedSubject || selectedBooth || selectedStartDate || selectedEndDate) {
       setHasChanges(true);
     }
-  }, [selectedSubject, selectedBooth, selectedClassType, selectedStartDate, selectedEndDate]);
+  }, [selectedSubjectType, selectedSubject, selectedBooth, selectedStartDate, selectedEndDate]);
 
   // Cancel edit mode
   const cancelEdit = () => {
@@ -203,10 +208,26 @@ export default function LessonScheduleModal({
     setIsEditMode(true);
     setEditingLesson(lesson);
 
-    setSelectedSubject(lesson.subjectId || "");
+    // Находим предмет по ID
+    const subjectInfo = subjects.find(s => s.subjectId === lesson.subjectId);
+    
+    // Если нашли предмет и у него есть тип, устанавливаем его
+    if (subjectInfo && subjectInfo.subjectTypeId) {
+      setSelectedSubjectType(subjectInfo.subjectTypeId);
+      
+      // Дальше устанавливаем предмет
+      // Делаем это с задержкой, чтобы отфильтрованные предметы успели обновиться
+      setTimeout(() => {
+        setSelectedSubject(lesson.subjectId || "");
+      }, 0);
+    } else {
+      // Если не нашли тип предмета, просто устанавливаем сам предмет
+      setSelectedSubject(lesson.subjectId || "");
+    }
+    
     setSelectedDay(lesson.dayOfWeek);
 
-    // Calculate duration from start and end time
+    // Расчет длительности по времени начала и окончания
     const startMinutes = timeToMinutes(lesson.startTime);
     const endMinutes = timeToMinutes(lesson.endTime);
     const durationMinutes = endMinutes - startMinutes;
@@ -224,20 +245,13 @@ export default function LessonScheduleModal({
     setSelectedStartTime(lesson.startTime);
     setSelectedBooth(lesson.boothId || "");
 
-    // Set class type if available, otherwise default
-    if (lesson.classTypeId) {
-      setSelectedClassType(lesson.classTypeId);
-    } else {
-      // Find default class type (通常授業)
-      const defaultType = classTypes.find(type => type.name === '通常授業');
-      if (defaultType) {
-        setSelectedClassType(defaultType.classTypeId);
-      } else if (classTypes.length > 0) {
-        setSelectedClassType(classTypes[0].classTypeId);
-      }
+    // Находим тип класса "通常授業" (обычное занятие)
+    const defaultType = classTypes.find(type => type.name === '通常授業');
+    if (defaultType) {
+      setSelectedClassType(defaultType.classTypeId);
     }
 
-    // Set start and end dates
+    // Устанавливаем даты начала и окончания
     setSelectedStartDate(lesson.startDate || formatCurrentDate());
     setSelectedEndDate(lesson.endDate || null);
 
@@ -275,8 +289,22 @@ export default function LessonScheduleModal({
 
   // Save/update lesson handler
   const handleSaveLesson = async () => {
-    if (!selectedSubject || !selectedDay || !selectedStartTime || !selectedEndTime || !selectedBooth || !selectedClassType) {
+    if (!selectedSubject || !selectedDay || !selectedStartTime || !selectedEndTime || !selectedBooth) {
       setErrorMessage("すべての必須フィールドを入力してください");
+      return;
+    }
+
+    // Находим выбранный предмет для получения subjectTypeId
+    const selectedSubjectObj = subjects.find(s => s.subjectId === selectedSubject);
+    if (!selectedSubjectObj || !selectedSubjectObj.subjectTypeId) {
+      setErrorMessage("選択された科目のタイプがありません");
+      return;
+    }
+
+    // Находим ID для типа класса "通常授業" (обычное занятие)
+    const defaultClassType = classTypes.find(type => type.name === '通常授業');
+    if (!defaultClassType) {
+      setErrorMessage("デフォルトのクラスタイプが見つかりません");
       return;
     }
 
@@ -288,9 +316,10 @@ export default function LessonScheduleModal({
           startTime: selectedStartTime,
           endTime: selectedEndTime,
           subjectId: selectedSubject,
+          subjectTypeId: selectedSubjectObj.subjectTypeId,
           boothId: selectedBooth,
           studentIds: [studentId],
-          classTypeId: selectedClassType,
+          classTypeId: defaultClassType.classTypeId,
           startDate: selectedStartDate || undefined,
           endDate: selectedEndDate || undefined,
           notes: `編集: ${selectedDay} ${selectedStartTime}-${selectedEndTime}`
@@ -316,7 +345,7 @@ export default function LessonScheduleModal({
         setErrorMessage("授業の保存に失敗しました。後でもう一度お試しください。");
       }
     }
-  }
+  };
 
   // Modal close handler
   const handleClose = () => {
@@ -363,9 +392,9 @@ export default function LessonScheduleModal({
         />
       )}
 
-      <div className="bg-white dark:bg-gray-900 w-[85%] max-w-[1200px] max-h-[95vh] rounded-lg shadow-lg flex flex-col">
+      <div className="bg-white dark:bg-card w-[85%] max-w-[1200px] max-h-[95vh] rounded-lg shadow-lg flex flex-col">
         {/* Header */}
-        <div className="px-6 py-3 border-input flex justify-between items-center">
+        <div className="px-6 py-3 border-b border-input flex justify-between items-center">
           <div>
             <h2 className="flex items-center text-foreground font-bold text-xl">
               <BookOpen className="mr-2 h-5 w-5" />
@@ -396,13 +425,18 @@ export default function LessonScheduleModal({
           {/* Loading indicator */}
           {(loading || lessonsLoading) && (
             <div className="p-4 text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-muted-foreground mx-auto"></div>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
               <p className="mt-2 text-muted-foreground">データを読み込み中...</p>
             </div>
           )}
 
           {/* Selects component */}
           <LessonModalSelects
+            // Поля для типов предметов
+            subjectTypes={subjectTypes}
+            selectedSubjectType={selectedSubjectType}
+            setSelectedSubjectType={setSelectedSubjectType}
+            
             // Select data
             subjects={subjects}
             availableDays={availableDays}
@@ -449,7 +483,7 @@ export default function LessonScheduleModal({
             {isEditMode && (
               <Button
                 variant="outline"
-                className="py-6 cursor-pointer flex-1 hover:bg-accent/50 dark:hover:bg-accent/20"
+                className="py-6 cursor-pointer flex-1 hover:bg-accent dark:hover:bg-accent"
                 onClick={cancelEdit}
               >
                 キャンセル
@@ -458,21 +492,21 @@ export default function LessonScheduleModal({
 
             <Button
               className={`py-6 cursor-pointer flex-1 ${
-                hasNoMatchingOptions || !selectedSubject || !selectedDay || !selectedStartTime || !selectedBooth || !selectedClassType || loading
+                hasNoMatchingOptions || !selectedSubject || !selectedDay || !selectedStartTime || !selectedBooth || loading
                   ? 'opacity-50 cursor-not-allowed'
                   : isEditMode
-                    ? 'bg-accent/20 dark:bg-accent/10 text-foreground border-primary hover:bg-accent/50 dark:hover:bg-accent/20'
-                    : 'bg-black hover:bg-gray-800 text-white'
+                    ? 'bg-primary/20 dark:bg-primary/20 text-foreground border-primary hover:bg-primary/30 dark:hover:bg-primary/30'
+                    : 'bg-primary hover:bg-primary/90 text-primary-foreground dark:bg-primary dark:hover:bg-primary/90 dark:text-primary-foreground'
               }`}
               onClick={handleSaveLesson}
-              disabled={hasNoMatchingOptions || !selectedSubject || !selectedDay || !selectedStartTime || !selectedBooth || !selectedClassType || loading}
+              disabled={hasNoMatchingOptions || !selectedSubject || !selectedDay || !selectedStartTime || !selectedBooth || loading}
             >
               {isEditMode ? "授業を更新" : "授業を追加"}
             </Button>
           </div>
 
           {/* Weekly schedule with updated logic for different lesson types */}
-          <div className="mt-2 border-t pt-2">
+          <div className="mt-2 border-t border-input pt-2">
             <WeeklySchedule
               lessons={lessons}
               onLessonClick={handleLessonClick}
@@ -491,7 +525,7 @@ export default function LessonScheduleModal({
           <Button
             variant="destructive"
             onClick={handleClose}
-            className="cursor-pointer mr-2 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-800/30"
+            className="cursor-pointer mr-2 bg-red-50 dark:bg-destructive/10 text-red-700 dark:text-destructive hover:bg-red-100 dark:hover:bg-destructive/20"
             disabled={loading}
           >
             キャンセル
@@ -500,7 +534,7 @@ export default function LessonScheduleModal({
             variant="default"
             disabled={!hasChanges || loading}
             onClick={() => setIsConfirmOpen(true)}
-            className={`cursor-pointer bg-black text-white hover:bg-gray-800 ${!hasChanges || loading ? 'opacity-50' : ''}`}
+            className={`cursor-pointer bg-primary text-primary-foreground hover:bg-primary/90 dark:bg-primary dark:hover:bg-primary/90 dark:text-primary-foreground ${!hasChanges || loading ? 'opacity-50' : ''}`}
           >
             保存
           </Button>

@@ -366,7 +366,7 @@ export default function StudentTable({
                 onClick={() => onStudentSelect(student.studentId)}
                 className={`cursor-pointer ${
                   selectedStudentId === student.studentId
-                    ? "bg-muted hover:bg-muted/90 dark:bg-muted/50 dark:hover:bg-muted/60"
+                    ? "bg-blue-50 hover:bg-blue-100 dark:bg-blue-800/30 dark:hover:bg-blue-800/40"
                     : "hover:bg-accent/50 dark:hover:bg-accent/20"
                 }`}
               >

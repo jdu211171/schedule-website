@@ -1,3 +1,5 @@
+// Полная версия обновленного WeeklySchedule.jsx с сохранением зеленого и синего цветов для темного режима
+
 "use client";
 
 import LessonCard from "./lesson-card";
@@ -14,14 +16,14 @@ interface WeeklyScheduleProps {
 }
 
 export default function WeeklySchedule({
-                                         lessons,
-                                         onLessonClick,
-                                         onLessonDelete,
-                                         currentTeacherId,
-                                         currentStudentId,
-                                         teacherName,
-                                         studentName
-                                       }: WeeklyScheduleProps) {
+  lessons,
+  onLessonClick,
+  onLessonDelete,
+  currentTeacherId,
+  currentStudentId,
+  teacherName,
+  studentName
+}: WeeklyScheduleProps) {
   // console.log("WeeklySchedule lessons:", lessons);
 
   const weekdays = [
@@ -90,21 +92,25 @@ export default function WeeklySchedule({
       // Пытаемся преобразовать dayOfWeek к числовому значению для сравнения
       const lessonDayOfWeek = dayOfWeekMap[lesson.dayOfWeek];
 
-      // П checking соответствие либо по числовому индексу, либо по строковому значению
+      // Проверяем соответствие либо по числовому индексу, либо по строковому значению
       return lessonDayOfWeek === dayIndex || lesson.dayOfWeek === dayValue;
     });
   };
 
   return (
     <div className="w-full">
-      <div className="grid grid-cols-7 gap-px border border-input rounded overflow-hidden bg-muted">
+      <div className="grid grid-cols-7 gap-px border border-input rounded overflow-hidden bg-muted dark:bg-muted/50">
         {weekdays.map((day, index) => {
           // Получаем занятия для текущего дня
           const dayLessons = getLessonsForDay(index, day.value);
 
           return (
-            <div key={day.en} className="bg-white dark:bg-gray-800">
-              <div className={`p-2 text-center font-medium mb-px ${index === currentDayOfWeek ? 'bg-accent/20 dark:bg-accent/10' : 'bg-muted/50 dark:bg-muted/30'}`}>
+            <div key={day.en} className="bg-white dark:bg-card">
+              <div className={`p-2 text-center font-medium mb-px ${
+                index === currentDayOfWeek 
+                  ? 'bg-primary/10 dark:bg-primary/20' 
+                  : 'bg-muted/50 dark:bg-muted'
+              }`}>
                 <div className="text-sm text-foreground">{day.ja}</div>
                 <div className="text-xs text-muted-foreground">{day.en}</div>
               </div>
@@ -141,19 +147,19 @@ export default function WeeklySchedule({
         })}
       </div>
 
-      {/* Легенда для типов карточек */}
+      {/* Легенда для типов карточек с обновленными цветами для темного режима */}
       <div className="flex justify-center mt-4 text-sm text-foreground">
         <div className="flex items-center mr-4">
-          <div className="w-4 h-4 bg-white dark:bg-gray-800 border border-input mr-1"></div>
-          <span>共通の授業 (編集可能)</span>
+          <div className="w-4 h-4 bg-white dark:bg-card border border-input mr-1 mb-2"></div>
+          <span className="mb-2">共通の授業 (編集可能)</span>
         </div>
         <div className="flex items-center mr-4">
-          <div className="w-4 h-4 bg-green-50 dark:bg-green-900/20 border border-input mr-1"></div>
-          <span>先生の授業</span>
+          <div className="w-4 h-4 bg-green-50 dark:bg-green-800/30 border border-green-100 dark:border-green-700/50 mr-1 mb-2"></div>
+          <span className="mb-2">先生の授業</span>
         </div>
         <div className="flex items-center">
-          <div className="w-4 h-4 bg-blue-50 dark:bg-blue-900/20 border border-input mr-1"></div>
-          <span>生徒の授業</span>
+          <div className="w-4 h-4 bg-blue-50 dark:bg-blue-800/30 border border-blue-100 dark:border-blue-700/50 mr-1 mb-2"></div>
+          <span className="mb-2">生徒の授業</span>
         </div>
       </div>
     </div>
