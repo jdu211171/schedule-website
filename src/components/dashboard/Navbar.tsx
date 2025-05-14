@@ -119,7 +119,7 @@ export default function Navbar() {
 
   return (
     <header className="border-b">
-      <div className="max-w-6xl mx-auto px-4 flex h-16 items-center">
+      <div className="container mx-auto px-4 flex h-16 items-center">
         <div className="mr-8 font-semibold text-xl">
           <Link href={homeLink}>LightHouse</Link>
         </div>

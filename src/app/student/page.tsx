@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import createStudentClassSessionsQueryOptions from "@/hooks/useStudentClassSessionQuery";
 import { useQuery } from "@tanstack/react-query";
+import { useSession } from "next-auth/react";
 import { useState } from "react";
 export interface Lesson {
   classId: string;
@@ -21,6 +22,10 @@ export interface Lesson {
   };
   subject: {
     subjectId: string;
+    name: string;
+  };
+  student: {
+    studentId: string;
     name: string;
   };
   teacher: {
@@ -39,8 +44,9 @@ const getColor = (subjectId: string) => {
 export default function StudentPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewType, setViewType] = useState<"WEEK" | "MONTH">("WEEK");
+  const { data: session } = useSession();
   const { data, error, isPending } = useQuery(
-    createStudentClassSessionsQueryOptions("cmakridsb001010h9phf390ai")
+    createStudentClassSessionsQueryOptions(session?.user?.userId ?? "")
   );
   if (isPending) {
     return <div>Loading...</div>;
