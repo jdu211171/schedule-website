@@ -74,7 +74,13 @@ export const StudentScheduleWeekViewer: React.FC<WeekViewerProps> = ({
                       </span>
                     </div>
 
-                    {/* teacer */}
+                    {/* student */}
+                    <div className="flex items-center gap-2 text-gray-700">
+                      <User2 className="w-4 h-4 text-gray-600" />
+                      <span className="text-sm">{lesson.student.name}</span>
+                    </div>
+
+                    {/* teacher */}
                     <div className="flex items-center gap-2 text-gray-700">
                       <User2 className="w-4 h-4 text-gray-600" />
                       <span className="text-sm">{lesson.teacher.name}</span>
