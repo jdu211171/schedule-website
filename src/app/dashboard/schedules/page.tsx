@@ -17,7 +17,6 @@ export default function ScheduleManagementPage() {
         <TabsList className="grid w-full max-w-md grid-cols-4">
           <TabsTrigger value="day">日次</TabsTrigger>
           <TabsTrigger value="week">週次</TabsTrigger>
-          <TabsTrigger value="month">月次</TabsTrigger>
           <TabsTrigger value="list">リスト</TabsTrigger>
         </TabsList>
         <TabsContent value="day">
@@ -25,9 +24,6 @@ export default function ScheduleManagementPage() {
         </TabsContent>
         <TabsContent value="week">
           <AdminCalendarWeek />
-        </TabsContent>
-        <TabsContent value="month">
-          <p>月間表示は開発中です。</p>
         </TabsContent>
         <TabsContent value="list">
           <AdminCalendarList />
