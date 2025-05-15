@@ -202,8 +202,8 @@ export async function POST(request: Request) {
     if (existingUser) {
       return Response.json(
         {
-          error: "ユーザー名は既に使用されています", // "Username already taken"
-          message: "別のユーザー名を選択してください", // "Please choose a different username"
+          error: "ログインIDは既に使用されています", // "Username already taken"
+          message: "別のログインIDを選択してください", // "Please choose a different username"
         },
         { status: 400 }
       );

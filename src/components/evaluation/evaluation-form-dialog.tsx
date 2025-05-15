@@ -100,7 +100,9 @@ export function EvaluationFormDialog({
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>名前</FormLabel>
+                  <FormLabel className="after:content-['*'] after:ml-1 after:text-destructive">
+                    名前
+                  </FormLabel>
                   <FormControl>
                     <Input placeholder="評価の名前を入力" {...field} />
                   </FormControl>
@@ -113,7 +115,9 @@ export function EvaluationFormDialog({
               name="score"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>スコア</FormLabel>
+                  <FormLabel className="after:content-['*'] after:ml-1 after:text-destructive">
+                    スコア
+                  </FormLabel>
                   <FormControl>
                     <Input
                       type="number"

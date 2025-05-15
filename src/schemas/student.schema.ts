@@ -39,7 +39,10 @@ const StudentBaseSchema = z.object({
     .max(100, { message: "100文字以内で入力してください" })
     .nullish(),
   enrollmentDate: z.string().nullish(),
-  birthDate: z.string({ required_error: "生年月日は必須です" }).transform((val) => new Date(val)),
+  birthDate: z
+    .string()
+    .nullish()
+    .transform((val) => (val ? new Date(val) : undefined)),
   homePhone: z
     .string()
     .max(20, { message: "20文字以内で入力してください" })
@@ -56,6 +59,7 @@ const StudentBaseSchema = z.object({
     .string()
     .max(100, { message: "100文字以内で入力してください" })
     .email({ message: "有効なメールアドレスを入力してください" })
+    .or(z.literal(""))
     .nullish(),
   notes: z
     .string()
@@ -132,7 +136,7 @@ const SubjectPreferenceSchema = z.object({
 // Schema for creating a user+student
 export const CreateUserStudentSchema = StudentBaseSchema.extend({
   username: z
-    .string({ required_error: "ユーザー名は必須です" })
+    .string({ required_error: "ログインIDは必須です" })
     .min(3, { message: "3文字以上で入力してください" })
     .max(50, { message: "50文字以内で入力してください" }),
   password: z

@@ -156,7 +156,9 @@ export function EventFormDialog({
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>名前</FormLabel>
+                  <FormLabel className="after:content-['*'] after:ml-1 after:text-destructive">
+                    名前
+                  </FormLabel>
                   <FormControl>
                     <Input
                       placeholder="イベント名を入力してください"
@@ -172,7 +174,9 @@ export function EventFormDialog({
               name="startDate"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>開始日</FormLabel>
+                  <FormLabel className="after:content-['*'] after:ml-1 after:text-destructive">
+                    開始日
+                  </FormLabel>
                   <FormControl>
                     <Input type="date" {...field} />
                   </FormControl>
@@ -185,7 +189,9 @@ export function EventFormDialog({
               name="endDate"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>終了日</FormLabel>
+                  <FormLabel className="after:content-['*'] after:ml-1 after:text-destructive">
+                    終了日
+                  </FormLabel>
                   <FormControl>
                     <Input type="date" {...field} />
                   </FormControl>

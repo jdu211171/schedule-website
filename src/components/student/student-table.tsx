@@ -62,7 +62,7 @@ export function StudentTable() {
           ? student.enrollmentDate
           : student.enrollmentDate.toISOString().slice(0, 10)
         : undefined,
-      birthDate: student.birthDate,
+      birthDate: student.birthDate ?? undefined,
       homePhone: student.homePhone ?? undefined,
       parentMobile: student.parentMobile ?? undefined,
       studentMobile: student.studentMobile ?? undefined,

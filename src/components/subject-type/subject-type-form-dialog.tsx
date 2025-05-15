@@ -98,10 +98,12 @@ export function SubjectTypeFormDialog({
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>名前</FormLabel>
+                  <FormLabel className="after:content-['*'] after:ml-1 after:text-destructive">
+                    名前
+                  </FormLabel>
                   <FormControl>
                     <Input
-                      placeholder=" 科目タイプ名を入力してください"
+                      placeholder="科目タイプ名を入力してください"
                       {...field}
                     />
                   </FormControl>

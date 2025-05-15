@@ -141,9 +141,7 @@ export function useStudentCreate() {
             schoolType: newStudent.schoolType || null,
             examSchoolType: newStudent.examSchoolType || null,
             examSchoolCategoryType: newStudent.examSchoolCategoryType || null,
-            birthDate: newStudent.birthDate
-              ? new Date(newStudent.birthDate)
-              : new Date(),
+            birthDate: newStudent.birthDate ? new Date(newStudent.birthDate) : null,
             parentEmail: newStudent.parentEmail || null,
             userId: `temp-user-${Date.now()}`,
             createdAt: new Date(),

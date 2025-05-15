@@ -805,6 +805,11 @@ export function StudentFormDialog({
                           placeholder="保護者メールを入力"
                           {...field}
                           value={field.value || ""}
+                          onChange={(e) => {
+                            // If the field is empty, set it to an empty string explicitly
+                            // This way it will match the z.literal("") in our schema
+                            field.onChange(e.target.value);
+                          }}
                         />
                       </FormControl>
                       <FormMessage />
@@ -816,10 +821,10 @@ export function StudentFormDialog({
                   name="username"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>ユーザー名</FormLabel>
+                      <FormLabel>ログインID</FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="ユーザー名を入力"
+                          placeholder="ログインIDを入力"
                           {...field}
                           value={field.value || ""}
                         />
