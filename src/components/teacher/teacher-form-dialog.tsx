@@ -108,9 +108,53 @@ export function TeacherFormDialog({
 
   const defaultUsername = isEditing ? teacher?.email || "default_username" : "";
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
+  const teacherShifts = teacher?.TeacherShiftReference || [];
+
+  const formattedShifts = teacherShifts.map((shift) => ({
+    dayOfWeek: shift.dayOfWeek,
+    startTime: new Date(shift.startTime).toTimeString().slice(0, 5),
+    endTime: new Date(shift.endTime).toTimeString().slice(0, 5),
+  }));
+
+  type FormStateType = {
+    basic: {
+      name: string;
+      evaluationId: string | undefined;
+      birthDate: Date | undefined;
+      mobileNumber: string;
+      email: string;
+      highSchool: string;
+      university: string;
+      faculty: string;
+      department: string;
+      enrollmentStatus: string;
+      otherUniversities: string;
+      englishProficiency: string;
+      toeic: number | undefined;
+      toefl: number | undefined;
+      mathCertification: string;
+      kanjiCertification: string;
+      otherCertifications: string;
+      notes: string;
+      username: string;
+      password: string;
+    };
+    subjects: { 
+      subjectPairs: SubjectTypePair[] 
+    };
+    shifts: { 
+      dayOfWeek: DayOfWeek | undefined;
+      desiredTimes: {
+        dayOfWeek: DayOfWeek;
+        startTime: string;
+        endTime: string;
+      }[];
+      additionalNotes: string | null;
+    };
+  };
+
+  const [formState, setFormState] = useState<FormStateType>({
+    basic: {
       name: teacher?.name || "",
       evaluationId: teacher?.evaluationId || undefined,
       birthDate: teacher?.birthDate || undefined,
@@ -131,17 +175,21 @@ export function TeacherFormDialog({
       notes: teacher?.notes || "",
       username: defaultUsername,
       password: "",
-      subjects: [],
     },
+    subjects: { 
+      subjectPairs: teacherSubjectPairs || [] 
+    },
+    shifts: { 
+      dayOfWeek: teacher?.TeacherShiftReference?.[0]?.dayOfWeek || undefined,
+      desiredTimes: formattedShifts || [],
+      additionalNotes: teacher?.TeacherShiftReference?.[0]?.notes ?? null 
+    }
   });
 
-  const teacherShifts = teacher?.TeacherShiftReference || [];
-
-  const formattedShifts = teacherShifts.map((shift) => ({
-    dayOfWeek: shift.dayOfWeek,
-    startTime: new Date(shift.startTime).toTimeString().slice(0, 5),
-    endTime: new Date(shift.endTime).toTimeString().slice(0, 5),
-  }));
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: formState.basic,
+  });
 
   const preferencesForm = useForm<
     Omit<TeacherShiftPreferencesInput, "additionalNotes"> & {
@@ -149,33 +197,49 @@ export function TeacherFormDialog({
     }
   >({
     resolver: zodResolver(TeacherShiftPreferencesSchema),
-    defaultValues: {
-      dayOfWeek: teacher?.TeacherShiftReference?.[0]?.dayOfWeek || undefined,
-      desiredTimes: formattedShifts || [],
-      additionalNotes: teacher?.TeacherShiftReference?.[0]?.notes ?? null,
-    },
+    defaultValues: formState.shifts,
   });
 
   const subjectsForm = useForm<{ subjectPairs: SubjectTypePair[] }>({
-    defaultValues: {
-      subjectPairs: teacherSubjectPairs || [],
+    defaultValues: { 
+      subjectPairs: formState.subjects.subjectPairs 
     },
   });
+
+  const handleTabChange = (value: string) => {
+    if (activeTab === "basic") {
+      const basicValues = form.getValues();
+      setFormState({
+        ...formState,
+        basic: basicValues as FormStateType['basic']
+      });
+    } else if (activeTab === "subjects") {
+      const subjectValues = subjectsForm.getValues();
+      setFormState({
+        ...formState,
+        subjects: {
+          subjectPairs: subjectValues.subjectPairs 
+        }
+      });
+    } else if (activeTab === "shifts") {
+      const shiftValues = preferencesForm.getValues();
+      setFormState({
+        ...formState,
+        shifts: shiftValues as FormStateType['shifts']
+      });
+    }
+    
+    setActiveTab(value);
+  };
 
   useEffect(() => {
     if (teacher) {
       const formattedShifts =
         teacher.TeacherShiftReference?.map((shift) => ({
-          dayOfWeek: shift.dayOfWeek,
+          dayOfWeek: shift.dayOfWeek as DayOfWeek,
           startTime: new Date(shift.startTime).toTimeString().slice(0, 5),
           endTime: new Date(shift.endTime).toTimeString().slice(0, 5),
         })) || [];
-
-      preferencesForm.reset({
-        dayOfWeek: teacher.TeacherShiftReference?.[0]?.dayOfWeek,
-        desiredTimes: formattedShifts,
-        additionalNotes: teacher.TeacherShiftReference?.[0]?.notes || null,
-      });
 
       const subjectPairs =
         teacher.teacherSubjects?.map((ts) => ({
@@ -183,9 +247,55 @@ export function TeacherFormDialog({
           subjectTypeId: ts.subjectTypeId,
         })) || [];
 
-      subjectsForm.setValue("subjectPairs", subjectPairs);
+      const initialState: FormStateType = {
+        basic: {
+          name: teacher?.name || "",
+          evaluationId: teacher?.evaluationId || undefined,
+          birthDate: teacher?.birthDate || undefined,
+          mobileNumber: teacher?.mobileNumber || "",
+          email: teacher?.email || "",
+          highSchool: teacher?.highSchool || "",
+          university: teacher?.university || "",
+          faculty: teacher?.faculty || "",
+          department: teacher?.department || "",
+          enrollmentStatus: teacher?.enrollmentStatus || "",
+          otherUniversities: teacher?.otherUniversities || "",
+          englishProficiency: teacher?.englishProficiency || "",
+          toeic: teacher?.toeic || undefined,
+          toefl: teacher?.toefl || undefined,
+          mathCertification: teacher?.mathCertification || "",
+          kanjiCertification: teacher?.kanjiCertification || "",
+          otherCertifications: teacher?.otherCertifications || "",
+          notes: teacher?.notes || "",
+          username: defaultUsername,
+          password: "",
+        },
+        subjects: { 
+          subjectPairs: subjectPairs
+        },
+        shifts: { 
+          dayOfWeek: teacher?.TeacherShiftReference?.[0]?.dayOfWeek as DayOfWeek | undefined,
+          desiredTimes: formattedShifts,
+          additionalNotes: teacher?.TeacherShiftReference?.[0]?.notes ?? null 
+        }
+      };
+
+      setFormState(initialState);
+      form.reset(initialState.basic);
+      preferencesForm.reset(initialState.shifts);
+      subjectsForm.setValue("subjectPairs", initialState.subjects.subjectPairs);
     }
-  }, [teacher, preferencesForm, subjectsForm]);
+  }, [teacher, defaultUsername]);
+
+  useEffect(() => {
+    if (activeTab === "basic") {
+      form.reset(formState.basic);
+    } else if (activeTab === "subjects") {
+      subjectsForm.setValue("subjectPairs", formState.subjects.subjectPairs);
+    } else if (activeTab === "shifts") {
+      preferencesForm.reset(formState.shifts);
+    }
+  }, [activeTab, formState]);
 
   const formatDate = (date: Date) => {
     const year = date.getFullYear();
@@ -246,6 +356,39 @@ export function TeacherFormDialog({
 
       onOpenChange(false);
 
+      setFormState({
+        basic: {
+          name: "",
+          evaluationId: undefined,
+          birthDate: undefined,
+          mobileNumber: "",
+          email: "",
+          highSchool: "",
+          university: "",
+          faculty: "",
+          department: "",
+          enrollmentStatus: "",
+          otherUniversities: "",
+          englishProficiency: "",
+          toeic: undefined,
+          toefl: undefined,
+          mathCertification: "",
+          kanjiCertification: "",
+          otherCertifications: "",
+          notes: "",
+          username: "",
+          password: "",
+        },
+        subjects: { 
+          subjectPairs: []
+        },
+        shifts: { 
+          dayOfWeek: undefined,
+          desiredTimes: [],
+          additionalNotes: null 
+        }
+      });
+
       form.reset();
       preferencesForm.reset();
       subjectsForm.reset();
@@ -275,6 +418,10 @@ export function TeacherFormDialog({
           subjects: subjectPairs.length > 0 ? subjectPairs : undefined,
           shifts: shifts.length > 0 ? shifts : undefined,
         };
+        
+        console.log('UPDATE PAYLOAD:', JSON.stringify(updatePayload, null, 2));
+        console.log('SUBJECTS DATA:', subjectPairs);
+        
         updateTeacherMutation.mutate(updatePayload);
       } else {
         const createPayload = {
@@ -301,6 +448,10 @@ export function TeacherFormDialog({
           subjects: subjectPairs.length > 0 ? subjectPairs : undefined,
           shifts: shifts.length > 0 ? shifts : undefined,
         };
+        
+        console.log('CREATE PAYLOAD:', JSON.stringify(createPayload, null, 2));
+        console.log('SUBJECTS DATA:', subjectPairs);
+        
         createTeacherMutation.mutate(createPayload);
       }
     } catch (error) {
@@ -328,6 +479,38 @@ export function TeacherFormDialog({
       open={open}
       onOpenChange={(open) => {
         if (!open) {
+          setFormState({
+            basic: {
+              name: "",
+              evaluationId: undefined,
+              birthDate: undefined,
+              mobileNumber: "",
+              email: "",
+              highSchool: "",
+              university: "",
+              faculty: "",
+              department: "",
+              enrollmentStatus: "",
+              otherUniversities: "",
+              englishProficiency: "",
+              toeic: undefined,
+              toefl: undefined,
+              mathCertification: "",
+              kanjiCertification: "",
+              otherCertifications: "",
+              notes: "",
+              username: "",
+              password: "",
+            },
+            subjects: { 
+              subjectPairs: []
+            },
+            shifts: { 
+              dayOfWeek: undefined,
+              desiredTimes: [],
+              additionalNotes: null 
+            }
+          });
           form.reset();
           preferencesForm.reset();
           subjectsForm.reset();
@@ -340,7 +523,7 @@ export function TeacherFormDialog({
           <DialogTitle>{isEditing ? "講師の編集" : "講師の作成"}</DialogTitle>
         </DialogHeader>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="basic">基本情報</TabsTrigger>
             <TabsTrigger value="subjects">担当科目</TabsTrigger>
@@ -797,7 +980,7 @@ export function TeacherFormDialog({
               <TeacherSubjectSelector 
                 form={subjectsForm}
                 subjects={subjectsCompatArray}
-                initialSubjectPairs={teacherSubjectPairs}
+                initialSubjectPairs={formState.subjects.subjectPairs}
               />
               </form>
             </Form>
@@ -834,17 +1017,25 @@ export function TeacherFormDialog({
             type="button"
             disabled={isSubmitting}
             onClick={() => {
-              const shifts = preferencesForm.getValues().desiredTimes.map((time) => {
-                const noteVal = preferencesForm.getValues().additionalNotes;
-                return {
-                  dayOfWeek: ensureDayOfWeekEnum(time.dayOfWeek),
-                  startTime: time.startTime,
-                  endTime: time.endTime,
-                  notes: noteVal,
-                };
+              const basicValues = form.getValues();
+              const subjectValues = subjectsForm.getValues();
+              const shiftValues = preferencesForm.getValues();
+              
+              setFormState({
+                ...formState,
+                basic: basicValues as FormStateType['basic'],
+                subjects: { 
+                  subjectPairs: subjectValues.subjectPairs 
+                },
+                shifts: shiftValues as FormStateType['shifts']
               });
-
-              const subjectPairs = subjectsForm.getValues().subjectPairs;
+              
+              console.log('FORM SUBMISSION - SUBJECT PAIRS:', JSON.stringify(subjectsForm.getValues().subjectPairs, null, 2));
+              console.log('AVAILABLE SUBJECTS:', JSON.stringify(subjectsCompatArray.map(s => ({ 
+                id: s.subjectId, 
+                name: s.name,
+                typeIds: s.subjectToSubjectTypes?.map((t: { subjectTypeId: string; subjectType: { subjectTypeId: string; name: string } }) => t.subjectTypeId) || []
+              })), null, 2));
 
               form.handleSubmit(onSubmit)();
             }}

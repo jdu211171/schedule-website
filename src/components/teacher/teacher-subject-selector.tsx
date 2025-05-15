@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { 
   FormField, 
   FormItem, 
@@ -56,20 +56,53 @@ export function TeacherSubjectSelector({
   const [selectedTypeIds, setSelectedTypeIds] = useState<string[]>([]);
   
   // Pairs and errors
-  const [subjectPairs, setSubjectPairs] = useState<SubjectTypePair[]>(initialSubjectPairs);
+  const [subjectPairs, setSubjectPairs] = useState<SubjectTypePair[]>([]);
   const [error, setError] = useState<string | null>(null);
+
+  // Создаем словари для быстрой проверки существования ID предметов и типов
+  const subjectMap = useMemo(() => {
+    const map = new Map<string, SubjectCompat>();
+    subjects.forEach(subject => {
+      map.set(subject.subjectId, subject);
+    });
+    return map;
+  }, [subjects]);
+
+  const subjectTypeMap = useMemo(() => {
+    const map = new Map<string, Map<string, string>>();
+    subjects.forEach(subject => {
+      const typeMap = new Map<string, string>();
+      if (subject.subjectToSubjectTypes) {
+        subject.subjectToSubjectTypes.forEach(rel => {
+          typeMap.set(rel.subjectTypeId, rel.subjectType.name);
+        });
+      }
+      map.set(subject.subjectId, typeMap);
+    });
+    return map;
+  }, [subjects]);
+
+  // Фильтрация начальных пар для проверки их валидности
+  const validInitialPairs = useMemo(() => {
+    return initialSubjectPairs.filter(pair => {
+      const subjectExists = subjectMap.has(pair.subjectId);
+      const typeExists = subjectExists && 
+                         subjectTypeMap.get(pair.subjectId)?.has(pair.subjectTypeId);
+      return subjectExists && typeExists;
+    });
+  }, [initialSubjectPairs, subjectMap, subjectTypeMap]);
 
   // Update form when subject pairs change
   useEffect(() => {
     form.setValue("subjectPairs", subjectPairs);
   }, [subjectPairs, form]);
 
-  // Initialize subject pairs from prop
+  // Initialize subject pairs from prop with validation
   useEffect(() => {
-    if (initialSubjectPairs.length > 0) {
-      setSubjectPairs(initialSubjectPairs);
+    if (validInitialPairs.length > 0) {
+      setSubjectPairs(validInitialPairs);
     }
-  }, [initialSubjectPairs]);
+  }, [validInitialPairs]);
 
   // Reset selected types when subject changes
   useEffect(() => {
@@ -145,18 +178,33 @@ export function TeacherSubjectSelector({
     });
   };
 
-  // Add selected subject-type pairs
+  // Validate a subject-type pair
+  const isValidPair = (subjectId: string, typeId: string): boolean => {
+    const subjectExists = subjectMap.has(subjectId);
+    if (!subjectExists) return false;
+    
+    const typeMap = subjectTypeMap.get(subjectId);
+    if (!typeMap) return false;
+    
+    return typeMap.has(typeId);
+  };
+
+  // Add selected subject-type pairs with validation
   const addSubjectTypePairs = () => {
     if (!selectedSubject || selectedTypeIds.length === 0) {
       setError("科目と少なくとも1つの科目タイプを選択してください");
       return;
     }
     
-    const newPairs = selectedTypeIds.map(typeId => ({
-      subjectId: selectedSubject.subjectId,
-      subjectTypeId: typeId,
-    }));
+    // Проверяем валидность новых пар
+    const newPairs = selectedTypeIds
+      .filter(typeId => isValidPair(selectedSubject.subjectId, typeId))
+      .map(typeId => ({
+        subjectId: selectedSubject.subjectId,
+        subjectTypeId: typeId,
+      }));
     
+    // Проверка на дубликаты
     const duplicates = newPairs.filter(newPair => 
       subjectPairs.some(
         existingPair => 
@@ -167,6 +215,12 @@ export function TeacherSubjectSelector({
     
     if (duplicates.length > 0) {
       setError("選択した組み合わせは既に追加されています");
+      return;
+    }
+    
+    // Проверка на невалидные пары
+    if (newPairs.length < selectedTypeIds.length) {
+      setError("一部の選択された組み合わせは無効です");
       return;
     }
     
@@ -183,22 +237,19 @@ export function TeacherSubjectSelector({
     setSubjectPairs(newPairs);
   };
 
-  // Get subject name by ID
+  // Get subject name by ID with validation
   const getSubjectNameById = (subjectId: string) => {
-    const subject = subjects.find(s => s.subjectId === subjectId);
+    const subject = subjectMap.get(subjectId);
     return subject ? subject.name : subjectId;
   };
 
-  // Get subject type name by ID
+  // Get subject type name by ID with validation
   const getSubjectTypeNameById = (subjectId: string, typeId: string) => {
-    const subject = subjects.find(s => s.subjectId === subjectId);
-    if (!subject || !subject.subjectToSubjectTypes) return typeId;
+    const typeMap = subjectTypeMap.get(subjectId);
+    if (!typeMap) return typeId;
     
-    const typeRelation = subject.subjectToSubjectTypes.find(
-      rel => rel.subjectType.subjectTypeId === typeId
-    );
-    
-    return typeRelation ? typeRelation.subjectType.name : typeId;
+    const typeName = typeMap.get(typeId);
+    return typeName ? typeName : typeId;
   };
 
   return (
