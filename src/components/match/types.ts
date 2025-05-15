@@ -193,11 +193,20 @@ export interface StudentResponse {
 
 export interface Subject {
   subjectId: string;
-  name: string;
+  name?: string; // Может отсутствовать!
   subjectTypeId: string | null;
+  subjectType: string | SubjectType;
   notes: string | null;
   createdAt: string;
   updatedAt: string;
+  subject?: {  // Добавляем вложенный объект subject, где может быть name
+    subjectId: string;
+    name: string;
+    notes?: string | null;
+    subjectTypeId?: string;
+    createdAt?: string;
+    updatedAt?: string;
+  };
 }
 
 export interface SubjectResponse {
@@ -273,6 +282,7 @@ export interface RegularClassTemplate {
   endTime: string;
   teacherId: string;
   subjectId: string;
+  subjectTypeId: string;
   boothId: string;
   studentIds: string[];
   classTypeId?: string;  
@@ -304,6 +314,7 @@ export interface ClassSessionTemplate extends ClassSession {
   };
   subject?: {
     subjectId: string;
+    subjectType: string;
     name: string;
     notes: string | null;
     subjectTypeId: string;

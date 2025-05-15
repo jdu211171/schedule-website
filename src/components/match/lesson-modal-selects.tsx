@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
-import { ClassType } from "./types";
+import { ClassType, Subject } from "./types";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
@@ -25,14 +25,19 @@ import { cn } from "@/lib/utils";
 import { CalendarIcon } from "lucide-react";
 
 interface LessonModalSelectsProps {
-  // Data for selects
-  subjects: { subjectId: string; name: string }[];
+  // Поля для типов предметов
+  subjectTypes: { subjectTypeId: string; name: string }[];
+  selectedSubjectType: string;
+  setSelectedSubjectType: (typeId: string) => void;
+  
+  // Данные для селектов - обновляем тип subjects
+  subjects: Subject[]; // Изменяем тип на Subject[]
   availableDays: { value: string; label: string }[];
   availableStartTimes: string[];
   availableBooths: { boothId: string; name: string }[];
   classTypes: ClassType[];
 
-  // Selected values
+  // Выбранные значения
   selectedSubject: string;
   selectedDay: string;
   selectedStartTime: string;
@@ -43,7 +48,7 @@ interface LessonModalSelectsProps {
   selectedStartDate: string | null;
   selectedEndDate: string | null;
 
-  // Setters for selected values
+  // Сеттеры для выбранных значений
   setSelectedSubject: (subjectId: string) => void;
   setSelectedDay: (day: string) => void;
   setSelectedStartTime: (time: string) => void;
@@ -53,7 +58,7 @@ interface LessonModalSelectsProps {
   setSelectedStartDate: (date: string | null) => void;
   setSelectedEndDate: (date: string | null) => void;
 
-  // Errors and statuses
+  // Ошибки и статусы
   timeError: string | null;
   hasCommonSubjects: boolean;
   hasCommonDays: boolean;
@@ -67,37 +72,39 @@ interface LessonModalSelectsProps {
 }
 
 export default function LessonModalSelects({
-                                             subjects,
-                                             availableDays,
-                                             availableStartTimes,
-                                             availableBooths,
-                                             classTypes,
-                                             selectedSubject,
-                                             selectedDay,
-                                             selectedStartTime,
-                                             selectedEndTime,
-                                             selectedDuration,
-                                             selectedBooth,
-                                             selectedClassType,
-                                             selectedStartDate,
-                                             selectedEndDate,
-                                             setSelectedSubject,
-                                             setSelectedDay,
-                                             setSelectedStartTime,
-                                             setSelectedDuration,
-                                             setSelectedBooth,
-                                             setSelectedClassType,
-                                             setSelectedStartDate,
-                                             setSelectedEndDate,
-                                             timeError,
-                                             hasCommonSubjects,
-                                             hasCommonDays,
-                                             hasCommonTimeSlots,
-                                             loading,
-                                             durationOptions,
-                                             handleTimeStep,
-                                             getMinMaxDates
-                                           }: LessonModalSelectsProps) {
+  // Поля для типов предметов
+  subjectTypes,
+  selectedSubjectType,
+  setSelectedSubjectType,
+  
+  subjects,
+  availableDays,
+  availableStartTimes,
+  availableBooths,
+  selectedSubject,
+  selectedDay,
+  selectedStartTime,
+  selectedEndTime,
+  selectedDuration,
+  selectedBooth,
+  selectedStartDate,
+  selectedEndDate,
+  setSelectedSubject,
+  setSelectedDay,
+  setSelectedStartTime,
+  setSelectedDuration,
+  setSelectedBooth,
+  setSelectedStartDate,
+  setSelectedEndDate,
+  timeError,
+  hasCommonSubjects,
+  hasCommonDays,
+  hasCommonTimeSlots,
+  loading,
+  durationOptions,
+  handleTimeStep,
+  getMinMaxDates
+}: LessonModalSelectsProps) {
 
   const hasNoMatchingOptions = !hasCommonSubjects || !hasCommonDays || !hasCommonTimeSlots;
   const { minStartDate, maxEndDate } = getMinMaxDates();
@@ -114,10 +121,10 @@ export default function LessonModalSelects({
   return (
     <>
       {hasNoMatchingOptions && (
-        <Alert variant="destructive" className="my-3 bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800">
-          <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400" />
-          <AlertTitle className="text-red-800 dark:text-red-300">スケジュールの不一致</AlertTitle>
-          <AlertDescription className="text-red-700 dark:text-red-400">
+        <Alert variant="destructive" className="my-3 bg-red-50 dark:bg-destructive/10 border-red-200 dark:border-destructive/20">
+          <AlertTriangle className="h-4 w-4 text-red-600 dark:text-destructive" />
+          <AlertTitle className="text-red-800 dark:text-destructive">スケジュールの不一致</AlertTitle>
+          <AlertDescription className="text-red-700 dark:text-destructive/90">
             {!hasCommonSubjects && "生徒と先生に共通する科目がありません。"}
             {!hasCommonDays && "生徒と先生のスケジュールが重なりません。"}
             {hasCommonDays && !hasCommonTimeSlots && selectedDay && "選択した曜日に利用可能な時間枠がありません。"}
@@ -125,50 +132,102 @@ export default function LessonModalSelects({
         </Alert>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 py-3">
-        {/* 1. Selecting a subject */}
-        <div>
-          <Label className="block text-sm font-medium mb-1 text-foreground">科目</Label>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 py-3">
+        {/* 1. Выбор типа предмета */}
+        <div className="min-h-[4.5rem]">
+          <Label className="block text-sm font-medium mb-1 text-foreground">科目タイプ</Label>
           <Select
-            value={selectedSubject}
-            onValueChange={setSelectedSubject}
+            value={selectedSubjectType}
+            onValueChange={setSelectedSubjectType}
             disabled={!hasCommonSubjects || loading}
           >
             <SelectTrigger className={`w-full cursor-pointer ${!hasCommonSubjects || loading ? 'opacity-50' : ''}`}>
-              <SelectValue placeholder="科目を選択" />
+              <SelectValue placeholder="科目タイプを選択" />
             </SelectTrigger>
             <SelectContent className="cursor-pointer">
-              {subjects.length > 0 ? (
-                subjects.map(subject => (
+              {subjectTypes.length > 0 ? (
+                subjectTypes.map(type => (
                   <SelectItem
-                    key={subject.subjectId}
-                    value={subject.subjectId}
-                    className="cursor-pointer hover:bg-accent/50 dark:hover:bg-accent/20"
+                    key={type.subjectTypeId}
+                    value={type.subjectTypeId}
+                    className="cursor-pointer hover:bg-accent dark:hover:bg-accent"
                   >
-                    {subject.name}
+                    {type.name}
                   </SelectItem>
                 ))
               ) : (
                 <SelectItem value="none" disabled className="text-muted-foreground">
-                  利用可能な科目がありません
+                  利用可能な科目タイプがありません
                 </SelectItem>
               )}
             </SelectContent>
           </Select>
           {!hasCommonSubjects && (
-            <p className="text-xs text-red-600 dark:text-red-400 mt-1">共通の科目がありません</p>
+            <p className="text-xs text-red-600 dark:text-destructive mt-1">共通の科目タイプがありません</p>
           )}
         </div>
 
-        {/* 2. Select day of the week */}
-        <div>
+        {/* 2. Выбор предмета */}
+        <div className="min-h-[4.5rem]">
+          <Label className="block text-sm font-medium mb-1 text-foreground">科目</Label>
+          <Select
+            value={selectedSubject}
+            onValueChange={setSelectedSubject}
+            disabled={!hasCommonSubjects || loading || !selectedSubjectType}
+          >
+            <SelectTrigger className={`w-full cursor-pointer ${!hasCommonSubjects || loading || !selectedSubjectType ? 'opacity-50' : ''}`}>
+              <SelectValue placeholder="科目を選択" />
+            </SelectTrigger>
+            <SelectContent className="cursor-pointer">
+              {subjects.length > 0 ? (
+                subjects.map(subject => {
+                  // Определяем имя предмета, с учетом его возможного отсутствия
+                  let subjectName: string;
+                  
+                  if (typeof subject.name === 'string') {
+                    // Если name есть и это строка, используем его
+                    subjectName = subject.name;
+                  } else if (subject.subject && typeof subject.subject === 'object' && 'name' in subject.subject) {
+                    // Если есть вложенный объект subject с полем name
+                    subjectName = subject.subject.name as string;
+                  } else {
+                    // Если ничего не найдено, используем ID или значение по умолчанию
+                    subjectName = `Предмет ${subject.subjectId.slice(0, 6)}`;
+                  }
+                  
+                  return (
+                    <SelectItem
+                      key={subject.subjectId}
+                      value={subject.subjectId}
+                      className="cursor-pointer hover:bg-accent dark:hover:bg-accent"
+                    >
+                      {subjectName}
+                    </SelectItem>
+                  );
+                })
+              ) : (
+                <SelectItem value="none" disabled className="text-muted-foreground">
+                  {selectedSubjectType 
+                    ? "選択したタイプで利用可能な科目がありません" 
+                    : "まず科目タイプを選択してください"}
+                </SelectItem>
+              )}
+            </SelectContent>
+          </Select>
+          {!hasCommonSubjects && (
+            <p className="text-xs text-red-600 dark:text-destructive mt-1">共通の科目がありません</p>
+          )}
+        </div>
+
+        {/* 3. Выбор дня недели */}
+        <div className="min-h-[4.5rem]">
           <Label className="block text-sm font-medium mb-1 text-foreground">曜日</Label>
           <Select
             value={selectedDay}
             onValueChange={setSelectedDay}
-            disabled={!hasCommonDays || loading}
+            disabled={!hasCommonDays || loading || !selectedSubject}
           >
-            <SelectTrigger className={`w-full cursor-pointer ${!hasCommonDays || loading ? 'opacity-50' : ''}`}>
+            <SelectTrigger className={`w-full cursor-pointer ${!hasCommonDays || loading || !selectedSubject ? 'opacity-50' : ''}`}>
               <SelectValue placeholder="曜日を選択" />
             </SelectTrigger>
             <SelectContent className="cursor-pointer">
@@ -177,7 +236,7 @@ export default function LessonModalSelects({
                   <SelectItem
                     key={day.value}
                     value={day.value}
-                    className="cursor-pointer hover:bg-accent/50 dark:hover:bg-accent/20"
+                    className="cursor-pointer hover:bg-accent dark:hover:bg-accent"
                   >
                     {day.label}
                   </SelectItem>
@@ -190,43 +249,12 @@ export default function LessonModalSelects({
             </SelectContent>
           </Select>
           {!hasCommonDays && (
-            <p className="text-xs text-red-600 dark:text-red-400 mt-1">共通の曜日がありません</p>
+            <p className="text-xs text-red-600 dark:text-destructive mt-1">共通の曜日がありません</p>
           )}
         </div>
 
-        {/* 3. Select class type */}
-        <div>
-          <Label className="block text-sm font-medium mb-1 text-foreground">授業タイプ</Label>
-          <Select
-            value={selectedClassType}
-            onValueChange={setSelectedClassType}
-            disabled={loading}
-          >
-            <SelectTrigger className={`w-full cursor-pointer ${loading ? 'opacity-50' : ''}`}>
-              <SelectValue placeholder="タイプを選択" />
-            </SelectTrigger>
-            <SelectContent className="cursor-pointer">
-              {classTypes.length > 0 ? (
-                classTypes.map(classType => (
-                  <SelectItem
-                    key={classType.classTypeId}
-                    value={classType.classTypeId}
-                    className="cursor-pointer hover:bg-accent/50 dark:hover:bg-accent/20"
-                  >
-                    {classType.name}
-                  </SelectItem>
-                ))
-              ) : (
-                <SelectItem value="none" disabled className="text-muted-foreground">
-                  利用可能な授業タイプがありません
-                </SelectItem>
-              )}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* 4. Select start time */}
-        <div>
+        {/* 4. Выбор времени начала */}
+        <div className="min-h-[4.5rem]">
           <Label className="block text-sm font-medium mb-1 text-foreground">開始時刻</Label>
           <div className="relative">
             <div className="flex">
@@ -244,7 +272,7 @@ export default function LessonModalSelects({
                       <SelectItem
                         key={time}
                         value={time}
-                        className="cursor-pointer hover:bg-accent/50 dark:hover:bg-accent/20"
+                        className="cursor-pointer hover:bg-accent dark:hover:bg-accent"
                       >
                         {time}
                       </SelectItem>
@@ -259,7 +287,7 @@ export default function LessonModalSelects({
               <div className="flex flex-col border border-l-0 border-input rounded-r-md overflow-hidden">
                 <button
                   onClick={() => handleTimeStep(15)}
-                  className={`flex-1 hover:bg-accent/50 dark:hover:bg-accent/20 px-2 cursor-pointer flex items-center justify-center ${
+                  className={`flex-1 hover:bg-accent dark:hover:bg-accent px-2 cursor-pointer flex items-center justify-center ${
                     !hasCommonTimeSlots || !selectedDay || loading ? 'opacity-50 cursor-not-allowed' : ''
                   }`}
                   disabled={!hasCommonTimeSlots || !selectedDay || loading}
@@ -269,7 +297,7 @@ export default function LessonModalSelects({
                 <div className="h-px bg-input w-full"></div>
                 <button
                   onClick={() => handleTimeStep(-15)}
-                  className={`flex-1 hover:bg-accent/50 dark:hover:bg-accent/20 px-2 cursor-pointer flex items-center justify-center ${
+                  className={`flex-1 hover:bg-accent dark:hover:bg-accent px-2 cursor-pointer flex items-center justify-center ${
                     !hasCommonTimeSlots || !selectedDay || loading ? 'opacity-50 cursor-not-allowed' : ''
                   }`}
                   disabled={!hasCommonTimeSlots || !selectedDay || loading}
@@ -279,7 +307,7 @@ export default function LessonModalSelects({
               </div>
             </div>
             {timeError && (
-              <div className="absolute top-full left-0 mt-1 px-2 py-1 text-xs bg-red-600 text-white border border-red-400 rounded z-10">
+              <div className="absolute top-full left-0 mt-1 px-2 py-1 text-xs bg-destructive text-destructive-foreground border border-destructive/20 rounded z-10">
                 {timeError}
               </div>
             )}
@@ -287,20 +315,20 @@ export default function LessonModalSelects({
           <p className="text-xs text-muted-foreground mt-1">15分単位で選択してください (00, 15, 30, 45)</p>
         </div>
 
-        {/* 5. End time (display only) */}
-        <div>
+        {/* 5. Время окончания (только для отображения) */}
+        <div className="min-h-[4.5rem]">
           <Label className="block text-sm font-medium mb-1 text-foreground">終了時刻</Label>
           <Input
             type="text"
             placeholder="自動計算"
             value={selectedEndTime}
             readOnly
-            className="w-full bg-muted/50 dark:bg-muted/30 text-muted-foreground cursor-not-allowed"
+            className="w-full bg-muted/50 dark:bg-muted text-muted-foreground cursor-not-allowed"
           />
         </div>
 
-        {/* 6. Select duration */}
-        <div>
+        {/* 6. Выбор длительности */}
+        <div className="min-h-[4.5rem]">
           <Label className="block text-sm font-medium mb-1 text-foreground">授業時間</Label>
           <div className="flex space-x-3">
             {durationOptions.map(duration => (
@@ -309,8 +337,8 @@ export default function LessonModalSelects({
                 variant={selectedDuration === duration.value ? "default" : "outline"}
                 className={`flex-1 cursor-pointer ${
                   selectedDuration === duration.value
-                    ? "bg-accent/20 dark:bg-accent/10 text-foreground border-primary"
-                    : "hover:bg-accent/50 dark:hover:bg-accent/20"
+                    ? "bg-primary/20 dark:bg-primary/20 text-foreground border-primary"
+                    : "hover:bg-accent dark:hover:bg-accent"
                 } ${
                   (hasNoMatchingOptions || !duration.isAvailable || loading)
                     ? 'opacity-50 cursor-not-allowed' : ''
@@ -328,15 +356,15 @@ export default function LessonModalSelects({
           </div>
         </div>
 
-        {/* 7. Start Date */}
-        <div>
+        {/* 7. Дата начала */}
+        <div className="min-h-[4.5rem]">
           <Label className="block text-sm font-medium mb-1 text-foreground">開始日付</Label>
           <Popover>
             <PopoverTrigger asChild>
               <Button
                 variant="outline"
                 className={cn(
-                  "w-full justify-start text-left font-normal hover:bg-accent/50 dark:hover:bg-accent/20",
+                  "w-full justify-start text-left font-normal hover:bg-accent dark:hover:bg-accent",
                   !selectedStartDate && "text-muted-foreground"
                 )}
               >
@@ -362,15 +390,15 @@ export default function LessonModalSelects({
           <p className="text-xs text-muted-foreground mt-1">今日から選択可能です</p>
         </div>
 
-        {/* 8. End Date */}
-        <div>
+        {/* 8. Дата окончания */}
+        <div className="min-h-[4.5rem]">
           <Label className="block text-sm font-medium mb-1 text-foreground">終了日付</Label>
           <Popover>
             <PopoverTrigger asChild>
               <Button
                 variant="outline"
                 className={cn(
-                  "w-full justify-start text-left font-normal hover:bg-accent/50 dark:hover:bg-accent/20",
+                  "w-full justify-start text-left font-normal hover:bg-accent dark:hover:bg-accent",
                   !selectedEndDate && "text-muted-foreground"
                 )}
               >
@@ -396,8 +424,8 @@ export default function LessonModalSelects({
           <p className="text-xs text-muted-foreground mt-1">開始日付から2年以内で選択可能です</p>
         </div>
 
-        {/* 9. Booth */}
-        <div>
+        {/* 9. Кабинет */}
+        <div className="min-h-[4.5rem]">
           <Label className="block text-sm font-medium mb-1 text-foreground">ブース</Label>
           <Select
             value={selectedBooth}
@@ -413,7 +441,7 @@ export default function LessonModalSelects({
                   <SelectItem
                     key={booth.boothId}
                     value={booth.boothId}
-                    className="cursor-pointer hover:bg-accent/50 dark:hover:bg-accent/20"
+                    className="cursor-pointer hover:bg-accent dark:hover:bg-accent"
                   >
                     {booth.name}
                   </SelectItem>

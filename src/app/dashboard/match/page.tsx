@@ -440,18 +440,18 @@ export default function LessonManagementPage() {
           </div>
 
           <div className="flex justify-center flex-1">
-            <Button
-              onClick={openModal}
-              disabled={!isButtonActive}
-              variant="outline"
-              className={`px-3 py-1 rounded-xl text-sm shadow transition-colors ${
-                isButtonActive
-                  ? "bg-green-600 text-white border-green-600 hover:bg-green-700 hover:border-green-700 hover:text-white"
-                  : "bg-gray-100 text-gray-400 cursor-not-allowed"
-              }`}
-            >
-              クラスセッションを編集
-            </Button>
+          <Button
+  onClick={openModal}
+  disabled={!isButtonActive}
+  variant="outline"
+  className={`px-3 py-1 rounded-xl text-sm shadow transition-colors ${
+    isButtonActive
+      ? "bg-green-600 text-white border-green-600 hover:bg-green-700 hover:border-green-700 hover:text-white dark:bg-green-700 dark:text-white dark:border-green-700 dark:hover:bg-green-600 dark:hover:border-green-600 dark:hover:text-white"
+      : "bg-gray-100 text-gray-400 cursor-not-allowed dark:bg-gray-800 dark:text-gray-500 dark:border-gray-700"
+  }`}
+>
+  クラスセッションを編集
+</Button>
           </div>
 
           <div className="flex items-center min-w-[200px] justify-end">

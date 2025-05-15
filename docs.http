@@ -1072,7 +1072,7 @@ Content-Type: application/json
 Cookie: {{cookie}}
 
 ### 3. Get compatible subjects for a teacher-student combination
-GET {{url}}/regular-class-templates?action=compatible-subjects&teacherId=cma144m5u000u104qsqx0wjex&studentId=cma144m600010104qpk5ai7om
+GET {{url}}/regular-class-templates?action=compatible-subjects&teacherId=cmahcmzxb000wvi3grt960obf&studentId=cmahcmzxi0012vi3g6e6qzhq8
 Content-Type: application/json
 Cookie: {{cookie}}
 
@@ -1219,7 +1219,7 @@ Content-Type: application/json
 Cookie: {{cookie}}
 
 ### Complete flow test 2: Get compatible subjects for selected teacher and student
-GET {{url}}/regular-class-templates?action=compatible-subjects&teacherId=cma144m5u000u104qsqx0wjex&studentId=cma144m600010104qpk5ai7om
+GET {{url}}/regular-class-templates?action=compatible-subjects&teacherId=cmahcmzxb000wvi3grt960obf&studentId=cma144m600010104qpk5ai7om
 Content-Type: application/json
 Cookie: {{cookie}}
 
