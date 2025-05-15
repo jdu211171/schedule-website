@@ -243,6 +243,7 @@ export const ClassSessionQuerySchema = z
       })
       .optional()
       .default("asc"),
+    userId: z.string().optional(),
   })
   .strict();
 

@@ -30,6 +30,7 @@ export async function GET(request: Request) {
       endDate,
       teacherId,
       studentId,
+      userId, // Add userId to destructure from query
       subjectId,
       subjectTypeId,
       boothId,
@@ -42,6 +43,46 @@ export async function GET(request: Request) {
     } = query;
 
     const filters: Record<string, unknown> = {};
+
+    // Add userId filter logic
+    if (userId) {
+      // Look up studentId and teacherId for the given userId
+      const [student, teacher] = await Promise.all([
+        prisma.student.findUnique({ where: { userId } }),
+        prisma.teacher.findUnique({ where: { userId } })
+      ]);
+      const orConditions = [];
+      if (student) {
+        orConditions.push({ studentId: student.studentId });
+      }
+      if (teacher) {
+        orConditions.push({ teacherId: teacher.teacherId });
+      }
+      if (orConditions.length > 0) {
+        filters.OR = orConditions;
+      } else {
+        // If userId does not match any student or teacher, return empty result
+        return Response.json({ data: [], pagination: { total: 0, page, limit, pages: 0 } });
+      }
+    } else {
+      // Handle teacherId filtering (single or multiple)
+      if (teacherId) {
+        if (Array.isArray(teacherId)) {
+          filters.teacherId = { in: teacherId };
+        } else {
+          filters.teacherId = teacherId;
+        }
+      }
+
+      // Handle studentId filtering (single or multiple)
+      if (studentId) {
+        if (Array.isArray(studentId)) {
+          filters.studentId = { in: studentId };
+        } else {
+          filters.studentId = studentId;
+        }
+      }
+    }
 
     // Handle subjectTypeId filtering (single or multiple)
     if (subjectTypeId) {
