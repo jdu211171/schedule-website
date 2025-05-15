@@ -755,9 +755,11 @@ useEffect(() => {
     
     setSubjects(filtered);
     
-    // Если отфильтрованный список пуст, покажем предупреждение в консоли
+    // Если отфильтрованный список пуст, показываем сообщение об ошибке
     if (filtered.length === 0) {
-      console.warn('No subjects found for selected type:', selectedSubjectType);
+      setErrorMessage(`No subjects found for the selected type: ${selectedSubjectType}`);
+    } else {
+      setErrorMessage(''); // Очистить сообщение об ошибке, если есть предметы
     }
     
     // Если выбранный предмет не принадлежит к выбранному типу, сбрасываем его
