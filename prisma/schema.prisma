@@ -335,7 +335,7 @@ model TeacherSubject {
   createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt     DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
-  @@id([teacherId, subjectTypeId])
+  @@id([teacherId, subjectId, subjectTypeId])
   @@map("teacher_subjects")
 }
 
