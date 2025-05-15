@@ -114,7 +114,9 @@ export function StudentTypeFormDialog({
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>名前</FormLabel>
+                  <FormLabel className="after:content-['*'] after:ml-1 after:text-destructive">
+                    名前
+                  </FormLabel>
                   <FormControl>
                     <Input
                       placeholder="生徒タイプ名を入力してください"

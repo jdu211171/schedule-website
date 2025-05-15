@@ -14,8 +14,8 @@ export const DayOfWeekEnum = z.enum([
 // Base schema with common fields
 const TeacherBaseSchema = z.object({
   name: z.string().min(1, { message: "名前は必須です" }).max(100, { message: "名前は100文字以内で入力してください" }),
-  evaluationId: z.string({ required_error: "評価IDは必須です" }),
-  birthDate: z.string().transform((val) => new Date(val)),
+  evaluationId: z.string({ required_error: "評価は必須です" }),
+  birthDate: z.string().optional().transform((val) => (val ? new Date(val) : undefined)),
   mobileNumber: z.string().max(20, { message: "携帯電話番号は20文字以内で入力してください" }),
   email: z.string().email({ message: "有効なメールアドレスを入力してください" }).max(100, { message: "メールアドレスは100文字以内で入力してください" }),
   highSchool: z.string().max(100, { message: "高校名は100文字以内で入力してください" }),
@@ -87,13 +87,13 @@ export const CreateTeacherSchema = TeacherBaseSchema.extend({
 // Schema for creating a user+teacher
 export const CreateUserTeacherSchema = z.object({
   // User fields
-  username: z.string().min(3, { message: "ユーザー名は3文字以上で入力してください" }).max(50, { message: "ユーザー名は50文字以内で入力してください" }),
+  username: z.string().min(3, { message: "ログインIDは3文字以上で入力してください" }).max(50, { message: "ログインIDは50文字以内で入力してください" }),
   password: z.string().min(6, { message: "パスワードは6文字以上で入力してください" }),
 
   // Teacher base fields
   name: z.string().min(1, { message: "名前は必須です" }).max(100, { message: "名前は100文字以内で入力してください" }),
-  evaluationId: z.string({ required_error: "評価IDは必須です" }),
-  birthDate: z.string().transform((val) => new Date(val)),
+  evaluationId: z.string().optional(),
+  birthDate: z.string().optional().transform((val) => (val ? new Date(val) : undefined)),
   mobileNumber: z.string().max(20, { message: "携帯電話番号は20文字以内で入力してください" }),
   email: z.string().email({ message: "有効なメールアドレスを入力してください" }).max(100, { message: "メールアドレスは100文字以内で入力してください" }),
   highSchool: z.string().max(100, { message: "高校名は100文字以内で入力してください" }),
@@ -164,7 +164,7 @@ export const UpdateTeacherSchema = z
   .object({
     teacherId: z.string({ required_error: "教師IDは必須です" }),
     name: z.string().min(1, { message: "名前は必須です" }).max(100, { message: "名前は100文字以内で入力してください" }).optional(),
-    evaluationId: z.string({ required_error: "評価IDは必須です" }).optional(),
+    evaluationId: z.string({ required_error: "評価は必須です" }).optional(),
     birthDate: z
       .string()
       .optional()
@@ -231,7 +231,7 @@ export const UpdateTeacherWithSubjectsSchema = z.object({
 
   // Teacher fields (all optional)
   name: z.string().min(1, { message: "名前は必須です" }).max(100, { message: "名前は100文字以内で入力してください" }).optional(),
-  evaluationId: z.string({ required_error: "評価IDは必須です" }).optional(),
+  evaluationId: z.string({ required_error: "評価は必須です" }).optional(),
   birthDate: z
     .string()
     .optional()

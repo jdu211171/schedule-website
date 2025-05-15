@@ -16,7 +16,7 @@ export interface SubjectTypePair {
 // Input for creating a teacher (matches Zod and Prisma)
 type CreateTeacherInput = {
   name: string;
-  evaluationId: string;
+  evaluationId?: string;
   birthDate: string; // ISO string
   mobileNumber: string;
   email: string;

@@ -355,9 +355,15 @@ export function TeacherFormDialog({
                   name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>名前</FormLabel>
+                      <FormLabel className="after:content-['*'] after:ml-1 after:text-destructive">
+                        名前
+                      </FormLabel>
                       <FormControl>
-                        <Input placeholder="講師の名前を入力" {...field} />
+                        <Input
+                          placeholder="講師の名前を入力"
+                          {...field}
+                          value={field.value || ""}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -440,7 +446,9 @@ export function TeacherFormDialog({
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>メールアドレス</FormLabel>
+                      <FormLabel className="after:content-['*'] after:ml-1 after:text-destructive">
+                        メールアドレス
+                      </FormLabel>
                       <FormControl>
                         <Input
                           placeholder="メールアドレスを入力"
@@ -478,7 +486,7 @@ export function TeacherFormDialog({
                       <FormLabel>大学</FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="大学を入力"
+                          placeholder="大学名を入力"
                           {...field}
                           value={field.value || ""}
                         />
@@ -698,10 +706,12 @@ export function TeacherFormDialog({
                       name="username"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>ユーザー名</FormLabel>
+                          <FormLabel className="after:content-['*'] after:ml-1 after:text-destructive">
+                            ログインID
+                          </FormLabel>
                           <FormControl>
                             <Input
-                              placeholder="ユーザー名を入力"
+                              placeholder="ログインIDを入力"
                               {...field}
                               value={field.value || ""}
                             />
@@ -715,7 +725,9 @@ export function TeacherFormDialog({
                       name="password"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>パスワード</FormLabel>
+                          <FormLabel className="after:content-['*'] after:ml-1 after:text-destructive">
+                            パスワード
+                          </FormLabel>
                           <FormControl>
                             <Input
                               type="password"

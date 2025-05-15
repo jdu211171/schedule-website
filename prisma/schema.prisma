@@ -115,7 +115,7 @@ model Student {
   firstChoiceSchool          String?                     @map("first_choice_school") @db.VarChar(100)
   secondChoiceSchool         String?                     @map("second_choice_school") @db.VarChar(100)
   enrollmentDate             DateTime?                   @map("enrollment_date") @db.Date
-  birthDate                  DateTime                    @db.Date
+  birthDate                  DateTime?                   @map("birth_date") @db.Date
   homePhone                  String?                     @map("home_phone") @db.VarChar(20)
   parentMobile               String?                     @map("parent_mobile") @db.VarChar(20)
   studentMobile              String?                     @map("student_mobile") @db.VarChar(20)
@@ -349,8 +349,8 @@ model TeacherSubject {
 model Teacher {
   teacherId                String                     @id @default(cuid()) @map("teacher_id")
   name                     String                     @db.VarChar(100)
-  evaluationId             String                     @map("evaluation_id") @db.VarChar(50)
-  birthDate                DateTime                   @map("birth_date") @db.Date
+  evaluationId             String?                    @map("evaluation_id") @db.VarChar(50)
+  birthDate                DateTime?                  @map("birth_date") @db.Date
   mobileNumber             String                     @map("mobile_number") @db.VarChar(20)
   email                    String                     @db.VarChar(100)
   highSchool               String                     @map("high_school") @db.VarChar(100)

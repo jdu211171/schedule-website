@@ -210,7 +210,9 @@ export function StudentSubjectFormDialog({
               name="studentId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>生徒</FormLabel>
+                  <FormLabel className="after:content-['*'] after:ml-1 after:text-destructive">
+                    生徒
+                  </FormLabel>
                   <FormControl>
                     <Select
                       onValueChange={field.onChange}
@@ -241,7 +243,9 @@ export function StudentSubjectFormDialog({
               name="subjectId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>科目</FormLabel>
+                  <FormLabel className="after:content-['*'] after:ml-1 after:text-destructive">
+                    科目
+                  </FormLabel>
                   <FormControl>
                     <Select
                       onValueChange={(value) => {
@@ -276,7 +280,9 @@ export function StudentSubjectFormDialog({
               name="subjectTypeId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>科目タイプ</FormLabel>
+                  <FormLabel className="after:content-['*'] after:ml-1 after:text-destructive">
+                    科目タイプ
+                  </FormLabel>
                   <FormControl>
                     <Select
                       onValueChange={field.onChange}

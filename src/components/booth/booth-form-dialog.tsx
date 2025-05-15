@@ -116,7 +116,9 @@ export function BoothFormDialog({
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>名前</FormLabel>
+                  <FormLabel className="after:content-['*'] after:ml-1 after:text-destructive">
+                    名前
+                  </FormLabel>
                   <FormControl>
                     <Input
                       placeholder="ブース名を入力してください"
@@ -162,9 +164,7 @@ export function BoothFormDialog({
               )}
             />
             <DialogFooter>
-              <Button type="submit">
-                {isEditing ? "変更を保存" : "作成"}
-              </Button>
+              <Button type="submit">{isEditing ? "変更を保存" : "作成"}</Button>
             </DialogFooter>
           </form>
         </Form>

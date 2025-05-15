@@ -127,7 +127,9 @@ export function SubjectFormDialog({
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>名前</FormLabel>
+                  <FormLabel className="after:content-['*'] after:ml-1 after:text-destructive">
+                    名前
+                  </FormLabel>
                   <FormControl>
                     <Input placeholder="科目名を入力してください" {...field} />
                   </FormControl>
@@ -141,7 +143,9 @@ export function SubjectFormDialog({
               name="subjectTypeIds"
               render={() => (
                 <FormItem>
-                  <FormLabel>科目タイプ（複数選択可）</FormLabel>
+                  <FormLabel className="after:content-['*'] after:ml-1 after:text-destructive">
+                    科目タイプ（複数選択可）
+                  </FormLabel>
                   <Card>
                     <CardContent className="pt-4">
                       <ScrollArea className="h-56 pr-4">

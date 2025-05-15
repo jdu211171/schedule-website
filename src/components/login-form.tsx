@@ -22,7 +22,7 @@ import { toast } from "sonner";
 const loginSchema = z.object({
   usernameOrEmail: z
     .string()
-    .nonempty("ユーザー名またはメールアドレスを入力してください"),
+    .nonempty("ログインIDまたはメールアドレスを入力してください"),
   password: z.string().min(6, "パスワードは6文字以上である必要があります"),
 });
 
@@ -66,7 +66,7 @@ export function LoginForm({
       <div className="flex flex-col items-center gap-2 text-center">
         <h1 className="text-2xl font-bold">アカウントにログイン</h1>
         <p className="text-muted-foreground text-sm text-balance">
-          ユーザー名またはメールアドレスを入力してアカウントにログインしてください
+          ログインIDまたはメールアドレスを入力してアカウントにログインしてください
         </p>
       </div>
       <Form {...form}>
@@ -76,11 +76,11 @@ export function LoginForm({
             name="usernameOrEmail"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>ユーザー名またはメールアドレス</FormLabel>
+                <FormLabel>ログインIDまたはメールアドレス</FormLabel>
                 <FormControl>
                   <Input
                     type="text"
-                    placeholder="ユーザー名またはメールアドレス"
+                    placeholder="ログインIDまたはメールアドレス"
                     {...field}
                   />
                 </FormControl>

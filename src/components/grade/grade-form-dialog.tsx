@@ -171,7 +171,9 @@ export function GradeFormDialog({
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>名前</FormLabel>
+                  <FormLabel className="after:content-['*'] after:ml-1 after:text-destructive">
+                    名前
+                  </FormLabel>
                   <FormControl>
                     <Input
                       placeholder="学年名を入力"
@@ -191,7 +193,9 @@ export function GradeFormDialog({
               name="studentTypeId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>学生タイプ</FormLabel>
+                  <FormLabel className="after:content-['*'] after:ml-1 after:text-destructive">
+                    学生タイプ
+                  </FormLabel>
                   <FormControl>
                     <Select
                       onValueChange={(value) => {
