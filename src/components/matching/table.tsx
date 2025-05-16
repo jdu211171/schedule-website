@@ -238,9 +238,9 @@ export function MatchingTable() {
       cell: ({ row }) => (
         <div className="flex flex-wrap gap-2">
           {row.original.templateStudentAssignments.map((e) => (
-            <Badge key={e.studentId} className="text-sm">
+            <span key={e.studentId} className="text-sm">
               {e.student.name}
-            </Badge>
+            </span>
           ))}
         </div>
       ),
