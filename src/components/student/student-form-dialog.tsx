@@ -373,6 +373,7 @@ export function StudentFormDialog({
   };
 
   // Handle form submission - OPTIMIZED to close dialog immediately
+  // Create a proper onSubmit function
   function onSubmit(values: z.infer<typeof formSchema>) {
     // Get the latest time slots from the desiredTimesForm
     const timeSlots = desiredTimesForm.getValues().desiredTimes;
@@ -858,7 +859,9 @@ export function StudentFormDialog({
                 <StudentSubjectSelector
                   form={preferencesForm}
                   subjects={subjectsCompatArray}
-                  initialSubjectPairs={preferencesForm.getValues().preferredSubjects}
+                  initialSubjectPairs={
+                    preferencesForm.getValues().preferredSubjects
+                  }
                   fieldName="preferredSubjects"
                 />
 
@@ -866,7 +869,9 @@ export function StudentFormDialog({
                 <TeacherSelector
                   form={preferencesForm}
                   teachers={teacherList}
-                  initialTeachers={preferencesForm.getValues().preferredTeachers}
+                  initialTeachers={
+                    preferencesForm.getValues().preferredTeachers
+                  }
                   fieldName="preferredTeachers"
                 />
 

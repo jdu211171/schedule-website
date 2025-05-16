@@ -579,15 +579,17 @@ export async function PUT(request: Request) {
 
     // Verify subjects, teachers, and classType if provided
     if (preferences?.subjects && preferences.subjects.length > 0) {
-      const subjectIds = preferences.subjects.map((subj) => subj.subjectId);
+      // Get unique subject IDs to avoid duplicates causing validation issues
+      const uniqueSubjectIds = [...new Set(preferences.subjects.map(subj => subj.subjectId))];
+
       const existingSubjects = await prisma.subject.findMany({
-        where: { subjectId: { in: subjectIds } },
+        where: { subjectId: { in: uniqueSubjectIds } },
         select: { subjectId: true },
       });
 
-      if (existingSubjects.length !== subjectIds.length) {
+      if (existingSubjects.length !== uniqueSubjectIds.length) {
         const existingIds = existingSubjects.map((s) => s.subjectId);
-        const invalidIds = subjectIds.filter((id) => !existingIds.includes(id));
+        const invalidIds = uniqueSubjectIds.filter((id) => !existingIds.includes(id));
         return Response.json(
           {
             error: "Invalid subject IDs",
@@ -693,7 +695,7 @@ export async function PUT(request: Request) {
         }
       });
 
-      // Update without storing the result since we don't use it
+      // Update student
       await tx.student.update({
         where: { studentId },
         data: updateData,
@@ -708,7 +710,7 @@ export async function PUT(request: Request) {
         });
       }
 
-      // 2. Update preferences if provided
+      // 3. Update preferences if provided
       if (preferences) {
         // Get or create the preference record
         let preferenceRecord = existingStudent.StudentPreference[0];
@@ -741,7 +743,7 @@ export async function PUT(request: Request) {
           });
         }
 
-        // 3. Update subjects if provided
+        // 4. Update subjects if provided
         if (preferences.subjects !== undefined) {
           // Delete all existing subject preferences
           if (preferenceRecord.subjects.length > 0) {
@@ -766,7 +768,7 @@ export async function PUT(request: Request) {
           }
         }
 
-        // 4. Update teachers if provided
+        // 5. Update teachers if provided
         if (preferences.teachers !== undefined) {
           // Delete all existing teacher preferences
           if (preferenceRecord.teachers.length > 0) {
@@ -790,7 +792,7 @@ export async function PUT(request: Request) {
           }
         }
 
-        // 5. Update time slots if provided
+        // 6. Update time slots if provided
         if (preferences.timeSlots !== undefined) {
           // Delete all existing time slots
           if (preferenceRecord.timeSlots.length > 0) {

@@ -434,15 +434,19 @@ export async function PUT(request: Request) {
 
     // Verify subjects if provided
     if (subjects?.length) {
-      const subjectIds = subjects.map((s) => s.subjectId);
+      // Get unique subject IDs to avoid duplicates causing validation issues
+      const uniqueSubjectIds = [...new Set(subjects.map((s) => s.subjectId))];
+
       const existingSubjects = await prisma.subject.findMany({
-        where: { subjectId: { in: subjectIds } },
+        where: { subjectId: { in: uniqueSubjectIds } },
         select: { subjectId: true },
       });
 
-      if (existingSubjects.length !== subjectIds.length) {
+      if (existingSubjects.length !== uniqueSubjectIds.length) {
         const existingIds = existingSubjects.map((s) => s.subjectId);
-        const invalidIds = subjectIds.filter((id) => !existingIds.includes(id));
+        const invalidIds = uniqueSubjectIds.filter(
+          (id) => !existingIds.includes(id)
+        );
         return Response.json(
           {
             error: "無効な科目IDです", // "Invalid subject IDs"

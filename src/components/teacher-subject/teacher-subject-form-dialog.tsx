@@ -257,7 +257,6 @@ export function TeacherSubjectFormDialog({
     setSelectedSubjectTypeIds((prev) => prev.filter((id) => id !== typeId));
   };
 
-  // In teacher-subject-form-dialog.tsx - update the onSubmit function
   async function onSubmit(values: FormValues) {
     setIsSubmitting(true);
     setError(null);
@@ -680,16 +679,6 @@ export function TeacherSubjectFormDialog({
               <Button
                 type="submit"
                 disabled={isSubmitting}
-                onClick={() => {
-                  // Submit form without waiting for validation/submission
-                  if (!form.formState.isValid) {
-                    form.handleSubmit(onSubmit)();
-                  } else {
-                    // If form is already valid, execute submission directly
-                    const values = form.getValues();
-                    onSubmit(values);
-                  }
-                }}
               >
                 {isSubmitting ? "保存中..." : isEditing ? "変更を保存" : "作成"}
               </Button>
