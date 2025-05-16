@@ -14,7 +14,7 @@ export default function ScheduleManagementPage() {
       </div>
 
       <Tabs defaultValue="day" className="w-full">
-        <TabsList className="grid w-full max-w-md grid-cols-4">
+        <TabsList className="grid w-full max-w-md grid-cols-3">
           <TabsTrigger value="day">日次</TabsTrigger>
           <TabsTrigger value="week">週次</TabsTrigger>
           <TabsTrigger value="list">リスト</TabsTrigger>
