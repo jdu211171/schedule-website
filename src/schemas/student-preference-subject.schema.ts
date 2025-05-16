@@ -4,6 +4,19 @@ import { z } from "zod";
 const StudentPreferenceSubjectBaseSchema = z.object({
   studentId: z.string({ required_error: "生徒IDは必須です" }),
   subjectId: z.string({ required_error: "科目IDは必須です" }),
+  subjectTypeIds: z.array(z.string()).min(1, "少なくとも1つの科目タイプを選択してください"),
+  preferenceId: z.string().optional(),
+  notes: z
+    .string()
+    .max(255, { message: "備考は255文字以内で入力してください" })
+    .optional()
+    .transform((val) => (val === "" ? undefined : val)),
+});
+
+// For backward compatibility, maintain a schema with single subjectTypeId
+const StudentPreferenceSubjectSingleSchema = z.object({
+  studentId: z.string({ required_error: "生徒IDは必須です" }),
+  subjectId: z.string({ required_error: "科目IDは必須です" }),
   subjectTypeId: z.string({ required_error: "科目タイプIDは必須です" }),
   preferenceId: z.string().optional(),
   notes: z
@@ -15,15 +28,17 @@ const StudentPreferenceSubjectBaseSchema = z.object({
 
 // Complete student preference subject schema (includes all fields from the database)
 export const StudentPreferenceSubjectSchema =
-  StudentPreferenceSubjectBaseSchema.extend({
+  StudentPreferenceSubjectSingleSchema.extend({
     id: z.string(),
     createdAt: z.date(),
     updatedAt: z.date(),
   });
 
 // Schema for creating a new student preference subject
-export const CreateStudentPreferenceSubjectSchema =
-  StudentPreferenceSubjectBaseSchema.strict();
+export const CreateStudentPreferenceSubjectSchema = z.union([
+  StudentPreferenceSubjectBaseSchema.strict(),
+  StudentPreferenceSubjectSingleSchema.strict()
+]);
 
 // Schema for updating an existing student preference subject
 export const UpdateStudentPreferenceSubjectSchema = z

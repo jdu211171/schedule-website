@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 
 type UseStudentPreferenceSubjectsParams = {
   page?: number;
-  pageSize?: number;
+  limit?: number;
   studentId?: string;
 };
 
@@ -47,12 +47,12 @@ type SingleStudentPreferenceSubjectResponse = {
 
 export function useStudentPreferenceSubjects({
   page = 1,
-  pageSize = 15,
+  limit = 10,
   studentId,
 }: UseStudentPreferenceSubjectsParams = {}) {
   const queryParams = new URLSearchParams({
     page: String(page),
-    limit: String(pageSize),
+    limit: String(limit),
   });
 
   if (studentId) {
@@ -60,7 +60,7 @@ export function useStudentPreferenceSubjects({
   }
 
   return useQuery<StudentPreferenceSubjectsResponse>({
-    queryKey: ["studentPreferenceSubjects", page, pageSize, studentId],
+    queryKey: ["studentPreferenceSubjects", page, limit, studentId],
     queryFn: async () => {
       return await fetcher<StudentPreferenceSubjectsResponse>(
         `/api/student-preference-subjects?${queryParams.toString()}`
