@@ -20,7 +20,6 @@ model Booth {
   status                Boolean?               @default(true)
   notes                 String?                @db.VarChar(255)
   classSessions         ClassSession[]
-  regularClassTemplates RegularClassTemplate[]
   createdAt             DateTime               @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt             DateTime               @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
@@ -42,25 +41,21 @@ model ClassSession {
   teacherId               String                   @map("teacher_id") @db.VarChar(50)
   studentId               String                   @map("student_id") @db.VarChar(50)
   subjectId               String                   @map("subject_id") @db.VarChar(50)
-  subjectTypeId           String                   @map("subject_type_id") @db.VarChar(50)
   boothId                 String                   @map("booth_id") @db.VarChar(50)
   classTypeId             String                   @map("class_type_id") @db.VarChar(50)
-  templateId              String?                  @map("template_id") @db.VarChar(50)
   notes                   String?                  @db.VarChar(255)
   booth                   Booth                    @relation(fields: [boothId], references: [boothId], onDelete: Restrict, onUpdate: Cascade)
   classType               ClassType                @relation(fields: [classTypeId], references: [classTypeId], onDelete: Restrict, onUpdate: Cascade)
   subject                 Subject                  @relation(fields: [subjectId], references: [subjectId], onDelete: Restrict, onUpdate: Cascade)
-  subjectType             SubjectType              @relation(fields: [subjectTypeId], references: [subjectTypeId], onDelete: Restrict, onUpdate: Cascade)
   teacher                 Teacher                  @relation(fields: [teacherId], references: [teacherId], onDelete: Restrict, onUpdate: Cascade)
   student                 Student                  @relation(fields: [studentId], references: [studentId], onDelete: Restrict, onUpdate: Cascade)
-  regularClassTemplate    RegularClassTemplate?    @relation(fields: [templateId], references: [templateId], onDelete: SetNull, onUpdate: Cascade)
   studentClassEnrollments StudentClassEnrollment[]
   createdAt               DateTime                 @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt               DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
   @@index([date])
-  @@index([startTime])
   @@index([teacherId])
+  @@unique([teacherId, date, startTime, endTime])
   @@map("class_sessions")
 }
 
@@ -75,64 +70,29 @@ model ClassType {
   name                      String                   @db.VarChar(100)
   notes                     String?                  @db.VarChar(255)
   classSessions             ClassSession[]
-  studentSpecialPreferences StudentPreference[]
-  RegularClassTemplate      RegularClassTemplate[]
   createdAt                 DateTime               @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt                 DateTime               @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
   @@map("class_types")
 }
 
-/**
- * Student -> 生徒
- * CSV: 'マスタ情報  生徒'
- * This model stores comprehensive student information including personal details,
- * educational background, contact information, and enrollment data.
- * Central to many relationships throughout the system.
- */
-enum SchoolType {
-  PUBLIC
-  PRIVATE
-}
-
-enum examSchoolType {
-  ELEMENTARY
-  MIDDLE
-  HIGH
-  UNIVERSITY
-  OTHER
-}
-
 model Student {
   studentId                  String                      @id @default(cuid()) @map("student_id")
+  userId                     String                      @unique @map("user_id")
   name                       String                      @db.VarChar(100)
   kanaName                   String?                     @map("kana_name") @db.VarChar(100)
-  gradeId                    String?                     @map("grade_id") @db.VarChar(50)
-  schoolName                 String?                     @map("school_name") @db.VarChar(100)
-  schoolType                 SchoolType?                 @map("school_type")
-  examSchoolType             SchoolType?                 @map("exam_school_type")
-  examSchoolCategoryType     examSchoolType?             @map("exam_school_category_type")
-  firstChoiceSchool          String?                     @map("first_choice_school") @db.VarChar(100)
-  secondChoiceSchool         String?                     @map("second_choice_school") @db.VarChar(100)
-  enrollmentDate             DateTime?                   @map("enrollment_date") @db.Date
-  birthDate                  DateTime?                   @map("birth_date") @db.Date
-  homePhone                  String?                     @map("home_phone") @db.VarChar(20)
-  parentMobile               String?                     @map("parent_mobile") @db.VarChar(20)
-  studentMobile              String?                     @map("student_mobile") @db.VarChar(20)
-  parentEmail                String?                     @map("parent_email") @db.VarChar(100)
+  studentTypeId              String?                     @map("student_type_id") @db.VarChar(50)
+  gradeYear                  Int?                        @map("grade_year")
+  lineId                     String?                     @map("line_id") @db.VarChar(50)
   notes                      String?                     @db.VarChar(255)
   studentClassEnrollments    StudentClassEnrollment[]
-  templateStudentAssignments TemplateStudentAssignment[]
-  grade                      Grade?                      @relation(fields: [gradeId], references: [gradeId], onDelete: SetNull, onUpdate: Cascade)
-  userId                     String                      @unique @map("user_id")
+  ClassSession               ClassSession[]
+  studentType                StudentType?                @relation(fields: [studentTypeId], references: [studentTypeId], onDelete: SetNull, onUpdate: Cascade)
   user                       User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt                  DateTime                    @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt                  DateTime                    @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
-  ClassSession               ClassSession[]
-  StudentPreference          StudentPreference[]
 
-  @@index([gradeId])
-  @@index([schoolName])
+  @@index([studentTypeId])
   @@map("students")
 }
 
@@ -145,9 +105,9 @@ model Student {
 model StudentType {
   studentTypeId String   @id @default(cuid()) @map("student_type_id")
   name          String   @db.VarChar(100)
+  maxYears      Int?     @map("max_years") // 最大学年数（例: 小学生=6, 中学生=3 など）
   description   String?  @db.VarChar(255)
-  maxYears      Int?      @map("max_years") // 最大学年数（例: 小学生=6, 中学生=3 など）
-  Grade         Grade[]
+  Student       Student[]
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
@@ -175,89 +135,6 @@ model StudentClassEnrollment {
   @@map("student_class_enrollments")
 }
 
-model StudentPreferenceTeacher {
-  id                  String            @id @default(cuid())
-  studentPreferenceId String            @map("student_preference_id") @db.VarChar(50)
-  teacherId           String            @map("teacher_id") @db.VarChar(50)
-  studentPreference   StudentPreference @relation(fields: [studentPreferenceId], references: [preferenceId], onDelete: Cascade)
-  teacher             Teacher           @relation(fields: [teacherId], references: [teacherId], onDelete: Cascade)
-
-  @@unique([studentPreferenceId, teacherId])
-  @@map("student_preference_teachers")
-}
-
-model StudentPreferenceSubject {
-  id                  String            @id @default(cuid())
-  studentPreferenceId String            @map("student_preference_id") @db.VarChar(50)
-  subjectId           String            @map("subject_id") @db.VarChar(50)
-  subjectTypeId       String            @map("subject_type_id") @db.VarChar(50)
-  studentPreference   StudentPreference @relation(fields: [studentPreferenceId], references: [preferenceId], onDelete: Cascade)
-  subject             Subject           @relation(fields: [subjectId], references: [subjectId], onDelete: Cascade)
-  subjectType         SubjectType       @relation(fields: [subjectTypeId], references: [subjectTypeId], onDelete: Restrict, onUpdate: Cascade)
-  createdAt           DateTime          @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt           DateTime          @updatedAt @map("updated_at") @db.Timestamp(6)
-
-  @@unique([studentPreferenceId, subjectTypeId])
-  @@map("student_preference_subjects")
-}
-
-/**
- * StudentPreference
- * This model stores student preferences for regular class schedules,
- * including preferred day of week, time slots, and subjects.
- */
-model StudentPreference {
-  preferenceId String                      @id @default(cuid()) @map("preference_id")
-  studentId    String                      @map("student_id") @db.VarChar(50)
-  classTypeId  String?                     @map("class_type_id") @db.VarChar(50)
-  notes        String?                     @db.VarChar(255)
-  student      Student                     @relation(fields: [studentId], references: [studentId], onDelete: Cascade, onUpdate: Cascade)
-  subjects     StudentPreferenceSubject[]
-  teachers     StudentPreferenceTeacher[]
-  timeSlots    StudentPreferenceTimeSlot[]
-  createdAt    DateTime                    @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt    DateTime                    @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
-  classType    ClassType?                  @relation(fields: [classTypeId], references: [classTypeId])
-
-  @@map("student_preferences")
-}
-
-/**
- * 各学生の希望曜日・時間帯（正規化テーブル）
- */
-model StudentPreferenceTimeSlot {
-  slotId            String            @id @default(cuid()) @map("slot_id")
-  preferenceId      String            @map("preference_id") @db.VarChar(50)
-  dayOfWeek         DayOfWeek         @map("day_of_week")
-  startTime         DateTime          @map("start_time") @db.Time(6)
-  endTime           DateTime          @map("end_time") @db.Time(6)
-  studentPreference StudentPreference @relation(fields: [preferenceId], references: [preferenceId], onDelete: Cascade, onUpdate: Cascade)
-  createdAt         DateTime          @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt         DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
-
-  @@index([preferenceId, dayOfWeek])
-  @@map("student_preference_time_slots")
-}
-
-/**
- * TemplateStudentAssignment
- * This junction model links students to regular class templates,
- * defining which students are assigned to which recurring class templates.
- * Works with RegularClassTemplate and Student models to establish recurring schedules.
- */
-model TemplateStudentAssignment {
-  assignmentId         String               @id @default(cuid()) @map("assignment_id")
-  templateId           String               @map("template_id") @db.VarChar(50)
-  studentId            String               @map("student_id") @db.VarChar(50)
-  notes                String?              @db.VarChar(255)
-  student              Student              @relation(fields: [studentId], references: [studentId], onDelete: Cascade, onUpdate: Cascade)
-  regularClassTemplate RegularClassTemplate @relation(fields: [templateId], references: [templateId], onDelete: Cascade, onUpdate: Cascade)
-  createdAt            DateTime             @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt            DateTime             @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
-
-  @@map("template_student_assignments")
-}
-
 enum DayOfWeek {
   MONDAY
   TUESDAY
@@ -269,77 +146,6 @@ enum DayOfWeek {
 }
 
 /**
- * RegularClassTemplate
- * CSV: '通常授業日程テンプレート'
- * This model defines recurring class templates with fixed day of week, time,
- * teacher, subject, and booth. Used to generate regular class schedules.
- */
-model RegularClassTemplate {
-  templateId                 String                      @id @default(cuid()) @map("template_id")
-  classTypeId                String                      @map("class_type_id") @db.VarChar(50)
-  dayOfWeek                  DayOfWeek                   @map("day_of_week")
-  subjectId                  String                      @map("subject_id") @db.VarChar(50)
-  subjectTypeId              String                      @map("subject_type_id") @db.VarChar(50)
-  boothId                    String                      @map("booth_id") @db.VarChar(50)
-  teacherId                  String                      @map("teacher_id") @db.VarChar(50)
-  startTime                  DateTime                    @map("start_time") @db.Time(6)
-  endTime                    DateTime                    @map("end_time") @db.Time(6)
-  startDate                  DateTime?                   @map("start_date") @db.Date
-  endDate                    DateTime?                   @map("end_date") @db.Date
-  notes                      String?                     @db.VarChar(255)
-  classType                  ClassType                   @relation(fields: [classTypeId], references: [classTypeId], onDelete: Restrict, onUpdate: Cascade)
-  booth                      Booth                       @relation(fields: [boothId], references: [boothId], onDelete: Restrict, onUpdate: Cascade)
-  subject                    Subject                     @relation(fields: [subjectId], references: [subjectId], onDelete: Restrict, onUpdate: Cascade)
-  subjectType                SubjectType                 @relation(fields: [subjectTypeId], references: [subjectTypeId], onDelete: Restrict, onUpdate: Cascade)
-  teacher                    Teacher                     @relation(fields: [teacherId], references: [teacherId], onDelete: Restrict, onUpdate: Cascade)
-  templateStudentAssignments TemplateStudentAssignment[]
-  classSessions              ClassSession[]
-  createdAt                  DateTime                    @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt                  DateTime                    @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
-
-  @@map("regular_class_templates")
-}
-
-/**
- * 教師シフト（曜日・時間を正規化して保持）
- */
-model TeacherShiftReference {
-  shiftId   String    @id @default(cuid()) @map("shift_id")
-  teacherId String    @map("teacher_id") @db.VarChar(50)
-  dayOfWeek DayOfWeek @map("day_of_week")
-  startTime DateTime  @map("start_time") @db.Time(6)
-  endTime   DateTime  @map("end_time") @db.Time(6)
-  notes     String?   @db.VarChar(255)
-  teacher   Teacher   @relation(fields: [teacherId], references: [teacherId], onDelete: Cascade, onUpdate: Cascade)
-  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
-
-  @@index([teacherId, dayOfWeek])
-  @@map("teacher_shift_references")
-}
-
-/**
- * TeacherSubject
- * CSV: 'マスタ情報  講師対応科目'
- * This junction model maps which subjects each teacher can teach.
- * Essential for scheduling and teacher assignment to classes.
- */
-model TeacherSubject {
-  teacherId     String      @map("teacher_id") @db.VarChar(50)
-  subjectId     String      @map("subject_id") @db.VarChar(50)
-  subjectTypeId String      @map("subject_type_id") @db.VarChar(50)
-  notes         String?     @db.VarChar(255)
-  subject       Subject     @relation(fields: [subjectId], references: [subjectId], onDelete: Cascade, onUpdate: Cascade)
-  teacher       Teacher     @relation(fields: [teacherId], references: [teacherId], onDelete: Cascade, onUpdate: Cascade)
-  subjectType   SubjectType @relation(fields: [subjectTypeId], references: [subjectTypeId], onDelete: Restrict, onUpdate: Cascade)
-  createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt     DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
-
-  @@id([teacherId, subjectId, subjectTypeId])
-  @@map("teacher_subjects")
-}
-
-/**
  * Teacher -> 講師
  * CSV: 'マスタ情報  講師'
  * This model stores comprehensive teacher information including personal details,
@@ -348,92 +154,18 @@ model TeacherSubject {
  */
 model Teacher {
   teacherId                String                     @id @default(cuid()) @map("teacher_id")
+  userId                   String                     @unique @map("user_id")
   name                     String                     @db.VarChar(100)
-  evaluationId             String?                    @map("evaluation_id") @db.VarChar(50)
-  birthDate                DateTime?                  @map("birth_date") @db.Date
-  mobileNumber             String                     @map("mobile_number") @db.VarChar(20)
-  email                    String                     @db.VarChar(100)
-  highSchool               String                     @map("high_school") @db.VarChar(100)
-  university               String                     @db.VarChar(100)
-  faculty                  String                     @db.VarChar(100)
-  department               String                     @db.VarChar(100)
-  enrollmentStatus         String                     @map("enrollment_status") @db.VarChar(50)
-  otherUniversities        String?                    @map("other_universities") @db.VarChar(255)
-  englishProficiency       String?                    @map("english_proficiency") @db.VarChar(50)
-  toeic                    Int?
-  toefl                    Int?
-  mathCertification        String?                    @map("math_certification") @db.VarChar(50)
-  kanjiCertification       String?                    @map("kanji_certification") @db.VarChar(50)
-  otherCertifications      String?                    @map("other_certifications") @db.VarChar(255)
+  kanaName                 String?                    @map("kana_name") @db.VarChar(100)
+  email                    String?                    @db.VarChar(100)
+  lineId                   String?                    @map("line_id") @db.VarChar(50)
   notes                    String?                    @db.VarChar(255)
   classSessions            ClassSession[]
-  regularClassTemplates    RegularClassTemplate[]
-  teacherSubjects          TeacherSubject[]
-  StudentPreferenceTeacher StudentPreferenceTeacher[]
-  TeacherShiftReference    TeacherShiftReference[]
-  evaluation               Evaluation?                @relation(fields: [evaluationId], references: [evaluationId], onDelete: Restrict, onUpdate: Cascade)
-  userId                   String                     @unique @map("user_id")
   user                     User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt                DateTime                   @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt                DateTime                   @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
   @@map("teachers")
-}
-
-/**
- * Evaluation -> 評価
- * CSV: 'マスタ情報  評価'
- * This model defines performance evaluation metrics for teachers,
- * storing ratings and evaluation criteria.
- */
-model Evaluation {
-  evaluationId String    @id @default(cuid()) @map("evaluation_id")
-  name         String    @db.VarChar(100)
-  score        Int
-  notes        String?   @db.VarChar(255)
-  teachers     Teacher[]
-  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
-
-  @@map("evaluations")
-}
-
-/**
- * SubjectToSubjectType
- * This junction model maps which subject types each subject can have.
- * Essential for supporting multiple subject types per subject.
- */
-model SubjectToSubjectType {
-  subjectId     String      @map("subject_id") @db.VarChar(50)
-  subjectTypeId String      @map("subject_type_id") @db.VarChar(50)
-  subject       Subject     @relation(fields: [subjectId], references: [subjectId], onDelete: Cascade, onUpdate: Cascade)
-  subjectType   SubjectType @relation(fields: [subjectTypeId], references: [subjectTypeId], onDelete: Cascade, onUpdate: Cascade)
-  createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt     DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
-
-  @@id([subjectId, subjectTypeId])
-  @@map("subject_to_subject_types")
-}
-
-/**
- * SubjectType -> 科目タイプ
- * CSV: 'マスタ情報  科目タイプ'
- * This model categorizes subjects into types (e.g., languages, sciences, humanities).
- * Used to group related subjects.
- */
-model SubjectType {
-  subjectTypeId            String                 @id @default(cuid()) @map("subject_type_id")
-  name                     String                 @db.VarChar(100)
-  notes                    String?                @db.VarChar(255)
-  subjectToSubjectTypes    SubjectToSubjectType[]
-  classSessions            ClassSession[]
-  regularClassTemplates    RegularClassTemplate[]
-  StudentPreferenceSubject StudentPreferenceSubject[]
-  teacherSubjects          TeacherSubject[]
-  createdAt                DateTime               @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt                DateTime               @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
-
-  @@map("subject_types")
 }
 
 /**
@@ -447,34 +179,10 @@ model Subject {
   name                     String                     @db.VarChar(100)
   notes                    String?                    @db.VarChar(255)
   classSessions            ClassSession[]
-  regularClassTemplates    RegularClassTemplate[]
-  subjectToSubjectTypes    SubjectToSubjectType[]
-  teacherSubjects          TeacherSubject[]
   createdAt                DateTime                   @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt                DateTime                   @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
-  StudentPreferenceSubject StudentPreferenceSubject[]
 
   @@map("subjects")
-}
-
-/**
- * Grade -> 学年
- * CSV: 'マスタ情報  学年'
- * This model defines school grade levels/years.
- * Related to student categorization.
- */
-model Grade {
-  gradeId       String      @id @default(cuid()) @map("grade_id")
-  name          String      @db.VarChar(100)
-  studentTypeId String      @map("student_type_id") @db.VarChar(50)
-  gradeYear     Int
-  notes         String?     @db.VarChar(255)
-  students      Student[]
-  studentType   StudentType @relation(fields: [studentTypeId], references: [studentTypeId], onDelete: Cascade, onUpdate: Cascade)
-  createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt     DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
-
-  @@map("grades")
 }
 
 /**
@@ -529,6 +237,7 @@ enum UserRole {
   ADMIN
   TEACHER
   STUDENT
+  STAFF
 }
 
 model User {
