@@ -7,7 +7,7 @@ import {
   UpdateTeacherSubjectSchema,
 } from "@/schemas/teacher-subject.schema"; // Corrected import path
 import { ZodError } from "zod";
-import { Prisma } from '@prisma/client'; // Import Prisma for error types
+import { Prisma } from "@prisma/client"; // Import Prisma for error types
 
 export async function GET(request: Request) {
   const session = await auth();
@@ -24,32 +24,54 @@ export async function GET(request: Request) {
     const { page, limit, teacherId, subjectId, subjectTypeId, sort, order } =
       query;
 
-    const filters: Record<string, unknown> = {};
+    // Define filters for teacher-subject relationships
+    const tsFilters: Record<string, unknown> = {};
 
     if (teacherId) {
-      filters.teacherId = teacherId;
+      tsFilters.teacherId = teacherId;
     }
 
     if (subjectId) {
-      filters.subjectId = subjectId;
+      tsFilters.subjectId = subjectId;
     }
 
     if (subjectTypeId) {
-      filters.subjectTypeId = subjectTypeId;
+      tsFilters.subjectTypeId = subjectTypeId;
     }
 
-    const skip = (page - 1) * limit;
+    // First, get all teachers that have at least one subject matching the filters
+    const teachers = await prisma.teacher.findMany({
+      where: {
+        teacherSubjects: {
+          some: tsFilters,
+        },
+      },
+      select: {
+        teacherId: true,
+        name: true,
+      },
+      orderBy: {
+        // Default to sorting by name
+        name: order as "asc" | "desc",
+      },
+    });
 
-    const orderBy: Record<string, string> = {};
-    orderBy[sort] = order;
+    const total = teachers.length;
 
-    const total = await prisma.teacherSubject.count({ where: filters });
+    // Apply pagination to teachers
+    const paginatedTeachers = teachers.slice((page - 1) * limit, page * limit);
+    const paginatedTeacherIds = paginatedTeachers.map((t) => t.teacherId);
 
+    // Now get all teacher-subject relationships for the paginated teachers
+    // That match the original filters
     const teacherSubjects = await prisma.teacherSubject.findMany({
-      where: filters,
-      skip,
-      take: limit,
-      orderBy,
+      where: {
+        teacherId: {
+          in: paginatedTeacherIds,
+        },
+        ...(subjectId ? { subjectId } : {}),
+        ...(subjectTypeId ? { subjectTypeId } : {}),
+      },
       include: {
         teacher: {
           select: {
@@ -72,12 +94,22 @@ export async function GET(request: Request) {
           },
         },
       },
+      orderBy: [
+        {
+          teacherId: "asc", // Group by teacher
+        },
+        {
+          subject: {
+            name: "asc", // Then by subject name
+          },
+        },
+      ],
     });
 
     return Response.json({
       data: teacherSubjects,
       pagination: {
-        total,
+        total, // This is now the count of teachers, not teacher-subject relationships
         page,
         limit,
         pages: Math.ceil(total / limit),
@@ -113,21 +145,30 @@ export async function POST(request: Request) {
       where: { teacherId },
     });
     if (!teacher) {
-      return Response.json({ error: "指定された先生が存在しません" }, { status: 404 });
+      return Response.json(
+        { error: "指定された先生が存在しません" },
+        { status: 404 }
+      );
     }
 
     const subject = await prisma.subject.findUnique({
       where: { subjectId },
     });
     if (!subject) {
-      return Response.json({ error: "指定された科目が存在しません" }, { status: 404 });
+      return Response.json(
+        { error: "指定された科目が存在しません" },
+        { status: 404 }
+      );
     }
 
     const subjectType = await prisma.subjectType.findUnique({
       where: { subjectTypeId },
     });
     if (!subjectType) {
-      return Response.json({ error: "指定された科目の種類が存在しません" }, { status: 404 });
+      return Response.json(
+        { error: "指定された科目の種類が存在しません" },
+        { status: 404 }
+      );
     }
 
     const validPair = await prisma.subjectToSubjectType.findFirst({
@@ -144,10 +185,12 @@ export async function POST(request: Request) {
       );
     }
 
+    // Update: check for existing relation using all three fields
     const existingRelation = await prisma.teacherSubject.findUnique({
       where: {
-        teacherId_subjectTypeId: { 
+        teacherId_subjectId_subjectTypeId: {
           teacherId,
+          subjectId,
           subjectTypeId,
         },
       },
@@ -155,7 +198,9 @@ export async function POST(request: Request) {
 
     if (existingRelation) {
       return Response.json(
-        { error: "この先生と科目の種類の組み合わせは既に登録されています" },
+        {
+          error: "この先生・科目・科目の種類の組み合わせは既に登録されています",
+        },
         { status: 409 }
       );
     }
@@ -199,8 +244,17 @@ export async function PUT(request: Request) {
 
   try {
     const body = await request.json();
-    const { teacherId, subjectTypeId, subjectId: newSubjectId, notes: newNotes } =
-      UpdateTeacherSubjectSchema.parse(body);
+    // Accept subjectId as required for composite PK
+    const parsed = UpdateTeacherSubjectSchema.parse(body);
+    const { teacherId, subjectTypeId } = parsed;
+    // subjectId is required for composite PK
+    const subjectId = parsed.subjectId;
+    const newSubjectId = parsed.subjectId; // for update
+    const newNotes = parsed.notes;
+
+    if (!subjectId) {
+      return Response.json({ error: "subjectId is required" }, { status: 400 });
+    }
 
     const dataToUpdate: { subjectId?: string; notes?: string | null } = {}; // notes can be null
 
@@ -208,8 +262,8 @@ export async function PUT(request: Request) {
       dataToUpdate.subjectId = newSubjectId;
     }
     // Check if newNotes is explicitly provided (even if null, it's an update)
-    if (body.hasOwnProperty('notes')) {
-        dataToUpdate.notes = newNotes; // newNotes can be string, undefined, or null from schema
+    if (body.hasOwnProperty("notes")) {
+      dataToUpdate.notes = newNotes; // newNotes can be string, undefined, or null from schema
     }
 
     // Validate newSubjectId if it's being updated
@@ -218,12 +272,15 @@ export async function PUT(request: Request) {
         where: { subjectId: newSubjectId },
       });
       if (!subject) {
-        return Response.json({ error: "指定された科目が存在しません" }, { status: 404 });
+        return Response.json(
+          { error: "指定された科目が存在しません" },
+          { status: 404 }
+        );
       }
       const validPair = await prisma.subjectToSubjectType.findFirst({
         where: {
           subjectId: newSubjectId,
-          subjectTypeId, 
+          subjectTypeId,
         },
       });
       if (!validPair) {
@@ -234,10 +291,12 @@ export async function PUT(request: Request) {
       }
     }
 
+    // Use all three fields for composite PK
     const updatedTeacherSubject = await prisma.teacherSubject.update({
       where: {
-        teacherId_subjectTypeId: {
+        teacherId_subjectId_subjectTypeId: {
           teacherId,
+          subjectId,
           subjectTypeId,
         },
       },
@@ -245,15 +304,24 @@ export async function PUT(request: Request) {
     });
 
     return Response.json(
-      { message: "先生の担当科目が正常に更新されました", data: updatedTeacherSubject },
+      {
+        message: "先生の担当科目が正常に更新されました",
+        data: updatedTeacherSubject,
+      },
       { status: 200 }
     );
   } catch (error) {
     if (error instanceof ZodError) {
       return Response.json({ error: error.errors }, { status: 400 });
     }
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
-        return Response.json({ error: "更新対象のレコードが見つかりません" }, { status: 404 });
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2025"
+    ) {
+      return Response.json(
+        { error: "更新対象のレコードが見つかりません" },
+        { status: 404 }
+      );
     }
     console.error("Failed to update teacher subject:", error);
     return Response.json(
@@ -273,13 +341,27 @@ export async function DELETE(request: Request) {
   }
 
   try {
-    const body = await request.json();
-    const { teacherId, subjectTypeId } = DeleteTeacherSubjectSchema.parse(body);
+    // Get parameters from URL instead of body
+    const { searchParams } = new URL(request.url);
+    const teacherId = searchParams.get("teacherId");
+    const subjectId = searchParams.get("subjectId");
+    const subjectTypeId = searchParams.get("subjectTypeId");
+
+    // Validate required parameters
+    if (!teacherId || !subjectId || !subjectTypeId) {
+      return Response.json(
+        {
+          error: "講師ID、科目ID、科目タイプIDはすべて必須です",
+        },
+        { status: 400 }
+      );
+    }
 
     await prisma.teacherSubject.delete({
       where: {
-        teacherId_subjectTypeId: {
+        teacherId_subjectId_subjectTypeId: {
           teacherId,
+          subjectId,
           subjectTypeId,
         },
       },
@@ -287,14 +369,20 @@ export async function DELETE(request: Request) {
 
     return Response.json(
       { message: "先生の担当科目が正常に削除されました" },
-      { status: 200 } 
+      { status: 200 }
     );
   } catch (error) {
     if (error instanceof ZodError) {
       return Response.json({ error: error.errors }, { status: 400 });
     }
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
-        return Response.json({ error: "削除対象のレコードが見つかりません" }, { status: 404 });
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2025"
+    ) {
+      return Response.json(
+        { error: "削除対象のレコードが見つかりません" },
+        { status: 404 }
+      );
     }
     console.error("Failed to delete teacher subject:", error);
     return Response.json(

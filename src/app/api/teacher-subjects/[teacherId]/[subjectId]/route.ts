@@ -33,8 +33,9 @@ export async function GET(
 
     const teacherSubject = await prisma.teacherSubject.findUnique({
       where: {
-        teacherId_subjectTypeId: {
+        teacherId_subjectId_subjectTypeId: {
           teacherId,
+          subjectId: subjectIdFromPath,
           subjectTypeId: subjectTypeIdFromQuery,
         },
       },
@@ -217,8 +218,9 @@ export async function PUT(
 
     const existingTeacherSubject = await prisma.teacherSubject.findUnique({
       where: {
-        teacherId_subjectTypeId: {
+        teacherId_subjectId_subjectTypeId: {
           teacherId: teacherIdFromPath,
+          subjectId: originalSubjectIdFromPath,
           subjectTypeId: subjectTypeIdFromQuery,
         },
       },
@@ -240,8 +242,9 @@ export async function PUT(
 
     const updatedTeacherSubject = await prisma.teacherSubject.update({
       where: {
-        teacherId_subjectTypeId: {
+        teacherId_subjectId_subjectTypeId: {
           teacherId: teacherIdFromPath,
+          subjectId: originalSubjectIdFromPath,
           subjectTypeId: subjectTypeIdFromQuery,
         },
       },
@@ -305,8 +308,9 @@ export async function DELETE(
 
     const teacherSubjectToDelete = await prisma.teacherSubject.findUnique({
       where: {
-        teacherId_subjectTypeId: {
+        teacherId_subjectId_subjectTypeId: {
           teacherId: teacherIdFromPath,
+          subjectId: subjectIdFromPath,
           subjectTypeId: subjectTypeIdFromQuery,
         },
       },
@@ -328,8 +332,9 @@ export async function DELETE(
 
     await prisma.teacherSubject.delete({
       where: {
-        teacherId_subjectTypeId: {
+        teacherId_subjectId_subjectTypeId: {
           teacherId: teacherIdFromPath,
+          subjectId: subjectIdFromPath,
           subjectTypeId: subjectTypeIdFromQuery,
         },
       },

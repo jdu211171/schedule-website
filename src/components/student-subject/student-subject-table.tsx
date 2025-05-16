@@ -52,7 +52,7 @@ export function StudentSubjectTable() {
     isFetching,
   } = useStudentPreferenceSubjects({
     page,
-    pageSize,
+    limit: pageSize, // Ensure we're using the correct param name for consistency
   });
 
   const [studentSubjectToDelete, setStudentSubjectToDelete] =

@@ -44,6 +44,7 @@ import {
   StudentPreference,
 } from "@/schemas/student.schema";
 import { TeacherSubject } from "@prisma/client";
+import { StudentSubjectSelector, TeacherSelector } from "./student-selector";
 
 // Define the type for the props, including the preference structure from the API
 interface StudentFormDialogProps {
@@ -136,32 +137,6 @@ export function StudentFormDialog({
     [subjectsArray]
   );
 
-  const [subjectSearchTerm, setSubjectSearchTerm] = useState("");
-  const [teacherSearchTerm, setTeacherSearchTerm] = useState("");
-  const [showSubjectDropdown, setShowSubjectDropdown] = useState(false);
-  const [showTeacherDropdown, setShowTeacherDropdown] = useState(false);
-
-  // New state variables for subject preferences
-  const [selectedSubject, setSelectedSubject] = useState<string>("");
-  const [selectedSubjectType, setSelectedSubjectType] = useState<string>("");
-
-  // Add this effect to filter subject types when a subject is selected
-  const availableSubjectTypes = useMemo(() => {
-    if (!selectedSubject) return [];
-    const subject = subjectsCompatArray.find(
-      (s) => s.subjectId === selectedSubject
-    );
-    if (!subject) return [];
-    return (subject.subjectToSubjectTypes || []).map((rel) => ({
-      subjectTypeId: rel.subjectType.subjectTypeId,
-      name: rel.subjectType.name,
-    }));
-  }, [selectedSubject, subjectsCompatArray]);
-
-  useEffect(() => {
-    setSelectedSubjectType("");
-  }, [selectedSubject]);
-
   const formSchema = CreateUserStudentSchema;
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -200,7 +175,10 @@ export function StudentFormDialog({
       studentMobile: student?.studentMobile || "",
       parentEmail: student?.parentEmail || "",
       notes: student?.notes || "",
-
+      firstChoiceSchool: student?.firstChoiceSchool || "",
+      secondChoiceSchool: student?.secondChoiceSchool || "",
+      homePhone: student?.homePhone || "",
+      enrollmentDate: student?.enrollmentDate || undefined,
       username: "",
       password: "",
     },
@@ -395,6 +373,7 @@ export function StudentFormDialog({
   };
 
   // Handle form submission - OPTIMIZED to close dialog immediately
+  // Create a proper onSubmit function
   function onSubmit(values: z.infer<typeof formSchema>) {
     // Get the latest time slots from the desiredTimesForm
     const timeSlots = desiredTimesForm.getValues().desiredTimes;
@@ -509,6 +488,7 @@ export function StudentFormDialog({
         if (!open) {
           form.reset();
           preferencesForm.reset();
+          desiredTimesForm.reset();
         }
         onOpenChange(open);
       }}
@@ -875,323 +855,24 @@ export function StudentFormDialog({
           <TabsContent value="preferences">
             <Form {...preferencesForm}>
               <form className="space-y-4">
-                {/* Updated subject preference field */}
-                <FormField
-                  control={preferencesForm.control}
-                  name="preferredSubjects"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>希望科目と科目種別</FormLabel>
-                      <div className="space-y-4">
-                        <div className="flex items-end gap-2">
-                          {/* Subject selection */}
-                          <div className="flex-1">
-                            <FormLabel className="text-sm">科目</FormLabel>
-                            <div className="relative">
-                              <FormControl>
-                                <Input
-                                  placeholder="科目を検索..."
-                                  value={subjectSearchTerm}
-                                  onChange={(e) => {
-                                    setSubjectSearchTerm(e.target.value);
-                                    setShowSubjectDropdown(
-                                      e.target.value.trim() !== ""
-                                    );
-                                  }}
-                                  onFocus={() => {
-                                    if (subjectSearchTerm.trim() !== "") {
-                                      setShowSubjectDropdown(true);
-                                    }
-                                  }}
-                                  onBlur={() => {
-                                    setTimeout(
-                                      () => setShowSubjectDropdown(false),
-                                      200
-                                    );
-                                  }}
-                                />
-                              </FormControl>
-
-                              {showSubjectDropdown && (
-                                <div className="absolute z-10 w-full mt-1 bg-background border rounded-md shadow-lg max-h-60 overflow-auto">
-                                  {subjectsCompatArray
-                                    .filter((subject) =>
-                                      subject.name
-                                        .toLowerCase()
-                                        .includes(
-                                          subjectSearchTerm.toLowerCase()
-                                        )
-                                    )
-                                    .map((subject) => (
-                                      <div
-                                        key={subject.subjectId}
-                                        className="p-2 hover:bg-accent cursor-pointer"
-                                        onClick={() => {
-                                          setSelectedSubject(subject.subjectId);
-                                          setSubjectSearchTerm(subject.name);
-                                          setShowSubjectDropdown(false);
-                                        }}
-                                      >
-                                        {subject.name}
-                                      </div>
-                                    ))}
-                                  {subjectsCompatArray.filter((subject) =>
-                                    subject.name
-                                      .toLowerCase()
-                                      .includes(subjectSearchTerm.toLowerCase())
-                                  ).length === 0 && (
-                                    <div className="p-2 text-muted-foreground">
-                                      該当する科目が見つかりません
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Subject Type selection */}
-                          <div className="flex-1">
-                            <FormLabel className="text-sm">科目種別</FormLabel>
-                            <Select
-                              value={selectedSubjectType}
-                              onValueChange={setSelectedSubjectType}
-                              disabled={
-                                !selectedSubject ||
-                                availableSubjectTypes.length === 0
-                              }
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="科目種別を選択" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {availableSubjectTypes.map((type) => (
-                                  <SelectItem
-                                    key={type.subjectTypeId}
-                                    value={type.subjectTypeId}
-                                  >
-                                    {type.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-
-                          <Button
-                            type="button"
-                            onClick={() => {
-                              if (!selectedSubject || !selectedSubjectType)
-                                return;
-
-                              // Check if this pair already exists
-                              const pairExists = (field.value || []).some(
-                                (pair) =>
-                                  pair.subjectId === selectedSubject &&
-                                  pair.subjectTypeId === selectedSubjectType
-                              );
-
-                              if (pairExists) {
-                                alert(
-                                  "この科目と科目種別の組み合わせは既に追加されています"
-                                );
-                                return;
-                              }
-
-                              const newPair = {
-                                subjectId: selectedSubject,
-                                subjectTypeId: selectedSubjectType,
-                              };
-
-                              const updatedSubjects = [
-                                ...(field.value || []),
-                                newPair,
-                              ];
-                              field.onChange(updatedSubjects);
-
-                              // Reset selections
-                              setSelectedSubject("");
-                              setSelectedSubjectType("");
-                              setSubjectSearchTerm("");
-                            }}
-                            disabled={!selectedSubject || !selectedSubjectType}
-                          >
-                            追加
-                          </Button>
-                        </div>
-
-                        {/* Display selected subject-type pairs */}
-                        <div className="flex flex-wrap gap-2 mt-2">
-                          {(field.value || []).map((pair, index) => {
-                            const subject = subjectsCompatArray.find(
-                              (s) => s.subjectId === pair.subjectId
-                            );
-
-                            // Find the subject type name - could be in the available types or need to be found elsewhere
-                            let subjectTypeName = "";
-                            // First check if it's in available types
-                            const typeInAvailable = availableSubjectTypes.find(
-                              (t) => t.subjectTypeId === pair.subjectTypeId
-                            );
-                            if (typeInAvailable) {
-                              subjectTypeName = typeInAvailable.name;
-                            } else {
-                              // Look through all subjects to find this type
-                              for (const s of subjectsCompatArray) {
-                                if (s.subjectToSubjectTypes) {
-                                  const foundType =
-                                    s.subjectToSubjectTypes.find(
-                                      (rel) =>
-                                        rel.subjectType.subjectTypeId ===
-                                        pair.subjectTypeId
-                                    );
-                                  if (foundType) {
-                                    subjectTypeName =
-                                      foundType.subjectType.name;
-                                    break;
-                                  }
-                                }
-                              }
-                              // If still not found, just use the ID
-                              if (!subjectTypeName) {
-                                subjectTypeName = pair.subjectTypeId;
-                              }
-                            }
-
-                            return (
-                              <div
-                                key={index}
-                                className="flex items-center bg-accent rounded-md px-3 py-1"
-                              >
-                                <span>
-                                  {subject?.name || pair.subjectId} -{" "}
-                                  {subjectTypeName}
-                                </span>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-4 w-4 p-0 ml-1 hover:bg-muted"
-                                  aria-label="削除"
-                                  onClick={() => {
-                                    const newValues = [...(field.value || [])];
-                                    newValues.splice(index, 1);
-                                    field.onChange(newValues);
-                                  }}
-                                >
-                                  ×
-                                </Button>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                {/* Subject Selector using our new component */}
+                <StudentSubjectSelector
+                  form={preferencesForm}
+                  subjects={subjectsCompatArray}
+                  initialSubjectPairs={
+                    preferencesForm.getValues().preferredSubjects
+                  }
+                  fieldName="preferredSubjects"
                 />
 
-                <FormField
-                  control={preferencesForm.control}
-                  name="preferredTeachers"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>希望講師</FormLabel>
-                      <div className="relative">
-                        <FormControl>
-                          <Input
-                            placeholder="講師名を検索..."
-                            className="w-full"
-                            value={teacherSearchTerm}
-                            onChange={(e) => {
-                              setTeacherSearchTerm(e.target.value);
-                              setShowTeacherDropdown(
-                                e.target.value.trim() !== ""
-                              );
-                            }}
-                            onFocus={() => {
-                              if (teacherSearchTerm.trim() !== "") {
-                                setShowTeacherDropdown(true);
-                              }
-                            }}
-                            onBlur={() => {
-                              setTimeout(
-                                () => setShowTeacherDropdown(false),
-                                200
-                              );
-                            }}
-                          />
-                        </FormControl>
-                        {showTeacherDropdown && (
-                          <div className="absolute z-10 w-full mt-1 bg-background border rounded-md shadow-lg max-h-60 overflow-auto">
-                            {filteredTeachers
-                              .filter((teacher) =>
-                                teacher.name
-                                  .toLowerCase()
-                                  .includes(teacherSearchTerm.toLowerCase())
-                              )
-                              .map((teacher) => (
-                                <div
-                                  key={teacher.teacherId}
-                                  className="p-2 hover:bg-accent cursor-pointer"
-                                  onClick={() => {
-                                    const currentValues = field.value || [];
-                                    if (
-                                      !currentValues.includes(teacher.teacherId)
-                                    ) {
-                                      field.onChange([
-                                        ...currentValues,
-                                        teacher.teacherId,
-                                      ]);
-                                    }
-                                    setTeacherSearchTerm("");
-                                    setShowTeacherDropdown(false);
-                                  }}
-                                >
-                                  {teacher.name}
-                                </div>
-                              ))}
-                            {filteredTeachers.filter((teacher) =>
-                              teacher.name
-                                .toLowerCase()
-                                .includes(teacherSearchTerm.toLowerCase())
-                            ).length === 0 && (
-                              <div className="p-2 text-muted-foreground">
-                                該当する講師が見つかりません
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {(field.value || []).map((teacherId, index) => {
-                          const teacher = teacherList.find(
-                            (t) => t.teacherId === teacherId
-                          );
-                          return (
-                            <div
-                              key={index}
-                              className="flex items-center bg-accent rounded-md px-2 py-1"
-                            >
-                              <span>{teacher ? teacher.name : teacherId}</span>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="h-4 w-4 p-0 ml-1"
-                                onClick={() => {
-                                  const newValues = [...(field.value || [])];
-                                  newValues.splice(index, 1);
-                                  field.onChange(newValues);
-                                }}
-                              >
-                                ×
-                              </Button>
-                            </div>
-                          );
-                        })}
-                      </div>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                {/* Teacher Selector using our new component */}
+                <TeacherSelector
+                  form={preferencesForm}
+                  teachers={teacherList}
+                  initialTeachers={
+                    preferencesForm.getValues().preferredTeachers
+                  }
+                  fieldName="preferredTeachers"
                 />
 
                 <StudentDesiredTimeField form={desiredTimesForm} />

@@ -79,6 +79,10 @@ export const DeleteTeacherSubjectSchema = z.object({
     required_error: "科目タイプIDは必須です",
     invalid_type_error: "科目タイプIDは文字列である必要があります",
   }),
+  subjectId: z.string({
+    required_error: "科目IDは必須です",
+    invalid_type_error: "科目IDは文字列である必要があります",
+  }),
 }).strict({ message: "予期しないフィールドが含まれています" });
 
 

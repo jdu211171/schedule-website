@@ -10,7 +10,7 @@ import { ZodError } from "zod";
 export async function GET(request: Request) {
   const session = await auth();
   if (!session) {
-    return Response.json({ error: "権限がありません" }, { status: 401 }); // "Unauthorized"
+    return Response.json({ error: "権限がありません" }, { status: 401 });
   }
 
   const { searchParams } = new URL(request.url);
@@ -32,36 +32,6 @@ export async function GET(request: Request) {
 
     const filters: Record<string, unknown> = {};
 
-    if (studentId) {
-      // Find preference IDs that belong to this student
-      const studentPreferences = await prisma.studentPreference.findMany({
-        where: { studentId },
-        select: { preferenceId: true },
-      });
-
-      // Get all preference IDs for this student
-      const preferenceIds = studentPreferences.map((pref) => pref.preferenceId);
-
-      if (preferenceIds.length > 0) {
-        filters.studentPreferenceId = { in: preferenceIds };
-      } else {
-        // No preferences found for this student, return empty result
-        return Response.json({
-          data: [],
-          pagination: {
-            total: 0,
-            page,
-            limit,
-            pages: 0,
-          },
-        });
-      }
-    }
-
-    if (preferenceId) {
-      filters.studentPreferenceId = preferenceId;
-    }
-
     if (subjectId) {
       filters.subjectId = subjectId;
     }
@@ -70,21 +40,54 @@ export async function GET(request: Request) {
       filters.subjectTypeId = subjectTypeId;
     }
 
-    const skip = (page - 1) * limit;
+    if (preferenceId) {
+      filters.studentPreferenceId = preferenceId;
+    }
 
-    const orderBy: Record<string, string> = {};
-    orderBy[sort] = order;
-
-    const total = await prisma.studentPreferenceSubject.count({
-      where: filters,
+    // First find all students that have preferences matching our filters
+    const students = await prisma.student.findMany({
+      where: {
+        StudentPreference: {
+          some: {
+            subjects: {
+              some: filters,
+            },
+          },
+        },
+      },
+      select: {
+        studentId: true,
+        name: true,
+      },
+      orderBy: {
+        name: order as "asc" | "desc",
+      },
     });
 
+    const total = students.length;
+
+    // Apply pagination to students
+    const paginatedStudents = students.slice((page - 1) * limit, page * limit);
+    const paginatedStudentIds = paginatedStudents.map((s) => s.studentId);
+
+    // Get all preference IDs for these students
+    const studentPreferences = await prisma.studentPreference.findMany({
+      where: {
+        studentId: { in: paginatedStudentIds },
+      },
+      select: { preferenceId: true },
+    });
+
+    const preferenceIds = studentPreferences.map((pref) => pref.preferenceId);
+
+    // Now get all subject preferences for these students
     const studentPreferenceSubjects =
       await prisma.studentPreferenceSubject.findMany({
-        where: filters,
-        skip,
-        take: limit,
-        orderBy,
+        where: {
+          studentPreferenceId: { in: preferenceIds },
+          ...(subjectId ? { subjectId } : {}),
+          ...(subjectTypeId ? { subjectTypeId } : {}),
+        },
         include: {
           studentPreference: {
             include: {
@@ -119,11 +122,16 @@ export async function GET(request: Request) {
       },
     });
   } catch (error) {
-    console.error("生徒の科目設定の取得エラー:", error); // "Error fetching student preference subjects:"
-    const errorMessage = error instanceof Error ? error.message : "不明なエラーが発生しました"; // "An unknown error occurred"
+    console.error("生徒の科目設定の取得エラー:", error);
+    const errorMessage =
+      error instanceof Error ? error.message : "不明なエラーが発生しました";
     const errorStack = error instanceof Error ? error.stack : undefined;
     return Response.json(
-      { error: "生徒の科目設定の取得に失敗しました", details: errorMessage, stack: errorStack }, // "Failed to fetch student preference subjects"
+      {
+        error: "生徒の科目設定の取得に失敗しました",
+        details: errorMessage,
+        stack: errorStack,
+      },
       { status: 500 }
     );
   }
@@ -141,7 +149,16 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const data = CreateStudentPreferenceSubjectSchema.parse(body);
-    const { studentId, subjectId, subjectTypeId, preferenceId } = data;
+
+    // Determine if we're dealing with single or multiple subject types
+    const hasMultipleSubjectTypes =
+      "subjectTypeIds" in data && Array.isArray(data.subjectTypeIds);
+    const { studentId, subjectId, preferenceId } = data;
+
+    // Get subject type IDs (either from array or single value)
+    const subjectTypeIds = hasMultipleSubjectTypes
+      ? (data.subjectTypeIds as string[])
+      : [("subjectTypeId" in data ? data.subjectTypeId : "") as string];
 
     // Check if the student exists
     const student = await prisma.student.findUnique({
@@ -158,57 +175,6 @@ export async function POST(request: Request) {
     if (!subject) {
       return Response.json({ error: "科目が見つかりません" }, { status: 404 }); // "Subject not found"
     }
-
-    // Check if the subject type exists
-    const subjectType = await prisma.subjectType.findUnique({
-      where: { subjectTypeId },
-    });
-    if (!subjectType) {
-      return Response.json(
-        { error: "科目タイプが見つかりません" }, // "Subject type not found"
-        { status: 404 }
-      );
-    }
-
-    // Check if the subject-subject type combination is valid
-    const validPair = await prisma.subjectToSubjectType.findFirst({
-      where: {
-        subjectId,
-        subjectTypeId,
-      },
-    });
-
-    if (!validPair) {
-      return Response.json(
-        {
-          error: "無効な科目と科目タイプの組み合わせです", // "Invalid subject-subject type combination"
-          message: `科目ID ${subjectId} と科目タイプID ${subjectTypeId} の組み合わせは有効ではありません。`, // `The combination of subject ID ${subjectId} and subject type ID ${subjectTypeId} is not valid.`
-        },
-        { status: 400 }
-      );
-    }
-
-    // START OF NEW LOGIC: Check if this student already has this subjectTypeId in any of their preferences
-    const existingStudentSubjectTypePreference =
-      await prisma.studentPreferenceSubject.findFirst({
-        where: {
-          subjectTypeId: subjectTypeId,
-          studentPreference: {
-            studentId: studentId,
-          },
-        },
-      });
-
-    if (existingStudentSubjectTypePreference) {
-      return Response.json(
-        {
-          error:
-            "この生徒は既にこの科目の種類に対する希望を持っています。別の希望レコードで同じ科目の種類を重複して追加することはできません。",
-        },
-        { status: 409 } // Conflict
-      );
-    }
-    // END OF NEW LOGIC
 
     // Get or create the student preference
     let preference;
@@ -240,37 +206,85 @@ export async function POST(request: Request) {
       });
     }
 
-    // Check if the studentPreference-subjectType relation already exists (for @@unique([studentPreferenceId, subjectTypeId]))
-    const existingPreferenceSubjectTypeRelation =
-      await prisma.studentPreferenceSubject.findUnique({
-        where: {
-          studentPreferenceId_subjectTypeId: {
-            studentPreferenceId: preference.preferenceId,
+    const createdRecords = [];
+    const errors = [];
+
+    // Process each subject type ID
+    for (const subjectTypeId of subjectTypeIds) {
+      try {
+        // Check if the subject type exists
+        const subjectType = await prisma.subjectType.findUnique({
+          where: { subjectTypeId },
+        });
+        if (!subjectType) {
+          errors.push(`科目タイプID ${subjectTypeId} が見つかりません`);
+          continue;
+        }
+
+        // Check if the subject-subject type combination is valid
+        const validPair = await prisma.subjectToSubjectType.findFirst({
+          where: {
+            subjectId,
             subjectTypeId,
           },
-        },
-      });
+        });
 
-    if (existingPreferenceSubjectTypeRelation) {
-      return Response.json(
-        { error: "この生徒の希望には、指定された科目の種類の科目が既に設定されています" },
-        { status: 409 }
-      );
+        if (!validPair) {
+          errors.push(
+            `科目ID ${subjectId} と科目タイプID ${subjectTypeId} の組み合わせは有効ではありません`
+          );
+          continue;
+        }
+
+        // Check if the studentPreference-subjectType relation already exists
+        const existingPreferenceSubjectTypeRelation =
+          await prisma.studentPreferenceSubject.findFirst({
+            where: {
+              studentPreferenceId: preference.preferenceId,
+              subjectTypeId,
+            },
+          });
+
+        if (existingPreferenceSubjectTypeRelation) {
+          errors.push(
+            `この生徒の希望には、科目タイプID ${subjectTypeId} の科目が既に設定されています`
+          );
+          continue;
+        }
+
+        // Create the record
+        const studentPreferenceSubject =
+          await prisma.studentPreferenceSubject.create({
+            data: {
+              studentPreferenceId: preference.preferenceId,
+              subjectId,
+              subjectTypeId,
+            },
+          });
+
+        createdRecords.push(studentPreferenceSubject);
+      } catch (error) {
+        console.error(
+          `科目タイプ ${subjectTypeId} の処理中にエラーが発生しました:`,
+          error
+        );
+        errors.push(
+          `科目タイプ ${subjectTypeId} の処理中にエラーが発生しました`
+        );
+      }
     }
 
-    const studentPreferenceSubject =
-      await prisma.studentPreferenceSubject.create({
-        data: {
-          studentPreferenceId: preference.preferenceId,
-          subjectId,
-          subjectTypeId,
-        },
-      });
+    // If no records were created but we had errors, return the first error
+    if (createdRecords.length === 0 && errors.length > 0) {
+      return Response.json({ error: errors[0] }, { status: 400 });
+    }
 
+    // Return success with created records and any errors
     return Response.json(
       {
-        message: "生徒の科目設定が正常に作成されました", // "Student preference subject created successfully"
-        data: studentPreferenceSubject,
+        message: `${createdRecords.length} 件の生徒の科目設定が正常に作成されました`,
+        data: createdRecords,
+        errors: errors.length > 0 ? errors : undefined,
       },
       { status: 201 }
     );
@@ -300,7 +314,7 @@ export async function PUT(request: Request) {
 
   try {
     const body = await request.json();
-    const { id } = UpdateStudentPreferenceSubjectSchema.parse(body);
+    const { id, notes } = UpdateStudentPreferenceSubjectSchema.parse(body);
 
     // Check if the relation exists
     const existingRelation = await prisma.studentPreferenceSubject.findUnique({

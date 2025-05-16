@@ -46,24 +46,7 @@ import {
 } from "@/schemas/teacher-preferences.schema";
 import { TeacherWithPreference } from "@/hooks/useTeacherQuery";
 import { useSubjects } from "@/hooks/useSubjectQuery";
-
-// Define the SubjectCompat interface for proper typing
-interface SubjectCompat {
-  subjectId: string;
-  name: string;
-  subjectTypeId?: string;
-  notes?: string | null;
-  subjectToSubjectTypes?: Array<{
-    subjectTypeId: string;
-    subjectType: {
-      subjectTypeId: string;
-      name: string;
-    };
-  }>;
-}
-
-// Type for subject-type pair
-type SubjectTypePairLocal = SubjectTypePair;
+import { TeacherSubjectSelector } from "./teacher-subject-selector";
 
 interface TeacherFormDialogProps {
   open: boolean;
@@ -84,13 +67,11 @@ export function TeacherFormDialog({
   const evaluations = response?.data ?? [];
   const { data: subjects = [], isLoading: subjectsLoading } = useSubjects();
 
-  // Create a searchable list of subjects
   const subjectList = useMemo(() => {
     return Array.isArray(subjects) ? subjects : subjects?.data ?? [];
   }, [subjects]);
 
-  // Map to a compatible format for subject operations
-  const subjectsCompatArray: SubjectCompat[] = useMemo(
+  const subjectsCompatArray = useMemo(
     () =>
       subjectList.map((s: any) => ({
         subjectId: s.subjectId,
@@ -102,7 +83,6 @@ export function TeacherFormDialog({
     [subjectList]
   );
 
-  // Get teacher subjects (if editing)
   const teacherSubjectPairs = useMemo(() => {
     if (!teacher || !teacher.teacherSubjects) return [];
     return teacher.teacherSubjects.map((ts) => ({
@@ -111,17 +91,9 @@ export function TeacherFormDialog({
     }));
   }, [teacher]);
 
-  // State for subject selection
-  const [subjectSearchTerm, setSubjectSearchTerm] = useState("");
-  const [showSubjectDropdown, setShowSubjectDropdown] = useState(false);
-  const [selectedSubject, setSelectedSubject] = useState<string>("");
-  const [selectedSubjectType, setSelectedSubjectType] = useState<string>("");
-
   const isEditing = !!teacher;
 
-  // Update schema for edit mode to make username optional
   const editSchema = CreateUserTeacherSchema.extend({
-    // Make username optional in edit mode
     username: z.string().min(3).max(50).optional(),
     password: z
       .string()
@@ -134,15 +106,57 @@ export function TeacherFormDialog({
 
   const formSchema = isEditing ? editSchema : CreateUserTeacherSchema;
 
-  // Use teacher email for username if we're in edit mode
   const defaultUsername = isEditing ? teacher?.email || "default_username" : "";
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
+  const teacherShifts = teacher?.TeacherShiftReference || [];
+
+  const formattedShifts = teacherShifts.map((shift) => ({
+    dayOfWeek: shift.dayOfWeek,
+    startTime: new Date(shift.startTime).toTimeString().slice(0, 5),
+    endTime: new Date(shift.endTime).toTimeString().slice(0, 5),
+  }));
+
+  type FormStateType = {
+    basic: {
+      name: string;
+      evaluationId: string | undefined;
+      birthDate: Date | undefined;
+      mobileNumber: string;
+      email: string;
+      highSchool: string;
+      university: string;
+      faculty: string;
+      department: string;
+      enrollmentStatus: string;
+      otherUniversities: string;
+      englishProficiency: string;
+      toeic: number | undefined;
+      toefl: number | undefined;
+      mathCertification: string;
+      kanjiCertification: string;
+      otherCertifications: string;
+      notes: string;
+      username: string;
+      password: string;
+    };
+    subjects: { 
+      subjectPairs: SubjectTypePair[] 
+    };
+    shifts: { 
+      dayOfWeek: DayOfWeek | undefined;
+      desiredTimes: {
+        dayOfWeek: DayOfWeek;
+        startTime: string;
+        endTime: string;
+      }[];
+      additionalNotes: string | null;
+    };
+  };
+
+  const [formState, setFormState] = useState<FormStateType>({
+    basic: {
       name: teacher?.name || "",
       evaluationId: teacher?.evaluationId || undefined,
-      // Ensure birthDate is a Date or undefined
       birthDate: teacher?.birthDate || undefined,
       mobileNumber: teacher?.mobileNumber || "",
       email: teacher?.email || "",
@@ -159,87 +173,129 @@ export function TeacherFormDialog({
       kanjiCertification: teacher?.kanjiCertification || "",
       otherCertifications: teacher?.otherCertifications || "",
       notes: teacher?.notes || "",
-      username: defaultUsername, // Set default username for edit mode
+      username: defaultUsername,
       password: "",
-      subjects: [], // We'll handle subjects separately
     },
+    subjects: { 
+      subjectPairs: teacherSubjectPairs || [] 
+    },
+    shifts: { 
+      dayOfWeek: teacher?.TeacherShiftReference?.[0]?.dayOfWeek || undefined,
+      desiredTimes: formattedShifts || [],
+      additionalNotes: teacher?.TeacherShiftReference?.[0]?.notes ?? null 
+    }
   });
 
-  // Extract teacher shift preferences
-  const teacherShifts = teacher?.TeacherShiftReference || [];
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: formState.basic,
+  });
 
-  // Convert time format for the preferences form
-  const formattedShifts = teacherShifts.map((shift) => ({
-    dayOfWeek: shift.dayOfWeek,
-    startTime: new Date(shift.startTime).toTimeString().slice(0, 5),
-    endTime: new Date(shift.endTime).toTimeString().slice(0, 5),
-  }));
-
-  // Preferences form
   const preferencesForm = useForm<
     Omit<TeacherShiftPreferencesInput, "additionalNotes"> & {
       additionalNotes: string | null;
     }
   >({
     resolver: zodResolver(TeacherShiftPreferencesSchema),
-    defaultValues: {
-      dayOfWeek: teacher?.TeacherShiftReference?.[0]?.dayOfWeek || undefined,
-      desiredTimes: formattedShifts || [],
-      additionalNotes: teacher?.TeacherShiftReference?.[0]?.notes ?? null,
+    defaultValues: formState.shifts,
+  });
+
+  const subjectsForm = useForm<{ subjectPairs: SubjectTypePair[] }>({
+    defaultValues: { 
+      subjectPairs: formState.subjects.subjectPairs 
     },
   });
 
-  // Subjects form with the new structure
-  const subjectsForm = useForm<{ subjectPairs: SubjectTypePairLocal[] }>({
-    defaultValues: {
-      subjectPairs: teacherSubjectPairs || [],
-    },
-  });
+  const handleTabChange = (value: string) => {
+    if (activeTab === "basic") {
+      const basicValues = form.getValues();
+      setFormState({
+        ...formState,
+        basic: basicValues as FormStateType['basic']
+      });
+    } else if (activeTab === "subjects") {
+      const subjectValues = subjectsForm.getValues();
+      setFormState({
+        ...formState,
+        subjects: {
+          subjectPairs: subjectValues.subjectPairs 
+        }
+      });
+    } else if (activeTab === "shifts") {
+      const shiftValues = preferencesForm.getValues();
+      setFormState({
+        ...formState,
+        shifts: shiftValues as FormStateType['shifts']
+      });
+    }
+    
+    setActiveTab(value);
+  };
 
-  // Effect to update subject types when a subject is selected
-  const availableSubjectTypes = useMemo(() => {
-    if (!selectedSubject) return [];
-    const subject = subjectsCompatArray.find(
-      (s) => s.subjectId === selectedSubject
-    );
-    if (!subject) return [];
-    return (subject.subjectToSubjectTypes || []).map((rel) => ({
-      subjectTypeId: rel.subjectType.subjectTypeId,
-      name: rel.subjectType.name,
-    }));
-  }, [selectedSubject, subjectsCompatArray]);
-
-  useEffect(() => {
-    // When selectedSubject changes, reset selectedSubjectType
-    setSelectedSubjectType("");
-  }, [selectedSubject]);
-
-  // Reset preferences form when teacher data changes
   useEffect(() => {
     if (teacher) {
       const formattedShifts =
         teacher.TeacherShiftReference?.map((shift) => ({
-          dayOfWeek: shift.dayOfWeek,
+          dayOfWeek: shift.dayOfWeek as DayOfWeek,
           startTime: new Date(shift.startTime).toTimeString().slice(0, 5),
           endTime: new Date(shift.endTime).toTimeString().slice(0, 5),
         })) || [];
 
-      preferencesForm.reset({
-        dayOfWeek: teacher.TeacherShiftReference?.[0]?.dayOfWeek,
-        desiredTimes: formattedShifts,
-        additionalNotes: teacher.TeacherShiftReference?.[0]?.notes || null,
-      });
-
-      // Reset subjects form with subject-type pairs
       const subjectPairs =
         teacher.teacherSubjects?.map((ts) => ({
           subjectId: ts.subjectId,
           subjectTypeId: ts.subjectTypeId,
         })) || [];
 
-      subjectsForm.setValue("subjectPairs", subjectPairs);
+      const initialState: FormStateType = {
+        basic: {
+          name: teacher?.name || "",
+          evaluationId: teacher?.evaluationId || undefined,
+          birthDate: teacher?.birthDate || undefined,
+          mobileNumber: teacher?.mobileNumber || "",
+          email: teacher?.email || "",
+          highSchool: teacher?.highSchool || "",
+          university: teacher?.university || "",
+          faculty: teacher?.faculty || "",
+          department: teacher?.department || "",
+          enrollmentStatus: teacher?.enrollmentStatus || "",
+          otherUniversities: teacher?.otherUniversities || "",
+          englishProficiency: teacher?.englishProficiency || "",
+          toeic: teacher?.toeic || undefined,
+          toefl: teacher?.toefl || undefined,
+          mathCertification: teacher?.mathCertification || "",
+          kanjiCertification: teacher?.kanjiCertification || "",
+          otherCertifications: teacher?.otherCertifications || "",
+          notes: teacher?.notes || "",
+          username: defaultUsername,
+          password: "",
+        },
+        subjects: { 
+          subjectPairs: subjectPairs
+        },
+        shifts: { 
+          dayOfWeek: teacher?.TeacherShiftReference?.[0]?.dayOfWeek as DayOfWeek | undefined,
+          desiredTimes: formattedShifts,
+          additionalNotes: teacher?.TeacherShiftReference?.[0]?.notes ?? null 
+        }
+      };
+
+      setFormState(initialState);
+      form.reset(initialState.basic);
+      preferencesForm.reset(initialState.shifts);
+      subjectsForm.setValue("subjectPairs", initialState.subjects.subjectPairs);
     }
-  }, [teacher, preferencesForm, subjectsForm]);
+  }, [teacher, defaultUsername]);
+
+  useEffect(() => {
+    if (activeTab === "basic") {
+      form.reset(formState.basic);
+    } else if (activeTab === "subjects") {
+      subjectsForm.setValue("subjectPairs", formState.subjects.subjectPairs);
+    } else if (activeTab === "shifts") {
+      preferencesForm.reset(formState.shifts);
+    }
+  }, [activeTab, formState]);
 
   const formatDate = (date: Date) => {
     const year = date.getFullYear();
@@ -255,7 +311,6 @@ export function TeacherFormDialog({
     return "";
   };
 
-  // Helper function to ensure dayOfWeek is a valid enum value
   const ensureDayOfWeekEnum = (day: string): DayOfWeek => {
     const validDays: DayOfWeek[] = [
       "MONDAY",
@@ -272,7 +327,6 @@ export function TeacherFormDialog({
       return upperDay;
     }
 
-    // Default to Monday if invalid
     console.warn(`Invalid day of week: ${day}, defaulting to MONDAY`);
     return "MONDAY";
   };
@@ -280,7 +334,6 @@ export function TeacherFormDialog({
   function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
     try {
-      // Get shift preferences with properly formatted dayOfWeek enum values
       const shifts = preferencesForm.getValues().desiredTimes.map((time) => {
         const noteVal = preferencesForm.getValues().additionalNotes;
         return {
@@ -291,10 +344,8 @@ export function TeacherFormDialog({
         };
       });
 
-      // Get selected subject-type pairs
       const subjectPairs = subjectsForm.getValues().subjectPairs;
 
-      // Convert birthDate to ISO string (YYYY-MM-DD)
       const birthDateStr = values.birthDate
         ? typeof values.birthDate === "string"
           ? values.birthDate
@@ -303,17 +354,46 @@ export function TeacherFormDialog({
           : ""
         : new Date().toISOString().split("T")[0];
 
-      // Close the dialog immediately for better UX
       onOpenChange(false);
 
-      // Reset all forms
+      setFormState({
+        basic: {
+          name: "",
+          evaluationId: undefined,
+          birthDate: undefined,
+          mobileNumber: "",
+          email: "",
+          highSchool: "",
+          university: "",
+          faculty: "",
+          department: "",
+          enrollmentStatus: "",
+          otherUniversities: "",
+          englishProficiency: "",
+          toeic: undefined,
+          toefl: undefined,
+          mathCertification: "",
+          kanjiCertification: "",
+          otherCertifications: "",
+          notes: "",
+          username: "",
+          password: "",
+        },
+        subjects: { 
+          subjectPairs: []
+        },
+        shifts: { 
+          dayOfWeek: undefined,
+          desiredTimes: [],
+          additionalNotes: null 
+        }
+      });
+
       form.reset();
       preferencesForm.reset();
       subjectsForm.reset();
 
-      // Then trigger the mutation without waiting for result
       if (isEditing && teacher) {
-        // Update mode: build UpdateTeacherInput
         const updatePayload = {
           teacherId: teacher.teacherId,
           name: values.name || undefined,
@@ -338,9 +418,12 @@ export function TeacherFormDialog({
           subjects: subjectPairs.length > 0 ? subjectPairs : undefined,
           shifts: shifts.length > 0 ? shifts : undefined,
         };
+        
+        console.log('UPDATE PAYLOAD:', JSON.stringify(updatePayload, null, 2));
+        console.log('SUBJECTS DATA:', subjectPairs);
+        
         updateTeacherMutation.mutate(updatePayload);
       } else {
-        // Create mode: build CreateTeacherInput
         const createPayload = {
           name: values.name,
           evaluationId: values.evaluationId,
@@ -365,17 +448,18 @@ export function TeacherFormDialog({
           subjects: subjectPairs.length > 0 ? subjectPairs : undefined,
           shifts: shifts.length > 0 ? shifts : undefined,
         };
+        
+        console.log('CREATE PAYLOAD:', JSON.stringify(createPayload, null, 2));
+        console.log('SUBJECTS DATA:', subjectPairs);
+        
         createTeacherMutation.mutate(createPayload);
       }
     } catch (error) {
       console.error("Error saving teacher:", error);
-      // Display error to user
-      // alert("保存に失敗しました。入力内容を確認してください。");
       setIsSubmitting(false);
     }
   }
 
-  // Loading state
   const isLoading = subjectsLoading;
 
   if (isLoading) {
@@ -395,6 +479,38 @@ export function TeacherFormDialog({
       open={open}
       onOpenChange={(open) => {
         if (!open) {
+          setFormState({
+            basic: {
+              name: "",
+              evaluationId: undefined,
+              birthDate: undefined,
+              mobileNumber: "",
+              email: "",
+              highSchool: "",
+              university: "",
+              faculty: "",
+              department: "",
+              enrollmentStatus: "",
+              otherUniversities: "",
+              englishProficiency: "",
+              toeic: undefined,
+              toefl: undefined,
+              mathCertification: "",
+              kanjiCertification: "",
+              otherCertifications: "",
+              notes: "",
+              username: "",
+              password: "",
+            },
+            subjects: { 
+              subjectPairs: []
+            },
+            shifts: { 
+              dayOfWeek: undefined,
+              desiredTimes: [],
+              additionalNotes: null 
+            }
+          });
           form.reset();
           preferencesForm.reset();
           subjectsForm.reset();
@@ -407,7 +523,7 @@ export function TeacherFormDialog({
           <DialogTitle>{isEditing ? "講師の編集" : "講師の作成"}</DialogTitle>
         </DialogHeader>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="basic">基本情報</TabsTrigger>
             <TabsTrigger value="subjects">担当科目</TabsTrigger>
@@ -479,7 +595,12 @@ export function TeacherFormDialog({
                         <Input
                           type="date"
                           {...field}
-                          value={getBirthDateString(field.value)}
+                          value={
+                            getBirthDateString(field.value)
+                          }
+                          onChange={(e) => {
+                            field.onChange(e.target.value || undefined);
+                          }}
                         />
                       </FormControl>
                       <FormMessage />
@@ -806,7 +927,6 @@ export function TeacherFormDialog({
                 )}
                 {isEditing && (
                   <>
-                    {/* Hidden username field for validation in edit mode */}
                     <FormField
                       control={form.control}
                       name="username"
@@ -854,221 +974,14 @@ export function TeacherFormDialog({
             </Form>
           </TabsContent>
 
-          <TabsContent value="subjects">
+          <TabsContent value="subjects" className="min-h-[400px]">
             <Form {...subjectsForm}>
-              <form className="space-y-4">
-                <FormField
-                  control={subjectsForm.control}
-                  name="subjectPairs"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>担当科目と科目種別</FormLabel>
-                      <div className="space-y-4">
-                        <div className="flex items-end gap-2">
-                          {/* Subject selection */}
-                          <div className="flex-1">
-                            <FormLabel className="text-sm">科目</FormLabel>
-                            <div className="relative">
-                              <FormControl>
-                                <Input
-                                  placeholder="科目を検索..."
-                                  value={subjectSearchTerm}
-                                  onChange={(e) => {
-                                    setSubjectSearchTerm(e.target.value);
-                                    setShowSubjectDropdown(
-                                      e.target.value.trim() !== ""
-                                    );
-                                  }}
-                                  onFocus={() => {
-                                    if (subjectSearchTerm.trim() !== "") {
-                                      setShowSubjectDropdown(true);
-                                    }
-                                  }}
-                                  onBlur={() => {
-                                    setTimeout(
-                                      () => setShowSubjectDropdown(false),
-                                      200
-                                    );
-                                  }}
-                                />
-                              </FormControl>
-
-                              {showSubjectDropdown && (
-                                <div className="absolute z-10 w-full mt-1 bg-background border rounded-md shadow-lg max-h-60 overflow-auto">
-                                  {subjectsCompatArray
-                                    .filter((subject) =>
-                                      subject.name
-                                        .toLowerCase()
-                                        .includes(
-                                          subjectSearchTerm.toLowerCase()
-                                        )
-                                    )
-                                    .map((subject) => (
-                                      <div
-                                        key={subject.subjectId}
-                                        className="p-2 hover:bg-accent cursor-pointer"
-                                        onClick={() => {
-                                          setSelectedSubject(subject.subjectId);
-                                          setSubjectSearchTerm(subject.name);
-                                          setShowSubjectDropdown(false);
-                                        }}
-                                      >
-                                        {subject.name}
-                                      </div>
-                                    ))}
-                                  {subjectsCompatArray.filter((subject) =>
-                                    subject.name
-                                      .toLowerCase()
-                                      .includes(subjectSearchTerm.toLowerCase())
-                                  ).length === 0 && (
-                                    <div className="p-2 text-muted-foreground">
-                                      該当する科目が見つかりません
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Subject Type selection */}
-                          <div className="flex-1">
-                            <FormLabel className="text-sm">科目種別</FormLabel>
-                            <Select
-                              value={selectedSubjectType}
-                              onValueChange={setSelectedSubjectType}
-                              disabled={
-                                !selectedSubject ||
-                                availableSubjectTypes.length === 0
-                              }
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="科目種別を選択" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {availableSubjectTypes.map((type) => (
-                                  <SelectItem
-                                    key={type.subjectTypeId}
-                                    value={type.subjectTypeId}
-                                  >
-                                    {type.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-
-                          <Button
-                            type="button"
-                            onClick={() => {
-                              if (!selectedSubject || !selectedSubjectType)
-                                return;
-
-                              // Check if this pair already exists
-                              const pairExists = (field.value || []).some(
-                                (pair) =>
-                                  pair.subjectId === selectedSubject &&
-                                  pair.subjectTypeId === selectedSubjectType
-                              );
-
-                              if (pairExists) {
-                                alert(
-                                  "この科目と科目種別の組み合わせは既に追加されています"
-                                );
-                                return;
-                              }
-
-                              const newPair = {
-                                subjectId: selectedSubject,
-                                subjectTypeId: selectedSubjectType,
-                              };
-
-                              const updatedSubjects = [
-                                ...(field.value || []),
-                                newPair,
-                              ];
-                              field.onChange(updatedSubjects);
-
-                              // Reset selections
-                              setSelectedSubject("");
-                              setSelectedSubjectType("");
-                              setSubjectSearchTerm("");
-                            }}
-                            disabled={!selectedSubject || !selectedSubjectType}
-                          >
-                            追加
-                          </Button>
-                        </div>
-
-                        {/* Display selected subject-type pairs */}
-                        <div className="flex flex-wrap gap-2 mt-2">
-                          {(field.value || []).map((pair, index) => {
-                            const subject = subjectsCompatArray.find(
-                              (s) => s.subjectId === pair.subjectId
-                            );
-
-                            // Find the subject type name
-                            let subjectTypeName = "";
-                            // First check if it's in available types
-                            const typeInAvailable = availableSubjectTypes.find(
-                              (t) => t.subjectTypeId === pair.subjectTypeId
-                            );
-                            if (typeInAvailable) {
-                              subjectTypeName = typeInAvailable.name;
-                            } else {
-                              // Look through all subjects to find this type
-                              for (const s of subjectsCompatArray) {
-                                if (s.subjectToSubjectTypes) {
-                                  const foundType =
-                                    s.subjectToSubjectTypes.find(
-                                      (rel) =>
-                                        rel.subjectType.subjectTypeId ===
-                                        pair.subjectTypeId
-                                    );
-                                  if (foundType) {
-                                    subjectTypeName =
-                                      foundType.subjectType.name;
-                                    break;
-                                  }
-                                }
-                              }
-                              // If still not found, just use the ID
-                              if (!subjectTypeName) {
-                                subjectTypeName = pair.subjectTypeId;
-                              }
-                            }
-
-                            return (
-                              <div
-                                key={index}
-                                className="flex items-center bg-accent rounded-md px-3 py-1"
-                              >
-                                <span>
-                                  {subject?.name || pair.subjectId} -{" "}
-                                  {subjectTypeName}
-                                </span>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-4 w-4 p-0 ml-1 hover:bg-muted"
-                                  aria-label="削除"
-                                  onClick={() => {
-                                    const newValues = [...(field.value || [])];
-                                    newValues.splice(index, 1);
-                                    field.onChange(newValues);
-                                  }}
-                                >
-                                  ×
-                                </Button>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+              <form className="space-y-4 h-full">
+              <TeacherSubjectSelector 
+                form={subjectsForm}
+                subjects={subjectsCompatArray}
+                initialSubjectPairs={formState.subjects.subjectPairs}
+              />
               </form>
             </Form>
           </TabsContent>
@@ -1104,21 +1017,26 @@ export function TeacherFormDialog({
             type="button"
             disabled={isSubmitting}
             onClick={() => {
-              // Get the latest shifts from the preferencesForm
-              const shifts = preferencesForm.getValues().desiredTimes.map((time) => {
-                const noteVal = preferencesForm.getValues().additionalNotes;
-                return {
-                  dayOfWeek: ensureDayOfWeekEnum(time.dayOfWeek),
-                  startTime: time.startTime,
-                  endTime: time.endTime,
-                  notes: noteVal,
-                };
+              const basicValues = form.getValues();
+              const subjectValues = subjectsForm.getValues();
+              const shiftValues = preferencesForm.getValues();
+              
+              setFormState({
+                ...formState,
+                basic: basicValues as FormStateType['basic'],
+                subjects: { 
+                  subjectPairs: subjectValues.subjectPairs 
+                },
+                shifts: shiftValues as FormStateType['shifts']
               });
+              
+              console.log('FORM SUBMISSION - SUBJECT PAIRS:', JSON.stringify(subjectsForm.getValues().subjectPairs, null, 2));
+              console.log('AVAILABLE SUBJECTS:', JSON.stringify(subjectsCompatArray.map(s => ({ 
+                id: s.subjectId, 
+                name: s.name,
+                typeIds: s.subjectToSubjectTypes?.map((t: { subjectTypeId: string; subjectType: { subjectTypeId: string; name: string } }) => t.subjectTypeId) || []
+              })), null, 2));
 
-              // Get selected subject-type pairs
-              const subjectPairs = subjectsForm.getValues().subjectPairs;
-
-              // Always use the main form's submit handler
               form.handleSubmit(onSubmit)();
             }}
           >
