@@ -88,6 +88,20 @@ export function StudentFormDialog({
   const { data: teacherSubjects = [], isLoading: teacherSubjectsLoading } =
     useTeacherSubjects({});
 
+  // Create a modified schema for edit mode
+  const editSchema = CreateUserStudentSchema.extend({
+    username: z.string().min(3).max(50).optional(),
+    password: z
+      .string()
+      .transform((val) => (val === "" ? undefined : val))
+      .refine((val) => !val || val.length >= 6, {
+        message: "パスワードは6文字以上である必要があります",
+      })
+      .optional(),
+  });
+
+  const formSchema = isEditing ? editSchema : CreateUserStudentSchema;
+
   // Memoize arrays to avoid dependency issues in useMemo
   const gradesArray = useMemo(
     () => (Array.isArray(grades) ? grades : grades?.data ?? []),
@@ -137,7 +151,10 @@ export function StudentFormDialog({
     [subjectsArray]
   );
 
-  const formSchema = CreateUserStudentSchema;
+  // Create a defaultUsername for edit mode, similar to teacher form
+  const defaultUsername = isEditing
+    ? student?.StudentPreference?.[0]?.studentId || "default_username"
+    : "";
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -151,7 +168,6 @@ export function StudentFormDialog({
         | "PRIVATE"
         | null
         | undefined,
-      // Only set examSchoolType if it matches the correct API enum, otherwise undefined
       examSchoolType: safeEnum(student?.examSchoolType, [
         "PUBLIC",
         "PRIVATE",
@@ -179,7 +195,7 @@ export function StudentFormDialog({
       secondChoiceSchool: student?.secondChoiceSchool || "",
       homePhone: student?.homePhone || "",
       enrollmentDate: student?.enrollmentDate || undefined,
-      username: "",
+      username: defaultUsername,
       password: "",
     },
   });
@@ -204,6 +220,35 @@ export function StudentFormDialog({
       desiredTimes: preferencesForm.getValues("desiredTimes") || [],
     },
   });
+
+  // Helper function to format date
+  const formatDate = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  // Function to get birth date as string, similar to teacher form
+  const getBirthDateString = (value: unknown) => {
+    if (typeof value === "string") return value.slice(0, 10);
+    if (value instanceof Date && !isNaN(value.getTime()))
+      return formatDate(value);
+    return "";
+  };
+
+  // Helper function to format time
+  const formatTimeString = (time: Date | string) => {
+    if (typeof time === "string") {
+      // Handle ISO string
+      if (time.includes("T")) {
+        return time.split("T")[1].substring(0, 5);
+      }
+      return time;
+    }
+    // Handle Date object
+    return time.toTimeString().substring(0, 5);
+  };
 
   // Parse existing student preferences if available
   useEffect(() => {
@@ -247,19 +292,6 @@ export function StudentFormDialog({
       preferencesForm.setValue("classTypeId", preferences.classTypeId || null);
     }
   }, [student, preferencesForm, desiredTimesForm]);
-
-  // Helper function to format time
-  const formatTimeString = (time: Date | string) => {
-    if (typeof time === "string") {
-      // Handle ISO string
-      if (time.includes("T")) {
-        return time.split("T")[1].substring(0, 5);
-      }
-      return time;
-    }
-    // Handle Date object
-    return time.toTimeString().substring(0, 5);
-  };
 
   // Sync from preferencesForm to desiredTimesForm
   useEffect(() => {
@@ -328,25 +360,6 @@ export function StudentFormDialog({
     });
   }, [teacherList, teacherToSubjectsMap, selectedSubjects]);
 
-  // Helper to format date input to YYYY-MM-DD
-  const formatDateInput = (date: string | Date | undefined | null) => {
-    if (!date) return "";
-    if (typeof date === "string") {
-      // If it's already YYYY-MM-DD, return as is
-      if (/^\d{4}-\d{2}-\d{2}$/.test(date)) return date;
-      // If it's ISO string, extract date part
-      if (/^\d{4}-\d{2}-\d{2}T/.test(date)) return date.slice(0, 10);
-      // Otherwise, try to parse
-      const d = new Date(date);
-      if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
-      return "";
-    }
-    if (date instanceof Date && !isNaN(date.getTime())) {
-      return date.toISOString().slice(0, 10);
-    }
-    return "";
-  };
-
   // Loading states
   const isLoading =
     gradesLoading ||
@@ -363,7 +376,7 @@ export function StudentFormDialog({
       })),
       teachers: preference.preferredTeachers,
       timeSlots: preference.desiredTimes.map((time) => ({
-        dayOfWeek: time.dayOfWeek.toUpperCase(), // Ensure uppercase enum format
+        dayOfWeek: time.dayOfWeek.toUpperCase(),
         startTime: time.startTime,
         endTime: time.endTime,
       })),
@@ -373,98 +386,98 @@ export function StudentFormDialog({
   };
 
   // Handle form submission - OPTIMIZED to close dialog immediately
-  // Create a proper onSubmit function
   function onSubmit(values: z.infer<typeof formSchema>) {
-    // Get the latest time slots from the desiredTimesForm
-    const timeSlots = desiredTimesForm.getValues().desiredTimes;
+    setIsSubmitting(true);
+    try {
+      // Get the latest time slots from the desiredTimesForm
+      const timeSlots = desiredTimesForm.getValues().desiredTimes;
 
-    // Ensure the day of week is in uppercase enum format (MONDAY not Monday)
-    const formattedTimeSlots = timeSlots.map((time) => ({
-      dayOfWeek: time.dayOfWeek.toUpperCase(), // Convert to proper enum format
-      startTime: time.startTime,
-      endTime: time.endTime,
-    }));
+      // Ensure the day of week is in uppercase enum format
+      const formattedTimeSlots = timeSlots.map((time) => ({
+        dayOfWeek: time.dayOfWeek.toUpperCase(),
+        startTime: time.startTime,
+        endTime: time.endTime,
+      }));
 
-    // Update the preferencesForm with these values
-    preferencesForm.setValue("desiredTimes", formattedTimeSlots);
+      // Update the preferencesForm with these values
+      preferencesForm.setValue("desiredTimes", formattedTimeSlots);
 
-    const preferenceData = preferencesForm.getValues();
-    const preferences = mapPreferencesForApi(preferenceData);
+      const preferenceData = preferencesForm.getValues();
+      const preferences = mapPreferencesForApi(preferenceData);
 
-    // Convert Date objects to string (YYYY-MM-DD) for API
-    const formatDateString = (d: string | Date | undefined) => {
-      if (!d) return undefined;
-      if (typeof d === "string") return d;
-      if (d instanceof Date && !isNaN(d.getTime()))
-        return d.toISOString().slice(0, 10);
-      return undefined;
-    };
-    // Convert nulls to undefined for all string fields to match schema types
-    const cleanString = (v: string | null | undefined) =>
-      v == null ? undefined : v;
-    // Helper to cast enum fields safely
-    const castEnum = <T extends string>(
-      val: unknown,
-      allowed: readonly T[]
-    ): T | undefined =>
-      typeof val === "string" && allowed.includes(val as T)
-        ? (val as T)
+      // Format the dates properly for API
+      const birthDateStr = values.birthDate
+        ? typeof values.birthDate === "string"
+          ? values.birthDate
+          : values.birthDate instanceof Date
+          ? values.birthDate.toISOString().split("T")[0]
+          : ""
         : undefined;
-    const payload = {
-      ...values,
-      gradeId: cleanString(values.gradeId),
-      kanaName: cleanString(values.kanaName),
-      schoolName: cleanString(values.schoolName),
-      schoolType: castEnum(values.schoolType, ["PUBLIC", "PRIVATE"]) as
-        | "PUBLIC"
-        | "PRIVATE"
-        | undefined,
-      examSchoolType: castEnum(values.examSchoolType, ["PUBLIC", "PRIVATE"]) as
-        | "PUBLIC"
-        | "PRIVATE"
-        | undefined,
-      examSchoolCategoryType: castEnum(values.examSchoolCategoryType, [
-        "ELEMENTARY",
-        "MIDDLE",
-        "HIGH",
-        "UNIVERSITY",
-        "OTHER",
-      ]) as
-        | "ELEMENTARY"
-        | "MIDDLE"
-        | "HIGH"
-        | "UNIVERSITY"
-        | "OTHER"
-        | undefined,
-      firstChoiceSchool: cleanString(values.firstChoiceSchool),
-      secondChoiceSchool: cleanString(values.secondChoiceSchool),
-      homePhone: cleanString(values.homePhone),
-      parentMobile: cleanString(values.parentMobile),
-      studentMobile: cleanString(values.studentMobile),
-      parentEmail: cleanString(values.parentEmail),
-      notes: cleanString(values.notes),
-      birthDate: formatDateString(values.birthDate),
-      enrollmentDate: formatDateString(values.enrollmentDate ?? undefined),
-      preferences,
-    };
 
-    // Close the dialog immediately for better UX
-    onOpenChange(false);
+      const enrollmentDateStr = values.enrollmentDate
+        ? typeof values.enrollmentDate === "string"
+          ? values.enrollmentDate
+          : (values.enrollmentDate as Date).toISOString().split("T")[0]
+        : undefined;
 
-    // Reset all forms
-    form.reset();
-    preferencesForm.reset();
-    desiredTimesForm.reset();
+      // Close the dialog immediately for better UX
+      onOpenChange(false);
 
-    // Then trigger the mutation without waiting for result
-    if (isEditing && student) {
-      const { username, ...updatePayload } = payload;
-      updateStudentMutation.mutate({
-        studentId: student.studentId,
-        ...updatePayload,
-      });
-    } else {
-      createStudentMutation.mutate(payload);
+      // Reset all forms
+      form.reset();
+      preferencesForm.reset();
+      desiredTimesForm.reset();
+      setIsSubmitting(false);
+
+      // Then trigger the mutation without waiting for result
+      if (isEditing && student) {
+        updateStudentMutation.mutate({
+          studentId: student.studentId,
+          name: values.name || undefined,
+          kanaName: values.kanaName || undefined,
+          gradeId: values.gradeId || undefined,
+          schoolName: values.schoolName || undefined,
+          schoolType: values.schoolType || undefined,
+          examSchoolType: values.examSchoolType || undefined,
+          examSchoolCategoryType: values.examSchoolCategoryType || undefined,
+          birthDate: birthDateStr,
+          parentMobile: values.parentMobile || undefined,
+          studentMobile: values.studentMobile || undefined,
+          parentEmail: values.parentEmail || undefined,
+          notes: values.notes || undefined,
+          firstChoiceSchool: values.firstChoiceSchool || undefined,
+          secondChoiceSchool: values.secondChoiceSchool || undefined,
+          homePhone: values.homePhone || undefined,
+          enrollmentDate: enrollmentDateStr,
+          password: values.password || undefined,
+          preferences,
+        });
+      } else {
+        createStudentMutation.mutate({
+          username: values.username || "",
+          password: values.password || "",
+          name: values.name,
+          kanaName: values.kanaName || undefined,
+          gradeId: values.gradeId || undefined,
+          schoolName: values.schoolName || undefined,
+          schoolType: values.schoolType || undefined,
+          examSchoolType: values.examSchoolType || undefined,
+          examSchoolCategoryType: values.examSchoolCategoryType || undefined,
+          birthDate: birthDateStr,
+          parentMobile: values.parentMobile || undefined,
+          studentMobile: values.studentMobile || undefined,
+          parentEmail: values.parentEmail || undefined,
+          notes: values.notes || undefined,
+          firstChoiceSchool: values.firstChoiceSchool || undefined,
+          secondChoiceSchool: values.secondChoiceSchool || undefined,
+          homePhone: values.homePhone || undefined,
+          enrollmentDate: enrollmentDateStr,
+          preferences,
+        });
+      }
+    } catch (error) {
+      console.error("Error saving student:", error);
+      setIsSubmitting(false);
     }
   }
 
@@ -514,7 +527,7 @@ export function StudentFormDialog({
 
           <TabsContent value="basic">
             <Form {...form}>
-              <form className="space-y-4">
+              <form className="space-y-4" autoComplete="off">
                 <FormField
                   control={form.control}
                   name="name"
@@ -713,7 +726,7 @@ export function StudentFormDialog({
                         <Input
                           type="date"
                           {...field}
-                          value={formatDateInput(field.value)}
+                          value={getBirthDateString(field.value)}
                           onChange={(e) => {
                             field.onChange(e.target.value || undefined);
                           }}
@@ -785,52 +798,88 @@ export function StudentFormDialog({
                           placeholder="保護者メールを入力"
                           {...field}
                           value={field.value || ""}
-                          onChange={(e) => {
-                            // If the field is empty, set it to an empty string explicitly
-                            // This way it will match the z.literal("") in our schema
-                            field.onChange(e.target.value);
-                          }}
                         />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-                <FormField
-                  control={form.control}
-                  name="username"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>ログインID</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="ログインIDを入力"
-                          {...field}
-                          value={field.value || ""}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>パスワード</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="password"
-                          placeholder="パスワードを入力"
-                          {...field}
-                          value={field.value || ""}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+
+                {!isEditing && (
+                  <>
+                    <FormField
+                      control={form.control}
+                      name="username"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="after:content-['*'] after:ml-1 after:text-destructive">
+                            ログインID
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="ログインIDを入力"
+                              {...field}
+                              value={field.value || ""}
+                              autoComplete="off"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="password"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="after:content-['*'] after:ml-1 after:text-destructive">
+                            パスワード
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              type="password"
+                              placeholder="パスワードを入力"
+                              {...field}
+                              value={field.value || ""}
+                              autoComplete="new-password"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </>
+                )}
+
+                {isEditing && (
+                  <>
+                    <FormField
+                      control={form.control}
+                      name="username"
+                      render={({ field }) => <input type="hidden" {...field} />}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="password"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>
+                            新しいパスワード (変更する場合のみ)
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              type="password"
+                              placeholder="新しいパスワードを入力"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </>
+                )}
+
                 <FormField
                   control={form.control}
                   name="notes"
@@ -854,7 +903,7 @@ export function StudentFormDialog({
 
           <TabsContent value="preferences">
             <Form {...preferencesForm}>
-              <form className="space-y-4">
+              <form className="space-y-4" autoComplete="off">
                 {/* Subject Selector using our new component */}
                 <StudentSubjectSelector
                   form={preferencesForm}

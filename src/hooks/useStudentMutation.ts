@@ -1,6 +1,6 @@
 import { fetcher } from "@/lib/fetcher";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Student } from "@prisma/client";
+import { Student, SchoolType, examSchoolType } from "@prisma/client";
 import { toast } from "sonner";
 
 type CreateStudentInput = {
@@ -18,8 +18,15 @@ type CreateStudentInput = {
     | "HIGH"
     | "UNIVERSITY"
     | "OTHER";
-  birthDate?: string;
+  birthDate?: string; // Sent as string from form
   parentEmail?: string;
+  parentMobile?: string;
+  studentMobile?: string;
+  homePhone?: string;
+  enrollmentDate?: string; // Sent as string from form
+  firstChoiceSchool?: string;
+  secondChoiceSchool?: string;
+  notes?: string; // General notes for the student
   preferences?: {
     subjects?: { subjectId: string; subjectTypeId: string }[];
     teachers?: string[];
@@ -28,14 +35,14 @@ type CreateStudentInput = {
       startTime: string;
       endTime: string;
     }[];
-    notes?: string;
+    notes?: string; // Preference-specific notes
     classTypeId?: string;
   };
 };
 
 type UpdateStudentInput = {
   studentId: string;
-  password?: string;
+  password?: string; // For updating associated User
   name?: string;
   kanaName?: string;
   gradeId?: string;
@@ -48,8 +55,14 @@ type UpdateStudentInput = {
     | "HIGH"
     | "UNIVERSITY"
     | "OTHER";
-  birthDate?: string;
-  parentEmail?: string;
+  birthDate?: string; // Sent as string from form
+  parentEmail?: string; // For updating associated User
+  parentMobile?: string; // For updating associated User
+  studentMobile?: string; // For updating associated User
+  homePhone?: string;
+  enrollmentDate?: string; // Sent as string from form
+  firstChoiceSchool?: string;
+  secondChoiceSchool?: string;
   preferences?: {
     subjects?: { subjectId: string; subjectTypeId: string }[];
     teachers?: string[];
@@ -61,6 +74,7 @@ type UpdateStudentInput = {
     notes?: string;
     classTypeId?: string;
   };
+  notes?: string; // General notes for the student
 };
 
 type CreateStudentResponse = {
@@ -115,7 +129,7 @@ export function useStudentCreate() {
         method: "POST",
         body: JSON.stringify(data),
       }),
-    onMutate: async (newStudent) => {
+    onMutate: async (newStudentData) => {
       await queryClient.cancelQueries({ queryKey: ["students"] });
       const queries = queryClient.getQueriesData<StudentsQueryData>({
         queryKey: ["students"],
@@ -127,31 +141,42 @@ export function useStudentCreate() {
         }
       });
       const tempId = `temp-${Date.now()}`;
-      queries.forEach(([queryKey]) => {
-        const currentData =
-          queryClient.getQueryData<StudentsQueryData>(queryKey);
+
+      queries.forEach(([queryKey, currentData]) => {
         if (currentData) {
-          // For optimistic updates, create a temporary student
-          const optimisticStudent = {
+          // Prepare the student object for optimistic update, matching Student model
+          const studentModelData = {
+            name: newStudentData.name,
+            kanaName: newStudentData.kanaName || null,
+            gradeId: newStudentData.gradeId || null,
+            schoolName: newStudentData.schoolName || null,
+            schoolType: newStudentData.schoolType as SchoolType | null || null,
+            examSchoolType: newStudentData.examSchoolType as SchoolType | null || null,
+            examSchoolCategoryType: newStudentData.examSchoolCategoryType as examSchoolType | null || null,
+            firstChoiceSchool: newStudentData.firstChoiceSchool || null,
+            secondChoiceSchool: newStudentData.secondChoiceSchool || null,
+            homePhone: newStudentData.homePhone || null,
+            notes: newStudentData.notes || null, // Assuming Student model has 'notes'
+            // Convert date strings to Date objects or null
+            birthDate: newStudentData.birthDate ? new Date(newStudentData.birthDate) : null,
+            enrollmentDate: newStudentData.enrollmentDate ? new Date(newStudentData.enrollmentDate) : null,
+          };
+
+          const tempStudentForCache: Student = {
+            ...studentModelData,
             studentId: tempId,
-            name: newStudent.name,
-            kanaName: newStudent.kanaName || null,
-            gradeId: newStudent.gradeId || null,
-            schoolName: newStudent.schoolName || null,
-            schoolType: newStudent.schoolType || null,
-            examSchoolType: newStudent.examSchoolType || null,
-            examSchoolCategoryType: newStudent.examSchoolCategoryType || null,
-            birthDate: newStudent.birthDate ? new Date(newStudent.birthDate) : null,
-            parentEmail: newStudent.parentEmail || null,
-            userId: `temp-user-${Date.now()}`,
+            // Mock server-generated fields and other non-optional Student fields
             createdAt: new Date(),
             updatedAt: new Date(),
-            _optimistic: true,
-          } as unknown as Student & { _optimistic?: boolean };
+            // Add other non-optional fields from Prisma Student type with default/mock values if necessary
+            // For example, if Student has a non-optional `userId: String`
+            // userId: "temp-user-id",
+            // Ensure all fields required by the Prisma Student type are present
+          } as Student; // Cast to Prisma Student type
 
           queryClient.setQueryData<StudentsQueryData>(queryKey, {
             ...currentData,
-            data: [optimisticStudent, ...currentData.data],
+            data: [...currentData.data, tempStudentForCache],
             pagination: {
               ...currentData.pagination,
               total: currentData.pagination.total + 1,
@@ -225,68 +250,64 @@ export function useStudentUpdate() {
     StudentMutationContext
   >({
     mutationFn: ({ studentId, ...data }) => {
-      // Resolve the ID before sending to the server
       const resolvedId = getResolvedStudentId(studentId);
-
       return fetcher(`/api/student`, {
         method: "PUT",
         body: JSON.stringify({ studentId: resolvedId, ...data }),
       });
     },
-    onMutate: async (updatedStudent) => {
+    onMutate: async (updatedStudentData) => {
       await queryClient.cancelQueries({ queryKey: ["students"] });
+      const resolvedId = getResolvedStudentId(updatedStudentData.studentId);
+      await queryClient.cancelQueries({ queryKey: ["student", resolvedId] });
 
-      // Resolve ID for any potential temporary ID
-      const resolvedId = getResolvedStudentId(updatedStudent.studentId);
-
-      await queryClient.cancelQueries({
-        queryKey: ["student", resolvedId],
-      });
       const queries = queryClient.getQueriesData<StudentsQueryData>({
         queryKey: ["students"],
       });
       const previousStudents: Record<string, StudentsQueryData> = {};
       queries.forEach(([queryKey, data]) => {
-        if (data) {
-          previousStudents[JSON.stringify(queryKey)] = data;
-        }
+        if (data) previousStudents[JSON.stringify(queryKey)] = data;
       });
-      const previousStudent = queryClient.getQueryData<Student>([
-        "student",
-        resolvedId,
-      ]);
-      queries.forEach(([queryKey]) => {
-        const currentData =
-          queryClient.getQueryData<StudentsQueryData>(queryKey);
+
+      const previousStudent = queryClient.getQueryData<Student>(["student", resolvedId]);
+
+      // Prepare the update patch with correct types for Student model fields
+      const studentUpdatePatch: Partial<Student> & { updatedAt: Date } = {
+        ...(updatedStudentData.name && { name: updatedStudentData.name }),
+        ...(updatedStudentData.kanaName && { kanaName: updatedStudentData.kanaName }),
+        ...(updatedStudentData.gradeId && { gradeId: updatedStudentData.gradeId }),
+        ...(updatedStudentData.schoolName && { schoolName: updatedStudentData.schoolName }),
+        ...(updatedStudentData.schoolType && { schoolType: updatedStudentData.schoolType as SchoolType }),
+        ...(updatedStudentData.examSchoolType && { examSchoolType: updatedStudentData.examSchoolType as SchoolType }),
+        ...(updatedStudentData.examSchoolCategoryType && { examSchoolCategoryType: updatedStudentData.examSchoolCategoryType as examSchoolType }),
+        ...(updatedStudentData.firstChoiceSchool && { firstChoiceSchool: updatedStudentData.firstChoiceSchool }),
+        ...(updatedStudentData.secondChoiceSchool && { secondChoiceSchool: updatedStudentData.secondChoiceSchool }),
+        ...(updatedStudentData.homePhone && { homePhone: updatedStudentData.homePhone }),
+        ...(updatedStudentData.notes && { notes: updatedStudentData.notes }), // Assuming Student model has 'notes'
+        // Convert date strings to Date objects or null if present
+        ...(updatedStudentData.birthDate && { birthDate: new Date(updatedStudentData.birthDate) }),
+        ...(updatedStudentData.enrollmentDate && { enrollmentDate: new Date(updatedStudentData.enrollmentDate) }),
+        updatedAt: new Date(), // Optimistically update timestamp
+      };
+
+      queries.forEach(([queryKey, currentData]) => {
         if (currentData) {
           queryClient.setQueryData<StudentsQueryData>(queryKey, {
             ...currentData,
             data: currentData.data.map((student) =>
-              student.studentId === updatedStudent.studentId
-                ? {
-                    ...student,
-                    ...updatedStudent,
-                    birthDate:
-                      updatedStudent.birthDate
-                        ? new Date(updatedStudent.birthDate)
-                        : student.birthDate,
-                    updatedAt: new Date(),
-                  }
+              student.studentId === resolvedId
+                ? ({ ...student, ...studentUpdatePatch } as Student)
                 : student
             ),
           });
         }
       });
+
       if (previousStudent) {
         queryClient.setQueryData<Student>(["student", resolvedId], {
           ...previousStudent,
-          ...updatedStudent,
-          birthDate:
-            updatedStudent.birthDate
-              ? new Date(updatedStudent.birthDate)
-              : previousStudent.birthDate,
-          updatedAt: new Date(),
-        });
+          ...studentUpdatePatch,
+        } as Student);
       }
       return { previousStudents, previousStudent };
     },

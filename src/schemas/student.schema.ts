@@ -41,7 +41,7 @@ const StudentBaseSchema = z.object({
   enrollmentDate: z.string().nullish(),
   birthDate: z
     .string()
-    .nullish()
+    .optional()
     .transform((val) => (val ? new Date(val) : undefined)),
   homePhone: z
     .string()
