@@ -27,6 +27,7 @@ import { useTeachers } from "@/hooks/useTeacherQuery";
 import { useStudents } from "@/hooks/useStudentQuery";
 import { z } from "zod";
 import { toast } from "sonner";
+import { MultiSelectFilter, type FilterOption } from "../multi-select-filter";
 
 type MatchingFormDialogProps = {
   isOpen: boolean;
@@ -39,14 +40,27 @@ export function MatchingFormDialog({
   onOpenChange,
   template = null,
 }: MatchingFormDialogProps) {
-  const [studentSearchTerm, setStudentSearchTerm] = useState("");
-  const [showStudentDropdown, setShowStudentDropdown] = useState(false);
   const updateTemplateMutation = useRegularClassTemplateUpdate();
-  const { data: teachers } = useTeachers();
-  const { data: students = [] } = useStudents();
+  const { data: teachersData } = useTeachers();
+  const { data: studentsData } = useStudents();
   const isSubmitting = updateTemplateMutation.isPending;
 
-  const studentList = Array.isArray(students) ? students : students?.data ?? [];
+  const studentList = Array.isArray(studentsData)
+    ? studentsData
+    : studentsData?.data ?? [];
+  const teacherList = Array.isArray(teachersData?.data)
+    ? teachersData.data
+    : [];
+
+  const teacherOptions: FilterOption[] = teacherList.map((teacher) => ({
+    value: teacher.teacherId,
+    label: teacher.name,
+  }));
+
+  const studentOptions: FilterOption[] = studentList.map((student) => ({
+    value: student.studentId,
+    label: student.name,
+  }));
 
   const formatDateInput = (date: string | Date | undefined | null) => {
     if (!date) return "";
@@ -142,7 +156,7 @@ export function MatchingFormDialog({
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <Dialog open={isOpen} onOpenChange={onOpenChange} modal={false}>
       <DialogContent className="max-h-[90vh] overflow-auto">
         <DialogHeader>
           <DialogTitle>通常授業テンプレートの更新</DialogTitle>
@@ -232,24 +246,19 @@ export function MatchingFormDialog({
                 <FormItem>
                   <FormLabel>講師</FormLabel>
                   <FormControl>
-                    <Select
-                      onValueChange={(value) => field.onChange(value || "")}
-                      value={field.value || ""}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="講師を選択" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {teachers?.data?.map((teacher) => (
-                          <SelectItem
-                            key={teacher.teacherId}
-                            value={teacher.teacherId}
-                          >
-                            {teacher.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <MultiSelectFilter
+                      placeholder="講師を選択"
+                      options={teacherOptions}
+                      selectedValues={field.value ? [field.value] : []}
+                      onChange={(values) => {
+                        field.onChange(
+                          values.length > 0 ? values[values.length - 1] : ""
+                        );
+                      }}
+                      searchPlaceholder="講師を検索..."
+                      emptySearchText="該当する講師が見つかりません"
+                      className="w-full"
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -262,95 +271,17 @@ export function MatchingFormDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>生徒</FormLabel>
-                  <div className="relative">
-                    <FormControl>
-                      <Input
-                        placeholder="生徒を検索..."
-                        className="w-full"
-                        value={studentSearchTerm}
-                        onChange={(e) => {
-                          setStudentSearchTerm(e.target.value);
-                          setShowStudentDropdown(e.target.value.trim() !== "");
-                        }}
-                        onFocus={() => {
-                          if (studentSearchTerm.trim() !== "") {
-                            setShowStudentDropdown(true);
-                          }
-                        }}
-                        onBlur={() => {
-                          setTimeout(() => setShowStudentDropdown(false), 200);
-                        }}
-                      />
-                    </FormControl>
-                    {showStudentDropdown && (
-                      <div className="absolute z-10 w-full mt-1 bg-background border rounded-md shadow-lg max-h-60 overflow-auto">
-                        {studentList
-                          .filter((student) =>
-                            student.name
-                              .toLowerCase()
-                              .includes(studentSearchTerm.toLowerCase())
-                          )
-                          .map((student) => (
-                            <div
-                              key={student.studentId}
-                              className="p-2 hover:bg-accent cursor-pointer"
-                              onClick={() => {
-                                const currentValues = field.value || [];
-                                if (
-                                  !currentValues.includes(student.studentId)
-                                ) {
-                                  field.onChange([
-                                    ...currentValues,
-                                    student.studentId,
-                                  ]);
-                                }
-                                setStudentSearchTerm("");
-                                setShowStudentDropdown(false);
-                              }}
-                            >
-                              {student.name}
-                            </div>
-                          ))}
-                        {studentList.filter((student) =>
-                          student.name
-                            .toLowerCase()
-                            .includes(studentSearchTerm.toLowerCase())
-                        ).length === 0 && (
-                          <div className="p-2 text-muted-foreground">
-                            該当する学生が見つかりません
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {(field.value || []).map((studentId, index) => {
-                      const student = studentList.find(
-                        (s) => s.studentId === studentId
-                      );
-                      return (
-                        <div
-                          key={index}
-                          className="flex items-center bg-accent rounded-md px-2 py-1"
-                        >
-                          <span>{student ? student.name : studentId}</span>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="h-4 w-4 p-0 ml-1"
-                            onClick={() => {
-                              const newValues = [...(field.value || [])];
-                              newValues.splice(index, 1);
-                              field.onChange(newValues);
-                            }}
-                          >
-                            ×
-                          </Button>
-                        </div>
-                      );
-                    })}
-                  </div>
+                  <FormControl>
+                    <MultiSelectFilter
+                      placeholder="生徒を選択"
+                      options={studentOptions}
+                      selectedValues={field.value || []}
+                      onChange={field.onChange}
+                      searchPlaceholder="生徒を検索..."
+                      emptySearchText="該当する学生が見つかりません"
+                      className="w-full"
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
