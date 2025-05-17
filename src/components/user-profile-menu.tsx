@@ -15,6 +15,7 @@ import { signOut, useSession } from "next-auth/react";
 
 export default function UserProfileMenu() {
   const { data: session } = useSession({ required: true });
+  console.log("Session object:", session);
 
   if (!session) {
     return (

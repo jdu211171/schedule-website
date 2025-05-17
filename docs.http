@@ -1,5 +1,13 @@
 @url = http://localhost:3000/api
-@cookie = __next_hmr_refresh_hash__=738; authjs.csrf-token=a71e6bb98aa1f55968f4e17ddd805e3bb75cc9fcd19fb0b03c4c7f7645186af6%7Cd73c325dff7544fcff5e1fe5ed07e69be4a8c3b15bb099943442013837ea8fa6; authjs.callback-url=http%3A%2F%2Flocalhost%3A3000; authjs.session-token=eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2Q0JDLUhTNTEyIiwia2lkIjoiN2k0YkNIMDRhZHdRM0V4ZkV2ZnRNd2pEX0FWUnk3TW1PSFA1d0kxWTUtT1FFekpjQjNSV0NoUkIyWUtKdzRsZWZaWVBMTXY0T3I4amw4ZGpvZzktYncifQ..4DSoT8G2EVrWD0e9KMwLEw.AbJmJEUKTDTZLfowXZylKRKWxdoZxC1clTuMc10eSW0da2sk9hFWFiiWL4VY-ly7ednyTerny8KnXMgBfKpYw4hvcc0lQDV5KtU6ihsj35H12Ov6mu2m_SGUKlhYgix-ojadDENUjAEoPtQ1D_NLT2nOFHL8-4dhQsuffbixdqp-ikgkO3quAcFvJRcPP6Gr3YrNcDbeVB7mwFD3BhyfC0Rxtz6ePffoHkTCAGo8Wow_AVYmPGh2CfWq0sWMRuoVL60hwDi9JMJZjMV3rvobQ03MBGpcvvZ9OZYlVwu9ols.PqNvbBFo4JdWCRvUKWtAjxbI14XNdmVUEKZ_dEFmmkc
+@cookie =
+
+#################
+# USER PROFILE  #
+#################
+
+### Get current user's profile information
+GET {{url}}/users/me
+Content-Type: application/json
 
 ###########
 # STUDENT #
@@ -8,7 +16,6 @@
 ### Get all students (with pagination)
 GET {{url}}/students?page=1&limit=10
 Content-Type: application/json
-Cookie: {{cookie}}
 
 ### Get all students with search/filter
 GET {{url}}/students?name=佐藤&gradeYear=1

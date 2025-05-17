@@ -14,6 +14,7 @@ type RouteHandler = (
 export function withRole(allowedRoles: UserRole[], handler: RouteHandler) {
   return async (request: NextRequest) => {
     const session = await auth();
+    console.log("Session object:", session);
 
     // Check if user is authenticated and has an allowed role
     if (
