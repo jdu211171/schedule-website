@@ -8,41 +8,57 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-/**
- * Booth -> ブース
- * CSV: 'マスタ情報  ブース'
- * This model stores information about physical booths or rooms used for classes.
- * Maps the ブースID, ブース名, and status fields from the CSV.
- */
+model Branch {
+  branchId      String        @id @default(cuid()) @map("branch_id")
+  name          String        @db.VarChar(100)
+  notes         String?       @db.VarChar(255)
+  booths        Booth[]
+  userBranches  UserBranch[]
+  createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt     DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  @@map("branches")
+}
+
+model UserBranch {
+  userId   String @map("user_id")
+  branchId String @map("branch_id")
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  branch   Branch @relation(fields: [branchId], references: [branchId], onDelete: Cascade)
+  @@id([userId, branchId])
+
+  @@map("user_branches")
+}
+
 model Booth {
-  boothId               String                 @id @default(cuid()) @map("booth_id")
-  name                  String                 @db.VarChar(100)
-  status                Boolean?               @default(true)
-  notes                 String?                @db.VarChar(255)
-  classSessions         ClassSession[]
-  createdAt             DateTime               @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt             DateTime               @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  boothId       String         @id @default(cuid()) @map("booth_id")
+  branchId      String         @map("branch_id")
+  name          String         @db.VarChar(100)
+  status        Boolean?       @default(true)
+  notes         String?        @db.VarChar(255)
+  branch        Branch         @relation(fields: [branchId], references: [branchId])
+  classSessions ClassSession[]
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt     DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
   @@map("booths")
 }
 
 /**
- * Class -> 個別授業スケジュール (特別授業)
- * CSV: '個別授業スケジュール 特別授業'
  * This model represents individual class sessions, particularly special classes.
  * It captures date, time, teacher, subject, and booth information for each class.
  */
 model ClassSession {
   classId                 String                   @id @default(cuid()) @map("class_id")
+  teacherId               String                   @map("teacher_id")
+  studentId               String                   @map("student_id")
+  subjectId               String                   @map("subject_id")
+  classTypeId             String                   @map("class_type_id")
+  boothId                 String                   @map("booth_id")
   date                    DateTime                 @db.Date
   startTime               DateTime                 @map("start_time") @db.Time(6)
   endTime                 DateTime                 @map("end_time") @db.Time(6)
-  duration                DateTime?                @map("duration") @db.Time(6)
-  teacherId               String                   @map("teacher_id") @db.VarChar(50)
-  studentId               String                   @map("student_id") @db.VarChar(50)
-  subjectId               String                   @map("subject_id") @db.VarChar(50)
-  boothId                 String                   @map("booth_id") @db.VarChar(50)
-  classTypeId             String                   @map("class_type_id") @db.VarChar(50)
+  duration                Int?                     @map("duration")
   notes                   String?                  @db.VarChar(255)
   booth                   Booth                    @relation(fields: [boothId], references: [boothId], onDelete: Restrict, onUpdate: Cascade)
   classType               ClassType                @relation(fields: [classTypeId], references: [classTypeId], onDelete: Restrict, onUpdate: Cascade)
@@ -60,10 +76,7 @@ model ClassSession {
 }
 
 /**
- * ClassType -> 授業タイプ
- * CSV: 'マスタ情報  授業タイプ'
  * This model defines different types of classes offered by the school.
- * Used for categorizing class sessions and student preferences.
  */
 model ClassType {
   classTypeId               String                   @id @default(cuid()) @map("class_type_id")
@@ -86,7 +99,7 @@ model Student {
   lineId                     String?                     @map("line_id") @db.VarChar(50)
   notes                      String?                     @db.VarChar(255)
   studentClassEnrollments    StudentClassEnrollment[]
-  ClassSession               ClassSession[]
+  classSessions              ClassSession[]
   studentType                StudentType?                @relation(fields: [studentTypeId], references: [studentTypeId], onDelete: SetNull, onUpdate: Cascade)
   user                       User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt                  DateTime                    @default(now()) @map("created_at") @db.Timestamp(6)
@@ -97,8 +110,6 @@ model Student {
 }
 
 /**
- * StudentType -> 学生タイプ
- * CSV: 'マスタ情報  学生タイプ'
  * This model defines categories of students, such as elementary, middle, or high school.
  * Used to group students and relates to the Grade model.
  */
@@ -115,15 +126,13 @@ model StudentType {
 }
 
 /**
- * StudentClassEnrollment
  * This model tracks which students are enrolled in which class sessions.
  * It's a junction table connecting students to class sessions with additional metadata.
- * No direct corresponding CSV, but relates to both student and class session data.
  */
 model StudentClassEnrollment {
   enrollmentId String       @id @default(cuid()) @map("enrollment_id")
-  classId      String       @map("class_id") @db.VarChar(50)
-  studentId    String       @map("student_id") @db.VarChar(50)
+  classId      String       @map("class_id")
+  studentId    String       @map("student_id")
   status       String?      @db.VarChar(50)
   notes        String?      @db.VarChar(255)
   classSession ClassSession @relation(fields: [classId], references: [classId], onDelete: Cascade, onUpdate: Cascade)
@@ -146,10 +155,7 @@ enum DayOfWeek {
 }
 
 /**
- * Teacher -> 講師
- * CSV: 'マスタ情報  講師'
- * This model stores comprehensive teacher information including personal details,
- * educational background, contact information, and certification data.
+ * This model stores comprehensive teacher information.
  * Central to class scheduling and assignment.
  */
 model Teacher {
@@ -169,10 +175,7 @@ model Teacher {
 }
 
 /**
- * Subject -> 科目
- * CSV: 'マスタ情報  科目'
- * This model defines the academic subjects taught at the school.
- * Core entity related to classes, preferences, and teacher assignments.
+ * This model defines the subjects taught at the school.
  */
 model Subject {
   subjectId                String                     @id @default(cuid()) @map("subject_id")
@@ -186,10 +189,8 @@ model Subject {
 }
 
 /**
- * Notification -> 通知
  * This model stores notification records for system communications.
  * Handles message delivery to students and teachers.
- * No direct corresponding CSV file.
  */
 model Notification {
   notificationId   String    @id @default(cuid()) @map("notification_id")
@@ -210,13 +211,11 @@ model Notification {
 }
 
 /**
- * Event -> 定休日
- * CSV: 'マスタ情報  定休日'
  * This model stores holidays, vacations, and other non-class days.
  * Used for scheduling and availability calculations.
  */
 model Event {
-  id          String   @id @default(uuid())
+  id          String   @id @default(cuid())
   name        String   @db.VarChar(100)
   startDate   DateTime
   endDate     DateTime
@@ -228,16 +227,14 @@ model Event {
 }
 
 /**
- * User -> Authentication and authorization
  * This model handles user authentication and access control.
  * Links to both Student and Teacher models for role-based access.
- * No direct corresponding CSV file.
  */
 enum UserRole {
   ADMIN
+  STAFF
   TEACHER
   STUDENT
-  STAFF
 }
 
 model User {
@@ -247,6 +244,7 @@ model User {
   emailVerified DateTime? @map("email_verified")
   image         String?
   accounts      Account[]
+  branches      UserBranch[]
   sessions      Session[]
 
   username     String?  @unique
@@ -262,9 +260,7 @@ model User {
 }
 
 /**
- * Account
  * Authentication-related model for external provider connections.
- * Part of the authentication system, no direct corresponding CSV.
  */
 model Account {
   id                String  @id @default(cuid())
@@ -287,9 +283,8 @@ model Account {
 }
 
 /**
- * Session
  * Authentication session management model.
- * Part of the authentication system, no direct corresponding CSV.
+ * Part of the authentication system.
  */
 model Session {
   id           String   @id @default(cuid())
@@ -302,9 +297,8 @@ model Session {
 }
 
 /**
- * VerificationToken
  * Email verification token model for authentication.
- * Part of the authentication system, no direct corresponding CSV.
+ * Part of the authentication system.
  */
 model VerificationToken {
   identifier String
