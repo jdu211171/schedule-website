@@ -1,6 +1,6 @@
 // src/app/api/branches/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { withRole } from "@/lib/auth";
+import { withBranchAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
   branchCreateSchema,
@@ -46,7 +46,7 @@ const formatBranch = (branch: BranchWithUsers): FormattedBranch => ({
 });
 
 // GET - List branches with pagination and filters
-export const GET = withRole(
+export const GET = withBranchAccess(
   ["ADMIN"],
   async (request: NextRequest, session) => {
     // Parse query parameters
@@ -119,7 +119,7 @@ export const GET = withRole(
 );
 
 // POST - Create a new branch
-export const POST = withRole(
+export const POST = withBranchAccess(
   ["ADMIN"],
   async (request: NextRequest, session) => {
     try {

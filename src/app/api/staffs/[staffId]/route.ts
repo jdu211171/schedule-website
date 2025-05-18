@@ -1,6 +1,6 @@
 // src/app/api/staff/[id]/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { withRole } from "@/lib/auth";
+import { withBranchAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { staffUpdateSchema } from "@/schemas/staff.schema";
 import { User } from "@prisma/client";
@@ -39,7 +39,7 @@ const formatStaff = (
 });
 
 // GET a specific staff by ID
-export const GET = withRole(
+export const GET = withBranchAccess(
   ["ADMIN"],
   async (request: NextRequest, session) => {
     const id = request.url.split("/").pop();
@@ -87,7 +87,7 @@ export const GET = withRole(
 );
 
 // PATCH - Update a staff
-export const PATCH = withRole(
+export const PATCH = withBranchAccess(
   ["ADMIN"],
   async (request: NextRequest, session) => {
     try {
@@ -245,7 +245,7 @@ export const PATCH = withRole(
 );
 
 // DELETE - Delete a staff
-export const DELETE = withRole(
+export const DELETE = withBranchAccess(
   ["ADMIN"],
   async (request: NextRequest, session) => {
     const id = request.url.split("/").pop();

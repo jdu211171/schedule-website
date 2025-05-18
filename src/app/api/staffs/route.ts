@@ -1,6 +1,6 @@
 // src/app/api/staff/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { withRole } from "@/lib/auth";
+import { withBranchAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { staffCreateSchema, staffFilterSchema } from "@/schemas/staff.schema";
 import { User } from "@prisma/client";
@@ -39,7 +39,7 @@ const formatStaff = (
 });
 
 // GET - List staff with pagination and filters
-export const GET = withRole(
+export const GET = withBranchAccess(
   ["ADMIN"],
   async (request: NextRequest, session) => {
     // Parse query parameters
@@ -112,7 +112,7 @@ export const GET = withRole(
 );
 
 // POST - Create a new staff
-export const POST = withRole(
+export const POST = withBranchAccess(
   ["ADMIN"],
   async (request: NextRequest, session) => {
     try {

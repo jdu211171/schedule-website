@@ -1,11 +1,11 @@
 // src/app/api/users/me/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { withRole } from "@/lib/auth";
+import { withBranchAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { UserRole } from "@prisma/client";
 
 // Updated to use withRole like other routes
-export const GET = withRole(
+export const GET = withBranchAccess(
   ["ADMIN", "STAFF", "TEACHER", "STUDENT"] as UserRole[],
   async (request: NextRequest, session) => {
     try {

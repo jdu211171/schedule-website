@@ -1,6 +1,6 @@
 // src/app/api/teachers/[teacherId]/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { withRole } from "@/lib/auth";
+import { withBranchAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { teacherUpdateSchema } from "@/schemas/teacher.schema";
 import { Teacher } from "@prisma/client";
@@ -60,7 +60,7 @@ const formatTeacher = (teacher: TeacherWithIncludes): FormattedTeacher => ({
 });
 
 // GET a specific teacher
-export const GET = withRole(
+export const GET = withBranchAccess(
   ["ADMIN", "STAFF"],
   async (request: NextRequest, session) => {
     const teacherId = request.url.split("/").pop();
@@ -115,7 +115,7 @@ export const GET = withRole(
 );
 
 // PATCH - Update a teacher
-export const PATCH = withRole(
+export const PATCH = withBranchAccess(
   ["ADMIN", "STAFF"],
   async (request: NextRequest, session) => {
     try {
@@ -289,7 +289,7 @@ export const PATCH = withRole(
 );
 
 // DELETE - Delete a teacher
-export const DELETE = withRole(
+export const DELETE = withBranchAccess(
   ["ADMIN", "STAFF"],
   async (request: NextRequest, session) => {
     const teacherId = request.url.split("/").pop();

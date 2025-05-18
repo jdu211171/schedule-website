@@ -1,6 +1,6 @@
 // src/app/api/branches/[branchId]/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { withRole } from "@/lib/auth";
+import { withBranchAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { branchUpdateSchema } from "@/schemas/branch.schema";
 import { Branch, UserBranch } from "@prisma/client";
@@ -43,7 +43,7 @@ const formatBranch = (branch: BranchWithUsers): FormattedBranch => ({
 });
 
 // GET a specific branch by ID
-export const GET = withRole(
+export const GET = withBranchAccess(
   ["ADMIN"],
   async (request: NextRequest, session) => {
     const branchId = request.url.split("/").pop();
@@ -94,7 +94,7 @@ export const GET = withRole(
 );
 
 // PATCH - Update a branch
-export const PATCH = withRole(
+export const PATCH = withBranchAccess(
   ["ADMIN"],
   async (request: NextRequest, session) => {
     try {
@@ -225,7 +225,7 @@ export const PATCH = withRole(
 );
 
 // DELETE - Delete a branch
-export const DELETE = withRole(
+export const DELETE = withBranchAccess(
   ["ADMIN"],
   async (request: NextRequest, session) => {
     const branchId = request.url.split("/").pop();
