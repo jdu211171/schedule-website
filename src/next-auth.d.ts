@@ -1,3 +1,4 @@
+// next-auth.d.ts
 import { UserRole } from "@prisma/client";
 import { DefaultSession, DefaultUser } from "next-auth";
 
@@ -7,6 +8,8 @@ declare module "next-auth" {
     role?: UserRole;
     username?: string;
     userId?: string;
+    branches?: { branchId: string; name: string }[];
+    selectedBranchId?: string | null;
   }
 
   interface Session {
@@ -14,6 +17,8 @@ declare module "next-auth" {
       role?: UserRole;
       username?: string;
       userId?: string;
+      branches?: { branchId: string; name: string }[];
+      selectedBranchId?: string | null;
     } & DefaultSession["user"];
   }
 }

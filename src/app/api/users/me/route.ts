@@ -2,7 +2,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getUserBranchIds } from "@/lib/auth";
 import { UserRole } from "@prisma/client";
 
 // Updated to use withRole like other routes
@@ -13,7 +12,8 @@ export const GET = withRole(
       console.log("Session object:", JSON.stringify(session, null, 2));
 
       // Try to get user ID from different possible places in the session
-      const userId = session.user?.id || session.user?.userId || session.user?.id;
+      const userId =
+        session.user?.id || session.user?.userId || session.user?.id;
 
       if (!userId) {
         return NextResponse.json(
@@ -26,7 +26,7 @@ export const GET = withRole(
       console.log("User ID:", userId);
       console.log("User Role:", userRole);
 
-      // Get user from database
+      // Get user from database with branch information
       const user = await prisma.user.findUnique({
         where: { id: userId },
         select: {
@@ -38,6 +38,17 @@ export const GET = withRole(
           image: true,
           createdAt: true,
           updatedAt: true,
+          branches: {
+            include: {
+              branch: {
+                select: {
+                  branchId: true,
+                  name: true,
+                  notes: true,
+                },
+              },
+            },
+          },
         },
       });
 
@@ -48,7 +59,25 @@ export const GET = withRole(
         );
       }
 
-      return NextResponse.json({ user });
+      // Format branches for the response
+      const formattedBranches = user.branches.map((userBranch) => ({
+        branchId: userBranch.branch.branchId,
+        name: userBranch.branch.name,
+        notes: userBranch.branch.notes,
+      }));
+
+      // Include the selected branch from the session
+      const selectedBranchId =
+        session.user?.selectedBranchId ||
+        (formattedBranches.length > 0 ? formattedBranches[0].branchId : null);
+
+      return NextResponse.json({
+        user: {
+          ...user,
+          branches: formattedBranches,
+          selectedBranchId,
+        },
+      });
     } catch (error) {
       console.error("Error fetching user profile:", error);
       return NextResponse.json(
@@ -58,4 +87,3 @@ export const GET = withRole(
     }
   }
 );
-

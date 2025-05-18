@@ -1,12 +1,12 @@
 // src/app/api/students/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { withRole } from "@/lib/auth";
+import { withBranchAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
   studentCreateSchema,
   studentFilterSchema,
 } from "@/schemas/student.schema";
-import { Student, StudentType } from "@prisma/client";
+import { Student } from "@prisma/client";
 
 type StudentWithIncludes = Student & {
   studentType: {
@@ -74,7 +74,7 @@ const formatStudent = (student: StudentWithIncludes): FormattedStudent => ({
 });
 
 // GET - List students with pagination and filters
-export const GET = withRole(
+export const GET = withBranchAccess(
   ["ADMIN", "STAFF"],
   async (request: NextRequest, session) => {
     // Parse query parameters
@@ -166,7 +166,7 @@ export const GET = withRole(
 );
 
 // POST - Create a new student
-export const POST = withRole(
+export const POST = withBranchAccess(
   ["ADMIN", "STAFF"],
   async (request: NextRequest, session) => {
     try {

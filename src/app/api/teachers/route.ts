@@ -1,6 +1,6 @@
 // src/app/api/teachers/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { withRole } from "@/lib/auth";
+import { withBranchAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
   teacherCreateSchema,
@@ -61,9 +61,9 @@ const formatTeacher = (teacher: TeacherWithIncludes): FormattedTeacher => ({
 });
 
 // GET - List teachers with pagination and filters
-export const GET = withRole(
+export const GET = withBranchAccess(
   ["ADMIN", "STAFF"],
-  async (request: NextRequest, session) => {
+  async (request: NextRequest, session, branchId) => {
     // Parse query parameters
     const url = new URL(request.url);
     const params = Object.fromEntries(url.searchParams.entries());
@@ -87,6 +87,26 @@ export const GET = withRole(
         { name: { contains: name, mode: "insensitive" } },
         { kanaName: { contains: name, mode: "insensitive" } },
       ];
+    }
+
+    // Filter teachers by branch for non-admin users
+    if (session.user?.role !== "ADMIN") {
+      where.user = {
+        branches: {
+          some: {
+            branchId,
+          },
+        },
+      };
+    } else if (branchId) {
+      // If admin has selected a specific branch, filter by that branch
+      where.user = {
+        branches: {
+          some: {
+            branchId,
+          },
+        },
+      };
     }
 
     // Calculate pagination
@@ -138,9 +158,9 @@ export const GET = withRole(
 );
 
 // POST - Create a new teacher
-export const POST = withRole(
+export const POST = withBranchAccess(
   ["ADMIN", "STAFF"],
-  async (request: NextRequest, session) => {
+  async (request: NextRequest, session, branchId) => {
     try {
       const body = await request.json();
 
@@ -178,13 +198,41 @@ export const POST = withRole(
         );
       }
 
-      // Verify that all branchIds exist if provided
-      if (branchIds.length > 0) {
+      // For non-admin users, we'll ensure the teacher is associated with the selected branch
+      const finalBranchIds = [...branchIds];
+      if (!finalBranchIds.includes(branchId)) {
+        finalBranchIds.push(branchId);
+      }
+
+      // Admins can assign teachers to any branch, but staff must include their selected branch
+      if (session.user?.role !== "ADMIN") {
+        // Staff can only assign teachers to branches they have access to
+        const userBranches =
+          session.user?.branches?.map((b) => b.branchId) || [];
+
+        // Verify staff has access to all requested branches
+        const unauthorizedBranches = finalBranchIds.filter(
+          (id) => !userBranches.includes(id)
+        );
+
+        if (unauthorizedBranches.length > 0) {
+          return NextResponse.json(
+            {
+              error:
+                "You don't have access to assign teachers to some of these branches",
+            },
+            { status: 403 }
+          );
+        }
+      }
+
+      // Verify that all branchIds exist
+      if (finalBranchIds.length > 0) {
         const branchCount = await prisma.branch.count({
-          where: { branchId: { in: branchIds } },
+          where: { branchId: { in: finalBranchIds } },
         });
 
-        if (branchCount !== branchIds.length) {
+        if (branchCount !== finalBranchIds.length) {
           return NextResponse.json(
             { error: "一部の支店IDが存在しません" }, // "Some branch IDs do not exist"
             { status: 400 }
@@ -216,10 +264,10 @@ export const POST = withRole(
           },
         });
 
-        // Create branch associations if provided
-        if (branchIds.length > 0) {
+        // Create branch associations
+        if (finalBranchIds.length > 0) {
           await tx.userBranch.createMany({
-            data: branchIds.map((branchId) => ({
+            data: finalBranchIds.map((branchId) => ({
               userId: user.id,
               branchId,
             })),

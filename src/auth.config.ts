@@ -1,7 +1,8 @@
-import type { NextAuthConfig } from "next-auth"
-import Credentials from "next-auth/providers/credentials"
+// auth.config.ts
+import type { NextAuthConfig } from "next-auth";
+import Credentials from "next-auth/providers/credentials";
 import { prisma } from "./lib/prisma";
-import bcrypt from "bcryptjs"
+import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 import { UserRole } from "@prisma/client";
 
@@ -13,8 +14,16 @@ export default {
   providers: [
     Credentials({
       credentials: {
-        usernameOrEmail: { placeholder: "Username or Email", name: "usernameOrEmail", type: "text" },
-        password: { placeholder: "Password", name: "password", type: "password" },
+        usernameOrEmail: {
+          placeholder: "Username or Email",
+          name: "usernameOrEmail",
+          type: "text",
+        },
+        password: {
+          placeholder: "Password",
+          name: "password",
+          type: "password",
+        },
       },
       authorize: async (creds) => {
         if (!creds?.usernameOrEmail || !creds?.password)
@@ -30,20 +39,36 @@ export default {
           include: {
             teacher: true,
             student: true,
-          }
+            branches: {
+              include: {
+                branch: {
+                  select: {
+                    branchId: true,
+                    name: true,
+                  },
+                },
+              },
+            },
+          },
         });
 
         if (!user) throw new Error("Invalid credentials");
 
-        const ok =
-          ["TEACHER", "STUDENT"].includes(user.role)
-            ? creds.password === user.passwordHash
-            : await bcrypt.compare(
+        const ok = ["TEACHER", "STUDENT"].includes(user.role)
+          ? creds.password === user.passwordHash
+          : await bcrypt.compare(
               creds.password as string,
               user.passwordHash as string
             );
 
         if (!ok) throw new Error("Invalid credentials");
+
+        // Extract user's branches for storing in the session
+        const userBranches =
+          user.branches?.map((ub) => ({
+            branchId: ub.branch.branchId,
+            name: ub.branch.name,
+          })) || [];
 
         return {
           id: user.id,
@@ -52,7 +77,10 @@ export default {
           image: user.image,
           name: user.name,
           username: user.username ?? "",
-          userId: user.teacher?.userId || user.student?.userId || ""
+          userId: user.teacher?.userId || user.student?.userId || "",
+          branches: userBranches,
+          selectedBranchId:
+            userBranches.length > 0 ? userBranches[0].branchId : null,
         };
       },
     }),
@@ -64,7 +92,10 @@ export default {
       const role = auth?.user?.role as UserRole | undefined;
 
       /* 1.  Not logged in and trying to view a protected area → send to login */
-      if (!isLoggedIn && protectedRoots.some((root) => pathname.startsWith(root))) {
+      if (
+        !isLoggedIn &&
+        protectedRoots.some((root) => pathname.startsWith(root))
+      ) {
         return NextResponse.redirect(`${origin}/auth/login`);
       }
 
@@ -95,6 +126,8 @@ export default {
         token.image = user.image;
         token.username = user.username;
         token.userId = user.userId;
+        token.branches = user.branches;
+        token.selectedBranchId = user.selectedBranchId;
       }
       return token;
     },
@@ -105,6 +138,11 @@ export default {
         session.user.image = token.image as string;
         session.user.username = token.username as string;
         session.user.userId = token.userId as string;
+        session.user.branches = token.branches as {
+          branchId: string;
+          name: string;
+        }[];
+        session.user.selectedBranchId = token.selectedBranchId as string | null;
       }
       return session;
     },
@@ -113,12 +151,15 @@ export default {
   pages: { signIn: "/auth/login" },
 } satisfies NextAuthConfig;
 
-
 function homeFor(role?: UserRole) {
   switch (role) {
-    case "ADMIN": return "/dashboard";
-    case "TEACHER": return "/teacher";
-    case "STUDENT": return "/student";
-    default: return "/";
+    case "ADMIN":
+      return "/dashboard";
+    case "TEACHER":
+      return "/teacher";
+    case "STUDENT":
+      return "/student";
+    default:
+      return "/";
   }
 }
