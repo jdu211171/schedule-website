@@ -62,8 +62,21 @@ async function main() {
       name: "管理者",
       email: "admin@example.com",
       username: "ADMIN01",
-      passwordHash: "admin123",
+      passwordHash: hashSync("admin123"),
       role: UserRole.ADMIN,
+    },
+  });
+
+  // Create staff user
+  const staffUser = await prisma.user.upsert({
+    where: { email: "staff@example.com" },
+    update: {},
+    create: {
+      name: "鈴木 勇気",
+      email: "staff@example.com",
+      username: "STAFF01",
+      passwordHash: hashSync("staff123"),
+      role: UserRole.STAFF,
     },
   });
 
@@ -98,6 +111,7 @@ async function main() {
     data: [
       { userId: teacherUser.id, branchId: mainBranch.branchId },
       { userId: studentUser.id, branchId: mainBranch.branchId },
+      { userId: staffUser.id, branchId: mainBranch.branchId },
     ],
     skipDuplicates: true,
   });

@@ -60,3 +60,6 @@ next-env.d.ts
 /yarn.lock
 /package-lock.json
 /pnpm-lock.yaml
+
+# http requests
+/docs.http
