@@ -10,6 +10,7 @@ export const teacherCreateSchema = z.object({
   // User account related fields
   username: z.string().min(3, "Username must be at least 3 characters"),
   password: z.string().min(6, "Password must be at least 6 characters"),
+  branchIds: z.array(z.string()).optional(),
 });
 
 export const teacherUpdateSchema = teacherCreateSchema.partial().extend({

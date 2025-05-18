@@ -9,11 +9,21 @@ import {
 import { Student, StudentType } from "@prisma/client";
 
 type StudentWithIncludes = Student & {
-  studentType: StudentType | null;
+  studentType: {
+    studentTypeId: string;
+    name: string;
+    maxYears: number | null;
+  } | null;
   user: {
     username: string | null;
     email: string | null;
-    passwordHash?: string | null;
+    passwordHash: string | null;
+    branches?: {
+      branch: {
+        branchId: string;
+        name: string;
+      };
+    }[];
   };
 };
 
@@ -31,6 +41,10 @@ type FormattedStudent = {
   username: string | null;
   email: string | null;
   password: string | null;
+  branches: {
+    branchId: string;
+    name: string;
+  }[];
   createdAt: Date;
   updatedAt: Date;
 };
@@ -50,6 +64,11 @@ const formatStudent = (student: StudentWithIncludes): FormattedStudent => ({
   username: student.user.username,
   email: student.user.email,
   password: student.user.passwordHash || null,
+  branches:
+    student.user.branches?.map((ub) => ({
+      branchId: ub.branch.branchId,
+      name: ub.branch.name,
+    })) || [],
   createdAt: student.createdAt,
   updatedAt: student.updatedAt,
 });
@@ -97,7 +116,7 @@ export const GET = withRole(
     // Fetch total count
     const total = await prisma.student.count({ where });
 
-    // Fetch students
+    // Fetch students with branch associations
     const students = await prisma.student.findMany({
       where,
       include: {
@@ -113,6 +132,16 @@ export const GET = withRole(
             username: true,
             email: true,
             passwordHash: true,
+            branches: {
+              include: {
+                branch: {
+                  select: {
+                    branchId: true,
+                    name: true,
+                  },
+                },
+              },
+            },
           },
         },
       },
@@ -121,24 +150,8 @@ export const GET = withRole(
       orderBy: { name: "asc" },
     });
 
-    // Prepare response data with a flatter structure
-    const formattedStudents = students.map((student) => ({
-      studentId: student.studentId,
-      userId: student.userId,
-      name: student.name,
-      kanaName: student.kanaName,
-      studentTypeId: student.studentTypeId,
-      studentTypeName: student.studentType?.name,
-      maxYears: student.studentType?.maxYears,
-      gradeYear: student.gradeYear,
-      lineId: student.lineId,
-      notes: student.notes,
-      username: student.user.username,
-      email: student.user.email,
-      password: student.user.passwordHash,
-      createdAt: student.createdAt,
-      updatedAt: student.updatedAt,
-    }));
+    // Format students using the helper function
+    const formattedStudents = students.map(formatStudent);
 
     return NextResponse.json({
       data: formattedStudents,
@@ -168,8 +181,14 @@ export const POST = withRole(
         );
       }
 
-      const { username, password, email, studentTypeId, ...studentData } =
-        result.data;
+      const {
+        username,
+        password,
+        email,
+        studentTypeId,
+        branchIds = [],
+        ...studentData
+      } = result.data;
 
       // Check if username already exists
       const existingUser = await prisma.user.findFirst({
@@ -202,10 +221,24 @@ export const POST = withRole(
         }
       }
 
+      // Verify that all branchIds exist if provided
+      if (branchIds.length > 0) {
+        const branchCount = await prisma.branch.count({
+          where: { branchId: { in: branchIds } },
+        });
+
+        if (branchCount !== branchIds.length) {
+          return NextResponse.json(
+            { error: "一部の支店IDが存在しません" }, // "Some branch IDs do not exist"
+            { status: 400 }
+          );
+        }
+      }
+
       // For students, use the password directly (no hashing)
       const passwordHash = password;
 
-      // Create user and student in a transaction
+      // Create user, student and branch associations in a transaction
       const newStudent = await prisma.$transaction(async (tx) => {
         // Create user first
         const user = await tx.user.create({
@@ -224,6 +257,21 @@ export const POST = withRole(
             studentTypeId,
             userId: user.id,
           },
+        });
+
+        // Create branch associations if provided
+        if (branchIds.length > 0) {
+          await tx.userBranch.createMany({
+            data: branchIds.map((branchId) => ({
+              userId: user.id,
+              branchId,
+            })),
+          });
+        }
+
+        // Return student with all associations
+        return tx.student.findUnique({
+          where: { studentId: student.studentId },
           include: {
             studentType: true,
             user: {
@@ -231,13 +279,25 @@ export const POST = withRole(
                 username: true,
                 email: true,
                 passwordHash: true,
+                branches: {
+                  include: {
+                    branch: {
+                      select: {
+                        branchId: true,
+                        name: true,
+                      },
+                    },
+                  },
+                },
               },
             },
           },
         });
-
-        return student;
       });
+
+      if (!newStudent) {
+        throw new Error("Failed to create student");
+      }
 
       // Use the formatStudent helper function
       const formattedStudent = formatStudent(newStudent);

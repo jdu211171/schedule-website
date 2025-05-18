@@ -11,6 +11,12 @@ type TeacherWithIncludes = Teacher & {
     username: string | null;
     email: string | null;
     passwordHash: string | null;
+    branches?: {
+      branch: {
+        branchId: string;
+        name: string;
+      };
+    }[];
   };
 };
 
@@ -25,6 +31,10 @@ type FormattedTeacher = {
   notes: string | null;
   username: string | null;
   password: string | null;
+  branches: {
+    branchId: string;
+    name: string;
+  }[];
   createdAt: Date;
   updatedAt: Date;
 };
@@ -40,6 +50,11 @@ const formatTeacher = (teacher: TeacherWithIncludes): FormattedTeacher => ({
   notes: teacher.notes,
   username: teacher.user.username,
   password: teacher.user.passwordHash,
+  branches:
+    teacher.user.branches?.map((ub) => ({
+      branchId: ub.branch.branchId,
+      name: ub.branch.name,
+    })) || [],
   createdAt: teacher.createdAt,
   updatedAt: teacher.updatedAt,
 });
@@ -65,6 +80,16 @@ export const GET = withRole(
             username: true,
             email: true,
             passwordHash: true,
+            branches: {
+              include: {
+                branch: {
+                  select: {
+                    branchId: true,
+                    name: true,
+                  },
+                },
+              },
+            },
           },
         },
       },
@@ -90,105 +115,178 @@ export const GET = withRole(
 );
 
 // PATCH - Update a teacher
-export const PATCH = withRole(["ADMIN", "STAFF"], async (request: NextRequest, session) => {
-  try {
-    const teacherId = request.url.split('/').pop();
-    if (!teacherId) {
-      return NextResponse.json({ error: "Teacher ID is required" }, { status: 400 });
-    }
-
-    const body = await request.json();
-
-    // Validate request body
-    const result = teacherUpdateSchema.safeParse({ ...body, teacherId });
-    if (!result.success) {
-      return NextResponse.json({ error: result.error.message }, { status: 400 });
-    }
-
-    // Check if teacher exists
-    const existingTeacher = await prisma.teacher.findUnique({
-      where: { teacherId },
-      include: { user: true }
-    });
-
-    if (!existingTeacher) {
-      return NextResponse.json({ error: "Teacher not found" }, { status: 404 });
-    }
-
-    const { username, password, email, ...teacherData } = result.data;
-
-    // Check username uniqueness if being updated
-    if (username && username !== existingTeacher.user.username) {
-      const userExists = await prisma.user.findFirst({
-        where: { username, id: { not: existingTeacher.userId } }
-      });
-
-      if (userExists) {
-        return NextResponse.json({ error: "Username already taken" }, { status: 409 });
-      }
-    }
-
-    // Check email uniqueness if being updated
-    if (email && email !== existingTeacher.user.email) {
-      const emailExists = await prisma.user.findFirst({
-        where: { email, id: { not: existingTeacher.userId } }
-      });
-
-      if (emailExists) {
-        return NextResponse.json({ error: "Email already in use" }, { status: 409 });
-      }
-    }
-
-    // Update user and teacher in a transaction
-    const updatedTeacher = await prisma.$transaction(async (tx) => {
-      // Update user first if needed
-      if (username || password || email) {
-        await tx.user.update({
-          where: { id: existingTeacher.userId },
-          data: {
-            username,
-            passwordHash: password || undefined,
-            email
-          }
-        });
+export const PATCH = withRole(
+  ["ADMIN", "STAFF"],
+  async (request: NextRequest, session) => {
+    try {
+      const teacherId = request.url.split("/").pop();
+      if (!teacherId) {
+        return NextResponse.json(
+          { error: "Teacher ID is required" },
+          { status: 400 }
+        );
       }
 
-      // Update teacher record - include email field in teacher data if provided
-      return tx.teacher.update({
+      const body = await request.json();
+
+      // Validate request body
+      const result = teacherUpdateSchema.safeParse({ ...body, teacherId });
+      if (!result.success) {
+        return NextResponse.json(
+          { error: result.error.message },
+          { status: 400 }
+        );
+      }
+
+      // Check if teacher exists
+      const existingTeacher = await prisma.teacher.findUnique({
         where: { teacherId },
-        data: {
-          ...teacherData,
-          ...(email && { email }) // Only add email field if it's provided
-        },
-        include: {
-          user: {
-            select: {
-              username: true,
-              email: true,
-              passwordHash: true
-            }
+        include: { user: true },
+      });
+
+      if (!existingTeacher) {
+        return NextResponse.json(
+          { error: "Teacher not found" },
+          { status: 404 }
+        );
+      }
+
+      const { username, password, email, branchIds, ...teacherData } =
+        result.data;
+
+      // Check username uniqueness if being updated
+      if (username && username !== existingTeacher.user.username) {
+        const userExists = await prisma.user.findFirst({
+          where: { username, id: { not: existingTeacher.userId } },
+        });
+
+        if (userExists) {
+          return NextResponse.json(
+            { error: "Username already taken" },
+            { status: 409 }
+          );
+        }
+      }
+
+      // Check email uniqueness if being updated
+      if (email && email !== existingTeacher.user.email) {
+        const emailExists = await prisma.user.findFirst({
+          where: { email, id: { not: existingTeacher.userId } },
+        });
+
+        if (emailExists) {
+          return NextResponse.json(
+            { error: "Email already in use" },
+            { status: 409 }
+          );
+        }
+      }
+
+      // Verify that all branchIds exist if provided
+      if (branchIds && branchIds.length > 0) {
+        const branchCount = await prisma.branch.count({
+          where: { branchId: { in: branchIds } },
+        });
+
+        if (branchCount !== branchIds.length) {
+          return NextResponse.json(
+            { error: "一部の支店IDが存在しません" }, // "Some branch IDs do not exist"
+            { status: 400 }
+          );
+        }
+      }
+
+      // Update user, teacher and branch associations in a transaction
+      const updatedTeacher = await prisma.$transaction(async (tx) => {
+        // Update user first if needed
+        if (username || password || email) {
+          await tx.user.update({
+            where: { id: existingTeacher.userId },
+            data: {
+              username,
+              passwordHash: password || undefined,
+              email,
+            },
+          });
+        }
+
+        // Update teacher record - include email field in teacher data if provided
+        await tx.teacher.update({
+          where: { teacherId },
+          data: {
+            ...teacherData,
+            ...(email && { email }), // Only add email field if it's provided
+          },
+        });
+
+        // Update branch associations if provided
+        if (branchIds !== undefined) {
+          // Delete existing branch associations
+          await tx.userBranch.deleteMany({
+            where: { userId: existingTeacher.userId },
+          });
+
+          // Create new branch associations
+          if (branchIds.length > 0) {
+            await tx.userBranch.createMany({
+              data: branchIds.map((branchId) => ({
+                userId: existingTeacher.userId,
+                branchId,
+              })),
+            });
           }
         }
+
+        // Return updated teacher with user and branch associations
+        return tx.teacher.findUnique({
+          where: { teacherId },
+          include: {
+            user: {
+              select: {
+                username: true,
+                email: true,
+                passwordHash: true,
+                branches: {
+                  include: {
+                    branch: {
+                      select: {
+                        branchId: true,
+                        name: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        });
       });
-    });
 
-    // Format response using the helper function
-    const formattedTeacher = formatTeacher(updatedTeacher);
-
-    return NextResponse.json({
-      data: [formattedTeacher],
-      pagination: {
-        total: 1,
-        page: 1,
-        limit: 1,
-        pages: 1
+      if (!updatedTeacher) {
+        throw new Error("Failed to update teacher");
       }
-    });
-  } catch (error) {
-    console.error("Error updating teacher:", error);
-    return NextResponse.json({ error: "Failed to update teacher" }, { status: 500 });
+
+      // Format response using the helper function
+      const formattedTeacher = formatTeacher(updatedTeacher);
+
+      return NextResponse.json({
+        data: [formattedTeacher],
+        pagination: {
+          total: 1,
+          page: 1,
+          limit: 1,
+          pages: 1,
+        },
+      });
+    } catch (error) {
+      console.error("Error updating teacher:", error);
+      return NextResponse.json(
+        { error: "Failed to update teacher" },
+        { status: 500 }
+      );
+    }
   }
-});
+);
 
 // DELETE - Delete a teacher
 export const DELETE = withRole(
@@ -217,9 +315,14 @@ export const DELETE = withRole(
         );
       }
 
-      // Delete teacher and associated user in a transaction
+      // Delete teacher, user and branch associations in a transaction
       await prisma.$transaction(async (tx) => {
-        // Delete teacher first (due to foreign key constraints)
+        // Delete branch associations first
+        await tx.userBranch.deleteMany({
+          where: { userId: teacher.userId },
+        });
+
+        // Delete teacher
         await tx.teacher.delete({ where: { teacherId } });
 
         // Delete associated user

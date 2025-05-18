@@ -12,17 +12,28 @@ type FormattedStaff = {
   username: string | null;
   email: string | null;
   role: string;
+  branches: {
+    branchId: string;
+    name: string;
+  }[];
   createdAt: Date;
   updatedAt: Date;
 };
 
 // Helper function to format staff response with proper typing
-const formatStaff = (staff: User): FormattedStaff => ({
+const formatStaff = (
+  staff: User & { branches?: { branch: { branchId: string; name: string } }[] }
+): FormattedStaff => ({
   id: staff.id,
   name: staff.name,
   username: staff.username,
   email: staff.email,
   role: staff.role,
+  branches:
+    staff.branches?.map((ub) => ({
+      branchId: ub.branch.branchId,
+      name: ub.branch.name,
+    })) || [],
   createdAt: staff.createdAt,
   updatedAt: staff.updatedAt,
 });
@@ -42,6 +53,18 @@ export const GET = withRole(
 
     const staff = await prisma.user.findUnique({
       where: { id },
+      include: {
+        branches: {
+          include: {
+            branch: {
+              select: {
+                branchId: true,
+                name: true,
+              },
+            },
+          },
+        },
+      },
     });
 
     if (!staff || staff.role !== "STAFF") {
@@ -96,7 +119,7 @@ export const PATCH = withRole(
         return NextResponse.json({ error: "Staff not found" }, { status: 404 });
       }
 
-      const { username, password, email, name } = result.data;
+      const { username, password, email, name, branchIds } = result.data;
 
       // Check username uniqueness if being updated
       if (username && username !== existingStaff.username) {
@@ -126,22 +149,78 @@ export const PATCH = withRole(
         }
       }
 
-      // Create update data object
-      const updateData: any = {};
-      if (name !== undefined) updateData.name = name;
-      if (username !== undefined) updateData.username = username;
-      if (email !== undefined) updateData.email = email;
+      // Verify that all branchIds exist if provided
+      if (branchIds && branchIds.length > 0) {
+        const branchCount = await prisma.branch.count({
+          where: { branchId: { in: branchIds } },
+        });
 
-      // Hash the password if provided
-      if (password) {
-        updateData.passwordHash = await bcrypt.hash(password, 10);
+        if (branchCount !== branchIds.length) {
+          return NextResponse.json(
+            { error: "一部の支店IDが存在しません" }, // "Some branch IDs do not exist"
+            { status: 400 }
+          );
+        }
       }
 
-      // Update staff user
-      const updatedStaff = await prisma.user.update({
-        where: { id },
-        data: updateData,
+      // Update staff user with branch associations in a transaction
+      const updatedStaff = await prisma.$transaction(async (tx) => {
+        // Create update data object
+        const updateData: any = {};
+        if (name !== undefined) updateData.name = name;
+        if (username !== undefined) updateData.username = username;
+        if (email !== undefined) updateData.email = email;
+
+        // Hash the password if provided
+        if (password) {
+          updateData.passwordHash = await bcrypt.hash(password, 10);
+        }
+
+        // Update staff user
+        await tx.user.update({
+          where: { id },
+          data: updateData,
+        });
+
+        // Update branch associations if provided
+        if (branchIds !== undefined) {
+          // Delete existing branch associations
+          await tx.userBranch.deleteMany({
+            where: { userId: id },
+          });
+
+          // Create new branch associations
+          if (branchIds.length > 0) {
+            await tx.userBranch.createMany({
+              data: branchIds.map((branchId) => ({
+                userId: id,
+                branchId,
+              })),
+            });
+          }
+        }
+
+        // Return updated user with branch associations
+        return tx.user.findUnique({
+          where: { id },
+          include: {
+            branches: {
+              include: {
+                branch: {
+                  select: {
+                    branchId: true,
+                    name: true,
+                  },
+                },
+              },
+            },
+          },
+        });
       });
+
+      if (!updatedStaff) {
+        throw new Error("Failed to update staff");
+      }
 
       // Format response using the helper function
       const formattedStaff = formatStaff(updatedStaff);
@@ -196,8 +275,16 @@ export const DELETE = withRole(
         );
       }
 
-      // Delete staff user
-      await prisma.user.delete({ where: { id } });
+      // Delete staff user and branch associations in a transaction
+      await prisma.$transaction(async (tx) => {
+        // Delete branch associations first
+        await tx.userBranch.deleteMany({
+          where: { userId: id },
+        });
+
+        // Delete staff user
+        await tx.user.delete({ where: { id } });
+      });
 
       return NextResponse.json(
         {

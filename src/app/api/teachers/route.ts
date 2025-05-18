@@ -13,6 +13,12 @@ type TeacherWithIncludes = Teacher & {
     username: string | null;
     email: string | null;
     passwordHash?: string | null;
+    branches?: {
+      branch: {
+        branchId: string;
+        name: string;
+      };
+    }[];
   };
 };
 
@@ -26,6 +32,10 @@ type FormattedTeacher = {
   notes: string | null;
   username: string | null;
   password: string | null;
+  branches: {
+    branchId: string;
+    name: string;
+  }[];
   createdAt: Date;
   updatedAt: Date;
 };
@@ -41,6 +51,11 @@ const formatTeacher = (teacher: TeacherWithIncludes): FormattedTeacher => ({
   notes: teacher.notes,
   username: teacher.user.username,
   password: teacher.user.passwordHash || null,
+  branches:
+    teacher.user.branches?.map((ub) => ({
+      branchId: ub.branch.branchId,
+      name: ub.branch.name,
+    })) || [],
   createdAt: teacher.createdAt,
   updatedAt: teacher.updatedAt,
 });
@@ -80,7 +95,7 @@ export const GET = withRole(
     // Fetch total count
     const total = await prisma.teacher.count({ where });
 
-    // Fetch teachers
+    // Fetch teachers with branch associations
     const teachers = await prisma.teacher.findMany({
       where,
       include: {
@@ -89,6 +104,16 @@ export const GET = withRole(
             username: true,
             email: true,
             passwordHash: true,
+            branches: {
+              include: {
+                branch: {
+                  select: {
+                    branchId: true,
+                    name: true,
+                  },
+                },
+              },
+            },
           },
         },
       },
@@ -128,7 +153,13 @@ export const POST = withRole(
         );
       }
 
-      const { username, password, email, ...teacherData } = result.data;
+      const {
+        username,
+        password,
+        email,
+        branchIds = [],
+        ...teacherData
+      } = result.data;
 
       // Check if username already exists
       const existingUser = await prisma.user.findFirst({
@@ -147,10 +178,24 @@ export const POST = withRole(
         );
       }
 
+      // Verify that all branchIds exist if provided
+      if (branchIds.length > 0) {
+        const branchCount = await prisma.branch.count({
+          where: { branchId: { in: branchIds } },
+        });
+
+        if (branchCount !== branchIds.length) {
+          return NextResponse.json(
+            { error: "一部の支店IDが存在しません" }, // "Some branch IDs do not exist"
+            { status: 400 }
+          );
+        }
+      }
+
       // For teachers, use the password directly (no hashing)
       const passwordHash = password;
 
-      // Create user and teacher in a transaction
+      // Create user, teacher and branch associations in a transaction
       const newTeacher = await prisma.$transaction(async (tx) => {
         // Create user first
         const user = await tx.user.create({
@@ -169,19 +214,46 @@ export const POST = withRole(
             email,
             userId: user.id,
           },
+        });
+
+        // Create branch associations if provided
+        if (branchIds.length > 0) {
+          await tx.userBranch.createMany({
+            data: branchIds.map((branchId) => ({
+              userId: user.id,
+              branchId,
+            })),
+          });
+        }
+
+        // Return teacher with user and branch associations
+        return tx.teacher.findUnique({
+          where: { teacherId: teacher.teacherId },
           include: {
             user: {
               select: {
                 username: true,
                 email: true,
                 passwordHash: true,
+                branches: {
+                  include: {
+                    branch: {
+                      select: {
+                        branchId: true,
+                        name: true,
+                      },
+                    },
+                  },
+                },
               },
             },
           },
         });
-
-        return teacher;
       });
+
+      if (!newTeacher) {
+        throw new Error("Failed to create teacher");
+      }
 
       // Use the formatTeacher helper function
       const formattedTeacher = formatTeacher(newTeacher);
