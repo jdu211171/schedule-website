@@ -238,11 +238,16 @@ export const DELETE = withBranchAccess(
     }
 
     try {
-      // Check if branch exists
+      // Check if branch exists and has associated records
       const branch = await prisma.branch.findUnique({
         where: { branchId },
         include: {
-          booths: { take: 1 }, // Check if there are any associated booths
+          booths: { take: 1 },
+          classSessions: { take: 1 },
+          subjects: { take: 1 },
+          classTypes: { take: 1 },
+          events: { take: 1 },
+          notifications: { take: 1 },
         },
       });
 
@@ -250,14 +255,6 @@ export const DELETE = withBranchAccess(
         return NextResponse.json(
           { error: "Branch not found" },
           { status: 404 }
-        );
-      }
-
-      // Prevent deletion if branch has associated booths
-      if (branch.booths.length > 0) {
-        return NextResponse.json(
-          { error: "Cannot delete branch with associated booths" },
-          { status: 400 }
         );
       }
 
