@@ -24,7 +24,6 @@ import {
   Building,
 } from "lucide-react";
 import UserProfileMenu from "@/components/user-profile-menu";
-import { ThemeToggle } from "../theme-toggle";
 import { useSession } from "next-auth/react";
 import {
   Select,
@@ -33,6 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ThemeToggle } from "./theme-toggle";
 
 interface NavItemType {
   title: string;
@@ -46,16 +46,6 @@ const dashboardNavItems: NavItemType[] = [
     title: "総合スケジュール",
     href: "/dashboard/schedules",
     icon: CalendarDays,
-  },
-  {
-    title: "マッチング",
-    href: "/dashboard/matching",
-    icon: Table,
-  },
-  {
-    title: "マッチング管理",
-    href: "/dashboard/match",
-    icon: MapPin,
   },
   {
     title: "マスターデータ管理",

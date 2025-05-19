@@ -30,6 +30,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
+// Define our column meta type
+interface ColumnMetaType {
+  align?: "left" | "center" | "right";
+  headerClassName?: string;
+  cellClassName?: string;
+}
+
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
@@ -125,16 +132,34 @@ export function DataTable<TData, TValue>({
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id}>
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
-                  </TableHead>
-                ))}
+                {headerGroup.headers.map((header) => {
+                  // Safely access the meta properties with type assertion
+                  const meta = header.column.columnDef.meta as
+                    | ColumnMetaType
+                    | undefined;
+                  const align = meta?.align;
+                  const headerClassName = meta?.headerClassName || "";
+
+                  return (
+                    <TableHead
+                      key={header.id}
+                      className={`${
+                        align === "right"
+                          ? "text-right"
+                          : align === "center"
+                          ? "text-center"
+                          : ""
+                      } ${headerClassName}`}
+                    >
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                    </TableHead>
+                  );
+                })}
               </TableRow>
             ))}
           </TableHeader>
@@ -154,14 +179,32 @@ export function DataTable<TData, TValue>({
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
                 >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </TableCell>
-                  ))}
+                  {row.getVisibleCells().map((cell) => {
+                    // Safely access the meta properties with type assertion
+                    const meta = cell.column.columnDef.meta as
+                      | ColumnMetaType
+                      | undefined;
+                    const align = meta?.align;
+                    const cellClassName = meta?.cellClassName || "";
+
+                    return (
+                      <TableCell
+                        key={cell.id}
+                        className={`${
+                          align === "right"
+                            ? "text-right"
+                            : align === "center"
+                            ? "text-center"
+                            : ""
+                        } ${cellClassName}`}
+                      >
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </TableCell>
+                    );
+                  })}
                 </TableRow>
               ))
             ) : (
