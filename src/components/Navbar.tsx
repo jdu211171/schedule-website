@@ -17,10 +17,8 @@ import {
   Settings,
   CalendarDays,
   LayoutDashboard,
-  MapPin,
   LucideIcon,
   GraduationCap,
-  Table,
   Building,
 } from "lucide-react";
 import UserProfileMenu from "@/components/user-profile-menu";
@@ -33,6 +31,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ThemeToggle } from "./theme-toggle";
+import { useBranches } from "@/hooks/useBranchQuery";
 
 interface NavItemType {
   title: string;
@@ -93,11 +92,17 @@ const studentNavItems: NavItemType[] = [
 ];
 
 // Branch selector component
+// Update the BranchSelector component in Navbar.tsx
+
 function BranchSelector() {
   const { data: session, update } = useSession();
   const [selectedBranchId, setSelectedBranchId] = React.useState<string>(
     session?.user?.selectedBranchId || ""
   );
+
+  // Fetch all branches using the useBranches hook
+  const { data: branchesData, refetch } = useBranches({ limit: 100 });
+  const branches = branchesData?.data || [];
 
   // Update local state when session changes
   React.useEffect(() => {
@@ -107,12 +112,14 @@ function BranchSelector() {
       localStorage.setItem("selectedBranchId", session.user.selectedBranchId);
     }
   }, [session?.user?.selectedBranchId]);
-  console.log("BranchSelector session", session);
-  // Skip rendering if user has no branches or isn't staff/admin
-  if (
-    !session?.user?.branches?.length ||
-    !["ADMIN", "STAFF", "TEACHER", "STUDENT"].includes(session?.user?.role as string)
-  ) {
+
+  // Refetch branches when the component mounts or when the dropdown is opened
+  React.useEffect(() => {
+    refetch();
+  }, [refetch]);
+
+  // Skip rendering if user isn't staff/admin/teacher/student
+  if (!["ADMIN", "STAFF", "TEACHER", "STUDENT"].includes(session?.user?.role as string)) {
     return null;
   }
 
@@ -152,15 +159,21 @@ function BranchSelector() {
     }
   };
 
+  // Always show the branch selector for admin users, even if they have no branches yet
+  // For other users, only show if they have branches
+  if (session?.user?.role !== "ADMIN" && (!branches || branches.length === 0)) {
+    return null;
+  }
+
   return (
     <div className="flex items-center mr-4">
       <Building className="mr-2 h-4 w-4" />
       <Select value={selectedBranchId} onValueChange={handleBranchChange}>
         <SelectTrigger className="w-[180px]">
-          <SelectValue placeholder="Select Branch" />
+          <SelectValue placeholder="支店を選択" />
         </SelectTrigger>
         <SelectContent>
-          {session.user.branches.map((branch) => (
+          {branches.map((branch) => (
             <SelectItem key={branch.branchId} value={branch.branchId}>
               {branch.name}
             </SelectItem>

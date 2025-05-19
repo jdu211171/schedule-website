@@ -9,6 +9,7 @@ import { StudentTypeTable } from "@/components/student-types/student-type-table"
 import { ClassTypeTable } from "@/components/class-type/class-type-table";
 import { SubjectTable } from "@/components/subject/subject-table";
 import { StaffTable } from "@/components/staff/staff-table";
+import { BranchTable } from "@/components/branch/branch-table";
 
 // Storage key for tab persistence
 const ACTIVE_TAB_KEY = "masterpage_active_tab";
@@ -60,7 +61,7 @@ export default function MasterDataPage() {
 
         <Card className="mt-4 p-4">
           <TabsContent value="branches" className="mt-0">
-            {/* placeholder for branches data table */}
+            <BranchTable />
           </TabsContent>
           <TabsContent value="staff" className="mt-0">
             <StaffTable />
