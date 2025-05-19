@@ -1,3 +1,4 @@
+// src/components/class-type-table.tsx
 "use client";
 
 import { useState } from "react";
@@ -6,7 +7,10 @@ import { Pencil, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/data-table";
-import { useBoothDelete, getResolvedBoothId } from "@/hooks/useBoothMutation";
+import {
+  useClassTypeDelete,
+  getResolvedClassTypeId,
+} from "@/hooks/useClassTypeMutation";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,9 +21,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Booth } from "@prisma/client";
-import { BoothFormDialog } from "./booth-form-dialog";
-import { useBooths } from "@/hooks/useBoothQuery";
+import { ClassTypeFormDialog } from "./class-type-form-dialog";
+import { ClassType, useClassTypes } from "@/hooks/useClassTypeQuery";
 import { useSession } from "next-auth/react";
 
 // Define custom column meta type
@@ -30,47 +33,37 @@ interface ColumnMetaType {
   hidden?: boolean;
 }
 
-// Define extended booth type that includes branchName
-type ExtendedBooth = Booth & {
-  branchName: string;
-  _optimistic?: boolean;
-};
-
-export function BoothTable() {
+export function ClassTypeTable() {
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
   const pageSize = 10;
-  const { data: booths, isLoading } = useBooths({
+  const { data: classTypes, isLoading } = useClassTypes({
     page,
     limit: pageSize,
     name: searchTerm || undefined,
   });
 
-  // Ensure the data type returned by useBooths matches the expected type
-  const typedBooths = booths?.data;
-
-  const totalCount = booths?.pagination.total || 0;
-  const deleteBoothMutation = useBoothDelete();
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "ADMIN";
 
-  const [boothToEdit, setBoothToEdit] = useState<ExtendedBooth | null>(null);
-  const [boothToDelete, setBoothToDelete] = useState<ExtendedBooth | null>(
+  // Ensure the data type returned by useClassTypes matches the expected type
+  const typedClassTypes = classTypes?.data || [];
+
+  const totalCount = classTypes?.pagination.total || 0;
+  const deleteClassTypeMutation = useClassTypeDelete();
+
+  const [classTypeToEdit, setClassTypeToEdit] = useState<ClassType | null>(
+    null
+  );
+  const [classTypeToDelete, setClassTypeToDelete] = useState<ClassType | null>(
     null
   );
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
-  const columns: ColumnDef<ExtendedBooth, unknown>[] = [
+  const columns: ColumnDef<ClassType, unknown>[] = [
     {
       accessorKey: "name",
-      header: "名前",
-    },
-    {
-      accessorKey: "status",
-      header: "ステータス",
-      cell: ({ row }) => (
-        <div>{row.original.status ? "使用可" : "使用不可"}</div>
-      ),
+      header: "クラスタイプ名",
     },
     {
       accessorKey: "branchName",
@@ -91,14 +84,16 @@ export function BoothTable() {
       header: "操作",
       cell: ({ row }) => {
         // Type-safe check for _optimistic property
-        const isOptimistic = row.original._optimistic;
+        const isOptimistic = (
+          row.original as ClassType & { _optimistic?: boolean }
+        )._optimistic;
 
         return (
           <div className="flex justify-end gap-2">
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setBoothToEdit(row.original)}
+              onClick={() => setClassTypeToEdit(row.original)}
             >
               <Pencil
                 className={`h-4 w-4 ${isOptimistic ? "opacity-70" : ""}`}
@@ -107,8 +102,7 @@ export function BoothTable() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setBoothToDelete(row.original)}
-              // disabled={isOptimistic}
+              onClick={() => setClassTypeToDelete(row.original)}
             >
               <Trash2
                 className={`h-4 w-4 text-destructive ${
@@ -132,13 +126,13 @@ export function BoothTable() {
     return !meta?.hidden;
   });
 
-  const handleDeleteBooth = () => {
-    if (boothToDelete) {
+  const handleDeleteClassType = () => {
+    if (classTypeToDelete) {
       // Close the dialog immediately for better UX
-      // Use getResolvedBoothId to resolve temp/server IDs
-      const boothId = getResolvedBoothId(boothToDelete.boothId);
-      setBoothToDelete(null);
-      deleteBoothMutation.mutate(boothId);
+      // Use getResolvedClassTypeId to resolve temp/server IDs
+      const classTypeId = getResolvedClassTypeId(classTypeToDelete.classTypeId);
+      setClassTypeToDelete(null);
+      deleteClassTypeMutation.mutate(classTypeId);
     }
   };
 
@@ -152,9 +146,9 @@ export function BoothTable() {
     <>
       <DataTable
         columns={visibleColumns}
-        data={typedBooths || []}
-        isLoading={isLoading && !typedBooths} // Only show loading state on initial load
-        searchPlaceholder="ブースを検索..."
+        data={typedClassTypes}
+        isLoading={isLoading && !typedClassTypes.length} // Only show loading state on initial load
+        searchPlaceholder="クラスタイプを検索..."
         onSearch={setSearchTerm}
         searchValue={searchTerm}
         onCreateNew={() => setIsCreateDialogOpen(true)}
@@ -166,41 +160,41 @@ export function BoothTable() {
         totalItems={totalCount}
       />
 
-      {/* Edit Booth Dialog */}
-      {boothToEdit && (
-        <BoothFormDialog
-          open={!!boothToEdit}
-          onOpenChange={(open) => !open && setBoothToEdit(null)}
-          booth={boothToEdit}
+      {/* Edit ClassType Dialog */}
+      {classTypeToEdit && (
+        <ClassTypeFormDialog
+          open={!!classTypeToEdit}
+          onOpenChange={(open: any) => !open && setClassTypeToEdit(null)}
+          classType={classTypeToEdit}
         />
       )}
 
-      {/* Create Booth Dialog */}
-      <BoothFormDialog
+      {/* Create ClassType Dialog */}
+      <ClassTypeFormDialog
         open={isCreateDialogOpen}
         onOpenChange={setIsCreateDialogOpen}
       />
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog
-        open={!!boothToDelete}
-        onOpenChange={(open) => !open && setBoothToDelete(null)}
+        open={!!classTypeToDelete}
+        onOpenChange={(open) => !open && setClassTypeToDelete(null)}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>本当に削除しますか？</AlertDialogTitle>
             <AlertDialogDescription>
-              この操作は元に戻せません。ブース「{boothToDelete?.name}
+              この操作は元に戻せません。クラスタイプ「{classTypeToDelete?.name}
               」を完全に削除します。
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>キャンセル</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleDeleteBooth}
-              disabled={deleteBoothMutation.isPending}
+              onClick={handleDeleteClassType}
+              disabled={deleteClassTypeMutation.isPending}
             >
-              {deleteBoothMutation.isPending ? "削除中..." : "削除"}
+              {deleteClassTypeMutation.isPending ? "削除中..." : "削除"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

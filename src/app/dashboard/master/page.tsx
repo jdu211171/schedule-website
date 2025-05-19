@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { BoothTable } from "@/components/booth/booth-table";
+import { EventTable } from "@/components/event/event-table";
+import { ClassTypeTable } from "@/components/class-type-table";
 
 // Storage key for tab persistence
 const ACTIVE_TAB_KEY = "masterpage_active_tab";
@@ -49,7 +51,7 @@ export default function MasterDataPage() {
           <TabsTrigger value="subjects">科目</TabsTrigger>
           <TabsTrigger value="studentTypes">生徒タイプ</TabsTrigger>
           <TabsTrigger value="booths">ブース</TabsTrigger>
-          <TabsTrigger value="courseTypes">コースタイプ</TabsTrigger>
+          <TabsTrigger value="classTypes">授業タイプ</TabsTrigger>
           <TabsTrigger value="events">イベント</TabsTrigger>
         </TabsList>
 
@@ -75,11 +77,11 @@ export default function MasterDataPage() {
           <TabsContent value="booths" className="mt-0">
             <BoothTable />
           </TabsContent>
-          <TabsContent value="courseTypes" className="mt-0">
-            {/* placeholder for course types data table */}
+          <TabsContent value="classTypes" className="mt-0">
+            <ClassTypeTable />
           </TabsContent>
           <TabsContent value="events" className="mt-0">
-            {/* placeholder for events data table */}
+            <EventTable />
           </TabsContent>
         </Card>
       </Tabs>

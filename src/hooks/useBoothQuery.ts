@@ -12,8 +12,13 @@ type UseBoothsParams = {
   order?: "asc" | "desc";
 };
 
+// Extended Booth type that includes branchName from the API
+type ExtendedBooth = Booth & {
+  branchName: string;
+};
+
 type BoothsResponse = {
-  data: Booth[];
+  data: ExtendedBooth[];
   pagination: {
     total: number;
     page: number;
@@ -23,7 +28,7 @@ type BoothsResponse = {
 };
 
 type SingleBoothResponse = {
-  data: Booth;
+  data: ExtendedBooth;
 };
 
 export function useBooths(params: UseBoothsParams = {}) {
@@ -54,7 +59,7 @@ export function useBooths(params: UseBoothsParams = {}) {
 }
 
 export function useBooth(boothId: string) {
-  return useQuery<Booth>({
+  return useQuery<ExtendedBooth>({
     queryKey: ["booth", boothId],
     queryFn: async () =>
       await fetcher<SingleBoothResponse>(`/api/booths/${boothId}`).then(

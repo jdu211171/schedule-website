@@ -73,13 +73,7 @@ export const GET = withBranchAccess(
     const formattedBooth = formatBooth(booth);
 
     return NextResponse.json({
-      data: [formattedBooth],
-      pagination: {
-        total: 1,
-        page: 1,
-        limit: 1,
-        pages: 1,
-      },
+      data: formattedBooth,
     });
   }
 );

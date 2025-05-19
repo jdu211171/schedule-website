@@ -3,10 +3,11 @@
 import { useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Pencil, Trash2 } from "lucide-react";
+import { format } from "date-fns";
 
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/data-table";
-import { useBoothDelete, getResolvedBoothId } from "@/hooks/useBoothMutation";
+import { useEventDelete, getResolvedEventId } from "@/hooks/useEventMutation";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,10 +18,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Booth } from "@prisma/client";
-import { BoothFormDialog } from "./booth-form-dialog";
-import { useBooths } from "@/hooks/useBoothQuery";
+import { useEvents } from "@/hooks/useEventQuery";
+import { Badge } from "@/components/ui/badge";
 import { useSession } from "next-auth/react";
+import { EventFormDialog } from "./event-form-dialog";
 
 // Define custom column meta type
 interface ColumnMetaType {
@@ -30,47 +31,54 @@ interface ColumnMetaType {
   hidden?: boolean;
 }
 
-// Define extended booth type that includes branchName
-type ExtendedBooth = Booth & {
-  branchName: string;
-  _optimistic?: boolean;
+// Event type matching the API response
+type Event = {
+  id: string;
+  name: string;
+  startDate: string | Date;
+  endDate: string | Date;
+  isRecurring: boolean;
+  notes: string | null;
+  branchId: string | null;
+  branchName: string | null;
+  createdAt: Date;
+  updatedAt: Date;
 };
 
-export function BoothTable() {
+export function EventTable() {
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
   const pageSize = 10;
-  const { data: booths, isLoading } = useBooths({
+  const { data: events, isLoading } = useEvents({
     page,
     limit: pageSize,
     name: searchTerm || undefined,
   });
 
-  // Ensure the data type returned by useBooths matches the expected type
-  const typedBooths = booths?.data;
-
-  const totalCount = booths?.pagination.total || 0;
-  const deleteBoothMutation = useBoothDelete();
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "ADMIN";
 
-  const [boothToEdit, setBoothToEdit] = useState<ExtendedBooth | null>(null);
-  const [boothToDelete, setBoothToDelete] = useState<ExtendedBooth | null>(
-    null
-  );
+  // Ensure the data type returned by useEvents matches the expected type
+  const typedEvents = events?.data || [];
+
+  const totalCount = events?.pagination.total || 0;
+  const deleteEventMutation = useEventDelete();
+
+  const [eventToEdit, setEventToEdit] = useState<Event | null>(null);
+  const [eventToDelete, setEventToDelete] = useState<Event | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
-  const columns: ColumnDef<ExtendedBooth, unknown>[] = [
+  // Format dates for display
+  const formatDate = (date: string | Date) => {
+    if (!date) return "-";
+    const dateObj = typeof date === "string" ? new Date(date) : date;
+    return format(dateObj, "yyyy/MM/dd");
+  };
+
+  const columns: ColumnDef<Event, unknown>[] = [
     {
       accessorKey: "name",
       header: "名前",
-    },
-    {
-      accessorKey: "status",
-      header: "ステータス",
-      cell: ({ row }) => (
-        <div>{row.original.status ? "使用可" : "使用不可"}</div>
-      ),
     },
     {
       accessorKey: "branchName",
@@ -82,6 +90,29 @@ export function BoothTable() {
       } as ColumnMetaType,
     },
     {
+      accessorKey: "startDate",
+      header: "開始日",
+      cell: ({ row }) => formatDate(row.original.startDate),
+    },
+    {
+      accessorKey: "endDate",
+      header: "終了日",
+      cell: ({ row }) => formatDate(row.original.endDate),
+    },
+    {
+      accessorKey: "isRecurring",
+      header: "繰り返し",
+      cell: ({ row }) => (
+        <div>
+          {row.original.isRecurring ? (
+            <Badge variant="default">定期</Badge>
+          ) : (
+            <Badge variant="outline">単発</Badge>
+          )}
+        </div>
+      ),
+    },
+    {
       accessorKey: "notes",
       header: "メモ",
       cell: ({ row }) => row.original.notes || "-",
@@ -91,14 +122,15 @@ export function BoothTable() {
       header: "操作",
       cell: ({ row }) => {
         // Type-safe check for _optimistic property
-        const isOptimistic = row.original._optimistic;
+        const isOptimistic = (row.original as Event & { _optimistic?: boolean })
+          ._optimistic;
 
         return (
           <div className="flex justify-end gap-2">
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setBoothToEdit(row.original)}
+              onClick={() => setEventToEdit(row.original)}
             >
               <Pencil
                 className={`h-4 w-4 ${isOptimistic ? "opacity-70" : ""}`}
@@ -107,8 +139,7 @@ export function BoothTable() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setBoothToDelete(row.original)}
-              // disabled={isOptimistic}
+              onClick={() => setEventToDelete(row.original)}
             >
               <Trash2
                 className={`h-4 w-4 text-destructive ${
@@ -132,13 +163,13 @@ export function BoothTable() {
     return !meta?.hidden;
   });
 
-  const handleDeleteBooth = () => {
-    if (boothToDelete) {
+  const handleDeleteEvent = () => {
+    if (eventToDelete) {
       // Close the dialog immediately for better UX
-      // Use getResolvedBoothId to resolve temp/server IDs
-      const boothId = getResolvedBoothId(boothToDelete.boothId);
-      setBoothToDelete(null);
-      deleteBoothMutation.mutate(boothId);
+      // Use getResolvedEventId to resolve temp/server IDs
+      const eventId = getResolvedEventId(eventToDelete.id);
+      setEventToDelete(null);
+      deleteEventMutation.mutate(eventId);
     }
   };
 
@@ -152,9 +183,9 @@ export function BoothTable() {
     <>
       <DataTable
         columns={visibleColumns}
-        data={typedBooths || []}
-        isLoading={isLoading && !typedBooths} // Only show loading state on initial load
-        searchPlaceholder="ブースを検索..."
+        data={typedEvents}
+        isLoading={isLoading && !typedEvents.length} // Only show loading state on initial load
+        searchPlaceholder="イベントを検索..."
         onSearch={setSearchTerm}
         searchValue={searchTerm}
         onCreateNew={() => setIsCreateDialogOpen(true)}
@@ -166,41 +197,41 @@ export function BoothTable() {
         totalItems={totalCount}
       />
 
-      {/* Edit Booth Dialog */}
-      {boothToEdit && (
-        <BoothFormDialog
-          open={!!boothToEdit}
-          onOpenChange={(open) => !open && setBoothToEdit(null)}
-          booth={boothToEdit}
+      {/* Edit Event Dialog */}
+      {eventToEdit && (
+        <EventFormDialog
+          open={!!eventToEdit}
+          onOpenChange={(open: any) => !open && setEventToEdit(null)}
+          event={eventToEdit}
         />
       )}
 
-      {/* Create Booth Dialog */}
-      <BoothFormDialog
+      {/* Create Event Dialog */}
+      <EventFormDialog
         open={isCreateDialogOpen}
         onOpenChange={setIsCreateDialogOpen}
       />
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog
-        open={!!boothToDelete}
-        onOpenChange={(open) => !open && setBoothToDelete(null)}
+        open={!!eventToDelete}
+        onOpenChange={(open) => !open && setEventToDelete(null)}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>本当に削除しますか？</AlertDialogTitle>
             <AlertDialogDescription>
-              この操作は元に戻せません。ブース「{boothToDelete?.name}
+              この操作は元に戻せません。イベント「{eventToDelete?.name}
               」を完全に削除します。
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>キャンセル</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleDeleteBooth}
-              disabled={deleteBoothMutation.isPending}
+              onClick={handleDeleteEvent}
+              disabled={deleteEventMutation.isPending}
             >
-              {deleteBoothMutation.isPending ? "削除中..." : "削除"}
+              {deleteEventMutation.isPending ? "削除中..." : "削除"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
