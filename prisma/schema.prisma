@@ -234,6 +234,7 @@ model Notification {
 model Event {
   id          String   @id @default(cuid())
   name        String   @db.VarChar(100)
+  notes       String?  @db.VarChar(255)
   startDate   DateTime
   endDate     DateTime
   branchId    String?  @map("branch_id")
