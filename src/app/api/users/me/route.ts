@@ -9,8 +9,6 @@ export const GET = withBranchAccess(
   ["ADMIN", "STAFF", "TEACHER", "STUDENT"] as UserRole[],
   async (request: NextRequest, session) => {
     try {
-      console.log("Session object:", JSON.stringify(session, null, 2));
-
       // Try to get user ID from different possible places in the session
       const userId =
         session.user?.id || session.user?.userId || session.user?.id;
@@ -23,8 +21,6 @@ export const GET = withBranchAccess(
       }
 
       const userRole = session.user?.role;
-      console.log("User ID:", userId);
-      console.log("User Role:", userRole);
 
       // Get user from database with branch information
       const user = await prisma.user.findUnique({

@@ -17,7 +17,6 @@ export async function loginUser(usernameOrEmail: string, password: string) {
   "use client";
   try {
     const res = await signIn("credentials", { usernameOrEmail, password, redirect: false, });
-
     console.log("Login response:", res);
   } catch (error) {
     if (error instanceof AuthError) {

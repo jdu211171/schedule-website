@@ -44,7 +44,6 @@ export function withBranchAccess(
 ) {
   return async (request: NextRequest) => {
     const session = await auth();
-    console.log("withBranchAccess session", session);
     // Check if user is authenticated and has an allowed role
     if (
       !session ||
