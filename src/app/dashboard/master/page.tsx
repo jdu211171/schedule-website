@@ -7,6 +7,7 @@ import { BoothTable } from "@/components/booth/booth-table";
 import { EventTable } from "@/components/event/event-table";
 import { StudentTypeTable } from "@/components/student-types/student-type-table";
 import { ClassTypeTable } from "@/components/class-type/class-type-table";
+import { SubjectTable } from "@/components/subject/subject-table";
 
 // Storage key for tab persistence
 const ACTIVE_TAB_KEY = "masterpage_active_tab";
@@ -70,7 +71,7 @@ export default function MasterDataPage() {
             {/* placeholder for teachers data table */}
           </TabsContent>
           <TabsContent value="subjects" className="mt-0">
-            {/* placeholder for subjects data table */}
+            <SubjectTable />
           </TabsContent>
           <TabsContent value="studentTypes" className="mt-0">
             <StudentTypeTable />
