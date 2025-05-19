@@ -38,7 +38,7 @@ export const GET = withBranchAccess(
 
     if (!boothId) {
       return NextResponse.json(
-        { error: "Booth ID is required" },
+        { error: "ブースIDが必要です" },
         { status: 400 }
       );
     }
@@ -55,13 +55,16 @@ export const GET = withBranchAccess(
     });
 
     if (!booth) {
-      return NextResponse.json({ error: "Booth not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "ブースが見つかりません" },
+        { status: 404 }
+      );
     }
 
     // Check if user has access to this booth's branch
     if (booth.branchId !== branchId && session.user?.role !== "ADMIN") {
       return NextResponse.json(
-        { error: "You don't have access to this booth" },
+        { error: "このブースにアクセスする権限がありません" },
         { status: 403 }
       );
     }
@@ -89,7 +92,7 @@ export const PATCH = withBranchAccess(
       const boothId = request.url.split("/").pop();
       if (!boothId) {
         return NextResponse.json(
-          { error: "Booth ID is required" },
+          { error: "ブースIDが必要です" },
           { status: 400 }
         );
       }
@@ -111,7 +114,10 @@ export const PATCH = withBranchAccess(
       });
 
       if (!existingBooth) {
-        return NextResponse.json({ error: "Booth not found" }, { status: 404 });
+        return NextResponse.json(
+          { error: "ブースが見つかりません" },
+          { status: 404 }
+        );
       }
 
       // Check if user has access to this booth's branch
@@ -120,7 +126,7 @@ export const PATCH = withBranchAccess(
         session.user?.role !== "ADMIN"
       ) {
         return NextResponse.json(
-          { error: "You don't have access to this booth" },
+          { error: "このブースにアクセスする権限がありません" },
           { status: 403 }
         );
       }
@@ -139,7 +145,7 @@ export const PATCH = withBranchAccess(
 
         if (nameExists) {
           return NextResponse.json(
-            { error: "Booth name already in use" },
+            { error: "このブース名はすでに使用されています" },
             { status: 409 }
           );
         }
@@ -177,7 +183,7 @@ export const PATCH = withBranchAccess(
     } catch (error) {
       console.error("Error updating booth:", error);
       return NextResponse.json(
-        { error: "Failed to update booth" },
+        { error: "ブースの更新に失敗しました" },
         { status: 500 }
       );
     }
@@ -192,7 +198,7 @@ export const DELETE = withBranchAccess(
 
     if (!boothId) {
       return NextResponse.json(
-        { error: "Booth ID is required" },
+        { error: "ブースIDが必要です" },
         { status: 400 }
       );
     }
@@ -207,26 +213,21 @@ export const DELETE = withBranchAccess(
       });
 
       if (!booth) {
-        return NextResponse.json({ error: "Booth not found" }, { status: 404 });
+        return NextResponse.json(
+          { error: "ブースが見つかりません" },
+          { status: 404 }
+        );
       }
 
       // Check if user has access to this booth's branch
       if (booth.branchId !== branchId && session.user?.role !== "ADMIN") {
         return NextResponse.json(
-          { error: "You don't have access to this booth" },
+          { error: "このブースにアクセスする権限がありません" },
           { status: 403 }
         );
       }
 
-      // Prevent deletion if booth has associated class sessions
-      if (booth.classSessions.length > 0) {
-        return NextResponse.json(
-          { error: "Cannot delete booth with associated class sessions" },
-          { status: 400 }
-        );
-      }
-
-      // Delete the booth
+      // Delete the booth (ClassSession.boothId will be set to null automatically)
       await prisma.booth.delete({
         where: { boothId },
       });
@@ -246,7 +247,7 @@ export const DELETE = withBranchAccess(
     } catch (error) {
       console.error("Error deleting booth:", error);
       return NextResponse.json(
-        { error: "Failed to delete booth" },
+        { error: "ブースの削除に失敗しました" },
         { status: 500 }
       );
     }

@@ -4,14 +4,37 @@ import { Booth } from "@prisma/client";
 import { toast } from "sonner";
 import { BoothCreate, BoothUpdate } from "@/schemas/booth.schema";
 
+type FormattedBooth = {
+  boothId: string;
+  branchId: string;
+  branchName: string;
+  name: string;
+  status: boolean;
+  notes: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
 type CreateBoothResponse = {
   message: string;
-  data: Booth;
+  data: FormattedBooth[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    pages: number;
+  };
 };
 
 type UpdateBoothResponse = {
   message: string;
-  data: Booth;
+  data: FormattedBooth[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    pages: number;
+  };
 };
 
 type DeleteBoothResponse = {
@@ -19,7 +42,7 @@ type DeleteBoothResponse = {
 };
 
 type BoothsQueryData = {
-  data: Booth[];
+  data: FormattedBooth[];
   pagination: {
     total: number;
     page: number;
@@ -31,8 +54,8 @@ type BoothsQueryData = {
 // Define context types for mutations
 type BoothMutationContext = {
   previousBooths?: Record<string, BoothsQueryData>;
-  previousBooth?: Booth;
-  deletedBooth?: Booth;
+  previousBooth?: FormattedBooth;
+  deletedBooth?: FormattedBooth;
   tempId?: string;
 };
 
@@ -71,14 +94,22 @@ export function useBoothCreate() {
       queries.forEach(([queryKey]) => {
         const currentData = queryClient.getQueryData<BoothsQueryData>(queryKey);
         if (currentData) {
-          const optimisticBooth: Booth = {
-            ...newBooth,
+          // Create optimistic booth with the proper shape including branch info
+          // from localStorage if available
+          const branchId = localStorage.getItem("selectedBranchId") || "";
+          const branchName = ""; // We can't know the branch name optimistically
+
+          const optimisticBooth: FormattedBooth = {
             boothId: tempId,
-            // Add extra metadata for tracking
-            _optimistic: true, // Flag to identify optimistic entries
+            branchId: branchId,
+            branchName: branchName,
+            name: newBooth.name, // This is crucial - ensure name is included
+            status: newBooth.status ?? true,
+            notes: newBooth.notes || null,
             createdAt: new Date(),
             updatedAt: new Date(),
-          } as Booth & { _optimistic?: boolean };
+            _optimistic: true, // Flag to identify optimistic entries
+          } as FormattedBooth & { _optimistic?: boolean };
 
           queryClient.setQueryData<BoothsQueryData>(queryKey, {
             ...currentData,
@@ -108,6 +139,7 @@ export function useBoothCreate() {
       }
 
       toast.error("ブースの追加に失敗しました", {
+        id: "booth-create-error",
         description: error.message,
       });
     },
@@ -115,25 +147,28 @@ export function useBoothCreate() {
       if (!context?.tempId) return;
 
       // Store the mapping between temporary ID and server ID
-      tempToServerIdMap.set(context.tempId, response.data.boothId);
+      const newBooth = response.data[0];
+      tempToServerIdMap.set(context.tempId, newBooth.boothId);
 
       // Update all booth queries
       const queries = queryClient.getQueriesData<BoothsQueryData>({
         queryKey: ["booths"],
       });
+
       queries.forEach(([queryKey]) => {
         const currentData = queryClient.getQueryData<BoothsQueryData>(queryKey);
         if (currentData) {
           queryClient.setQueryData<BoothsQueryData>(queryKey, {
             ...currentData,
             data: currentData.data.map((booth) =>
-              booth.boothId === context.tempId ? response.data : booth
+              booth.boothId === context.tempId ? newBooth : booth
             ),
           });
         }
       });
+
       toast.success("ブースを追加しました", {
-        description: response.message,
+        id: "booth-create-success",
       });
     },
     onSettled: () => {
@@ -180,7 +215,7 @@ export function useBoothUpdate() {
           previousBooths[JSON.stringify(queryKey)] = data;
         }
       });
-      const previousBooth = queryClient.getQueryData<Booth>([
+      const previousBooth = queryClient.getQueryData<FormattedBooth>([
         "booth",
         resolvedId,
       ]);
@@ -191,14 +226,19 @@ export function useBoothUpdate() {
             ...currentData,
             data: currentData.data.map((booth) =>
               booth.boothId === updatedBooth.boothId
-                ? { ...booth, ...updatedBooth, updatedAt: new Date() }
+                ? {
+                    ...booth,
+                    ...updatedBooth,
+                    updatedAt: new Date(),
+                    name: updatedBooth.name || booth.name, // Ensure name is preserved
+                  }
                 : booth
             ),
           });
         }
       });
       if (previousBooth) {
-        queryClient.setQueryData<Booth>(["booth", resolvedId], {
+        queryClient.setQueryData<FormattedBooth>(["booth", resolvedId], {
           ...previousBooth,
           ...updatedBooth,
           updatedAt: new Date(),
@@ -223,12 +263,13 @@ export function useBoothUpdate() {
         queryClient.setQueryData(["booth", resolvedId], context.previousBooth);
       }
       toast.error("ブースの更新に失敗しました", {
+        id: "booth-update-error",
         description: error.message,
       });
     },
     onSuccess: (data) => {
       toast.success("ブースを更新しました", {
-        description: data.message,
+        id: "booth-update-success",
       });
     },
     onSettled: (_, __, variables) => {
@@ -281,7 +322,7 @@ export function useBoothDelete() {
       });
 
       // Save the booth being deleted
-      let deletedBooth: Booth | undefined;
+      let deletedBooth: FormattedBooth | undefined;
       for (const [, data] of queries) {
         if (data) {
           const found = data.data.find((booth) => booth.boothId === boothId);
@@ -344,6 +385,7 @@ export function useBoothDelete() {
       }
 
       toast.error("ブースの削除に失敗しました", {
+        id: "booth-delete-error",
         description: error.message,
       });
     },
@@ -354,7 +396,7 @@ export function useBoothDelete() {
       }
 
       toast.success("ブースを削除しました", {
-        description: data.message,
+        id: "booth-delete-success",
       });
     },
     onSettled: (_, __, boothId) => {

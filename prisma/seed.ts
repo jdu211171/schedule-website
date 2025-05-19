@@ -55,7 +55,7 @@ async function main() {
    * 2. ユーザ & 権限
    * ----------------------------------------------------------------*/
   // Create admin user separately
-  await prisma.user.upsert({
+  const adminUser = await prisma.user.upsert({
     where: { email: "admin@example.com" },
     update: {},
     create: {
@@ -106,9 +106,10 @@ async function main() {
     }),
   ]);
 
-  // 2‑b. UserBranch (teacher & student を Main Branch に紐付け)
+  // 2‑b. UserBranch (all users to Main Branch)
   await prisma.userBranch.createMany({
     data: [
+      { userId: adminUser.id, branchId: mainBranch.branchId }, // Add admin to main branch
       { userId: teacherUser.id, branchId: mainBranch.branchId },
       { userId: studentUser.id, branchId: mainBranch.branchId },
       { userId: staffUser.id, branchId: mainBranch.branchId },

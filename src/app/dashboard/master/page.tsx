@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
-import { Toaster } from "sonner";
 import { BoothTable } from "@/components/booth/booth-table";
 
 // Storage key for tab persistence
@@ -84,8 +83,6 @@ export default function MasterDataPage() {
           </TabsContent>
         </Card>
       </Tabs>
-
-      <Toaster position="top-right" />
     </div>
   );
 }

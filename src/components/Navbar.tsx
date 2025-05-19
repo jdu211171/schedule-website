@@ -111,7 +111,6 @@ function BranchSelector() {
   // Skip rendering if user has no branches or isn't staff/admin
   if (
     !session?.user?.branches?.length ||
-    session.user.branches.length === 1 ||
     !["ADMIN", "STAFF", "TEACHER", "STUDENT"].includes(session?.user?.role as string)
   ) {
     return null;
