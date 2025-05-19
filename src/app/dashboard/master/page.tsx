@@ -5,7 +5,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { BoothTable } from "@/components/booth/booth-table";
 import { EventTable } from "@/components/event/event-table";
-import { ClassTypeTable } from "@/components/class-type-table";
+import { StudentTypeTable } from "@/components/student-types/student-type-table";
+import { ClassTypeTable } from "@/components/class-type/class-type-table";
 
 // Storage key for tab persistence
 const ACTIVE_TAB_KEY = "masterpage_active_tab";
@@ -72,7 +73,7 @@ export default function MasterDataPage() {
             {/* placeholder for subjects data table */}
           </TabsContent>
           <TabsContent value="studentTypes" className="mt-0">
-            {/* placeholder for student types data table */}
+            <StudentTypeTable />
           </TabsContent>
           <TabsContent value="booths" className="mt-0">
             <BoothTable />

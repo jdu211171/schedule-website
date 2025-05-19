@@ -36,11 +36,17 @@ type SingleStudentTypeResponse = {
 export function useStudentTypes(params: UseStudentTypesParams = {}) {
   const { page = 1, limit = 10, name } = params;
 
-  const query = studentTypeFilterSchema.parse({ page, limit, name });
+  // Convert number parameters to strings before passing to schema
+  const queryParams: Record<string, string | undefined> = {
+    page: page.toString(),
+    limit: limit.toString(),
+    name,
+  };
+
   const searchParams = new URLSearchParams(
-    Object.entries(query).reduce((acc, [key, value]) => {
+    Object.entries(queryParams).reduce((acc, [key, value]) => {
       if (value !== undefined) {
-        acc[key] = String(value);
+        acc[key] = value;
       }
       return acc;
     }, {} as Record<string, string>)
@@ -58,7 +64,7 @@ export function useStudentType(studentTypeId: string) {
     queryKey: ["studentType", studentTypeId],
     queryFn: async () =>
       await fetcher<SingleStudentTypeResponse>(
-        `/api/student-types/${studentTypeId}`
+        `//api/student-types/${studentTypeId}`
       ).then((res) => res.data[0]),
     enabled: !!studentTypeId,
   });

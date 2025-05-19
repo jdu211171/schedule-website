@@ -66,8 +66,8 @@ export function useStudentTypeCreate() {
               const optimisticStudentType: StudentType = {
                 studentTypeId: tempId,
                 name: newStudentType.name,
-                maxYears: newStudentType.maxYears,
-                description: newStudentType.description,
+                maxYears: newStudentType.maxYears || null,
+                description: newStudentType.description || null,
                 studentCount: 0,
                 createdAt: new Date(),
                 updatedAt: new Date(),
