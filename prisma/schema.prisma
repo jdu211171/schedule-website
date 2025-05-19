@@ -16,7 +16,6 @@ model Branch {
   userBranches    UserBranch[]
   classSessions   ClassSession[]
   subjects        Subject[]
-  classTypes      ClassType[]
   events          Event[]
   notifications   Notification[]
   createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamp(6)
@@ -89,14 +88,11 @@ model ClassSession {
 model ClassType {
   classTypeId   String         @id @default(cuid()) @map("class_type_id")
   name          String         @db.VarChar(100)
-  branchId      String?        @map("branch_id")
   notes         String?        @db.VarChar(255)
   classSessions ClassSession[]
-  branch        Branch?        @relation(fields: [branchId], references: [branchId], onDelete: SetNull, onUpdate: Cascade)
   createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt     DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
-  @@index([branchId])
   @@map("class_types")
 }
 

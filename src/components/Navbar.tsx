@@ -96,35 +96,42 @@ const studentNavItems: NavItemType[] = [
 
 function BranchSelector() {
   const { data: session, update } = useSession();
-  const [selectedBranchId, setSelectedBranchId] = React.useState<string>(
-    session?.user?.selectedBranchId || ""
-  );
+  const [selectedBranchId, setSelectedBranchId] = React.useState<string | null>(null);
+  const [isLoading, setIsLoading] = React.useState(false);
 
   // Fetch all branches using the useBranches hook
-  const { data: branchesData, refetch } = useBranches({ limit: 100 });
+  const { data: branchesData } = useBranches({ limit: 100 });
   const branches = branchesData?.data || [];
 
-  // Update local state when session changes
+  // Initialize the selected branch from localStorage first, then from session
   React.useEffect(() => {
-    if (session?.user?.selectedBranchId) {
+    const storedBranchId = localStorage.getItem("selectedBranchId");
+    if (storedBranchId) {
+      setSelectedBranchId(storedBranchId);
+    } else if (session?.user?.selectedBranchId) {
       setSelectedBranchId(session.user.selectedBranchId);
-      // Also store in localStorage for fetcher.ts to use
       localStorage.setItem("selectedBranchId", session.user.selectedBranchId);
+    } else if (branches.length > 0) {
+      // Default to first branch if nothing is selected
+      setSelectedBranchId(branches[0].branchId);
+      localStorage.setItem("selectedBranchId", branches[0].branchId);
     }
-  }, [session?.user?.selectedBranchId]);
+  }, [session, branches]);
 
-  // Refetch branches when the component mounts or when the dropdown is opened
-  React.useEffect(() => {
-    refetch();
-  }, [refetch]);
-
-  // Skip rendering if user isn't staff/admin/teacher/student
-  if (!["ADMIN", "STAFF", "TEACHER", "STUDENT"].includes(session?.user?.role as string)) {
+  // Skip rendering if user isn't authenticated or has appropriate role
+  if (!session || !["ADMIN", "STAFF", "TEACHER", "STUDENT"].includes(session?.user?.role as string)) {
     return null;
   }
 
   const handleBranchChange = async (value: string) => {
     try {
+      setIsLoading(true);
+
+      // First update localStorage
+      localStorage.setItem("selectedBranchId", value);
+      setSelectedBranchId(value);
+
+      // Then update the server-side session
       const response = await fetch("/api/branch-selection", {
         method: "POST",
         headers: {
@@ -137,10 +144,7 @@ function BranchSelector() {
         throw new Error("Failed to update branch selection");
       }
 
-      // Store selected branch in localStorage for fetcher.ts
-      localStorage.setItem("selectedBranchId", value);
-
-      // Update session
+      // Update client-side session
       await update({
         ...session,
         user: {
@@ -149,28 +153,36 @@ function BranchSelector() {
         },
       });
 
-      // Set local state
-      setSelectedBranchId(value);
-
       // Reload the page to refresh data with new branch context
       window.location.reload();
     } catch (error) {
       console.error("Error changing branch:", error);
+      // Restore previous selection if there was an error
+      if (session?.user?.selectedBranchId) {
+        localStorage.setItem("selectedBranchId", session.user.selectedBranchId);
+        setSelectedBranchId(session.user.selectedBranchId);
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // Always show the branch selector for admin users, even if they have no branches yet
-  // For other users, only show if they have branches
-  if (session?.user?.role !== "ADMIN" && (!branches || branches.length === 0)) {
+  if (branches.length === 0) {
     return null;
   }
 
   return (
     <div className="flex items-center mr-4">
       <Building className="mr-2 h-4 w-4" />
-      <Select value={selectedBranchId} onValueChange={handleBranchChange}>
+      <Select
+        value={selectedBranchId || undefined}
+        onValueChange={handleBranchChange}
+        disabled={isLoading}
+      >
         <SelectTrigger className="w-[180px]">
-          <SelectValue placeholder="支店を選択" />
+          <SelectValue placeholder="支店を選択">
+            {selectedBranchId ? branches.find(b => b.branchId === selectedBranchId)?.name : "支店を選択"}
+          </SelectValue>
         </SelectTrigger>
         <SelectContent>
           {branches.map((branch) => (

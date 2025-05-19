@@ -67,6 +67,22 @@ export const GET = withBranchAccess(
       };
     }
 
+    // Filter staff by branch for non-admin users
+    if (session.user?.role !== "ADMIN") {
+      where.branches = {
+        some: {
+          branchId,
+        },
+      };
+    } else if (branchId) {
+      // If admin has selected a specific branch, filter by that branch
+      where.branches = {
+        some: {
+          branchId,
+        },
+      };
+    }
+
     // Calculate pagination
     const skip = (page - 1) * limit;
 

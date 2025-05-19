@@ -41,7 +41,7 @@ const formatStaff = (
 // GET - List staff with pagination and filters
 export const GET = withBranchAccess(
   ["ADMIN"],
-  async (request: NextRequest, session) => {
+  async (request: NextRequest, session, branchId) => {
     // Parse query parameters
     const url = new URL(request.url);
     const params = Object.fromEntries(url.searchParams.entries());
@@ -68,6 +68,22 @@ export const GET = withBranchAccess(
         { username: { contains: name, mode: "insensitive" } },
         { email: { contains: name, mode: "insensitive" } },
       ];
+    }
+
+    // Filter staff by branch for non-admin users
+    if (session.user?.role !== "ADMIN") {
+      where.branches = {
+        some: {
+          branchId,
+        },
+      };
+    } else if (branchId) {
+      // If admin has selected a specific branch, filter by that branch
+      where.branches = {
+        some: {
+          branchId,
+        },
+      };
     }
 
     // Calculate pagination
