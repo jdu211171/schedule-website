@@ -1,0 +1,269 @@
+// src/components/student/student-table.tsx
+"use client";
+
+import { useState } from "react";
+import type { ColumnDef } from "@tanstack/react-table";
+import { Pencil, Trash2 } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { DataTable } from "@/components/data-table";
+import {
+  useStudentDelete,
+  getResolvedStudentId,
+} from "@/hooks/useStudentMutation";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { StudentFormDialog } from "./student-form-dialog";
+import { Student, useStudents } from "@/hooks/useStudentQuery";
+import { useStudentTypes } from "@/hooks/useStudentTypeQuery";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+// Define custom column meta type
+interface ColumnMetaType {
+  align?: "left" | "center" | "right";
+  headerClassName?: string;
+  cellClassName?: string;
+  hidden?: boolean;
+}
+
+export function StudentTable() {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [page, setPage] = useState(1);
+  const [selectedStudentTypeId, setSelectedStudentTypeId] = useState<string>("all");
+  const pageSize = 10;
+
+  // Load student types for filtering
+  const { data: studentTypesResponse } = useStudentTypes();
+
+  const { data: students, isLoading } = useStudents({
+    page,
+    limit: pageSize,
+    name: searchTerm || undefined,
+    studentTypeId: selectedStudentTypeId === "all" ? undefined : selectedStudentTypeId,
+  });
+
+  // Ensure the data type returned by useStudents matches the expected type
+  const typedStudents = students?.data || [];
+
+  const totalCount = students?.pagination.total || 0;
+  const deleteStudentMutation = useStudentDelete();
+
+  const [studentToEdit, setStudentToEdit] = useState<Student | null>(null);
+  const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+
+  const columns: ColumnDef<Student, unknown>[] = [
+    {
+      accessorKey: "name",
+      header: "名前",
+      cell: ({ row }) => row.original.name || "-",
+    },
+    {
+      accessorKey: "kanaName",
+      header: "カナ",
+      cell: ({ row }) => row.original.kanaName || "-",
+    },
+    {
+      accessorKey: "studentTypeName",
+      header: "生徒タイプ",
+      cell: ({ row }) => row.original.studentTypeName || "-",
+    },
+    {
+      accessorKey: "gradeYear",
+      header: "学年",
+      cell: ({ row }) =>
+        row.original.gradeYear !== null ? row.original.gradeYear : "-",
+    },
+    {
+      accessorKey: "username",
+      header: "ユーザー名",
+      cell: ({ row }) => row.original.username || "-",
+    },
+    {
+      accessorKey: "email",
+      header: "メールアドレス",
+      cell: ({ row }) => row.original.email || "-",
+    },
+    {
+      accessorKey: "lineId",
+      header: "LINE ID",
+      cell: ({ row }) => row.original.lineId || "-",
+    },
+    {
+      accessorKey: "branches",
+      header: "支店",
+      cell: ({ row }) => {
+        const branches = row.original.branches || [];
+        if (branches.length === 0) return "-";
+
+        return (
+          <div className="flex flex-wrap gap-1">
+            {branches.map((branch) => (
+              <Badge key={branch.branchId} variant="outline">
+                {branch.name}
+              </Badge>
+            ))}
+          </div>
+        );
+      },
+    },
+    {
+      id: "actions",
+      header: "操作",
+      cell: ({ row }) => {
+        // Type-safe check for _optimistic property
+        const isOptimistic = (
+          row.original as Student & { _optimistic?: boolean }
+        )._optimistic;
+
+        return (
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setStudentToEdit(row.original)}
+            >
+              <Pencil
+                className={`h-4 w-4 ${isOptimistic ? "opacity-70" : ""}`}
+              />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setStudentToDelete(row.original)}
+            >
+              <Trash2
+                className={`h-4 w-4 text-destructive ${
+                  isOptimistic ? "opacity-70" : ""
+                }`}
+              />
+            </Button>
+          </div>
+        );
+      },
+      meta: {
+        align: "right",
+        headerClassName: "pr-8", // Add padding-right to ONLY the header
+      } as ColumnMetaType,
+    },
+  ];
+
+  const handleDeleteStudent = () => {
+    if (studentToDelete) {
+      // Close the dialog immediately for better UX
+      // Use getResolvedStudentId to resolve temp/server IDs
+      const studentId = getResolvedStudentId(studentToDelete.studentId);
+      setStudentToDelete(null);
+      deleteStudentMutation.mutate(studentId);
+    }
+  };
+
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage + 1);
+  };
+
+  const totalPages = Math.ceil(totalCount / pageSize);
+
+  // Custom filter component for student types
+  const CustomFilter = () => {
+    return (
+      <div className="flex items-center space-x-2">
+        <Select
+          value={selectedStudentTypeId}
+          onValueChange={setSelectedStudentTypeId}
+        >
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="生徒タイプで絞り込み" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">すべて</SelectItem>
+            {studentTypesResponse?.data.map((type) => (
+              <SelectItem key={type.studentTypeId} value={type.studentTypeId}>
+                {type.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    );
+  };
+
+  return (
+    <>
+      <div className="mb-4">
+        <CustomFilter />
+      </div>
+      <DataTable
+        columns={columns}
+        data={typedStudents}
+        isLoading={isLoading && !typedStudents.length} // Only show loading state on initial load
+        searchPlaceholder="生徒を検索..."
+        onSearch={setSearchTerm}
+        searchValue={searchTerm}
+        onCreateNew={() => setIsCreateDialogOpen(true)}
+        createNewLabel="新規作成"
+        pageIndex={page - 1}
+        pageCount={totalPages || 1}
+        onPageChange={handlePageChange}
+        pageSize={pageSize}
+        totalItems={totalCount}
+      />
+
+      {/* Edit Student Dialog */}
+      {studentToEdit && (
+        <StudentFormDialog
+          open={!!studentToEdit}
+          onOpenChange={(open) => !open && setStudentToEdit(null)}
+          student={studentToEdit}
+        />
+      )}
+
+      {/* Create Student Dialog */}
+      <StudentFormDialog
+        open={isCreateDialogOpen}
+        onOpenChange={setIsCreateDialogOpen}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog
+        open={!!studentToDelete}
+        onOpenChange={(open) => !open && setStudentToDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>本当に削除しますか？</AlertDialogTitle>
+            <AlertDialogDescription>
+              この操作は元に戻せません。生徒「
+              {studentToDelete?.name}
+              」を完全に削除します。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>キャンセル</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteStudent}
+              disabled={deleteStudentMutation.isPending}
+            >
+              {deleteStudentMutation.isPending ? "削除中..." : "削除"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}

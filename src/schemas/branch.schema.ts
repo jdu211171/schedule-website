@@ -19,6 +19,7 @@ export const branchUpdateSchema = z.object({
   branchId: z.string(),
   name: z.string().min(1).max(100).optional(),
   notes: z.string().max(255).optional().nullable(),
+  userIds: z.array(z.string()).optional(),
 });
 
 export type BranchCreate = z.infer<typeof branchCreateSchema>;

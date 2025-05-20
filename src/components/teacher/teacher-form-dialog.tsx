@@ -1,3 +1,4 @@
+// src/components/teacher/teacher-form-dialog.tsx
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -25,76 +26,88 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useStaffCreate, useStaffUpdate } from "@/hooks/useStaffMutation";
+import { useTeacherCreate, useTeacherUpdate } from "@/hooks/useTeacherMutation";
 import { useBranches } from "@/hooks/useBranchQuery";
-import { staffUpdateSchema } from "@/schemas/staff.schema";
-import { Staff } from "@/hooks/useStaffQuery";
-import type { StaffCreate, StaffUpdate } from "@/schemas/staff.schema";
+import {
+  teacherUpdateSchema,
+  TeacherUpdate,
+  TeacherCreate,
+} from "@/schemas/teacher.schema";
+import { Teacher } from "@/hooks/useTeacherQuery";
 
-interface StaffFormDialogProps {
+interface TeacherFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  staff?: Staff | null;
+  teacher?: Teacher | null;
 }
 
-export function StaffFormDialog({
+export function TeacherFormDialog({
   open,
   onOpenChange,
-  staff,
-}: StaffFormDialogProps) {
-  const createStaffMutation = useStaffCreate();
-  const updateStaffMutation = useStaffUpdate();
+  teacher,
+}: TeacherFormDialogProps) {
+  const createTeacherMutation = useTeacherCreate();
+  const updateTeacherMutation = useTeacherUpdate();
   const { data: branchesResponse, isLoading: isBranchesLoading } =
     useBranches();
 
-  const isEditing = !!staff;
+  const isEditing = !!teacher;
 
   // Define a modified update schema that makes password optional
-  const editSchema = staffUpdateSchema.extend({
+  const editSchema = teacherUpdateSchema.extend({
     password: z
       .string()
       .min(6, "Password must be at least 6 characters")
       .optional(),
   });
 
-  // Always use StaffUpdate and editSchema for the form
-  const form = useForm<StaffUpdate>({
+  // Always use TeacherUpdate and editSchema for the form
+  const form = useForm<TeacherUpdate>({
     resolver: zodResolver(editSchema),
     defaultValues: {
       name: "",
+      kanaName: "",
+      email: "",
+      lineId: "",
+      notes: "",
       username: "",
       password: "",
-      email: "",
       branchIds: [],
     },
   });
 
   useEffect(() => {
-    if (staff) {
-      // When editing, populate the form with existing staff data
+    if (teacher) {
+      // When editing, populate the form with existing teacher data
       form.reset({
-        id: staff.id,
-        name: staff.name || "",
-        username: staff.username || "",
-        email: staff.email || "",
+        teacherId: teacher.teacherId,
+        name: teacher.name || "",
+        kanaName: teacher.kanaName || "",
+        email: teacher.email || "",
+        lineId: teacher.lineId || "",
+        notes: teacher.notes || "",
+        username: teacher.username || "",
         // Don't prefill password
         password: undefined,
-        // Extract branchIds from the staff's branches
-        branchIds: staff.branches?.map((branch) => branch.branchId) || [],
-      } as Partial<StaffUpdate>);
+        // Extract branchIds from the teacher's branches
+        branchIds: teacher.branches?.map((branch) => branch.branchId) || [],
+      });
     } else {
-      // Reset form when creating a new staff
+      // Reset form when creating a new teacher
       form.reset({
         name: "",
+        kanaName: "",
+        email: "",
+        lineId: "",
+        notes: "",
         username: "",
         password: "",
-        email: "",
         branchIds: [],
       });
     }
-  }, [staff, form]);
+  }, [teacher, form]);
 
-  function onSubmit(values: StaffCreate | StaffUpdate) {
+  function onSubmit(values: TeacherUpdate) {
     // Close the dialog immediately for better UX
     onOpenChange(false);
 
@@ -110,13 +123,17 @@ export function StaffFormDialog({
     }
 
     // Then trigger the mutation without waiting
-    if (isEditing && staff) {
-      updateStaffMutation.mutate({
-        id: staff.id,
+    if (isEditing && teacher) {
+      // Spread submissionData first, then override teacherId
+      updateTeacherMutation.mutate({
         ...submissionData,
+        teacherId: teacher.teacherId,
       });
     } else {
-      createStaffMutation.mutate(submissionData as StaffCreate);
+      // Remove teacherId from submissionData for create
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { teacherId, ...createData } = submissionData;
+      createTeacherMutation.mutate(createData as TeacherCreate);
     }
 
     // Reset the form
@@ -127,9 +144,7 @@ export function StaffFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>
-            {isEditing ? "スタッフの編集" : "スタッフの作成"}
-          </DialogTitle>
+          <DialogTitle>{isEditing ? "教師の編集" : "教師の作成"}</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -143,6 +158,24 @@ export function StaffFormDialog({
                   </FormLabel>
                   <FormControl>
                     <Input placeholder="名前を入力してください" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="kanaName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>カナ</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="カナを入力してください"
+                      {...field}
+                      value={field.value || ""}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -204,14 +237,49 @@ export function StaffFormDialog({
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="after:content-['*'] after:ml-1 after:text-destructive">
-                    メールアドレス
-                  </FormLabel>
+                  <FormLabel>メールアドレス</FormLabel>
                   <FormControl>
                     <Input
                       type="email"
                       placeholder="メールアドレスを入力してください"
                       {...field}
+                      value={field.value || ""}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="lineId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>LINE ID</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="LINE IDを入力してください"
+                      {...field}
+                      value={field.value || ""}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="notes"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>備考</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="備考を入力してください"
+                      {...field}
+                      value={field.value || ""}
                     />
                   </FormControl>
                   <FormMessage />

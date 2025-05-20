@@ -45,12 +45,12 @@ const formatBranch = (branch: BranchWithUsers): FormattedBranch => ({
 // GET a specific branch by ID
 export const GET = withBranchAccess(
   ["ADMIN"],
-  async (request: NextRequest, session) => {
+  async (request: NextRequest) => {
     const branchId = request.url.split("/").pop();
 
     if (!branchId) {
       return NextResponse.json(
-        { error: "Branch ID is required" },
+        { error: "教室IDは必須です" },
         { status: 400 }
       );
     }
@@ -75,7 +75,7 @@ export const GET = withBranchAccess(
     });
 
     if (!branch) {
-      return NextResponse.json({ error: "Branch not found" }, { status: 404 });
+      return NextResponse.json({ error: "教室が見つかりません" }, { status: 404 });
     }
 
     // Format response
@@ -96,12 +96,12 @@ export const GET = withBranchAccess(
 // PATCH - Update a branch
 export const PATCH = withBranchAccess(
   ["ADMIN"],
-  async (request: NextRequest, session) => {
+  async (request: NextRequest) => {
     try {
       const branchId = request.url.split("/").pop();
       if (!branchId) {
         return NextResponse.json(
-          { error: "Branch ID is required" },
+          { error: "教室IDは必須です" },
           { status: 400 }
         );
       }
@@ -112,7 +112,7 @@ export const PATCH = withBranchAccess(
       const result = branchUpdateSchema.safeParse({ ...body, branchId });
       if (!result.success) {
         return NextResponse.json(
-          { error: result.error.message },
+          { error: "入力内容に誤りがあります: " + result.error.message },
           { status: 400 }
         );
       }
@@ -124,12 +124,12 @@ export const PATCH = withBranchAccess(
 
       if (!existingBranch) {
         return NextResponse.json(
-          { error: "Branch not found" },
+          { error: "教室が見つかりません" },
           { status: 404 }
         );
       }
 
-      const { name, notes, userIds } = result.data;
+      const { name, notes, userIds } = result.data as { name?: string; notes?: string | null; userIds?: string[] };
 
       // Check name uniqueness if being updated
       if (name && name !== existingBranch.name) {
@@ -142,7 +142,7 @@ export const PATCH = withBranchAccess(
 
         if (nameExists) {
           return NextResponse.json(
-            { error: "Branch name already in use" },
+            { error: "この教室名は既に使用されています" },
             { status: 409 }
           );
         }
@@ -169,7 +169,7 @@ export const PATCH = withBranchAccess(
           // Create new user-branch associations
           if (userIds.length > 0) {
             await tx.userBranch.createMany({
-              data: userIds.map((userId) => ({
+              data: userIds.map((userId: string) => ({
                 branchId,
                 userId,
               })),
@@ -199,7 +199,7 @@ export const PATCH = withBranchAccess(
       });
 
       if (!updatedBranch) {
-        throw new Error("Failed to update branch");
+        throw new Error("教室の更新に失敗しました");
       }
 
       // Format response
@@ -217,7 +217,7 @@ export const PATCH = withBranchAccess(
     } catch (error) {
       console.error("Error updating branch:", error);
       return NextResponse.json(
-        { error: "Failed to update branch" },
+        { error: "教室の更新に失敗しました" },
         { status: 500 }
       );
     }
@@ -227,12 +227,12 @@ export const PATCH = withBranchAccess(
 // DELETE - Delete a branch
 export const DELETE = withBranchAccess(
   ["ADMIN"],
-  async (request: NextRequest, session) => {
+  async (request: NextRequest) => {
     const branchId = request.url.split("/").pop();
 
     if (!branchId) {
       return NextResponse.json(
-        { error: "Branch ID is required" },
+        { error: "教室IDは必須です" },
         { status: 400 }
       );
     }
@@ -245,7 +245,6 @@ export const DELETE = withBranchAccess(
           booths: { take: 1 },
           classSessions: { take: 1 },
           subjects: { take: 1 },
-          classTypes: { take: 1 },
           events: { take: 1 },
           notifications: { take: 1 },
         },
@@ -253,7 +252,7 @@ export const DELETE = withBranchAccess(
 
       if (!branch) {
         return NextResponse.json(
-          { error: "Branch not found" },
+          { error: "教室が見つかりません" },
           { status: 404 }
         );
       }
@@ -286,7 +285,7 @@ export const DELETE = withBranchAccess(
     } catch (error) {
       console.error("Error deleting branch:", error);
       return NextResponse.json(
-        { error: "Failed to delete branch" },
+        { error: "教室の削除に失敗しました" },
         { status: 500 }
       );
     }

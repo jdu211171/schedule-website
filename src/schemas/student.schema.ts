@@ -5,7 +5,7 @@ export const studentCreateSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
   kanaName: z.string().max(100).optional().nullable(),
   studentTypeId: z.string().optional().nullable(),
-  gradeYear: z.number().int().optional().nullable(),
+  gradeYear: z.number().int().positive().optional().nullable(),
   lineId: z.string().max(50).optional().nullable(),
   notes: z.string().max(255).optional().nullable(),
   // User account related fields

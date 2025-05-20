@@ -7,6 +7,7 @@ import {
   branchFilterSchema,
 } from "@/schemas/branch.schema";
 import { Branch, UserBranch } from "@prisma/client";
+import { z } from "zod";
 
 type BranchWithUsers = Branch & {
   userBranches: (UserBranch & {
@@ -48,7 +49,7 @@ const formatBranch = (branch: BranchWithUsers): FormattedBranch => ({
 // GET - List branches with pagination and filters
 export const GET = withBranchAccess(
   ["ADMIN"],
-  async (request: NextRequest, session) => {
+  async (request: NextRequest) => {
     // Parse query parameters
     const url = new URL(request.url);
     const params = Object.fromEntries(url.searchParams.entries());
@@ -57,7 +58,7 @@ export const GET = withBranchAccess(
     const result = branchFilterSchema.safeParse(params);
     if (!result.success) {
       return NextResponse.json(
-        { error: "フィルターパラメータが無効です" }, // "Invalid filter parameters"
+        { error: "フィルターパラメータが無効です" },
         { status: 400 }
       );
     }
@@ -65,7 +66,7 @@ export const GET = withBranchAccess(
     const { page, limit, name } = result.data;
 
     // Build filter conditions
-    const where: any = {};
+    const where: Record<string, unknown> = {};
 
     if (name) {
       where.name = {
@@ -121,20 +122,20 @@ export const GET = withBranchAccess(
 // POST - Create a new branch
 export const POST = withBranchAccess(
   ["ADMIN"],
-  async (request: NextRequest, session) => {
+  async (request: NextRequest) => {
     try {
       const body = await request.json();
 
       // Validate request body
-      const result = branchCreateSchema.safeParse(body);
+      const result = branchCreateSchema.extend({ userIds: z.array(z.string()).optional() }).safeParse(body);
       if (!result.success) {
         return NextResponse.json(
-          { error: "入力データが無効です" }, // "Invalid input data"
+          { error: "入力データが無効です" },
           { status: 400 }
         );
       }
 
-      const { name, notes, userIds = [] } = result.data;
+      const { name, notes, userIds = [] } = result.data as { name: string; notes?: string | null; userIds?: string[] };
 
       // Check if branch name already exists
       const existingBranch = await prisma.branch.findFirst({
@@ -143,7 +144,7 @@ export const POST = withBranchAccess(
 
       if (existingBranch) {
         return NextResponse.json(
-          { error: "支店名は既に使用されています" }, // "Branch name already in use"
+          { error: "支店名は既に使用されています" },
           { status: 409 }
         );
       }
@@ -156,7 +157,7 @@ export const POST = withBranchAccess(
 
         if (userCount !== userIds.length) {
           return NextResponse.json(
-            { error: "一部のユーザーIDが存在しません" }, // "Some user IDs do not exist"
+            { error: "一部のユーザーIDが存在しません" },
             { status: 400 }
           );
         }
@@ -175,7 +176,7 @@ export const POST = withBranchAccess(
         // Create user-branch associations
         if (userIds.length > 0) {
           await tx.userBranch.createMany({
-            data: userIds.map((userId) => ({
+            data: userIds.map((userId: string) => ({
               branchId: branch.branchId,
               userId,
             })),
@@ -204,7 +205,7 @@ export const POST = withBranchAccess(
       });
 
       if (!newBranch) {
-        throw new Error("Failed to create branch");
+        throw new Error("支店の作成に失敗しました");
       }
 
       // Format response
@@ -225,7 +226,7 @@ export const POST = withBranchAccess(
     } catch (error) {
       console.error("Error creating branch:", error);
       return NextResponse.json(
-        { error: "支店の作成に失敗しました" }, // "Failed to create branch"
+        { error: "支店の作成に失敗しました" },
         { status: 500 }
       );
     }
