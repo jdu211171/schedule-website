@@ -54,6 +54,7 @@ model Booth {
  */
 model ClassSession {
   classId                 String                   @id @default(cuid()) @map("class_id")
+  seriesId                String?                  @map("series_id")
   teacherId               String?                  @map("teacher_id")
   studentId               String?                  @map("student_id")
   subjectId               String?                  @map("subject_id")
@@ -79,6 +80,7 @@ model ClassSession {
   @@index([date])
   @@index([teacherId])
   @@index([branchId])
+  @@index([seriesId])
   @@map("class_sessions")
 }
 
