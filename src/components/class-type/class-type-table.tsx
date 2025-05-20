@@ -66,15 +66,6 @@ export function ClassTypeTable() {
       header: "クラスタイプ名",
     },
     {
-      accessorKey: "branchName",
-      header: "支店",
-      cell: ({ row }) => row.original.branchName || "-",
-      // Only show for admins
-      meta: {
-        hidden: !isAdmin,
-      } as ColumnMetaType,
-    },
-    {
       accessorKey: "notes",
       header: "メモ",
       cell: ({ row }) => row.original.notes || "-",

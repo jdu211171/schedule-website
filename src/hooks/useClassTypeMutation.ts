@@ -60,15 +60,10 @@ export function useClassTypeCreate() {
               queryClient.getQueryData<ClassTypesResponse>(queryKey);
             if (currentData) {
               // Create optimistic class type
-              const branchId = localStorage.getItem("selectedBranchId") || "";
-              const branchName = ""; // We can't know the branch name optimistically
-
               const optimisticClassType: ClassType = {
                 classTypeId: tempId,
                 name: newClassType.name,
                 notes: newClassType.notes || null,
-                branchId: newClassType.branchId || branchId,
-                branchName: branchName,
                 createdAt: new Date(),
                 updatedAt: new Date(),
                 _optimistic: true, // Flag to identify optimistic entries
@@ -264,143 +259,145 @@ export function useClassTypeUpdate() {
 export function useClassTypeDelete() {
   const queryClient = useQueryClient();
   return useMutation<
-    ClassTypesResponse,
+  ClassTypesResponse,
     Error,
     string,
-    ClassTypeMutationContext
-  >({
-    mutationFn: (classTypeId) => {
-      // Resolve the ID before sending to the server
-      const resolvedId = getResolvedClassTypeId(classTypeId);
+    ClassTypeMutationContext >
+      ({
+        mutationFn: (classTypeId) => {
+          // Resolve the ID before sending to the server
+          const resolvedId = getResolvedClassTypeId(classTypeId);
 
-      return fetcher(`/api/class-types/${resolvedId}`, {
-        method: "DELETE",
-      });
-    },
-    onMutate: async (classTypeId) => {
-      // Cancel any outgoing refetches
-      await queryClient.cancelQueries({ queryKey: ["classTypes"] });
-
-      // Resolve ID for any potential temporary ID
-      const resolvedId = getResolvedClassTypeId(classTypeId);
-
-      await queryClient.cancelQueries({ queryKey: ["classType", resolvedId] });
-
-      // Snapshot all class type queries
-      const queries = queryClient.getQueriesData<ClassTypesResponse>({
-        queryKey: ["classTypes"],
-      });
-      const previousClassTypes: Record<string, ClassTypesResponse> = {};
-
-      // Save all class type queries for potential rollback
-      queries.forEach(([queryKey, data]) => {
-        if (data) {
-          previousClassTypes[JSON.stringify(queryKey)] = data;
-        }
-      });
-
-      // Save the class type being deleted
-      let deletedClassType: ClassType | undefined;
-      for (const [, data] of queries) {
-        if (data) {
-          const found = data.data.find(
-            (classType) => classType.classTypeId === classTypeId
-          );
-          if (found) {
-            deletedClassType = found;
-            break;
-          }
-        }
-      }
-
-      // Optimistically update all class type queries
-      queries.forEach(([queryKey]) => {
-        const currentData =
-          queryClient.getQueryData<ClassTypesResponse>(queryKey);
-
-        if (currentData) {
-          queryClient.setQueryData<ClassTypesResponse>(queryKey, {
-            ...currentData,
-            data: currentData.data.filter(
-              (classType) => classType.classTypeId !== classTypeId
-            ),
-            pagination: {
-              ...currentData.pagination,
-              total: Math.max(0, currentData.pagination.total - 1),
-            },
+          return fetcher(`/api/class-types/${resolvedId}`, {
+            method: "DELETE",
           });
-        }
-      });
+        },
+        onMutate: async (classTypeId) => {
+          // Cancel any outgoing refetches
+          await queryClient.cancelQueries({ queryKey: ["classTypes"] });
 
-      // Remove the individual class type query
-      queryClient.removeQueries({ queryKey: ["classType", resolvedId] });
+          // Resolve ID for any potential temporary ID
+          const resolvedId = getResolvedClassTypeId(classTypeId);
 
-      // If it was a temporary ID, clean up the mapping
-      if (classTypeId.startsWith("temp-")) {
-        tempToServerIdMap.delete(classTypeId);
-      }
+          await queryClient.cancelQueries({
+            queryKey: ["classType", resolvedId],
+          });
 
-      // Return the snapshots for rollback
-      return { previousClassTypes, deletedClassType };
-    },
-    onError: (error, classTypeId, context) => {
-      // Rollback class type list queries
-      if (context?.previousClassTypes) {
-        Object.entries(context.previousClassTypes).forEach(
-          ([queryKeyStr, data]) => {
-            const queryKey = JSON.parse(queryKeyStr);
-            queryClient.setQueryData(queryKey, data);
+          // Snapshot all class type queries
+          const queries = queryClient.getQueriesData<ClassTypesResponse>({
+            queryKey: ["classTypes"],
+          });
+          const previousClassTypes: Record<string, ClassTypesResponse> = {};
+
+          // Save all class type queries for potential rollback
+          queries.forEach(([queryKey, data]) => {
+            if (data) {
+              previousClassTypes[JSON.stringify(queryKey)] = data;
+            }
+          });
+
+          // Save the class type being deleted
+          let deletedClassType: ClassType | undefined;
+          for (const [, data] of queries) {
+            if (data) {
+              const found = data.data.find(
+                (classType) => classType.classTypeId === classTypeId
+              );
+              if (found) {
+                deletedClassType = found;
+                break;
+              }
+            }
           }
-        );
-      }
 
-      // Restore mapping if it was removed
-      if (classTypeId.startsWith("temp-") && context?.deletedClassType) {
-        tempToServerIdMap.set(
-          classTypeId,
-          context.deletedClassType.classTypeId
-        );
-      }
+          // Optimistically update all class type queries
+          queries.forEach(([queryKey]) => {
+            const currentData =
+              queryClient.getQueryData<ClassTypesResponse>(queryKey);
 
-      // Resolve ID for restoring the single class type query
-      const resolvedId = getResolvedClassTypeId(classTypeId);
+            if (currentData) {
+              queryClient.setQueryData<ClassTypesResponse>(queryKey, {
+                ...currentData,
+                data: currentData.data.filter(
+                  (classType) => classType.classTypeId !== classTypeId
+                ),
+                pagination: {
+                  ...currentData.pagination,
+                  total: Math.max(0, currentData.pagination.total - 1),
+                },
+              });
+            }
+          });
 
-      // Restore individual class type query if it existed
-      if (context?.deletedClassType) {
-        queryClient.setQueryData(
-          ["classType", resolvedId],
-          context.deletedClassType
-        );
-      }
+          // Remove the individual class type query
+          queryClient.removeQueries({ queryKey: ["classType", resolvedId] });
 
-      toast.error("クラスタイプの削除に失敗しました", {
-        id: "class-type-delete-error",
-        description: error.message,
+          // If it was a temporary ID, clean up the mapping
+          if (classTypeId.startsWith("temp-")) {
+            tempToServerIdMap.delete(classTypeId);
+          }
+
+          // Return the snapshots for rollback
+          return { previousClassTypes, deletedClassType };
+        },
+        onError: (error, classTypeId, context) => {
+          // Rollback class type list queries
+          if (context?.previousClassTypes) {
+            Object.entries(context.previousClassTypes).forEach(
+              ([queryKeyStr, data]) => {
+                const queryKey = JSON.parse(queryKeyStr);
+                queryClient.setQueryData(queryKey, data);
+              }
+            );
+          }
+
+          // Restore mapping if it was removed
+          if (classTypeId.startsWith("temp-") && context?.deletedClassType) {
+            tempToServerIdMap.set(
+              classTypeId,
+              context.deletedClassType.classTypeId
+            );
+          }
+
+          // Resolve ID for restoring the single class type query
+          const resolvedId = getResolvedClassTypeId(classTypeId);
+
+          // Restore individual class type query if it existed
+          if (context?.deletedClassType) {
+            queryClient.setQueryData(
+              ["classType", resolvedId],
+              context.deletedClassType
+            );
+          }
+
+          toast.error("クラスタイプの削除に失敗しました", {
+            id: "class-type-delete-error",
+            description: error.message,
+          });
+        },
+        onSuccess: (data, classTypeId) => {
+          // If it was a temporary ID, clean up the mapping on success
+          if (classTypeId.startsWith("temp-")) {
+            tempToServerIdMap.delete(classTypeId);
+          }
+
+          toast.success("クラスタイプを削除しました", {
+            id: "class-type-delete-success",
+          });
+        },
+        onSettled: (_, __, classTypeId) => {
+          // Resolve ID for proper invalidation
+          const resolvedId = getResolvedClassTypeId(classTypeId);
+
+          // Invalidate queries in the background to ensure eventual consistency
+          queryClient.invalidateQueries({
+            queryKey: ["classTypes"],
+            refetchType: "none",
+          });
+          queryClient.invalidateQueries({
+            queryKey: ["classType", resolvedId],
+            refetchType: "none",
+          });
+        },
       });
-    },
-    onSuccess: (data, classTypeId) => {
-      // If it was a temporary ID, clean up the mapping on success
-      if (classTypeId.startsWith("temp-")) {
-        tempToServerIdMap.delete(classTypeId);
-      }
-
-      toast.success("クラスタイプを削除しました", {
-        id: "class-type-delete-success",
-      });
-    },
-    onSettled: (_, __, classTypeId) => {
-      // Resolve ID for proper invalidation
-      const resolvedId = getResolvedClassTypeId(classTypeId);
-
-      // Invalidate queries in the background to ensure eventual consistency
-      queryClient.invalidateQueries({
-        queryKey: ["classTypes"],
-        refetchType: "none",
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["classType", resolvedId],
-        refetchType: "none",
-      });
-    },
-  });
 }

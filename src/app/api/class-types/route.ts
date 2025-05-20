@@ -1,6 +1,6 @@
 // src/app/api/class-types/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { withBranchAccess } from "@/lib/auth";
+import { withRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
   classTypeCreateSchema,
@@ -12,29 +12,23 @@ type FormattedClassType = {
   classTypeId: string;
   name: string;
   notes: string | null;
-  branchId: string | null;
-  branchName: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
 
 // Helper function to format classType response
-const formatClassType = (
-  classType: ClassType & { branch?: { name: string } | null }
-): FormattedClassType => ({
+const formatClassType = (classType: ClassType): FormattedClassType => ({
   classTypeId: classType.classTypeId,
   name: classType.name,
   notes: classType.notes,
-  branchId: classType.branchId || null,
-  branchName: classType.branch?.name || null,
   createdAt: classType.createdAt,
   updatedAt: classType.updatedAt,
 });
 
 // GET - List class types with pagination and filters
-export const GET = withBranchAccess(
+export const GET = withRole(
   ["ADMIN", "STAFF", "TEACHER"],
-  async (request: NextRequest, session, branchId) => {
+  async (request: NextRequest, session) => {
     // Parse query parameters
     const url = new URL(request.url);
     const params = Object.fromEntries(url.searchParams.entries());
@@ -53,13 +47,6 @@ export const GET = withBranchAccess(
     // Build filter conditions
     const where: any = {};
 
-    // For admins, allow filtering by branchId. For non-admins, enforce current branch
-    if (session.user?.role === "ADMIN" && result.data.branchId) {
-      where.branchId = result.data.branchId;
-    } else if (session.user?.role !== "ADMIN") {
-      where.branchId = branchId;
-    }
-
     if (name) {
       where.name = {
         contains: name,
@@ -73,16 +60,9 @@ export const GET = withBranchAccess(
     // Fetch total count
     const total = await prisma.classType.count({ where });
 
-    // Fetch class types with branch
+    // Fetch class types
     const classTypes = await prisma.classType.findMany({
       where,
-      include: {
-        branch: {
-          select: {
-            name: true,
-          },
-        },
-      },
       skip,
       take: limit,
       orderBy: { name: "asc" },
@@ -104,9 +84,9 @@ export const GET = withBranchAccess(
 );
 
 // POST - Create a new class type
-export const POST = withBranchAccess(
+export const POST = withRole(
   ["ADMIN", "STAFF"],
-  async (request: NextRequest, session, branchId) => {
+  async (request: NextRequest, session) => {
     try {
       const body = await request.json();
 
@@ -121,17 +101,10 @@ export const POST = withBranchAccess(
 
       const { name, notes } = result.data;
 
-      // For admin users, allow specifying branch. For others, use current branch
-      const classTypeBranchId =
-        session.user?.role === "ADMIN" && result.data.branchId
-          ? result.data.branchId
-          : branchId;
-
-      // Check if class type name already exists in this branch
+      // Check if class type name already exists globally
       const existingClassType = await prisma.classType.findFirst({
         where: {
           name: { equals: name, mode: "insensitive" },
-          branchId: classTypeBranchId,
         },
       });
 
@@ -147,14 +120,6 @@ export const POST = withBranchAccess(
         data: {
           name,
           notes,
-          branchId: classTypeBranchId,
-        },
-        include: {
-          branch: {
-            select: {
-              name: true,
-            },
-          },
         },
       });
 

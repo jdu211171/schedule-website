@@ -1,6 +1,6 @@
 // src/app/api/class-types/[classTypeId]/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { withBranchAccess } from "@/lib/auth";
+import { withRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { classTypeUpdateSchema } from "@/schemas/class-type.schema";
 import { ClassType } from "@prisma/client";
@@ -9,29 +9,23 @@ type FormattedClassType = {
   classTypeId: string;
   name: string;
   notes: string | null;
-  branchId: string | null;
-  branchName: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
 
 // Helper function to format classType response
-const formatClassType = (
-  classType: ClassType & { branch?: { name: string } | null }
-): FormattedClassType => ({
+const formatClassType = (classType: ClassType): FormattedClassType => ({
   classTypeId: classType.classTypeId,
   name: classType.name,
   notes: classType.notes,
-  branchId: classType.branchId || null,
-  branchName: classType.branch?.name || null,
   createdAt: classType.createdAt,
   updatedAt: classType.updatedAt,
 });
 
 // GET a specific class type by ID
-export const GET = withBranchAccess(
+export const GET = withRole(
   ["ADMIN", "STAFF", "TEACHER"],
-  async (request: NextRequest, session, branchId) => {
+  async (request: NextRequest, session) => {
     const classTypeId = request.url.split("/").pop();
 
     if (!classTypeId) {
@@ -43,31 +37,12 @@ export const GET = withBranchAccess(
 
     const classType = await prisma.classType.findUnique({
       where: { classTypeId },
-      include: {
-        branch: {
-          select: {
-            name: true,
-          },
-        },
-      },
     });
 
     if (!classType) {
       return NextResponse.json(
         { error: "クラスタイプが見つかりません" },
         { status: 404 }
-      );
-    }
-
-    // Check if user has access to this class type's branch (non-admin users)
-    if (
-      classType.branchId &&
-      classType.branchId !== branchId &&
-      session.user?.role !== "ADMIN"
-    ) {
-      return NextResponse.json(
-        { error: "このクラスタイプにアクセスする権限がありません" },
-        { status: 403 }
       );
     }
 
@@ -87,9 +62,9 @@ export const GET = withBranchAccess(
 );
 
 // PATCH - Update a class type
-export const PATCH = withBranchAccess(
+export const PATCH = withRole(
   ["ADMIN", "STAFF"],
-  async (request: NextRequest, session, branchId) => {
+  async (request: NextRequest, session) => {
     try {
       const classTypeId = request.url.split("/").pop();
       if (!classTypeId) {
@@ -122,18 +97,6 @@ export const PATCH = withBranchAccess(
         );
       }
 
-      // Check if user has access to this class type's branch (non-admin users)
-      if (
-        existingClassType.branchId &&
-        existingClassType.branchId !== branchId &&
-        session.user?.role !== "ADMIN"
-      ) {
-        return NextResponse.json(
-          { error: "このクラスタイプにアクセスする権限がありません" },
-          { status: 403 }
-        );
-      }
-
       const { name, notes } = result.data;
 
       // Check name uniqueness if being updated
@@ -141,7 +104,6 @@ export const PATCH = withBranchAccess(
         const nameExists = await prisma.classType.findFirst({
           where: {
             name: { equals: name, mode: "insensitive" },
-            branchId: existingClassType.branchId,
             classTypeId: { not: classTypeId },
           },
         });
@@ -160,13 +122,6 @@ export const PATCH = withBranchAccess(
         data: {
           name,
           notes,
-        },
-        include: {
-          branch: {
-            select: {
-              name: true,
-            },
-          },
         },
       });
 
@@ -194,9 +149,9 @@ export const PATCH = withBranchAccess(
 );
 
 // DELETE - Delete a class type
-export const DELETE = withBranchAccess(
+export const DELETE = withRole(
   ["ADMIN", "STAFF"],
-  async (request: NextRequest, session, branchId) => {
+  async (request: NextRequest, session) => {
     const classTypeId = request.url.split("/").pop();
 
     if (!classTypeId) {
@@ -219,18 +174,6 @@ export const DELETE = withBranchAccess(
         return NextResponse.json(
           { error: "クラスタイプが見つかりません" },
           { status: 404 }
-        );
-      }
-
-      // Check if user has access to this class type's branch (non-admin users)
-      if (
-        classType.branchId &&
-        classType.branchId !== branchId &&
-        session.user?.role !== "ADMIN"
-      ) {
-        return NextResponse.json(
-          { error: "このクラスタイプにアクセスする権限がありません" },
-          { status: 403 }
         );
       }
 

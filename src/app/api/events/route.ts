@@ -56,10 +56,12 @@ export const GET = withBranchAccess(
     // Build filter conditions
     const where: any = {};
 
-    // For admins, allow filtering by branchId. For non-admins, enforce current branch
-    if (session.user?.role === "ADMIN" && result.data.branchId) {
+    // If a specific branchId is provided in the request, use that
+    if (result.data.branchId) {
       where.branchId = result.data.branchId;
-    } else if (session.user?.role !== "ADMIN") {
+    }
+    // Otherwise use the user's current branch unless they are an admin
+    else if (session.user?.role !== "ADMIN") {
       where.branchId = branchId;
     }
 

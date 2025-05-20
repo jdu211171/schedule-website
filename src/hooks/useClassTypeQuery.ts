@@ -7,8 +7,6 @@ export type ClassType = {
   classTypeId: string;
   name: string;
   notes: string | null;
-  branchId: string | null;
-  branchName: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -17,7 +15,6 @@ type UseClassTypesParams = {
   page?: number;
   limit?: number;
   name?: string;
-  branchId?: string;
 };
 
 type ClassTypesResponse = {
@@ -35,13 +32,12 @@ type SingleClassTypeResponse = {
 };
 
 export function useClassTypes(params: UseClassTypesParams = {}) {
-  const { page = 1, limit = 10, name, branchId } = params;
+  const { page = 1, limit = 10, name } = params;
 
   const query = classTypeFilterSchema.parse({
     page,
     limit,
     name,
-    branchId,
   });
 
   const searchParams = new URLSearchParams(
@@ -54,7 +50,7 @@ export function useClassTypes(params: UseClassTypesParams = {}) {
   ).toString();
 
   return useQuery<ClassTypesResponse>({
-    queryKey: ["classTypes", page, limit, name, branchId],
+    queryKey: ["classTypes", page, limit, name],
     queryFn: async () =>
       await fetcher<ClassTypesResponse>(`/api/class-types?${searchParams}`),
   });
