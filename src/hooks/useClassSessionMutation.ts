@@ -7,7 +7,7 @@ import {
   ClassSessionUpdate,
   ClassSessionSeriesUpdate
 } from "@/schemas/class-session.schema";
-import { ClassSession } from "./useClassSessionQuery";
+import { ClassSession } from "@prisma/client";
 
 type ClassSessionResponse = {
   data: ClassSession[];
@@ -24,6 +24,34 @@ type ClassSessionResponse = {
 type SingleClassSessionResponse = {
   data: ClassSession;
   message?: string;
+};
+
+// Add extra fields to ClassSession type for optimistic updates and API compatibility
+// These fields are present in ExtendedClassSessionWithRelations but not in the base Prisma type
+// ClassSessionWithExtras is for optimistic updates and allows string/Date for date/time fields
+export type ClassSessionWithExtras = {
+  classId: string;
+  seriesId: string | null;
+  teacherId: string | null;
+  teacherName?: string | null;
+  studentId: string | null;
+  studentName?: string | null;
+  subjectId: string | null;
+  subjectName?: string | null;
+  classTypeId: string | null;
+  classTypeName?: string | null;
+  boothId: string | null;
+  boothName?: string | null;
+  branchId: string | null;
+  branchName?: string | null;
+  date: string | Date;
+  startTime: string | Date;
+  endTime: string | Date;
+  duration: number | null;
+  notes: string | null;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+  _optimistic?: boolean;
 };
 
 type ClassSessionMutationContext = {
@@ -72,22 +100,22 @@ export function useClassSessionCreate() {
         queries.forEach(([queryKey]) => {
           const currentData = queryClient.getQueryData<ClassSessionResponse>(queryKey);
           if (currentData) {
-            // Create optimistic class session
-            const optimisticClassSession: ClassSession = {
+            // Create optimistic class session with extra fields
+            const optimisticClassSession: ClassSessionWithExtras = {
               classId: tempId,
               seriesId: null,
               teacherId: newClassSession.teacherId || null,
-              teacherName: null, // We don't know this yet
+              teacherName: null,
               studentId: newClassSession.studentId || null,
-              studentName: null, // We don't know this yet
+              studentName: null,
               subjectId: newClassSession.subjectId || null,
-              subjectName: null, // We don't know this yet
+              subjectName: null,
               classTypeId: newClassSession.classTypeId || null,
-              classTypeName: null, // We don't know this yet
+              classTypeName: null,
               boothId: newClassSession.boothId || null,
-              boothName: null, // We don't know this yet
+              boothName: null,
               branchId: newClassSession.branchId || null,
-              branchName: null, // We don't know this yet
+              branchName: null,
               date: newClassSession.date,
               startTime: newClassSession.startTime,
               endTime: newClassSession.endTime,
@@ -100,7 +128,7 @@ export function useClassSessionCreate() {
 
             queryClient.setQueryData<ClassSessionResponse>(queryKey, {
               ...currentData,
-              data: [optimisticClassSession, ...currentData.data],
+              data: [optimisticClassSession as unknown as ClassSession, ...currentData.data],
               pagination: {
                 ...currentData.pagination,
                 total: currentData.pagination.total + 1,
@@ -240,12 +268,12 @@ export function useClassSessionUpdate() {
                     subjectId: updatedClassSession.subjectId ?? session.subjectId,
                     classTypeId: updatedClassSession.classTypeId ?? session.classTypeId,
                     boothId: updatedClassSession.boothId ?? session.boothId,
-                    date: updatedClassSession.date ?? session.date,
-                    startTime: updatedClassSession.startTime ?? session.startTime,
-                    endTime: updatedClassSession.endTime ?? session.endTime,
+                    date: (updatedClassSession.date ?? session.date) as Date,
+                    startTime: (updatedClassSession.startTime ?? session.startTime) as Date,
+                    endTime: (updatedClassSession.endTime ?? session.endTime) as Date,
                     duration: updatedClassSession.duration ?? session.duration,
                     notes: updatedClassSession.notes ?? session.notes,
-                    updatedAt: new Date().toISOString(),
+                    updatedAt: new Date() as Date,
                   }
                 : session
             ),
@@ -262,12 +290,12 @@ export function useClassSessionUpdate() {
           subjectId: updatedClassSession.subjectId ?? previousClassSession.subjectId,
           classTypeId: updatedClassSession.classTypeId ?? previousClassSession.classTypeId,
           boothId: updatedClassSession.boothId ?? previousClassSession.boothId,
-          date: updatedClassSession.date ?? previousClassSession.date,
-          startTime: updatedClassSession.startTime ?? previousClassSession.startTime,
-          endTime: updatedClassSession.endTime ?? previousClassSession.endTime,
+          date: (updatedClassSession.date ?? previousClassSession.date) as Date,
+          startTime: (updatedClassSession.startTime ?? previousClassSession.startTime) as Date,
+          endTime: (updatedClassSession.endTime ?? previousClassSession.endTime) as Date,
           duration: updatedClassSession.duration ?? previousClassSession.duration,
           notes: updatedClassSession.notes ?? previousClassSession.notes,
-          updatedAt: new Date().toISOString(),
+          updatedAt: new Date() as Date,
         });
       }
 
@@ -298,7 +326,7 @@ export function useClassSessionUpdate() {
         description: error.message,
       });
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       toast.success("クラスセッションを更新しました", {
         id: "class-session-update-success",
       });

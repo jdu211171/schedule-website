@@ -1,34 +1,40 @@
-// src/hooks/useClassSessionQuery.ts
 import { fetcher } from "@/lib/fetcher";
-import { useQuery } from "@tanstack/react-query";
-import { classSessionFilterSchema } from "@/schemas/class-session.schema";
+import { ClassSessionFilter, classSessionFilterSchema } from "@/schemas/class-session.schema";
+import { Prisma } from "@prisma/client";
+import { useQuery, useQueries, UseQueryResult } from "@tanstack/react-query";
 
-export type ClassSession = {
-  classId: string;
-  seriesId: string | null;
-  teacherId: string | null;
-  teacherName: string | null;
-  studentId: string | null;
-  studentName: string | null;
-  subjectId: string | null;
-  subjectName: string | null;
-  classTypeId: string | null;
-  classTypeName: string | null;
-  boothId: string | null;
-  boothName: string | null;
-  branchId: string | null;
-  branchName: string | null;
-  date: string;
-  startTime: string;
-  endTime: string;
-  duration: number | null;
-  notes: string | null;
-  createdAt: string;
-  updatedAt: string;
-  _optimistic?: boolean;
-};
+// Define the include object for ClassSession relations
+export const classSessionWithRelationsInclude = {
+  booth: true,
+  classType: true,
+  subject: true,
+  teacher: true,
+  student: true,
+  branch: true,
+} as const;
 
-type UseClassSessionsParams = {
+// Type for a ClassSession with all its relations from Prisma
+export type ClassSessionWithRelations = Prisma.ClassSessionGetPayload<{
+  include: typeof classSessionWithRelationsInclude;
+}>;
+
+// Дополнительные поля из API, которые не включены в Prisma тип
+export interface ApiClassSessionFields {
+  teacherName?: string;
+  studentName?: string;
+  subjectName?: string;
+  classTypeName?: string;
+  boothName?: string;
+  branchName?: string | null;
+  seriesId?: string | null;
+  duration?: number;
+}
+
+// Расширенный тип, который объединяет Prisma-тип и поля API
+export type ExtendedClassSessionWithRelations = ClassSessionWithRelations & ApiClassSessionFields;
+
+// Parameters for the useClassSessions hook
+export type UseClassSessionsParams = {
   page?: number;
   limit?: number;
   teacherId?: string;
@@ -42,8 +48,9 @@ type UseClassSessionsParams = {
   seriesId?: string;
 };
 
-type ClassSessionsResponse = {
-  data: ClassSession[];
+// Response type for a list of class sessions - используем расширенный тип
+export type ClassSessionsResponse = {
+  data: ExtendedClassSessionWithRelations[];
   pagination: {
     total: number;
     page: number;
@@ -52,101 +59,67 @@ type ClassSessionsResponse = {
   };
 };
 
-type SingleClassSessionResponse = {
-  data: ClassSession;
+// Response type for a single class session - используем расширенный тип
+export type SingleClassSessionResponse = {
+  data: ExtendedClassSessionWithRelations;
 };
 
-type ClassSessionSeriesResponse = {
-  data: ClassSession[];
-  pagination: {
-    total: number;
-    page: number;
-    limit: number;
-    pages: number;
-  };
-};
+/**
+ * Hook to fetch a list of class sessions with pagination and filtering.
+ */
+export function useClassSessions(params: UseClassSessionsParams = { page: 1, limit: 10 }) {
+  // Validate and structure parameters using the Zod schema
+  const validatedQuery = classSessionFilterSchema.parse(params);
 
-// Hook to fetch a list of class sessions with filters
-export function useClassSessions(params: UseClassSessionsParams = {}) {
-  const {
-    page = 1,
-    limit = 10,
-    teacherId,
-    studentId,
-    subjectId,
-    classTypeId,
-    boothId,
-    branchId,
-    startDate,
-    endDate,
-    seriesId,
-  } = params;
-
-  const queryParams: Record<string, string | undefined> = {
-    page: page.toString(),
-    limit: limit.toString(),
-    teacherId,
-    studentId,
-    subjectId,
-    classTypeId,
-    boothId,
-    branchId,
-    startDate,
-    endDate,
-    seriesId,
-  };
-
-  const searchParams = new URLSearchParams(
-    Object.entries(queryParams).reduce((acc, [key, value]) => {
-      if (value !== undefined) {
-        acc[key] = value;
+  // Construct search parameters for the API request
+  const searchParams = new URLSearchParams();
+  for (const [key, value] of Object.entries(validatedQuery)) {
+    if (value !== undefined && value !== null) {
+      if (Array.isArray(value)) {
+        value.forEach((v) => searchParams.append(key, String(v)));
+      } else {
+        searchParams.set(key, String(value));
       }
-      return acc;
-    }, {} as Record<string, string>)
-  ).toString();
+    }
+  }
+  const queryString = searchParams.toString();
 
   return useQuery<ClassSessionsResponse>({
-    queryKey: [
-      "classSessions",
-      page,
-      limit,
-      teacherId,
-      studentId,
-      subjectId,
-      classTypeId,
-      boothId,
-      branchId,
-      startDate,
-      endDate,
-      seriesId,
-    ],
+    queryKey: ["classSessions", validatedQuery],
     queryFn: async () =>
-      await fetcher<ClassSessionsResponse>(
-        `/api/class-sessions?${searchParams}`
-      ),
+      await fetcher<ClassSessionsResponse>(`/api/class-sessions?${queryString}`),
   });
 }
 
-// Hook to fetch a single class session by ID
-export function useClassSession(classId: string) {
-  return useQuery<ClassSession>({
-    queryKey: ["classSession", classId],
-    queryFn: async () =>
-      await fetcher<SingleClassSessionResponse>(
-        `/api/class-sessions/${classId}`
-      ).then((res) => res.data),
-    enabled: !!classId,
+/**
+ * Hook to fetch a single class session by its ID.
+ */
+export function useClassSession(classSessionId: string | undefined | null) {
+  return useQuery<ExtendedClassSessionWithRelations>({
+    queryKey: ["classSession", classSessionId],
+    queryFn: async () => {
+      if (!classSessionId) {
+        throw new Error("classSessionId is required to fetch a single class session.");
+      }
+      const response = await fetcher<SingleClassSessionResponse>(`/api/class-sessions/${classSessionId}`);
+      return response.data;
+    },
+    enabled: !!classSessionId,
   });
 }
 
-// Hook to fetch all sessions in a series
-export function useClassSessionSeries(seriesId: string) {
-  return useQuery<ClassSession[]>({
-    queryKey: ["classSessionSeries", seriesId],
-    queryFn: async () =>
-      await fetcher<ClassSessionSeriesResponse>(
-        `/api/class-sessions/series/${seriesId}`
-      ).then((res) => res.data),
-    enabled: !!seriesId,
+/**
+ * Hook for simultaneously fetching class sessions data for multiple individual dates
+ */
+export function useMultipleDaysClassSessions(dates: string[]): UseQueryResult<ClassSessionsResponse, Error>[] {
+  return useQueries({
+    queries: dates.map(dateStr => ({
+      queryKey: ['classSessions', 'byDate', dateStr],
+      queryFn: async () => {
+        const url = `/api/class-sessions?date=${dateStr}&limit=100`;
+        return await fetcher<ClassSessionsResponse>(url);
+      },
+      staleTime: 1000 * 60 * 5, 
+    }))
   });
 }

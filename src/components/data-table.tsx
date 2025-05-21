@@ -1,3 +1,4 @@
+// src/components/data-table.tsx (updated)
 "use client";
 
 import type React from "react";
@@ -52,6 +53,7 @@ interface DataTableProps<TData, TValue> {
   pageSize?: number;
   onPageSizeChange?: (pageSize: number) => void;
   totalItems?: number;
+  filterComponent?: React.ReactNode; // Added filter component prop
 }
 
 export function DataTable<TData, TValue>({
@@ -68,6 +70,7 @@ export function DataTable<TData, TValue>({
   onPageChange,
   pageSize = 15,
   totalItems,
+  filterComponent, // Added filter component
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [localSearchValue, setLocalSearchValue] = useState(searchValue);
@@ -127,6 +130,10 @@ export function DataTable<TData, TValue>({
           </Button>
         )}
       </div>
+
+      {/* Render custom filter component if provided */}
+      {filterComponent}
+
       <div className="rounded-md border">
         <Table>
           <TableHeader>
