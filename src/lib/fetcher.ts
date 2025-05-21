@@ -27,7 +27,7 @@ export async function fetcher<T>(
     },
   });
 
-  console.log("fetcher", url, options, res);
+  // console.log("fetcher", url, options, res);
 
   if (!res.ok) {
     const info = await res.json();

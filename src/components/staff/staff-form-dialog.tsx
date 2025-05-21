@@ -2,7 +2,6 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
 import { useEffect } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -26,10 +25,14 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useStaffCreate, useStaffUpdate } from "@/hooks/useStaffMutation";
-import { useBranches } from "@/hooks/useBranchQuery";
-import { staffUpdateSchema } from "@/schemas/staff.schema";
+import {
+  staffCreateSchema,
+  staffUpdateSchema,
+  staffFormSchema, // Import the new unified schema
+  type StaffFormValues, // Import the new unified form type
+} from "@/schemas/staff.schema";
 import { Staff } from "@/hooks/useStaffQuery";
-import type { StaffCreate, StaffUpdate } from "@/schemas/staff.schema";
+import { useSession } from "next-auth/react";
 
 interface StaffFormDialogProps {
   open: boolean;
@@ -44,83 +47,94 @@ export function StaffFormDialog({
 }: StaffFormDialogProps) {
   const createStaffMutation = useStaffCreate();
   const updateStaffMutation = useStaffUpdate();
-  const { data: branchesResponse, isLoading: isBranchesLoading } =
-    useBranches();
+  const { data: session } = useSession();
+
+  // Get branches from session instead of fetching
+  const branchesResponse = session?.user?.branches
+    ? { data: session.user.branches }
+    : { data: [] };
+  const isBranchesLoading = !session?.user?.branches;
 
   const isEditing = !!staff;
 
-  // Define a modified update schema that makes password optional
-  const editSchema = staffUpdateSchema.extend({
-    password: z
-      .string()
-      .min(6, "Password must be at least 6 characters")
-      .optional(),
-  });
-
-  // Always use StaffUpdate and editSchema for the form
-  const form = useForm<StaffUpdate>({
-    resolver: zodResolver(editSchema),
+  // Use the schemas directly from staff.schema.ts without modification
+  const form = useForm<StaffFormValues>({
+    resolver: zodResolver(staffFormSchema), // Use the unified schema
     defaultValues: {
       name: "",
       username: "",
-      password: "",
+      password: "", // Password can be empty initially
       email: "",
       branchIds: [],
+      id: undefined, // id is optional; only populated in edit mode.
     },
   });
 
   useEffect(() => {
-    if (staff) {
+    if (staff && isEditing) {
       // When editing, populate the form with existing staff data
       form.reset({
         id: staff.id,
         name: staff.name || "",
         username: staff.username || "",
         email: staff.email || "",
-        // Don't prefill password
-        password: undefined,
-        // Extract branchIds from the staff's branches
+        password: "", // Keep password blank, user can fill if they want to change
         branchIds: staff.branches?.map((branch) => branch.branchId) || [],
-      } as Partial<StaffUpdate>);
+      });
     } else {
-      // Reset form when creating a new staff
+      // Reset form when creating a new staff or when staff is null
       form.reset({
         name: "",
         username: "",
         password: "",
         email: "",
         branchIds: [],
+        id: undefined,
       });
     }
-  }, [staff, form]);
+  }, [staff, form, isEditing]);
 
-  function onSubmit(values: StaffCreate | StaffUpdate) {
-    // Close the dialog immediately for better UX
-    onOpenChange(false);
-
+  function onSubmit(values: StaffFormValues) {
     // Create a modified submission object
     const submissionData = { ...values };
 
-    // If password is empty in edit mode, remove it from the submission
-    if (
-      isEditing &&
-      (!submissionData.password || submissionData.password === "")
-    ) {
-      delete submissionData.password;
-    }
-
-    // Then trigger the mutation without waiting
-    if (isEditing && staff) {
-      updateStaffMutation.mutate({
-        id: staff.id,
-        ...submissionData,
+    if (isEditing) {
+      // If password is empty in edit mode, remove it from the submission
+      if (!submissionData.password || submissionData.password === "") {
+        delete submissionData.password;
+      }
+      // Ensure id is present for update
+      if (!submissionData.id) {
+        console.error("ID is missing for update operation");
+        // Optionally, show an error to the user
+        return; // Early return if ID is missing for an update
+      }
+      const updatePayload = staffUpdateSchema.parse(submissionData);
+      updateStaffMutation.mutate(updatePayload, {
+        onSuccess: () => {
+          onOpenChange(false); // Close dialog on success
+          form.reset(); // Reset form on success
+        },
       });
     } else {
-      createStaffMutation.mutate(submissionData as StaffCreate);
+      // For creation, remove the id field if it exists (it shouldn't based on logic but good practice)
+      const { id, ...createValues } = submissionData;
+      // Ensure password is provided for creation, as staffCreateSchema requires it.
+      // The form schema allows it to be optional, so we must validate here or rely on staffCreateSchema.parse
+      if (!createValues.password) {
+        // This scenario should ideally be caught by form validation if password was made mandatory in staffFormSchema for create mode
+        // For now, we rely on staffCreateSchema.parse to throw an error if password is not there.
+        // Or, you could set a form error here: form.setError("password", { type: "manual", message: "Password is required for new staff." });
+        // return;
+      }
+      const createPayload = staffCreateSchema.parse(createValues);
+      createStaffMutation.mutate(createPayload, {
+        onSuccess: () => {
+          onOpenChange(false); // Close dialog on success
+          form.reset(); // Reset form on success
+        },
+      });
     }
-
-    // Reset the form
-    form.reset();
   }
 
   return (

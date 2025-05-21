@@ -157,18 +157,17 @@ export const GET = withBranchAccess(
       where.seriesId = seriesId;
     }
 
-    if (startDate) {
-      where.date = {
-        ...(where.date || {}),
-        gte: parseISO(startDate),
-      };
-    }
+    // Date range filtering
+    if (startDate || endDate) {
+      where.date = {};
 
-    if (endDate) {
-      where.date = {
-        ...(where.date || {}),
-        lte: parseISO(endDate),
-      };
+      if (startDate) {
+        where.date.gte = parseISO(startDate);
+      }
+
+      if (endDate) {
+        where.date.lte = parseISO(endDate);
+      }
     }
 
     // Calculate pagination
