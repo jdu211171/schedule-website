@@ -7,6 +7,7 @@ import { Pencil, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/data-table";
+import { Badge } from "@/components/ui/badge";
 import {
   useTeacherDelete,
   getResolvedTeacherId,
@@ -23,7 +24,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { TeacherFormDialog } from "./teacher-form-dialog";
 import { Teacher, useTeachers } from "@/hooks/useTeacherQuery";
-import { Badge } from "@/components/ui/badge";
 
 // Define custom column meta type
 interface ColumnMetaType {

@@ -6,6 +6,7 @@ import { Pencil, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/data-table";
 import { useEventDelete, getResolvedEventId } from "@/hooks/useEventMutation";
 import {
@@ -19,7 +20,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useEvents } from "@/hooks/useEventQuery";
-import { Badge } from "@/components/ui/badge";
 import { useSession } from "next-auth/react";
 import { EventFormDialog } from "./event-form-dialog";
 
@@ -81,15 +81,6 @@ export function EventTable() {
       header: "名前",
     },
     {
-      accessorKey: "branchName",
-      header: "支店",
-      cell: ({ row }) => row.original.branchName || "-",
-      // Only show for admins
-      meta: {
-        hidden: !isAdmin,
-      } as ColumnMetaType,
-    },
-    {
       accessorKey: "startDate",
       header: "開始日",
       cell: ({ row }) => formatDate(row.original.startDate),
@@ -111,6 +102,20 @@ export function EventTable() {
           )}
         </div>
       ),
+    },
+    {
+      accessorKey: "branchName",
+      header: "支店",
+      cell: ({ row }) =>
+        row.original.branchName ? (
+          <Badge variant="outline">{row.original.branchName}</Badge>
+        ) : (
+          "-"
+        ),
+      // Only show for admins
+      meta: {
+        hidden: !isAdmin,
+      } as ColumnMetaType,
     },
     {
       accessorKey: "notes",
