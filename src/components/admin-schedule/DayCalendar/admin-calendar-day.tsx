@@ -65,7 +65,6 @@ const TIME_SLOTS: TimeSlot[] = Array.from({ length: 57 }, (_el, i) => {
 
 export default function AdminCalendarDay() {
   const [selectedDays, setSelectedDays] = useState<Date[]>([getCurrentDateAdjusted()]);
-  // const [selectedDays, setSelectedDays] = useState<Date[]>([new Date('2025-06-15')]);
   const [showCreateDialog, setShowCreateDialog] = useState<boolean>(false);
   const [newLessonData, setNewLessonData] = useState<NewClassSessionData | null>(null);
   const [selectedLesson, setSelectedLesson] = useState<ExtendedClassSessionWithRelations | null>(null);
@@ -178,8 +177,6 @@ export default function AdminCalendarDay() {
         }
       }
       
-      console.log("授業作成リクエスト:", JSON.stringify(requestBody, null, 2));
-      
       const response = await fetch('/api/class-sessions', {
         method: 'POST',
         headers: {
@@ -200,7 +197,6 @@ export default function AdminCalendarDay() {
           errorData = { message: errorText || `サーバーエラー: ${response.status}` };
         }
         
-        console.error('授業作成エラー:', errorData);
         let errorMessage = '授業の作成に失敗しました';
         
         if (errorData.message) {
@@ -220,7 +216,6 @@ export default function AdminCalendarDay() {
       try {
         if (contentType && contentType.includes("application/json")) {
           responseData = await response.json();
-          console.log("授業作成成功:", responseData);
         }
       } catch (parseError) {
         console.warn("応答のパースエラー:", parseError);
@@ -230,8 +225,6 @@ export default function AdminCalendarDay() {
       refreshData();
       setNewLessonData(null);
     } catch (error) {
-      console.error('授業作成エラー:', error);
-      
       let errorMessage = error instanceof Error ? error.message : '不明なエラー';
       if (errorMessage === '{}' || !errorMessage) {
         errorMessage = '授業の作成中にエラーが発生しました。データを確認して再度お試しください。';
@@ -241,85 +234,16 @@ export default function AdminCalendarDay() {
     }
   }, [refreshData]);
 
-  const handleUpdateLesson = useCallback(async (updatedLesson: UpdateClassSessionPayload) => {
-    try {
-      // Копируем объект, чтобы не модифицировать оригинал
-      const lessonToUpdate: any = { ...updatedLesson };
-      
-      // Преобразуем дату в строку, если она не null/undefined
-      if (lessonToUpdate.date) {
-        lessonToUpdate.date = typeof lessonToUpdate.date === 'string' ? 
-          lessonToUpdate.date : formatDateToString(lessonToUpdate.date);
-      }
-      
-      console.log("授業更新リクエスト:", lessonToUpdate);
-    
-      const response = await fetch(`/api/class-sessions`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(lessonToUpdate),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json() as ApiErrorResponse;
-        console.error('授業更新エラー:', errorData);
-        let errorMessage = '授業の更新に失敗しました';
-        
-        if (errorData.message) {
-          errorMessage = errorData.message;
-        } else if (errorData.error) {
-          errorMessage = errorData.error;
-        }
-        
-        if (errorData.issues && Array.isArray(errorData.issues)) {
-          errorMessage += ': ' + errorData.issues.map((issue) => issue.message).join(', ');
-        }
-        
-        throw new Error(errorMessage);
-      }
-
-      setShowLessonDialog(false);
-      refreshData();
-      setSelectedLesson(null);
-    } catch (error) {
-      console.error('授業更新エラー:', error);
-      alert(`授業の更新エラー: ${error instanceof Error ? error.message : '不明なエラー'}`);
-    }
+  const handleUpdateLesson = useCallback((lessonId: string) => {
+    setShowLessonDialog(false);
+    refreshData();
+    setSelectedLesson(null);
   }, [refreshData]);
 
-  const handleDeleteLesson = useCallback(async (lessonId: string) => {
-    try {
-      if (!window.confirm('本当にこの授業を削除しますか？')) {
-        return;
-      }
-      
-      const response = await fetch(`/api/class-sessions?classId=${lessonId}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json() as ApiErrorResponse;
-        console.error('授業削除エラー:', errorData);
-        let errorMessage = '授業の削除に失敗しました';
-        
-        if (errorData.message) {
-          errorMessage = errorData.message;
-        } else if (errorData.error) {
-          errorMessage = errorData.error;
-        }
-        
-        throw new Error(errorMessage);
-      }
-
-      setShowLessonDialog(false);
-      refreshData();
-      setSelectedLesson(null);
-    } catch (error) {
-      console.error('授業削除エラー:', error);
-      alert(`授業の削除エラー: ${error instanceof Error ? error.message : '不明なエラー'}`);
-    }
+  const handleDeleteLesson = useCallback((lessonId: string) => {
+    setShowLessonDialog(false);
+    refreshData();
+    setSelectedLesson(null);
   }, [refreshData]);
 
   if (isLoadingBooths) {

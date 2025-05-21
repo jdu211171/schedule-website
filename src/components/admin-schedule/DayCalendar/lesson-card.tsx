@@ -2,26 +2,15 @@ import React, { useMemo } from 'react';
 import { ExtendedClassSessionWithRelations } from '@/hooks/useClassSessionQuery';
 import { TimeSlot } from './admin-calendar-day';
 
-// Интерфейс для кабинета (booth), учитывающий структуру данных из API
 interface Booth {
   boothId: string;
   name?: string;
 }
 
-// Расширенный интерфейс для ClassSessionWithRelations, учитывающий данные из API
-interface ExtendedClassSession extends ExtendedClassSessionWithRelations {
-  teacherName?: string;
-  studentName?: string;
-  subjectName?: string;
-  classTypeName?: string;
-  boothName?: string;
-  branchName?: string | null
-}
-
 interface LessonCardProps {
-  lesson: ExtendedClassSession;
+  lesson: ExtendedClassSessionWithRelations;
   booths: Booth[];
-  onClick: (lesson: ExtendedClassSession) => void;
+  onClick: (lesson: ExtendedClassSessionWithRelations) => void;
   timeSlotHeight: number;
   timeSlots: TimeSlot[];
   maxZIndex?: number;
@@ -195,11 +184,10 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
   }, [isValidPosition, startSlotIndex, endSlotIndex, startTime, endTime, timeSlots, lesson.classId, boothIndex, lesson.boothId]);
   
   const colors = useMemo(() => {
-    // Определяем, является ли урок обычным на основе типа класса
-    const isRegularLesson = lesson.classType?.name === '通常授業' || 
-                           lesson.classTypeName === '通常授業';
+    // Определяем, является ли урок повторяющимся на основе наличия seriesId
+    const isRecurringLesson = lesson.seriesId !== null && lesson.seriesId !== undefined;
     
-    if (isRegularLesson) {
+    if (isRecurringLesson) {
       return {
         background: 'bg-blue-100 dark:bg-blue-900/70',
         border: 'border-blue-300 dark:border-blue-700',
@@ -214,7 +202,7 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
         hover: 'hover:bg-red-200 dark:hover:bg-red-800'
       };
     }
-  }, [lesson.classType?.name, lesson.classTypeName]);
+  }, [lesson.seriesId]);
   
   // Рассчитываем CSS стиль
   const style = useMemo(() => ({
@@ -282,6 +270,7 @@ export const LessonCard = React.memo(LessonCardComponent, (prevProps, nextProps)
     prevProps.timeSlotHeight === nextProps.timeSlotHeight &&
     prevProps.lesson.startTime === nextProps.lesson.startTime &&
     prevProps.lesson.endTime === nextProps.lesson.endTime &&
-    prevProps.lesson.boothId === nextProps.lesson.boothId
+    prevProps.lesson.boothId === nextProps.lesson.boothId &&
+    prevProps.lesson.seriesId === nextProps.lesson.seriesId
   );
 });

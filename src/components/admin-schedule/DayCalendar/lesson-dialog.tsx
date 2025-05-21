@@ -11,11 +11,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ExtendedClassSessionWithRelations } from '@/hooks/useClassSessionQuery';
+import { useClassSessionDelete, useClassSessionUpdate } from '@/hooks/useClassSessionMutation';
 import { fetcher } from '@/lib/fetcher';
 import { getDateString } from '../date';
 import { UpdateClassSessionPayload, formatDateToString } from './types/class-session';
 
-// Интерфейс для кабинета
 interface Booth {
   boothId: string;
   name: string;
@@ -45,18 +45,16 @@ type LessonDialogProps = {
   lesson: ExtendedClassSessionWithRelations;
   mode: 'view' | 'edit';
   onModeChange: (mode: 'view' | 'edit') => void;
-  onSave: (updatedLesson: UpdateClassSessionPayload) => Promise<void> | void; 
+  onSave: (lessonId: string) => void;
   onDelete: (lessonId: string) => void;
   booths?: Booth[];
 };
 
 function convertToEditableUI(lesson: ExtendedClassSessionWithRelations): EditableLessonUI {
-  // Извлекаем время из ISOString или объекта Date
   const getTimeFromValue = (timeValue: string | Date | undefined): string => {
     if (!timeValue) return '';
     try {
       if (typeof timeValue === 'string') {
-        // Если время уже в формате "HH:MM"
         if (/^\d{2}:\d{2}$/.test(timeValue)) {
           return timeValue;
         }
@@ -117,18 +115,12 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
   const [isLoadingStudents, setIsLoadingStudents] = useState<boolean>(false);
   const [isLoadingClassTypes, setIsLoadingClassTypes] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-
-  // Определяем тип урока, учитывая оба возможных свойства
-  const isRegularLesson = lesson.classType?.name === '通常授業' || lesson.classTypeName === '通常授業';
   
-  useEffect(() => {
-    console.log('Lesson type info:', {
-      classTypeName: lesson.classTypeName,
-      classTypeFromObject: lesson.classType?.name,
-      isRegularLesson: isRegularLesson
-    });
-  }, [lesson, isRegularLesson]);
+  const deleteClassMutation = useClassSessionDelete();
+  const updateClassMutation = useClassSessionUpdate();
 
+  const isRecurringLesson = lesson.seriesId !== null;
+  
   useEffect(() => {
     const loadSubjects = async () => {
       setIsLoadingSubjects(true);
@@ -241,28 +233,22 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
 
   const handleSave = () => {
     if (!editedLesson || !editedLesson.classId) { 
-        return;
+      return;
     }
 
-    const lessonToSave: UpdateClassSessionPayload = {
+    const lessonToSave: {
+      classId: string;
+      teacherId?: string;
+      subjectId?: string;
+      startTime?: string;
+      endTime?: string;
+      notes?: string | null;
+    } = {
       classId: editedLesson.classId
     };
 
-    // Сохраняем все поля независимо от типа урока
-    if (editedLesson.subjectId !== undefined) lessonToSave.subjectId = editedLesson.subjectId || "";
-    if (editedLesson.teacherId !== undefined) lessonToSave.teacherId = editedLesson.teacherId || "";
-    if (editedLesson.studentId !== undefined) lessonToSave.studentId = editedLesson.studentId || "";
-    if (editedLesson.classTypeId !== undefined) lessonToSave.classTypeId = editedLesson.classTypeId || "";
-    if (editedLesson.boothId !== undefined) lessonToSave.boothId = editedLesson.boothId || "";
-    
-    if (editedLesson.notes !== undefined) {
-      lessonToSave.notes = editedLesson.notes || "";
-    }
-    
-    if (editedLesson.date) {
-      lessonToSave.date = typeof editedLesson.date === 'string' 
-        ? editedLesson.date 
-        : formatDateToString(editedLesson.date);
+    if (editedLesson.teacherId !== undefined) {
+      lessonToSave.teacherId = editedLesson.teacherId || "";
     }
     
     if (editedLesson.formattedStartTime) {
@@ -272,13 +258,39 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
     if (editedLesson.formattedEndTime) {
       lessonToSave.endTime = editedLesson.formattedEndTime;
     }
+    
+    if (editedLesson.notes !== undefined) {
+      lessonToSave.notes = editedLesson.notes || "";
+    }
 
-    console.log("------ ДАННЫЕ ИЗ ДИАЛОГА РЕДАКТИРОВАНИЯ -------");
-    console.log(JSON.stringify(lessonToSave, null, 2));
-    console.log("-------------------------------------------------");
+    updateClassMutation.mutate(lessonToSave, {
+      onSuccess: () => {
+        onSave(lessonToSave.classId);
+        onModeChange('view');
+      },
+      onError: (error) => {
+        console.error("授業の更新エラー:", error);
+        setError("授業の更新に失敗しました");
+      }
+    });
+  };
 
-    onSave(lessonToSave);
-    onModeChange('view');
+  const handleDelete = () => {
+    if (!lesson.classId) return;
+    
+    if (!window.confirm('本当にこの授業を削除しますか？')) {
+      return;
+    }
+    
+    deleteClassMutation.mutate(lesson.classId, {
+      onSuccess: () => {
+        onDelete(lesson.classId);
+      },
+      onError: (error) => {
+        console.error("授業の削除エラー:", error);
+        setError("授業の削除に失敗しました");
+      }
+    });
   };
   
   const isLoading = isLoadingSubjects || isLoadingTeachers || isLoadingStudents || isLoadingClassTypes;
@@ -293,11 +305,8 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
   const canSave = () => {
     if (isLoading) return false;
     
-    // Единые правила для всех типов уроков
     return Boolean(
-      editedLesson.subjectId && 
       editedLesson.teacherId && 
-      editedLesson.studentId && 
       editedLesson.formattedStartTime && 
       editedLesson.formattedEndTime
     );
@@ -309,7 +318,7 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
         <DialogHeader>
           <DialogTitle>
             {mode === 'view' ? '授業の詳細' : '授業の編集'}
-            <span className={`text-sm font-normal ml-2 ${isRegularLesson ? 'text-blue-500 dark:text-blue-400' : 'text-red-500 dark:text-red-400'}`}>
+            <span className={`text-sm font-normal ml-2 ${isRecurringLesson ? 'text-blue-500 dark:text-blue-400' : 'text-red-500 dark:text-red-400'}`}>
               ({lesson.classType?.name || lesson.classTypeName || '不明'})
             </span>
           </DialogTitle>
@@ -564,9 +573,10 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
               <Button
                 variant="destructive"
                 className="transition-all duration-200 hover:brightness-110 active:scale-[0.98] focus:ring-2 focus:ring-destructive/30 focus:outline-none"
-                onClick={() => onDelete(lesson.classId)}
+                onClick={handleDelete}
+                disabled={deleteClassMutation.isPending}
               >
-                削除
+                {deleteClassMutation.isPending ? "削除中..." : "削除"}
               </Button>
               <div className="flex space-x-2">
                 <Button
@@ -584,9 +594,9 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
                 <Button
                   className="transition-all duration-200 hover:brightness-110 active:scale-[0.98] focus:ring-2 focus:ring-primary/30 focus:outline-none"
                   onClick={handleSave}
-                  disabled={!canSave()}
+                  disabled={!canSave() || updateClassMutation.isPending}
                 >
-                  {isLoading ? "読み込み中..." : "保存"}
+                  {isLoading || updateClassMutation.isPending ? "読み込み中..." : "保存"}
                 </Button>
               </div>
             </>

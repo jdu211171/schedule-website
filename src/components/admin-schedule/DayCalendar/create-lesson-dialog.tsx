@@ -11,7 +11,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -24,7 +23,6 @@ import {
   formatDateToString
 } from './types/class-session';
 
-// Модифицированный DateRangePicker
 function DateRangePicker({ 
   dateRange, 
   setDateRange, 
@@ -37,12 +35,10 @@ function DateRangePicker({
   const [open, setOpen] = useState(false);
   const [tempRange, setTempRange] = useState<DateRange | undefined>(dateRange);
   
-  // Обновляем временный диапазон при изменении основного диапазона
   useEffect(() => {
     setTempRange(dateRange);
   }, [dateRange]);
   
-  // При закрытии всплывающего окна без подтверждения, сбрасываем временный диапазон
   const handleOpenChange = (isOpen: boolean) => {
     setOpen(isOpen);
     if (!isOpen) {
@@ -50,7 +46,6 @@ function DateRangePicker({
     }
   };
   
-  // Применяем временный диапазон к основному и закрываем календарь
   const handleApply = () => {
     setDateRange(tempRange);
     setOpen(false);
@@ -174,16 +169,14 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
   onSave,
   booths
 }) => {
-  const [lessonType, setLessonType] = useState<'regular' | 'special'>('regular');
+  const [selectedClassTypeId, setSelectedClassTypeId] = useState<string>('');
   const [isRecurring, setIsRecurring] = useState<boolean>(false);
   const [studentTypeId, setStudentTypeId] = useState<string>('');
   const [subjectId, setSubjectId] = useState<string>('');
   const [teacherId, setTeacherId] = useState<string>('');
   const [studentId, setStudentId] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
-  const [selectedClassTypeId, setSelectedClassTypeId] = useState<string>('');
   
-  // Используем DateRange вместо отдельных полей
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [selectedDays, setSelectedDays] = useState<number[]>([]);
   
@@ -201,7 +194,6 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
   const [error, setError] = useState<string | null>(null);
 
   const [regularClassTypeId, setRegularClassTypeId] = useState<string>('');
-  const [specialClassTypeId, setSpecialClassTypeId] = useState<string>('');
 
   useEffect(() => {
     const loadClassTypes = async () => {
@@ -211,17 +203,9 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
         setClassTypes(response.data || []);
         
         const regularType = response.data.find(type => type.name === '通常授業');
-        const specialType = response.data.find(type => type.name === '特別授業');
         
         if (regularType) {
           setRegularClassTypeId(regularType.classTypeId);
-        }
-        
-        if (specialType) {
-          setSpecialClassTypeId(specialType.classTypeId);
-        }
-        
-        if (regularType) {
           setSelectedClassTypeId(regularType.classTypeId);
         }
       } catch (err) {
@@ -277,14 +261,12 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
 
   useEffect(() => {
     if (open) {
-      setLessonType('regular');
       setIsRecurring(false);
       setStudentTypeId('');
       setStudentId('');
       setSubjectId('');
       setTeacherId('');
       setNotes('');
-      // Сбрасываем dateRange при каждом открытии диалога
       const lessonDate = typeof lessonData.date === 'string' ? new Date(lessonData.date) : lessonData.date;
       setDateRange({ from: lessonDate, to: undefined });
       setSelectedDays([]);
@@ -365,14 +347,8 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
   }, [studentId, subjects.length, teachers.length, loadTeachers]);
 
   useEffect(() => {
-    if (lessonType === 'regular' && regularClassTypeId) {
-      setSelectedClassTypeId(regularClassTypeId);
-      setIsRecurring(false);
-    } else if (lessonType === 'special' && specialClassTypeId) {
-      setSelectedClassTypeId(specialClassTypeId);
-      setIsRecurring(true);
-    }
-  }, [lessonType, regularClassTypeId, specialClassTypeId]);
+    setIsRecurring(selectedClassTypeId === regularClassTypeId);
+  }, [selectedClassTypeId, regularClassTypeId]);
 
   const handleDayToggle = (day: number) => {
     setSelectedDays(prev => {
@@ -401,7 +377,7 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
       classTypeId: selectedClassTypeId
     };
     
-    if (lessonType === 'special') {
+    if (isRecurring) {
       payload.isRecurring = true;
       payload.startDate = format(dateRange.from, 'yyyy-MM-dd');
       
@@ -479,24 +455,36 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
           </div>
 
           <div>
-            <label className="text-sm font-medium mb-2 block text-foreground">授業のタイプ <span className="text-destructive">*</span></label>
-            <RadioGroup 
-              value={lessonType} 
-              onValueChange={(value) => setLessonType(value as 'regular' | 'special')}
-              className="flex space-x-4"
+            <label htmlFor="class-type-select" className="text-sm font-medium mb-1 block text-foreground">授業のタイプ <span className="text-destructive">*</span></label>
+            <Select 
+              value={selectedClassTypeId} 
+              onValueChange={setSelectedClassTypeId} 
+              disabled={isLoadingClassTypes || classTypes.length === 0}
             >
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="regular" id="regular" />
-                <Label htmlFor="regular" className="cursor-pointer">通常授業</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="special" id="special" />
-                <Label htmlFor="special" className="cursor-pointer">特別授業</Label>
-              </div>
-            </RadioGroup>
+              <SelectTrigger id="class-type-select" className="w-full transition-all duration-200 hover:bg-accent hover:text-accent-foreground cursor-pointer active:scale-[0.98]">
+                <SelectValue placeholder={
+                  isLoadingClassTypes 
+                    ? "授業タイプを読み込み中..." 
+                    : classTypes.length === 0 
+                    ? "授業タイプがありません" 
+                    : "授業タイプを選択"
+                } />
+              </SelectTrigger>
+              <SelectContent className="max-h-60 overflow-y-auto">
+                {classTypes.map(type => (
+                  <SelectItem
+                    key={type.classTypeId}
+                    value={type.classTypeId}
+                    className="cursor-pointer"
+                  >
+                    {type.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           
-          {lessonType === 'special' && (
+          {isRecurring && (
             <div className="space-y-4 p-3 rounded-md border border-input bg-muted/30">
               <div>
                 <label className="text-sm font-medium mb-1 block text-foreground">期間 <span className="text-destructive">*</span></label>
