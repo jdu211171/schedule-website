@@ -99,9 +99,8 @@ function BranchSelector() {
   const [selectedBranchId, setSelectedBranchId] = React.useState<string | null>(null);
   const [isLoading, setIsLoading] = React.useState(false);
 
-  // Fetch all branches using the useBranches hook
-  const { data: branchesData } = useBranches({ limit: 100 });
-  const branches = branchesData?.data || [];
+  // Use branches from session instead of making an API request
+  const branches = session?.user?.branches || [];
 
   // Initialize the selected branch from localStorage first, then from session
   React.useEffect(() => {
