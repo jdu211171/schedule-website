@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { format, parseISO, addWeeks } from "date-fns";
 import { ja } from "date-fns/locale";
 import { CalendarIcon, InfoIcon } from "lucide-react";
@@ -119,10 +119,10 @@ export function ClassSessionFormDialog({
   const updateClassSessionMutation = useClassSessionUpdate();
   const isEditing = !!classSession;
   const [isRecurring, setIsRecurring] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(
-    classSession?.date
+  const [selectedDate, setSelectedDate] = useState<Date>(
+    classSession?.date && typeof classSession.date === 'string'
       ? parseISO(classSession.date)
-      : filters.startDate
+      : filters.startDate && typeof filters.startDate === 'string'
       ? parseISO(filters.startDate)
       : new Date()
   );
@@ -135,7 +135,7 @@ export function ClassSessionFormDialog({
   const { data: boothsData } = useBooths({ limit: 100 });
 
   // Get default values based on filters or class session
-  const getDefaultValues = () => {
+  const getDefaultValues = useCallback(() => {
     if (classSession) {
       // If editing, use class session values
       return {
@@ -144,9 +144,15 @@ export function ClassSessionFormDialog({
         subjectId: classSession.subjectId || "",
         classTypeId: classSession.classTypeId || "",
         boothId: classSession.boothId || "",
-        date: classSession.date || format(new Date(), "yyyy-MM-dd"),
-        startTime: classSession.startTime || "09:00",
-        endTime: classSession.endTime || "10:00",
+        date: typeof classSession.date === 'string'
+          ? classSession.date
+          : format(new Date(), "yyyy-MM-dd"),
+        startTime: typeof classSession.startTime === 'string'
+          ? classSession.startTime
+          : "09:00",
+        endTime: typeof classSession.endTime === 'string'
+          ? classSession.endTime
+          : "10:00",
         duration: classSession.duration || 60,
         notes: classSession.notes || "",
         isRecurring: false, // Always false in edit mode
@@ -169,13 +175,13 @@ export function ClassSessionFormDialog({
         isRecurring: false,
         startDate: filters.startDate || format(today, "yyyy-MM-dd"),
         endDate: format(
-          addWeeks(filters.startDate ? parseISO(filters.startDate) : today, 4),
+          addWeeks(typeof filters.startDate === 'string' ? parseISO(filters.startDate) : today, 4),
           "yyyy-MM-dd"
         ),
         daysOfWeek: [],
       };
     }
-  };
+  }, [classSession, filters]);
 
   // Initialize form with default values
   const form = useForm<FormValues>({
@@ -189,16 +195,16 @@ export function ClassSessionFormDialog({
 
     // Update selected date
     setSelectedDate(
-      classSession?.date
+      classSession?.date && typeof classSession.date === 'string'
         ? parseISO(classSession.date)
-        : filters.startDate
+        : filters.startDate && typeof filters.startDate === 'string'
         ? parseISO(filters.startDate)
         : new Date()
     );
 
     // Editing mode doesn't support recurring sessions
     setIsRecurring(false);
-  }, [classSession, filters, form]);
+  }, [classSession, filters, form, getDefaultValues]);
 
   // Handle recurring option change
   const handleRecurringChange = (value: boolean) => {
@@ -211,11 +217,13 @@ export function ClassSessionFormDialog({
       form.setValue("startDate", currentDate);
       form.setValue(
         "endDate",
-        format(addWeeks(parseISO(currentDate), 4), "yyyy-MM-dd")
+        format(addWeeks(typeof currentDate === 'string' ? parseISO(currentDate) : new Date(), 4), "yyyy-MM-dd")
       );
 
       // Initialize days of week with the current day
-      const currentDayIndex = new Date(currentDate).getDay();
+      const currentDayIndex = typeof currentDate === 'string'
+        ? parseISO(currentDate).getDay()
+        : new Date(currentDate).getDay();
       form.setValue("daysOfWeek", [currentDayIndex]);
     }
   };
@@ -235,8 +243,8 @@ export function ClassSessionFormDialog({
 
   // Handle date selection
   const handleDateSelect = (date: Date | undefined) => {
-    setSelectedDate(date);
     if (date) {
+      setSelectedDate(date);
       form.setValue("date", format(date, "yyyy-MM-dd"));
     }
   };
@@ -312,7 +320,7 @@ export function ClassSessionFormDialog({
   // Show active filters as badges at the top of the form
   const renderActiveFilters = () => {
     const activeFilters = Object.entries(filters).filter(
-      ([_, value]) => value !== undefined
+      ([, value]) => value !== undefined
     );
 
     if (activeFilters.length === 0) return null;

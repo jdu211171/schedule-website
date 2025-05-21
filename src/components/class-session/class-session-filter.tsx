@@ -49,7 +49,7 @@ interface ClassSessionFilterProps {
     startDate?: string;
     endDate?: string;
   };
-  onFilterChange: (field: string, value: string | undefined) => void;
+  onFilterChange: (field: "teacherId" | "studentId" | "subjectId" | "classTypeId" | "boothId" | "startDate" | "endDate", value: string | undefined) => void;
   onResetFilters: () => void;
 }
 

@@ -42,6 +42,17 @@ import { useSession } from "next-auth/react";
 import type { ClassSession } from "@prisma/client";
 import { ClassSessionFilter } from "./class-session-filter";
 
+// Define type for class session with additional fields from API
+interface ExtendedClassSession extends ClassSession {
+  teacherName?: string;
+  studentName?: string;
+  subjectName?: string;
+  classTypeName?: string;
+  boothName?: string;
+  branchName?: string | null;
+  _optimistic?: boolean;
+}
+
 // Define column meta type
 interface ColumnMetaType {
   align?: "left" | "center" | "right";
@@ -88,8 +99,8 @@ export function ClassSessionTable() {
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "ADMIN";
 
-  const [sessionToEdit, setSessionToEdit] = useState<ClassSession | null>(null);
-  const [sessionToDelete, setSessionToDelete] = useState<ClassSession | null>(
+  const [sessionToEdit, setSessionToEdit] = useState<ExtendedClassSession | null>(null);
+  const [sessionToDelete, setSessionToDelete] = useState<ExtendedClassSession | null>(
     null
   );
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -115,12 +126,12 @@ export function ClassSessionTable() {
     setPage(1);
   };
 
-  const columns: ColumnDef<ClassSession, unknown>[] = [
+  const columns: ColumnDef<ExtendedClassSession, unknown>[] = [
     {
       accessorKey: "date",
       header: "日付",
       cell: ({ row }) =>
-        format(parseISO(row.original.date), "yyyy/MM/dd", { locale: ja }),
+        format(typeof row.original.date === 'string' ? parseISO(row.original.date) : row.original.date, "yyyy/MM/dd", { locale: ja }),
     },
     {
       accessorKey: "timeSlot",
@@ -131,8 +142,8 @@ export function ClassSessionTable() {
       accessorKey: "teacherName",
       header: "講師",
       cell: ({ row }) =>
-        row.original.teacherName ? (
-          <Badge variant="outline">{row.original.teacherName}</Badge>
+        (row.original as ExtendedClassSession).teacherName ? (
+          <Badge variant="outline">{(row.original as ExtendedClassSession).teacherName}</Badge>
         ) : (
           "-"
         ),
@@ -141,8 +152,8 @@ export function ClassSessionTable() {
       accessorKey: "studentName",
       header: "生徒",
       cell: ({ row }) =>
-        row.original.studentName ? (
-          <Badge variant="outline">{row.original.studentName}</Badge>
+        (row.original as ExtendedClassSession).studentName ? (
+          <Badge variant="outline">{(row.original as ExtendedClassSession).studentName}</Badge>
         ) : (
           "-"
         ),
@@ -150,14 +161,14 @@ export function ClassSessionTable() {
     {
       accessorKey: "subjectName",
       header: "科目",
-      cell: ({ row }) => row.original.subjectName || "-",
+      cell: ({ row }) => (row.original as ExtendedClassSession).subjectName || "-",
     },
     {
       accessorKey: "classTypeName",
       header: "授業タイプ",
       cell: ({ row }) =>
-        row.original.classTypeName ? (
-          <Badge variant="secondary">{row.original.classTypeName}</Badge>
+        (row.original as ExtendedClassSession).classTypeName ? (
+          <Badge variant="secondary">{(row.original as ExtendedClassSession).classTypeName}</Badge>
         ) : (
           "-"
         ),
@@ -165,7 +176,7 @@ export function ClassSessionTable() {
     {
       accessorKey: "boothName",
       header: "ブース",
-      cell: ({ row }) => row.original.boothName || "-",
+      cell: ({ row }) => (row.original as ExtendedClassSession).boothName || "-",
     },
     {
       accessorKey: "duration",
@@ -176,8 +187,8 @@ export function ClassSessionTable() {
       accessorKey: "branchName",
       header: "支店",
       cell: ({ row }) =>
-        row.original.branchName ? (
-          <Badge variant="outline">{row.original.branchName}</Badge>
+        (row.original as ExtendedClassSession).branchName ? (
+          <Badge variant="outline">{(row.original as ExtendedClassSession).branchName}</Badge>
         ) : (
           "-"
         ),
@@ -207,8 +218,7 @@ export function ClassSessionTable() {
       header: "操作",
       cell: ({ row }) => {
         // Type-safe check for _optimistic property
-        const isOptimistic = row.original._optimistic;
-        const session = row.original;
+        const session = row.original as ExtendedClassSession;
 
         return (
           <div className="flex justify-end gap-2">
@@ -337,10 +347,17 @@ export function ClassSessionTable() {
           <AlertDialogHeader>
             <AlertDialogTitle>本当に削除しますか？</AlertDialogTitle>
             <AlertDialogDescription>
-              この操作は元に戻せません。{sessionToDelete?.date}{" "}
-              {sessionToDelete?.startTime}の
-              {sessionToDelete?.teacherName
-                ? `${sessionToDelete.teacherName}先生の`
+              この操作は元に戻せません。
+              {sessionToDelete?.date &&
+                (typeof sessionToDelete.date === 'string'
+                  ? sessionToDelete.date
+                  : format(sessionToDelete.date, "yyyy/MM/dd"))}{" "}
+              {sessionToDelete?.startTime &&
+                (typeof sessionToDelete.startTime === 'string'
+                  ? sessionToDelete.startTime
+                  : format(sessionToDelete.startTime, "HH:mm"))}の
+              {(sessionToDelete as ExtendedClassSession)?.teacherName
+                ? `${(sessionToDelete as ExtendedClassSession).teacherName}先生の`
                 : ""}
               授業を完全に削除します。
               {sessionToDelete?.seriesId && (

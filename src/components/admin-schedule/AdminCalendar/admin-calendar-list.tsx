@@ -63,7 +63,7 @@ export const AdminCalendarList = () => {
   }, []);
 
   // GET - Fetch ALL class sessions
-  const { data, isLoading, refetch } = useQuery({
+  const { isLoading, refetch } = useQuery({
     queryKey: ["allClassSessions"],
     queryFn: async () => {
       try {
@@ -149,7 +149,12 @@ export const AdminCalendarList = () => {
         }
       } catch (fetchError) {
         clearTimeout(timeoutId);
-        if (fetchError.name === 'AbortError') {
+
+        // Type guard for AbortError
+        const isAbortError = (err: unknown): err is { name: string } =>
+          typeof err === "object" && err !== null && "name" in err && typeof (err as { name: string }).name === "string";
+
+        if (isAbortError(fetchError) && fetchError.name === 'AbortError') {
           console.error("Session check timed out after 5 seconds");
         } else {
           console.error("Fetch error during session check:", fetchError);
@@ -230,7 +235,12 @@ export const AdminCalendarList = () => {
           return response.json().catch(() => ({ success: true }));
         } catch (fetchError) {
           clearTimeout(timeoutId);
-          if (fetchError.name === 'AbortError') {
+
+          // Type guard for AbortError
+          const isAbortError = (err: unknown): err is { name: string } =>
+            typeof err === "object" && err !== null && "name" in err && typeof (err as { name: string }).name === "string";
+
+          if (isAbortError(fetchError) && fetchError.name === 'AbortError') {
             throw new Error("授業の削除がタイムアウトしました");
           }
           throw fetchError;
