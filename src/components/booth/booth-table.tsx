@@ -5,6 +5,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { Pencil, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/data-table";
 import { useBoothDelete, getResolvedBoothId } from "@/hooks/useBoothMutation";
 import {
@@ -69,13 +70,22 @@ export function BoothTable() {
       accessorKey: "status",
       header: "ステータス",
       cell: ({ row }) => (
-        <div>{row.original.status ? "使用可" : "使用不可"}</div>
+        row.original.status ? (
+          <Badge variant="outline">{row.original.status ? "使用可" : "使用不可"}</Badge>
+        ) : (
+          "-"
+        )
       ),
     },
     {
       accessorKey: "branchName",
       header: "支店",
-      cell: ({ row }) => row.original.branchName || "-",
+      cell: ({ row }) =>
+        row.original.branchName ? (
+          <Badge variant="outline">{row.original.branchName}</Badge>
+        ) : (
+          "-"
+        ),
       // Only show for admins
       meta: {
         hidden: !isAdmin,

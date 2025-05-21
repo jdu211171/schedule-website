@@ -7,6 +7,7 @@ import { Pencil, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/data-table";
+import { Badge } from "@/components/ui/badge";
 import {
   useStudentDelete,
   getResolvedStudentId,
@@ -24,7 +25,6 @@ import {
 import { StudentFormDialog } from "./student-form-dialog";
 import { Student, useStudents } from "@/hooks/useStudentQuery";
 import { useStudentTypes } from "@/hooks/useStudentTypeQuery";
-import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -44,7 +44,8 @@ interface ColumnMetaType {
 export function StudentTable() {
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
-  const [selectedStudentTypeId, setSelectedStudentTypeId] = useState<string>("all");
+  const [selectedStudentTypeId, setSelectedStudentTypeId] =
+    useState<string>("all");
   const pageSize = 10;
 
   // Load student types for filtering
@@ -54,7 +55,8 @@ export function StudentTable() {
     page,
     limit: pageSize,
     name: searchTerm || undefined,
-    studentTypeId: selectedStudentTypeId === "all" ? undefined : selectedStudentTypeId,
+    studentTypeId:
+      selectedStudentTypeId === "all" ? undefined : selectedStudentTypeId,
   });
 
   // Ensure the data type returned by useStudents matches the expected type
@@ -81,7 +83,12 @@ export function StudentTable() {
     {
       accessorKey: "studentTypeName",
       header: "生徒タイプ",
-      cell: ({ row }) => row.original.studentTypeName || "-",
+      cell: ({ row }) =>
+        row.original.studentTypeName ? (
+          <Badge variant="outline">{row.original.studentTypeName}</Badge>
+        ) : (
+          "-"
+        ),
     },
     {
       accessorKey: "gradeYear",

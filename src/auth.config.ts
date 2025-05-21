@@ -63,12 +63,25 @@ export default {
 
         if (!ok) throw new Error("Invalid credentials");
 
-        // Extract user's branches for storing in the session
-        const userBranches =
-          user.branches?.map((ub) => ({
-            branchId: ub.branch.branchId,
-            name: ub.branch.name,
-          })) || [];
+        // For ADMIN users, fetch all branches
+        let userBranches;
+        if (user.role === 'ADMIN') {
+          const allBranches = await prisma.branch.findMany({
+            select: {
+              branchId: true,
+              name: true,
+            },
+            orderBy: { name: 'asc' }
+          });
+          userBranches = allBranches;
+        } else {
+          // For non-ADMIN, use branches associated with the user
+          userBranches =
+            user.branches?.map((ub) => ({
+              branchId: ub.branch.branchId,
+              name: ub.branch.name,
+            })) || [];
+        }
 
         return {
           id: user.id,

@@ -134,6 +134,13 @@ export const POST = withBranchAccess(
         );
       }
 
+      console.log("Creating booth with data:", {
+        name,
+        status,
+        notes,
+        branchId,
+      });
+
       // Create booth
       const newBooth = await prisma.booth.create({
         data: {

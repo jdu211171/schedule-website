@@ -24,6 +24,7 @@ import {
 import { SubjectFormDialog } from "./subject-form-dialog";
 import { Subject, useSubjects } from "@/hooks/useSubjectQuery";
 import { useSession } from "next-auth/react";
+import { Badge } from "@/components/ui/badge";
 
 // Define custom column meta type
 interface ColumnMetaType {
@@ -64,7 +65,12 @@ export function SubjectTable() {
     {
       accessorKey: "branchName",
       header: "支店",
-      cell: ({ row }) => row.original.branchName || "-",
+      cell: ({ row }) =>
+        row.original.branchName ? (
+          <Badge variant="outline">{row.original.branchName}</Badge>
+        ) : (
+          "-"
+        ),
       // Only show for admins
       meta: {
         hidden: !isAdmin,
