@@ -1,20 +1,15 @@
-import { useState, useEffect, useCallback } from 'react';
+// LessonDialog.tsx
+import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { ExtendedClassSessionWithRelations } from '@/hooks/useClassSessionQuery';
 import { useClassSessionDelete, useClassSessionUpdate } from '@/hooks/useClassSessionMutation';
 import { fetcher } from '@/lib/fetcher';
-import { getDateString } from '../date';
-import { UpdateClassSessionPayload, formatDateToString } from './types/class-session';
+import { SearchableSelect, SearchableSelectItem } from '../searchable-select';
+
+// ...остальной код остается без изменений
 
 interface Booth {
   boothId: string;
@@ -121,6 +116,7 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
 
   const isRecurringLesson = lesson.seriesId !== null;
   
+  // Загрузка данных (useEffect блоки - без изменений)
   useEffect(() => {
     const loadSubjects = async () => {
       setIsLoadingSubjects(true);
@@ -193,6 +189,7 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
 
   if (!lesson || !editedLesson) return null;
 
+  // Обработчики (без изменений)
   const handleInputChange = (field: keyof EditableLessonUI, value: string | number | boolean | null | undefined) => {
     const updatedLesson: EditableLessonUI = { ...editedLesson };
     
@@ -312,6 +309,32 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
     );
   };
 
+  // Преобразуем данные для SearchableSelect
+  const boothItems: SearchableSelectItem[] = booths.map((booth) => ({
+    value: booth.boothId,
+    label: booth.name,
+  }));
+
+  const subjectItems: SearchableSelectItem[] = subjects.map((subject) => ({
+    value: subject.subjectId,
+    label: subject.name,
+  }));
+
+  const teacherItems: SearchableSelectItem[] = teachers.map((teacher) => ({
+    value: teacher.teacherId,
+    label: teacher.name,
+  }));
+
+  const studentItems: SearchableSelectItem[] = students.map((student) => ({
+    value: student.studentId,
+    label: student.name,
+  }));
+
+  const classTypeItems: SearchableSelectItem[] = classTypes.map((type) => ({
+    value: type.classTypeId,
+    label: type.name,
+  }));
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
@@ -338,25 +361,14 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
             <div>
               <label className="text-sm font-medium text-foreground">教室</label>
               {mode === 'edit' ? (
-                <Select
+                <SearchableSelect
                   value={editedLesson.boothId || ''}
                   onValueChange={(value) => handleInputChange('boothId', value)}
-                >
-                  <SelectTrigger className="w-full transition-all duration-200 hover:bg-accent hover:text-accent-foreground cursor-pointer active:scale-[0.98]">
-                    <SelectValue placeholder="教室を選択" />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-60 overflow-y-auto">
-                    {booths.map(booth => (
-                      <SelectItem
-                        key={booth.boothId}
-                        value={booth.boothId}
-                        className="cursor-pointer"
-                      >
-                        {booth.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  items={boothItems}
+                  placeholder="教室を選択"
+                  searchPlaceholder="教室を検索..."
+                  emptyMessage="教室が見つかりません"
+                />
               ) : (
                 <div className="border rounded-md p-2 mt-1 bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground border-input">
                   {booths.length > 0
@@ -371,32 +383,16 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
             <div>
               <label className="text-sm font-medium mb-1 block text-foreground">科目 <span className="text-destructive">*</span></label>
               {mode === 'edit' ? (
-                <Select
+                <SearchableSelect
                   value={editedLesson.subjectId || ''}
                   onValueChange={(value) => handleInputChange('subjectId', value)}
+                  items={subjectItems}
+                  placeholder="科目を選択"
+                  searchPlaceholder="科目を検索..."
+                  emptyMessage="科目が見つかりません"
+                  loading={isLoadingSubjects}
                   disabled={isLoadingSubjects || subjects.length === 0}
-                >
-                  <SelectTrigger className="w-full transition-all duration-200 hover:bg-accent hover:text-accent-foreground cursor-pointer active:scale-[0.98]">
-                    <SelectValue placeholder={
-                      isLoadingSubjects 
-                        ? "読み込み中..." 
-                        : subjects.length === 0 
-                        ? "科目がありません" 
-                        : "科目を選択"
-                    } />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-60 overflow-y-auto">
-                    {subjects.map(subject => (
-                      <SelectItem
-                        key={subject.subjectId}
-                        value={subject.subjectId}
-                        className="cursor-pointer"
-                      >
-                        {subject.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                />
               ) : (
                 <div className="border rounded-md p-2 mt-1 bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground border-input">
                   {lesson.subject?.name || lesson.subjectName || '指定なし'}
@@ -406,26 +402,16 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
             <div>
               <label className="text-sm font-medium mb-1 block text-foreground">授業タイプ</label>
               {mode === 'edit' ? (
-                <Select
+                <SearchableSelect
                   value={editedLesson.classTypeId || ''}
                   onValueChange={(value) => handleInputChange('classTypeId', value)}
+                  items={classTypeItems}
+                  placeholder="授業タイプを選択"
+                  searchPlaceholder="授業タイプを検索..."
+                  emptyMessage="授業タイプが見つかりません"
+                  loading={isLoadingClassTypes}
                   disabled={isLoadingClassTypes}
-                >
-                  <SelectTrigger className="w-full transition-all duration-200 hover:bg-accent hover:text-accent-foreground cursor-pointer active:scale-[0.98]">
-                    <SelectValue placeholder={isLoadingClassTypes ? "読み込み中..." : "授業タイプを選択"} />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-60 overflow-y-auto">
-                    {classTypes.map(type => (
-                      <SelectItem
-                        key={type.classTypeId}
-                        value={type.classTypeId}
-                        className="cursor-pointer"
-                      >
-                        {type.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                />
               ) : (
                 <div className="border rounded-md p-2 mt-1 bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground border-input">
                   {lesson.classType?.name || lesson.classTypeName || '指定なし'}
@@ -438,32 +424,16 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
             <div>
               <label className="text-sm font-medium mb-1 block text-foreground">講師 <span className="text-destructive">*</span></label>
               {mode === 'edit' ? (
-                <Select
+                <SearchableSelect
                   value={editedLesson.teacherId || ''}
                   onValueChange={(value) => handleInputChange('teacherId', value)}
+                  items={teacherItems}
+                  placeholder="講師を選択"
+                  searchPlaceholder="講師を検索..."
+                  emptyMessage="講師が見つかりません"
+                  loading={isLoadingTeachers}
                   disabled={isLoadingTeachers || teachers.length === 0}
-                >
-                  <SelectTrigger className="w-full transition-all duration-200 hover:bg-accent hover:text-accent-foreground cursor-pointer active:scale-[0.98]">
-                    <SelectValue placeholder={
-                      isLoadingTeachers 
-                        ? "講師を読み込み中..." 
-                        : teachers.length === 0 
-                        ? "講師はいません" 
-                        : "講師を選択"
-                    } />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-60 overflow-y-auto">
-                    {teachers.map(teacher => (
-                      <SelectItem
-                        key={teacher.teacherId}
-                        value={teacher.teacherId}
-                        className="cursor-pointer"
-                      >
-                        {teacher.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                />
               ) : (
                 <div className="border rounded-md p-2 mt-1 bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground border-input">
                   {lesson.teacher?.name || lesson.teacherName || '指定なし'}
@@ -473,32 +443,16 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
             <div>
               <label className="text-sm font-medium mb-1 block text-foreground">生徒 <span className="text-destructive">*</span></label>
               {mode === 'edit' ? (
-                <Select
+                <SearchableSelect
                   value={editedLesson.studentId || ''}
                   onValueChange={(value) => handleInputChange('studentId', value)}
+                  items={studentItems}
+                  placeholder="生徒を選択"
+                  searchPlaceholder="生徒を検索..."
+                  emptyMessage="生徒が見つかりません"
+                  loading={isLoadingStudents}
                   disabled={isLoadingStudents || students.length === 0}
-                >
-                  <SelectTrigger className="w-full transition-all duration-200 hover:bg-accent hover:text-accent-foreground cursor-pointer active:scale-[0.98]">
-                    <SelectValue placeholder={
-                      isLoadingStudents 
-                        ? "生徒を読み込み中..." 
-                        : students.length === 0 
-                        ? "生徒はいません" 
-                        : "生徒を選択"
-                    } />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-60 overflow-y-auto">
-                    {students.map(student => (
-                      <SelectItem
-                        key={student.studentId}
-                        value={student.studentId}
-                        className="cursor-pointer"
-                      >
-                        {student.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                />
               ) : (
                 <div className="border rounded-md p-2 mt-1 bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground border-input">
                   {lesson.student?.name || lesson.studentName || '指定なし'}

@@ -1,16 +1,10 @@
+// CreateLessonDialog.tsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { DateRange } from "react-day-picker";
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -22,6 +16,7 @@ import {
   NewClassSessionData,
   formatDateToString
 } from './types/class-session';
+import { SearchableSelect, SearchableSelectItem } from '../searchable-select';
 
 function DateRangePicker({ 
   dateRange, 
@@ -195,6 +190,7 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
 
   const [regularClassTypeId, setRegularClassTypeId] = useState<string>('');
 
+  // useEffect блоки - без изменений
   useEffect(() => {
     const loadClassTypes = async () => {
       setIsLoadingClassTypes(true);
@@ -413,6 +409,33 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
     { label: '日', value: 0 }
   ];
 
+  // Преобразуем данные для SearchableSelect
+  const classTypeItems: SearchableSelectItem[] = classTypes.map((type) => ({
+    value: type.classTypeId,
+    label: type.name,
+  }));
+
+  const studentTypeItems: SearchableSelectItem[] = studentTypes.map((type) => ({
+    value: type.studentTypeId,
+    label: type.name,
+    description: type.description
+  }));
+
+  const studentItems: SearchableSelectItem[] = students.map((student) => ({
+    value: student.studentId,
+    label: student.name,
+  }));
+
+  const subjectItems: SearchableSelectItem[] = subjects.map((subject) => ({
+    value: subject.subjectId,
+    label: subject.name,
+  }));
+
+  const teacherItems: SearchableSelectItem[] = teachers.map((teacher) => ({
+    value: teacher.teacherId,
+    label: teacher.name,
+  }));
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
@@ -456,32 +479,16 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
 
           <div>
             <label htmlFor="class-type-select" className="text-sm font-medium mb-1 block text-foreground">授業のタイプ <span className="text-destructive">*</span></label>
-            <Select 
-              value={selectedClassTypeId} 
-              onValueChange={setSelectedClassTypeId} 
+            <SearchableSelect
+              value={selectedClassTypeId}
+              onValueChange={setSelectedClassTypeId}
+              items={classTypeItems}
+              placeholder="授業タイプを選択"
+              searchPlaceholder="授業タイプを検索..."
+              emptyMessage="授業タイプが見つかりません"
+              loading={isLoadingClassTypes}
               disabled={isLoadingClassTypes || classTypes.length === 0}
-            >
-              <SelectTrigger id="class-type-select" className="w-full transition-all duration-200 hover:bg-accent hover:text-accent-foreground cursor-pointer active:scale-[0.98]">
-                <SelectValue placeholder={
-                  isLoadingClassTypes 
-                    ? "授業タイプを読み込み中..." 
-                    : classTypes.length === 0 
-                    ? "授業タイプがありません" 
-                    : "授業タイプを選択"
-                } />
-              </SelectTrigger>
-              <SelectContent className="max-h-60 overflow-y-auto">
-                {classTypes.map(type => (
-                  <SelectItem
-                    key={type.classTypeId}
-                    value={type.classTypeId}
-                    className="cursor-pointer"
-                  >
-                    {type.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            />
           </div>
           
           {isRecurring && (
@@ -530,106 +537,82 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
 
           <div>
             <label htmlFor="student-type-select" className="text-sm font-medium mb-1 block text-foreground">生徒タイプ <span className="text-destructive">*</span></label>
-            <Select value={studentTypeId} onValueChange={setStudentTypeId} disabled={isLoadingStudentTypes}>
-              <SelectTrigger id="student-type-select" className="w-full transition-all duration-200 hover:bg-accent hover:text-accent-foreground cursor-pointer active:scale-[0.98]">
-                <SelectValue placeholder={isLoadingStudentTypes ? "生徒タイプを読み込み中..." : "生徒タイプを選択"} />
-              </SelectTrigger>
-              <SelectContent className="max-h-60 overflow-y-auto">
-                {studentTypes.map(type => (
-                  <SelectItem
-                    key={type.studentTypeId}
-                    value={type.studentTypeId}
-                    className="cursor-pointer"
-                  >
-                    {type.name} {type.description && <span className="text-muted-foreground text-xs ml-1">({type.description})</span>}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              value={studentTypeId}
+              onValueChange={setStudentTypeId}
+              items={studentTypeItems}
+              placeholder="生徒タイプを選択"
+              searchPlaceholder="生徒タイプを検索..."
+              emptyMessage="生徒タイプが見つかりません"
+              loading={isLoadingStudentTypes}
+              disabled={isLoadingStudentTypes}
+            />
           </div>
 
           <div>
             <label htmlFor="student-select" className="text-sm font-medium mb-1 block text-foreground">生徒 <span className="text-destructive">*</span></label>
-            <Select value={studentId} onValueChange={setStudentId} disabled={isLoadingStudents || !studentTypeId || students.length === 0}>
-              <SelectTrigger id="student-select" className="w-full transition-all duration-200 hover:bg-accent hover:text-accent-foreground cursor-pointer active:scale-[0.98]">
-                <SelectValue placeholder={
-                  isLoadingStudents 
-                    ? "生徒を読み込み中..." 
-                    : !studentTypeId 
-                    ? "先に生徒タイプを選択してください" 
-                    : students.length === 0 
-                    ? "この生徒タイプの生徒はいません" 
-                    : "生徒を選択"
-                } />
-              </SelectTrigger>
-              <SelectContent className="max-h-60 overflow-y-auto">
-                {students.map(student => (
-                  <SelectItem
-                    key={student.studentId}
-                    value={student.studentId}
-                    className="cursor-pointer"
-                  >
-                    {student.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              value={studentId}
+              onValueChange={setStudentId}
+              items={studentItems}
+              placeholder={
+                isLoadingStudents 
+                  ? "生徒を読み込み中..." 
+                  : !studentTypeId 
+                  ? "先に生徒タイプを選択してください" 
+                  : students.length === 0 
+                  ? "この生徒タイプの生徒はいません" 
+                  : "生徒を選択"
+              }
+              searchPlaceholder="生徒を検索..."
+              emptyMessage="生徒が見つかりません"
+              loading={isLoadingStudents}
+              disabled={isLoadingStudents || !studentTypeId || students.length === 0}
+            />
           </div>
 
           <div>
             <label htmlFor="subject-select" className="text-sm font-medium mb-1 block text-foreground">科目 <span className="text-destructive">*</span></label>
-            <Select value={subjectId} onValueChange={setSubjectId} disabled={isLoadingSubjects || !studentId || subjects.length === 0}>
-              <SelectTrigger id="subject-select" className="w-full transition-all duration-200 hover:bg-accent hover:text-accent-foreground cursor-pointer active:scale-[0.98]">
-                <SelectValue placeholder={
-                  isLoadingSubjects 
-                    ? "科目を読み込み中..." 
-                    : !studentId 
-                    ? "先に生徒を選択してください" 
-                    : subjects.length === 0 
-                    ? "科目がありません" 
-                    : "科目を選択"
-                } />
-              </SelectTrigger>
-              <SelectContent className="max-h-60 overflow-y-auto">
-                {subjects.map(subject => (
-                  <SelectItem
-                    key={subject.subjectId}
-                    value={subject.subjectId}
-                    className="cursor-pointer"
-                  >
-                    {subject.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              value={subjectId}
+              onValueChange={setSubjectId}
+              items={subjectItems}
+              placeholder={
+                isLoadingSubjects 
+                  ? "科目を読み込み中..." 
+                  : !studentId 
+                  ? "先に生徒を選択してください" 
+                  : subjects.length === 0 
+                  ? "科目がありません" 
+                  : "科目を選択"
+              }
+              searchPlaceholder="科目を検索..."
+              emptyMessage="科目が見つかりません"
+              loading={isLoadingSubjects}
+              disabled={isLoadingSubjects || !studentId || subjects.length === 0}
+            />
           </div>
 
           <div>
             <label htmlFor="teacher-select" className="text-sm font-medium mb-1 block text-foreground">講師 <span className="text-destructive">*</span></label>
-            <Select value={teacherId} onValueChange={setTeacherId} disabled={isLoadingTeachers || !studentId || teachers.length === 0}>
-              <SelectTrigger id="teacher-select" className="w-full transition-all duration-200 hover:bg-accent hover:text-accent-foreground cursor-pointer active:scale-[0.98]">
-                <SelectValue placeholder={
-                  isLoadingTeachers 
-                    ? "講師を読み込み中..." 
-                    : !studentId 
-                    ? "先に生徒を選択してください" 
-                    : teachers.length === 0 
-                    ? "講師はいません" 
-                    : "講師を選択"
-                } />
-              </SelectTrigger>
-              <SelectContent className="max-h-60 overflow-y-auto">
-                {teachers.map(teacher => (
-                  <SelectItem
-                    key={teacher.teacherId}
-                    value={teacher.teacherId}
-                    className="cursor-pointer"
-                  >
-                    {teacher.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              value={teacherId}
+              onValueChange={setTeacherId}
+              items={teacherItems}
+              placeholder={
+                isLoadingTeachers 
+                  ? "講師を読み込み中..." 
+                  : !studentId 
+                  ? "先に生徒を選択してください" 
+                  : teachers.length === 0 
+                  ? "講師はいません" 
+                  : "講師を選択"
+              }
+              searchPlaceholder="講師を検索..."
+              emptyMessage="講師が見つかりません"
+              loading={isLoadingTeachers}
+              disabled={isLoadingTeachers || !studentId || teachers.length === 0}
+            />
           </div>
           
           <div>
