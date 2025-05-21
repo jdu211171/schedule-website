@@ -51,7 +51,6 @@ interface ColumnMetaType {
 }
 
 export function ClassSessionTable() {
-  const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
   const pageSize = 10;
   const [filters, setFilters] = useState({
@@ -75,7 +74,6 @@ export function ClassSessionTable() {
     boothId: filters.boothId,
     startDate: filters.startDate,
     endDate: filters.endDate,
-    search: searchTerm,
   });
 
   // Fetch reference data for filters
@@ -303,9 +301,6 @@ export function ClassSessionTable() {
         columns={visibleColumns}
         data={classSessions?.data || []}
         isLoading={isLoading}
-        searchPlaceholder="授業を検索..."
-        onSearch={setSearchTerm}
-        searchValue={searchTerm}
         onCreateNew={() => setIsCreateDialogOpen(true)}
         createNewLabel="新規授業作成"
         pageIndex={page - 1}

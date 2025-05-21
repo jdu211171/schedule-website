@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { ja } from "date-fns/locale";
 import { CalendarIcon, X, Filter, ChevronDown } from "lucide-react";
@@ -63,10 +63,30 @@ export function ClassSessionFilter({
   onFilterChange,
   onResetFilters,
 }: ClassSessionFilterProps) {
+  // Storage key for filter open/closed persistence
+  const FILTER_OPEN_KEY = "classsessionfilter_open";
+
+  // Initialize with a default value, will be updated after mount
   const [isOpen, setIsOpen] = useState(true);
+  const [isInitialized, setIsInitialized] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(
     filters.startDate ? new Date(filters.startDate) : undefined
   );
+
+  // On component mount, load the saved open/closed state from localStorage
+  useEffect(() => {
+    const savedOpen = localStorage.getItem(FILTER_OPEN_KEY);
+    if (savedOpen !== null) {
+      setIsOpen(savedOpen === "true");
+    }
+    setIsInitialized(true);
+  }, []);
+
+  // Handle open/close change and save to localStorage
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    localStorage.setItem(FILTER_OPEN_KEY, String(open));
+  };
 
   const handleDateSelect = (date: Date | undefined) => {
     setSelectedDate(date);
@@ -82,10 +102,14 @@ export function ClassSessionFilter({
   // Count active filters
   const activeFilterCount = Object.values(filters).filter(Boolean).length;
 
+  if (!isInitialized) {
+    return null; // Show nothing during initial render to prevent flicker
+  }
+
   return (
     <Collapsible
       open={isOpen}
-      onOpenChange={setIsOpen}
+      onOpenChange={handleOpenChange}
       className="w-full space-y-2"
     >
       <div className="flex items-center justify-between">
@@ -129,9 +153,9 @@ export function ClassSessionFilter({
         </div>
       </div>
       <CollapsibleContent className="space-y-4">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6">
           {/* Date filter with calendar */}
-          <div className="space-y-2">
+          <div className="space-y-2 min-w-0">
             <label className="text-xs font-medium">日付</label>
             <Popover>
               <PopoverTrigger asChild>
@@ -172,7 +196,7 @@ export function ClassSessionFilter({
           </div>
 
           {/* Teacher filter */}
-          <div className="space-y-2">
+          <div className="space-y-2 min-w-0">
             <label className="text-xs font-medium">講師</label>
             <Select
               value={filters.teacherId || "all"}
@@ -195,7 +219,7 @@ export function ClassSessionFilter({
           </div>
 
           {/* Student filter */}
-          <div className="space-y-2">
+          <div className="space-y-2 min-w-0">
             <label className="text-xs font-medium">生徒</label>
             <Select
               value={filters.studentId || "all"}
@@ -218,7 +242,7 @@ export function ClassSessionFilter({
           </div>
 
           {/* Subject filter */}
-          <div className="space-y-2">
+          <div className="space-y-2 min-w-0">
             <label className="text-xs font-medium">科目</label>
             <Select
               value={filters.subjectId || "all"}
@@ -241,7 +265,7 @@ export function ClassSessionFilter({
           </div>
 
           {/* Class Type filter */}
-          <div className="space-y-2">
+          <div className="space-y-2 min-w-0">
             <label className="text-xs font-medium">授業タイプ</label>
             <Select
               value={filters.classTypeId || "all"}
@@ -270,7 +294,7 @@ export function ClassSessionFilter({
           </div>
 
           {/* Booth filter */}
-          <div className="space-y-2">
+          <div className="space-y-2 min-w-0">
             <label className="text-xs font-medium">ブース</label>
             <Select
               value={filters.boothId || "all"}
