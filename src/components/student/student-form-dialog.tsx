@@ -3,8 +3,19 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
 import { useEffect } from "react";
+import { useSession } from "next-auth/react";
+
+import {
+  StudentCreate,
+  StudentUpdate,
+  studentCreateSchema,
+  studentUpdateSchema,
+  StudentFormValues,
+  studentFormSchema,
+} from "@/schemas/student.schema";
+import { useStudentCreate, useStudentUpdate } from "@/hooks/useStudentMutation"; // Corrected import path
+import { useStudentTypes } from "@/hooks/useStudentTypeQuery";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -23,9 +34,6 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Card, CardContent } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Select,
   SelectContent,
@@ -33,15 +41,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useStudentCreate, useStudentUpdate } from "@/hooks/useStudentMutation";
-import { useBranches } from "@/hooks/useBranchQuery";
-import { useStudentTypes } from "@/hooks/useStudentTypeQuery";
-import {
-  studentUpdateSchema,
-  StudentUpdate,
-  StudentCreate,
-} from "@/schemas/student.schema";
-import { Student } from "@/hooks/useStudentQuery";
+import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Student } from "@/hooks/useStudentQuery"; // Corrected import path
 
 interface StudentFormDialogProps {
   open: boolean;
@@ -56,108 +59,101 @@ export function StudentFormDialog({
 }: StudentFormDialogProps) {
   const createStudentMutation = useStudentCreate();
   const updateStudentMutation = useStudentUpdate();
-  const { data: branchesResponse, isLoading: isBranchesLoading } =
-    useBranches();
+  const { data: session } = useSession();
+
+  const branchesResponse = session?.user?.branches
+    ? { data: session.user.branches }
+    : { data: [] };
+  const isBranchesLoading = !session?.user?.branches;
+
   const { data: studentTypesResponse, isLoading: isStudentTypesLoading } =
     useStudentTypes();
 
   const isEditing = !!student;
 
-  // Define a modified update schema that makes password optional
-  const editSchema = studentUpdateSchema.extend({
-    password: z
-      .string()
-      .min(6, "Password must be at least 6 characters")
-      .optional(),
-  });
-
-  // Always use StudentUpdate and editSchema for the form
-  const form = useForm<StudentUpdate>({
-    resolver: zodResolver(editSchema),
+  const form = useForm<StudentFormValues>({
+    resolver: zodResolver(studentFormSchema),
     defaultValues: {
       name: "",
       kanaName: "",
-      studentTypeId: "",
-      gradeYear: undefined as unknown as number,
+      studentTypeId: undefined,
+      gradeYear: undefined,
       lineId: "",
       notes: "",
       username: "",
       password: "",
       email: "",
       branchIds: [],
+      studentId: undefined,
     },
   });
 
   useEffect(() => {
     if (student) {
-      // When editing, populate the form with existing student data
       form.reset({
         studentId: student.studentId,
         name: student.name || "",
         kanaName: student.kanaName || "",
-        studentTypeId: student.studentTypeId || "",
-        gradeYear: (student.gradeYear as unknown as number) || undefined,
+        studentTypeId: student.studentTypeId || undefined,
+        gradeYear: student.gradeYear ?? undefined,
         lineId: student.lineId || "",
         notes: student.notes || "",
         username: student.username || "",
         email: student.email || "",
-        // Don't prefill password
-        password: undefined,
-        // Extract branchIds from the student's branches
+        password: "",
         branchIds: student.branches?.map((branch) => branch.branchId) || [],
       });
     } else {
-      // Reset form when creating a new student
       form.reset({
         name: "",
         kanaName: "",
-        studentTypeId: "",
-        gradeYear: undefined as unknown as number,
+        studentTypeId: undefined,
+        gradeYear: undefined,
         lineId: "",
         notes: "",
         username: "",
         password: "",
         email: "",
         branchIds: [],
+        studentId: undefined,
       });
     }
   }, [student, form]);
 
-  function onSubmit(values: StudentUpdate) {
-    // Close the dialog immediately for better UX
-    onOpenChange(false);
-
-    // Create a modified submission object
+  function onSubmit(values: StudentFormValues) {
     const submissionData = { ...values };
 
-    // Ensure gradeYear is a number if provided
-    if (submissionData.gradeYear) {
+    if (typeof submissionData.gradeYear === "string" && submissionData.gradeYear === "") {
+      submissionData.gradeYear = undefined;
+    } else if (submissionData.gradeYear) {
       submissionData.gradeYear = Number(submissionData.gradeYear);
     }
 
-    // If password is empty in edit mode, remove it from the submission
-    if (
-      isEditing &&
-      (!submissionData.password || submissionData.password === "")
-    ) {
-      delete submissionData.password;
-    }
-
-    // Then trigger the mutation without waiting
     if (isEditing && student) {
-      updateStudentMutation.mutate({
+      if (!submissionData.password || submissionData.password === "") {
+        delete submissionData.password;
+      }
+      const parsedData = studentUpdateSchema.parse({
         ...submissionData,
         studentId: student.studentId,
       });
+      updateStudentMutation.mutate(parsedData as StudentUpdate, {
+        onSuccess: () => {
+          onOpenChange(false);
+          // form.reset(); // Reset handled by useEffect or if dialog closes and reopens
+        },
+      });
     } else {
-      // Remove studentId from submissionData for create
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { studentId, ...createData } = submissionData;
-      createStudentMutation.mutate(createData as StudentCreate);
+      const { studentId, ...createValues } = submissionData;
+      const parsedData = studentCreateSchema.parse(createValues);
+      createStudentMutation.mutate(parsedData as StudentCreate, {
+        onSuccess: () => {
+          onOpenChange(false);
+          // form.reset(); // Reset handled by useEffect or if dialog closes and reopens
+        },
+      });
     }
-
-    // Reset the form
-    form.reset();
   }
 
   return (
@@ -168,97 +164,100 @@ export function StudentFormDialog({
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="after:content-['*'] after:ml-1 after:text-destructive">
-                    名前
-                  </FormLabel>
-                  <FormControl>
-                    <Input placeholder="名前を入力してください" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="kanaName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>カナ</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="カナを入力してください"
-                      {...field}
-                      value={field.value || ""}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="studentTypeId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>生徒タイプ</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value || ""}
-                  >
+            <div className="flex space-x-4">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem className="flex-1">
+                    <FormLabel className="after:content-['*'] after:ml-1 after:text-destructive">
+                      名前
+                    </FormLabel>
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="生徒タイプを選択" />
-                      </SelectTrigger>
+                      <Input placeholder="名前を入力してください" {...field} />
                     </FormControl>
-                    <SelectContent>
-                      <SelectItem value="">選択なし</SelectItem>
-                      {studentTypesResponse?.data.map((type) => (
-                        <SelectItem
-                          key={type.studentTypeId}
-                          value={type.studentTypeId}
-                        >
-                          {type.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <FormField
-              control={form.control}
-              name="gradeYear"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>学年</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      placeholder="学年を入力してください"
-                      {...field}
-                      value={field.value || ""}
-                      onChange={(e) => {
-                        const value =
-                          e.target.value === ""
-                            ? undefined
-                            : Number(e.target.value);
-                        field.onChange(value);
-                      }}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+              <FormField
+                control={form.control}
+                name="kanaName"
+                render={({ field }) => (
+                  <FormItem className="flex-1">
+                    <FormLabel>カナ</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="カナを入力してください"
+                        {...field}
+                        value={field.value || ""}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="flex space-x-4">
+              <FormField
+                control={form.control}
+                name="studentTypeId"
+                render={({ field }) => (
+                  <FormItem className="flex-1">
+                    <FormLabel>生徒タイプ</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value ?? undefined} // Ensure value is string or undefined
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="生徒タイプを選択" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {studentTypesResponse?.data.map((type) => (
+                          <SelectItem
+                            key={type.studentTypeId}
+                            value={type.studentTypeId}
+                          >
+                            {type.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="gradeYear"
+                render={({ field }) => (
+                  <FormItem className="flex-1">
+                    <FormLabel>学年</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        placeholder="学年を入力してください"
+                        {...field}
+                        value={field.value || ""}
+                        onChange={(e) => {
+                          const value =
+                            e.target.value === ""
+                              ? undefined
+                              : Number(e.target.value);
+                          field.onChange(value);
+                        }}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             <FormField
               control={form.control}
@@ -310,42 +309,44 @@ export function StudentFormDialog({
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>メールアドレス</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="email"
-                      placeholder="メールアドレスを入力してください"
-                      {...field}
-                      value={field.value || ""}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="flex space-x-4">
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem className="flex-1">
+                    <FormLabel>メールアドレス</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="email"
+                        placeholder="メールアドレスを入力してください"
+                        {...field}
+                        value={field.value || ""}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <FormField
-              control={form.control}
-              name="lineId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>LINE ID</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="LINE IDを入力してください"
-                      {...field}
-                      value={field.value || ""}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+              <FormField
+                control={form.control}
+                name="lineId"
+                render={({ field }) => (
+                  <FormItem className="flex-1">
+                    <FormLabel>LINE ID</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="LINE IDを入力してください"
+                        {...field}
+                        value={field.value || ""}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             <FormField
               control={form.control}
