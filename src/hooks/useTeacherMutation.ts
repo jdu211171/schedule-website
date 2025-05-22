@@ -234,6 +234,27 @@ export function useTeacherUpdate() {
           });
         },
         onSuccess: (data) => {
+          // Find the updated teacher from the response
+          const updatedTeacher = data?.data?.[0];
+          if (updatedTeacher) {
+            // Update all teacher queries to replace the teacher with the updated one
+            const queries = queryClient.getQueriesData<TeachersResponse>({
+              queryKey: ["teachers"],
+            });
+            queries.forEach(([queryKey]) => {
+              const currentData = queryClient.getQueryData<TeachersResponse>(queryKey);
+              if (currentData) {
+                queryClient.setQueryData<TeachersResponse>(queryKey, {
+                  ...currentData,
+                  data: currentData.data.map((teacher) =>
+                    teacher.teacherId === updatedTeacher.teacherId ? updatedTeacher : teacher
+                  ),
+                });
+              }
+            });
+            // Also update the single teacher query if it exists
+            queryClient.setQueryData(["teacher", updatedTeacher.teacherId], updatedTeacher);
+          }
           toast.success("教師を更新しました", {
             id: "teacher-update-success",
           });
