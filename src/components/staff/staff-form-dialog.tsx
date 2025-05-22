@@ -70,16 +70,23 @@ export function StaffFormDialog({
     },
   });
 
+  const defaultBranchId = session?.user?.branches?.[0]?.branchId;
+
   useEffect(() => {
     if (staff && isEditing) {
-      // When editing, populate the form with existing staff data
+      const branchIds = staff.branches?.map((branch) => branch.branchId) || [];
+      // Ensure defaultBranchId is always included
+      const branchIdsWithDefault =
+        defaultBranchId && !branchIds.includes(defaultBranchId)
+          ? [defaultBranchId, ...branchIds]
+          : branchIds;
       form.reset({
         id: staff.id,
         name: staff.name || "",
         username: staff.username || "",
         email: staff.email || "",
-        password: "", // Keep password blank, user can fill if they want to change
-        branchIds: staff.branches?.map((branch) => branch.branchId) || [],
+        password: "",
+        branchIds: branchIdsWithDefault,
       });
     } else {
       // Reset form when creating a new staff or when staff is null
@@ -88,11 +95,11 @@ export function StaffFormDialog({
         username: "",
         password: "",
         email: "",
-        branchIds: [],
+        branchIds: defaultBranchId ? [defaultBranchId] : [],
         id: undefined,
       });
     }
-  }, [staff, form, isEditing]);
+  }, [staff, form, isEditing, defaultBranchId]);
 
   function onSubmit(values: StaffFormValues) {
     // Create a modified submission object
@@ -254,6 +261,7 @@ export function StaffFormDialog({
                                 control={form.control}
                                 name="branchIds"
                                 render={({ field }) => {
+                                  const isDefault = branch.branchId === defaultBranchId;
                                   return (
                                     <FormItem
                                       key={branch.branchId}
@@ -261,37 +269,31 @@ export function StaffFormDialog({
                                     >
                                       <FormControl>
                                         <Checkbox
-                                          checked={field.value?.includes(
-                                            branch.branchId
-                                          )}
+                                          checked={field.value?.includes(branch.branchId)}
+                                          disabled={isDefault}
                                           onCheckedChange={(checked) => {
-                                            const currentValues = [
-                                              ...(field.value || []),
-                                            ];
+                                            let currentValues = [...(field.value || [])];
+                                            if (isDefault) {
+                                              // Always keep default branch in the value
+                                              if (!currentValues.includes(branch.branchId)) {
+                                                currentValues = [branch.branchId, ...currentValues];
+                                              }
+                                              field.onChange(currentValues);
+                                              return;
+                                            }
                                             if (checked) {
-                                              if (
-                                                !currentValues.includes(
-                                                  branch.branchId
-                                                )
-                                              ) {
-                                                field.onChange([
-                                                  ...currentValues,
-                                                  branch.branchId,
-                                                ]);
+                                              if (!currentValues.includes(branch.branchId)) {
+                                                field.onChange([...currentValues, branch.branchId]);
                                               }
                                             } else {
-                                              field.onChange(
-                                                currentValues.filter(
-                                                  (value) =>
-                                                    value !== branch.branchId
-                                                )
-                                              );
+                                              field.onChange(currentValues.filter((value) => value !== branch.branchId));
                                             }
                                           }}
                                         />
                                       </FormControl>
                                       <FormLabel className="font-normal cursor-pointer">
                                         {branch.name}
+                                        {isDefault && <span className="ml-2 text-xs text-muted-foreground">(デフォルト)</span>}
                                       </FormLabel>
                                     </FormItem>
                                   );
