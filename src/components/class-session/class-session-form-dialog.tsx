@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import React, { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { format, parseISO, addWeeks } from "date-fns";
 import { ja } from "date-fns/locale";
 import { CalendarIcon, InfoIcon } from "lucide-react";
@@ -59,6 +59,12 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import type { ClassSession } from "@prisma/client";
 
 interface ClassSessionFormDialogProps {
@@ -120,9 +126,9 @@ export function ClassSessionFormDialog({
   const isEditing = !!classSession;
   const [isRecurring, setIsRecurring] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>(
-    classSession?.date && typeof classSession.date === 'string'
+    classSession?.date && typeof classSession.date === "string"
       ? parseISO(classSession.date)
-      : filters.startDate && typeof filters.startDate === 'string'
+      : filters.startDate && typeof filters.startDate === "string"
       ? parseISO(filters.startDate)
       : new Date()
   );
@@ -144,15 +150,18 @@ export function ClassSessionFormDialog({
         subjectId: classSession.subjectId || "",
         classTypeId: classSession.classTypeId || "",
         boothId: classSession.boothId || "",
-        date: typeof classSession.date === 'string'
-          ? classSession.date
-          : format(new Date(), "yyyy-MM-dd"),
-        startTime: typeof classSession.startTime === 'string'
-          ? classSession.startTime
-          : "09:00",
-        endTime: typeof classSession.endTime === 'string'
-          ? classSession.endTime
-          : "10:00",
+        date:
+          typeof classSession.date === "string"
+            ? classSession.date
+            : format(new Date(), "yyyy-MM-dd"),
+        startTime:
+          typeof classSession.startTime === "string"
+            ? classSession.startTime
+            : "09:00",
+        endTime:
+          typeof classSession.endTime === "string"
+            ? classSession.endTime
+            : "10:00",
         duration: classSession.duration || 60,
         notes: classSession.notes || "",
         isRecurring: false, // Always false in edit mode
@@ -175,7 +184,12 @@ export function ClassSessionFormDialog({
         isRecurring: false,
         startDate: filters.startDate || format(today, "yyyy-MM-dd"),
         endDate: format(
-          addWeeks(typeof filters.startDate === 'string' ? parseISO(filters.startDate) : today, 4),
+          addWeeks(
+            typeof filters.startDate === "string"
+              ? parseISO(filters.startDate)
+              : today,
+            4
+          ),
           "yyyy-MM-dd"
         ),
         daysOfWeek: [],
@@ -195,9 +209,9 @@ export function ClassSessionFormDialog({
 
     // Update selected date
     setSelectedDate(
-      classSession?.date && typeof classSession.date === 'string'
+      classSession?.date && typeof classSession.date === "string"
         ? parseISO(classSession.date)
-        : filters.startDate && typeof filters.startDate === 'string'
+        : filters.startDate && typeof filters.startDate === "string"
         ? parseISO(filters.startDate)
         : new Date()
     );
@@ -217,13 +231,22 @@ export function ClassSessionFormDialog({
       form.setValue("startDate", currentDate);
       form.setValue(
         "endDate",
-        format(addWeeks(typeof currentDate === 'string' ? parseISO(currentDate) : new Date(), 4), "yyyy-MM-dd")
+        format(
+          addWeeks(
+            typeof currentDate === "string"
+              ? parseISO(currentDate)
+              : new Date(),
+            4
+          ),
+          "yyyy-MM-dd"
+        )
       );
 
       // Initialize days of week with the current day
-      const currentDayIndex = typeof currentDate === 'string'
-        ? parseISO(currentDate).getDay()
-        : new Date(currentDate).getDay();
+      const currentDayIndex =
+        typeof currentDate === "string"
+          ? parseISO(currentDate).getDay()
+          : new Date(currentDate).getDay();
       form.setValue("daysOfWeek", [currentDayIndex]);
     }
   };
@@ -389,7 +412,7 @@ export function ClassSessionFormDialog({
         onOpenChange(open);
       }}
     >
-      <DialogContent className="sm:max-w-[550px]">
+      <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isEditing ? "授業の編集" : "新規授業作成"}</DialogTitle>
         </DialogHeader>
@@ -398,469 +421,545 @@ export function ClassSessionFormDialog({
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            {/* Teacher field */}
-            <FormField
-              control={form.control}
-              name="teacherId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>講師</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value || "none"}
-                    value={field.value || "none"}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="講師を選択" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="none">講師なし</SelectItem>
-                      {teachersData?.data.map((teacher) => (
-                        <SelectItem
-                          key={teacher.teacherId}
-                          value={teacher.teacherId}
-                        >
-                          {teacher.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {/* Student field */}
-            <FormField
-              control={form.control}
-              name="studentId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>生徒</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value || "none"}
-                    value={field.value || "none"}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="生徒を選択" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="none">生徒なし</SelectItem>
-                      {studentsData?.data.map((student) => (
-                        <SelectItem
-                          key={student.studentId}
-                          value={student.studentId}
-                        >
-                          {student.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="grid grid-cols-2 gap-4">
-              {/* Subject field */}
-              <FormField
-                control={form.control}
-                name="subjectId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>科目</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value || "none"}
-                      value={field.value || "none"}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="科目を選択" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="none">科目なし</SelectItem>
-                        {subjectsData?.data.map((subject) => (
-                          <SelectItem
-                            key={subject.subjectId}
-                            value={subject.subjectId}
-                          >
-                            {subject.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {/* Class Type field */}
-              <FormField
-                control={form.control}
-                name="classTypeId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>授業タイプ</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value || "none"}
-                      value={field.value || "none"}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="授業タイプを選択" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="none">タイプなし</SelectItem>
-                        {classTypesData?.data.map((classType) => (
-                          <SelectItem
-                            key={classType.classTypeId}
-                            value={classType.classTypeId}
-                          >
-                            {classType.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            {/* Booth field */}
-            <FormField
-              control={form.control}
-              name="boothId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>ブース</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value || "none"}
-                    value={field.value || "none"}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="ブースを選択" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="none">ブースなし</SelectItem>
-                      {boothsData?.data.map((booth) => (
-                        <SelectItem key={booth.boothId} value={booth.boothId}>
-                          {booth.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {/* Date field */}
-            <FormField
-              control={form.control}
-              name="date"
-              render={({ field }) => (
-                <FormItem className="flex flex-col">
-                  <FormLabel>日付</FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant={"outline"}
-                          className={cn(
-                            "w-full pl-3 text-left font-normal",
-                            !field.value && "text-muted-foreground"
-                          )}
-                        >
-                          {field.value ? (
-                            format(parseISO(field.value), "yyyy年MM月dd日", {
-                              locale: ja,
-                            })
-                          ) : (
-                            <span>日付を選択</span>
-                          )}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={selectedDate}
-                        onSelect={handleDateSelect}
-                        disabled={(date) => date < new Date("1900-01-01")}
-                        initialFocus
-                        locale={ja}
+            <Accordion
+              type="single"
+              collapsible
+              defaultValue="basic-info"
+              className="w-full"
+            >
+              {/* Basic Information Section */}
+              <AccordionItem value="basic-info">
+                <AccordionTrigger className="py-2">基本情報</AccordionTrigger>
+                <AccordionContent>
+                  <div className="space-y-4 pt-2">
+                    {/* Teacher and Student fields */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* Teacher field */}
+                      <FormField
+                        control={form.control}
+                        name="teacherId"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>講師</FormLabel>
+                            <Select
+                              onValueChange={field.onChange}
+                              defaultValue={field.value || "none"}
+                              value={field.value || "none"}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="講師を選択" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="none">講師なし</SelectItem>
+                                {teachersData?.data.map((teacher) => (
+                                  <SelectItem
+                                    key={teacher.teacherId}
+                                    value={teacher.teacherId}
+                                  >
+                                    {teacher.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
                       />
-                    </PopoverContent>
-                  </Popover>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
 
-            {/* Time fields */}
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="startTime"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>開始時間</FormLabel>
-                    <FormControl>
-                      <Input type="time" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="endTime"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>終了時間</FormLabel>
-                    <FormControl>
-                      <Input type="time" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            {/* Notes field */}
-            <FormField
-              control={form.control}
-              name="notes"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>メモ</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="メモを入力（任意）"
-                      className="resize-none"
-                      {...field}
-                      value={field.value || ""}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {/* Recurring toggle - only show in create mode */}
-            {!isEditing && (
-              <FormField
-                control={form.control}
-                name="isRecurring"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
-                    <div className="space-y-0.5">
-                      <FormLabel className="text-base">繰り返し授業</FormLabel>
-                      <FormDescription>
-                        定期的に繰り返す授業作成
-                      </FormDescription>
+                      {/* Student field */}
+                      <FormField
+                        control={form.control}
+                        name="studentId"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>生徒</FormLabel>
+                            <Select
+                              onValueChange={field.onChange}
+                              defaultValue={field.value || "none"}
+                              value={field.value || "none"}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="生徒を選択" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="none">生徒なし</SelectItem>
+                                {studentsData?.data.map((student) => (
+                                  <SelectItem
+                                    key={student.studentId}
+                                    value={student.studentId}
+                                  >
+                                    {student.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                     </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={(checked) => {
-                          field.onChange(checked);
-                          handleRecurringChange(checked);
-                        }}
+
+                    {/* Subject and Booth fields */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* Subject field */}
+                      <FormField
+                        control={form.control}
+                        name="subjectId"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>科目</FormLabel>
+                            <Select
+                              onValueChange={field.onChange}
+                              defaultValue={field.value || "none"}
+                              value={field.value || "none"}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="科目を選択" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="none">科目なし</SelectItem>
+                                {subjectsData?.data.map((subject) => (
+                                  <SelectItem
+                                    key={subject.subjectId}
+                                    value={subject.subjectId}
+                                  >
+                                    {subject.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
                       />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-            )}
 
-            {/* Recurring options - only show when isRecurring is true */}
-            {isRecurring && !isEditing && (
-              <div className="space-y-4 border rounded-lg p-4">
-                <h3 className="text-sm font-medium">繰り返し設定</h3>
-
-                {/* Start date field */}
-                <FormField
-                  control={form.control}
-                  name="startDate"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel>開始日</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant={"outline"}
-                              className={cn(
-                                "w-full pl-3 text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                              )}
+                      {/* Booth field */}
+                      <FormField
+                        control={form.control}
+                        name="boothId"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>ブース</FormLabel>
+                            <Select
+                              onValueChange={field.onChange}
+                              defaultValue={field.value || "none"}
+                              value={field.value || "none"}
                             >
-                              {field.value ? (
-                                format(
-                                  parseISO(field.value),
-                                  "yyyy年MM月dd日",
-                                  { locale: ja }
-                                )
-                              ) : (
-                                <span>開始日を選択</span>
-                              )}
-                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={
-                              field.value ? parseISO(field.value) : undefined
-                            }
-                            onSelect={(date) => {
-                              const dateStr = date
-                                ? format(date, "yyyy-MM-dd")
-                                : "";
-                              field.onChange(dateStr);
-                            }}
-                            disabled={(date) => date < new Date("1900-01-01")}
-                            initialFocus
-                            locale={ja}
-                          />
-                        </PopoverContent>
-                      </Popover>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="ブースを選択" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="none">ブースなし</SelectItem>
+                                {boothsData?.data.map((booth) => (
+                                  <SelectItem
+                                    key={booth.boothId}
+                                    value={booth.boothId}
+                                  >
+                                    {booth.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
 
-                {/* End date field */}
-                <FormField
-                  control={form.control}
-                  name="endDate"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel>終了日</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant={"outline"}
-                              className={cn(
-                                "w-full pl-3 text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                              )}
-                            >
-                              {field.value ? (
-                                format(
-                                  parseISO(field.value),
-                                  "yyyy年MM月dd日",
-                                  { locale: ja }
-                                )
-                              ) : (
-                                <span>終了日を選択</span>
-                              )}
-                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={
-                              field.value ? parseISO(field.value) : undefined
-                            }
-                            onSelect={(date) => {
-                              const dateStr = date
-                                ? format(date, "yyyy-MM-dd")
-                                : "";
-                              field.onChange(dateStr);
-                            }}
-                            disabled={(date) => date < new Date("1900-01-01")}
-                            initialFocus
-                            locale={ja}
-                          />
-                        </PopoverContent>
-                      </Popover>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                    {/* Class Type field */}
+                    <FormField
+                      control={form.control}
+                      name="classTypeId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>授業タイプ</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            defaultValue={field.value || "none"}
+                            value={field.value || "none"}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="授業タイプを選択" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="none">タイプなし</SelectItem>
+                              {classTypesData?.data.map((classType) => (
+                                <SelectItem
+                                  key={classType.classTypeId}
+                                  value={classType.classTypeId}
+                                >
+                                  {classType.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
 
-                {/* Days of week */}
-                <FormField
-                  control={form.control}
-                  name="daysOfWeek"
-                  render={() => (
-                    <FormItem>
-                      <div className="mb-2">
-                        <FormLabel>曜日を選択</FormLabel>
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="ml-2 h-4 w-4"
-                              >
-                                <InfoIcon className="h-3 w-3" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>選択した曜日に繰り返し授業が作成されます</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {daysOfWeekOptions.map((day) => {
-                          const daysOfWeek = form.getValues("daysOfWeek") || [];
-                          return (
-                            <div
-                              key={day.id}
-                              className="flex items-center space-x-2"
+              {/* Schedule Section */}
+              <AccordionItem value="schedule">
+                <AccordionTrigger className="py-2">
+                  スケジュール
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="space-y-4 pt-2">
+                    {/* Date field */}
+                    <FormField
+                      control={form.control}
+                      name="date"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                          <FormLabel>日付</FormLabel>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button
+                                  variant={"outline"}
+                                  className={cn(
+                                    "w-full pl-3 text-left font-normal",
+                                    !field.value && "text-muted-foreground"
+                                  )}
+                                >
+                                  {field.value ? (
+                                    format(
+                                      parseISO(field.value),
+                                      "yyyy年MM月dd日",
+                                      {
+                                        locale: ja,
+                                      }
+                                    )
+                                  ) : (
+                                    <span>日付を選択</span>
+                                  )}
+                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent
+                              className="w-auto p-0"
+                              align="start"
                             >
-                              <Checkbox
-                                id={`day-${day.id}`}
-                                checked={daysOfWeek.includes(day.id)}
-                                onCheckedChange={(checked) =>
-                                  handleDayOfWeekChange(
-                                    day.id,
-                                    checked as boolean
-                                  )
+                              <Calendar
+                                mode="single"
+                                selected={selectedDate}
+                                onSelect={handleDateSelect}
+                                disabled={(date) =>
+                                  date < new Date("1900-01-01")
                                 }
+                                initialFocus
+                                locale={ja}
                               />
-                              <label
-                                htmlFor={`day-${day.id}`}
-                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                              >
-                                {day.label}
-                              </label>
-                            </div>
-                          );
-                        })}
-                      </div>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            )}
+                            </PopoverContent>
+                          </Popover>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-            <DialogFooter>
+                    {/* Time fields */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="startTime"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>開始時間</FormLabel>
+                            <FormControl>
+                              <Input type="time" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="endTime"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>終了時間</FormLabel>
+                            <FormControl>
+                              <Input type="time" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+
+              {/* Notes Section */}
+              <AccordionItem value="notes">
+                <AccordionTrigger className="py-2">メモ</AccordionTrigger>
+                <AccordionContent>
+                  <div className="pt-2">
+                    <FormField
+                      control={form.control}
+                      name="notes"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormControl>
+                            <Textarea
+                              placeholder="メモを入力（任意）"
+                              className="resize-none"
+                              {...field}
+                              value={field.value || ""}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+
+              {/* Recurring Section - only show in create mode */}
+              {!isEditing && (
+                <AccordionItem value="recurring">
+                  <AccordionTrigger className="py-2">
+                    繰り返し設定
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="space-y-4 pt-2">
+                      {/* Recurring toggle */}
+                      <FormField
+                        control={form.control}
+                        name="isRecurring"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                            <div className="space-y-0.5">
+                              <FormLabel className="text-base">
+                                繰り返し授業
+                              </FormLabel>
+                              <FormDescription>
+                                定期的に繰り返す授業作成
+                              </FormDescription>
+                            </div>
+                            <FormControl>
+                              <Switch
+                                checked={field.value}
+                                onCheckedChange={(checked) => {
+                                  field.onChange(checked);
+                                  handleRecurringChange(checked);
+                                }}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+
+                      {/* Recurring options - only show when isRecurring is true */}
+                      {isRecurring && (
+                        <div className="space-y-4">
+                          {/* Start date field */}
+                          <FormField
+                            control={form.control}
+                            name="startDate"
+                            render={({ field }) => (
+                              <FormItem className="flex flex-col">
+                                <FormLabel>開始日</FormLabel>
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <FormControl>
+                                      <Button
+                                        variant={"outline"}
+                                        className={cn(
+                                          "w-full pl-3 text-left font-normal",
+                                          !field.value &&
+                                            "text-muted-foreground"
+                                        )}
+                                      >
+                                        {field.value ? (
+                                          format(
+                                            parseISO(field.value),
+                                            "yyyy年MM月dd日",
+                                            { locale: ja }
+                                          )
+                                        ) : (
+                                          <span>開始日を選択</span>
+                                        )}
+                                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                      </Button>
+                                    </FormControl>
+                                  </PopoverTrigger>
+                                  <PopoverContent
+                                    className="w-auto p-0"
+                                    align="start"
+                                  >
+                                    <Calendar
+                                      mode="single"
+                                      selected={
+                                        field.value
+                                          ? parseISO(field.value)
+                                          : undefined
+                                      }
+                                      onSelect={(date) => {
+                                        const dateStr = date
+                                          ? format(date, "yyyy-MM-dd")
+                                          : "";
+                                        field.onChange(dateStr);
+                                      }}
+                                      disabled={(date) =>
+                                        date < new Date("1900-01-01")
+                                      }
+                                      initialFocus
+                                      locale={ja}
+                                    />
+                                  </PopoverContent>
+                                </Popover>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          {/* End date field */}
+                          <FormField
+                            control={form.control}
+                            name="endDate"
+                            render={({ field }) => (
+                              <FormItem className="flex flex-col">
+                                <FormLabel>終了日</FormLabel>
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <FormControl>
+                                      <Button
+                                        variant={"outline"}
+                                        className={cn(
+                                          "w-full pl-3 text-left font-normal",
+                                          !field.value &&
+                                            "text-muted-foreground"
+                                        )}
+                                      >
+                                        {field.value ? (
+                                          format(
+                                            parseISO(field.value),
+                                            "yyyy年MM月dd日",
+                                            { locale: ja }
+                                          )
+                                        ) : (
+                                          <span>終了日を選択</span>
+                                        )}
+                                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                      </Button>
+                                    </FormControl>
+                                  </PopoverTrigger>
+                                  <PopoverContent
+                                    className="w-auto p-0"
+                                    align="start"
+                                  >
+                                    <Calendar
+                                      mode="single"
+                                      selected={
+                                        field.value
+                                          ? parseISO(field.value)
+                                          : undefined
+                                      }
+                                      onSelect={(date) => {
+                                        const dateStr = date
+                                          ? format(date, "yyyy-MM-dd")
+                                          : "";
+                                        field.onChange(dateStr);
+                                      }}
+                                      disabled={(date) =>
+                                        date < new Date("1900-01-01")
+                                      }
+                                      initialFocus
+                                      locale={ja}
+                                    />
+                                  </PopoverContent>
+                                </Popover>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          {/* Days of week */}
+                          <FormField
+                            control={form.control}
+                            name="daysOfWeek"
+                            render={() => (
+                              <FormItem>
+                                <div className="mb-2 flex items-center">
+                                  <FormLabel>曜日を選択</FormLabel>
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="ml-2 h-4 w-4"
+                                        >
+                                          <InfoIcon className="h-3 w-3" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p>
+                                          選択した曜日に繰り返し授業が作成されます
+                                        </p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                </div>
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                  {daysOfWeekOptions.map((day) => {
+                                    const daysOfWeek =
+                                      form.getValues("daysOfWeek") || [];
+                                    return (
+                                      <div
+                                        key={day.id}
+                                        className="flex items-center space-x-2"
+                                      >
+                                        <Checkbox
+                                          id={`day-${day.id}`}
+                                          checked={daysOfWeek.includes(day.id)}
+                                          onCheckedChange={(checked) =>
+                                            handleDayOfWeekChange(
+                                              day.id,
+                                              checked as boolean
+                                            )
+                                          }
+                                        />
+                                        <label
+                                          htmlFor={`day-${day.id}`}
+                                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                        >
+                                          {day.label}
+                                        </label>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              )}
+            </Accordion>
+
+            <DialogFooter className="pt-2">
               <Button type="submit">{isEditing ? "更新" : "作成"}</Button>
             </DialogFooter>
           </form>
