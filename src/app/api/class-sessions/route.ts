@@ -117,7 +117,7 @@ const createDateTime = (dateStr: string, timeString: string): Date => {
 
 // GET - List class sessions with pagination and filters
 export const GET = withBranchAccess(
-  ["ADMIN", "STAFF", "TEACHER"],
+  ["ADMIN", "STAFF", "TEACHER", "STUDENT"],
   async (request: NextRequest, session, branchId) => {
     // Parse query parameters
     const url = new URL(request.url);
