@@ -34,6 +34,21 @@ const formatEvent = (
   updatedAt: event.updatedAt,
 });
 
+// Helper function to create UTC date from date string or Date object
+const createUTCDate = (dateInput: string | Date): Date => {
+  if (dateInput instanceof Date) {
+    // If it's already a Date object, extract the date parts and create UTC date
+    const year = dateInput.getFullYear();
+    const month = dateInput.getMonth();
+    const day = dateInput.getDate();
+    return new Date(Date.UTC(year, month, day));
+  } else {
+    // If it's a string, parse it and create UTC date
+    const [year, month, day] = dateInput.split("-").map(Number);
+    return new Date(Date.UTC(year, month - 1, day));
+  }
+};
+
 // GET a specific event by ID
 export const GET = withBranchAccess(
   ["ADMIN", "STAFF", "TEACHER"],
@@ -142,8 +157,19 @@ export const PATCH = withBranchAccess(
 
       const { name, startDate, endDate, isRecurring, notes } = result.data;
 
+      // Convert dates to UTC if they are provided
+      let startDateUTC, endDateUTC;
+
+      if (startDate) {
+        startDateUTC = createUTCDate(startDate);
+      }
+
+      if (endDate) {
+        endDateUTC = createUTCDate(endDate);
+      }
+
       // Ensure dates are valid if updating both
-      if (startDate && endDate && new Date(startDate) > new Date(endDate)) {
+      if (startDateUTC && endDateUTC && startDateUTC > endDateUTC) {
         return NextResponse.json(
           { error: "開始日は終了日より前でなければなりません" },
           { status: 400 }
@@ -155,8 +181,8 @@ export const PATCH = withBranchAccess(
         where: { id: eventId },
         data: {
           name,
-          startDate,
-          endDate,
+          startDate: startDateUTC,
+          endDate: endDateUTC,
           isRecurring,
           notes,
         },

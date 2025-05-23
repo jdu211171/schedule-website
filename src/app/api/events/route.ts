@@ -34,6 +34,21 @@ const formatEvent = (
   updatedAt: event.updatedAt,
 });
 
+// Helper function to create UTC date from date string or Date object
+const createUTCDate = (dateInput: string | Date): Date => {
+  if (dateInput instanceof Date) {
+    // If it's already a Date object, extract the date parts and create UTC date
+    const year = dateInput.getFullYear();
+    const month = dateInput.getMonth();
+    const day = dateInput.getDate();
+    return new Date(Date.UTC(year, month, day));
+  } else {
+    // If it's a string, parse it and create UTC date
+    const [year, month, day] = dateInput.split("-").map(Number);
+    return new Date(Date.UTC(year, month - 1, day));
+  }
+};
+
 // GET - List events with pagination and filters
 export const GET = withBranchAccess(
   ["ADMIN", "STAFF", "TEACHER"],
@@ -74,13 +89,13 @@ export const GET = withBranchAccess(
 
     if (startDate) {
       where.startDate = {
-        gte: startDate,
+        gte: createUTCDate(startDate),
       };
     }
 
     if (endDate) {
       where.endDate = {
-        lte: endDate,
+        lte: createUTCDate(endDate),
       };
     }
 
@@ -142,8 +157,12 @@ export const POST = withBranchAccess(
 
       const { name, startDate, endDate, isRecurring, notes } = result.data;
 
+      // Convert dates to UTC to avoid timezone issues
+      const startDateUTC = createUTCDate(startDate);
+      const endDateUTC = createUTCDate(endDate);
+
       // Ensure dates are valid
-      if (new Date(startDate) > new Date(endDate)) {
+      if (startDateUTC > endDateUTC) {
         return NextResponse.json(
           { error: "開始日は終了日より前でなければなりません" },
           { status: 400 }
@@ -160,8 +179,8 @@ export const POST = withBranchAccess(
       const newEvent = await prisma.event.create({
         data: {
           name,
-          startDate,
-          endDate,
+          startDate: startDateUTC,
+          endDate: endDateUTC,
           isRecurring,
           notes,
           branchId: eventBranchId,
