@@ -5,7 +5,6 @@ import { ja } from 'date-fns/locale';
 import { DateRange } from "react-day-picker";
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CalendarIcon } from "lucide-react";
@@ -190,7 +189,6 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
 
   const [regularClassTypeId, setRegularClassTypeId] = useState<string>('');
 
-  // useEffect блоки - без изменений
   useEffect(() => {
     const loadClassTypes = async () => {
       setIsLoadingClassTypes(true);
@@ -409,7 +407,6 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
     { label: '日', value: 0 }
   ];
 
-  // Преобразуем данные для SearchableSelect
   const classTypeItems: SearchableSelectItem[] = classTypes.map((type) => ({
     value: type.classTypeId,
     label: type.name,
@@ -438,202 +435,204 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle>授業の作成</DialogTitle>
           <DialogDescription>
             新しい授業の情報を入力してください
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium text-foreground">日付</label>
-              <div className="border rounded-md p-2 mt-1 bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground border-input">
-                {format(typeof lessonData.date === 'string' ? new Date(lessonData.date) : lessonData.date, 'yyyy年MM月dd日', { locale: ja })}
-              </div>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-foreground">教室</label>
-              <div className="border rounded-md p-2 mt-1 bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground border-input">
-                {booths.find(booth => booth.boothId === lessonData.boothId)?.name || lessonData.boothId}
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium text-foreground">開始時間</label>
-              <div className="border rounded-md p-2 mt-1 bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground border-input">
-                {lessonData.startTime}
-              </div>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-foreground">終了時間</label>
-              <div className="border rounded-md p-2 mt-1 bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground border-input">
-                {lessonData.endTime}
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <label htmlFor="class-type-select" className="text-sm font-medium mb-1 block text-foreground">授業のタイプ <span className="text-destructive">*</span></label>
-            <SearchableSelect
-              value={selectedClassTypeId}
-              onValueChange={setSelectedClassTypeId}
-              items={classTypeItems}
-              placeholder="授業タイプを選択"
-              searchPlaceholder="授業タイプを検索..."
-              emptyMessage="授業タイプが見つかりません"
-              loading={isLoadingClassTypes}
-              disabled={isLoadingClassTypes || classTypes.length === 0}
-            />
-          </div>
-          
-          {isRecurring && (
-            <div className="space-y-4 p-3 rounded-md border border-input bg-muted/30">
+        <div className="flex-1 overflow-y-auto px-1">
+          <div className="grid gap-3 py-2">
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium mb-1 block text-foreground">期間 <span className="text-destructive">*</span></label>
-                <div className="relative">
-                  <DateRangePicker
-                    dateRange={dateRange}
-                    setDateRange={setDateRange}
-                    placeholder="期間を選択"
-                  />
+                <label className="text-sm font-medium text-foreground">日付</label>
+                <div className="border rounded-md p-2 mt-1 bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground border-input">
+                  {format(typeof lessonData.date === 'string' ? new Date(lessonData.date) : lessonData.date, 'yyyy年MM月dd日', { locale: ja })}
                 </div>
               </div>
-              
               <div>
-                <label className="text-sm font-medium mb-2 block text-foreground">曜日を選択</label>
-                <div className="flex flex-wrap gap-2">
-                  {daysOfWeek.map(day => (
-                    <button
-                      key={day.value}
-                      type="button"
-                      onClick={() => handleDayToggle(day.value)}
-                      className={`
-                        w-8 h-8 rounded-full flex items-center justify-center text-sm
-                        transition-colors duration-200 
-                        ${selectedDays.includes(day.value) 
-                          ? 'bg-primary text-primary-foreground' 
-                          : 'bg-muted text-muted-foreground border border-input'
-                        }
-                      `}
-                    >
-                      {day.label}
-                    </button>
-                  ))}
-                </div>
-                <div className="text-xs mt-1 text-muted-foreground">
-                  {selectedDays.length === 0 
-                    ? "曜日が選択されていない場合、選択した日付の曜日が使用されます。" 
-                    : `選択された曜日: ${selectedDays.map(d => daysOfWeek.find(day => day.value === d)?.label).join(', ')}`
-                  }
+                <label className="text-sm font-medium text-foreground">教室</label>
+                <div className="border rounded-md p-2 mt-1 bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground border-input">
+                  {booths.find(booth => booth.boothId === lessonData.boothId)?.name || lessonData.boothId}
                 </div>
               </div>
             </div>
-          )}
 
-          <div>
-            <label htmlFor="student-type-select" className="text-sm font-medium mb-1 block text-foreground">生徒タイプ <span className="text-destructive">*</span></label>
-            <SearchableSelect
-              value={studentTypeId}
-              onValueChange={setStudentTypeId}
-              items={studentTypeItems}
-              placeholder="生徒タイプを選択"
-              searchPlaceholder="生徒タイプを検索..."
-              emptyMessage="生徒タイプが見つかりません"
-              loading={isLoadingStudentTypes}
-              disabled={isLoadingStudentTypes}
-            />
-          </div>
-
-          <div>
-            <label htmlFor="student-select" className="text-sm font-medium mb-1 block text-foreground">生徒 <span className="text-destructive">*</span></label>
-            <SearchableSelect
-              value={studentId}
-              onValueChange={setStudentId}
-              items={studentItems}
-              placeholder={
-                isLoadingStudents 
-                  ? "生徒を読み込み中..." 
-                  : !studentTypeId 
-                  ? "先に生徒タイプを選択してください" 
-                  : students.length === 0 
-                  ? "この生徒タイプの生徒はいません" 
-                  : "生徒を選択"
-              }
-              searchPlaceholder="生徒を検索..."
-              emptyMessage="生徒が見つかりません"
-              loading={isLoadingStudents}
-              disabled={isLoadingStudents || !studentTypeId || students.length === 0}
-            />
-          </div>
-
-          <div>
-            <label htmlFor="subject-select" className="text-sm font-medium mb-1 block text-foreground">科目 <span className="text-destructive">*</span></label>
-            <SearchableSelect
-              value={subjectId}
-              onValueChange={setSubjectId}
-              items={subjectItems}
-              placeholder={
-                isLoadingSubjects 
-                  ? "科目を読み込み中..." 
-                  : !studentId 
-                  ? "先に生徒を選択してください" 
-                  : subjects.length === 0 
-                  ? "科目がありません" 
-                  : "科目を選択"
-              }
-              searchPlaceholder="科目を検索..."
-              emptyMessage="科目が見つかりません"
-              loading={isLoadingSubjects}
-              disabled={isLoadingSubjects || !studentId || subjects.length === 0}
-            />
-          </div>
-
-          <div>
-            <label htmlFor="teacher-select" className="text-sm font-medium mb-1 block text-foreground">講師 <span className="text-destructive">*</span></label>
-            <SearchableSelect
-              value={teacherId}
-              onValueChange={setTeacherId}
-              items={teacherItems}
-              placeholder={
-                isLoadingTeachers 
-                  ? "講師を読み込み中..." 
-                  : !studentId 
-                  ? "先に生徒を選択してください" 
-                  : teachers.length === 0 
-                  ? "講師はいません" 
-                  : "講師を選択"
-              }
-              searchPlaceholder="講師を検索..."
-              emptyMessage="講師が見つかりません"
-              loading={isLoadingTeachers}
-              disabled={isLoadingTeachers || !studentId || teachers.length === 0}
-            />
-          </div>
-          
-          <div>
-            <label htmlFor="notes" className="text-sm font-medium mb-1 block text-foreground">メモ</label>
-            <textarea
-              id="notes"
-              className="w-full min-h-[80px] p-2 border rounded-md bg-background text-foreground hover:border-accent focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors border-input"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="授業に関するメモを入力してください"
-            />
-          </div>
-          
-          {error && (
-            <div className="p-3 rounded bg-destructive/10 border border-destructive/20 text-destructive text-sm">
-              {error}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium text-foreground">開始時間</label>
+                <div className="border rounded-md p-2 mt-1 bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground border-input">
+                  {lessonData.startTime}
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-foreground">終了時間</label>
+                <div className="border rounded-md p-2 mt-1 bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground border-input">
+                  {lessonData.endTime}
+                </div>
+              </div>
             </div>
-          )}
+
+            <div>
+              <label htmlFor="class-type-select" className="text-sm font-medium mb-1 block text-foreground">授業のタイプ <span className="text-destructive">*</span></label>
+              <SearchableSelect
+                value={selectedClassTypeId}
+                onValueChange={setSelectedClassTypeId}
+                items={classTypeItems}
+                placeholder="授業タイプを選択"
+                searchPlaceholder="授業タイプを検索..."
+                emptyMessage="授業タイプが見つかりません"
+                loading={isLoadingClassTypes}
+                disabled={isLoadingClassTypes || classTypes.length === 0}
+              />
+            </div>
+            
+            {isRecurring && (
+              <div className="space-y-3 p-3 rounded-md border border-input bg-muted/30">
+                <div>
+                  <label className="text-sm font-medium mb-1 block text-foreground">期間 <span className="text-destructive">*</span></label>
+                  <div className="relative">
+                    <DateRangePicker
+                      dateRange={dateRange}
+                      setDateRange={setDateRange}
+                      placeholder="期間を選択"
+                    />
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="text-sm font-medium mb-2 block text-foreground">曜日を選択</label>
+                  <div className="flex flex-wrap gap-2">
+                    {daysOfWeek.map(day => (
+                      <button
+                        key={day.value}
+                        type="button"
+                        onClick={() => handleDayToggle(day.value)}
+                        className={`
+                          w-8 h-8 rounded-full flex items-center justify-center text-sm
+                          transition-colors duration-200 
+                          ${selectedDays.includes(day.value) 
+                            ? 'bg-primary text-primary-foreground' 
+                            : 'bg-muted text-muted-foreground border border-input'
+                          }
+                        `}
+                      >
+                        {day.label}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="text-xs mt-1 text-muted-foreground">
+                    {selectedDays.length === 0 
+                      ? "曜日が選択されていない場合、選択した日付の曜日が使用されます。" 
+                      : `選択された曜日: ${selectedDays.map(d => daysOfWeek.find(day => day.value === d)?.label).join(', ')}`
+                    }
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div>
+              <label htmlFor="student-type-select" className="text-sm font-medium mb-1 block text-foreground">生徒タイプ <span className="text-destructive">*</span></label>
+              <SearchableSelect
+                value={studentTypeId}
+                onValueChange={setStudentTypeId}
+                items={studentTypeItems}
+                placeholder="生徒タイプを選択"
+                searchPlaceholder="生徒タイプを検索..."
+                emptyMessage="生徒タイプが見つかりません"
+                loading={isLoadingStudentTypes}
+                disabled={isLoadingStudentTypes}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="student-select" className="text-sm font-medium mb-1 block text-foreground">生徒 <span className="text-destructive">*</span></label>
+              <SearchableSelect
+                value={studentId}
+                onValueChange={setStudentId}
+                items={studentItems}
+                placeholder={
+                  isLoadingStudents 
+                    ? "生徒を読み込み中..." 
+                    : !studentTypeId 
+                    ? "先に生徒タイプを選択してください" 
+                    : students.length === 0 
+                    ? "この生徒タイプの生徒はいません" 
+                    : "生徒を選択"
+                }
+                searchPlaceholder="生徒を検索..."
+                emptyMessage="生徒が見つかりません"
+                loading={isLoadingStudents}
+                disabled={isLoadingStudents || !studentTypeId || students.length === 0}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="subject-select" className="text-sm font-medium mb-1 block text-foreground">科目 <span className="text-destructive">*</span></label>
+              <SearchableSelect
+                value={subjectId}
+                onValueChange={setSubjectId}
+                items={subjectItems}
+                placeholder={
+                  isLoadingSubjects 
+                    ? "科目を読み込み中..." 
+                    : !studentId 
+                    ? "先に生徒を選択してください" 
+                    : subjects.length === 0 
+                    ? "科目がありません" 
+                    : "科目を選択"
+                }
+                searchPlaceholder="科目を検索..."
+                emptyMessage="科目が見つかりません"
+                loading={isLoadingSubjects}
+                disabled={isLoadingSubjects || !studentId || subjects.length === 0}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="teacher-select" className="text-sm font-medium mb-1 block text-foreground">講師 <span className="text-destructive">*</span></label>
+              <SearchableSelect
+                value={teacherId}
+                onValueChange={setTeacherId}
+                items={teacherItems}
+                placeholder={
+                  isLoadingTeachers 
+                    ? "講師を読み込み中..." 
+                    : !studentId 
+                    ? "先に生徒を選択してください" 
+                    : teachers.length === 0 
+                    ? "講師はいません" 
+                    : "講師を選択"
+                }
+                searchPlaceholder="講師を検索..."
+                emptyMessage="講師が見つかりません"
+                loading={isLoadingTeachers}
+                disabled={isLoadingTeachers || !studentId || teachers.length === 0}
+              />
+            </div>
+            
+            <div>
+              <label htmlFor="notes" className="text-sm font-medium mb-1 block text-foreground">メモ</label>
+              <textarea
+                id="notes"
+                className="w-full min-h-[60px] p-2 border rounded-md bg-background text-foreground hover:border-accent focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors border-input"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="授業に関するメモを入力してください"
+              />
+            </div>
+            
+            {error && (
+              <div className="p-3 rounded bg-destructive/10 border border-destructive/20 text-destructive text-sm">
+                {error}
+              </div>
+            )}
+          </div>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="flex-shrink-0 pt-2">
           <Button
             variant="outline"
             className="transition-all duration-200 hover:bg-accent hover:text-accent-foreground active:scale-[0.98] focus:ring-2 focus:ring-primary/30 focus:outline-none"

@@ -75,7 +75,6 @@ export function SearchableSelect({
   // Focus input when opening
   React.useEffect(() => {
     if (open && inputRef.current) {
-      // Small delay to ensure dropdown is rendered
       requestAnimationFrame(() => {
         inputRef.current?.focus();
       });
@@ -145,7 +144,7 @@ export function SearchableSelect({
         aria-haspopup="listbox"
       >
         <span className="truncate">
-          {loading ? "Загрузка..." : selectedItem ? selectedItem.label : placeholder}
+          {loading ? "..." : selectedItem ? selectedItem.label : placeholder}
         </span>
         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
       </button>
@@ -172,7 +171,6 @@ export function SearchableSelect({
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={handleKeyDown}
               className="flex h-10 w-full bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground"
-              // Prevent click from bubbling and closing dropdown
               onClick={(e) => e.stopPropagation()}
             />
             {searchQuery && (
@@ -198,36 +196,44 @@ export function SearchableSelect({
               </div>
             ) : (
               <div className="p-1">
-                {filteredItems.map((item, index) => (
-                  <div
-                    key={item.value}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleSelect(item.value);
-                    }}
-                    onMouseEnter={() => setHighlightedIndex(index)}
-                    className={cn(
-                      "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none",
-                      "hover:bg-accent hover:text-accent-foreground",
-                      highlightedIndex === index && "bg-accent text-accent-foreground",
-                      value === item.value && "font-medium"
-                    )}
-                    role="option"
-                    aria-selected={value === item.value}
-                  >
-                    <div className="flex flex-1 flex-col">
-                      <span>{item.label}</span>
-                      {item.description && (
-                        <span className="text-xs text-muted-foreground">
-                          {item.description}
-                        </span>
+                {filteredItems.map((item, index) => {
+                  const isSelected = value === item.value;
+                  const isHighlighted = highlightedIndex === index;
+                  
+                  return (
+                    <div
+                      key={item.value}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSelect(item.value);
+                      }}
+                      onMouseEnter={() => setHighlightedIndex(index)}
+                      className={cn(
+                        "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors",
+                        // Hover state (только если не выбран)
+                        !isSelected && isHighlighted && "bg-accent text-accent-foreground",
+                        // Selected state (приоритетнее hover)
+                        isSelected && "bg-primary/10 text-primary font-medium",
+                        // Selected + highlighted state
+                        isSelected && isHighlighted && "bg-primary/20 text-primary"
+                      )}
+                      role="option"
+                      aria-selected={isSelected}
+                    >
+                      <div className="flex flex-1 flex-col">
+                        <span>{item.label}</span>
+                        {item.description && (
+                          <span className="text-xs text-muted-foreground">
+                            {item.description}
+                          </span>
+                        )}
+                      </div>
+                      {isSelected && (
+                        <Check className="ml-2 h-4 w-4 shrink-0" />
                       )}
                     </div>
-                    {value === item.value && (
-                      <Check className="ml-2 h-4 w-4 shrink-0" />
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
