@@ -12,7 +12,7 @@ async function main() {
   // 1‑a. Branch
   const mainBranch = await prisma.branch.create({
     data: {
-      name: "Main Branch",
+      name: "本校",
       notes: "デフォルト拠点",
     },
   });
@@ -20,9 +20,49 @@ async function main() {
   // 1‑b. StudentType
   const generalStudentType = await prisma.studentType.create({
     data: {
-      name: "一般",
-      maxYears: 12,
-      description: "特定の区分に属さない学生",
+      name: "小学生",
+      maxYears: 6,
+      description: "小学校に在籍する学生",
+    },
+  });
+
+  const middleStudentType = await prisma.studentType.create({
+    data: {
+      name: "中学生",
+      maxYears: 3,
+      description: "中学校に在籍する学生",
+    },
+  });
+
+  const highStudentType = await prisma.studentType.create({
+    data: {
+      name: "高校生",
+      maxYears: 3,
+      description: "高等学校に在籍する学生",
+    },
+  });
+
+  const otonaStudentType = await prisma.studentType.create({
+    data: {
+      name: "大人",
+      maxYears: null,
+      description: "成人学習者",
+    },
+  });
+
+  const adultStudentType = await prisma.studentType.create({
+    data: {
+      name: "社会人",
+      maxYears: null,
+      description: "社会人・成人学習者",
+    },
+  });
+
+  const rouninStudentType = await prisma.studentType.create({
+    data: {
+      name: "浪人生",
+      maxYears: null,
+      description: "進学準備中の学生（浪人生）",
     },
   });
 
@@ -34,11 +74,27 @@ async function main() {
     },
   });
 
+  const specialClassType = await prisma.classType.create({
+    data: {
+      name: "特別授業",
+      notes: "夏期講習やイベントなどの特別枠",
+    },
+  });
+
   // 1‑d. Subject
   const mathSubject = await prisma.subject.create({
     data: {
       name: "数学",
       notes: "算数・数学全般",
+    },
+  });
+
+  // Add a subject to the Main Branch
+  const englishSubject = await prisma.subject.create({
+    data: {
+      name: "英語",
+      notes: "英語全般",
+      branchId: mainBranch.branchId,
     },
   });
 
@@ -152,9 +208,9 @@ async function main() {
       subjectId: mathSubject.subjectId,
       classTypeId: regularClassType.classTypeId,
       boothId: boothA.boothId,
-      date: new Date("2025-06-15"),
-      startTime: new Date("1970-01-01T09:00:00Z"),
-      endTime: new Date("1970-01-01T10:30:00Z"),
+      date: new Date("2025-06-23"),
+      startTime: new Date("2025-06-22T09:00:00Z"),
+      endTime: new Date("2025-09-29T10:30:00Z"),
       duration: 90, // 分
       notes: "数学定期テスト対策",
     },
