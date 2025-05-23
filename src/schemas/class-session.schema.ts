@@ -54,6 +54,7 @@ export const classSessionSeriesUpdateSchema = z.object({
 export const classSessionFilterSchema = z.object({
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().positive().default(10),
+  userId: z.string().optional(),
   teacherId: z.string().optional(),
   studentId: z.string().optional(),
   subjectId: z.string().optional(),

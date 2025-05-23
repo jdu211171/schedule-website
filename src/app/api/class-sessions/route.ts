@@ -135,6 +135,7 @@ export const GET = withBranchAccess(
     const {
       page,
       limit,
+      userId,
       teacherId,
       studentId,
       subjectId,
@@ -155,6 +156,21 @@ export const GET = withBranchAccess(
     // Otherwise use the user's current branch unless they are an admin
     else if (session.user?.role !== "ADMIN") {
       where.branchId = branchId;
+    }
+
+    if (userId) {
+      where.OR = [
+        {
+          teacher: {
+            userId: userId,
+          },
+        },
+        {
+          student: {
+            userId: userId,
+          },
+        },
+      ];
     }
 
     if (teacherId) {
