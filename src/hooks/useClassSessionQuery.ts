@@ -123,3 +123,60 @@ export function useMultipleDaysClassSessions(dates: string[]): UseQueryResult<Cl
     }))
   });
 }
+
+// Hook for fetching class sessions within a specific date range
+export function useClassSessionsDateRange(params: {
+  startDate: string;
+  endDate: string;
+  teacherId?: string;
+  studentId?: string;
+  page?: number;
+  limit?: number;
+}) {
+  const { startDate, endDate, teacherId, studentId, page = 1, limit = 50 } = params;
+
+  return useQuery<ClassSessionsResponse>({
+    queryKey: ["classSessions", "dateRange", startDate, endDate, teacherId, studentId, page, limit],
+    queryFn: async () => {
+      const queryParams = new URLSearchParams({
+        startDate,
+        endDate,
+        page: page.toString(),
+        limit: limit.toString(),
+      });
+
+      if (teacherId) queryParams.append("teacherId", teacherId);
+      if (studentId) queryParams.append("studentId", studentId);
+
+      return await fetcher<ClassSessionsResponse>(`/api/class-sessions?${queryParams.toString()}`);
+    },
+    enabled: !!startDate && !!endDate,
+  });
+}
+
+// Hook for fetching class sessions for a specific day
+export function useClassSessionsByDate(date: string, params: {
+  teacherId?: string;
+  studentId?: string;
+  limit?: number;
+} = {}) {
+  const { teacherId, studentId, limit = 100 } = params;
+
+  return useQuery<ClassSessionsResponse>({
+    queryKey: ["classSessions", "byDate", date, teacherId, studentId],
+    queryFn: async () => {
+      const queryParams = new URLSearchParams({
+        startDate: date,
+        endDate: date,
+        limit: limit.toString(),
+        page: "1",
+      });
+
+      if (teacherId) queryParams.append("teacherId", teacherId);
+      if (studentId) queryParams.append("studentId", studentId);
+
+      return await fetcher<ClassSessionsResponse>(`/api/class-sessions?${queryParams.toString()}`);
+    },
+    enabled: !!date,
+  });
+}

@@ -1,17 +1,9 @@
-Modify only the parts of the code that are directly related to the request, leaving unrelated sections completely unchanged.
+Environment Context: We use Bun for package management; please tailor command suggestions and installation examples for Bun.
 
-Preserve all original formatting, including whitespace, indentation, line breaks, and overall code structure.
+Modification Scope: Modify only the parts of the code directly related to the request.
 
-Additionally, do not add or remove the last trailing empty line in the files; if an empty line exists at the end of the file, leave it unchanged, and if it does not, do not create one.
+Preservation: Preserve all formatting and original names, and retain comments, annotations, and documentation verbatim unless explicitly requested otherwise.
 
-Retain all comments, annotations, and in-code documentation exactly as they appear in the original.
+Error Handling: After making modifications, check for TypeScript errors and fix any issues before finalizing the code output.
 
-Avoid any automatic reformatting or beautification.
-
-Keep all original variable names, function names, and identifiers unless a change is explicitly requested.
-
-Use the attached files and any project knowledge provided to guide your modifications and ensure that the changes align with the project requirements.
-
-If modifications are applied, output the entire modified code in full (not just a diff or partial changes) so that I can easily copy and paste it into my project.
-
-We use Bun for managing packages. Therefore, whenever you provide command suggestions or instructions for installing packages, please ensure that the examples and code samples are tailored for Bun.
+Output Format: If modifications are applied, output the complete code (not just a diff) so I can easily copy and paste it.

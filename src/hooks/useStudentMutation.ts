@@ -238,6 +238,27 @@ export function useStudentUpdate() {
           });
         },
         onSuccess: (data) => {
+          // Find the updated student from the response
+          const updatedStudent = data?.data?.[0];
+          if (updatedStudent) {
+            // Update all student queries to replace the student with the updated one
+            const queries = queryClient.getQueriesData<StudentsResponse>({
+              queryKey: ["students"],
+            });
+            queries.forEach(([queryKey]) => {
+              const currentData = queryClient.getQueryData<StudentsResponse>(queryKey);
+              if (currentData) {
+                queryClient.setQueryData<StudentsResponse>(queryKey, {
+                  ...currentData,
+                  data: currentData.data.map((student) =>
+                    student.studentId === updatedStudent.studentId ? updatedStudent : student
+                  ),
+                });
+              }
+            });
+            // Also update the single student query if it exists
+            queryClient.setQueryData(["student", updatedStudent.studentId], updatedStudent);
+          }
           toast.success("生徒を更新しました", {
             id: "student-update-success",
           });

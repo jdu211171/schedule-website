@@ -144,6 +144,7 @@ export function EventFormDialog({
   return (
     <Dialog
       open={open}
+      modal={false}
       onOpenChange={(open) => {
         if (!open) {
           // Reset form when dialog is closed
@@ -208,7 +209,7 @@ export function EventFormDialog({
                           </Button>
                         </FormControl>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
+                      <PopoverContent className="w-auto p-0" align="start" onClick={(e) => e.stopPropagation()}>
                         <Calendar
                           mode="single"
                           selected={field.value}
@@ -251,7 +252,7 @@ export function EventFormDialog({
                           </Button>
                         </FormControl>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
+                      <PopoverContent className="w-auto p-0" align="start" onClick={(e) => e.stopPropagation()}>
                         <Calendar
                           mode="single"
                           selected={field.value}

@@ -255,6 +255,27 @@ export function useStaffUpdate() {
           });
         },
         onSuccess: (data) => {
+          // Find the updated staff from the response
+          const updatedStaff = data?.data?.[0];
+          if (updatedStaff) {
+            // Update all staff queries to replace the staff with the updated one
+            const queries = queryClient.getQueriesData<StaffsResponse>({
+              queryKey: ["staffs"],
+            });
+            queries.forEach(([queryKey]) => {
+              const currentData = queryClient.getQueryData<StaffsResponse>(queryKey);
+              if (currentData) {
+                queryClient.setQueryData<StaffsResponse>(queryKey, {
+                  ...currentData,
+                  data: currentData.data.map((staff) =>
+                    staff.id === updatedStaff.id ? updatedStaff : staff
+                  ),
+                });
+              }
+            });
+            // Also update the single staff query if it exists
+            queryClient.setQueryData(["staff", updatedStaff.id], updatedStaff);
+          }
           toast.success("スタッフを更新しました", {
             id: "staff-update-success",
           });

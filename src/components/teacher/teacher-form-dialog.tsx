@@ -3,7 +3,6 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
 import { useEffect } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -27,13 +26,14 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useTeacherCreate, useTeacherUpdate } from "@/hooks/useTeacherMutation";
-import { useBranches } from "@/hooks/useBranchQuery";
 import {
+  teacherFormSchema,
+  teacherCreateSchema,
   teacherUpdateSchema,
-  TeacherUpdate,
-  TeacherCreate,
+  type TeacherFormValues,
 } from "@/schemas/teacher.schema";
 import { Teacher } from "@/hooks/useTeacherQuery";
+import { useSession } from "next-auth/react";
 
 interface TeacherFormDialogProps {
   open: boolean;
@@ -48,22 +48,19 @@ export function TeacherFormDialog({
 }: TeacherFormDialogProps) {
   const createTeacherMutation = useTeacherCreate();
   const updateTeacherMutation = useTeacherUpdate();
-  const { data: branchesResponse, isLoading: isBranchesLoading } =
-    useBranches();
+  const { data: session } = useSession();
+  const branchesResponse = session?.user?.branches
+    ? { data: session.user.branches }
+    : { data: [] };
+  const isBranchesLoading = !session?.user?.branches;
+
+  // Get default branch id (first in user's branches)
+  const defaultBranchId = session?.user?.branches?.[0]?.branchId;
 
   const isEditing = !!teacher;
 
-  // Define a modified update schema that makes password optional
-  const editSchema = teacherUpdateSchema.extend({
-    password: z
-      .string()
-      .min(6, "Password must be at least 6 characters")
-      .optional(),
-  });
-
-  // Always use TeacherUpdate and editSchema for the form
-  const form = useForm<TeacherUpdate>({
-    resolver: zodResolver(editSchema),
+  const form = useForm<TeacherFormValues>({
+    resolver: zodResolver(teacherFormSchema),
     defaultValues: {
       name: "",
       kanaName: "",
@@ -73,12 +70,17 @@ export function TeacherFormDialog({
       username: "",
       password: "",
       branchIds: [],
+      teacherId: undefined,
     },
   });
 
   useEffect(() => {
     if (teacher) {
-      // When editing, populate the form with existing teacher data
+      const branchIds = teacher.branches?.map((branch: { branchId: string }) => branch.branchId) || [];
+      // Ensure defaultBranchId is always included
+      const branchIdsWithDefault = defaultBranchId && !branchIds.includes(defaultBranchId)
+        ? [defaultBranchId, ...branchIds]
+        : branchIds;
       form.reset({
         teacherId: teacher.teacherId,
         name: teacher.name || "",
@@ -87,13 +89,10 @@ export function TeacherFormDialog({
         lineId: teacher.lineId || "",
         notes: teacher.notes || "",
         username: teacher.username || "",
-        // Don't prefill password
-        password: undefined,
-        // Extract branchIds from the teacher's branches
-        branchIds: teacher.branches?.map((branch) => branch.branchId) || [],
+        password: "",
+        branchIds: branchIdsWithDefault,
       });
     } else {
-      // Reset form when creating a new teacher
       form.reset({
         name: "",
         kanaName: "",
@@ -102,42 +101,40 @@ export function TeacherFormDialog({
         notes: "",
         username: "",
         password: "",
-        branchIds: [],
+        branchIds: defaultBranchId ? [defaultBranchId] : [],
+        teacherId: undefined,
       });
     }
-  }, [teacher, form]);
+  }, [teacher, form, defaultBranchId]);
 
-  function onSubmit(values: TeacherUpdate) {
-    // Close the dialog immediately for better UX
-    onOpenChange(false);
-
-    // Create a modified submission object
+  function onSubmit(values: TeacherFormValues) {
     const submissionData = { ...values };
 
-    // If password is empty in edit mode, remove it from the submission
-    if (
-      isEditing &&
-      (!submissionData.password || submissionData.password === "")
-    ) {
-      delete submissionData.password;
-    }
-
-    // Then trigger the mutation without waiting
     if (isEditing && teacher) {
-      // Spread submissionData first, then override teacherId
-      updateTeacherMutation.mutate({
+      if (!submissionData.password || submissionData.password === "") {
+        delete submissionData.password;
+      }
+      const parsedData = teacherUpdateSchema.parse({
         ...submissionData,
         teacherId: teacher.teacherId,
       });
+      updateTeacherMutation.mutate(parsedData, {
+        onSuccess: () => {
+          onOpenChange(false);
+          form.reset();
+        },
+      });
     } else {
-      // Remove teacherId from submissionData for create
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { teacherId, ...createData } = submissionData;
-      createTeacherMutation.mutate(createData as TeacherCreate);
+      const { teacherId, ...createValues } = submissionData;
+      const parsedData = teacherCreateSchema.parse(createValues);
+      createTeacherMutation.mutate(parsedData, {
+        onSuccess: () => {
+          onOpenChange(false);
+          form.reset();
+        },
+      });
     }
-
-    // Reset the form
-    form.reset();
   }
 
   return (
@@ -148,39 +145,41 @@ export function TeacherFormDialog({
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="after:content-['*'] after:ml-1 after:text-destructive">
-                    名前
-                  </FormLabel>
-                  <FormControl>
-                    <Input placeholder="名前を入力してください" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="flex space-x-4">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem className="flex-1">
+                    <FormLabel className="after:content-['*'] after:ml-1 after:text-destructive">
+                      名前
+                    </FormLabel>
+                    <FormControl>
+                      <Input placeholder="名前を入力してください" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <FormField
-              control={form.control}
-              name="kanaName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>カナ</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="カナを入力してください"
-                      {...field}
-                      value={field.value || ""}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+              <FormField
+                control={form.control}
+                name="kanaName"
+                render={({ field }) => (
+                  <FormItem className="flex-1">
+                    <FormLabel>カナ</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="カナを入力してください"
+                        {...field}
+                        value={field.value || ""}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             <FormField
               control={form.control}
@@ -232,42 +231,44 @@ export function TeacherFormDialog({
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>メールアドレス</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="email"
-                      placeholder="メールアドレスを入力してください"
-                      {...field}
-                      value={field.value || ""}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="flex space-x-4">
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem className="flex-1">
+                    <FormLabel>メールアドレス</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="email"
+                        placeholder="メールアドレスを入力してください"
+                        {...field}
+                        value={field.value || ""}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <FormField
-              control={form.control}
-              name="lineId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>LINE ID</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="LINE IDを入力してください"
-                      {...field}
-                      value={field.value || ""}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+              <FormField
+                control={form.control}
+                name="lineId"
+                render={({ field }) => (
+                  <FormItem className="flex-1">
+                    <FormLabel>LINE ID</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="LINE IDを入力してください"
+                        {...field}
+                        value={field.value || ""}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             <FormField
               control={form.control}
@@ -302,12 +303,13 @@ export function TeacherFormDialog({
                           <div>読み込み中...</div>
                         ) : (
                           <div className="space-y-2">
-                            {branchesResponse?.data.map((branch) => (
+                            {branchesResponse?.data.map((branch: { branchId: string; name: string }) => (
                               <FormField
                                 key={branch.branchId}
                                 control={form.control}
                                 name="branchIds"
                                 render={({ field }) => {
+                                  const isDefault = branch.branchId === defaultBranchId;
                                   return (
                                     <FormItem
                                       key={branch.branchId}
@@ -315,37 +317,31 @@ export function TeacherFormDialog({
                                     >
                                       <FormControl>
                                         <Checkbox
-                                          checked={field.value?.includes(
-                                            branch.branchId
-                                          )}
+                                          checked={field.value?.includes(branch.branchId)}
+                                          disabled={isDefault}
                                           onCheckedChange={(checked) => {
-                                            const currentValues = [
-                                              ...(field.value || []),
-                                            ];
+                                            let currentValues = [...(field.value || [])];
+                                            if (isDefault) {
+                                              // Always keep default branch in the value
+                                              if (!currentValues.includes(branch.branchId)) {
+                                                currentValues = [branch.branchId, ...currentValues];
+                                              }
+                                              field.onChange(currentValues);
+                                              return;
+                                            }
                                             if (checked) {
-                                              if (
-                                                !currentValues.includes(
-                                                  branch.branchId
-                                                )
-                                              ) {
-                                                field.onChange([
-                                                  ...currentValues,
-                                                  branch.branchId,
-                                                ]);
+                                              if (!currentValues.includes(branch.branchId)) {
+                                                field.onChange([...currentValues, branch.branchId]);
                                               }
                                             } else {
-                                              field.onChange(
-                                                currentValues.filter(
-                                                  (value) =>
-                                                    value !== branch.branchId
-                                                )
-                                              );
+                                              field.onChange(currentValues.filter((value) => value !== branch.branchId));
                                             }
                                           }}
                                         />
                                       </FormControl>
                                       <FormLabel className="font-normal cursor-pointer">
                                         {branch.name}
+                                        {isDefault && <span className="ml-2 text-xs text-muted-foreground">(デフォルト)</span>}
                                       </FormLabel>
                                     </FormItem>
                                   );

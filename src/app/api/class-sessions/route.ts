@@ -51,49 +51,73 @@ const formatClassSession = (
     booth?: { name: string } | null;
     branch?: { name: string } | null;
   }
-): FormattedClassSession => ({
-  classId: classSession.classId,
-  seriesId: classSession.seriesId,
-  teacherId: classSession.teacherId,
-  teacherName: classSession.teacher?.name || null,
-  studentId: classSession.studentId,
-  studentName: classSession.student?.name || null,
-  subjectId: classSession.subjectId,
-  subjectName: classSession.subject?.name || null,
-  classTypeId: classSession.classTypeId,
-  classTypeName: classSession.classType?.name || null,
-  boothId: classSession.boothId,
-  boothName: classSession.booth?.name || null,
-  branchId: classSession.branchId,
-  branchName: classSession.branch?.name || null,
-  date: format(classSession.date, "yyyy-MM-dd"),
-  startTime: format(classSession.startTime, "HH:mm"),
-  endTime: format(classSession.endTime, "HH:mm"),
-  duration: classSession.duration,
-  notes: classSession.notes,
-  createdAt: format(classSession.createdAt, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"),
-  updatedAt: format(classSession.updatedAt, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"),
-});
+): FormattedClassSession => {
+  // Get UTC values from the date
+  const dateUTC = new Date(classSession.date);
+  const year = dateUTC.getUTCFullYear();
+  const month = String(dateUTC.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(dateUTC.getUTCDate()).padStart(2, "0");
+  const formattedDate = `${year}-${month}-${day}`;
+
+  // Get UTC values from the start time
+  const startUTC = new Date(classSession.startTime);
+  const startHour = String(startUTC.getUTCHours()).padStart(2, "0");
+  const startMinute = String(startUTC.getUTCMinutes()).padStart(2, "0");
+  const formattedStartTime = `${startHour}:${startMinute}`;
+
+  // Get UTC values from the end time
+  const endUTC = new Date(classSession.endTime);
+  const endHour = String(endUTC.getUTCHours()).padStart(2, "0");
+  const endMinute = String(endUTC.getUTCMinutes()).padStart(2, "0");
+  const formattedEndTime = `${endHour}:${endMinute}`;
+
+  return {
+    classId: classSession.classId,
+    seriesId: classSession.seriesId,
+    teacherId: classSession.teacherId,
+    teacherName: classSession.teacher?.name || null,
+    studentId: classSession.studentId,
+    studentName: classSession.student?.name || null,
+    subjectId: classSession.subjectId,
+    subjectName: classSession.subject?.name || null,
+    classTypeId: classSession.classTypeId,
+    classTypeName: classSession.classType?.name || null,
+    boothId: classSession.boothId,
+    boothName: classSession.booth?.name || null,
+    branchId: classSession.branchId,
+    branchName: classSession.branch?.name || null,
+    date: formattedDate,
+    startTime: formattedStartTime,
+    endTime: formattedEndTime,
+    duration: classSession.duration,
+    notes: classSession.notes,
+    createdAt: format(classSession.createdAt, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"),
+    updatedAt: format(classSession.updatedAt, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"),
+  };
+};
 
 // Helper function to create a DateTime from date and time string
 const createDateTime = (dateStr: string, timeString: string): Date => {
-  const date = parseISO(dateStr);
-  const parsedTime = parse(timeString, "HH:mm", new Date());
-  const hours = parsedTime.getHours();
-  const minutes = parsedTime.getMinutes();
+  // Parse the date string to get year, month, day
+  const dateParts = dateStr.split("-").map(Number);
+  const year = dateParts[0];
+  const month = dateParts[1] - 1; // JavaScript months are 0-based
+  const day = dateParts[2];
 
-  const result = new Date(date);
-  result.setHours(hours);
-  result.setMinutes(minutes);
-  result.setSeconds(0);
-  result.setMilliseconds(0);
+  // Parse the time string to get hours and minutes
+  const timeParts = timeString.split(":").map(Number);
+  const hours = timeParts[0];
+  const minutes = timeParts[1];
 
-  return result;
+  // Create a UTC date object to avoid timezone conversion
+  const date = new Date(Date.UTC(year, month, day, hours, minutes, 0, 0));
+
+  return date;
 };
 
 // GET - List class sessions with pagination and filters
 export const GET = withBranchAccess(
-  ["ADMIN", "STAFF", "TEACHER"],
+  ["ADMIN", "STAFF", "TEACHER", "STUDENT"],
   async (request: NextRequest, session, branchId) => {
     // Parse query parameters
     const url = new URL(request.url);
@@ -157,18 +181,17 @@ export const GET = withBranchAccess(
       where.seriesId = seriesId;
     }
 
-    if (startDate) {
-      where.date = {
-        ...(where.date || {}),
-        gte: parseISO(startDate),
-      };
-    }
+    // Date range filtering
+    if (startDate || endDate) {
+      where.date = {};
 
-    if (endDate) {
-      where.date = {
-        ...(where.date || {}),
-        lte: parseISO(endDate),
-      };
+      if (startDate) {
+        where.date.gte = parseISO(startDate);
+      }
+
+      if (endDate) {
+        where.date.lte = parseISO(endDate);
+      }
     }
 
     // Calculate pagination
@@ -271,8 +294,11 @@ export const POST = withBranchAccess(
           ? result.data.branchId
           : branchId;
 
+      // Convert date string to Date object using UTC to avoid timezone issues
+      const [year, month, day] = date.split("-").map(Number);
+      const dateObj = new Date(Date.UTC(year, month - 1, day));
+
       // Convert string times to Date objects
-      const dateObj = parseISO(date);
       const startDateTime = createDateTime(date, startTime);
       const endDateTime = createDateTime(date, endTime);
 
@@ -380,12 +406,21 @@ export const POST = withBranchAccess(
         }
 
         // Use startDate if provided, otherwise use date as the start date
-        const effectiveStartDate = startDate ? parseISO(startDate) : dateObj;
-        const effectiveEndDate = parseISO(endDate);
+        let effectiveStartDate;
+        if (startDate) {
+          const [sYear, sMonth, sDay] = startDate.split("-").map(Number);
+          effectiveStartDate = new Date(Date.UTC(sYear, sMonth - 1, sDay));
+        } else {
+          effectiveStartDate = dateObj;
+        }
+
+        // Convert endDate to Date object using UTC
+        const [eYear, eMonth, eDay] = endDate.split("-").map(Number);
+        const effectiveEndDate = new Date(Date.UTC(eYear, eMonth - 1, eDay));
 
         // Adjust times to avoid timezone issues
-        effectiveStartDate.setHours(0, 0, 0, 0);
-        effectiveEndDate.setHours(23, 59, 59, 999);
+        effectiveStartDate.setUTCHours(0, 0, 0, 0);
+        effectiveEndDate.setUTCHours(23, 59, 59, 999);
 
         if (effectiveEndDate < effectiveStartDate) {
           return NextResponse.json(
@@ -420,12 +455,16 @@ export const POST = withBranchAccess(
         // Create class sessions for all dates
         const createdSessions = await prisma.$transaction(
           sessionDates.map((sessionDate) => {
+            // Format the date to YYYY-MM-DD string
+            const formattedSessionDate = format(sessionDate, "yyyy-MM-dd");
+
+            // Create start and end times for this session using UTC
             const sessionStartTime = createDateTime(
-              format(sessionDate, "yyyy-MM-dd"),
+              formattedSessionDate,
               startTime
             );
             const sessionEndTime = createDateTime(
-              format(sessionDate, "yyyy-MM-dd"),
+              formattedSessionDate,
               endTime
             );
 

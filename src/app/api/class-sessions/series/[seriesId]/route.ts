@@ -40,44 +40,68 @@ const formatClassSession = (
     booth?: { name: string } | null;
     branch?: { name: string } | null;
   }
-): FormattedClassSession => ({
-  classId: classSession.classId,
-  seriesId: classSession.seriesId,
-  teacherId: classSession.teacherId,
-  teacherName: classSession.teacher?.name || null,
-  studentId: classSession.studentId,
-  studentName: classSession.student?.name || null,
-  subjectId: classSession.subjectId,
-  subjectName: classSession.subject?.name || null,
-  classTypeId: classSession.classTypeId,
-  classTypeName: classSession.classType?.name || null,
-  boothId: classSession.boothId,
-  boothName: classSession.booth?.name || null,
-  branchId: classSession.branchId,
-  branchName: classSession.branch?.name || null,
-  date: format(classSession.date, "yyyy-MM-dd"),
-  startTime: format(classSession.startTime, "HH:mm"),
-  endTime: format(classSession.endTime, "HH:mm"),
-  duration: classSession.duration,
-  notes: classSession.notes,
-  createdAt: format(classSession.createdAt, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"),
-  updatedAt: format(classSession.updatedAt, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"),
-});
+): FormattedClassSession => {
+  // Get UTC values from the date
+  const dateUTC = new Date(classSession.date);
+  const year = dateUTC.getUTCFullYear();
+  const month = String(dateUTC.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(dateUTC.getUTCDate()).padStart(2, "0");
+  const formattedDate = `${year}-${month}-${day}`;
+
+  // Get UTC values from the start time
+  const startUTC = new Date(classSession.startTime);
+  const startHour = String(startUTC.getUTCHours()).padStart(2, "0");
+  const startMinute = String(startUTC.getUTCMinutes()).padStart(2, "0");
+  const formattedStartTime = `${startHour}:${startMinute}`;
+
+  // Get UTC values from the end time
+  const endUTC = new Date(classSession.endTime);
+  const endHour = String(endUTC.getUTCHours()).padStart(2, "0");
+  const endMinute = String(endUTC.getUTCMinutes()).padStart(2, "0");
+  const formattedEndTime = `${endHour}:${endMinute}`;
+
+  return {
+    classId: classSession.classId,
+    seriesId: classSession.seriesId,
+    teacherId: classSession.teacherId,
+    teacherName: classSession.teacher?.name || null,
+    studentId: classSession.studentId,
+    studentName: classSession.student?.name || null,
+    subjectId: classSession.subjectId,
+    subjectName: classSession.subject?.name || null,
+    classTypeId: classSession.classTypeId,
+    classTypeName: classSession.classType?.name || null,
+    boothId: classSession.boothId,
+    boothName: classSession.booth?.name || null,
+    branchId: classSession.branchId,
+    branchName: classSession.branch?.name || null,
+    date: formattedDate,
+    startTime: formattedStartTime,
+    endTime: formattedEndTime,
+    duration: classSession.duration,
+    notes: classSession.notes,
+    createdAt: format(classSession.createdAt, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"),
+    updatedAt: format(classSession.updatedAt, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"),
+  };
+};
 
 // Helper function to create a DateTime from date and time string
 const createDateTime = (dateStr: string, timeString: string): Date => {
-  const date = parseISO(dateStr);
-  const parsedTime = parse(timeString, "HH:mm", new Date());
-  const hours = parsedTime.getHours();
-  const minutes = parsedTime.getMinutes();
+  // Parse the date string to get year, month, day
+  const dateParts = dateStr.split("-").map(Number);
+  const year = dateParts[0];
+  const month = dateParts[1] - 1; // JavaScript months are 0-based
+  const day = dateParts[2];
 
-  const result = new Date(date);
-  result.setHours(hours);
-  result.setMinutes(minutes);
-  result.setSeconds(0);
-  result.setMilliseconds(0);
+  // Parse the time string to get hours and minutes
+  const timeParts = timeString.split(":").map(Number);
+  const hours = timeParts[0];
+  const minutes = timeParts[1];
 
-  return result;
+  // Create a UTC date object to avoid timezone conversion
+  const date = new Date(Date.UTC(year, month, day, hours, minutes, 0, 0));
+
+  return date;
 };
 
 // GET all sessions in a series
@@ -252,10 +276,10 @@ export const PATCH = withBranchAccess(
 
       // If updating times, validate them
       if (startTime && endTime) {
-        // We need a base date for parsing, but we'll update each session with its own date
-        const baseDate = format(new Date(), "yyyy-MM-dd");
-        const testStartTime = createDateTime(baseDate, startTime);
-        const testEndTime = createDateTime(baseDate, endTime);
+        // Use a test date to check time validity
+        const testDate = "2000-01-01";
+        const testStartTime = createDateTime(testDate, startTime);
+        const testEndTime = createDateTime(testDate, endTime);
 
         if (testEndTime <= testStartTime) {
           return NextResponse.json(
@@ -296,7 +320,14 @@ export const PATCH = withBranchAccess(
         futureSessions.map((session) => {
           // If updating times, calculate for each session's date
           if (hasTimeUpdate) {
-            const sessionDateStr = format(session.date, "yyyy-MM-dd");
+            // Format date as YYYY-MM-DD for the current session
+            const sessionDateUTC = new Date(session.date);
+            const sessionDateStr = `${sessionDateUTC.getUTCFullYear()}-${String(
+              sessionDateUTC.getUTCMonth() + 1
+            ).padStart(2, "0")}-${String(sessionDateUTC.getUTCDate()).padStart(
+              2,
+              "0"
+            )}`;
 
             if (startTime) {
               const sessionStartTime = createDateTime(

@@ -100,14 +100,20 @@ function BranchSelector() {
   const [isLoading, setIsLoading] = React.useState(false);
 
   // Use branches from session instead of making an API request
-  const branches = session?.user?.branches || [];
+  const branches = React.useMemo(() => session?.user?.branches || [], [session]);
 
   // Initialize the selected branch from localStorage first, then from session
   React.useEffect(() => {
     const storedBranchId = localStorage.getItem("selectedBranchId");
-    if (storedBranchId) {
+    // Check if storedBranchId is valid (exists in branches)
+    const isValidStored = storedBranchId && branches.some(b => b.branchId === storedBranchId);
+    if (isValidStored) {
       setSelectedBranchId(storedBranchId);
-    } else if (session?.user?.selectedBranchId) {
+    } else if (
+      session?.user?.selectedBranchId &&
+      typeof session.user !== "undefined" &&
+      branches.some(b => b.branchId === session.user!.selectedBranchId)
+    ) {
       setSelectedBranchId(session.user.selectedBranchId);
       localStorage.setItem("selectedBranchId", session.user.selectedBranchId);
     } else if (branches.length > 0) {
