@@ -404,6 +404,7 @@ export function ClassSessionFormDialog({
   return (
     <Dialog
       open={open}
+      modal={false}
       onOpenChange={(open) => {
         if (!open) {
           // Reset form when dialog is closed
@@ -629,6 +630,7 @@ export function ClassSessionFormDialog({
                             <PopoverTrigger asChild>
                               <FormControl>
                                 <Button
+                                  type="button"
                                   variant={"outline"}
                                   className={cn(
                                     "w-full pl-3 text-left font-normal",
@@ -653,6 +655,7 @@ export function ClassSessionFormDialog({
                             <PopoverContent
                               className="w-auto p-0"
                               align="start"
+                              onClick={(e) => e.stopPropagation()}
                             >
                               <Calendar
                                 mode="single"
@@ -780,6 +783,7 @@ export function ClassSessionFormDialog({
                                   <PopoverTrigger asChild>
                                     <FormControl>
                                       <Button
+                                        type="button"
                                         variant={"outline"}
                                         className={cn(
                                           "w-full pl-3 text-left font-normal",
@@ -803,6 +807,7 @@ export function ClassSessionFormDialog({
                                   <PopoverContent
                                     className="w-auto p-0"
                                     align="start"
+                                    onClick={(e) => e.stopPropagation()}
                                   >
                                     <Calendar
                                       mode="single"
@@ -841,6 +846,7 @@ export function ClassSessionFormDialog({
                                   <PopoverTrigger asChild>
                                     <FormControl>
                                       <Button
+                                        type="button"
                                         variant={"outline"}
                                         className={cn(
                                           "w-full pl-3 text-left font-normal",
@@ -864,6 +870,7 @@ export function ClassSessionFormDialog({
                                   <PopoverContent
                                     className="w-auto p-0"
                                     align="start"
+                                    onClick={(e) => e.stopPropagation()}
                                   >
                                     <Calendar
                                       mode="single"
@@ -903,6 +910,7 @@ export function ClassSessionFormDialog({
                                     <Tooltip>
                                       <TooltipTrigger asChild>
                                         <Button
+                                          type="button"
                                           variant="ghost"
                                           size="icon"
                                           className="ml-2 h-4 w-4"

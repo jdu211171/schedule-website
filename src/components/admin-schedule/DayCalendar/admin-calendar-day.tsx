@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useBooths } from '@/hooks/useBoothQuery';
 import { ExtendedClassSessionWithRelations, useMultipleDaysClassSessions } from '@/hooks/useClassSessionQuery';
 import { DaySelector } from './day-selector';
@@ -6,12 +6,12 @@ import { DayCalendar } from './day-calendar';
 import { CreateLessonDialog } from './create-lesson-dialog';
 import { LessonDialog } from './lesson-dialog';
 import { Skeleton } from "@/components/ui/skeleton";
-import { 
-  getCurrentDateAdjusted, 
+import {
+  getCurrentDateAdjusted,
   getDateKey,
 } from '../date';
 
-import { 
+import {
   CreateClassSessionPayload,
   UpdateClassSessionPayload,
   NewClassSessionData,
@@ -37,11 +37,14 @@ interface ApiErrorResponse {
   issues?: Array<{ message: string }>;
 }
 
+// Storage key for selected days persistence
+const SELECTED_DAYS_KEY = "admin_calendar_selected_days";
+
 const getUniqueKeyForDate = (date: Date, index: number): string => {
   return `${getDateKey(date)}-${index}`;
 };
 
-const TIME_SLOTS: TimeSlot[] = Array.from({ length: 57 }, (_el, i) => { 
+const TIME_SLOTS: TimeSlot[] = Array.from({ length: 57 }, (_el, i) => {
   const hours = Math.floor(i / 4) + 8;
   const startMinutes = (i % 4) * 15;
   let endHours, endMinutes;
@@ -64,14 +67,37 @@ const TIME_SLOTS: TimeSlot[] = Array.from({ length: 57 }, (_el, i) => {
 });
 
 export default function AdminCalendarDay() {
+  // Initialize with a default value, will be updated after mount
   const [selectedDays, setSelectedDays] = useState<Date[]>([getCurrentDateAdjusted()]);
+  const [isInitialized, setIsInitialized] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState<boolean>(false);
   const [newLessonData, setNewLessonData] = useState<NewClassSessionData | null>(null);
   const [selectedLesson, setSelectedLesson] = useState<ExtendedClassSessionWithRelations | null>(null);
   const [showLessonDialog, setShowLessonDialog] = useState<boolean>(false);
   const [dialogMode, setDialogMode] = useState<'view' | 'edit'>('view');
   const [resetSelectionKey, setResetSelectionKey] = useState<number>(0);
-  
+
+  // On component mount, load the saved selected days from localStorage
+  useEffect(() => {
+    const savedDaysJson = localStorage.getItem(SELECTED_DAYS_KEY);
+    if (savedDaysJson) {
+      try {
+        const savedDays = JSON.parse(savedDaysJson);
+        if (Array.isArray(savedDays) && savedDays.length > 0) {
+          const parsedDates = savedDays
+            .map((dateStr: string) => new Date(dateStr))
+            .filter((date: Date) => !isNaN(date.getTime()));
+          if (parsedDates.length > 0) {
+            setSelectedDays(parsedDates);
+          }
+        }
+      } catch (error) {
+        console.error('Error parsing saved selected days:', error);
+      }
+    }
+    setIsInitialized(true);
+  }, []);
+
   const { data: boothsResponse, isLoading: isLoadingBooths } = useBooths({ limit: 100 });
   const booths = useMemo(() => boothsResponse?.data || [], [boothsResponse]);
 
@@ -83,17 +109,17 @@ export default function AdminCalendarDay() {
 
   const classSessionsByDate = useMemo(() => {
     const sessionsByDate: Record<string, ExtendedClassSessionWithRelations[]> = {};
-    
+
     classSessionQueries.forEach((query, index) => {
       const dateStr = selectedDatesStrings[index];
-      
+
       if (query.data?.data && Array.isArray(query.data.data)) {
         sessionsByDate[dateStr] = query.data.data;
       } else {
         sessionsByDate[dateStr] = [];
       }
     });
-    
+
     return sessionsByDate;
   }, [classSessionQueries, selectedDatesStrings]);
 
@@ -104,21 +130,21 @@ export default function AdminCalendarDay() {
   const timeSlots = TIME_SLOTS;
 
   const refreshData = useCallback(() => {
-    const dateToRefresh = newLessonData?.date || 
-      (selectedLesson?.date instanceof Date ? 
-        selectedLesson.date : 
+    const dateToRefresh = newLessonData?.date ||
+      (selectedLesson?.date instanceof Date ?
+        selectedLesson.date :
         selectedLesson?.date ? new Date(selectedLesson.date as string) : null);
-    
+
     if (dateToRefresh) {
       const dateStrToRefresh = getDateKey(dateToRefresh);
       const queryIndex = selectedDatesStrings.indexOf(dateStrToRefresh);
-      
+
       if (queryIndex !== -1) {
         classSessionQueries[queryIndex].refetch();
         return;
       }
     }
-    
+
     classSessionQueries.forEach(query => query.refetch());
   }, [classSessionQueries, selectedDatesStrings, newLessonData, selectedLesson]);
 
@@ -126,15 +152,21 @@ export default function AdminCalendarDay() {
     setSelectedDays(prev => {
       const dateStrSet = new Set(prev.map(d => getDateKey(d)));
       const dateStr = getDateKey(date);
-      
+
+      let newDays: Date[];
       if (isSelected) {
         if (dateStrSet.has(dateStr)) return prev;
-        const newDays = [...prev, date];
-        return newDays.sort((a, b) => a.getTime() - b.getTime());
+        newDays = [...prev, date];
+        newDays = newDays.sort((a, b) => a.getTime() - b.getTime());
       } else {
         if (!dateStrSet.has(dateStr)) return prev;
-        return prev.filter(d => getDateKey(d) !== dateStr);
+        newDays = prev.filter(d => getDateKey(d) !== dateStr);
       }
+
+      // Save to localStorage
+      localStorage.setItem(SELECTED_DAYS_KEY, JSON.stringify(newDays.map(d => d.toISOString())));
+
+      return newDays;
     });
   }, []);
 
@@ -153,9 +185,9 @@ export default function AdminCalendarDay() {
 
   const handleSaveNewLesson = useCallback(async (lessonData: CreateClassSessionPayload) => {
     try {
-      const dateStr = typeof lessonData.date === 'string' ? 
+      const dateStr = typeof lessonData.date === 'string' ?
         lessonData.date : formatDateToString(lessonData.date);
-      
+
       const requestBody: any = {
         date: dateStr,
         startTime: lessonData.startTime,
@@ -167,7 +199,7 @@ export default function AdminCalendarDay() {
         classTypeId: lessonData.classTypeId || "",
         notes: lessonData.notes || ""
       };
-      
+
       if (lessonData.isRecurring) {
         requestBody.isRecurring = true;
         requestBody.startDate = lessonData.startDate;
@@ -176,7 +208,7 @@ export default function AdminCalendarDay() {
           requestBody.daysOfWeek = lessonData.daysOfWeek;
         }
       }
-      
+
       const response = await fetch('/api/class-sessions', {
         method: 'POST',
         headers: {
@@ -184,34 +216,34 @@ export default function AdminCalendarDay() {
         },
         body: JSON.stringify(requestBody),
       });
-  
+
       const contentType = response.headers.get("content-type");
-      
+
       if (!response.ok) {
         let errorData: ApiErrorResponse = {};
-        
+
         if (contentType && contentType.includes("application/json")) {
           errorData = await response.json();
         } else {
           const errorText = await response.text();
           errorData = { message: errorText || `サーバーエラー: ${response.status}` };
         }
-        
+
         let errorMessage = '授業の作成に失敗しました';
-        
+
         if (errorData.message) {
           errorMessage = errorData.message;
         } else if (errorData.error) {
           errorMessage = errorData.error;
         }
-        
+
         if (errorData.issues && Array.isArray(errorData.issues)) {
           errorMessage += ': ' + errorData.issues.map((issue) => issue.message).join(', ');
         }
-        
+
         throw new Error(errorMessage || `エラー ${response.status}: ${response.statusText}`);
       }
-  
+
       let responseData;
       try {
         if (contentType && contentType.includes("application/json")) {
@@ -220,7 +252,7 @@ export default function AdminCalendarDay() {
       } catch (parseError) {
         console.warn("応答のパースエラー:", parseError);
       }
-  
+
       setShowCreateDialog(false);
       refreshData();
       setNewLessonData(null);
@@ -229,7 +261,7 @@ export default function AdminCalendarDay() {
       if (errorMessage === '{}' || !errorMessage) {
         errorMessage = '授業の作成中にエラーが発生しました。データを確認して再度お試しください。';
       }
-      
+
       alert(`授業の作成エラー: ${errorMessage}`);
     }
   }, [refreshData]);
@@ -245,6 +277,11 @@ export default function AdminCalendarDay() {
     refreshData();
     setSelectedLesson(null);
   }, [refreshData]);
+
+  // Prevent rendering with default value during SSR/hydration to avoid flicker
+  if (!isInitialized) {
+    return null; // Show nothing during initial render to prevent flicker
+  }
 
   if (isLoadingBooths) {
     return <div className="flex justify-center p-8 text-foreground dark:text-foreground">教室を読み込み中...</div>;
@@ -262,7 +299,7 @@ export default function AdminCalendarDay() {
 
       {isLoading && (
         <div className="text-center p-4 text-primary dark:text-primary">
-          カレンダーデータを更新中... 
+          カレンダーデータを更新中...
           <span className="text-xs block mt-1 text-muted-foreground dark:text-muted-foreground">
             {selectedDays.map(day => getDateKey(day)).join(', ')}
           </span>
@@ -273,15 +310,15 @@ export default function AdminCalendarDay() {
         {selectedDays.length === 0 && !isLoading && (
             <div className="text-center text-muted-foreground dark:text-muted-foreground py-10">スケジュールを表示する日を選択してください。</div>
         )}
-        
+
         {selectedDays.map((day, index) => {
           const dateKey = getDateKey(day);
           const uniqueKey = getUniqueKeyForDate(day, index);
           const sessions = classSessionsByDate[dateKey] || [];
-          
+
           const queryIndex = selectedDatesStrings.indexOf(dateKey);
-          const isLoadingThisDay = queryIndex !== -1 ? 
-            (classSessionQueries[queryIndex].isLoading || classSessionQueries[queryIndex].isFetching) : 
+          const isLoadingThisDay = queryIndex !== -1 ?
+            (classSessionQueries[queryIndex].isLoading || classSessionQueries[queryIndex].isFetching) :
             false;
 
           if (isLoadingThisDay && !sessions.length) {
@@ -293,11 +330,11 @@ export default function AdminCalendarDay() {
                 <div className="p-4 space-y-3">
                   <div className="flex space-x-2">
                     <Skeleton className="h-10 w-[100px] rounded" />
-                    {Array.from({ length: 5 }).map((_el, i) => ( 
+                    {Array.from({ length: 5 }).map((_el, i) => (
                        <Skeleton key={`${uniqueKey}-skeleton-${i}`} className="h-10 flex-1 rounded" />
                     ))}
                   </div>
-                  {Array.from({ length: Math.min(booths.length, 2) || 1 }).map((_el, boothIndex) => ( 
+                  {Array.from({ length: Math.min(booths.length, 2) || 1 }).map((_el, boothIndex) => (
                     <div key={`${uniqueKey}-booth-${boothIndex}`} className="flex space-x-2 mt-1">
                       <Skeleton className="h-10 w-[100px] rounded" />
                       <Skeleton className="h-10 flex-1 rounded" />
