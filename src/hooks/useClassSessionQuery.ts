@@ -3,7 +3,6 @@ import { ClassSessionFilter, classSessionFilterSchema } from "@/schemas/class-se
 import { Prisma } from "@prisma/client";
 import { useQuery, useQueries, UseQueryResult } from "@tanstack/react-query";
 
-// Define the include object for ClassSession relations
 export const classSessionWithRelationsInclude = {
   booth: true,
   classType: true,
@@ -13,12 +12,10 @@ export const classSessionWithRelationsInclude = {
   branch: true,
 } as const;
 
-// Type for a ClassSession with all its relations from Prisma
 export type ClassSessionWithRelations = Prisma.ClassSessionGetPayload<{
   include: typeof classSessionWithRelationsInclude;
 }>;
 
-// Дополнительные поля из API, которые не включены в Prisma тип
 export interface ApiClassSessionFields {
   teacherName?: string;
   studentName?: string;
@@ -30,10 +27,8 @@ export interface ApiClassSessionFields {
   duration?: number;
 }
 
-// Расширенный тип, который объединяет Prisma-тип и поля API
 export type ExtendedClassSessionWithRelations = ClassSessionWithRelations & ApiClassSessionFields;
 
-// Parameters for the useClassSessions hook
 export type UseClassSessionsParams = {
   page?: number;
   limit?: number;
@@ -46,9 +41,9 @@ export type UseClassSessionsParams = {
   startDate?: string;
   endDate?: string;
   seriesId?: string;
+  date?: string;
 };
 
-// Response type for a list of class sessions - используем расширенный тип
 export type ClassSessionsResponse = {
   data: ExtendedClassSessionWithRelations[];
   pagination: {
@@ -59,19 +54,19 @@ export type ClassSessionsResponse = {
   };
 };
 
-// Response type for a single class session - используем расширенный тип
 export type SingleClassSessionResponse = {
   data: ExtendedClassSessionWithRelations;
 };
 
-/**
- * Hook to fetch a list of class sessions with pagination and filtering.
- */
+export type DayFilters = {
+  subjectId?: string;
+  teacherId?: string;
+  studentId?: string;
+};
+
 export function useClassSessions(params: UseClassSessionsParams = { page: 1, limit: 10 }) {
-  // Validate and structure parameters using the Zod schema
   const validatedQuery = classSessionFilterSchema.parse(params);
 
-  // Construct search parameters for the API request
   const searchParams = new URLSearchParams();
   for (const [key, value] of Object.entries(validatedQuery)) {
     if (value !== undefined && value !== null) {
@@ -91,9 +86,6 @@ export function useClassSessions(params: UseClassSessionsParams = { page: 1, lim
   });
 }
 
-/**
- * Hook to fetch a single class session by its ID.
- */
 export function useClassSession(classSessionId: string | undefined | null) {
   return useQuery<ExtendedClassSessionWithRelations>({
     queryKey: ["classSession", classSessionId],
@@ -108,15 +100,30 @@ export function useClassSession(classSessionId: string | undefined | null) {
   });
 }
 
-/**
- * Hook for simultaneously fetching class sessions data for multiple individual dates
- */
-export function useMultipleDaysClassSessions(dates: string[]): UseQueryResult<ClassSessionsResponse, Error>[] {
+export function useMultipleDaysClassSessions(
+  dates: string[], 
+  filters: Record<string, DayFilters> = {}
+): UseQueryResult<ClassSessionsResponse, Error>[] {
   return useQueries({
     queries: dates.map(dateStr => ({
-      queryKey: ['classSessions', 'byDate', dateStr],
+      queryKey: ['classSessions', 'byDate', dateStr, filters[dateStr]],
       queryFn: async () => {
-        const url = `/api/class-sessions?date=${dateStr}&limit=100`;
+        const params = new URLSearchParams({
+          date: dateStr,
+        });
+        
+        const dateFilters = filters[dateStr];
+        if (dateFilters?.subjectId) {
+          params.append('subjectId', dateFilters.subjectId);
+        }
+        if (dateFilters?.teacherId) {
+          params.append('teacherId', dateFilters.teacherId);
+        }
+        if (dateFilters?.studentId) {
+          params.append('studentId', dateFilters.studentId);
+        }
+        
+        const url = `/api/class-sessions?${params.toString()}`;
         return await fetcher<ClassSessionsResponse>(url);
       },
       staleTime: 1000 * 60 * 5, 
@@ -124,19 +131,19 @@ export function useMultipleDaysClassSessions(dates: string[]): UseQueryResult<Cl
   });
 }
 
-// Hook for fetching class sessions within a specific date range
 export function useClassSessionsDateRange(params: {
   startDate: string;
   endDate: string;
   teacherId?: string;
   studentId?: string;
+  subjectId?: string;
   page?: number;
   limit?: number;
 }) {
-  const { startDate, endDate, teacherId, studentId, page = 1, limit = 50 } = params;
+  const { startDate, endDate, teacherId, studentId, subjectId, page = 1, limit = 50 } = params;
 
   return useQuery<ClassSessionsResponse>({
-    queryKey: ["classSessions", "dateRange", startDate, endDate, teacherId, studentId, page, limit],
+    queryKey: ["classSessions", "dateRange", startDate, endDate, teacherId, studentId, subjectId, page, limit],
     queryFn: async () => {
       const queryParams = new URLSearchParams({
         startDate,
@@ -147,6 +154,7 @@ export function useClassSessionsDateRange(params: {
 
       if (teacherId) queryParams.append("teacherId", teacherId);
       if (studentId) queryParams.append("studentId", studentId);
+      if (subjectId) queryParams.append("subjectId", subjectId);
 
       return await fetcher<ClassSessionsResponse>(`/api/class-sessions?${queryParams.toString()}`);
     },
@@ -154,26 +162,29 @@ export function useClassSessionsDateRange(params: {
   });
 }
 
-// Hook for fetching class sessions for a specific day
 export function useClassSessionsByDate(date: string, params: {
   teacherId?: string;
   studentId?: string;
+  subjectId?: string;
   limit?: number;
 } = {}) {
-  const { teacherId, studentId, limit = 100 } = params;
+  const { teacherId, studentId, subjectId, limit } = params;
 
   return useQuery<ClassSessionsResponse>({
-    queryKey: ["classSessions", "byDate", date, teacherId, studentId],
+    queryKey: ["classSessions", "byDate", date, teacherId, studentId, subjectId],
     queryFn: async () => {
       const queryParams = new URLSearchParams({
         startDate: date,
         endDate: date,
-        limit: limit.toString(),
         page: "1",
       });
 
+      if (limit !== undefined) {
+        queryParams.append("limit", limit.toString());
+      }
       if (teacherId) queryParams.append("teacherId", teacherId);
       if (studentId) queryParams.append("studentId", studentId);
+      if (subjectId) queryParams.append("subjectId", subjectId);
 
       return await fetcher<ClassSessionsResponse>(`/api/class-sessions?${queryParams.toString()}`);
     },

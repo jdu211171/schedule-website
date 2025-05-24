@@ -1,8 +1,9 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useBooths } from '@/hooks/useBoothQuery';
-import { ExtendedClassSessionWithRelations, useMultipleDaysClassSessions } from '@/hooks/useClassSessionQuery';
+import { ExtendedClassSessionWithRelations, useMultipleDaysClassSessions, DayFilters } from '@/hooks/useClassSessionQuery';
 import { DaySelector } from './day-selector';
 import { DayCalendar } from './day-calendar';
+import { DayCalendarFilters } from './day-calendar-filters';
 import { CreateLessonDialog } from './create-lesson-dialog';
 import { LessonDialog } from './lesson-dialog';
 import { Skeleton } from "@/components/ui/skeleton";
@@ -70,6 +71,7 @@ export default function AdminCalendarDay() {
   // Initialize with a default value, will be updated after mount
   const [selectedDays, setSelectedDays] = useState<Date[]>([getCurrentDateAdjusted()]);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [dayFilters, setDayFilters] = useState<Record<string, DayFilters>>({});
   const [showCreateDialog, setShowCreateDialog] = useState<boolean>(false);
   const [newLessonData, setNewLessonData] = useState<NewClassSessionData | null>(null);
   const [selectedLesson, setSelectedLesson] = useState<ExtendedClassSessionWithRelations | null>(null);
@@ -105,7 +107,7 @@ export default function AdminCalendarDay() {
     return selectedDays.map(day => getDateKey(day));
   }, [selectedDays]);
 
-  const classSessionQueries = useMultipleDaysClassSessions(selectedDatesStrings);
+  const classSessionQueries = useMultipleDaysClassSessions(selectedDatesStrings, dayFilters);
 
   const classSessionsByDate = useMemo(() => {
     const sessionsByDate: Record<string, ExtendedClassSessionWithRelations[]> = {};
@@ -160,7 +162,15 @@ export default function AdminCalendarDay() {
         newDays = newDays.sort((a, b) => a.getTime() - b.getTime());
       } else {
         if (!dateStrSet.has(dateStr)) return prev;
-        newDays = prev.filter(d => getDateKey(d) !== dateStr);
+        
+        // Remove filters for this day when day is deselected
+        setDayFilters(prev => {
+          const newFilters = { ...prev };
+          delete newFilters[dateStr];
+          return newFilters;
+        });
+        
+        return prev.filter(d => getDateKey(d) !== dateStr);
       }
 
       // Save to localStorage
@@ -168,6 +178,13 @@ export default function AdminCalendarDay() {
 
       return newDays;
     });
+  }, []);
+
+  const handleFiltersChange = useCallback((dateKey: string, filters: DayFilters) => {
+    setDayFilters(prev => ({
+      ...prev,
+      [dateKey]: filters
+    }));
   }, []);
 
   const handleCreateLesson = useCallback((date: Date, startTime: string, endTime: string, boothId: string) => {
@@ -315,7 +332,8 @@ export default function AdminCalendarDay() {
           const dateKey = getDateKey(day);
           const uniqueKey = getUniqueKeyForDate(day, index);
           const sessions = classSessionsByDate[dateKey] || [];
-
+          const currentFilters = dayFilters[dateKey] || {};
+          
           const queryIndex = selectedDatesStrings.indexOf(dateKey);
           const isLoadingThisDay = queryIndex !== -1 ?
             (classSessionQueries[queryIndex].isLoading || classSessionQueries[queryIndex].isFetching) :
@@ -346,17 +364,20 @@ export default function AdminCalendarDay() {
           }
 
           return (
-            <DayCalendar
-              key={uniqueKey}
-              date={day}
-              booths={booths}
-              timeSlots={timeSlots}
-              classSessions={sessions}
-              onLessonClick={handleLessonClick}
-              onCreateLesson={handleCreateLesson}
-              resetSelectionKey={resetSelectionKey}
-            />
-          );
+            <div key={uniqueKey}>
+    <DayCalendar
+      date={day}
+      booths={booths}
+      timeSlots={timeSlots}
+      classSessions={sessions}
+      onLessonClick={handleLessonClick}
+      onCreateLesson={handleCreateLesson}
+      resetSelectionKey={resetSelectionKey}
+      filters={currentFilters}
+      onFiltersChange={(filters) => handleFiltersChange(dateKey, filters)}
+    />
+  </div>
+);
         })}
       </div>
 
