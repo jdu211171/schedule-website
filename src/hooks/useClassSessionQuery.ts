@@ -2,6 +2,8 @@ import { fetcher } from "@/lib/fetcher";
 import { ClassSessionFilter, classSessionFilterSchema } from "@/schemas/class-session.schema";
 import { Prisma } from "@prisma/client";
 import { useQuery, useQueries, UseQueryResult } from "@tanstack/react-query";
+import { useMemo } from "react";
+import { addDays, format, startOfWeek } from "date-fns";
 
 export const classSessionWithRelationsInclude = {
   booth: true,
@@ -190,4 +192,53 @@ export function useClassSessionsByDate(date: string, params: {
     },
     enabled: !!date,
   });
+}
+
+export function useMultipleWeeksClassSessions(selectedWeeks: Date[]) {
+  const weekQueries = useQueries({
+    queries: selectedWeeks.map(week => {
+      const weekStart = startOfWeek(week, { weekStartsOn: 1 });
+      const weekEnd = addDays(weekStart, 6);
+      
+      const startDate = format(weekStart, 'yyyy-MM-dd');
+      const endDate = format(weekEnd, 'yyyy-MM-dd');
+      
+      return {
+        queryKey: ['classSessions', 'dateRange', startDate, endDate],
+        queryFn: async () => {
+          const params = new URLSearchParams({
+            startDate,
+            endDate,
+            limit: '100'
+          });
+          
+          const url = `/api/class-sessions?${params.toString()}`;
+          return await fetcher<ClassSessionsResponse>(url);
+        },
+        staleTime: 1000 * 60 * 5,
+      };
+    })
+  });
+
+  const allSessions = useMemo(() => {
+    const sessions: ExtendedClassSessionWithRelations[] = [];
+    
+    weekQueries.forEach((query) => {
+      if (query.data?.data && Array.isArray(query.data.data)) {
+        sessions.push(...query.data.data);
+      }
+    });
+    
+    return sessions;
+  }, [weekQueries]);
+
+  const isLoading = useMemo(() => {
+    return weekQueries.some((query) => query.isLoading || query.isFetching);
+  }, [weekQueries]);
+
+  return {
+    weekQueries,
+    allSessions,
+    isLoading
+  };
 }
