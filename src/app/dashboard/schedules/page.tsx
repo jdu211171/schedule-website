@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import AdminCalendarDay from '@/components/admin-schedule/DayCalendar/admin-calendar-day';
-// import AdminCalendarWeek from '@/components/admin-schedule/admin-calendar-week';
+import AdminCalendarWeek from '@/components/admin-schedule/WeekCalendar/admin-calendar-week';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ClassSessionTable } from '@/components/class-session/class-session-table';
 
@@ -56,7 +56,7 @@ export default function ScheduleManagementPage() {
                     <AdminCalendarDay />
                 </TabsContent>
                 <TabsContent value="week">
-                    {/*<AdminCalendarWeek />*/}
+                    <AdminCalendarWeek />
                 </TabsContent>
                 <TabsContent value="list">
                     <ClassSessionTable />
