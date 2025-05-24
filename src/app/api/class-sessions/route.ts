@@ -10,7 +10,6 @@ import { ClassSession } from "@prisma/client";
 import {
   addDays,
   format,
-  parse,
   parseISO,
   differenceInDays,
   getDay,
@@ -147,7 +146,8 @@ export const GET = withBranchAccess(
     } = result.data;
 
     // Build filter conditions
-    const where: any = {};
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const where: Record<string, any> = {};
 
     // If a specific branchId is provided in the request, use that
     if (result.data.branchId) {
@@ -347,6 +347,23 @@ export const POST = withBranchAccess(
 
       // Handle one-time or recurring sessions
       if (!isRecurring) {
+        // Check for existing session with same teacher, date, and time
+        const existingSession = await prisma.classSession.findFirst({
+          where: {
+            teacherId,
+            date: dateObj,
+            startTime: startDateTime,
+            endTime: endDateTime,
+          },
+        });
+
+        if (existingSession) {
+          return NextResponse.json(
+            { error: "同じ講師、日付、時間のクラスセッションが既に存在します" },
+            { status: 409 }
+          );
+        }
+
         // Create a single class session
         const newClassSession = await prisma.classSession.create({
           data: {
@@ -465,6 +482,37 @@ export const POST = withBranchAccess(
           return NextResponse.json(
             { error: "指定された日付範囲内に該当する曜日がありません" },
             { status: 400 }
+          );
+        }
+
+        // Check for existing sessions that would conflict
+        const conflictingSessions = [];
+        for (const sessionDate of sessionDates) {
+          const formattedSessionDate = format(sessionDate, "yyyy-MM-dd");
+          const sessionStartTime = createDateTime(formattedSessionDate, startTime);
+          const sessionEndTime = createDateTime(formattedSessionDate, endTime);
+
+          const existingSession = await prisma.classSession.findFirst({
+            where: {
+              teacherId,
+              date: sessionDate,
+              startTime: sessionStartTime,
+              endTime: sessionEndTime,
+            },
+          });
+
+          if (existingSession) {
+            conflictingSessions.push(sessionDate);
+          }
+        }
+
+        if (conflictingSessions.length > 0) {
+          const conflictDates = conflictingSessions.map(date =>
+            format(date, "yyyy年MM月dd日")
+          ).join(", ");
+          return NextResponse.json(
+            { error: `次の日付で既存のクラスセッションと重複しています: ${conflictDates}` },
+            { status: 409 }
           );
         }
 
