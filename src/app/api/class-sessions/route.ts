@@ -7,13 +7,7 @@ import {
   classSessionFilterSchema,
 } from "@/schemas/class-session.schema";
 import { ClassSession } from "@prisma/client";
-import {
-  addDays,
-  format,
-  parseISO,
-  differenceInDays,
-  getDay,
-} from "date-fns";
+import { addDays, format, parseISO, differenceInDays, getDay } from "date-fns";
 import { v4 as uuidv4 } from "uuid";
 
 type FormattedClassSession = {
@@ -114,6 +108,17 @@ const createDateTime = (dateStr: string, timeString: string): Date => {
   return date;
 };
 
+// Helper function to create UTC date for filtering (fixes timezone issues)
+const createUTCDateForFilter = (dateStr: string): Date => {
+  const dateParts = dateStr.split("-").map(Number);
+  const year = dateParts[0];
+  const month = dateParts[1] - 1; // JavaScript months are 0-based
+  const day = dateParts[2];
+
+  // Create a UTC date object with time set to 00:00:00 to match database storage
+  return new Date(Date.UTC(year, month, day, 0, 0, 0, 0));
+};
+
 // GET - List class sessions with pagination and filters
 export const GET = withBranchAccess(
   ["ADMIN", "STAFF", "TEACHER", "STUDENT"],
@@ -197,16 +202,24 @@ export const GET = withBranchAccess(
       where.seriesId = seriesId;
     }
 
-    // Date range filtering
+    // Date range filtering - FIXED to use UTC dates
     if (startDate || endDate) {
       where.date = {};
 
       if (startDate) {
-        where.date.gte = parseISO(startDate);
+        // Create UTC date for start of day to match database storage
+        where.date.gte = createUTCDateForFilter(startDate);
       }
 
       if (endDate) {
-        where.date.lte = parseISO(endDate);
+        // Create UTC date for end of day (23:59:59.999) to include the entire end date
+        const endDateParts = endDate.split("-").map(Number);
+        const endYear = endDateParts[0];
+        const endMonth = endDateParts[1] - 1;
+        const endDay = endDateParts[2];
+        where.date.lte = new Date(
+          Date.UTC(endYear, endMonth, endDay, 23, 59, 59, 999)
+        );
       }
     }
 
@@ -489,7 +502,10 @@ export const POST = withBranchAccess(
         const conflictingSessions = [];
         for (const sessionDate of sessionDates) {
           const formattedSessionDate = format(sessionDate, "yyyy-MM-dd");
-          const sessionStartTime = createDateTime(formattedSessionDate, startTime);
+          const sessionStartTime = createDateTime(
+            formattedSessionDate,
+            startTime
+          );
           const sessionEndTime = createDateTime(formattedSessionDate, endTime);
 
           const existingSession = await prisma.classSession.findFirst({
@@ -507,11 +523,13 @@ export const POST = withBranchAccess(
         }
 
         if (conflictingSessions.length > 0) {
-          const conflictDates = conflictingSessions.map(date =>
-            format(date, "yyyy年MM月dd日")
-          ).join(", ");
+          const conflictDates = conflictingSessions
+            .map((date) => format(date, "yyyy年MM月dd日"))
+            .join(", ");
           return NextResponse.json(
-            { error: `次の日付で既存のクラスセッションと重複しています: ${conflictDates}` },
+            {
+              error: `次の日付で既存のクラスセッションと重複しています: ${conflictDates}`,
+            },
             { status: 409 }
           );
         }
