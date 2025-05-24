@@ -119,7 +119,7 @@ export function useMultipleDaysClassSessions(dates: string[]): UseQueryResult<Cl
         const url = `/api/class-sessions?date=${dateStr}&limit=100`;
         return await fetcher<ClassSessionsResponse>(url);
       },
-      staleTime: 1000 * 60 * 5,
+      staleTime: 1000 * 60 * 5, 
     }))
   });
 }
@@ -180,4 +180,3 @@ export function useClassSessionsByDate(date: string, params: {
     enabled: !!date,
   });
 }
-  
