@@ -5,6 +5,7 @@ import { useQuery, useQueries, UseQueryResult } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { addDays, format, startOfWeek } from "date-fns";
 
+
 export const classSessionWithRelationsInclude = {
   booth: true,
   classType: true,
@@ -102,6 +103,7 @@ export function useClassSession(classSessionId: string | undefined | null) {
   });
 }
 
+// UPDATED FUNCTION - now uses startDate and endDate
 export function useMultipleDaysClassSessions(
   dates: string[], 
   filters: Record<string, DayFilters> = {}
@@ -110,8 +112,10 @@ export function useMultipleDaysClassSessions(
     queries: dates.map(dateStr => ({
       queryKey: ['classSessions', 'byDate', dateStr, filters[dateStr]],
       queryFn: async () => {
+        // CHANGED: Use startDate and endDate instead of date
         const params = new URLSearchParams({
-          date: dateStr,
+          startDate: dateStr,
+          endDate: dateStr,
         });
         
         const dateFilters = filters[dateStr];
