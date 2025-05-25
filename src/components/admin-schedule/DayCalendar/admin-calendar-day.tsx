@@ -1,20 +1,20 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useBooths } from '@/hooks/useBoothQuery';
+import { useTeachers } from '@/hooks/useTeacherQuery';
+import { useStudents } from '@/hooks/useStudentQuery';
+import { useSubjects } from '@/hooks/useSubjectQuery';
 import { ExtendedClassSessionWithRelations, useMultipleDaysClassSessions, DayFilters } from '@/hooks/useClassSessionQuery';
 import { DaySelector } from './day-selector';
 import { DayCalendar } from './day-calendar';
-import { DayCalendarFilters } from './day-calendar-filters';
 import { CreateLessonDialog } from './create-lesson-dialog';
 import { LessonDialog } from './lesson-dialog';
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  getCurrentDateAdjusted,
   getDateKey,
 } from '../date';
 
 import {
   CreateClassSessionPayload,
-  UpdateClassSessionPayload,
   NewClassSessionData,
   formatDateToString
 } from './types/class-session';
@@ -68,9 +68,44 @@ const TIME_SLOTS: TimeSlot[] = Array.from({ length: 57 }, (_el, i) => {
 });
 
 export default function AdminCalendarDay() {
-  // Initialize with a default value, will be updated after mount
-  const [selectedDays, setSelectedDays] = useState<Date[]>([getCurrentDateAdjusted()]);
-  const [isInitialized, setIsInitialized] = useState(false);
+  // State for selected days - will be properly initialized after mount
+  const [selectedDays, setSelectedDays] = useState<Date[]>(() => {
+    // Create current date
+    const today = new Date();
+    today.setHours(12, 0, 0, 0); // Set to noon to avoid timezone issues
+    const todayDateKey = getDateKey(today);
+    
+    // Try to get saved days from localStorage during initial render
+    if (typeof window !== 'undefined') {
+      const savedDaysJson = localStorage.getItem(SELECTED_DAYS_KEY);
+      if (savedDaysJson) {
+        try {
+          const savedDays = JSON.parse(savedDaysJson);
+          if (Array.isArray(savedDays) && savedDays.length > 0) {
+            const parsedDates = savedDays
+              .map((dateStr: string) => new Date(dateStr))
+              .filter((date: Date) => !isNaN(date.getTime()));
+            
+            // Filter to only include dates from today onwards
+            const validDates = parsedDates.filter(date => {
+              const dateKey = getDateKey(date);
+              return dateKey >= todayDateKey;
+            });
+            
+            if (validDates.length > 0) {
+              return validDates;
+            }
+          }
+        } catch (error) {
+          console.error('Error parsing saved selected days:', error);
+        }
+      }
+    }
+    
+    // Default to current date if no saved days or all saved days are in the past
+    return [today];
+  });
+  
   const [dayFilters, setDayFilters] = useState<Record<string, DayFilters>>({});
   const [showCreateDialog, setShowCreateDialog] = useState<boolean>(false);
   const [newLessonData, setNewLessonData] = useState<NewClassSessionData | null>(null);
@@ -79,29 +114,49 @@ export default function AdminCalendarDay() {
   const [dialogMode, setDialogMode] = useState<'view' | 'edit'>('view');
   const [resetSelectionKey, setResetSelectionKey] = useState<number>(0);
 
-  // On component mount, load the saved selected days from localStorage
+  // Clean up old dates from localStorage on mount
   useEffect(() => {
+    const today = new Date();
+    today.setHours(12, 0, 0, 0);
+    const todayDateKey = getDateKey(today);
+    
     const savedDaysJson = localStorage.getItem(SELECTED_DAYS_KEY);
     if (savedDaysJson) {
       try {
         const savedDays = JSON.parse(savedDaysJson);
         if (Array.isArray(savedDays) && savedDays.length > 0) {
-          const parsedDates = savedDays
-            .map((dateStr: string) => new Date(dateStr))
-            .filter((date: Date) => !isNaN(date.getTime()));
-          if (parsedDates.length > 0) {
-            setSelectedDays(parsedDates);
+          const validDates = savedDays.filter((dateStr: string) => {
+            const date = new Date(dateStr);
+            return !isNaN(date.getTime()) && getDateKey(date) >= todayDateKey;
+          });
+          
+          // Update localStorage if we filtered out old dates
+          if (validDates.length !== savedDays.length) {
+            if (validDates.length > 0) {
+              localStorage.setItem(SELECTED_DAYS_KEY, JSON.stringify(validDates));
+            } else {
+              localStorage.removeItem(SELECTED_DAYS_KEY);
+            }
           }
         }
       } catch (error) {
-        console.error('Error parsing saved selected days:', error);
+        console.error('Error cleaning up old dates:', error);
+        localStorage.removeItem(SELECTED_DAYS_KEY);
       }
     }
-    setIsInitialized(true);
   }, []);
 
+  // Fetch all required data
   const { data: boothsResponse, isLoading: isLoadingBooths } = useBooths({ limit: 100 });
+  const { data: teachersResponse, isLoading: isLoadingTeachers } = useTeachers({ limit: 100 });
+  const { data: studentsResponse, isLoading: isLoadingStudents } = useStudents({ limit: 100 });
+  const { data: subjectsResponse, isLoading: isLoadingSubjects } = useSubjects({ limit: 100 });
+
+  // Memoize data arrays
   const booths = useMemo(() => boothsResponse?.data || [], [boothsResponse]);
+  const teachers = useMemo(() => teachersResponse?.data || [], [teachersResponse]);
+  const students = useMemo(() => studentsResponse?.data || [], [studentsResponse]);
+  const subjects = useMemo(() => subjectsResponse?.data || [], [subjectsResponse]);
 
   const selectedDatesStrings = useMemo(() => {
     return selectedDays.map(day => getDateKey(day));
@@ -128,6 +183,8 @@ export default function AdminCalendarDay() {
   const isLoading = useMemo(() => {
     return classSessionQueries.some(query => query.isLoading || query.isFetching);
   }, [classSessionQueries]);
+
+  const isLoadingData = isLoadingBooths || isLoadingTeachers || isLoadingStudents || isLoadingSubjects;
 
   const timeSlots = TIME_SLOTS;
 
@@ -170,11 +227,15 @@ export default function AdminCalendarDay() {
           return newFilters;
         });
         
-        return prev.filter(d => getDateKey(d) !== dateStr);
+        newDays = prev.filter(d => getDateKey(d) !== dateStr);
       }
 
-      // Save to localStorage
-      localStorage.setItem(SELECTED_DAYS_KEY, JSON.stringify(newDays.map(d => d.toISOString())));
+      // Save to localStorage only if there are selected days
+      if (newDays.length > 0) {
+        localStorage.setItem(SELECTED_DAYS_KEY, JSON.stringify(newDays.map(d => d.toISOString())));
+      } else {
+        localStorage.removeItem(SELECTED_DAYS_KEY);
+      }
 
       return newDays;
     });
@@ -295,19 +356,14 @@ export default function AdminCalendarDay() {
     setSelectedLesson(null);
   }, [refreshData]);
 
-  // Prevent rendering with default value during SSR/hydration to avoid flicker
-  if (!isInitialized) {
-    return null; // Show nothing during initial render to prevent flicker
-  }
-
-  if (isLoadingBooths) {
-    return <div className="flex justify-center p-8 text-foreground dark:text-foreground">教室を読み込み中...</div>;
+  if (isLoadingData) {
+    return <div className="flex justify-center p-8 text-foreground dark:text-foreground">データを読み込み中...</div>;
   }
 
   return (
     <div className="flex flex-col space-y-4 p-4">
       <div className="flex flex-col sm:flex-row justify-between items-center space-y-2 sm:space-y-0">
-        <h2 className="text-xl font-semibold text-foreground dark:text-foreground">スケジュール管理</h2>
+        <h2 className="text-xl font-semibold text-foreground dark:text-foreground"></h2>
         <DaySelector
           selectedDays={selectedDays}
           onSelectDay={handleDaySelect}
@@ -365,19 +421,19 @@ export default function AdminCalendarDay() {
 
           return (
             <div key={uniqueKey}>
-    <DayCalendar
-      date={day}
-      booths={booths}
-      timeSlots={timeSlots}
-      classSessions={sessions}
-      onLessonClick={handleLessonClick}
-      onCreateLesson={handleCreateLesson}
-      resetSelectionKey={resetSelectionKey}
-      filters={currentFilters}
-      onFiltersChange={(filters) => handleFiltersChange(dateKey, filters)}
-    />
-  </div>
-);
+              <DayCalendar
+                date={day}
+                booths={booths}
+                timeSlots={timeSlots}
+                classSessions={sessions}
+                onLessonClick={handleLessonClick}
+                onCreateLesson={handleCreateLesson}
+                resetSelectionKey={resetSelectionKey}
+                filters={currentFilters}
+                onFiltersChange={(filters) => handleFiltersChange(dateKey, filters)}
+              />
+            </div>
+          );
         })}
       </div>
 
@@ -411,6 +467,9 @@ export default function AdminCalendarDay() {
           onSave={handleUpdateLesson}
           onDelete={handleDeleteLesson}
           booths={booths}
+          teachers={teachers}
+          students={students}
+          subjects={subjects}
         />
       )}
     </div>
