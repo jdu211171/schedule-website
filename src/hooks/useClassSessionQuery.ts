@@ -5,6 +5,7 @@ import { useQuery, useQueries, UseQueryResult } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { addDays, format, startOfWeek } from "date-fns";
 
+
 export const classSessionWithRelationsInclude = {
   booth: true,
   classType: true,
