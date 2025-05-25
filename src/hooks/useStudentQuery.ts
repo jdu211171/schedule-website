@@ -16,6 +16,7 @@ export type Student = {
   notes: string | null;
   username: string | null;
   email: string | null;
+  password: string | null;
   branches: {
     branchId: string;
     name: string;

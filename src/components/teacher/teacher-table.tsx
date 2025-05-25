@@ -3,7 +3,7 @@
 
 import { useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, Eye, EyeOff } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/data-table";
@@ -36,6 +36,7 @@ interface ColumnMetaType {
 export function TeacherTable() {
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
+  const [passwordVisibility, setPasswordVisibility] = useState<Record<string, boolean>>({});
   const pageSize = 10;
   const { data: teachers, isLoading } = useTeachers({
     page,
@@ -73,6 +74,44 @@ export function TeacherTable() {
       accessorKey: "email",
       header: "メールアドレス",
       cell: ({ row }) => row.original.email || "-",
+    },
+    {
+      accessorKey: "password",
+      header: "パスワード",
+      cell: ({ row }) => {
+        const teacherId = row.original.teacherId;
+        const password = row.original.password;
+        const isVisible = passwordVisibility[teacherId] || false;
+
+        if (!password) return "-";
+
+        const toggleVisibility = () => {
+          setPasswordVisibility(prev => ({
+            ...prev,
+            [teacherId]: !prev[teacherId]
+          }));
+        };
+
+        return (
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-sm">
+              {isVisible ? password : "•".repeat(Math.min(password.length, 8))}
+            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              onClick={toggleVisibility}
+            >
+              {isVisible ? (
+                <EyeOff className="h-3 w-3" />
+              ) : (
+                <Eye className="h-3 w-3" />
+              )}
+            </Button>
+          </div>
+        );
+      },
     },
     {
       accessorKey: "lineId",
