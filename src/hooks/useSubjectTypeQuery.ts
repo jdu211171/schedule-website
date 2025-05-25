@@ -9,9 +9,6 @@ export type SubjectType = {
   description: string | null;
   createdAt: string;
   updatedAt: string;
-  _count?: {
-    subjectOfferings: number;
-  };
   _optimistic?: boolean;
 };
 

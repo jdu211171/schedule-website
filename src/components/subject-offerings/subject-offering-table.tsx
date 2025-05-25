@@ -123,18 +123,6 @@ export function SubjectOfferingTable() {
       cell: ({ row }) => row.original.branchName || "-",
     },
     {
-      accessorKey: "_count.teacherQualifications",
-      header: "教師資格数",
-      cell: ({ row }) => {
-        const count = row.original._count?.teacherQualifications || 0;
-        return (
-          <Badge variant="outline" className="text-center">
-            {count}
-          </Badge>
-        );
-      },
-    },
-    {
       id: "actions",
       header: "操作",
       cell: ({ row }) => {

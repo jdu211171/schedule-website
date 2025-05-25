@@ -78,10 +78,6 @@ export function useSubjectOfferingCreate() {
             branchName: null,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
-            _count: {
-              teacherQualifications: 0,
-              studentSubjectPreferences: 0,
-            },
             _optimistic: true,
           };
 

@@ -67,26 +67,6 @@ export function SubjectTypeTable() {
       cell: ({ row }) => row.original.description || "-",
     },
     {
-      accessorKey: "_count.subjectOfferings",
-      header: "科目提供数",
-      cell: ({ row }) => {
-        const count = row.original._count?.subjectOfferings || 0;
-        return (
-          <Badge variant="outline" className="text-center">
-            {count}
-          </Badge>
-        );
-      },
-    },
-    {
-      accessorKey: "createdAt",
-      header: "作成日",
-      cell: ({ row }) => {
-        const date = new Date(row.original.createdAt);
-        return date.toLocaleDateString("ja-JP");
-      },
-    },
-    {
       id: "actions",
       header: "操作",
       cell: ({ row }) => {

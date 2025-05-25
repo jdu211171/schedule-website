@@ -16,7 +16,6 @@ export type SubjectOffering = {
   createdAt: string;
   updatedAt: string;
   _count?: {
-    teacherQualifications: number;
     studentSubjectPreferences: number;
   };
   _optimistic?: boolean;

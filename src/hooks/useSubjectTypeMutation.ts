@@ -69,9 +69,6 @@ export function useSubjectTypeCreate() {
             description: newSubjectType.description || null,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
-            _count: {
-              subjectOfferings: 0,
-            },
             _optimistic: true,
           };
 
