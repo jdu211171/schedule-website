@@ -14,25 +14,17 @@ type FormattedSubjectType = {
   description: string | null;
   createdAt: string;
   updatedAt: string;
-  _count?: {
-    subjectOfferings: number;
-  };
 };
 
 // Helper function to format subject type response
 const formatSubjectType = (
-  subjectType: SubjectType & {
-    _count?: {
-      subjectOfferings: number;
-    };
-  }
+  subjectType: SubjectType
 ): FormattedSubjectType => ({
   subjectTypeId: subjectType.subjectTypeId,
   name: subjectType.name,
   description: subjectType.description,
   createdAt: subjectType.createdAt.toISOString(),
   updatedAt: subjectType.updatedAt.toISOString(),
-  _count: subjectType._count,
 });
 
 // GET - List subject types with pagination and filters
@@ -71,16 +63,9 @@ export const GET = withBranchAccess(
     // Fetch total count
     const total = await prisma.subjectType.count({ where });
 
-    // Fetch subject types with offering count
+    // Fetch subject types
     const subjectTypes = await prisma.subjectType.findMany({
       where,
-      include: {
-        _count: {
-          select: {
-            subjectOfferings: true,
-          },
-        },
-      },
       skip,
       take: limit,
       orderBy: { name: "asc" },
@@ -136,13 +121,6 @@ export const POST = withBranchAccess(
         data: {
           name,
           description,
-        },
-        include: {
-          _count: {
-            select: {
-              subjectOfferings: true,
-            },
-          },
         },
       });
 

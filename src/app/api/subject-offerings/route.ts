@@ -21,10 +21,7 @@ type FormattedSubjectOffering = {
   branchName: string | null;
   createdAt: string;
   updatedAt: string;
-  _count?: {
-    teacherQualifications: number;
-    studentSubjectPreferences: number;
-  };
+
 };
 
 // Helper function to format subject offering response
@@ -36,10 +33,6 @@ const formatSubjectOffering = (
       branch?: { name: string } | null;
     };
     subjectType: { name: string };
-    _count?: {
-      teacherQualifications: number;
-      studentSubjectPreferences: number;
-    };
   }
 ): FormattedSubjectOffering => ({
   subjectOfferingId: subjectOffering.subjectOfferingId,
@@ -53,7 +46,6 @@ const formatSubjectOffering = (
   branchName: subjectOffering.subject.branch?.name || null,
   createdAt: subjectOffering.createdAt.toISOString(),
   updatedAt: subjectOffering.updatedAt.toISOString(),
-  _count: subjectOffering._count,
 });
 
 // GET - List subject offerings with pagination and filters
@@ -150,12 +142,6 @@ export const GET = withBranchAccess(
         subjectType: {
           select: {
             name: true,
-          },
-        },
-        _count: {
-          select: {
-            teacherQualifications: true,
-            studentSubjectPreferences: true,
           },
         },
       },
@@ -267,7 +253,7 @@ export const POST = withBranchAccess(
         }
 
         // Create multiple offerings
-        const createData = subjectTypeIds.map((subjectTypeId, index) => ({
+        const createData = subjectTypeIds.map((subjectTypeId) => ({
           subjectId,
           subjectTypeId,
           notes,
@@ -292,12 +278,6 @@ export const POST = withBranchAccess(
                 subjectType: {
                   select: {
                     name: true,
-                  },
-                },
-                _count: {
-                  select: {
-                    teacherQualifications: true,
-                    studentSubjectPreferences: true,
                   },
                 },
               },
@@ -405,12 +385,6 @@ export const POST = withBranchAccess(
             subjectType: {
               select: {
                 name: true,
-              },
-            },
-            _count: {
-              select: {
-                teacherQualifications: true,
-                studentSubjectPreferences: true,
               },
             },
           },
