@@ -2,7 +2,9 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
+import { Loader2, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -21,18 +23,16 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Card, CardContent } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
 import { useStaffCreate, useStaffUpdate } from "@/hooks/useStaffMutation";
 import {
   staffCreateSchema,
   staffUpdateSchema,
-  staffFormSchema, // Import the new unified schema
-  type StaffFormValues, // Import the new unified form type
+  staffFormSchema,
+  type StaffFormValues,
 } from "@/schemas/staff.schema";
-import { Staff } from "@/hooks/useStaffQuery";
-import { useSession } from "next-auth/react";
+import type { Staff } from "@/hooks/useStaffQuery";
 
 interface StaffFormDialogProps {
   open: boolean;
@@ -55,22 +55,26 @@ export function StaffFormDialog({
     : { data: [] };
   const isBranchesLoading = !session?.user?.branches;
 
-  const isEditing = !!staff;
+  // Branch selection state
+  const [branchSearchTerm, setBranchSearchTerm] = useState("");
+  const [showBranchDropdown, setShowBranchDropdown] = useState(false);
 
-  // Use the schemas directly from staff.schema.ts without modification
+  const defaultBranchId = session?.user?.branches?.[0]?.branchId;
+  const isEditing = !!staff;
+  const isSubmitting =
+    createStaffMutation.isPending || updateStaffMutation.isPending;
+
   const form = useForm<StaffFormValues>({
-    resolver: zodResolver(staffFormSchema), // Use the unified schema
+    resolver: zodResolver(staffFormSchema),
     defaultValues: {
       name: "",
       username: "",
-      password: "", // Password can be empty initially
+      password: "",
       email: "",
       branchIds: [],
-      id: undefined, // id is optional; only populated in edit mode.
+      id: undefined,
     },
   });
-
-  const defaultBranchId = session?.user?.branches?.[0]?.branchId;
 
   useEffect(() => {
     if (staff && isEditing) {
@@ -113,210 +117,380 @@ export function StaffFormDialog({
       // Ensure id is present for update
       if (!submissionData.id) {
         console.error("ID is missing for update operation");
-        // Optionally, show an error to the user
         return; // Early return if ID is missing for an update
       }
       const updatePayload = staffUpdateSchema.parse(submissionData);
       updateStaffMutation.mutate(updatePayload, {
         onSuccess: () => {
-          onOpenChange(false); // Close dialog on success
-          form.reset(); // Reset form on success
+          onOpenChange(false);
+          form.reset();
         },
       });
     } else {
-      // For creation, remove the id field if it exists (it shouldn't based on logic but good practice)
+      // For creation, remove the id field if it exists
       const { id, ...createValues } = submissionData;
-      // Ensure password is provided for creation, as staffCreateSchema requires it.
-      // The form schema allows it to be optional, so we must validate here or rely on staffCreateSchema.parse
-      if (!createValues.password) {
-        // This scenario should ideally be caught by form validation if password was made mandatory in staffFormSchema for create mode
-        // For now, we rely on staffCreateSchema.parse to throw an error if password is not there.
-        // Or, you could set a form error here: form.setError("password", { type: "manual", message: "Password is required for new staff." });
-        // return;
-      }
       const createPayload = staffCreateSchema.parse(createValues);
       createStaffMutation.mutate(createPayload, {
         onSuccess: () => {
-          onOpenChange(false); // Close dialog on success
-          form.reset(); // Reset form on success
+          onOpenChange(false);
+          form.reset();
         },
       });
     }
   }
 
+  // Filter branches based on search term
+  const filteredBranches =
+    branchesResponse?.data.filter(
+      (branch: { branchId: string; name: string }) =>
+        branch.name.toLowerCase().includes(branchSearchTerm.toLowerCase())
+    ) || [];
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle>
-            {isEditing ? "スタッフの編集" : "スタッフの作成"}
+      <DialogContent className="sm:max-w-[600px] max-h-[95vh] overflow-hidden flex flex-col">
+        <DialogHeader className="flex-shrink-0 pb-4">
+          <DialogTitle className="text-xl font-semibold">
+            {isEditing ? "スタッフ情報の編集" : "新しいスタッフの作成"}
           </DialogTitle>
         </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="after:content-['*'] after:ml-1 after:text-destructive">
-                    名前
-                  </FormLabel>
-                  <FormControl>
-                    <Input placeholder="名前を入力してください" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
 
-            <FormField
-              control={form.control}
-              name="username"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="after:content-['*'] after:ml-1 after:text-destructive">
-                    ユーザー名
-                  </FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="ユーザー名を入力してください"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+        <div className="flex-1 overflow-y-auto px-1">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              {/* Personal Information Section */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-medium text-muted-foreground">
+                    基本情報
+                  </h3>
+                  <Separator className="flex-1" />
+                </div>
 
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel
-                    className={
-                      isEditing
-                        ? ""
-                        : "after:content-['*'] after:ml-1 after:text-destructive"
-                    }
-                  >
-                    パスワード{isEditing ? "（変更する場合のみ）" : ""}
-                  </FormLabel>
-                  <FormControl>
-                    <Input
-                      type="password"
-                      placeholder={
-                        isEditing
-                          ? "パスワードを変更する場合のみ入力"
-                          : "パスワードを入力してください"
-                      }
-                      {...field}
-                      value={field.value || ""}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                {/* Name - Full width */}
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm font-medium after:content-['*'] after:ml-1 after:text-destructive">
+                        名前
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="佐藤次郎"
+                          className="h-11"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="after:content-['*'] after:ml-1 after:text-destructive">
-                    メールアドレス
-                  </FormLabel>
-                  <FormControl>
-                    <Input
-                      type="email"
-                      placeholder="メールアドレスを入力してください"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                {/* Email - Full width */}
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm font-medium after:content-['*'] after:ml-1 after:text-destructive">
+                        メールアドレス
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          type="email"
+                          placeholder="staff@example.com"
+                          className="h-11"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
-            <FormField
-              control={form.control}
-              name="branchIds"
-              render={() => (
-                <FormItem>
-                  <FormLabel className="after:content-['*'] after:ml-1 after:text-destructive">
-                    支店（複数選択可）
-                  </FormLabel>
-                  <Card>
-                    <CardContent className="pt-4">
-                      <ScrollArea className="h-56 pr-4">
+              {/* Account Information Section */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-medium text-muted-foreground">
+                    アカウント情報
+                  </h3>
+                  <Separator className="flex-1" />
+                </div>
+
+                {/* Username - Full width */}
+                <FormField
+                  control={form.control}
+                  name="username"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm font-medium after:content-['*'] after:ml-1 after:text-destructive">
+                        ユーザー名
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="staff_username"
+                          className="h-11"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Password - Full width */}
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel
+                        className={`text-sm font-medium ${
+                          isEditing
+                            ? ""
+                            : "after:content-['*'] after:ml-1 after:text-destructive"
+                        }`}
+                      >
+                        パスワード{isEditing ? "（変更する場合のみ）" : ""}
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          type="password"
+                          placeholder={
+                            isEditing
+                              ? "新しいパスワードを入力"
+                              : "パスワードを入力"
+                          }
+                          className="h-11"
+                          {...field}
+                          value={field.value || ""}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {/* Branch Assignment Section */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-medium text-muted-foreground">
+                    支店配属
+                  </h3>
+                  <Separator className="flex-1" />
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="branchIds"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm font-medium after:content-['*'] after:ml-1 after:text-destructive">
+                        勤務支店（複数選択可）
+                      </FormLabel>
+                      <FormControl>
                         {isBranchesLoading ? (
-                          <div>読み込み中...</div>
+                          <div className="flex items-center justify-center h-11 border rounded-lg bg-muted/50">
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            <span className="text-sm text-muted-foreground">
+                              支店情報を読み込み中...
+                            </span>
+                          </div>
                         ) : (
-                          <div className="space-y-2">
-                            {branchesResponse?.data.map((branch) => (
-                              <FormField
-                                key={branch.branchId}
-                                control={form.control}
-                                name="branchIds"
-                                render={({ field }) => {
-                                  const isDefault = branch.branchId === defaultBranchId;
-                                  return (
-                                    <FormItem
-                                      key={branch.branchId}
-                                      className="flex flex-row items-start space-x-3 space-y-0"
-                                    >
-                                      <FormControl>
-                                        <Checkbox
-                                          checked={field.value?.includes(branch.branchId)}
-                                          disabled={isDefault}
-                                          onCheckedChange={(checked) => {
-                                            let currentValues = [...(field.value || [])];
-                                            if (isDefault) {
-                                              // Always keep default branch in the value
-                                              if (!currentValues.includes(branch.branchId)) {
-                                                currentValues = [branch.branchId, ...currentValues];
-                                              }
-                                              field.onChange(currentValues);
-                                              return;
+                          <div className="relative">
+                            <Input
+                              placeholder="支店名を検索..."
+                              value={branchSearchTerm}
+                              onChange={(e) => {
+                                setBranchSearchTerm(e.target.value);
+                                setShowBranchDropdown(
+                                  e.target.value.trim() !== ""
+                                );
+                              }}
+                              onFocus={() => {
+                                if (branchSearchTerm.trim() !== "") {
+                                  setShowBranchDropdown(true);
+                                }
+                              }}
+                              onBlur={() => {
+                                setTimeout(
+                                  () => setShowBranchDropdown(false),
+                                  200
+                                );
+                              }}
+                              className="h-11"
+                            />
+
+                            {showBranchDropdown && (
+                              <div className="absolute z-10 w-full mt-1 bg-background border rounded-md shadow-lg max-h-60 overflow-auto">
+                                {filteredBranches.map(
+                                  (branch: {
+                                    branchId: string;
+                                    name: string;
+                                  }) => {
+                                    const isAlreadySelected =
+                                      field.value?.includes(branch.branchId);
+                                    const isDefault =
+                                      branch.branchId === defaultBranchId;
+
+                                    return (
+                                      <div
+                                        key={branch.branchId}
+                                        className={`p-3 hover:bg-accent cursor-pointer flex items-center justify-between ${
+                                          isAlreadySelected
+                                            ? "bg-accent/50"
+                                            : ""
+                                        }`}
+                                        onClick={() => {
+                                          if (!isAlreadySelected) {
+                                            const currentValues =
+                                              field.value || [];
+                                            let newValues = [
+                                              ...currentValues,
+                                              branch.branchId,
+                                            ];
+
+                                            // Always ensure default branch is included
+                                            if (
+                                              defaultBranchId &&
+                                              !newValues.includes(
+                                                defaultBranchId
+                                              )
+                                            ) {
+                                              newValues = [
+                                                defaultBranchId,
+                                                ...newValues,
+                                              ];
                                             }
-                                            if (checked) {
-                                              if (!currentValues.includes(branch.branchId)) {
-                                                field.onChange([...currentValues, branch.branchId]);
-                                              }
-                                            } else {
-                                              field.onChange(currentValues.filter((value) => value !== branch.branchId));
-                                            }
-                                          }}
-                                        />
-                                      </FormControl>
-                                      <FormLabel className="font-normal cursor-pointer">
-                                        {branch.name}
-                                        {isDefault && <span className="ml-2 text-xs text-muted-foreground">(デフォルト)</span>}
-                                      </FormLabel>
-                                    </FormItem>
-                                  );
-                                }}
-                              />
-                            ))}
+
+                                            field.onChange(newValues);
+                                          }
+                                          setBranchSearchTerm("");
+                                          setShowBranchDropdown(false);
+                                        }}
+                                      >
+                                        <span className="flex-1">
+                                          {branch.name}
+                                        </span>
+                                        <div className="flex items-center gap-2">
+                                          {isDefault && (
+                                            <Badge
+                                              variant="secondary"
+                                              className="text-xs"
+                                            >
+                                              デフォルト
+                                            </Badge>
+                                          )}
+                                          {isAlreadySelected && (
+                                            <Badge
+                                              variant="outline"
+                                              className="text-xs"
+                                            >
+                                              選択済み
+                                            </Badge>
+                                          )}
+                                        </div>
+                                      </div>
+                                    );
+                                  }
+                                )}
+                                {filteredBranches.length === 0 && (
+                                  <div className="p-3 text-muted-foreground text-center">
+                                    該当する支店が見つかりません
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
                         )}
-                      </ScrollArea>
-                    </CardContent>
-                  </Card>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                      </FormControl>
 
-            <DialogFooter>
-              <Button type="submit" disabled={isBranchesLoading}>
-                {isEditing ? "変更を保存" : "作成"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
+                      {/* Display selected branches */}
+                      <div className="flex flex-wrap gap-2 mt-3">
+                        {(field.value || []).map((branchId, index) => {
+                          const branch = branchesResponse?.data.find(
+                            (b: { branchId: string; name: string }) =>
+                              b.branchId === branchId
+                          );
+                          const isDefault = branchId === defaultBranchId;
+
+                          return (
+                            <Badge
+                              key={index}
+                              variant={isDefault ? "default" : "secondary"}
+                              className="flex items-center gap-1 px-3 py-1"
+                            >
+                              <span>{branch?.name || branchId}</span>
+                              {isDefault && (
+                                <span className="text-xs">(デフォルト)</span>
+                              )}
+                              {!isDefault && (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-4 w-4 p-0 ml-1 hover:bg-muted rounded-full"
+                                  onClick={() => {
+                                    const newValues = [...(field.value || [])];
+                                    newValues.splice(index, 1);
+                                    field.onChange(newValues);
+                                  }}
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              )}
+                            </Badge>
+                          );
+                        })}
+                      </div>
+
+                      <FormMessage />
+                      {defaultBranchId && (
+                        <p className="text-xs text-muted-foreground mt-2 bg-muted/50 p-2 rounded-md">
+                          💡
+                          デフォルト支店は自動的に選択され、削除することはできません
+                        </p>
+                      )}
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </form>
+          </Form>
+        </div>
+
+        <DialogFooter className="flex-shrink-0 pt-4 border-t">
+          <div className="flex flex-col-reverse sm:flex-row gap-3 w-full sm:w-auto">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={isSubmitting}
+              className="w-full sm:w-auto"
+            >
+              キャンセル
+            </Button>
+            <Button
+              type="submit"
+              onClick={form.handleSubmit(onSubmit)}
+              disabled={isBranchesLoading || isSubmitting}
+              className="w-full sm:w-auto min-w-[120px]"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  {isEditing ? "保存中..." : "作成中..."}
+                </>
+              ) : (
+                <>{isEditing ? "変更を保存" : "スタッフを作成"}</>
+              )}
+            </Button>
+          </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
