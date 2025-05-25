@@ -43,7 +43,6 @@ const AdminCalendarWeek: React.FC<AdminCalendarWeekProps> = ({
     <div className="w-full flex flex-col gap-2 my-2">
       <div className="flex flex-col sm:flex-row justify-between items-center sm:space-y-0 mx-5">
         <h2 className="text-xl font-semibold text-foreground dark:text-foreground">
-          スケジュール閲覧
         </h2>
         <WeekSelector
           selectedWeeks={selectedWeeks}
