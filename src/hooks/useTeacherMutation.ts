@@ -69,6 +69,7 @@ export function useTeacherCreate() {
                 lineId: newTeacher.lineId || null,
                 notes: newTeacher.notes || null,
                 username: newTeacher.username,
+                password: newTeacher.password || null,
                 branches: [],
                 createdAt: new Date(),
                 updatedAt: new Date(),

@@ -12,6 +12,7 @@ export type Teacher = {
   lineId: string | null;
   notes: string | null;
   username: string | null;
+  password: string | null;
   branches: {
     branchId: string;
     name: string;
