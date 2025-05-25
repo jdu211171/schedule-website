@@ -271,12 +271,8 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
   }, [timeSlots.length]);
   
   const formattedDate = useMemo(() => {
-    return format(date, 'yyyy年MM月dd日 (eee)', { locale: ja });
+    return format(date, 'MM月dd日 (eee)', { locale: ja });
   }, [date]);
-  
-  useEffect(() => {
-    console.log(`DayCalendar for ${date.toISOString().substring(0, 10)} has ${filteredSessions.length} sessions`);
-  }, [date, filteredSessions.length]);
   
   const cancelSelection = useCallback(() => {
     setSelection(initialSelectionState);
@@ -427,7 +423,7 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
           </div>
           
           {onFiltersChange && (
-            <div className="flex-1 pt-0.5">
+            <div className="flex-1 pt-0.5 flex justify-end">
               <DayCalendarFilters
                 filters={filters}
                 dateKey={dateKey}

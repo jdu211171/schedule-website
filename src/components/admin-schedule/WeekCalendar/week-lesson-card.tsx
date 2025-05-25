@@ -1,8 +1,9 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { MapPin, User, Users } from "lucide-react";
-import React from "react";
+import { MapPin, UserCheck, GraduationCap, Edit, Trash2 } from "lucide-react";
+import React, { useState } from "react";
 import { ExtendedClassSessionWithRelations } from "@/hooks/useClassSessionQuery";
 import { format } from "date-fns";
+import { ConfirmDeleteDialog } from '../confirm-delete-dialog';
 
 interface WeekLessonCardProps {
   lesson: ExtendedClassSessionWithRelations;
@@ -14,6 +15,8 @@ interface WeekLessonCardProps {
     | "compact-5"
     | "compact-many";
   onClick: (id: string) => void;
+  onEdit?: (lesson: ExtendedClassSessionWithRelations) => void;
+  onDelete?: (lessonId: string) => void;
 }
 
 const getStatusColor = (seriesId: string | null | undefined) => {
@@ -57,45 +60,90 @@ const WeekLessonCard: React.FC<WeekLessonCardProps> = ({
   isExpanded,
   displayMode,
   onClick,
+  onEdit,
+  onDelete,
 }) => {
   const colors = getStatusColor(lesson.seriesId);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  const handleEdit = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent card click
+    onEdit?.(lesson);
+  };
+
+  const handleDeleteClick = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent card click
+    setShowDeleteConfirm(true);
+  };
+
+  const handleDeleteConfirm = () => {
+    onDelete?.(lesson.classId);
+  };
 
   if (isExpanded) {
     return (
-      <div className="w-full cursor-pointer" onClick={() => onClick(lesson.classId)}>
-        <Card className={`${colors.background} ${colors.border} ${colors.hover} border h-full transition-colors duration-100`}>
-          <CardContent className={`p-3 space-y-2 ${colors.text}`}>
-            <div className="flex justify-between items-center">
-              <h3 className="font-medium">{lesson.subjectName}</h3>
-            </div>
-
-            <div className="text-sm">
-              {formatTimeDisplay(lesson.startTime)} - {formatTimeDisplay(lesson.endTime)}
-            </div>
-
-            <div className="flex items-center text-sm">
-              <User className="w-3 h-3 mr-2 opacity-75" />
-              <span>{lesson.teacherName}</span>
-            </div>
-
-            <div className="flex items-center text-sm">
-              <Users className="w-3 h-3 mr-2 opacity-75" />
-              <span>{lesson.studentName}</span>
-            </div>
-
-            <div className="flex items-center text-sm">
-              <MapPin className="w-3 h-3 mr-2 opacity-75" />
-              <span>{lesson.boothName}</span>
-            </div>
-
-            {lesson.notes && (
-              <div className="text-xs opacity-90 pt-1">
-                {lesson.notes}
+      <>
+        <div className="w-full cursor-pointer" onClick={() => onClick(lesson.classId)}>
+          <Card className={`p-2 space-y-2 ${colors.background} ${colors.border} ${colors.hover} border h-full transition-colors duration-100`}>
+            <CardContent className={`p-1.5 space-y-1.5 ${colors.text}`}>
+              <div className="flex justify-between items-center">
+                <h3 className="font-medium">{lesson.subjectName}</h3>
+                <div className="flex gap-1">
+                  <button
+                    onClick={handleEdit}
+                    className="p-0 hover:bg-black/10 dark:hover:bg-white/10 rounded transition-colors"
+                    title="編集"
+                  >
+                    <Edit className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={handleDeleteClick}
+                    className="p-0 hover:bg-black/10 dark:hover:bg-white/10 rounded transition-colors"
+                    title="削除"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+
+              <div className="text-sm">
+                {formatTimeDisplay(lesson.startTime)} - {formatTimeDisplay(lesson.endTime)}
+              </div>
+
+              <div className="flex items-center text-sm">
+                <UserCheck className="w-3 h-3 mr-2 opacity-75" />
+                <span>{lesson.teacherName}</span>
+              </div>
+
+              <div className="flex items-center text-sm">
+                <GraduationCap className="w-3 h-3 mr-2 opacity-75" />
+                <span>{lesson.studentName}</span>
+              </div>
+
+              <div className="flex items-center text-sm">
+                <MapPin className="w-3 h-3 mr-2 opacity-75" />
+                <span>{lesson.boothName}</span>
+              </div>
+
+              {lesson.notes && (
+                <div className="text-xs opacity-90 pt-1">
+                  {lesson.notes}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        <ConfirmDeleteDialog
+          open={showDeleteConfirm}
+          onOpenChange={setShowDeleteConfirm}
+          title="授業の削除"
+          description="本当にこの授業を削除しますか？"
+          confirmText="削除"
+          cancelText="キャンセル"
+          onConfirm={handleDeleteConfirm}
+        />
+      </>
     );
   } else {
     switch (displayMode) {
