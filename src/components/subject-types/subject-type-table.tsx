@@ -1,4 +1,4 @@
-// src/components/student-type-table.tsx
+// src/components/subject-types/subject-type-table.tsx
 "use client";
 
 import { useState } from "react";
@@ -7,10 +7,11 @@ import { Pencil, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/data-table";
+import { Badge } from "@/components/ui/badge";
 import {
-  useStudentTypeDelete,
-  getResolvedStudentTypeId,
-} from "@/hooks/useStudentTypeMutation";
+  useSubjectTypeDelete,
+  getResolvedSubjectTypeId,
+} from "@/hooks/useSubjectTypeMutation";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,9 +22,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { StudentTypeFormDialog } from "./student-type-form-dialog";
-import { StudentType, useStudentTypes } from "@/hooks/useStudentTypeQuery";
-import { useSession } from "next-auth/react";
+import { SubjectTypeFormDialog } from "./subject-type-form-dialog";
+import { SubjectType, useSubjectTypes } from "@/hooks/useSubjectTypeQuery";
 
 // Define custom column meta type
 interface ColumnMetaType {
@@ -33,40 +33,33 @@ interface ColumnMetaType {
   hidden?: boolean;
 }
 
-export function StudentTypeTable() {
+export function SubjectTypeTable() {
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
   const pageSize = 10;
-  const { data: studentTypes, isLoading } = useStudentTypes({
+  const { data: subjectTypes, isLoading } = useSubjectTypes({
     page,
     limit: pageSize,
     name: searchTerm || undefined,
   });
 
-  const { data: session } = useSession();
-  const isAdmin = session?.user?.role === "ADMIN";
+  // Ensure the data type returned by useSubjectTypes matches the expected type
+  const typedSubjectTypes = subjectTypes?.data || [];
 
-  // Ensure the data type returned by useStudentTypes matches the expected type
-  const typedStudentTypes = studentTypes?.data || [];
+  const totalCount = subjectTypes?.pagination.total || 0;
+  const deleteSubjectTypeMutation = useSubjectTypeDelete();
 
-  const totalCount = studentTypes?.pagination.total || 0;
-  const deleteStudentTypeMutation = useStudentTypeDelete();
-
-  const [studentTypeToEdit, setStudentTypeToEdit] =
-    useState<StudentType | null>(null);
-  const [studentTypeToDelete, setStudentTypeToDelete] =
-    useState<StudentType | null>(null);
+  const [subjectTypeToEdit, setSubjectTypeToEdit] =
+    useState<SubjectType | null>(null);
+  const [subjectTypeToDelete, setSubjectTypeToDelete] =
+    useState<SubjectType | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
-  const columns: ColumnDef<StudentType, unknown>[] = [
+  const columns: ColumnDef<SubjectType, unknown>[] = [
     {
       accessorKey: "name",
       header: "名前",
-    },
-    {
-      accessorKey: "maxYears",
-      header: "最大学年数",
-      cell: ({ row }) => row.original.maxYears || "-",
+      cell: ({ row }) => row.original.name || "-",
     },
     {
       accessorKey: "description",
@@ -74,12 +67,32 @@ export function StudentTypeTable() {
       cell: ({ row }) => row.original.description || "-",
     },
     {
+      accessorKey: "_count.subjectOfferings",
+      header: "科目提供数",
+      cell: ({ row }) => {
+        const count = row.original._count?.subjectOfferings || 0;
+        return (
+          <Badge variant="outline" className="text-center">
+            {count}
+          </Badge>
+        );
+      },
+    },
+    {
+      accessorKey: "createdAt",
+      header: "作成日",
+      cell: ({ row }) => {
+        const date = new Date(row.original.createdAt);
+        return date.toLocaleDateString("ja-JP");
+      },
+    },
+    {
       id: "actions",
       header: "操作",
       cell: ({ row }) => {
         // Type-safe check for _optimistic property
         const isOptimistic = (
-          row.original as StudentType & { _optimistic?: boolean }
+          row.original as SubjectType & { _optimistic?: boolean }
         )._optimistic;
 
         return (
@@ -87,7 +100,7 @@ export function StudentTypeTable() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setStudentTypeToEdit(row.original)}
+              onClick={() => setSubjectTypeToEdit(row.original)}
             >
               <Pencil
                 className={`h-4 w-4 ${isOptimistic ? "opacity-70" : ""}`}
@@ -96,7 +109,7 @@ export function StudentTypeTable() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setStudentTypeToDelete(row.original)}
+              onClick={() => setSubjectTypeToDelete(row.original)}
             >
               <Trash2
                 className={`h-4 w-4 text-destructive ${
@@ -114,21 +127,15 @@ export function StudentTypeTable() {
     },
   ];
 
-  // Filter out columns if needed
-  const visibleColumns = columns.filter((col) => {
-    const meta = col.meta as ColumnMetaType | undefined;
-    return !meta?.hidden;
-  });
-
-  const handleDeleteStudentType = () => {
-    if (studentTypeToDelete) {
+  const handleDeleteSubjectType = () => {
+    if (subjectTypeToDelete) {
       // Close the dialog immediately for better UX
-      // Use getResolvedStudentTypeId to resolve temp/server IDs
-      const studentTypeId = getResolvedStudentTypeId(
-        studentTypeToDelete.studentTypeId
+      // Use getResolvedSubjectTypeId to resolve temp/server IDs
+      const subjectTypeId = getResolvedSubjectTypeId(
+        subjectTypeToDelete.subjectTypeId
       );
-      setStudentTypeToDelete(null);
-      deleteStudentTypeMutation.mutate(studentTypeId);
+      setSubjectTypeToDelete(null);
+      deleteSubjectTypeMutation.mutate(subjectTypeId);
     }
   };
 
@@ -141,10 +148,10 @@ export function StudentTypeTable() {
   return (
     <>
       <DataTable
-        columns={visibleColumns}
-        data={typedStudentTypes}
-        isLoading={isLoading && !typedStudentTypes.length} // Only show loading state on initial load
-        searchPlaceholder="生徒タイプを検索..."
+        columns={columns}
+        data={typedSubjectTypes}
+        isLoading={isLoading && !typedSubjectTypes.length} // Only show loading state on initial load
+        searchPlaceholder="科目タイプを検索..."
         onSearch={setSearchTerm}
         searchValue={searchTerm}
         onCreateNew={() => setIsCreateDialogOpen(true)}
@@ -156,41 +163,42 @@ export function StudentTypeTable() {
         totalItems={totalCount}
       />
 
-      {/* Edit StudentType Dialog */}
-      {studentTypeToEdit && (
-        <StudentTypeFormDialog
-          open={!!studentTypeToEdit}
-          onOpenChange={(open: any) => !open && setStudentTypeToEdit(null)}
-          studentType={studentTypeToEdit}
+      {/* Edit SubjectType Dialog */}
+      {subjectTypeToEdit && (
+        <SubjectTypeFormDialog
+          open={!!subjectTypeToEdit}
+          onOpenChange={(open) => !open && setSubjectTypeToEdit(null)}
+          subjectType={subjectTypeToEdit}
         />
       )}
 
-      {/* Create StudentType Dialog */}
-      <StudentTypeFormDialog
+      {/* Create SubjectType Dialog */}
+      <SubjectTypeFormDialog
         open={isCreateDialogOpen}
         onOpenChange={setIsCreateDialogOpen}
       />
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog
-        open={!!studentTypeToDelete}
-        onOpenChange={(open) => !open && setStudentTypeToDelete(null)}
+        open={!!subjectTypeToDelete}
+        onOpenChange={(open) => !open && setSubjectTypeToDelete(null)}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>本当に削除しますか？</AlertDialogTitle>
             <AlertDialogDescription>
-              この操作は元に戻せません。生徒タイプ「{studentTypeToDelete?.name}
+              この操作は元に戻せません。科目タイプ「
+              {subjectTypeToDelete?.name}
               」を完全に削除します。
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>キャンセル</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleDeleteStudentType}
-              disabled={deleteStudentTypeMutation.isPending}
+              onClick={handleDeleteSubjectType}
+              disabled={deleteSubjectTypeMutation.isPending}
             >
-              {deleteStudentTypeMutation.isPending ? "削除中..." : "削除"}
+              {deleteSubjectTypeMutation.isPending ? "削除中..." : "削除"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

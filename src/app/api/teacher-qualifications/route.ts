@@ -17,7 +17,6 @@ type FormattedTeacherQualification = {
   subjectOfferingId: string;
   subjectName: string;
   subjectTypeName: string;
-  offeringCode: string | null;
   verified: boolean;
   notes: string | null;
   branchId: string | null;
@@ -31,7 +30,6 @@ const formatTeacherQualification = (
   qualification: TeacherQualification & {
     teacher: { name: string };
     subjectOffering: {
-      offeringCode: string | null;
       subject: {
         name: string;
         branchId: string | null;
@@ -47,7 +45,6 @@ const formatTeacherQualification = (
   subjectOfferingId: qualification.subjectOfferingId,
   subjectName: qualification.subjectOffering.subject.name,
   subjectTypeName: qualification.subjectOffering.subjectType.name,
-  offeringCode: qualification.subjectOffering.offeringCode,
   verified: qualification.verified,
   notes: qualification.notes,
   branchId: qualification.subjectOffering.subject.branchId,
@@ -170,7 +167,6 @@ export const GET = withBranchAccess(
         },
         subjectOffering: {
           select: {
-            offeringCode: true,
             subject: {
               select: {
                 name: true,
@@ -367,7 +363,6 @@ export const POST = withBranchAccess(
                 },
                 subjectOffering: {
                   select: {
-                    offeringCode: true,
                     subject: {
                       select: {
                         name: true,
@@ -495,7 +490,6 @@ export const POST = withBranchAccess(
             },
             subjectOffering: {
               select: {
-                offeringCode: true,
                 subject: {
                   select: {
                     name: true,

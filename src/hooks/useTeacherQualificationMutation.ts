@@ -78,7 +78,6 @@ export function useTeacherQualificationCreate() {
             subjectOfferingId: newQualification.subjectOfferingId,
             subjectName: "", // We don't know these names optimistically
             subjectTypeName: "",
-            offeringCode: null,
             verified: newQualification.verified ?? true,
             notes: newQualification.notes || null,
             branchId: null,

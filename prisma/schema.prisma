@@ -230,7 +230,6 @@ model SubjectOffering {
   subjectOfferingId         String                     @id @default(cuid()) @map("subject_offering_id")
   subjectId                 String                     @map("subject_id")
   subjectTypeId             String                     @map("subject_type_id")
-  offeringCode              String?                    @unique @db.VarChar(50) // Optional code like "MATH-UNI-101"
   isActive                  Boolean                    @default(true) @map("is_active")
   notes                     String?                    @db.VarChar(255)
   subject                   Subject                    @relation(fields: [subjectId], references: [subjectId], onDelete: Cascade, onUpdate: Cascade)

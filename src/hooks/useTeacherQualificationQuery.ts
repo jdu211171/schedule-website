@@ -10,7 +10,6 @@ export type TeacherQualification = {
   subjectOfferingId: string;
   subjectName: string;
   subjectTypeName: string;
-  offeringCode: string | null;
   verified: boolean;
   notes: string | null;
   branchId: string | null;

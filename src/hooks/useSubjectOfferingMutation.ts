@@ -72,7 +72,6 @@ export function useSubjectOfferingCreate() {
             subjectName: "", // We don't know the subject name optimistically
             subjectTypeId: newSubjectOffering.subjectTypeId,
             subjectTypeName: "", // We don't know the subject type name optimistically
-            offeringCode: newSubjectOffering.offeringCode || null,
             isActive: newSubjectOffering.isActive ?? true,
             notes: newSubjectOffering.notes || null,
             branchId: null, // We don't know the branch optimistically

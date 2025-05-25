@@ -11,7 +11,6 @@ type FormattedSubjectOffering = {
   subjectName: string;
   subjectTypeId: string;
   subjectTypeName: string;
-  offeringCode: string | null;
   isActive: boolean;
   notes: string | null;
   branchId: string | null;
@@ -44,7 +43,6 @@ const formatSubjectOffering = (
   subjectName: subjectOffering.subject.name,
   subjectTypeId: subjectOffering.subjectTypeId,
   subjectTypeName: subjectOffering.subjectType.name,
-  offeringCode: subjectOffering.offeringCode,
   isActive: subjectOffering.isActive,
   notes: subjectOffering.notes,
   branchId: subjectOffering.subject.branchId,
@@ -181,12 +179,11 @@ export const PATCH = withBranchAccess(
         );
       }
 
-      const { subjectId, subjectTypeId, offeringCode, isActive, notes } =
+      const { subjectId, subjectTypeId, isActive, notes } =
         result.data;
 
       // Prepare update data
       const updateData: any = {};
-      if (offeringCode !== undefined) updateData.offeringCode = offeringCode;
       if (isActive !== undefined) updateData.isActive = isActive;
       if (notes !== undefined) updateData.notes = notes;
 
@@ -259,26 +256,6 @@ export const PATCH = withBranchAccess(
           }
 
           updateData.subjectTypeId = subjectTypeId;
-        }
-      }
-
-      // Check if offering code conflicts (if changing offering code)
-      if (
-        offeringCode &&
-        offeringCode !== existingSubjectOffering.offeringCode
-      ) {
-        const conflictingCode = await prisma.subjectOffering.findFirst({
-          where: {
-            offeringCode,
-            subjectOfferingId: { not: subjectOfferingId },
-          },
-        });
-
-        if (conflictingCode) {
-          return NextResponse.json(
-            { error: "提供コードは既に使用されています" },
-            { status: 409 }
-          );
         }
       }
 

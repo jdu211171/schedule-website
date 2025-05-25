@@ -15,7 +15,6 @@ type FormattedSubjectOffering = {
   subjectName: string;
   subjectTypeId: string;
   subjectTypeName: string;
-  offeringCode: string | null;
   isActive: boolean;
   notes: string | null;
   branchId: string | null;
@@ -48,7 +47,6 @@ const formatSubjectOffering = (
   subjectName: subjectOffering.subject.name,
   subjectTypeId: subjectOffering.subjectTypeId,
   subjectTypeName: subjectOffering.subjectType.name,
-  offeringCode: subjectOffering.offeringCode,
   isActive: subjectOffering.isActive,
   notes: subjectOffering.notes,
   branchId: subjectOffering.subject.branchId,
@@ -123,12 +121,6 @@ export const GET = withBranchAccess(
               contains: search,
               mode: "insensitive",
             },
-          },
-        },
-        {
-          offeringCode: {
-            contains: search,
-            mode: "insensitive",
           },
         },
       ];
@@ -207,7 +199,7 @@ export const POST = withBranchAccess(
           );
         }
 
-        const { subjectId, subjectTypeIds, offeringCodePrefix, notes } =
+        const { subjectId, subjectTypeIds, notes } =
           bulkResult.data;
 
         // Verify subject exists and user has access
@@ -278,9 +270,6 @@ export const POST = withBranchAccess(
         const createData = subjectTypeIds.map((subjectTypeId, index) => ({
           subjectId,
           subjectTypeId,
-          offeringCode: offeringCodePrefix
-            ? `${offeringCodePrefix}-${index + 1}`
-            : null,
           notes,
         }));
 
@@ -341,7 +330,7 @@ export const POST = withBranchAccess(
           );
         }
 
-        const { subjectId, subjectTypeId, offeringCode, isActive, notes } =
+        const { subjectId, subjectTypeId, isActive, notes } =
           result.data;
 
         // Verify subject exists and user has access
@@ -393,26 +382,11 @@ export const POST = withBranchAccess(
           );
         }
 
-        // Check if offering code is unique (if provided)
-        if (offeringCode) {
-          const existingCode = await prisma.subjectOffering.findFirst({
-            where: { offeringCode },
-          });
-
-          if (existingCode) {
-            return NextResponse.json(
-              { error: "提供コードは既に使用されています" },
-              { status: 409 }
-            );
-          }
-        }
-
         // Create subject offering
         const newSubjectOffering = await prisma.subjectOffering.create({
           data: {
             subjectId,
             subjectTypeId,
-            offeringCode,
             isActive,
             notes,
           },

@@ -5,11 +5,6 @@ import { z } from "zod";
 const subjectOfferingBaseSchema = z.object({
   subjectId: z.string().min(1, "科目を選択してください"),
   subjectTypeId: z.string().min(1, "科目タイプを選択してください"),
-  offeringCode: z
-    .string()
-    .max(50, "提供コードは50文字以内で入力してください")
-    .optional()
-    .nullable(),
   isActive: z.boolean().default(true),
   notes: z
     .string()
@@ -52,11 +47,6 @@ export const subjectOfferingBulkCreateSchema = z.object({
   subjectTypeIds: z
     .array(z.string())
     .min(1, "少なくとも1つの科目タイプを選択してください"),
-  offeringCodePrefix: z
-    .string()
-    .max(20, "提供コードプレフィックスは20文字以内で入力してください")
-    .optional()
-    .nullable(),
   notes: z
     .string()
     .max(255, "備考は255文字以内で入力してください")

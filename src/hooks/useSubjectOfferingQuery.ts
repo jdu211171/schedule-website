@@ -9,7 +9,6 @@ export type SubjectOffering = {
   subjectName: string;
   subjectTypeId: string;
   subjectTypeName: string;
-  offeringCode: string | null;
   isActive: boolean;
   notes: string | null;
   branchId: string | null;
