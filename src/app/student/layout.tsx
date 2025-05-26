@@ -1,8 +1,6 @@
-"use client";
-
 import Navbar from "@/components/Navbar";
 
-export default function TeacherLayout({
+export default function StudentPage({
   children,
 }: {
   children: React.ReactNode;
@@ -10,7 +8,7 @@ export default function TeacherLayout({
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
-      <main className="flex-1 container py-6 mx-auto">{children}</main>
+      <main className="flex-1 py-6 max-w-full mx-8">{children}</main>
     </div>
   );
 }
