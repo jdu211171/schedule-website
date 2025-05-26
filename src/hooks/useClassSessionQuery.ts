@@ -198,7 +198,7 @@ export function useClassSessionsByDate(date: string, params: {
   });
 }
 
-export function useMultipleWeeksClassSessions(selectedWeeks: Date[]) {
+export function useMultipleWeeksClassSessions(selectedWeeks: Date[], filters: DayFilters = {}) {
   const weekQueries = useQueries({
     queries: selectedWeeks.map(week => {
       const weekStart = startOfWeek(week, { weekStartsOn: 1 });
@@ -208,13 +208,23 @@ export function useMultipleWeeksClassSessions(selectedWeeks: Date[]) {
       const endDate = format(weekEnd, 'yyyy-MM-dd');
       
       return {
-        queryKey: ['classSessions', 'dateRange', startDate, endDate],
+        queryKey: ['classSessions', 'dateRange', startDate, endDate, filters],
         queryFn: async () => {
           const params = new URLSearchParams({
             startDate,
             endDate,
             limit: '100'
           });
+          
+          if (filters.subjectId) {
+            params.append('subjectId', filters.subjectId);
+          }
+          if (filters.teacherId) {
+            params.append('teacherId', filters.teacherId);
+          }
+          if (filters.studentId) {
+            params.append('studentId', filters.studentId);
+          }
           
           const url = `/api/class-sessions?${params.toString()}`;
           return await fetcher<ClassSessionsResponse>(url);

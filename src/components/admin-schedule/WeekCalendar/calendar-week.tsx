@@ -1,7 +1,8 @@
 import { Skeleton } from "@/components/ui/skeleton";
 import { 
   ExtendedClassSessionWithRelations,
-  useMultipleWeeksClassSessions
+  useMultipleWeeksClassSessions,
+  DayFilters
 } from "@/hooks/useClassSessionQuery";
 import {
   addDays,
@@ -13,24 +14,31 @@ import {
 import { ja } from "date-fns/locale";
 import { useCallback, useMemo, useState } from "react";
 import WeekLessonCard from "./week-lesson-card";
+import { DayCalendarFilters } from "../DayCalendar/day-calendar-filters";
 
 const weekDaysJa = ["月", "火", "水", "木", "金", "土", "日"];
 
 interface CalendarWeekProps {
   selectedWeeks: Date[];
   onLessonSelect?: (lesson: ExtendedClassSessionWithRelations) => void;
+  onEdit?: (lesson: ExtendedClassSessionWithRelations) => void;
+  onDelete?: (lessonId: string) => void;
+  filters?: DayFilters;
+  onFiltersChange?: (filters: DayFilters) => void;
 }
 
 export default function CalendarWeek({
   selectedWeeks,
   onLessonSelect,
+  onEdit,
+  onDelete,
+  filters = {},
+  onFiltersChange,
 }: CalendarWeekProps) {
   const [expandedLessonId, setExpandedLessonId] = useState<string | null>(null);
 
-  // Use the hook to fetch data for all selected weeks
-  const { weekQueries, allSessions, isLoading } = useMultipleWeeksClassSessions(selectedWeeks);
+  const { weekQueries, allSessions, isLoading } = useMultipleWeeksClassSessions(selectedWeeks, filters);
 
-  // Handle lesson click
   const handleLessonClick = useCallback(
     (lessonId: string) => {
       setExpandedLessonId(expandedLessonId === lessonId ? null : lessonId);
@@ -46,7 +54,6 @@ export default function CalendarWeek({
     [expandedLessonId, allSessions, onLessonSelect]
   );
 
-  // Calculate layout for multiple lessons at the same time
   const calculateLayout = useCallback((lessonsCount: number) => {
     if (lessonsCount <= 3) return { rows: 1, itemsPerRow: lessonsCount };
     if (lessonsCount === 4) return { rows: 2, itemsPerRow: 2 };
@@ -63,7 +70,6 @@ export default function CalendarWeek({
     };
   }, []);
 
-  // Get lessons for a specific day
   const getLessonsForDay = useCallback(
     (date: Date) => {
       const dayStart = new Date(date);
@@ -80,7 +86,6 @@ export default function CalendarWeek({
     [allSessions]
   );
 
-  // Get week days for a given start date
   const getWeekDays = (startDate: Date) => {
     return Array.from({ length: 7 }, (_, i) => {
       const day = addDays(startDate, i);
@@ -94,7 +99,6 @@ export default function CalendarWeek({
     });
   };
 
-  // Group lessons by time
   const groupLessonsByTime = useCallback(
     (dayLessons: ExtendedClassSessionWithRelations[]) => {
       const grouped: { [timeSlot: string]: ExtendedClassSessionWithRelations[] } = {};
@@ -164,9 +168,22 @@ export default function CalendarWeek({
           return (
             <div key={`week-${index}`}>
               <div className="border rounded-lg overflow-visible shadow-sm relative">
-                <div className="font-medium text-sm text-center sm:text-base sm:pl-2 sm:py-2 bg-gray-100 dark:bg-[#171616] border-b text-foreground dark:text-foreground">
-                  {format(weekStart, "d日 M月", { locale: ja })} -{" "}
-                  {format(weekEnd, "d日 M月 yyyy年", { locale: ja })}
+                <div className="bg-gray-100 dark:bg-[#171616] border-b text-foreground dark:text-foreground">
+                  <div className="flex items-center justify-between px-4 py-2">
+                    <h3 className="text-lg">
+                      {format(weekStart, "d日M月", { locale: ja })} -{" "}
+                      {format(weekEnd, "d日M月", { locale: ja })}
+                    </h3>
+                    {onFiltersChange && (
+                      <div className="flex-1 flex justify-end">
+                        <DayCalendarFilters
+                          filters={filters}
+                          onFiltersChange={onFiltersChange}
+                          dateKey={`week-${index}`}
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div className="grid grid-cols-7 border-b bg-muted">
                   {weekDays.map((day, ind) => (
@@ -212,7 +229,6 @@ export default function CalendarWeek({
                                   lessonsAtTime.some(
                                     (lesson) => lesson.classId === expandedLessonId
                                   ) ? (
-                                    // Show only expanded card
                                     <div className="w-full">
                                       <WeekLessonCard
                                         lesson={
@@ -223,14 +239,14 @@ export default function CalendarWeek({
                                         isExpanded={true}
                                         displayMode="full"
                                         onClick={handleLessonClick}
+                                        onEdit={onEdit}
+                                        onDelete={onDelete}
                                       />
                                     </div>
                                   ) : (
-                                    // Show all cards with adaptive layout
                                     <div>
                                       {Array.from({ length: rows }).map(
                                         (_, rowIndex) => {
-                                          // Special handling for 7 lessons (4+3 layout)
                                           let rowItemsCount = itemsPerRow;
                                           if (lessonsAtTime.length === 7) {
                                             rowItemsCount = rowIndex === 0 ? 4 : 3;
@@ -280,6 +296,8 @@ export default function CalendarWeek({
                                                     isExpanded={false}
                                                     displayMode={displayMode}
                                                     onClick={handleLessonClick}
+                                                    onEdit={onEdit}
+                                                    onDelete={onDelete}
                                                   />
                                                 );
                                               })}

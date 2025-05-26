@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { ExtendedClassSessionWithRelations } from '@/hooks/useClassSessionQuery';
 import { TimeSlot } from './admin-calendar-day';
+import { UserCheck, GraduationCap } from "lucide-react"
 
 interface Booth {
   boothId: string;
@@ -250,10 +251,16 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
         </div>
         {!isNarrow && (
           <div className="text-[11px] absolute bottom-0.5 left-1 right-1">
-            <div className="truncate flex justify-between">
-              <span className="truncate">👨‍🏫 {teacherName}</span>
+            <div className="truncate flex justify-between items-center">
+              <span className="truncate flex items-center">
+                <UserCheck className="w-3 h-3 inline mr-1" />
+                {teacherName}
+              </span>
               <span className="mx-0.5">-</span>
-              <span className="truncate">👨‍🎓 {studentName}</span>
+              <span className="truncate flex items-center">
+                <GraduationCap className="w-3 h-3 inline mr-1" />
+                {studentName}
+              </span>
             </div>
           </div>
         )}

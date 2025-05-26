@@ -1,8 +1,16 @@
-import { ExtendedClassSessionWithRelations } from "@/hooks/useClassSessionQuery";
+import {
+  ExtendedClassSessionWithRelations,
+  DayFilters,
+} from "@/hooks/useClassSessionQuery";
 import React, { useCallback, useEffect, useState } from "react";
 import { getCurrentDateAdjusted } from "../date";
 import CalendarWeek from "./calendar-week";
 import { WeekSelector } from "./week-selector";
+import { LessonDialog } from "../DayCalendar/lesson-dialog";
+import { useBooths } from "@/hooks/useBoothQuery";
+import { useTeachers } from "@/hooks/useTeacherQuery";
+import { useStudents } from "@/hooks/useStudentQuery";
+import { useSubjects } from "@/hooks/useSubjectQuery";
 
 // Storage key for selected weeks persistence
 const SELECTED_WEEKS_KEY = "admin_calendar_selected_weeks";
@@ -59,6 +67,24 @@ const AdminCalendarWeek: React.FC<AdminCalendarWeekProps> = ({
     // Default to current date if no saved weeks or all saved weeks are in the past
     return [today];
   });
+
+  // Dialog and lesson management state
+  const [selectedLesson, setSelectedLesson] =
+    useState<ExtendedClassSessionWithRelations | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogMode, setDialogMode] = useState<"view" | "edit">("view");
+  const [filters, setFilters] = useState<DayFilters>({});
+
+  // Data hooks
+  const { data: boothsResponse } = useBooths();
+  const { data: teachersResponse } = useTeachers();
+  const { data: studentsResponse } = useStudents();
+  const { data: subjectsResponse } = useSubjects();
+
+  const booths = boothsResponse?.data || [];
+  const teachers = teachersResponse?.data || [];
+  const students = studentsResponse?.data || [];
+  const subjects = subjectsResponse?.data || [];
 
   // Clean up old dates from localStorage on mount
   useEffect(() => {
@@ -125,6 +151,29 @@ const AdminCalendarWeek: React.FC<AdminCalendarWeekProps> = ({
     });
   }, []);
 
+  const handleLessonSelect = (lesson: ExtendedClassSessionWithRelations) => {
+    if (onLessonSelect) {
+      onLessonSelect(lesson);
+    }
+  };
+
+  const handleEdit = (lesson: ExtendedClassSessionWithRelations) => {
+    setSelectedLesson(lesson);
+    setDialogMode("edit");
+    setDialogOpen(true);
+  };
+
+  const handleDelete = (lessonId: string) => {
+    setDialogOpen(false);
+    setSelectedLesson(null);
+  };
+
+  const handleSave = (lessonId: string, wasSeriesEdit?: boolean) => {
+    console.log(`Lesson ${lessonId} saved. Series edit: ${wasSeriesEdit}`);
+    setDialogOpen(false);
+    setSelectedLesson(null);
+  };
+
   return (
     <div className="w-full flex flex-col gap-2 my-2">
       <div className="flex flex-col sm:flex-row justify-between items-center sm:space-y-0 mx-5">
@@ -137,8 +186,28 @@ const AdminCalendarWeek: React.FC<AdminCalendarWeekProps> = ({
 
       <CalendarWeek
         selectedWeeks={selectedWeeks}
-        onLessonSelect={onLessonSelect}
+        onLessonSelect={handleLessonSelect}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        filters={filters}
+        onFiltersChange={setFilters}
       />
+
+      {selectedLesson && (
+        <LessonDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          lesson={selectedLesson}
+          mode={dialogMode}
+          onModeChange={setDialogMode}
+          onSave={handleSave}
+          onDelete={handleDelete}
+          booths={booths}
+          teachers={teachers}
+          students={students}
+          subjects={subjects}
+        />
+      )}
     </div>
   );
 };
