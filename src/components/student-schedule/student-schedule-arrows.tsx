@@ -1,12 +1,12 @@
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
-  addMonths,
-  subMonths,
-  addWeeks,
-  subWeeks,
   addDays,
+  addMonths,
+  addWeeks,
   subDays,
+  subMonths,
+  subWeeks,
 } from "date-fns";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 interface Props {
   setCurrentDate: React.Dispatch<React.SetStateAction<Date>>;
   viewType: "DAY" | "WEEK" | "MONTH";

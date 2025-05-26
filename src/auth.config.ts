@@ -90,7 +90,7 @@ export default {
           image: user.image,
           name: user.name,
           username: user.username ?? "",
-          userId: user.teacher?.userId || user.student?.userId || "",
+          userId: user.teacher?.teacherId || user.student?.studentId || "",
           branches: userBranches,
           selectedBranchId:
             userBranches.length > 0 ? userBranches[0].branchId : null,

@@ -73,6 +73,7 @@ export function useStudentCreate() {
                 notes: newStudent.notes || null,
                 username: newStudent.username,
                 email: newStudent.email || null,
+                password: newStudent.password || null,
                 branches: [],
                 createdAt: new Date(),
                 updatedAt: new Date(),

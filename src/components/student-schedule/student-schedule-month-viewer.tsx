@@ -1,4 +1,4 @@
-import { Lesson } from "@/app/student/page";
+import { ExtendedClassSessionWithRelations } from "@/hooks/useClassSessionQuery";
 import { cn } from "@/lib/utils";
 import {
   eachDayOfInterval,
@@ -7,19 +7,19 @@ import {
   format,
   isSameDay,
   isToday,
-  parseISO,
   startOfMonth,
   startOfWeek,
 } from "date-fns";
 import React from "react";
+import { GetColorFunction } from "./student-schedule-week-viewer";
 
 type MonthViewerProps = {
-  lessons: Lesson[];
+  lessons: ExtendedClassSessionWithRelations[];
   monthDate: Date;
   daysOfWeek: string[];
   setViewType: React.Dispatch<React.SetStateAction<"WEEK" | "MONTH">>;
   setCurrentDate: React.Dispatch<React.SetStateAction<Date>>;
-  getColor: (subjectId: string) => string;
+  getColor: GetColorFunction;
 };
 
 export const StudentScheduleMonthViewer: React.FC<MonthViewerProps> = ({
@@ -44,9 +44,7 @@ export const StudentScheduleMonthViewer: React.FC<MonthViewerProps> = ({
       </div>
       <div className="grid grid-cols-7 gap-1">
         {days.map((day, ind) => {
-          const dayLessons = lessons.filter((l) =>
-            isSameDay(parseISO(l.date), day)
-          );
+          const dayLessons = lessons.filter((l) => isSameDay(l.date, day));
           const isCurrentDay = isToday(day);
 
           return (
@@ -55,7 +53,7 @@ export const StudentScheduleMonthViewer: React.FC<MonthViewerProps> = ({
               className={cn(
                 "border rounded p-1 min-h-[80px] hover:bg-gray-100 dark:hover:bg-[#1c1c1c] cursor-pointer",
                 isCurrentDay
-                  ? "bg-blue-100 border-blue-400 hover:bg-blue-200"
+                  ? "bg-blue-100 border-blue-400 hover:bg-blue-200 dark:bg-gray-900 dark:border-gray-400 dark:hover:bg-gray-800"
                   : ""
               )}
               onClick={() => {
@@ -67,14 +65,21 @@ export const StudentScheduleMonthViewer: React.FC<MonthViewerProps> = ({
                 {format(day, "d")}
               </div>
               {dayLessons.map((lesson, idx) => {
-                const bgColor = getColor(lesson.subject.subjectId);
+                const { text, border, background, hover } = getColor(
+                  lesson.classTypeName as "通常授業" | "特別授業"
+                );
                 return (
                   <div
                     key={idx}
-                    style={{ backgroundColor: bgColor }}
-                    className="text-xs rounded px-1 mt-1"
+                    className={cn(
+                      "text-xs rounded p-1 mt-1",
+                      text,
+                      border,
+                      background,
+                      hover
+                    )}
                   >
-                    {lesson.subject.name}
+                    {lesson.subjectName || "Unknown Subject"}
                   </div>
                 );
               })}
