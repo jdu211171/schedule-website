@@ -212,6 +212,7 @@ async function main() {
       startTime: new Date("2025-06-22T09:00:00Z"),
       endTime: new Date("2025-09-29T10:30:00Z"),
       duration: 90, // 分
+      branchId: mainBranch.branchId,
       notes: "数学定期テスト対策",
     },
   });
