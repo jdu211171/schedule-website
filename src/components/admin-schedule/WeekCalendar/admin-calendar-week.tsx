@@ -187,6 +187,10 @@ const AdminCalendarWeek: React.FC<AdminCalendarWeekProps> = ({
 
       <CalendarWeek
         selectedWeeks={selectedWeeks}
+        onLessonSelect={onLessonSelect}
+      />
+      <CalendarWeek
+        selectedWeeks={selectedWeeks}
         onLessonSelect={handleLessonSelect}
         onEdit={handleEdit}
         onDelete={handleDelete}
