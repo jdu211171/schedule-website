@@ -119,7 +119,6 @@ const AdminCalendarWeek: React.FC<AdminCalendarWeekProps> = ({
       }
     }
   }, []);
-
   const handleDaySelect = useCallback((date: Date, isSelected: boolean) => {
     setSelectedWeeks((prev) => {
       let newWeeks: Date[];
