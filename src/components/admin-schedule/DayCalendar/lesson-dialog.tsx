@@ -7,10 +7,10 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { ExtendedClassSessionWithRelations } from '@/hooks/useClassSessionQuery';
-import { useClassSessionDelete, useClassSessionUpdate, useClassSessionSeriesUpdate } from '@/hooks/useClassSessionMutation';
+import { useClassSessionDelete, useClassSessionUpdate, useClassSessionSeriesUpdate, useClassSessionSeriesDelete } from '@/hooks/useClassSessionMutation';
 import { SearchableSelect, SearchableSelectItem } from '../searchable-select';
 import { TimeInput } from '@/components/ui/time-input';
-import { ConfirmDeleteDialog } from '../confirm-delete-dialog'; 
+import { ConfirmDeleteDialog } from '../confirm-delete-dialog';
 
 interface Booth {
   boothId: string;
@@ -51,6 +51,7 @@ interface EditableLessonUI {
 }
 
 type EditMode = 'single' | 'series';
+type DeleteMode = 'single' | 'series';
 
 type LessonDialogProps = {
   open: boolean;
@@ -74,13 +75,13 @@ function convertToEditableUI(lesson: ExtendedClassSessionWithRelations): Editabl
         if (/^\d{2}:\d{2}$/.test(timeValue)) {
           return timeValue;
         }
-        
+
         const timeMatch = timeValue.match(/T(\d{2}:\d{2}):/);
         if (timeMatch && timeMatch[1]) {
           return timeMatch[1];
         }
         return '';
-      } 
+      }
       else if (timeValue instanceof Date) {
         return `${timeValue.getUTCHours().toString().padStart(2, '0')}:${timeValue.getUTCMinutes().toString().padStart(2, '0')}`;
       }
@@ -125,9 +126,11 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
   const [editedLesson, setEditedLesson] = useState<EditableLessonUI | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [editMode, setEditMode] = useState<EditMode>('single');
+  const [deleteMode, setDeleteMode] = useState<DeleteMode>('single');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false); // State for delete confirmation dialog
-  
+
   const deleteClassMutation = useClassSessionDelete();
+  const deleteSeriesMutation = useClassSessionSeriesDelete();
   const updateClassMutation = useClassSessionUpdate();
   const updateSeriesMutation = useClassSessionSeriesUpdate();
 
@@ -138,19 +141,28 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
       setEditedLesson(convertToEditableUI(lesson));
       // Reset edit mode when dialog opens
       setEditMode('single');
+      setDeleteMode('single');
     } else if (!open) {
       setEditedLesson(null);
       setError(null);
       setEditMode('single');
+      setDeleteMode('single');
       setShowDeleteConfirm(false); // Reset delete confirmation when dialog closes
     }
   }, [lesson, open]);
+
+  // When edit mode changes, update delete mode to match for better UX
+  useEffect(() => {
+    if (isRecurringLesson) {
+      setDeleteMode(editMode === 'series' ? 'series' : 'single');
+    }
+  }, [editMode, isRecurringLesson]);
 
   if (!lesson || !editedLesson) return null;
 
   const handleInputChange = (field: keyof EditableLessonUI, value: string | number | boolean | null | undefined) => {
     const updatedLesson: EditableLessonUI = { ...editedLesson };
-    
+
     switch (field) {
       case 'formattedStartTime':
         updatedLesson.formattedStartTime = value as string | undefined;
@@ -176,12 +188,12 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
       default:
         break;
     }
-    
+
     setEditedLesson(updatedLesson);
   };
 
   const handleSave = () => {
-    if (!editedLesson || !editedLesson.classId) { 
+    if (!editedLesson || !editedLesson.classId) {
       return;
     }
 
@@ -199,23 +211,23 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
       } = {
         seriesId: lesson.seriesId
       };
-      
+
       if (editedLesson.teacherId !== undefined) {
         seriesToSave.teacherId = editedLesson.teacherId;
       }
-      
+
       if (editedLesson.studentId !== undefined) {
         seriesToSave.studentId = editedLesson.studentId;
       }
-      
+
       if (editedLesson.subjectId !== undefined) {
         seriesToSave.subjectId = editedLesson.subjectId;
       }
-      
+
       if (editedLesson.formattedStartTime) {
         seriesToSave.startTime = editedLesson.formattedStartTime;
       }
-      
+
       if (editedLesson.formattedEndTime) {
         seriesToSave.endTime = editedLesson.formattedEndTime;
       }
@@ -223,7 +235,7 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
       if (editedLesson.boothId !== undefined) {
         seriesToSave.boothId = editedLesson.boothId || "";
       }
-      
+
       if (editedLesson.notes !== undefined) {
         seriesToSave.notes = editedLesson.notes || "";
       }
@@ -252,23 +264,23 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
       } = {
         classId: editedLesson.classId
       };
-      
+
       if (editedLesson.teacherId !== undefined) {
         lessonToSave.teacherId = editedLesson.teacherId;
       }
-      
+
       if (editedLesson.studentId !== undefined) {
         lessonToSave.studentId = editedLesson.studentId;
       }
-      
+
       if (editedLesson.subjectId !== undefined) {
         lessonToSave.subjectId = editedLesson.subjectId;
       }
-      
+
       if (editedLesson.formattedStartTime) {
         lessonToSave.startTime = editedLesson.formattedStartTime;
       }
-      
+
       if (editedLesson.formattedEndTime) {
         lessonToSave.endTime = editedLesson.formattedEndTime;
       }
@@ -276,7 +288,7 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
       if (editedLesson.boothId !== undefined) {
         lessonToSave.boothId = editedLesson.boothId || "";
       }
-      
+
       if (editedLesson.notes !== undefined) {
         lessonToSave.notes = editedLesson.notes || "";
       }
@@ -302,28 +314,42 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
   // Actual delete function - called after confirmation
   const handleDelete = () => {
     if (!lesson.classId) return;
-    
-    deleteClassMutation.mutate(lesson.classId, {
-      onSuccess: () => {
-        onDelete(lesson.classId);
-      },
-      onError: (error) => {
-        console.error("授業の削除エラー:", error);
-        setError("授業の削除に失敗しました");
-      }
-    });
+
+    if (deleteMode === 'series' && lesson.seriesId) {
+      // Delete entire series
+      deleteSeriesMutation.mutate(lesson.seriesId, {
+        onSuccess: () => {
+          onDelete(lesson.classId);
+        },
+        onError: (error) => {
+          console.error("シリーズの削除エラー:", error);
+          setError("シリーズの削除に失敗しました");
+        }
+      });
+    } else {
+      // Delete single lesson
+      deleteClassMutation.mutate(lesson.classId, {
+        onSuccess: () => {
+          onDelete(lesson.classId);
+        },
+        onError: (error) => {
+          console.error("授業の削除エラー:", error);
+          setError("授業の削除に失敗しました");
+        }
+      });
+    }
   };
 
   const getDisplayDate = (): Date => {
     if (lesson.date instanceof Date) {
       return lesson.date;
-    } 
+    }
     return new Date(lesson.date as string);
   };
 
   const canSave = () => {
     return Boolean(
-      editedLesson.formattedStartTime && 
+      editedLesson.formattedStartTime &&
       editedLesson.formattedEndTime &&
       editedLesson.boothId
     );
@@ -371,8 +397,8 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
             {/* Edit Mode Selection - only show for recurring lessons in edit mode */}
             {mode === 'edit' && isRecurringLesson && (
               <div className="p-3 border rounded-lg bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
-                <RadioGroup 
-                  value={editMode} 
+                <RadioGroup
+                  value={editMode}
                   onValueChange={(value: EditMode) => setEditMode(value)}
                   className="flex flex-row space-x-6"
                 >
@@ -386,6 +412,33 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
                     <RadioGroupItem value="series" id="series" />
                     <Label htmlFor="series" className="text-sm font-normal cursor-pointer">
                       シリーズ全体を編集
+                    </Label>
+                  </div>
+                </RadioGroup>
+              </div>
+            )}
+
+            {/* Delete Mode Selection - only show for recurring lessons when delete confirmation is open */}
+            {showDeleteConfirm && isRecurringLesson && (
+              <div className="p-3 border rounded-lg bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800">
+                <div className="mb-2">
+                  <Label className="text-sm font-medium text-foreground">削除範囲を選択:</Label>
+                </div>
+                <RadioGroup
+                  value={deleteMode}
+                  onValueChange={(value: DeleteMode) => setDeleteMode(value)}
+                  className="flex flex-col space-y-2"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="single" id="delete-single" />
+                    <Label htmlFor="delete-single" className="text-sm font-normal cursor-pointer">
+                      この授業のみ削除
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="series" id="delete-series" />
+                    <Label htmlFor="delete-series" className="text-sm font-normal cursor-pointer">
+                      シリーズ全体を削除 (本日以降の全授業)
                     </Label>
                   </div>
                 </RadioGroup>
@@ -534,7 +587,7 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
                 />
               </div>
             )}
-            
+
             {mode === 'view' && lesson.notes && (
               <div>
                 <label className="text-sm font-medium text-foreground">メモ</label>
@@ -543,7 +596,7 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
                 </div>
               </div>
             )}
-             
+
             {error && (
               <div className="p-3 rounded bg-destructive/10 border border-destructive/20 text-destructive text-sm">
                 {error}
@@ -558,9 +611,9 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
                   variant="destructive"
                   className="transition-all duration-200 hover:brightness-110 active:scale-[0.98] focus:ring-2 focus:ring-destructive/30 focus:outline-none"
                   onClick={handleDeleteClick} // Changed to show confirmation dialog
-                  disabled={deleteClassMutation.isPending}
+                  disabled={deleteClassMutation.isPending || deleteSeriesMutation.isPending}
                 >
-                  削除
+                  削除{isRecurringLesson ? '...' : ''}
                 </Button>
                 <div className="flex space-x-2">
                   <Button
@@ -587,7 +640,7 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
               </>
             ) : (
               <>
-                <div /> 
+                <div />
                 <div className="flex space-x-2">
                    <Button
                       variant="outline"
@@ -613,12 +666,16 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
       <ConfirmDeleteDialog
         open={showDeleteConfirm}
         onOpenChange={setShowDeleteConfirm}
-        title="授業の削除"
-        description="本当にこの授業を削除しますか？"
-        confirmText="削除"
+        title={isRecurringLesson && deleteMode === 'series' ? 'シリーズの削除' : '授業の削除'}
+        description={
+          isRecurringLesson && deleteMode === 'series'
+            ? `本当にこのシリーズの本日以降の全授業を削除しますか？\n\n${lesson.teacher?.name || lesson.teacherName || ''}先生の${lesson.subject?.name || lesson.subjectName || ''}の繰り返し授業がすべて削除されます。\n\n警告: 過去の授業は削除されませんが、今日以降の未来の授業はすべて削除されます。`
+            : `本当にこの授業を削除しますか？\n\n${format(getDisplayDate(), 'yyyy年MM月dd日', { locale: ja })} ${editedLesson?.formattedStartTime || ''}の授業を削除します。${isRecurringLesson ? '\n\n注意: これは繰り返しシリーズの一部ですが、この授業のみが削除されます。' : ''}`
+        }
+        confirmText={deleteMode === 'series' ? 'シリーズを削除' : '削除'}
         cancelText="キャンセル"
         onConfirm={handleDelete}
-        isLoading={deleteClassMutation.isPending}
+        isLoading={deleteClassMutation.isPending || deleteSeriesMutation.isPending}
       />
     </>
   );

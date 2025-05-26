@@ -12,6 +12,7 @@ import { DataTable } from "@/components/data-table";
 import { useClassSessions } from "@/hooks/useClassSessionQuery";
 import {
   useClassSessionDelete,
+  useClassSessionSeriesDelete,
   getResolvedClassSessionId,
 } from "@/hooks/useClassSessionMutation";
 import {
@@ -92,17 +93,19 @@ export function ClassSessionTable() {
   const { data: studentsData } = useStudents({ limit: 100 });
   const { data: subjectsData } = useSubjects({ limit: 100 });
   const { data: classTypesData } = useClassTypes({ limit: 100 });
-  const { data: boothsData } = useBooths({ limit: 100 });
-
-  const totalCount = classSessions?.pagination.total || 0;
+  const { data: boothsData } = useBooths({ limit: 100 });  const totalCount = classSessions?.pagination.total || 0;
   const deleteClassSessionMutation = useClassSessionDelete();
+  const deleteClassSessionSeriesMutation = useClassSessionSeriesDelete();
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "ADMIN";
-
   const [sessionToEdit, setSessionToEdit] = useState<ExtendedClassSession | null>(null);
   const [sessionToDelete, setSessionToDelete] = useState<ExtendedClassSession | null>(
     null
   );
+  const [seriesToDelete, setSeriesToDelete] = useState<{
+    seriesId: string;
+    sessionInfo: ExtendedClassSession;
+  } | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
   const handleFilterChange = (
@@ -255,6 +258,20 @@ export function ClassSessionTable() {
                       <CalendarIcon className="mr-2 h-4 w-4" />
                       シリーズを表示
                     </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="text-destructive focus:text-destructive"
+                      onClick={() => {
+                        if (session.seriesId) {
+                          setSeriesToDelete({
+                            seriesId: session.seriesId,
+                            sessionInfo: session
+                          });
+                        }
+                      }}
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      シリーズ全体を削除
+                    </DropdownMenuItem>
                   </>
                 )}
               </DropdownMenuContent>
@@ -282,6 +299,14 @@ export function ClassSessionTable() {
       const classId = getResolvedClassSessionId(sessionToDelete.classId);
       setSessionToDelete(null);
       deleteClassSessionMutation.mutate(classId);
+    }
+  };
+
+  const handleDeleteSeries = () => {
+    if (seriesToDelete) {
+      const { seriesId } = seriesToDelete;
+      setSeriesToDelete(null);
+      deleteClassSessionSeriesMutation.mutate(seriesId);
     }
   };
 
@@ -376,6 +401,45 @@ export function ClassSessionTable() {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {deleteClassSessionMutation.isPending ? "削除中..." : "削除"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Series Delete Confirmation Dialog */}
+      <AlertDialog
+        open={!!seriesToDelete}
+        onOpenChange={(open) => !open && setSeriesToDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>シリーズ全体を削除しますか？</AlertDialogTitle>
+            <AlertDialogDescription>
+              この操作は元に戻せません。
+              {seriesToDelete?.sessionInfo?.teacherName && (
+                <span>
+                  {seriesToDelete.sessionInfo.teacherName}先生の
+                </span>
+              )}
+              {seriesToDelete?.sessionInfo?.subjectName && (
+                <span>
+                  {seriesToDelete.sessionInfo.subjectName}の
+                </span>
+              )}
+              シリーズの<strong>本日以降のすべての授業</strong>を削除します。
+              <strong className="block mt-2 text-destructive">
+                警告: 過去の授業は削除されませんが、今日以降の未来の授業はすべて削除されます。
+              </strong>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>キャンセル</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteSeries}
+              disabled={deleteClassSessionSeriesMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteClassSessionSeriesMutation.isPending ? "削除中..." : "シリーズを削除"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
