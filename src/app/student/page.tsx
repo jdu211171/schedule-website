@@ -13,6 +13,7 @@ import {
   startOfMonth,
   startOfWeek,
 } from "date-fns";
+import { useSession } from "next-auth/react";
 import { useMemo, useState } from "react";
 
 const daysOfWeek = ["月", "火", "水", "木", "金", "土", "日"];
@@ -39,7 +40,7 @@ const getColor = (subjecType: "通常授業" | "特別授業") => {
 export default function StudentPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewType, setViewType] = useState<"WEEK" | "MONTH">("WEEK");
-
+  const { data: session } = useSession();
   // Calculate date ranges based on view type
   const { startDate, endDate } = useMemo(() => {
     if (viewType === "WEEK") {
@@ -65,7 +66,7 @@ export default function StudentPage() {
   const { data, error, isPending } = useClassSessionsDateRange({
     startDate,
     endDate,
-    studentId: "cmb3czhr7000lvo1ohloatzi3",
+    studentId: session?.user?.userId || "",
   });
 
   if (isPending) {

@@ -1,4 +1,3 @@
-// Modify Navbar.tsx to include a branch selector
 "use client";
 
 import * as React from "react";
@@ -54,22 +53,22 @@ const dashboardNavItems: NavItemType[] = [
 ];
 
 const teacherNavItems: NavItemType[] = [
-  {
-    title: "先生",
-    href: "/teacher",
-    icon: LayoutDashboard,
-    exact: true,
-  },
-  {
-    title: "環境設定",
-    href: "/teacher/preferences",
-    icon: CalendarIcon,
-  },
-  {
-    title: "設定",
-    href: "/teacher/settings",
-    icon: Settings,
-  },
+  // {
+  //   title: "先生",
+  //   href: "/teacher",
+  //   icon: LayoutDashboard,
+  //   exact: true,
+  // },
+  // {
+  //   title: "環境設定",
+  //   href: "/teacher/preferences",
+  //   icon: CalendarIcon,
+  // },
+  // {
+  //   title: "設定",
+  //   href: "/teacher/settings",
+  //   icon: Settings,
+  // },
 ];
 
 const studentNavItems: NavItemType[] = [
@@ -96,7 +95,9 @@ const studentNavItems: NavItemType[] = [
 
 function BranchSelector() {
   const { data: session, update } = useSession();
-  const [selectedBranchId, setSelectedBranchId] = React.useState<string | null>(null);
+  const [selectedBranchId, setSelectedBranchId] = React.useState<string | null>(
+    null
+  );
   const [isLoading, setIsLoading] = React.useState(false);
 
   // Use branches from session instead of making an API request
@@ -124,7 +125,12 @@ function BranchSelector() {
   }, [session, branches]);
 
   // Skip rendering if user isn't authenticated or has appropriate role
-  if (!session || !["ADMIN", "STAFF", "TEACHER", "STUDENT"].includes(session?.user?.role as string)) {
+  if (
+    !session ||
+    !["ADMIN", "STAFF", "TEACHER", "STUDENT"].includes(
+      session?.user?.role as string
+    )
+  ) {
     return null;
   }
 
@@ -186,7 +192,9 @@ function BranchSelector() {
       >
         <SelectTrigger className="w-[180px]">
           <SelectValue placeholder="支店を選択">
-            {selectedBranchId ? branches.find(b => b.branchId === selectedBranchId)?.name : "支店を選択"}
+            {selectedBranchId
+              ? branches.find((b) => b.branchId === selectedBranchId)?.name
+              : "支店を選択"}
           </SelectValue>
         </SelectTrigger>
         <SelectContent>
