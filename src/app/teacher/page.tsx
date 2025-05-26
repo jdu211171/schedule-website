@@ -5,101 +5,75 @@ import { StudentScheduleMonthViewer } from "@/components/student-schedule/studen
 import { StudentScheduleWeekViewer } from "@/components/student-schedule/student-schedule-week-viewer";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useClassSessions } from "@/hooks/useClassSessionQuery";
-import { useSession } from "next-auth/react";
-import { useState, useMemo } from "react"; // Added useMemo
+import { useClassSessionsDateRange } from "@/hooks/useClassSessionQuery";
 import {
-  format,
-  startOfWeek,
-  endOfWeek,
-  startOfMonth,
   endOfMonth,
-} from "date-fns"; // Import date-fns functions
-
-export interface Lesson {
-  classId: string;
-  date: string;
-  startTime: string;
-  endTime: string;
-  duration: string;
-  notes: string;
-  booth: {
-    boothId: string;
-    name: string;
-  };
-  subject: {
-    subjectId: string;
-    name: string;
-  };
-  student: {
-    studentId: string;
-    name: string;
-  };
-  teacher: {
-    teacherId: string;
-    name: string;
-  };
-}
+  endOfWeek,
+  format,
+  startOfMonth,
+  startOfWeek,
+} from "date-fns";
+import { useSession } from "next-auth/react";
+import { useMemo, useState } from "react";
 
 const daysOfWeek = ["月", "火", "水", "木", "金", "土", "日"];
-const BgColors = ["#90b8ff", "#b99af4", "#ff99c2", "#ffb285", "#ffd666"];
-const getColor = (subjectId: string | null) => {
-  if (!subjectId) return BgColors[0]; // Default color if subjectId is null
-  const hash = subjectId
-    .split("")
-    .reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  return BgColors[hash % BgColors.length];
+const getColor = (subjecType: "通常授業" | "特別授業") => {
+  if (subjecType === "通常授業") {
+    return {
+      background: "bg-blue-100 dark:bg-blue-900/70",
+      border: "border-blue-300 dark:border-blue-700",
+      text: "text-blue-900 dark:text-blue-100",
+      hover: "hover:bg-blue-200 dark:hover:bg-blue-800",
+      iconColor: "text-black dark:text-white",
+    };
+  } else {
+    return {
+      background: "bg-red-100 dark:bg-red-900/70",
+      border: "border-red-300 dark:border-red-700",
+      text: "text-red-800 dark:text-red-100",
+      hover: "hover:bg-red-200 dark:hover:bg-red-800",
+      iconColor: "text-black dark:text-white",
+    };
+  }
 };
+
 export default function StudentPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewType, setViewType] = useState<"WEEK" | "MONTH">("WEEK");
   const { data: session } = useSession();
-
-  // Calculate startDate and endDate based on viewType and currentDate
+  // Calculate date ranges based on view type
   const { startDate, endDate } = useMemo(() => {
-    let start;
-    let end;
     if (viewType === "WEEK") {
-      start = startOfWeek(currentDate, { weekStartsOn: 1 }); // Assuming week starts on Monday
-      end = endOfWeek(currentDate, { weekStartsOn: 1 });
+      const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
+      const weekEnd = endOfWeek(currentDate, { weekStartsOn: 1 });
+      return {
+        startDate: format(weekStart, "yyyy-MM-dd"),
+        endDate: format(weekEnd, "yyyy-MM-dd"),
+      };
     } else {
-      // MONTH
-      start = startOfMonth(currentDate);
-      end = endOfMonth(currentDate);
+      const monthStart = startOfMonth(currentDate);
+      const monthEnd = endOfMonth(currentDate);
+      // For month view, get the full calendar view (including partial weeks)
+      const calendarStart = startOfWeek(monthStart, { weekStartsOn: 1 });
+      const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
+      return {
+        startDate: format(calendarStart, "yyyy-MM-dd"),
+        endDate: format(calendarEnd, "yyyy-MM-dd"),
+      };
     }
-    return {
-      startDate: format(start, "yyyy-MM-dd"),
-      endDate: format(end, "yyyy-MM-dd"),
-    };
   }, [currentDate, viewType]);
 
-  // IMPORTANT NOTE: session?.user?.id is typically the User.id.
-  // The useClassSessions hook expects a Teacher.teacherId.
-  // If these are different, this query might not fetch the correct data for the teacher.
-  // You may need to:
-  // 1. Ensure Teacher.teacherId is available in the session (e.g., session.user.teacherId).
-  // 2. Or, fetch the Teacher.teacherId based on User.id before calling useClassSessions.
-  const teacherIdForQuery = session?.user?.id || ""; // Placeholder: This might need adjustment
-
-  const { data, error, isPending } = useClassSessions({
-    teacherId: teacherIdForQuery, // Using the potentially problematic ID
+  const { data, error, isPending } = useClassSessionsDateRange({
     startDate,
     endDate,
+    teacherId: session?.user?.userId || "",
   });
-
-  const mappedLessons = useMemo(() => {
-    if (!data?.data) {
-      return [];
-    }
-    return data.data;
-  }, [data?.data]);
 
   if (isPending) {
     return <div>Loading...</div>;
   }
 
   if (error) {
-    console.error("Error fetching lessons:", error);
     return <div>Error loading lessons</div>;
   }
   return (
@@ -148,7 +122,7 @@ export default function StudentPage() {
       </div>
       <TabsContent value="WEEK">
         <StudentScheduleWeekViewer
-          lessons={data?.data} // Use mapped data
+          lessons={data.data}
           weekDate={currentDate}
           daysOfWeek={daysOfWeek}
           getColor={getColor}
@@ -158,7 +132,7 @@ export default function StudentPage() {
         <StudentScheduleMonthViewer
           getColor={getColor}
           daysOfWeek={daysOfWeek}
-          lessons={data?.data} // Use mapped data
+          lessons={data.data}
           monthDate={currentDate}
           setViewType={setViewType}
           setCurrentDate={setCurrentDate}
