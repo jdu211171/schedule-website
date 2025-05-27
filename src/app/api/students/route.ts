@@ -76,7 +76,7 @@ const formatStudent = (student: StudentWithIncludes): FormattedStudent => ({
 // GET - List students with pagination and filters
 export const GET = withBranchAccess(
   ["ADMIN", "STAFF"],
-  async (request: NextRequest, session) => {
+  async (request: NextRequest, session, branchId) => {
     // Parse query parameters
     const url = new URL(request.url);
     const params = Object.fromEntries(url.searchParams.entries());
@@ -108,6 +108,26 @@ export const GET = withBranchAccess(
 
     if (gradeYear !== undefined) {
       where.gradeYear = gradeYear;
+    }
+
+    // Filter students by branch for non-admin users
+    if (session.user?.role !== "ADMIN") {
+      where.user = {
+        branches: {
+          some: {
+            branchId,
+          },
+        },
+      };
+    } else if (branchId) {
+      // If admin has selected a specific branch, filter by that branch
+      where.user = {
+        branches: {
+          some: {
+            branchId,
+          },
+        },
+      };
     }
 
     // Calculate pagination
