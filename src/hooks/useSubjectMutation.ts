@@ -60,15 +60,10 @@ export function useSubjectCreate() {
               queryClient.getQueryData<SubjectsResponse>(queryKey);
             if (currentData) {
               // Create optimistic subject
-              const branchId = localStorage.getItem("selectedBranchId") || "";
-              const branchName = ""; // We can't know the branch name optimistically
-
               const optimisticSubject: Subject = {
                 subjectId: tempId,
                 name: newSubject.name,
                 notes: newSubject.notes || null,
-                branchId: newSubject.branchId || branchId,
-                branchName: branchName,
                 createdAt: new Date(),
                 updatedAt: new Date(),
                 _optimistic: true, // Flag to identify optimistic entries
@@ -236,7 +231,7 @@ export function useSubjectUpdate() {
             description: error.message,
           });
         },
-        onSuccess: (data) => {
+        onSuccess: () => {
           toast.success("科目を更新しました", {
             id: "subject-update-success",
           });

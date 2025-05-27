@@ -6,13 +6,11 @@ export const subjectFilterSchema = z.object({
   page: z.coerce.number().min(1).default(1),
   limit: z.coerce.number().min(1).max(100).default(10),
   name: z.string().optional(),
-  branchId: z.string().optional(),
 });
 
 // For creating a new subject
 export const subjectCreateSchema = z.object({
   name: z.string().min(1).max(100),
-  branchId: z.string().optional(),
   notes: z.string().max(255).optional().nullable(),
 });
 

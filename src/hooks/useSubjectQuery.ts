@@ -7,8 +7,6 @@ export type Subject = {
   subjectId: string;
   name: string;
   notes: string | null;
-  branchId: string | null;
-  branchName: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -17,7 +15,6 @@ type UseSubjectsParams = {
   page?: number;
   limit?: number;
   name?: string;
-  branchId?: string;
 };
 
 type SubjectsResponse = {
@@ -35,13 +32,12 @@ type SingleSubjectResponse = {
 };
 
 export function useSubjects(params: UseSubjectsParams = {}) {
-  const { page = 1, limit = 10, name, branchId } = params;
+  const { page = 1, limit = 10, name } = params;
 
   const query = subjectFilterSchema.parse({
     page,
     limit,
     name,
-    branchId,
   });
 
   const searchParams = new URLSearchParams(
@@ -54,7 +50,7 @@ export function useSubjects(params: UseSubjectsParams = {}) {
   ).toString();
 
   return useQuery<SubjectsResponse>({
-    queryKey: ["subjects", page, limit, name, branchId],
+    queryKey: ["subjects", page, limit, name],
     queryFn: async () =>
       await fetcher<SubjectsResponse>(`/api/subjects?${searchParams}`),
   });

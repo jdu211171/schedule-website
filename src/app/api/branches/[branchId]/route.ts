@@ -244,7 +244,6 @@ export const DELETE = withBranchAccess(
         include: {
           booths: { take: 1 },
           classSessions: { take: 1 },
-          subjects: { take: 1 },
           events: { take: 1 },
           notifications: { take: 1 },
         },

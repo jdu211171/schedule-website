@@ -9,21 +9,15 @@ type FormattedSubject = {
   subjectId: string;
   name: string;
   notes: string | null;
-  branchId: string | null;
-  branchName: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
 
 // Helper function to format subject response
-const formatSubject = (
-  subject: Subject & { branch?: { name: string } | null }
-): FormattedSubject => ({
+const formatSubject = (subject: Subject): FormattedSubject => ({
   subjectId: subject.subjectId,
   name: subject.name,
   notes: subject.notes,
-  branchId: subject.branchId || null,
-  branchName: subject.branch?.name || null,
   createdAt: subject.createdAt,
   updatedAt: subject.updatedAt,
 });
@@ -31,7 +25,7 @@ const formatSubject = (
 // GET a specific subject by ID
 export const GET = withBranchAccess(
   ["ADMIN", "STAFF", "TEACHER"],
-  async (request: NextRequest, session, branchId) => {
+  async (request: NextRequest) => {
     const subjectId = request.url.split("/").pop();
 
     if (!subjectId) {
@@ -40,31 +34,12 @@ export const GET = withBranchAccess(
 
     const subject = await prisma.subject.findUnique({
       where: { subjectId },
-      include: {
-        branch: {
-          select: {
-            name: true,
-          },
-        },
-      },
     });
 
     if (!subject) {
       return NextResponse.json(
         { error: "科目が見つかりません" },
         { status: 404 }
-      );
-    }
-
-    // Check if user has access to this subject's branch (non-admin users)
-    if (
-      subject.branchId &&
-      subject.branchId !== branchId &&
-      session.user?.role !== "ADMIN"
-    ) {
-      return NextResponse.json(
-        { error: "この科目にアクセスする権限がありません" },
-        { status: 403 }
       );
     }
 
@@ -86,7 +61,7 @@ export const GET = withBranchAccess(
 // PATCH - Update a subject
 export const PATCH = withBranchAccess(
   ["ADMIN", "STAFF"],
-  async (request: NextRequest, session, branchId) => {
+  async (request: NextRequest) => {
     try {
       const subjectId = request.url.split("/").pop();
       if (!subjectId) {
@@ -119,18 +94,6 @@ export const PATCH = withBranchAccess(
         );
       }
 
-      // Check if user has access to this subject's branch (non-admin users)
-      if (
-        existingSubject.branchId &&
-        existingSubject.branchId !== branchId &&
-        session.user?.role !== "ADMIN"
-      ) {
-        return NextResponse.json(
-          { error: "この科目にアクセスする権限がありません" },
-          { status: 403 }
-        );
-      }
-
       const { name, notes } = result.data;
 
       // Check name uniqueness if being updated
@@ -138,7 +101,6 @@ export const PATCH = withBranchAccess(
         const nameExists = await prisma.subject.findFirst({
           where: {
             name: { equals: name, mode: "insensitive" },
-            branchId: existingSubject.branchId,
             subjectId: { not: subjectId },
           },
         });
@@ -157,13 +119,6 @@ export const PATCH = withBranchAccess(
         data: {
           name,
           notes,
-        },
-        include: {
-          branch: {
-            select: {
-              name: true,
-            },
-          },
         },
       });
 
@@ -193,7 +148,7 @@ export const PATCH = withBranchAccess(
 // DELETE - Delete a subject
 export const DELETE = withBranchAccess(
   ["ADMIN", "STAFF"],
-  async (request: NextRequest, session, branchId) => {
+  async (request: NextRequest) => {
     const subjectId = request.url.split("/").pop();
 
     if (!subjectId) {
@@ -213,18 +168,6 @@ export const DELETE = withBranchAccess(
         return NextResponse.json(
           { error: "科目が見つかりません" },
           { status: 404 }
-        );
-      }
-
-      // Check if user has access to this subject's branch (non-admin users)
-      if (
-        subject.branchId &&
-        subject.branchId !== branchId &&
-        session.user?.role !== "ADMIN"
-      ) {
-        return NextResponse.json(
-          { error: "この科目にアクセスする権限がありません" },
-          { status: 403 }
         );
       }
 

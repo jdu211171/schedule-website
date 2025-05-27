@@ -23,8 +23,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { SubjectFormDialog } from "./subject-form-dialog";
 import { Subject, useSubjects } from "@/hooks/useSubjectQuery";
-import { useSession } from "next-auth/react";
-import { Badge } from "@/components/ui/badge";
 
 // Define custom column meta type
 interface ColumnMetaType {
@@ -44,9 +42,6 @@ export function SubjectTable() {
     name: searchTerm || undefined,
   });
 
-  const { data: session } = useSession();
-  const isAdmin = session?.user?.role === "ADMIN";
-
   // Ensure the data type returned by useSubjects matches the expected type
   const typedSubjects = subjects?.data || [];
 
@@ -61,20 +56,6 @@ export function SubjectTable() {
     {
       accessorKey: "name",
       header: "科目名",
-    },
-    {
-      accessorKey: "branchName",
-      header: "支店",
-      cell: ({ row }) =>
-        row.original.branchName ? (
-          <Badge variant="outline">{row.original.branchName}</Badge>
-        ) : (
-          "-"
-        ),
-      // Only show for admins
-      meta: {
-        hidden: !isAdmin,
-      } as ColumnMetaType,
     },
     {
       accessorKey: "notes",
@@ -123,10 +104,7 @@ export function SubjectTable() {
   ];
 
   // Filter out the branch column if user is not admin
-  const visibleColumns = columns.filter((col) => {
-    const meta = col.meta as ColumnMetaType | undefined;
-    return !meta?.hidden;
-  });
+  const visibleColumns = columns;
 
   const handleDeleteSubject = () => {
     if (subjectToDelete) {

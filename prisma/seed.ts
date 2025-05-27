@@ -94,7 +94,6 @@ async function main() {
     data: {
       name: "英語",
       notes: "英語全般",
-      branchId: mainBranch.branchId,
     },
   });
 

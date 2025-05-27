@@ -15,7 +15,6 @@ model Branch {
   booths          Booth[]
   userBranches    UserBranch[]
   classSessions   ClassSession[]
-  subjects        Subject[]
   events          Event[]
   notifications   Notification[]
   createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamp(6)
@@ -188,20 +187,17 @@ model Teacher {
 /**
  * This model defines the subjects taught at the school.
  * This is the core subject entity in the three-tier subject management system.
+ * Made global like StudentType model - not branch-specific.
  */
 model Subject {
   subjectId       String           @id @default(cuid()) @map("subject_id")
-  name            String           @db.VarChar(100)
-  branchId        String?          @map("branch_id")
+  name            String           @unique @db.VarChar(100)
   notes           String?          @db.VarChar(255)
   classSessions   ClassSession[]
   subjectOfferings SubjectOffering[]
-  branch          Branch?          @relation(fields: [branchId], references: [branchId], onDelete: SetNull, onUpdate: Cascade)
   createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt       DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
-  @@unique([name, branchId]) // Prevent duplicate subject names within the same branch
-  @@index([branchId])
   @@map("subjects")
 }
 

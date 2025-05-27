@@ -12,21 +12,15 @@ type FormattedSubject = {
   subjectId: string;
   name: string;
   notes: string | null;
-  branchId: string | null;
-  branchName: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
 
 // Helper function to format subject response
-const formatSubject = (
-  subject: Subject & { branch?: { name: string } | null }
-): FormattedSubject => ({
+const formatSubject = (subject: Subject): FormattedSubject => ({
   subjectId: subject.subjectId,
   name: subject.name,
   notes: subject.notes,
-  branchId: subject.branchId || null,
-  branchName: subject.branch?.name || null,
   createdAt: subject.createdAt,
   updatedAt: subject.updatedAt,
 });
@@ -34,7 +28,7 @@ const formatSubject = (
 // GET - List subjects with pagination and filters
 export const GET = withBranchAccess(
   ["ADMIN", "STAFF", "TEACHER"],
-  async (request: NextRequest, session, branchId) => {
+  async (request: NextRequest) => {
     // Parse query parameters
     const url = new URL(request.url);
     const params = Object.fromEntries(url.searchParams.entries());
@@ -51,14 +45,7 @@ export const GET = withBranchAccess(
     const { page, limit, name } = result.data;
 
     // Build filter conditions
-    const where: any = {};
-
-    // For admins, allow filtering by branchId. For non-admins, enforce current branch
-    if (session.user?.role === "ADMIN" && result.data.branchId) {
-      where.branchId = result.data.branchId;
-    } else if (session.user?.role !== "ADMIN") {
-      where.branchId = branchId;
-    }
+    const where: { name?: { contains: string; mode: "insensitive" } } = {};
 
     if (name) {
       where.name = {
@@ -67,30 +54,15 @@ export const GET = withBranchAccess(
       };
     }
 
-    // Filter subjects by branch for non-admin users
-    if (session.user?.role !== "ADMIN") {
-      where.branchId = branchId;
-    } else if (branchId) {
-      // If admin has selected a specific branch, filter by that branch
-      where.branchId = branchId;
-    }
-
     // Calculate pagination
     const skip = (page - 1) * limit;
 
     // Fetch total count
     const total = await prisma.subject.count({ where });
 
-    // Fetch subjects with branch
+    // Fetch subjects
     const subjects = await prisma.subject.findMany({
       where,
-      include: {
-        branch: {
-          select: {
-            name: true,
-          },
-        },
-      },
       skip,
       take: limit,
       orderBy: { name: "asc" },
@@ -114,7 +86,7 @@ export const GET = withBranchAccess(
 // POST - Create a new subject
 export const POST = withBranchAccess(
   ["ADMIN", "STAFF"],
-  async (request: NextRequest, session, branchId) => {
+  async (request: NextRequest) => {
     try {
       const body = await request.json();
 
@@ -129,17 +101,10 @@ export const POST = withBranchAccess(
 
       const { name, notes } = result.data;
 
-      // For admin users, allow specifying branch. For others, use current branch
-      const subjectBranchId =
-        session.user?.role === "ADMIN" && result.data.branchId
-          ? result.data.branchId
-          : branchId;
-
-      // Check if subject name already exists in this branch
+      // Check if subject name already exists (globally)
       const existingSubject = await prisma.subject.findFirst({
         where: {
           name: { equals: name, mode: "insensitive" },
-          branchId: subjectBranchId,
         },
       });
 
@@ -155,14 +120,6 @@ export const POST = withBranchAccess(
         data: {
           name,
           notes,
-          branchId: subjectBranchId,
-        },
-        include: {
-          branch: {
-            select: {
-              name: true,
-            },
-          },
         },
       });
 
