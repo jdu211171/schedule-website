@@ -182,18 +182,46 @@ model Teacher {
   @@map("teachers")
 }
 
+model SubjectType {
+  subjectTypeId         String       @id @default(cuid()) @map("subject_type_id")
+  name                  String       @unique @db.VarChar(100)
+  notes                 String?      @db.VarChar(255)
+  preferences           UserSubjectPreference[]
+  createdAt             DateTime     @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt             DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  @@map("subject_types")
+}
+
+model UserSubjectPreference {
+  id            String      @id @default(cuid())
+  userId        String
+  subjectId     String
+  subjectTypeId String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject       Subject     @relation(fields: [subjectId], references: [subjectId], onDelete: Cascade)
+  subjectType   SubjectType @relation(fields: [subjectTypeId], references: [subjectTypeId], onDelete: Cascade)
+  createdAt     DateTime    @default(now())
+
+  @@unique([userId, subjectId, subjectTypeId])
+  @@index([userId])
+  @@index([subjectId])
+  @@index([subjectTypeId])
+}
+
 /**
  * This model defines the subjects taught at the school.
  * This is the core subject entity in the three-tier subject management system.
  * Made global like StudentType model - not branch-specific.
  */
 model Subject {
-  subjectId     String         @id @default(cuid()) @map("subject_id")
-  name          String         @unique @db.VarChar(100)
-  notes         String?        @db.VarChar(255)
-  classSessions ClassSession[]
-  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt     DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  subjectId             String         @id @default(cuid()) @map("subject_id")
+  name                  String         @unique @db.VarChar(100)
+  notes                 String?        @db.VarChar(255)
+  classSessions         ClassSession[]
+  preferences           UserSubjectPreference[]
+  createdAt             DateTime       @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt             DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
   @@map("subjects")
 }
@@ -255,23 +283,23 @@ enum UserRole {
 }
 
 model User {
-  id            String       @id @default(cuid())
-  name          String?
-  email         String?      @unique
-  emailVerified DateTime?    @map("email_verified")
-  image         String?
-  accounts      Account[]
-  branches      UserBranch[]
-  sessions      Session[]
+  id                 String       @id @default(cuid())
+  name               String?
+  email              String?      @unique
+  emailVerified      DateTime?    @map("email_verified")
+  image              String?
+  accounts           Account[]
+  branches           UserBranch[]
+  sessions           Session[]
+  subjectPreferences UserSubjectPreference[]
+  username           String?      @unique
+  passwordHash       String?
+  role               UserRole     @default(ADMIN)
+  student            Student?
+  teacher            Teacher?
 
-  username     String?  @unique
-  passwordHash String?
-  role         UserRole @default(ADMIN)
-  student      Student?
-  teacher      Teacher?
-
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  createdAt          DateTime      @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt          DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
   @@map("users")
 }
