@@ -37,7 +37,7 @@ const getColor = (subjecType: "通常授業" | "特別授業") => {
   }
 };
 
-export default function StudentPage() {
+export default function TeacherPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewType, setViewType] = useState<"WEEK" | "MONTH">("WEEK");
   const { data: session } = useSession();
@@ -70,11 +70,11 @@ export default function StudentPage() {
   });
 
   if (isPending) {
-    return <div>Loading...</div>;
+    return <div>読み込み中...</div>;
   }
 
   if (error) {
-    return <div>Error loading lessons</div>;
+    return <div>授業データの読み込みエラー</div>;
   }
   return (
     <Tabs
@@ -90,7 +90,7 @@ export default function StudentPage() {
               setCurrentDate(new Date());
             }}
           >
-            TODAY
+            今日
           </Button>
           <StudentScheduleArrows
             setCurrentDate={setCurrentDate}
@@ -108,7 +108,7 @@ export default function StudentPage() {
               setViewType("WEEK");
             }}
           >
-            WEEK
+            週間
           </TabsTrigger>
           <TabsTrigger
             value="MONTH"
@@ -116,7 +116,7 @@ export default function StudentPage() {
               setViewType("MONTH");
             }}
           >
-            MONTH
+            月間
           </TabsTrigger>
         </TabsList>
       </div>
