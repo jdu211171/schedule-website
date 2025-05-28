@@ -104,6 +104,24 @@ const createDateTime = (dateStr: string, timeString: string): Date => {
   return date;
 };
 
+// Helper function to check if a date conflicts with any events
+const checkEventConflict = async (date: Date, branchId: string): Promise<boolean> => {
+  const events = await prisma.event.findMany({
+    where: {
+      OR: [
+        { branchId: branchId },
+        { branchId: null }, // Global events
+      ],
+      AND: [
+        { startDate: { lte: date } },
+        { endDate: { gte: date } },
+      ],
+    },
+  });
+
+  return events.length > 0;
+};
+
 // GET a specific class session by ID
 export const GET = withBranchAccess(
   ["ADMIN", "STAFF", "TEACHER"],
@@ -243,7 +261,18 @@ export const PATCH = withBranchAccess(
       } = result.data;
 
       // Prepare update data
-      const updateData: any = {
+      const updateData: {
+        teacherId?: string | null;
+        studentId?: string | null;
+        subjectId?: string | null;
+        classTypeId?: string | null;
+        boothId?: string | null;
+        notes?: string | null;
+        date?: Date;
+        startTime?: Date;
+        endTime?: Date;
+        duration?: number | null;
+      } = {
         teacherId,
         studentId,
         subjectId,
@@ -252,9 +281,21 @@ export const PATCH = withBranchAccess(
         notes,
       };
 
-      // Handle time updates
+      // Handle date updates and check for event conflicts
       if (date) {
-        updateData.date = parseISO(date);
+        const newDate = parseISO(date);
+
+        // Check if the new date conflicts with any events
+        const hasEventConflict = await checkEventConflict(newDate, existingClassSession.branchId || branchId);
+
+        if (hasEventConflict) {
+          return NextResponse.json(
+            { error: "指定された日付はイベント期間中のため、クラスセッションを更新できません" },
+            { status: 400 }
+          );
+        }
+
+        updateData.date = newDate;
       }
 
       // Get current date in YYYY-MM-DD format

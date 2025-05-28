@@ -119,6 +119,24 @@ const createUTCDateForFilter = (dateStr: string): Date => {
   return new Date(Date.UTC(year, month, day, 0, 0, 0, 0));
 };
 
+// Helper function to check if a date conflicts with any events
+const checkEventConflict = async (date: Date, branchId: string): Promise<boolean> => {
+  const events = await prisma.event.findMany({
+    where: {
+      OR: [
+        { branchId: branchId },
+        { branchId: null }, // Global events
+      ],
+      AND: [
+        { startDate: { lte: date } },
+        { endDate: { gte: date } },
+      ],
+    },
+  });
+
+  return events.length > 0;
+};
+
 // GET - List class sessions with pagination and filters
 export const GET = withBranchAccess(
   ["ADMIN", "STAFF", "TEACHER", "STUDENT"],
@@ -360,6 +378,28 @@ export const POST = withBranchAccess(
 
       // Handle one-time or recurring sessions
       if (!isRecurring) {
+        // Check if the date conflicts with any events
+        const hasEventConflict = await checkEventConflict(dateObj, sessionBranchId);
+
+        if (hasEventConflict) {
+          return NextResponse.json(
+            {
+              data: [],
+              message: "指定された日付はイベント期間中のため、クラスセッションをスキップしました",
+              pagination: {
+                total: 0,
+                page: 1,
+                limit: 0,
+                pages: 0,
+              },
+              skipped: {
+                eventConflict: [format(dateObj, "yyyy年MM月dd日")],
+              },
+            },
+            { status: 200 }
+          );
+        }
+
         // Check for existing session with same teacher, date, and time
         const existingSession = await prisma.classSession.findFirst({
           where: {
@@ -498,9 +538,43 @@ export const POST = withBranchAccess(
           );
         }
 
+        // Filter out dates that conflict with events
+        const validSessionDates: Date[] = [];
+        const skippedEventDates: Date[] = [];
+
+        for (const sessionDate of sessionDates) {
+          const hasEventConflict = await checkEventConflict(sessionDate, sessionBranchId);
+
+          if (hasEventConflict) {
+            skippedEventDates.push(sessionDate);
+          } else {
+            validSessionDates.push(sessionDate);
+          }
+        }
+
+        // If all dates were filtered out due to events, return appropriate message
+        if (validSessionDates.length === 0) {
+          return NextResponse.json(
+            {
+              data: [],
+              message: "すべての日付がイベント期間中のため、クラスセッションをスキップしました",
+              pagination: {
+                total: 0,
+                page: 1,
+                limit: 0,
+                pages: 0,
+              },
+              skipped: {
+                eventConflict: skippedEventDates.map(date => format(date, "yyyy年MM月dd日")),
+              },
+            },
+            { status: 200 }
+          );
+        }
+
         // Check for existing sessions that would conflict
         const conflictingSessions = [];
-        for (const sessionDate of sessionDates) {
+        for (const sessionDate of validSessionDates) {
           const formattedSessionDate = format(sessionDate, "yyyy-MM-dd");
           const sessionStartTime = createDateTime(
             formattedSessionDate,
@@ -534,9 +608,9 @@ export const POST = withBranchAccess(
           );
         }
 
-        // Create class sessions for all dates
+        // Create class sessions for all valid dates
         const createdSessions = await prisma.$transaction(
-          sessionDates.map((sessionDate) => {
+          validSessionDates.map((sessionDate) => {
             // Format the date to YYYY-MM-DD string
             const formattedSessionDate = format(sessionDate, "yyyy-MM-dd");
 
@@ -596,20 +670,31 @@ export const POST = withBranchAccess(
 
         const formattedSessions = createdSessions.map(formatClassSession);
 
-        return NextResponse.json(
-          {
-            data: formattedSessions,
-            message: `${formattedSessions.length}件の繰り返しクラスセッションを作成しました`,
-            pagination: {
-              total: formattedSessions.length,
-              page: 1,
-              limit: formattedSessions.length,
-              pages: 1,
-            },
-            seriesId,
+        // Create response message based on whether any dates were skipped
+        let message = `${formattedSessions.length}件の繰り返しクラスセッションを作成しました`;
+        const responseData = {
+          data: formattedSessions,
+          message,
+          pagination: {
+            total: formattedSessions.length,
+            page: 1,
+            limit: formattedSessions.length,
+            pages: 1,
           },
-          { status: 201 }
-        );
+          seriesId,
+          skipped: undefined as { eventConflict: string[] } | undefined,
+        };
+
+        // Add skipped dates information if any
+        if (skippedEventDates.length > 0) {
+          message += `（${skippedEventDates.length}件の日付をイベント期間中のためスキップしました）`;
+          responseData.message = message;
+          responseData.skipped = {
+            eventConflict: skippedEventDates.map(date => format(date, "yyyy年MM月dd日")),
+          };
+        }
+
+        return NextResponse.json(responseData, { status: 201 });
       }
     } catch (error) {
       console.error("Error creating class session:", error);
