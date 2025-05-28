@@ -124,17 +124,17 @@ function BranchSelector() {
         throw new Error("Failed to update branch selection");
       }
 
-      // Update client-side session
+      // Update client-side session with the new selectedBranchId
       await update({
-        ...session,
         user: {
-          ...session?.user,
           selectedBranchId: value,
         },
       });
 
-      // Reload the page to refresh data with new branch context
-      window.location.reload();
+      // Small delay to ensure session update is processed before reload
+      setTimeout(() => {
+        window.location.reload();
+      }, 100);
     } catch (error) {
       console.error("Error changing branch:", error);
       // Restore previous selection if there was an error

@@ -139,7 +139,7 @@ export default {
       /* 4.  Everything else → allow */
       return true;
     },
-    jwt({ token, user }) {
+    jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id;
         token.role = user.role;
@@ -149,6 +149,12 @@ export default {
         token.branches = user.branches;
         token.selectedBranchId = user.selectedBranchId;
       }
+
+      // Handle session updates (when update() is called from frontend)
+      if (trigger === "update" && session?.user?.selectedBranchId !== undefined) {
+        token.selectedBranchId = session.user.selectedBranchId;
+      }
+
       return token;
     },
     session({ session, token }) {
