@@ -12,6 +12,7 @@ import { StaffTable } from "@/components/staff/staff-table";
 import { BranchTable } from "@/components/branch/branch-table";
 import { StudentTable } from "@/components/student/student-table";
 import { TeacherTable } from "@/components/teacher/teacher-table";
+import { SubjectTypeTable } from "@/components/subject-type/subject-type-table";
 
 // Storage key for tab persistence
 const ACTIVE_TAB_KEY = "masterpage_active_tab";
@@ -55,6 +56,7 @@ export default function MasterDataPage() {
           <TabsTrigger value="students">生徒</TabsTrigger>
           <TabsTrigger value="teachers">教師</TabsTrigger>
           <TabsTrigger value="subjects">科目</TabsTrigger>
+          <TabsTrigger value="subjectTypes">科目タイプ</TabsTrigger>
           <TabsTrigger value="studentTypes">生徒タイプ</TabsTrigger>
           <TabsTrigger value="booths">ブース</TabsTrigger>
           <TabsTrigger value="classTypes">授業タイプ</TabsTrigger>
@@ -76,6 +78,9 @@ export default function MasterDataPage() {
           </TabsContent>
           <TabsContent value="subjects" className="mt-0">
             <SubjectTable />
+          </TabsContent>
+          <TabsContent value="subjectTypes" className="mt-0">
+            <SubjectTypeTable />
           </TabsContent>
           <TabsContent value="studentTypes" className="mt-0">
             <StudentTypeTable />

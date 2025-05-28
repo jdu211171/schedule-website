@@ -66,3 +66,20 @@ export function useSubject(subjectId: string) {
     enabled: !!subjectId,
   });
 }
+
+/**
+ * Hook to fetch all subjects (without pagination) for dropdowns and selects.
+ * Useful for forms where you need to show all available subjects.
+ */
+export function useAllSubjects() {
+  return useQuery<Subject[]>({
+    queryKey: ["subjects", "all"],
+    queryFn: async () => {
+      const response = await fetcher<SubjectsResponse>(
+        `/api/subjects?limit=1000`
+      );
+      return response.data;
+    },
+    staleTime: 1000 * 60 * 5, // 5 minutes - subjects don't change frequently
+  });
+}
