@@ -17,6 +17,18 @@ type TeacherWithIncludes = Teacher & {
         name: string;
       };
     }[];
+    subjectPreferences?: {
+      subjectId: string;
+      subjectTypeId: string;
+      subject: {
+        subjectId: string;
+        name: string;
+      };
+      subjectType: {
+        subjectTypeId: string;
+        name: string;
+      };
+    }[];
   };
 };
 
@@ -35,29 +47,53 @@ type FormattedTeacher = {
     branchId: string;
     name: string;
   }[];
+  subjectPreferences: {
+    subjectId: string;
+    subjectTypeIds: string[];
+  }[];
   createdAt: Date;
   updatedAt: Date;
 };
 
 // Helper function to format teacher response with proper typing
-const formatTeacher = (teacher: TeacherWithIncludes): FormattedTeacher => ({
-  teacherId: teacher.teacherId,
-  userId: teacher.userId,
-  name: teacher.name,
-  kanaName: teacher.kanaName,
-  email: teacher.email,
-  lineId: teacher.lineId,
-  notes: teacher.notes,
-  username: teacher.user.username,
-  password: teacher.user.passwordHash,
-  branches:
-    teacher.user.branches?.map((ub) => ({
-      branchId: ub.branch.branchId,
-      name: ub.branch.name,
-    })) || [],
-  createdAt: teacher.createdAt,
-  updatedAt: teacher.updatedAt,
-});
+const formatTeacher = (teacher: TeacherWithIncludes): FormattedTeacher => {
+  // Group subject preferences by subjectId
+  const subjectPreferencesMap = new Map<string, string[]>();
+
+  teacher.user.subjectPreferences?.forEach((pref) => {
+    if (!subjectPreferencesMap.has(pref.subjectId)) {
+      subjectPreferencesMap.set(pref.subjectId, []);
+    }
+    subjectPreferencesMap.get(pref.subjectId)!.push(pref.subjectTypeId);
+  });
+
+  const subjectPreferences = Array.from(subjectPreferencesMap.entries()).map(
+    ([subjectId, subjectTypeIds]) => ({
+      subjectId,
+      subjectTypeIds,
+    })
+  );
+
+  return {
+    teacherId: teacher.teacherId,
+    userId: teacher.userId,
+    name: teacher.name,
+    kanaName: teacher.kanaName,
+    email: teacher.email,
+    lineId: teacher.lineId,
+    notes: teacher.notes,
+    username: teacher.user.username,
+    password: teacher.user.passwordHash,
+    branches:
+      teacher.user.branches?.map((ub) => ({
+        branchId: ub.branch.branchId,
+        name: ub.branch.name,
+      })) || [],
+    subjectPreferences,
+    createdAt: teacher.createdAt,
+    updatedAt: teacher.updatedAt,
+  };
+};
 
 // GET a specific teacher
 export const GET = withBranchAccess(
@@ -85,6 +121,24 @@ export const GET = withBranchAccess(
                 branch: {
                   select: {
                     branchId: true,
+                    name: true,
+                  },
+                },
+              },
+            },
+            subjectPreferences: {
+              select: {
+                subjectId: true,
+                subjectTypeId: true,
+                subject: {
+                  select: {
+                    subjectId: true,
+                    name: true,
+                  },
+                },
+                subjectType: {
+                  select: {
+                    subjectTypeId: true,
                     name: true,
                   },
                 },
@@ -151,8 +205,14 @@ export const PATCH = withBranchAccess(
         );
       }
 
-      const { username, password, email, branchIds, ...teacherData } =
-        result.data;
+      const {
+        username,
+        password,
+        email,
+        branchIds,
+        subjectPreferences,
+        ...teacherData
+      } = result.data;
 
       // Check username uniqueness if being updated
       if (username && username !== existingTeacher.user.username) {
@@ -191,6 +251,38 @@ export const PATCH = withBranchAccess(
         if (branchCount !== branchIds.length) {
           return NextResponse.json(
             { error: "一部の支店IDが存在しません" }, // "Some branch IDs do not exist"
+            { status: 400 }
+          );
+        }
+      }
+
+      // Validate subject preferences if provided
+      if (subjectPreferences && subjectPreferences.length > 0) {
+        // Check if all subjects exist
+        const subjectIds = subjectPreferences.map((pref) => pref.subjectId);
+        const subjectCount = await prisma.subject.count({
+          where: { subjectId: { in: subjectIds } },
+        });
+
+        if (subjectCount !== subjectIds.length) {
+          return NextResponse.json(
+            { error: "一部の科目IDが存在しません" },
+            { status: 400 }
+          );
+        }
+
+        // Check if all subject types exist
+        const subjectTypeIds = subjectPreferences.flatMap(
+          (pref) => pref.subjectTypeIds
+        );
+        const uniqueSubjectTypeIds = [...new Set(subjectTypeIds)];
+        const subjectTypeCount = await prisma.subjectType.count({
+          where: { subjectTypeId: { in: uniqueSubjectTypeIds } },
+        });
+
+        if (subjectTypeCount !== uniqueSubjectTypeIds.length) {
+          return NextResponse.json(
+            { error: "一部の科目タイプIDが存在しません" },
             { status: 400 }
           );
         }
@@ -237,6 +329,30 @@ export const PATCH = withBranchAccess(
           }
         }
 
+        // Update user subject preferences if provided
+        if (subjectPreferences !== undefined) {
+          // Delete existing subject preferences
+          await tx.userSubjectPreference.deleteMany({
+            where: { userId: existingTeacher.userId },
+          });
+
+          // Create new subject preferences
+          if (subjectPreferences.length > 0) {
+            const userSubjectPreferencesData = subjectPreferences.flatMap(
+              (pref) =>
+                pref.subjectTypeIds.map((subjectTypeId) => ({
+                  userId: existingTeacher.userId,
+                  subjectId: pref.subjectId,
+                  subjectTypeId,
+                }))
+            );
+
+            await tx.userSubjectPreference.createMany({
+              data: userSubjectPreferencesData,
+            });
+          }
+        }
+
         // Return updated teacher with user and branch associations
         return tx.teacher.findUnique({
           where: { teacherId },
@@ -251,6 +367,24 @@ export const PATCH = withBranchAccess(
                     branch: {
                       select: {
                         branchId: true,
+                        name: true,
+                      },
+                    },
+                  },
+                },
+                subjectPreferences: {
+                  select: {
+                    subjectId: true,
+                    subjectTypeId: true,
+                    subject: {
+                      select: {
+                        subjectId: true,
+                        name: true,
+                      },
+                    },
+                    subjectType: {
+                      select: {
+                        subjectTypeId: true,
                         name: true,
                       },
                     },
@@ -317,7 +451,12 @@ export const DELETE = withBranchAccess(
 
       // Delete teacher, user and branch associations in a transaction
       await prisma.$transaction(async (tx) => {
-        // Delete branch associations first
+        // Delete subject preferences first
+        await tx.userSubjectPreference.deleteMany({
+          where: { userId: teacher.userId },
+        });
+
+        // Delete branch associations
         await tx.userBranch.deleteMany({
           where: { userId: teacher.userId },
         });

@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useEffect, useState } from "react";
-import { Loader2, X } from "lucide-react";
+import { Loader2, X, Plus, Check } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -22,9 +22,29 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { useTeacherCreate, useTeacherUpdate } from "@/hooks/useTeacherMutation";
 import {
   teacherFormSchema,
@@ -34,11 +54,18 @@ import {
 } from "@/schemas/teacher.schema";
 import type { Teacher } from "@/hooks/useTeacherQuery";
 import { useSession } from "next-auth/react";
+import { useAllSubjects } from "@/hooks/useSubjectQuery";
+import { useAllSubjectTypes } from "@/hooks/useSubjectTypeQuery";
 
 interface TeacherFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   teacher?: Teacher | null;
+}
+
+interface TeacherSubject {
+  subjectId: string;
+  subjectTypeIds: string[];
 }
 
 export function TeacherFormDialog({
@@ -54,16 +81,34 @@ export function TeacherFormDialog({
     : { data: [] };
   const isBranchesLoading = !session?.user?.branches;
 
+  // Fetch real data for subjects and subject types
+  const { data: subjects = [] } = useAllSubjects();
+  const { data: subjectTypes = [] } = useAllSubjectTypes();
+
   // Branch selection state
   const [branchSearchTerm, setBranchSearchTerm] = useState("");
   const [showBranchDropdown, setShowBranchDropdown] = useState(false);
 
   // Use the selected branch from session instead of first branch
-  const defaultBranchId = session?.user?.selectedBranchId || session?.user?.branches?.[0]?.branchId;
+  const defaultBranchId =
+    session?.user?.selectedBranchId || session?.user?.branches?.[0]?.branchId;
 
   const isEditing = !!teacher;
   const isSubmitting =
     createTeacherMutation.isPending || updateTeacherMutation.isPending;
+
+  // Subject selection state
+  const [teacherSubjects, setTeacherSubjects] = useState<TeacherSubject[]>([]);
+  const [currentSubject, setCurrentSubject] = useState<string | undefined>(
+    undefined
+  );
+  const [selectedSubjectTypes, setSelectedSubjectTypes] = useState<string[]>(
+    []
+  );
+  const [isAllSelected, setIsAllSelected] = useState(false);
+
+  // Local storage key
+  const STORAGE_KEY = `teacher-form-${teacher?.teacherId || "new"}`;
 
   const form = useForm<TeacherFormValues>({
     resolver: zodResolver(teacherFormSchema),
@@ -102,6 +147,13 @@ export function TeacherFormDialog({
         password: "",
         branchIds: branchIdsWithDefault,
       });
+
+      // Initialize subject preferences if they exist
+      if (teacher.subjectPreferences && teacher.subjectPreferences.length > 0) {
+        setTeacherSubjects(teacher.subjectPreferences);
+      } else {
+        setTeacherSubjects([]);
+      }
     } else {
       form.reset({
         name: "",
@@ -114,11 +166,44 @@ export function TeacherFormDialog({
         branchIds: defaultBranchId ? [defaultBranchId] : [],
         teacherId: undefined,
       });
+      setTeacherSubjects([]);
     }
   }, [teacher, form, defaultBranchId]);
 
+  // Load form data from localStorage
+  useEffect(() => {
+    const savedData = localStorage.getItem(STORAGE_KEY);
+    if (savedData) {
+      try {
+        const parsedData = JSON.parse(savedData);
+        form.reset(parsedData.formValues);
+        setTeacherSubjects(parsedData.teacherSubjects || []);
+      } catch (error) {
+        console.error("Failed to parse saved form data:", error);
+      }
+    }
+  }, [STORAGE_KEY, form]);
+
+  // Save form data to localStorage when values change
+  useEffect(() => {
+    const subscription = form.watch((formValues) => {
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          formValues,
+          teacherSubjects,
+        })
+      );
+    });
+
+    return () => subscription.unsubscribe();
+  }, [form, teacherSubjects, STORAGE_KEY]);
+
   function onSubmit(values: TeacherFormValues) {
     const submissionData = { ...values };
+
+    // Add teacher subjects to submission data
+    submissionData.subjectPreferences = teacherSubjects;
 
     if (isEditing && teacher) {
       if (!submissionData.password || submissionData.password === "") {
@@ -132,6 +217,7 @@ export function TeacherFormDialog({
         onSuccess: () => {
           onOpenChange(false);
           form.reset();
+          localStorage.removeItem(STORAGE_KEY);
         },
       });
     } else {
@@ -142,9 +228,108 @@ export function TeacherFormDialog({
         onSuccess: () => {
           onOpenChange(false);
           form.reset();
+          localStorage.removeItem(STORAGE_KEY);
         },
       });
     }
+  }
+
+  // Handle subject selection
+  function handleSubjectChange(subjectId: string) {
+    setCurrentSubject(subjectId);
+    setSelectedSubjectTypes([]);
+    setIsAllSelected(false);
+  }
+
+  // Handle subject type selection
+  function handleSubjectTypeToggle(typeId: string) {
+    setSelectedSubjectTypes((prev) => {
+      if (prev.includes(typeId)) {
+        const newSelection = prev.filter((id) => id !== typeId);
+        setIsAllSelected(false);
+        return newSelection;
+      } else {
+        const newSelection = [...prev, typeId];
+        // Since subject types are independent, check if all types are selected
+        setIsAllSelected(
+          subjectTypes.length > 0 && newSelection.length === subjectTypes.length
+        );
+        return newSelection;
+      }
+    });
+  }
+
+  // Handle "Select All" toggle
+  function handleSelectAllToggle() {
+    if (isAllSelected) {
+      setSelectedSubjectTypes([]);
+      setIsAllSelected(false);
+    } else {
+      const allTypeIds = subjectTypes.map((type) => type.subjectTypeId);
+      setSelectedSubjectTypes(allTypeIds);
+      setIsAllSelected(true);
+    }
+  }
+
+  // Add current subject and selected types
+  function addSubjectWithTypes() {
+    if (currentSubject && selectedSubjectTypes.length > 0) {
+      setTeacherSubjects((prev) => {
+        // Check if subject already exists
+        const existingIndex = prev.findIndex(
+          (s) => s.subjectId === currentSubject
+        );
+
+        if (existingIndex >= 0) {
+          // Update existing subject
+          const updated = [...prev];
+          updated[existingIndex] = {
+            ...updated[existingIndex],
+            subjectTypeIds: selectedSubjectTypes,
+          };
+          return updated;
+        } else {
+          // Add new subject
+          return [
+            ...prev,
+            {
+              subjectId: currentSubject,
+              subjectTypeIds: selectedSubjectTypes,
+            },
+          ];
+        }
+      });
+
+      // Reset selection
+      setCurrentSubject(undefined);
+      setSelectedSubjectTypes([]);
+      setIsAllSelected(false);
+    }
+  }
+
+  // Remove a subject
+  function removeSubject(subjectId: string) {
+    setTeacherSubjects((prev) => prev.filter((s) => s.subjectId !== subjectId));
+  }
+
+  // Reset the form
+  function handleReset() {
+    form.reset({
+      name: "",
+      kanaName: "",
+      email: "",
+      lineId: "",
+      notes: "",
+      username: "",
+      password: "",
+      branchIds: defaultBranchId ? [defaultBranchId] : [],
+      teacherId: undefined,
+    });
+    setTeacherSubjects([]);
+    setCurrentSubject(undefined);
+    setSelectedSubjectTypes([]);
+    setIsAllSelected(false);
+    localStorage.removeItem(STORAGE_KEY);
   }
 
   // Filter branches based on search term
@@ -515,6 +700,172 @@ export function TeacherFormDialog({
                 />
               </div>
 
+              {/* Subject Selection Section */}
+              <div className="space-y-4 mt-6">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-medium text-muted-foreground">
+                    科目・科目タイプ選択
+                  </h3>
+                  <Separator className="flex-1" />
+                </div>
+
+                <div className="space-y-4">
+                  {/* Subject Selection */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">科目</label>
+                    <Select
+                      value={currentSubject}
+                      onValueChange={handleSubjectChange}
+                    >
+                      <SelectTrigger className="h-11">
+                        <SelectValue placeholder="科目を選択" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {subjects.map((subject) => (
+                          <SelectItem
+                            key={subject.subjectId}
+                            value={subject.subjectId}
+                          >
+                            {subject.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Subject Type Multi-select */}
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <label className="text-sm font-medium">科目タイプ</label>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleSelectAllToggle}
+                        className="h-7 text-xs"
+                      >
+                        {isAllSelected ? "全て解除" : "全て選択"}
+                      </Button>
+                    </div>
+
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className="h-11 w-full justify-between"
+                        >
+                          {selectedSubjectTypes.length > 0
+                            ? `${selectedSubjectTypes.length}件選択中`
+                            : "科目タイプを選択"}
+                          <Check
+                            className={`ml-2 h-4 w-4 ${
+                              selectedSubjectTypes.length > 0
+                                ? "opacity-100"
+                                : "opacity-0"
+                            }`}
+                          />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-full p-0" align="start">
+                        <Command>
+                          <CommandInput placeholder="検索..." />
+                          <CommandEmpty>
+                            該当する科目タイプがありません
+                          </CommandEmpty>
+                          <CommandGroup className="max-h-64 overflow-auto">
+                            {subjectTypes.map((type) => (
+                              <CommandItem
+                                key={type.subjectTypeId}
+                                onSelect={() =>
+                                  handleSubjectTypeToggle(type.subjectTypeId)
+                                }
+                                className="flex items-center gap-2"
+                              >
+                                <Checkbox
+                                  checked={selectedSubjectTypes.includes(
+                                    type.subjectTypeId
+                                  )}
+                                  className="mr-2"
+                                />
+                                {type.name}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </div>
+
+                {/* Add Subject Button */}
+                <div className="flex justify-end">
+                  <Button
+                    type="button"
+                    onClick={addSubjectWithTypes}
+                    disabled={
+                      !currentSubject || selectedSubjectTypes.length === 0
+                    }
+                    size="sm"
+                    className="gap-1"
+                  >
+                    <Plus className="h-4 w-4" />
+                    科目を追加
+                  </Button>
+                </div>
+
+                {/* Selected Subjects List */}
+                {teacherSubjects.length > 0 && (
+                  <div className="space-y-3 mt-2">
+                    <h4 className="text-sm font-medium">選択された科目</h4>
+                    <div className="space-y-2">
+                      {teacherSubjects.map((teacherSubject) => {
+                        const subject = subjects.find(
+                          (s) => s.subjectId === teacherSubject.subjectId
+                        );
+                        const types = subjectTypes.filter((t) =>
+                          teacherSubject.subjectTypeIds.includes(
+                            t.subjectTypeId
+                          )
+                        );
+
+                        return (
+                          <div
+                            key={teacherSubject.subjectId}
+                            className="border rounded-md p-3 bg-muted/10"
+                          >
+                            <div className="flex justify-between items-center mb-2">
+                              <h5 className="font-medium">{subject?.name}</h5>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() =>
+                                  removeSubject(teacherSubject.subjectId)
+                                }
+                                className="h-7 w-7 p-0"
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                            <div className="flex flex-wrap gap-1">
+                              {types.map((type) => (
+                                <Badge
+                                  key={type.subjectTypeId}
+                                  variant="secondary"
+                                  className="text-xs"
+                                >
+                                  {type.name}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {/* Additional Information Section */}
               <div className="space-y-4">
                 <div className="flex items-center gap-2">
@@ -559,6 +910,15 @@ export function TeacherFormDialog({
               className="w-full sm:w-auto"
             >
               キャンセル
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleReset}
+              disabled={isSubmitting}
+              className="w-full sm:w-auto"
+            >
+              リセット
             </Button>
             <Button
               type="submit"

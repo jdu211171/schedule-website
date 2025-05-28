@@ -76,7 +76,7 @@ export function useAllSubjectTypes() {
     queryKey: ["subjectTypes", "all"],
     queryFn: async () => {
       const response = await fetcher<SubjectTypesResponse>(
-        `/api/subject-types?limit=1000`
+        `/api/subject-types?limit=100`
       );
       return response.data;
     },

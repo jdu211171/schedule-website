@@ -1,23 +1,55 @@
 // src/schemas/teacher.schema.ts
 import { z } from "zod";
 
+// Subject preference schema for teacher registration
+export const subjectPreferenceSchema = z.object({
+  subjectId: z.string().min(1, "科目を選択してください"),
+  subjectTypeIds: z
+    .array(z.string())
+    .min(1, "少なくとも1つの科目タイプを選択してください"),
+});
+
 // 共通フィールドのベーススキーマ
 const teacherBaseSchema = z.object({
-  name: z.string().min(1, "名前は必須です").max(100, "名前は100文字以内で入力してください"),
-  kanaName: z.string().max(100, "カナは100文字以内で入力してください").optional().nullable(),
-  email: z.string().email("有効なメールアドレス形式で入力してください").optional().nullable(),
-  lineId: z.string().max(50, "LINE IDは50文字以内で入力してください").optional().nullable(),
-  notes: z.string().max(255, "備考は255文字以内で入力してください").optional().nullable(),
+  name: z
+    .string()
+    .min(1, "名前は必須です")
+    .max(100, "名前は100文字以内で入力してください"),
+  kanaName: z
+    .string()
+    .max(100, "カナは100文字以内で入力してください")
+    .optional()
+    .nullable(),
+  email: z
+    .string()
+    .email("有効なメールアドレス形式で入力してください")
+    .optional()
+    .nullable(),
+  lineId: z
+    .string()
+    .max(50, "LINE IDは50文字以内で入力してください")
+    .optional()
+    .nullable(),
+  notes: z
+    .string()
+    .max(255, "備考は255文字以内で入力してください")
+    .optional()
+    .nullable(),
   username: z.string().min(3, "ユーザー名は3文字以上で入力してください"),
   // パスワードはフォーム上は任意、作成時は必須
   password: z
     .string()
     .refine((value) => value.length === 0 || value.length >= 6, {
-      message: "パスワードは6文字以上で入力してください。変更しない場合は空欄のままにしてください。",
+      message:
+        "パスワードは6文字以上で入力してください。変更しない場合は空欄のままにしてください。",
     })
     .optional()
     .nullable(),
-  branchIds: z.array(z.string(), { invalid_type_error: "支店を選択してください" }).optional(),
+  branchIds: z
+    .array(z.string(), { invalid_type_error: "支店を選択してください" })
+    .optional(),
+  // Subject preferences
+  subjectPreferences: z.array(subjectPreferenceSchema).optional().default([]),
 });
 
 // フォーム用の統一スキーマ（teacherIdは任意）
@@ -33,11 +65,9 @@ export const teacherCreateSchema = teacherBaseSchema.extend({
 });
 
 // 更新用スキーマ（teacherId必須、他は任意）
-export const teacherUpdateSchema = teacherBaseSchema
-  .partial()
-  .extend({
-    teacherId: z.string({ required_error: "更新には教師IDが必要です" }),
-  });
+export const teacherUpdateSchema = teacherBaseSchema.partial().extend({
+  teacherId: z.string({ required_error: "更新には教師IDが必要です" }),
+});
 
 export const teacherFilterSchema = z.object({
   page: z.coerce.number().int().positive().default(1),
