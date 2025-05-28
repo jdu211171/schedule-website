@@ -1,9 +1,24 @@
 // src/schemas/student.schema.ts
 import { z } from "zod";
 
+// Subject preference schema for student registration
+export const subjectPreferenceSchema = z.object({
+  subjectId: z.string().min(1, "科目を選択してください"),
+  subjectTypeIds: z
+    .array(z.string())
+    .min(1, "少なくとも1つの科目タイプを選択してください"),
+});
+
 export const studentBaseSchema = z.object({
-  name: z.string().min(1, "名前は必須です").max(100, "名前は100文字以内で入力してください"),
-  kanaName: z.string().max(100, "カナは100文字以内で入力してください").optional().nullable(),
+  name: z
+    .string()
+    .min(1, "名前は必須です")
+    .max(100, "名前は100文字以内で入力してください"),
+  kanaName: z
+    .string()
+    .max(100, "カナは100文字以内で入力してください")
+    .optional()
+    .nullable(),
   studentTypeId: z.string().optional().nullable(),
   gradeYear: z
     .number({ invalid_type_error: "学年は数字で入力してください" })
@@ -11,8 +26,16 @@ export const studentBaseSchema = z.object({
     .positive("学年は正の数で入力してください")
     .optional()
     .nullable(),
-  lineId: z.string().max(50, "LINE IDは50文字以内で入力してください").optional().nullable(),
-  notes: z.string().max(255, "備考は255文字以内で入力してください").optional().nullable(),
+  lineId: z
+    .string()
+    .max(50, "LINE IDは50文字以内で入力してください")
+    .optional()
+    .nullable(),
+  notes: z
+    .string()
+    .max(255, "備考は255文字以内で入力してください")
+    .optional()
+    .nullable(),
   // User account related fields
   username: z.string().min(3, "ユーザー名は3文字以上で入力してください"),
   password: z
@@ -28,7 +51,11 @@ export const studentBaseSchema = z.object({
     .email("有効なメールアドレス形式で入力してください")
     .optional()
     .nullable(),
-  branchIds: z.array(z.string(), { invalid_type_error: "支店を選択してください" }).optional(),
+  branchIds: z
+    .array(z.string(), { invalid_type_error: "支店を選択してください" })
+    .optional(),
+  // Subject preferences
+  subjectPreferences: z.array(subjectPreferenceSchema).optional().default([]),
 });
 
 export const studentFormSchema = studentBaseSchema.extend({
@@ -43,7 +70,8 @@ export const studentCreateSchema = studentBaseSchema.extend({
 
 export const studentUpdateSchema = studentBaseSchema
   .partial() // Make all base fields optional for update
-  .extend({ // Ensure studentId is required for update
+  .extend({
+    // Ensure studentId is required for update
     studentId: z.string({ required_error: "更新には生徒IDが必要です" }),
     // Password from studentBaseSchema.partial() is now correctly optional
     // and allows an empty string (for no change) or a min 6 char string if provided.

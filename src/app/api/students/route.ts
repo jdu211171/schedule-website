@@ -207,6 +207,7 @@ export const POST = withBranchAccess(
         email,
         studentTypeId,
         branchIds = [],
+        subjectPreferences = [],
         ...studentData
       } = result.data;
 
@@ -255,10 +256,40 @@ export const POST = withBranchAccess(
         }
       }
 
+      // Validate subject preferences if provided
+      if (subjectPreferences.length > 0) {
+        // Check if all subjects exist
+        const subjectIds = subjectPreferences.map(pref => pref.subjectId);
+        const subjectCount = await prisma.subject.count({
+          where: { subjectId: { in: subjectIds } },
+        });
+
+        if (subjectCount !== subjectIds.length) {
+          return NextResponse.json(
+            { error: "一部の科目IDが存在しません" },
+            { status: 400 }
+          );
+        }
+
+        // Check if all subject types exist
+        const subjectTypeIds = subjectPreferences.flatMap(pref => pref.subjectTypeIds);
+        const uniqueSubjectTypeIds = [...new Set(subjectTypeIds)];
+        const subjectTypeCount = await prisma.subjectType.count({
+          where: { subjectTypeId: { in: uniqueSubjectTypeIds } },
+        });
+
+        if (subjectTypeCount !== uniqueSubjectTypeIds.length) {
+          return NextResponse.json(
+            { error: "一部の科目タイプIDが存在しません" },
+            { status: 400 }
+          );
+        }
+      }
+
       // For students, use the password directly (no hashing)
       const passwordHash = password;
 
-      // Create user, student and branch associations in a transaction
+      // Create user, student and all related data in a transaction
       const newStudent = await prisma.$transaction(async (tx) => {
         // Create user first
         const user = await tx.user.create({
@@ -286,6 +317,21 @@ export const POST = withBranchAccess(
               userId: user.id,
               branchId,
             })),
+          });
+        }
+
+        // Create user subject preferences if provided
+        if (subjectPreferences.length > 0) {
+          const userSubjectPreferencesData = subjectPreferences.flatMap(pref =>
+            pref.subjectTypeIds.map(subjectTypeId => ({
+              userId: user.id,
+              subjectId: pref.subjectId,
+              subjectTypeId,
+            }))
+          );
+
+          await tx.userSubjectPreference.createMany({
+            data: userSubjectPreferencesData,
           });
         }
 
