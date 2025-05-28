@@ -1,21 +1,16 @@
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import StudentSettingsChangePassword from "@/components/student/student-settings/student-settings-change-password";
+import type React from "react";
+import { SidebarProvider } from "@/components/ui/sidebar";
+import { StudentSettingsContent } from "@/components/student/student-settings/student-settings-content";
+import { StudentSettingsSidebar } from "@/components/student/student-settings/student-settings-sidebar";
+
 const Page: React.FC = () => {
   return (
-    <div>
-      <Tabs defaultValue="passwordChange">
-        <TabsList>
-          <TabsTrigger value="account">Account</TabsTrigger>
-          <TabsTrigger value="passwordChange">CHANGE PASSWORD</TabsTrigger>
-        </TabsList>
-        <TabsContent value="account">
-          Make changes to your account here.
-        </TabsContent>
-        <TabsContent value="passwordChange">
-          <StudentSettingsChangePassword />
-        </TabsContent>
-      </Tabs>
-    </div>
+    <SidebarProvider defaultOpen={true}>
+      <div className="flex min-h-screen w-full">
+        <StudentSettingsSidebar />
+        <StudentSettingsContent />
+      </div>
+    </SidebarProvider>
   );
 };
 
