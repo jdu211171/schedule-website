@@ -103,38 +103,7 @@ function BranchSelector() {
   // Use branches from session instead of making an API request
   const branches = React.useMemo(() => session?.user?.branches || [], [session]);
 
-  // Initialize the selected branch from localStorage first, then from session
-  React.useEffect(() => {
-    const storedBranchId = localStorage.getItem("selectedBranchId");
-    // Check if storedBranchId is valid (exists in branches)
-    const isValidStored = storedBranchId && branches.some(b => b.branchId === storedBranchId);
-    if (isValidStored) {
-      setSelectedBranchId(storedBranchId);
-    } else if (
-      session?.user?.selectedBranchId &&
-      typeof session.user !== "undefined" &&
-      branches.some(b => b.branchId === session.user!.selectedBranchId)
-    ) {
-      setSelectedBranchId(session.user.selectedBranchId);
-      localStorage.setItem("selectedBranchId", session.user.selectedBranchId);
-    } else if (branches.length > 0) {
-      // Default to first branch if nothing is selected
-      setSelectedBranchId(branches[0].branchId);
-      localStorage.setItem("selectedBranchId", branches[0].branchId);
-    }
-  }, [session, branches]);
-
-  // Skip rendering if user isn't authenticated or has appropriate role
-  if (
-    !session ||
-    !["ADMIN", "STAFF", "TEACHER", "STUDENT"].includes(
-      session?.user?.role as string
-    )
-  ) {
-    return null;
-  }
-
-  const handleBranchChange = async (value: string) => {
+  const handleBranchChange = React.useCallback(async (value: string) => {
     try {
       setIsLoading(true);
 
@@ -176,7 +145,59 @@ function BranchSelector() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [session, update]);
+
+  // Initialize the selected branch from session first, then localStorage
+  React.useEffect(() => {
+    // If user has a selected branch in session, prioritize that
+    if (session?.user?.selectedBranchId && branches.some(b => b.branchId === session.user!.selectedBranchId)) {
+      setSelectedBranchId(session.user.selectedBranchId);
+      // Sync localStorage with session
+      localStorage.setItem("selectedBranchId", session.user.selectedBranchId);
+      return;
+    }
+
+    // Otherwise, check localStorage for a valid stored branch
+    const storedBranchId = localStorage.getItem("selectedBranchId");
+    const isValidStored = storedBranchId && branches.some(b => b.branchId === storedBranchId);
+    if (isValidStored) {
+      setSelectedBranchId(storedBranchId);
+    } else if (branches.length > 0) {
+      // Default to first branch if nothing is selected
+      const firstBranchId = branches[0].branchId;
+      setSelectedBranchId(firstBranchId);
+      localStorage.setItem("selectedBranchId", firstBranchId);
+    }
+  }, [session, branches]);
+
+  // Separate effect to handle session sync when there's a mismatch
+  React.useEffect(() => {
+    if (
+      selectedBranchId &&
+      session?.user?.selectedBranchId &&
+      selectedBranchId !== session.user.selectedBranchId &&
+      branches.some(b => b.branchId === selectedBranchId)
+    ) {
+      // Update session to match the local state without triggering a reload
+      update({
+        ...session,
+        user: {
+          ...session?.user,
+          selectedBranchId: selectedBranchId,
+        },
+      });
+    }
+  }, [selectedBranchId, session, update, branches]);
+
+  // Skip rendering if user isn't authenticated or has appropriate role
+  if (
+    !session ||
+    !["ADMIN", "STAFF", "TEACHER", "STUDENT"].includes(
+      session?.user?.role as string
+    )
+  ) {
+    return null;
+  }
 
   if (branches.length === 0) {
     return null;

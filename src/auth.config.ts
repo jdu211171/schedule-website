@@ -83,6 +83,14 @@ export default {
             })) || [];
         }
 
+        // Determine initial selectedBranchId more intelligently
+        let selectedBranchId: string | null = null;
+        if (userBranches.length > 0) {
+          // First priority: Check if user has a stored preference (this would need to be implemented in DB if needed)
+          // Second priority: Default to first branch alphabetically
+          selectedBranchId = userBranches[0].branchId;
+        }
+
         return {
           id: user.id,
           email: user.email,
@@ -92,8 +100,7 @@ export default {
           username: user.username ?? "",
           userId: user.teacher?.teacherId || user.student?.studentId || "",
           branches: userBranches,
-          selectedBranchId:
-            userBranches.length > 0 ? userBranches[0].branchId : null,
+          selectedBranchId,
         };
       },
     }),

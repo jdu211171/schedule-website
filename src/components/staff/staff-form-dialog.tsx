@@ -59,7 +59,9 @@ export function StaffFormDialog({
   const [branchSearchTerm, setBranchSearchTerm] = useState("");
   const [showBranchDropdown, setShowBranchDropdown] = useState(false);
 
-  const defaultBranchId = session?.user?.branches?.[0]?.branchId;
+  // Use the selected branch from session instead of first branch
+  const defaultBranchId = session?.user?.selectedBranchId || session?.user?.branches?.[0]?.branchId;
+
   const isEditing = !!staff;
   const isSubmitting =
     createStaffMutation.isPending || updateStaffMutation.isPending;
@@ -128,6 +130,7 @@ export function StaffFormDialog({
       });
     } else {
       // For creation, remove the id field if it exists
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { id, ...createValues } = submissionData;
       const createPayload = staffCreateSchema.parse(createValues);
       createStaffMutation.mutate(createPayload, {

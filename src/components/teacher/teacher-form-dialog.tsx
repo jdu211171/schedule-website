@@ -58,8 +58,8 @@ export function TeacherFormDialog({
   const [branchSearchTerm, setBranchSearchTerm] = useState("");
   const [showBranchDropdown, setShowBranchDropdown] = useState(false);
 
-  // Get default branch id (first in user's branches)
-  const defaultBranchId = session?.user?.branches?.[0]?.branchId;
+  // Use the selected branch from session instead of first branch
+  const defaultBranchId = session?.user?.selectedBranchId || session?.user?.branches?.[0]?.branchId;
 
   const isEditing = !!teacher;
   const isSubmitting =

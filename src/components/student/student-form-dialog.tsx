@@ -73,7 +73,9 @@ export function StudentFormDialog({
   const [branchSearchTerm, setBranchSearchTerm] = useState("");
   const [showBranchDropdown, setShowBranchDropdown] = useState(false);
 
-  const defaultBranchId = session?.user?.branches?.[0]?.branchId;
+  // Use the selected branch from session instead of first branch
+  const defaultBranchId = session?.user?.selectedBranchId || session?.user?.branches?.[0]?.branchId;
+
   const isEditing = !!student;
   const isSubmitting =
     createStudentMutation.isPending || updateStudentMutation.isPending;
