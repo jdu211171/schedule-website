@@ -75,6 +75,7 @@ export function useStudentCreate() {
                 email: newStudent.email || null,
                 password: newStudent.password || null,
                 branches: [],
+                subjectPreferences: [],
                 createdAt: new Date(),
                 updatedAt: new Date(),
                 _optimistic: true,

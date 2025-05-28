@@ -17,6 +17,10 @@ export type Teacher = {
     branchId: string;
     name: string;
   }[];
+  subjectPreferences: {
+    subjectId: string;
+    subjectTypeIds: string[];
+  }[];
   createdAt: Date;
   updatedAt: Date;
   _optimistic?: boolean;

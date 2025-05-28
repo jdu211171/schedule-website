@@ -24,6 +24,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { TeacherFormDialog } from "./teacher-form-dialog";
 import { Teacher, useTeachers } from "@/hooks/useTeacherQuery";
+import { useAllSubjects } from "@/hooks/useSubjectQuery";
+import { useAllSubjectTypes } from "@/hooks/useSubjectTypeQuery";
 
 // Define custom column meta type
 interface ColumnMetaType {
@@ -36,13 +38,19 @@ interface ColumnMetaType {
 export function TeacherTable() {
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
-  const [passwordVisibility, setPasswordVisibility] = useState<Record<string, boolean>>({});
+  const [passwordVisibility, setPasswordVisibility] = useState<
+    Record<string, boolean>
+  >({});
   const pageSize = 10;
   const { data: teachers, isLoading } = useTeachers({
     page,
     limit: pageSize,
     name: searchTerm || undefined,
   });
+
+  // Fetch subjects and subject types for displaying names
+  const { data: subjects = [] } = useAllSubjects();
+  const { data: subjectTypes = [] } = useAllSubjectTypes();
 
   // Ensure the data type returned by useTeachers matches the expected type
   const typedTeachers = teachers?.data || [];
@@ -86,9 +94,9 @@ export function TeacherTable() {
         if (!password) return "-";
 
         const toggleVisibility = () => {
-          setPasswordVisibility(prev => ({
+          setPasswordVisibility((prev) => ({
             ...prev,
-            [teacherId]: !prev[teacherId]
+            [teacherId]: !prev[teacherId],
           }));
         };
 
@@ -132,6 +140,47 @@ export function TeacherTable() {
                 {branch.name}
               </Badge>
             ))}
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: "subjectPreferences",
+      header: "担当科目",
+      cell: ({ row }) => {
+        const subjectPreferences = row.original.subjectPreferences || [];
+        if (subjectPreferences.length === 0) return "-";
+
+        return (
+          <div className="space-y-1">
+            {subjectPreferences.map((preference) => {
+              const subject = subjects.find(
+                (s) => s.subjectId === preference.subjectId
+              );
+              const types = subjectTypes.filter((t) =>
+                preference.subjectTypeIds.includes(t.subjectTypeId)
+              );
+
+              return (
+                <div
+                  key={preference.subjectId}
+                  className="flex flex-wrap gap-1"
+                >
+                  <Badge variant="secondary" className="text-xs">
+                    {subject?.name || preference.subjectId}
+                  </Badge>
+                  {types.map((type) => (
+                    <Badge
+                      key={type.subjectTypeId}
+                      variant="outline"
+                      className="text-xs"
+                    >
+                      {type.name}
+                    </Badge>
+                  ))}
+                </div>
+              );
+            })}
           </div>
         );
       },

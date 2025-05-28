@@ -1,7 +1,6 @@
 // src/hooks/useStudentQuery.ts
 import { fetcher } from "@/lib/fetcher";
 import { useQuery } from "@tanstack/react-query";
-import { studentFilterSchema } from "@/schemas/student.schema";
 
 export type Student = {
   studentId: string;
@@ -20,6 +19,10 @@ export type Student = {
   branches: {
     branchId: string;
     name: string;
+  }[];
+  subjectPreferences: {
+    subjectId: string;
+    subjectTypeIds: string[];
   }[];
   createdAt: Date;
   updatedAt: Date;

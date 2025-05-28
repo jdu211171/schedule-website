@@ -19,6 +19,18 @@ type TeacherWithIncludes = Teacher & {
         name: string;
       };
     }[];
+    subjectPreferences?: {
+      subjectId: string;
+      subjectTypeId: string;
+      subject: {
+        subjectId: string;
+        name: string;
+      };
+      subjectType: {
+        subjectTypeId: string;
+        name: string;
+      };
+    }[];
   };
 };
 
@@ -36,29 +48,53 @@ type FormattedTeacher = {
     branchId: string;
     name: string;
   }[];
+  subjectPreferences: {
+    subjectId: string;
+    subjectTypeIds: string[];
+  }[];
   createdAt: Date;
   updatedAt: Date;
 };
 
 // Helper function to format teacher response with proper typing
-const formatTeacher = (teacher: TeacherWithIncludes): FormattedTeacher => ({
-  teacherId: teacher.teacherId,
-  userId: teacher.userId,
-  name: teacher.name,
-  kanaName: teacher.kanaName,
-  email: teacher.email,
-  lineId: teacher.lineId,
-  notes: teacher.notes,
-  username: teacher.user.username,
-  password: teacher.user.passwordHash || null,
-  branches:
-    teacher.user.branches?.map((ub) => ({
-      branchId: ub.branch.branchId,
-      name: ub.branch.name,
-    })) || [],
-  createdAt: teacher.createdAt,
-  updatedAt: teacher.updatedAt,
-});
+const formatTeacher = (teacher: TeacherWithIncludes): FormattedTeacher => {
+  // Group subject preferences by subjectId
+  const subjectPreferencesMap = new Map<string, string[]>();
+
+  teacher.user.subjectPreferences?.forEach((pref) => {
+    if (!subjectPreferencesMap.has(pref.subjectId)) {
+      subjectPreferencesMap.set(pref.subjectId, []);
+    }
+    subjectPreferencesMap.get(pref.subjectId)!.push(pref.subjectTypeId);
+  });
+
+  const subjectPreferences = Array.from(subjectPreferencesMap.entries()).map(
+    ([subjectId, subjectTypeIds]) => ({
+      subjectId,
+      subjectTypeIds,
+    })
+  );
+
+  return {
+    teacherId: teacher.teacherId,
+    userId: teacher.userId,
+    name: teacher.name,
+    kanaName: teacher.kanaName,
+    email: teacher.email,
+    lineId: teacher.lineId,
+    notes: teacher.notes,
+    username: teacher.user.username,
+    password: teacher.user.passwordHash || null,
+    branches:
+      teacher.user.branches?.map((ub) => ({
+        branchId: ub.branch.branchId,
+        name: ub.branch.name,
+      })) || [],
+    subjectPreferences,
+    createdAt: teacher.createdAt,
+    updatedAt: teacher.updatedAt,
+  };
+};
 
 // GET - List teachers with pagination and filters
 export const GET = withBranchAccess(
@@ -134,6 +170,24 @@ export const GET = withBranchAccess(
                 },
               },
             },
+            subjectPreferences: {
+              select: {
+                subjectId: true,
+                subjectTypeId: true,
+                subject: {
+                  select: {
+                    subjectId: true,
+                    name: true,
+                  },
+                },
+                subjectType: {
+                  select: {
+                    subjectTypeId: true,
+                    name: true,
+                  },
+                },
+              },
+            },
           },
         },
       },
@@ -178,6 +232,7 @@ export const POST = withBranchAccess(
         password,
         email,
         branchIds = [],
+        subjectPreferences = [],
         ...teacherData
       } = result.data;
 
@@ -240,6 +295,38 @@ export const POST = withBranchAccess(
         }
       }
 
+      // Validate subject preferences if provided
+      if (subjectPreferences.length > 0) {
+        // Check if all subjects exist
+        const subjectIds = subjectPreferences.map((pref) => pref.subjectId);
+        const subjectCount = await prisma.subject.count({
+          where: { subjectId: { in: subjectIds } },
+        });
+
+        if (subjectCount !== subjectIds.length) {
+          return NextResponse.json(
+            { error: "一部の科目IDが存在しません" },
+            { status: 400 }
+          );
+        }
+
+        // Check if all subject types exist
+        const subjectTypeIds = subjectPreferences.flatMap(
+          (pref) => pref.subjectTypeIds
+        );
+        const uniqueSubjectTypeIds = [...new Set(subjectTypeIds)];
+        const subjectTypeCount = await prisma.subjectType.count({
+          where: { subjectTypeId: { in: uniqueSubjectTypeIds } },
+        });
+
+        if (subjectTypeCount !== uniqueSubjectTypeIds.length) {
+          return NextResponse.json(
+            { error: "一部の科目タイプIDが存在しません" },
+            { status: 400 }
+          );
+        }
+      }
+
       // For teachers, use the password directly (no hashing)
       const passwordHash = password;
 
@@ -274,6 +361,22 @@ export const POST = withBranchAccess(
           });
         }
 
+        // Create user subject preferences if provided
+        if (subjectPreferences.length > 0) {
+          const userSubjectPreferencesData = subjectPreferences.flatMap(
+            (pref) =>
+              pref.subjectTypeIds.map((subjectTypeId) => ({
+                userId: user.id,
+                subjectId: pref.subjectId,
+                subjectTypeId,
+              }))
+          );
+
+          await tx.userSubjectPreference.createMany({
+            data: userSubjectPreferencesData,
+          });
+        }
+
         // Return teacher with user and branch associations
         return tx.teacher.findUnique({
           where: { teacherId: teacher.teacherId },
@@ -288,6 +391,24 @@ export const POST = withBranchAccess(
                     branch: {
                       select: {
                         branchId: true,
+                        name: true,
+                      },
+                    },
+                  },
+                },
+                subjectPreferences: {
+                  select: {
+                    subjectId: true,
+                    subjectTypeId: true,
+                    subject: {
+                      select: {
+                        subjectId: true,
+                        name: true,
+                      },
+                    },
+                    subjectType: {
+                      select: {
+                        subjectTypeId: true,
                         name: true,
                       },
                     },

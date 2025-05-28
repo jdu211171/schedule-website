@@ -17,6 +17,8 @@ import {
 import { useStudentCreate, useStudentUpdate } from "@/hooks/useStudentMutation";
 import { useStudentTypes } from "@/hooks/useStudentTypeQuery";
 import type { Student } from "@/hooks/useStudentQuery";
+import { useAllSubjects } from "@/hooks/useSubjectQuery";
+import { useAllSubjectTypes } from "@/hooks/useSubjectTypeQuery";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -65,17 +67,6 @@ interface StudentFormDialogProps {
   student?: Student | null;
 }
 
-interface Subject {
-  id: string;
-  name: string;
-}
-
-interface SubjectType {
-  id: string;
-  name: string;
-  subjectId: string;
-}
-
 interface StudentSubject {
   subjectId: string;
   subjectTypeIds: string[];
@@ -98,6 +89,10 @@ export function StudentFormDialog({
   const { data: studentTypesResponse, isLoading: isStudentTypesLoading } =
     useStudentTypes();
 
+  // Fetch real data for subjects and subject types
+  const { data: subjects = [] } = useAllSubjects();
+  const { data: subjectTypes = [] } = useAllSubjectTypes();
+
   // Branch selection state
   const [branchSearchTerm, setBranchSearchTerm] = useState("");
   const [showBranchDropdown, setShowBranchDropdown] = useState(false);
@@ -109,31 +104,6 @@ export function StudentFormDialog({
   const isEditing = !!student;
   const isSubmitting =
     createStudentMutation.isPending || updateStudentMutation.isPending;
-
-  // Mock data for subjects and subject types
-  const subjects: Subject[] = [
-    { id: "math", name: "数学" },
-    { id: "science", name: "理科" },
-    { id: "english", name: "英語" },
-    { id: "japanese", name: "国語" },
-    { id: "social", name: "社会" },
-  ];
-
-  const subjectTypes: SubjectType[] = [
-    { id: "math-basic", name: "基礎", subjectId: "math" },
-    { id: "math-advanced", name: "応用", subjectId: "math" },
-    { id: "math-exam", name: "試験対策", subjectId: "math" },
-    { id: "science-physics", name: "物理", subjectId: "science" },
-    { id: "science-chemistry", name: "化学", subjectId: "science" },
-    { id: "science-biology", name: "生物", subjectId: "science" },
-    { id: "english-grammar", name: "文法", subjectId: "english" },
-    { id: "english-reading", name: "読解", subjectId: "english" },
-    { id: "english-speaking", name: "会話", subjectId: "english" },
-    { id: "japanese-classic", name: "古典", subjectId: "japanese" },
-    { id: "japanese-modern", name: "現代文", subjectId: "japanese" },
-    { id: "social-history", name: "歴史", subjectId: "social" },
-    { id: "social-geography", name: "地理", subjectId: "social" },
-  ];
 
   // Subject selection state
   const [studentSubjects, setStudentSubjects] = useState<StudentSubject[]>([]);
@@ -187,6 +157,13 @@ export function StudentFormDialog({
         password: "",
         branchIds: branchIdsWithDefault,
       });
+
+      // Initialize subject preferences if they exist
+      if (student.subjectPreferences && student.subjectPreferences.length > 0) {
+        setStudentSubjects(student.subjectPreferences);
+      } else {
+        setStudentSubjects([]);
+      }
     } else {
       // For create, default to defaultBranchId only
       form.reset({
@@ -202,6 +179,7 @@ export function StudentFormDialog({
         branchIds: defaultBranchId ? [defaultBranchId] : [],
         studentId: undefined,
       });
+      setStudentSubjects([]);
     }
   }, [student, form, defaultBranchId]);
 
@@ -217,7 +195,7 @@ export function StudentFormDialog({
         console.error("Failed to parse saved form data:", error);
       }
     }
-  }, [STORAGE_KEY]);
+  }, [STORAGE_KEY, form]);
 
   // Save form data to localStorage when values change
   useEffect(() => {
@@ -294,14 +272,10 @@ export function StudentFormDialog({
         return newSelection;
       } else {
         const newSelection = [...prev, typeId];
-        const allTypesForSubject = subjectTypes
-          .filter((type) => type.subjectId === currentSubject)
-          .map((type) => type.id);
-
+        // Since subject types are independent, check if all types are selected
         setIsAllSelected(
-          allTypesForSubject.every((typeId) => newSelection.includes(typeId))
+          subjectTypes.length > 0 && newSelection.length === subjectTypes.length
         );
-
         return newSelection;
       }
     });
@@ -313,10 +287,8 @@ export function StudentFormDialog({
       setSelectedSubjectTypes([]);
       setIsAllSelected(false);
     } else {
-      const allTypesForSubject = subjectTypes
-        .filter((type) => type.subjectId === currentSubject)
-        .map((type) => type.id);
-      setSelectedSubjectTypes(allTypesForSubject);
+      const allTypeIds = subjectTypes.map((type) => type.subjectTypeId);
+      setSelectedSubjectTypes(allTypeIds);
       setIsAllSelected(true);
     }
   }
@@ -817,6 +789,172 @@ export function StudentFormDialog({
                 />
               </div>
 
+              {/* Subject Selection Section */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-medium text-muted-foreground">
+                    科目・科目タイプ選択
+                  </h3>
+                  <Separator className="flex-1" />
+                </div>
+
+                <div className="space-y-4">
+                  {/* Subject Selection */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">科目</label>
+                    <Select
+                      value={currentSubject}
+                      onValueChange={handleSubjectChange}
+                    >
+                      <SelectTrigger className="h-11">
+                        <SelectValue placeholder="科目を選択" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {subjects.map((subject) => (
+                          <SelectItem
+                            key={subject.subjectId}
+                            value={subject.subjectId}
+                          >
+                            {subject.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Subject Type Multi-select */}
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <label className="text-sm font-medium">科目タイプ</label>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleSelectAllToggle}
+                        className="h-7 text-xs"
+                      >
+                        {isAllSelected ? "全て解除" : "全て選択"}
+                      </Button>
+                    </div>
+
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className="h-11 w-full justify-between"
+                        >
+                          {selectedSubjectTypes.length > 0
+                            ? `${selectedSubjectTypes.length}件選択中`
+                            : "科目タイプを選択"}
+                          <Check
+                            className={`ml-2 h-4 w-4 ${
+                              selectedSubjectTypes.length > 0
+                                ? "opacity-100"
+                                : "opacity-0"
+                            }`}
+                          />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-full p-0" align="start">
+                        <Command>
+                          <CommandInput placeholder="検索..." />
+                          <CommandEmpty>
+                            該当する科目タイプがありません
+                          </CommandEmpty>
+                          <CommandGroup className="max-h-64 overflow-auto">
+                            {subjectTypes.map((type) => (
+                              <CommandItem
+                                key={type.subjectTypeId}
+                                onSelect={() =>
+                                  handleSubjectTypeToggle(type.subjectTypeId)
+                                }
+                                className="flex items-center gap-2"
+                              >
+                                <Checkbox
+                                  checked={selectedSubjectTypes.includes(
+                                    type.subjectTypeId
+                                  )}
+                                  className="mr-2"
+                                />
+                                {type.name}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </div>
+
+                {/* Add Subject Button */}
+                <div className="flex justify-end">
+                  <Button
+                    type="button"
+                    onClick={addSubjectWithTypes}
+                    disabled={
+                      !currentSubject || selectedSubjectTypes.length === 0
+                    }
+                    size="sm"
+                    className="gap-1"
+                  >
+                    <Plus className="h-4 w-4" />
+                    科目を追加
+                  </Button>
+                </div>
+
+                {/* Selected Subjects List */}
+                {studentSubjects.length > 0 && (
+                  <div className="space-y-3 mt-2">
+                    <h4 className="text-sm font-medium">選択された科目</h4>
+                    <div className="space-y-2">
+                      {studentSubjects.map((studentSubject) => {
+                        const subject = subjects.find(
+                          (s) => s.subjectId === studentSubject.subjectId
+                        );
+                        const types = subjectTypes.filter((t) =>
+                          studentSubject.subjectTypeIds.includes(
+                            t.subjectTypeId
+                          )
+                        );
+
+                        return (
+                          <div
+                            key={studentSubject.subjectId}
+                            className="border rounded-md p-3 bg-muted/10"
+                          >
+                            <div className="flex justify-between items-center mb-2">
+                              <h5 className="font-medium">{subject?.name}</h5>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() =>
+                                  removeSubject(studentSubject.subjectId)
+                                }
+                                className="h-7 w-7 p-0"
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                            <div className="flex flex-wrap gap-1">
+                              {types.map((type) => (
+                                <Badge
+                                  key={type.subjectTypeId}
+                                  variant="secondary"
+                                  className="text-xs"
+                                >
+                                  {type.name}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {/* Additional Information Section */}
               <div className="space-y-4">
                 <div className="flex items-center gap-2">
@@ -846,181 +984,6 @@ export function StudentFormDialog({
                     </FormItem>
                   )}
                 />
-              </div>
-
-              {/* Subject Selection Section */}
-              <div className="space-y-4 mt-6">
-                <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-medium text-muted-foreground">
-                    科目選択
-                  </h3>
-                  <Separator className="flex-1" />
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  {/* Subject Dropdown */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">科目</label>
-                    <Select
-                      value={currentSubject}
-                      onValueChange={handleSubjectChange}
-                    >
-                      <SelectTrigger className="h-11">
-                        <SelectValue placeholder="科目を選択" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {subjects.map((subject) => (
-                          <SelectItem key={subject.id} value={subject.id}>
-                            {subject.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Subject Type Multi-select */}
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <label className="text-sm font-medium">科目タイプ</label>
-                      {currentSubject && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={handleSelectAllToggle}
-                          className="h-7 text-xs"
-                        >
-                          {isAllSelected ? "全て解除" : "全て選択"}
-                        </Button>
-                      )}
-                    </div>
-
-                    {currentSubject ? (
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className="h-11 w-full justify-between"
-                          >
-                            {selectedSubjectTypes.length > 0
-                              ? `${selectedSubjectTypes.length}件選択中`
-                              : "科目タイプを選択"}
-                            <Check
-                              className={`ml-2 h-4 w-4 ${
-                                selectedSubjectTypes.length > 0
-                                  ? "opacity-100"
-                                  : "opacity-0"
-                              }`}
-                            />
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-full p-0" align="start">
-                          <Command>
-                            <CommandInput placeholder="検索..." />
-                            <CommandEmpty>
-                              該当する科目タイプがありません
-                            </CommandEmpty>
-                            <CommandGroup className="max-h-64 overflow-auto">
-                              {subjectTypes
-                                .filter(
-                                  (type) => type.subjectId === currentSubject
-                                )
-                                .map((type) => (
-                                  <CommandItem
-                                    key={type.id}
-                                    onSelect={() =>
-                                      handleSubjectTypeToggle(type.id)
-                                    }
-                                    className="flex items-center gap-2"
-                                  >
-                                    <Checkbox
-                                      checked={selectedSubjectTypes.includes(
-                                        type.id
-                                      )}
-                                      className="mr-2"
-                                    />
-                                    {type.name}
-                                  </CommandItem>
-                                ))}
-                            </CommandGroup>
-                          </Command>
-                        </PopoverContent>
-                      </Popover>
-                    ) : (
-                      <div className="h-11 flex items-center justify-center border rounded-md bg-muted/20 text-muted-foreground text-sm">
-                        先に科目を選択してください
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Add Subject Button */}
-                <div className="flex justify-end">
-                  <Button
-                    type="button"
-                    onClick={addSubjectWithTypes}
-                    disabled={
-                      !currentSubject || selectedSubjectTypes.length === 0
-                    }
-                    size="sm"
-                    className="gap-1"
-                  >
-                    <Plus className="h-4 w-4" />
-                    科目を追加
-                  </Button>
-                </div>
-
-                {/* Selected Subjects List */}
-                {studentSubjects.length > 0 && (
-                  <div className="space-y-3 mt-2">
-                    <h4 className="text-sm font-medium">選択された科目</h4>
-                    <div className="space-y-2">
-                      {studentSubjects.map((studentSubject) => {
-                        const subject = subjects.find(
-                          (s) => s.id === studentSubject.subjectId
-                        );
-                        const types = subjectTypes.filter(
-                          (t) =>
-                            t.subjectId === studentSubject.subjectId &&
-                            studentSubject.subjectTypeIds.includes(t.id)
-                        );
-
-                        return (
-                          <div
-                            key={studentSubject.subjectId}
-                            className="border rounded-md p-3 bg-muted/10"
-                          >
-                            <div className="flex justify-between items-center mb-2">
-                              <h5 className="font-medium">{subject?.name}</h5>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() =>
-                                  removeSubject(studentSubject.subjectId)
-                                }
-                                className="h-7 w-7 p-0"
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </div>
-                            <div className="flex flex-wrap gap-1">
-                              {types.map((type) => (
-                                <Badge
-                                  key={type.id}
-                                  variant="secondary"
-                                  className="text-xs"
-                                >
-                                  {type.name}
-                                </Badge>
-                              ))}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
               </div>
             </form>
           </Form>
