@@ -24,12 +24,7 @@ export const StudentScheduleCalendar: React.FC<Props> = ({
     }
   };
 
-  const formattedDate = `${currentDate.getDate()} ${currentDate.toLocaleString(
-    "en-US",
-    {
-      month: "short",
-    }
-  )}, ${currentDate.getFullYear()}`;
+  const formattedDate = `${currentDate.getFullYear()}年 ${currentDate.getMonth() + 1}月 ${currentDate.getDate()}日`;
 
   return (
     <Popover open={isVisible} onOpenChange={setIsVisible}>
