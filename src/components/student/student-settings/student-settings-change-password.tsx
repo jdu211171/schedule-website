@@ -1,7 +1,6 @@
 "use client";
-import { Button } from "@/components/ui/button";
 import type React from "react";
-
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { fetcher } from "@/lib/fetcher";
 import { Loader2, KeyRound, Eye, EyeOff } from "lucide-react";
@@ -18,11 +17,9 @@ import { Label } from "@/components/ui/label";
 
 const StudentSettingsChangePassword: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [showCurrentPassword, setShowCurrentPassword] =
-    useState<boolean>(false);
+  const [showCurrentPassword, setShowCurrentPassword] = useState<boolean>(false);
   const [showNewPassword, setShowNewPassword] = useState<boolean>(false);
-  const [showConfirmPassword, setShowConfirmPassword] =
-    useState<boolean>(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false);
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -41,6 +38,7 @@ const StudentSettingsChangePassword: React.FC = () => {
       setIsLoading(false);
       return;
     }
+
     try {
       const result: { message: string } = await fetcher(
         "/api/students/me/password",
@@ -52,7 +50,8 @@ const StudentSettingsChangePassword: React.FC = () => {
       );
 
       toast.success(result.message);
-      form.reset();        } catch (err: any) {
+      form.reset();
+    } catch (err: any) {
       console.log("Error on changing password service:", err);
       if (err.info && err.info.error) {
         toast.error(err.info.error as string);
@@ -79,6 +78,7 @@ const StudentSettingsChangePassword: React.FC = () => {
         <CardContent>
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div className="space-y-4">
+              {/* Current Password */}
               <div className="space-y-2">
                 <Label htmlFor="currentPassword">
                   現在のパスワード <span className="text-red-500">*</span>
@@ -111,6 +111,7 @@ const StudentSettingsChangePassword: React.FC = () => {
                 </div>
               </div>
 
+              {/* New Password */}
               <div className="space-y-2">
                 <Label htmlFor="newPassword">
                   新しいパスワード <span className="text-red-500">*</span>
@@ -143,6 +144,7 @@ const StudentSettingsChangePassword: React.FC = () => {
                 </div>
               </div>
 
+              {/* Confirm Password */}
               <div className="space-y-2">
                 <Label htmlFor="confirmPassword">
                   新しいパスワード（確認） <span className="text-red-500">*</span>
@@ -161,7 +163,9 @@ const StudentSettingsChangePassword: React.FC = () => {
                     variant="ghost"
                     size="icon"
                     className="absolute right-0 top-0 h-full px-3"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    onClick={() =>
+                      setShowConfirmPassword(!showConfirmPassword)
+                    }
                   >
                     {showConfirmPassword ? (
                       <EyeOff className="h-4 w-4 text-muted-foreground" />
@@ -169,7 +173,9 @@ const StudentSettingsChangePassword: React.FC = () => {
                       <Eye className="h-4 w-4 text-muted-foreground" />
                     )}
                     <span className="sr-only">
-                      {showConfirmPassword ? "パスワードを隠す" : "パスワードを表示"}
+                      {showConfirmPassword
+                        ? "パスワードを隠す"
+                        : "パスワードを表示"}
                     </span>
                   </Button>
                 </div>
