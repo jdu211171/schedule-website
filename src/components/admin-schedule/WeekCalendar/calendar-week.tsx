@@ -1,5 +1,5 @@
 import { Skeleton } from "@/components/ui/skeleton";
-import { 
+import {
   ExtendedClassSessionWithRelations,
   useMultipleWeeksClassSessions,
   DayFilters
@@ -25,6 +25,7 @@ interface CalendarWeekProps {
   onDelete?: (lessonId: string) => void;
   filters?: DayFilters;
   onFiltersChange?: (filters: DayFilters) => void;
+  selectedBranchId?: string;
 }
 
 export default function CalendarWeek({
@@ -34,10 +35,14 @@ export default function CalendarWeek({
   onDelete,
   filters = {},
   onFiltersChange,
+  selectedBranchId,
 }: CalendarWeekProps) {
   const [expandedLessonId, setExpandedLessonId] = useState<string | null>(null);
 
-  const { weekQueries, allSessions, isLoading } = useMultipleWeeksClassSessions(selectedWeeks, filters);
+  const { weekQueries, allSessions, isLoading } = useMultipleWeeksClassSessions(selectedWeeks, {
+    ...filters,
+    ...(selectedBranchId && { branchId: selectedBranchId })
+  });
 
   const handleLessonClick = useCallback(
     (lessonId: string) => {
@@ -59,7 +64,7 @@ export default function CalendarWeek({
     if (lessonsCount === 4) return { rows: 2, itemsPerRow: 2 };
     if (lessonsCount === 5) return { rows: 1, itemsPerRow: 5 };
     if (lessonsCount === 6) return { rows: 2, itemsPerRow: 3 };
-    if (lessonsCount === 7) return { rows: 2, itemsPerRow: 4 }; 
+    if (lessonsCount === 7) return { rows: 2, itemsPerRow: 4 };
     if (lessonsCount === 8) return { rows: 2, itemsPerRow: 4 };
     if (lessonsCount === 9) return { rows: 3, itemsPerRow: 3 };
     if (lessonsCount === 10) return { rows: 2, itemsPerRow: 5 };
@@ -102,18 +107,18 @@ export default function CalendarWeek({
   const groupLessonsByTime = useCallback(
     (dayLessons: ExtendedClassSessionWithRelations[]) => {
       const grouped: { [timeSlot: string]: ExtendedClassSessionWithRelations[] } = {};
-      
+
       const sortedLessons = [...dayLessons].sort((a, b) => {
         const timeA = typeof a.startTime === 'string' ? a.startTime : format(a.startTime, 'HH:mm');
         const timeB = typeof b.startTime === 'string' ? b.startTime : format(b.startTime, 'HH:mm');
         return timeA.localeCompare(timeB);
       });
-      
+
       sortedLessons.forEach((lesson) => {
-        const timeKey = typeof lesson.startTime === 'string' 
-          ? lesson.startTime 
+        const timeKey = typeof lesson.startTime === 'string'
+          ? lesson.startTime
           : format(lesson.startTime, 'HH:mm');
-          
+
         if (!grouped[timeKey]) {
           grouped[timeKey] = [];
         }
@@ -251,14 +256,14 @@ export default function CalendarWeek({
                                           if (lessonsAtTime.length === 7) {
                                             rowItemsCount = rowIndex === 0 ? 4 : 3;
                                           }
-                                          
-                                          const startIdx = rowIndex === 0 
-                                            ? 0 
+
+                                          const startIdx = rowIndex === 0
+                                            ? 0
                                             : (lessonsAtTime.length === 7 ? 4 : rowIndex * itemsPerRow);
                                           const endIdx = rowIndex === 0
                                             ? rowItemsCount
                                             : startIdx + rowItemsCount;
-                                          
+
                                           const rowLessons = lessonsAtTime.slice(startIdx, endIdx);
 
                                           return (

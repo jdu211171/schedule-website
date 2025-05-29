@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
 import AdminCalendarDay from '@/components/admin-schedule/DayCalendar/admin-calendar-day';
 import AdminCalendarWeek from '@/components/admin-schedule/WeekCalendar/admin-calendar-week';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -11,6 +12,8 @@ import { ClassSessionTable } from '@/components/class-session/class-session-tabl
 const ACTIVE_TAB_KEY = "schedulepage_active_tab";
 
 export default function ScheduleManagementPage() {
+    const { data: session } = useSession();
+
     // Initialize with a default value, will be updated after mount
     const [activeTab, setActiveTab] = useState("day");
     const [isInitialized, setIsInitialized] = useState(false);
@@ -35,6 +38,9 @@ export default function ScheduleManagementPage() {
         return null; // Show nothing during initial render to prevent flicker
     }
 
+    // Get the selected branch ID from session
+    const selectedBranchId = session?.user?.selectedBranchId;
+
     return (
         <div className="container mx-auto space-y-4">
             <div className="flex justify-between items-center">
@@ -53,13 +59,13 @@ export default function ScheduleManagementPage() {
                     <TabsTrigger value="list">リスト</TabsTrigger>
                 </TabsList>
                 <TabsContent value="day">
-                    <AdminCalendarDay />
+                    <AdminCalendarDay selectedBranchId={selectedBranchId || undefined} />
                 </TabsContent>
                 <TabsContent value="week">
-                    <AdminCalendarWeek />
+                    <AdminCalendarWeek selectedBranchId={selectedBranchId || undefined} />
                 </TabsContent>
                 <TabsContent value="list">
-                    <ClassSessionTable />
+                    <ClassSessionTable selectedBranchId={selectedBranchId || undefined} />
                 </TabsContent>
             </Tabs>
         </div>

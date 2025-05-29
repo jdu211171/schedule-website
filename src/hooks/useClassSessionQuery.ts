@@ -65,6 +65,7 @@ export type DayFilters = {
   subjectId?: string;
   teacherId?: string;
   studentId?: string;
+  branchId?: string;
 };
 
 export function useClassSessions(params: UseClassSessionsParams = { page: 1, limit: 10 }) {
@@ -103,9 +104,9 @@ export function useClassSession(classSessionId: string | undefined | null) {
   });
 }
 
-// UPDATED FUNCTION - now uses startDate and endDate
+// UPDATED FUNCTION - now uses startDate and endDate and includes branchId
 export function useMultipleDaysClassSessions(
-  dates: string[], 
+  dates: string[],
   filters: Record<string, DayFilters> = {}
 ): UseQueryResult<ClassSessionsResponse, Error>[] {
   return useQueries({
@@ -117,7 +118,7 @@ export function useMultipleDaysClassSessions(
           startDate: dateStr,
           endDate: dateStr,
         });
-        
+
         const dateFilters = filters[dateStr];
         if (dateFilters?.subjectId) {
           params.append('subjectId', dateFilters.subjectId);
@@ -128,11 +129,14 @@ export function useMultipleDaysClassSessions(
         if (dateFilters?.studentId) {
           params.append('studentId', dateFilters.studentId);
         }
-        
+        if (dateFilters?.branchId) {
+          params.append('branchId', dateFilters.branchId);
+        }
+
         const url = `/api/class-sessions?${params.toString()}`;
         return await fetcher<ClassSessionsResponse>(url);
       },
-      staleTime: 1000 * 60 * 5, 
+      staleTime: 1000 * 60 * 5,
     }))
   });
 }
@@ -203,10 +207,10 @@ export function useMultipleWeeksClassSessions(selectedWeeks: Date[], filters: Da
     queries: selectedWeeks.map(week => {
       const weekStart = startOfWeek(week, { weekStartsOn: 1 });
       const weekEnd = addDays(weekStart, 6);
-      
+
       const startDate = format(weekStart, 'yyyy-MM-dd');
       const endDate = format(weekEnd, 'yyyy-MM-dd');
-      
+
       return {
         queryKey: ['classSessions', 'dateRange', startDate, endDate, filters],
         queryFn: async () => {
@@ -215,7 +219,7 @@ export function useMultipleWeeksClassSessions(selectedWeeks: Date[], filters: Da
             endDate,
             limit: '100'
           });
-          
+
           if (filters.subjectId) {
             params.append('subjectId', filters.subjectId);
           }
@@ -225,7 +229,10 @@ export function useMultipleWeeksClassSessions(selectedWeeks: Date[], filters: Da
           if (filters.studentId) {
             params.append('studentId', filters.studentId);
           }
-          
+          if (filters.branchId) {
+            params.append('branchId', filters.branchId);
+          }
+
           const url = `/api/class-sessions?${params.toString()}`;
           return await fetcher<ClassSessionsResponse>(url);
         },
@@ -236,13 +243,13 @@ export function useMultipleWeeksClassSessions(selectedWeeks: Date[], filters: Da
 
   const allSessions = useMemo(() => {
     const sessions: ExtendedClassSessionWithRelations[] = [];
-    
+
     weekQueries.forEach((query) => {
       if (query.data?.data && Array.isArray(query.data.data)) {
         sessions.push(...query.data.data);
       }
     });
-    
+
     return sessions;
   }, [weekQueries]);
 
