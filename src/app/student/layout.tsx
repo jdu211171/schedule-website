@@ -1,6 +1,6 @@
 import Navbar from "@/components/Navbar";
 
-export default function StudentPage({
+export default function StudentLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -8,7 +8,9 @@ export default function StudentPage({
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
-      <main className="flex-1 py-6 max-w-full mx-8">{children}</main>
+      <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+        {children}
+      </main>
     </div>
   );
 }

@@ -19,6 +19,7 @@ import {
   LucideIcon,
   GraduationCap,
   Building,
+  Menu,
 } from "lucide-react";
 import UserProfileMenu from "@/components/user-profile-menu";
 import { useSession } from "next-auth/react";
@@ -30,7 +31,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ThemeToggle } from "./theme-toggle";
-import { useBranches } from "@/hooks/useBranchQuery";
+import { Button } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 
 interface NavItemType {
   title: string;
@@ -91,8 +99,6 @@ const studentNavItems: NavItemType[] = [
 ];
 
 // Branch selector component
-// Update the BranchSelector component in Navbar.tsx
-
 function BranchSelector() {
   const { data: session, update } = useSession();
   const [selectedBranchId, setSelectedBranchId] = React.useState<string | null>(
@@ -101,56 +107,68 @@ function BranchSelector() {
   const [isLoading, setIsLoading] = React.useState(false);
 
   // Use branches from session instead of making an API request
-  const branches = React.useMemo(() => session?.user?.branches || [], [session]);
+  const branches = React.useMemo(
+    () => session?.user?.branches || [],
+    [session]
+  );
 
-  const handleBranchChange = React.useCallback(async (value: string) => {
-    try {
-      setIsLoading(true);
+  const handleBranchChange = React.useCallback(
+    async (value: string) => {
+      try {
+        setIsLoading(true);
 
-      // First update localStorage
-      localStorage.setItem("selectedBranchId", value);
-      setSelectedBranchId(value);
+        // First update localStorage
+        localStorage.setItem("selectedBranchId", value);
+        setSelectedBranchId(value);
 
-      // Then update the server-side session
-      const response = await fetch("/api/branch-selection", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ branchId: value }),
-      });
+        // Then update the server-side session
+        const response = await fetch("/api/branch-selection", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ branchId: value }),
+        });
 
-      if (!response.ok) {
-        throw new Error("Failed to update branch selection");
+        if (!response.ok) {
+          throw new Error("Failed to update branch selection");
+        }
+
+        // Update client-side session with the new selectedBranchId
+        await update({
+          user: {
+            selectedBranchId: value,
+          },
+        });
+
+        // Small delay to ensure session update is processed before reload
+        setTimeout(() => {
+          window.location.reload();
+        }, 100);
+      } catch (error) {
+        console.error("Error changing branch:", error);
+        // Restore previous selection if there was an error
+        if (session?.user?.selectedBranchId) {
+          localStorage.setItem(
+            "selectedBranchId",
+            session.user.selectedBranchId
+          );
+          setSelectedBranchId(session.user.selectedBranchId);
+        }
+      } finally {
+        setIsLoading(false);
       }
-
-      // Update client-side session with the new selectedBranchId
-      await update({
-        user: {
-          selectedBranchId: value,
-        },
-      });
-
-      // Small delay to ensure session update is processed before reload
-      setTimeout(() => {
-        window.location.reload();
-      }, 100);
-    } catch (error) {
-      console.error("Error changing branch:", error);
-      // Restore previous selection if there was an error
-      if (session?.user?.selectedBranchId) {
-        localStorage.setItem("selectedBranchId", session.user.selectedBranchId);
-        setSelectedBranchId(session.user.selectedBranchId);
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  }, [session, update]);
+    },
+    [session, update]
+  );
 
   // Initialize the selected branch from session first, then localStorage
   React.useEffect(() => {
     // If user has a selected branch in session, prioritize that
-    if (session?.user?.selectedBranchId && branches.some(b => b.branchId === session.user!.selectedBranchId)) {
+    if (
+      session?.user?.selectedBranchId &&
+      branches.some((b) => b.branchId === session.user!.selectedBranchId)
+    ) {
       setSelectedBranchId(session.user.selectedBranchId);
       // Sync localStorage with session
       localStorage.setItem("selectedBranchId", session.user.selectedBranchId);
@@ -159,7 +177,8 @@ function BranchSelector() {
 
     // Otherwise, check localStorage for a valid stored branch
     const storedBranchId = localStorage.getItem("selectedBranchId");
-    const isValidStored = storedBranchId && branches.some(b => b.branchId === storedBranchId);
+    const isValidStored =
+      storedBranchId && branches.some((b) => b.branchId === storedBranchId);
     if (isValidStored) {
       setSelectedBranchId(storedBranchId);
     } else if (branches.length > 0) {
@@ -176,7 +195,7 @@ function BranchSelector() {
       selectedBranchId &&
       session?.user?.selectedBranchId &&
       selectedBranchId !== session.user.selectedBranchId &&
-      branches.some(b => b.branchId === selectedBranchId)
+      branches.some((b) => b.branchId === selectedBranchId)
     ) {
       // Update session to match the local state without triggering a reload
       update({
@@ -204,14 +223,14 @@ function BranchSelector() {
   }
 
   return (
-    <div className="flex items-center mr-4">
-      <Building className="mr-2 h-4 w-4" />
+    <div className="flex items-center">
+      <Building className="mr-2 h-4 w-4 flex-shrink-0" />
       <Select
         value={selectedBranchId || undefined}
         onValueChange={handleBranchChange}
         disabled={isLoading}
       >
-        <SelectTrigger className="w-[180px]">
+        <SelectTrigger className="w-full sm:w-[180px] text-sm">
           <SelectValue placeholder="支店を選択">
             {selectedBranchId
               ? branches.find((b) => b.branchId === selectedBranchId)?.name
@@ -230,6 +249,80 @@ function BranchSelector() {
   );
 }
 
+// Mobile Navigation Menu Component
+function MobileNavMenu({
+  navItems,
+  homeLink,
+  isActive,
+}: {
+  navItems: NavItemType[];
+  homeLink: string;
+  isActive: (item: NavItemType) => boolean;
+}) {
+  const [open, setOpen] = React.useState(false);
+
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
+        <Button variant="ghost" size="sm" className="md:hidden p-2">
+          <Menu className="h-5 w-5" />
+          <span className="sr-only">Toggle navigation menu</span>
+        </Button>
+      </SheetTrigger>
+      <SheetContent side="left" className="w-[300px] sm:w-[400px]">
+        <SheetHeader>
+          <SheetTitle>
+            <Link href={homeLink} onClick={() => setOpen(false)}>
+              LightHouse
+            </Link>
+          </SheetTitle>
+        </SheetHeader>
+
+        <div className="mt-6 space-y-4">
+          {/* Branch Selector */}
+          <div className="px-2">
+            <BranchSelector />
+          </div>
+
+          {/* Navigation Items */}
+          <nav className="space-y-2">
+            {navItems.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => setOpen(false)}
+                className={cn(
+                  "flex items-center space-x-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                  isActive(item)
+                    ? "bg-accent text-accent-foreground"
+                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                )}
+              >
+                <item.icon className="h-4 w-4" />
+                <span>{item.title}</span>
+              </Link>
+            ))}
+          </nav>
+
+          {/* User Actions */}
+          <div className="border-t pt-4 space-y-4">
+            <div className="px-2">
+              <div className="text-sm text-muted-foreground mb-2">
+                アカウント
+              </div>
+              <UserProfileMenu />
+            </div>
+            <div className="px-2">
+              <div className="text-sm text-muted-foreground mb-2">テーマ</div>
+              <ThemeToggle />
+            </div>
+          </div>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
 export default function Navbar() {
   const pathname = usePathname();
   const isTeacherRoute = pathname.startsWith("/teacher");
@@ -241,6 +334,7 @@ export default function Navbar() {
   } else if (isStudentRoute) {
     navItems = studentNavItems;
   }
+
   let homeLink = "/dashboard";
   if (isTeacherRoute) {
     homeLink = "/teacher";
@@ -256,38 +350,63 @@ export default function Navbar() {
   };
 
   return (
-    <header className="border-b">
-      <div className="max-w-6xl mx-auto px-4 flex h-16 items-center">
-        <div className="mr-8 font-semibold text-xl">
-          <Link href={homeLink}>LightHouse</Link>
-        </div>
+    <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex h-16 items-center justify-between">
+          {/* Left section - Logo and Desktop Navigation */}
+          <div className="flex items-center space-x-4 lg:space-x-8">
+            {/* Logo */}
+            <div className="flex-shrink-0">
+              <Link
+                href={homeLink}
+                className="font-semibold text-xl hover:opacity-80 transition-opacity"
+              >
+                LightHouse
+              </Link>
+            </div>
 
-        <NavigationMenu>
-          <NavigationMenuList>
-            {navItems.map((item) => (
-              <NavigationMenuItem key={item.href}>
-                <Link href={item.href} legacyBehavior passHref>
-                  <NavigationMenuLink
-                    className={cn(
-                      navigationMenuTriggerStyle(),
-                      isActive(item) ? "bg-accent text-accent-foreground" : ""
-                    )}
-                  >
-                    <div className="flex items-center">
-                      <item.icon className="mr-2 h-4 w-4" />
-                      {item.title}
-                    </div>
-                  </NavigationMenuLink>
-                </Link>
-              </NavigationMenuItem>
-            ))}
-          </NavigationMenuList>
-        </NavigationMenu>
+            {/* Desktop Navigation */}
+            <NavigationMenu className="hidden md:flex">
+              <NavigationMenuList>
+                {navItems.map((item) => (
+                  <NavigationMenuItem key={item.href}>
+                    <Link href={item.href} legacyBehavior passHref>
+                      <NavigationMenuLink
+                        className={cn(
+                          navigationMenuTriggerStyle(),
+                          "text-sm font-medium transition-colors",
+                          isActive(item)
+                            ? "bg-accent text-accent-foreground"
+                            : "text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        <div className="flex items-center space-x-2">
+                          <item.icon className="h-4 w-4" />
+                          <span>{item.title}</span>
+                        </div>
+                      </NavigationMenuLink>
+                    </Link>
+                  </NavigationMenuItem>
+                ))}
+              </NavigationMenuList>
+            </NavigationMenu>
+          </div>
 
-        <div className="ml-auto flex items-center gap-2">
-          <BranchSelector />
-          <UserProfileMenu />
-          <ThemeToggle />
+          {/* Right section - Desktop Controls */}
+          <div className="hidden md:flex items-center space-x-4">
+            <BranchSelector />
+            <div className="flex items-center space-x-2">
+              <UserProfileMenu />
+              <ThemeToggle />
+            </div>
+          </div>
+
+          {/* Mobile menu button */}
+          <MobileNavMenu
+            navItems={navItems}
+            homeLink={homeLink}
+            isActive={isActive}
+          />
         </div>
       </div>
     </header>
