@@ -41,6 +41,10 @@ interface ApiErrorResponse {
 // Storage key for selected days persistence
 const SELECTED_DAYS_KEY = "admin_calendar_selected_days";
 
+interface AdminCalendarDayProps {
+  selectedBranchId?: string;
+}
+
 const getUniqueKeyForDate = (date: Date, index: number): string => {
   return `${getDateKey(date)}-${index}`;
 };
@@ -67,14 +71,14 @@ const TIME_SLOTS: TimeSlot[] = Array.from({ length: 57 }, (_el, i) => {
   };
 });
 
-export default function AdminCalendarDay() {
+export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayProps) {
   // State for selected days - will be properly initialized after mount
   const [selectedDays, setSelectedDays] = useState<Date[]>(() => {
     // Create current date
     const today = new Date();
     today.setHours(12, 0, 0, 0); // Set to noon to avoid timezone issues
     const todayDateKey = getDateKey(today);
-    
+
     // Try to get saved days from localStorage during initial render
     if (typeof window !== 'undefined') {
       const savedDaysJson = localStorage.getItem(SELECTED_DAYS_KEY);
@@ -85,13 +89,13 @@ export default function AdminCalendarDay() {
             const parsedDates = savedDays
               .map((dateStr: string) => new Date(dateStr))
               .filter((date: Date) => !isNaN(date.getTime()));
-            
+
             // Filter to only include dates from today onwards
             const validDates = parsedDates.filter(date => {
               const dateKey = getDateKey(date);
               return dateKey >= todayDateKey;
             });
-            
+
             if (validDates.length > 0) {
               return validDates;
             }
@@ -101,11 +105,11 @@ export default function AdminCalendarDay() {
         }
       }
     }
-    
+
     // Default to current date if no saved days or all saved days are in the past
     return [today];
   });
-  
+
   const [dayFilters, setDayFilters] = useState<Record<string, DayFilters>>({});
   const [showCreateDialog, setShowCreateDialog] = useState<boolean>(false);
   const [newLessonData, setNewLessonData] = useState<NewClassSessionData | null>(null);
@@ -119,7 +123,7 @@ export default function AdminCalendarDay() {
     const today = new Date();
     today.setHours(12, 0, 0, 0);
     const todayDateKey = getDateKey(today);
-    
+
     const savedDaysJson = localStorage.getItem(SELECTED_DAYS_KEY);
     if (savedDaysJson) {
       try {
@@ -129,7 +133,7 @@ export default function AdminCalendarDay() {
             const date = new Date(dateStr);
             return !isNaN(date.getTime()) && getDateKey(date) >= todayDateKey;
           });
-          
+
           // Update localStorage if we filtered out old dates
           if (validDates.length !== savedDays.length) {
             if (validDates.length > 0) {
@@ -162,7 +166,29 @@ export default function AdminCalendarDay() {
     return selectedDays.map(day => getDateKey(day));
   }, [selectedDays]);
 
-  const classSessionQueries = useMultipleDaysClassSessions(selectedDatesStrings, dayFilters);
+  // Create enhanced filters that include branchId when available
+  const enhancedDayFilters = useMemo(() => {
+    const enhanced: Record<string, DayFilters> = {};
+
+    // Add filters for dates that have specific filters
+    Object.entries(dayFilters).forEach(([dateKey, filters]) => {
+      enhanced[dateKey] = {
+        ...filters,
+        ...(selectedBranchId && { branchId: selectedBranchId })
+      };
+    });
+
+    // Add branchId filter for dates without specific filters
+    selectedDatesStrings.forEach(dateStr => {
+      if (!enhanced[dateStr] && selectedBranchId) {
+        enhanced[dateStr] = { branchId: selectedBranchId };
+      }
+    });
+
+    return enhanced;
+  }, [dayFilters, selectedBranchId, selectedDatesStrings]);
+
+  const classSessionQueries = useMultipleDaysClassSessions(selectedDatesStrings, enhancedDayFilters);
 
   const classSessionsByDate = useMemo(() => {
     const sessionsByDate: Record<string, ExtendedClassSessionWithRelations[]> = {};
@@ -219,14 +245,14 @@ export default function AdminCalendarDay() {
         newDays = newDays.sort((a, b) => a.getTime() - b.getTime());
       } else {
         if (!dateStrSet.has(dateStr)) return prev;
-        
+
         // Remove filters for this day when day is deselected
         setDayFilters(prev => {
           const newFilters = { ...prev };
           delete newFilters[dateStr];
           return newFilters;
         });
-        
+
         newDays = prev.filter(d => getDateKey(d) !== dateStr);
       }
 
@@ -389,7 +415,7 @@ export default function AdminCalendarDay() {
           const uniqueKey = getUniqueKeyForDate(day, index);
           const sessions = classSessionsByDate[dateKey] || [];
           const currentFilters = dayFilters[dateKey] || {};
-          
+
           const queryIndex = selectedDatesStrings.indexOf(dateKey);
           const isLoadingThisDay = queryIndex !== -1 ?
             (classSessionQueries[queryIndex].isLoading || classSessionQueries[queryIndex].isFetching) :

@@ -19,6 +19,7 @@ type AdminCalendarWeekProps = {
   currentDate?: Date;
   mode?: "view" | "create";
   onLessonSelect?: (lesson: ExtendedClassSessionWithRelations) => void;
+  selectedBranchId?: string;
 };
 
 // Helper function to get a date key for comparison
@@ -30,6 +31,7 @@ const AdminCalendarWeek: React.FC<AdminCalendarWeekProps> = ({
   currentDate = new Date(),
   mode = "view",
   onLessonSelect,
+  selectedBranchId,
 }) => {
   // State for selected weeks - will be properly initialized after mount
   const [selectedWeeks, setSelectedWeeks] = useState<Date[]>(() => {
@@ -191,6 +193,7 @@ const AdminCalendarWeek: React.FC<AdminCalendarWeekProps> = ({
         onDelete={handleDelete}
         filters={filters}
         onFiltersChange={setFilters}
+        selectedBranchId={selectedBranchId}
       />
 
       {selectedLesson && (

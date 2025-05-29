@@ -62,7 +62,11 @@ interface ColumnMetaType {
   hidden?: boolean;
 }
 
-export function ClassSessionTable() {
+interface ClassSessionTableProps {
+  selectedBranchId?: string;
+}
+
+export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) {
   const [page, setPage] = useState(1);
   const pageSize = 10;
   const [filters, setFilters] = useState({
@@ -84,6 +88,7 @@ export function ClassSessionTable() {
     subjectId: filters.subjectId,
     classTypeId: filters.classTypeId,
     boothId: filters.boothId,
+    branchId: selectedBranchId,
     startDate: filters.startDate,
     endDate: filters.endDate,
   });
