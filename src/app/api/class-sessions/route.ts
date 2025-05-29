@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import {
   classSessionCreateSchema,
   classSessionFilterSchema,
+  classSessionBulkDeleteSchema,
 } from "@/schemas/class-session.schema";
 import { ClassSession } from "@prisma/client";
 import { addDays, format, parseISO, differenceInDays, getDay } from "date-fns";
@@ -120,17 +121,17 @@ const createUTCDateForFilter = (dateStr: string): Date => {
 };
 
 // Helper function to check if a date conflicts with any events
-const checkEventConflict = async (date: Date, branchId: string): Promise<boolean> => {
+const checkEventConflict = async (
+  date: Date,
+  branchId: string
+): Promise<boolean> => {
   const events = await prisma.event.findMany({
     where: {
       OR: [
         { branchId: branchId },
         { branchId: null }, // Global events
       ],
-      AND: [
-        { startDate: { lte: date } },
-        { endDate: { gte: date } },
-      ],
+      AND: [{ startDate: { lte: date } }, { endDate: { gte: date } }],
     },
   });
 
@@ -379,13 +380,17 @@ export const POST = withBranchAccess(
       // Handle one-time or recurring sessions
       if (!isRecurring) {
         // Check if the date conflicts with any events
-        const hasEventConflict = await checkEventConflict(dateObj, sessionBranchId);
+        const hasEventConflict = await checkEventConflict(
+          dateObj,
+          sessionBranchId
+        );
 
         if (hasEventConflict) {
           return NextResponse.json(
             {
               data: [],
-              message: "指定された日付はイベント期間中のため、クラスセッションをスキップしました",
+              message:
+                "指定された日付はイベント期間中のため、クラスセッションをスキップしました",
               pagination: {
                 total: 0,
                 page: 1,
@@ -543,7 +548,10 @@ export const POST = withBranchAccess(
         const skippedEventDates: Date[] = [];
 
         for (const sessionDate of sessionDates) {
-          const hasEventConflict = await checkEventConflict(sessionDate, sessionBranchId);
+          const hasEventConflict = await checkEventConflict(
+            sessionDate,
+            sessionBranchId
+          );
 
           if (hasEventConflict) {
             skippedEventDates.push(sessionDate);
@@ -557,7 +565,8 @@ export const POST = withBranchAccess(
           return NextResponse.json(
             {
               data: [],
-              message: "すべての日付がイベント期間中のため、クラスセッションをスキップしました",
+              message:
+                "すべての日付がイベント期間中のため、クラスセッションをスキップしました",
               pagination: {
                 total: 0,
                 page: 1,
@@ -565,7 +574,9 @@ export const POST = withBranchAccess(
                 pages: 0,
               },
               skipped: {
-                eventConflict: skippedEventDates.map(date => format(date, "yyyy年MM月dd日")),
+                eventConflict: skippedEventDates.map((date) =>
+                  format(date, "yyyy年MM月dd日")
+                ),
               },
             },
             { status: 200 }
@@ -690,7 +701,9 @@ export const POST = withBranchAccess(
           message += `（${skippedEventDates.length}件の日付をイベント期間中のためスキップしました）`;
           responseData.message = message;
           responseData.skipped = {
-            eventConflict: skippedEventDates.map(date => format(date, "yyyy年MM月dd日")),
+            eventConflict: skippedEventDates.map((date) =>
+              format(date, "yyyy年MM月dd日")
+            ),
           };
         }
 
@@ -700,6 +713,90 @@ export const POST = withBranchAccess(
       console.error("Error creating class session:", error);
       return NextResponse.json(
         { error: "クラスセッションの作成に失敗しました" },
+        { status: 500 }
+      );
+    }
+  }
+);
+
+// DELETE - Bulk delete class sessions
+export const DELETE = withBranchAccess(
+  ["ADMIN", "STAFF"],
+  async (request: NextRequest, session, branchId) => {
+    try {
+      const body = await request.json();
+
+      // Validate request body
+      const result = classSessionBulkDeleteSchema.safeParse(body);
+      if (!result.success) {
+        return NextResponse.json(
+          { error: "入力データが無効です" }, // "Invalid input data"
+          { status: 400 }
+        );
+      }
+
+      const { classIds } = result.data;
+
+      // Fetch all class sessions to be deleted
+      const classSessionsToDelete = await prisma.classSession.findMany({
+        where: {
+          classId: {
+            in: classIds,
+          },
+        },
+      });
+
+      if (classSessionsToDelete.length === 0) {
+        return NextResponse.json(
+          { error: "削除対象のクラスセッションが見つかりません" },
+          { status: 404 }
+        );
+      }
+
+      // Check if user has access to all class sessions' branches (non-admin users)
+      if (session.user?.role !== "ADMIN") {
+        const unauthorizedSessions = classSessionsToDelete.filter(
+          (session) => session.branchId && session.branchId !== branchId
+        );
+
+        if (unauthorizedSessions.length > 0) {
+          return NextResponse.json(
+            { error: "一部のクラスセッションにアクセスする権限がありません" },
+            { status: 403 }
+          );
+        }
+      }
+
+      // Count sessions that actually exist and will be deleted
+      const actualDeleteCount = classSessionsToDelete.length;
+
+      // Delete the class sessions
+      await prisma.classSession.deleteMany({
+        where: {
+          classId: {
+            in: classIds,
+          },
+        },
+      });
+
+      return NextResponse.json(
+        {
+          data: [],
+          message: `${actualDeleteCount}件のクラスセッションを削除しました`,
+          deletedCount: actualDeleteCount,
+          pagination: {
+            total: 0,
+            page: 0,
+            limit: 0,
+            pages: 0,
+          },
+        },
+        { status: 200 }
+      );
+    } catch (error) {
+      console.error("Error bulk deleting class sessions:", error);
+      return NextResponse.json(
+        { error: "クラスセッションの一括削除に失敗しました" },
         { status: 500 }
       );
     }
