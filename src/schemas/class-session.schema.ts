@@ -50,6 +50,13 @@ export const classSessionSeriesUpdateSchema = z.object({
   notes: z.string().max(255).optional().nullable(),
 });
 
+// Schema for bulk deleting class sessions
+export const classSessionBulkDeleteSchema = z.object({
+  classIds: z
+    .array(z.string())
+    .min(1, "At least one class session ID is required"),
+});
+
 // Filters for querying class sessions
 export const classSessionFilterSchema = z.object({
   page: z.coerce.number().int().positive().default(1),
@@ -70,5 +77,8 @@ export type ClassSessionCreate = z.infer<typeof classSessionCreateSchema>;
 export type ClassSessionUpdate = z.infer<typeof classSessionUpdateSchema>;
 export type ClassSessionSeriesUpdate = z.infer<
   typeof classSessionSeriesUpdateSchema
+>;
+export type ClassSessionBulkDelete = z.infer<
+  typeof classSessionBulkDeleteSchema
 >;
 export type ClassSessionFilter = z.infer<typeof classSessionFilterSchema>;

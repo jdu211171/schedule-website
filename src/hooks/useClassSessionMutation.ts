@@ -5,7 +5,8 @@ import { toast } from "sonner";
 import {
   ClassSessionCreate,
   ClassSessionUpdate,
-  ClassSessionSeriesUpdate
+  ClassSessionSeriesUpdate,
+  ClassSessionBulkDelete,
 } from "@/schemas/class-session.schema";
 import { ClassSession } from "@prisma/client";
 
@@ -24,6 +25,18 @@ type ClassSessionResponse = {
 type SingleClassSessionResponse = {
   data: ClassSession;
   message?: string;
+};
+
+type BulkDeleteResponse = {
+  data: [];
+  message: string;
+  deletedCount: number;
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    pages: number;
+  };
 };
 
 // Add extra fields to ClassSession type for optimistic updates and API compatibility
@@ -58,6 +71,7 @@ type ClassSessionMutationContext = {
   previousClassSessions?: Record<string, ClassSessionResponse>;
   previousClassSession?: ClassSession;
   deletedClassSession?: ClassSession;
+  deletedClassSessions?: ClassSession[];
   tempId?: string;
 };
 
@@ -98,7 +112,8 @@ export function useClassSessionCreate() {
       if (!newClassSession.isRecurring) {
         const tempId = `temp-${Date.now()}`;
         queries.forEach(([queryKey]) => {
-          const currentData = queryClient.getQueryData<ClassSessionResponse>(queryKey);
+          const currentData =
+            queryClient.getQueryData<ClassSessionResponse>(queryKey);
           if (currentData) {
             // Create optimistic class session with extra fields
             const optimisticClassSession: ClassSessionWithExtras = {
@@ -128,7 +143,10 @@ export function useClassSessionCreate() {
 
             queryClient.setQueryData<ClassSessionResponse>(queryKey, {
               ...currentData,
-              data: [optimisticClassSession as unknown as ClassSession, ...currentData.data],
+              data: [
+                optimisticClassSession as unknown as ClassSession,
+                ...currentData.data,
+              ],
               pagination: {
                 ...currentData.pagination,
                 total: currentData.pagination.total + 1,
@@ -164,7 +182,11 @@ export function useClassSessionCreate() {
     },
     onSuccess: (response, newClassSession, context) => {
       // For one-time sessions, update the temp ID mapping
-      if (!newClassSession.isRecurring && context?.tempId && response.data.length > 0) {
+      if (
+        !newClassSession.isRecurring &&
+        context?.tempId &&
+        response.data.length > 0
+      ) {
         const newClassSession = response.data[0];
         tempToServerIdMap.set(context.tempId, newClassSession.classId);
 
@@ -174,7 +196,8 @@ export function useClassSessionCreate() {
         });
 
         queries.forEach(([queryKey]) => {
-          const currentData = queryClient.getQueryData<ClassSessionResponse>(queryKey);
+          const currentData =
+            queryClient.getQueryData<ClassSessionResponse>(queryKey);
           if (currentData) {
             queryClient.setQueryData<ClassSessionResponse>(queryKey, {
               ...currentData,
@@ -189,7 +212,10 @@ export function useClassSessionCreate() {
       // For recurring sessions, we'll just refresh the data
       if (newClassSession.isRecurring && response.seriesId) {
         // Add the seriesId to the cache for possible future reference
-        queryClient.setQueryData(["classSessionSeriesId", response.seriesId], response.seriesId);
+        queryClient.setQueryData(
+          ["classSessionSeriesId", response.seriesId],
+          response.seriesId
+        );
       }
 
       const successMessage = newClassSession.isRecurring
@@ -254,7 +280,8 @@ export function useClassSessionUpdate() {
       ]);
 
       queries.forEach(([queryKey]) => {
-        const currentData = queryClient.getQueryData<ClassSessionResponse>(queryKey);
+        const currentData =
+          queryClient.getQueryData<ClassSessionResponse>(queryKey);
         if (currentData) {
           queryClient.setQueryData<ClassSessionResponse>(queryKey, {
             ...currentData,
@@ -263,14 +290,20 @@ export function useClassSessionUpdate() {
                 ? {
                     ...session,
                     ...updatedClassSession,
-                    teacherId: updatedClassSession.teacherId ?? session.teacherId,
-                    studentId: updatedClassSession.studentId ?? session.studentId,
-                    subjectId: updatedClassSession.subjectId ?? session.subjectId,
-                    classTypeId: updatedClassSession.classTypeId ?? session.classTypeId,
+                    teacherId:
+                      updatedClassSession.teacherId ?? session.teacherId,
+                    studentId:
+                      updatedClassSession.studentId ?? session.studentId,
+                    subjectId:
+                      updatedClassSession.subjectId ?? session.subjectId,
+                    classTypeId:
+                      updatedClassSession.classTypeId ?? session.classTypeId,
                     boothId: updatedClassSession.boothId ?? session.boothId,
                     date: (updatedClassSession.date ?? session.date) as Date,
-                    startTime: (updatedClassSession.startTime ?? session.startTime) as Date,
-                    endTime: (updatedClassSession.endTime ?? session.endTime) as Date,
+                    startTime: (updatedClassSession.startTime ??
+                      session.startTime) as Date,
+                    endTime: (updatedClassSession.endTime ??
+                      session.endTime) as Date,
                     duration: updatedClassSession.duration ?? session.duration,
                     notes: updatedClassSession.notes ?? session.notes,
                     updatedAt: new Date() as Date,
@@ -285,15 +318,22 @@ export function useClassSessionUpdate() {
         queryClient.setQueryData<ClassSession>(["classSession", resolvedId], {
           ...previousClassSession,
           ...updatedClassSession,
-          teacherId: updatedClassSession.teacherId ?? previousClassSession.teacherId,
-          studentId: updatedClassSession.studentId ?? previousClassSession.studentId,
-          subjectId: updatedClassSession.subjectId ?? previousClassSession.subjectId,
-          classTypeId: updatedClassSession.classTypeId ?? previousClassSession.classTypeId,
+          teacherId:
+            updatedClassSession.teacherId ?? previousClassSession.teacherId,
+          studentId:
+            updatedClassSession.studentId ?? previousClassSession.studentId,
+          subjectId:
+            updatedClassSession.subjectId ?? previousClassSession.subjectId,
+          classTypeId:
+            updatedClassSession.classTypeId ?? previousClassSession.classTypeId,
           boothId: updatedClassSession.boothId ?? previousClassSession.boothId,
           date: (updatedClassSession.date ?? previousClassSession.date) as Date,
-          startTime: (updatedClassSession.startTime ?? previousClassSession.startTime) as Date,
-          endTime: (updatedClassSession.endTime ?? previousClassSession.endTime) as Date,
-          duration: updatedClassSession.duration ?? previousClassSession.duration,
+          startTime: (updatedClassSession.startTime ??
+            previousClassSession.startTime) as Date,
+          endTime: (updatedClassSession.endTime ??
+            previousClassSession.endTime) as Date,
+          duration:
+            updatedClassSession.duration ?? previousClassSession.duration,
           notes: updatedClassSession.notes ?? previousClassSession.notes,
           updatedAt: new Date() as Date,
         });
@@ -346,7 +386,10 @@ export function useClassSessionUpdate() {
       });
 
       // If this session belongs to a series, invalidate series data too
-      const classSession = queryClient.getQueryData<ClassSession>(["classSession", resolvedId]);
+      const classSession = queryClient.getQueryData<ClassSession>([
+        "classSession",
+        resolvedId,
+      ]);
       if (classSession?.seriesId) {
         queryClient.invalidateQueries({
           queryKey: ["classSessionSeries", classSession.seriesId],
@@ -376,7 +419,9 @@ export function useClassSessionDelete() {
       // Resolve ID for any potential temporary ID
       const resolvedId = getResolvedClassSessionId(classId);
 
-      await queryClient.cancelQueries({ queryKey: ["classSession", resolvedId] });
+      await queryClient.cancelQueries({
+        queryKey: ["classSession", resolvedId],
+      });
 
       // Snapshot all class session queries
       const queries = queryClient.getQueriesData<ClassSessionResponse>({
@@ -398,7 +443,9 @@ export function useClassSessionDelete() {
 
       for (const [, data] of queries) {
         if (data) {
-          const found = data.data.find((session) => session.classId === classId);
+          const found = data.data.find(
+            (session) => session.classId === classId
+          );
           if (found) {
             deletedClassSession = found;
             seriesId = found.seriesId;
@@ -409,12 +456,15 @@ export function useClassSessionDelete() {
 
       // Optimistically update all class session queries
       queries.forEach(([queryKey]) => {
-        const currentData = queryClient.getQueryData<ClassSessionResponse>(queryKey);
+        const currentData =
+          queryClient.getQueryData<ClassSessionResponse>(queryKey);
 
         if (currentData) {
           queryClient.setQueryData<ClassSessionResponse>(queryKey, {
             ...currentData,
-            data: currentData.data.filter((session) => session.classId !== classId),
+            data: currentData.data.filter(
+              (session) => session.classId !== classId
+            ),
             pagination: {
               ...currentData.pagination,
               total: Math.max(0, currentData.pagination.total - 1),
@@ -425,7 +475,10 @@ export function useClassSessionDelete() {
 
       // If it belongs to a series, update that too
       if (seriesId) {
-        const seriesData = queryClient.getQueryData<ClassSession[]>(["classSessionSeries", seriesId]);
+        const seriesData = queryClient.getQueryData<ClassSession[]>([
+          "classSessionSeries",
+          seriesId,
+        ]);
         if (seriesData) {
           queryClient.setQueryData<ClassSession[]>(
             ["classSessionSeries", seriesId],
@@ -466,18 +519,23 @@ export function useClassSessionDelete() {
 
       // Restore individual class session query if it existed
       if (context?.deletedClassSession) {
-        queryClient.setQueryData(["classSession", resolvedId], context.deletedClassSession);
+        queryClient.setQueryData(
+          ["classSession", resolvedId],
+          context.deletedClassSession
+        );
 
         // If it belongs to a series, restore that too
         if (context.deletedClassSession.seriesId) {
           const seriesData = queryClient.getQueryData<ClassSession[]>([
             "classSessionSeries",
-            context.deletedClassSession.seriesId
+            context.deletedClassSession.seriesId,
           ]);
 
           if (seriesData) {
             // Check if the session is already in the array
-            const sessionExists = seriesData.some(session => session.classId === classId);
+            const sessionExists = seriesData.some(
+              (session) => session.classId === classId
+            );
             if (!sessionExists) {
               queryClient.setQueryData<ClassSession[]>(
                 ["classSessionSeries", context.deletedClassSession.seriesId],
@@ -521,6 +579,205 @@ export function useClassSessionDelete() {
   });
 }
 
+// Hook for bulk deleting class sessions
+export function useClassSessionBulkDelete() {
+  const queryClient = useQueryClient();
+  return useMutation<
+    BulkDeleteResponse,
+    Error,
+    ClassSessionBulkDelete,
+    ClassSessionMutationContext
+  >({
+    mutationFn: (data) =>
+      fetcher("/api/class-sessions", {
+        method: "DELETE",
+        body: JSON.stringify(data),
+      }),
+    onMutate: async (bulkDeleteData) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["classSessions"] });
+
+      const { classIds } = bulkDeleteData;
+
+      // Resolve IDs for any potential temporary IDs
+      const resolvedIds = classIds.map((id) => getResolvedClassSessionId(id));
+
+      // Cancel individual class session queries
+      resolvedIds.forEach((id) => {
+        queryClient.cancelQueries({ queryKey: ["classSession", id] });
+      });
+
+      // Snapshot all class session queries
+      const queries = queryClient.getQueriesData<ClassSessionResponse>({
+        queryKey: ["classSessions"],
+      });
+
+      const previousClassSessions: Record<string, ClassSessionResponse> = {};
+      const deletedClassSessions: ClassSession[] = [];
+
+      // Save all class session queries for potential rollback
+      queries.forEach(([queryKey, data]) => {
+        if (data) {
+          previousClassSessions[JSON.stringify(queryKey)] = data;
+
+          // Collect sessions that will be deleted
+          const sessionsToDelete = data.data.filter((session) =>
+            classIds.includes(session.classId)
+          );
+          deletedClassSessions.push(...sessionsToDelete);
+        }
+      });
+
+      // Optimistically update all class session queries
+      queries.forEach(([queryKey]) => {
+        const currentData =
+          queryClient.getQueryData<ClassSessionResponse>(queryKey);
+
+        if (currentData) {
+          const remainingSessions = currentData.data.filter(
+            (session) => !classIds.includes(session.classId)
+          );
+
+          queryClient.setQueryData<ClassSessionResponse>(queryKey, {
+            ...currentData,
+            data: remainingSessions,
+            pagination: {
+              ...currentData.pagination,
+              total: Math.max(
+                0,
+                currentData.pagination.total -
+                  (currentData.data.length - remainingSessions.length)
+              ),
+            },
+          });
+        }
+      });
+
+      // Update series data if any deleted sessions belong to series
+      const seriesIds = new Set(
+        deletedClassSessions
+          .map((session) => session.seriesId)
+          .filter((id): id is string => id !== null)
+      );
+
+      seriesIds.forEach((seriesId) => {
+        const seriesData = queryClient.getQueryData<ClassSession[]>([
+          "classSessionSeries",
+          seriesId,
+        ]);
+        if (seriesData) {
+          queryClient.setQueryData<ClassSession[]>(
+            ["classSessionSeries", seriesId],
+            seriesData.filter((session) => !classIds.includes(session.classId))
+          );
+        }
+      });
+
+      // Remove individual class session queries
+      resolvedIds.forEach((id) => {
+        queryClient.removeQueries({ queryKey: ["classSession", id] });
+      });
+
+      // Clean up temporary ID mappings
+      classIds.forEach((id) => {
+        if (id.startsWith("temp-")) {
+          tempToServerIdMap.delete(id);
+        }
+      });
+
+      // Return the snapshots for rollback
+      return { previousClassSessions, deletedClassSessions };
+    },
+    onError: (error, variables, context) => {
+      // Rollback class session list queries
+      if (context?.previousClassSessions) {
+        Object.entries(context.previousClassSessions).forEach(
+          ([queryKeyStr, data]) => {
+            const queryKey = JSON.parse(queryKeyStr);
+            queryClient.setQueryData(queryKey, data);
+          }
+        );
+      }
+
+      // Restore temporary ID mappings
+      if (context?.deletedClassSessions) {
+        variables.classIds.forEach((id, index) => {
+          if (id.startsWith("temp-") && context.deletedClassSessions?.[index]) {
+            tempToServerIdMap.set(
+              id,
+              context.deletedClassSessions[index].classId
+            );
+          }
+        });
+      }
+
+      // Restore individual class session queries
+      if (context?.deletedClassSessions) {
+        context.deletedClassSessions.forEach((session) => {
+          const resolvedId = getResolvedClassSessionId(session.classId);
+          queryClient.setQueryData(["classSession", resolvedId], session);
+
+          // Restore series data if applicable
+          if (session.seriesId) {
+            const seriesData = queryClient.getQueryData<ClassSession[]>([
+              "classSessionSeries",
+              session.seriesId,
+            ]);
+
+            if (seriesData) {
+              const sessionExists = seriesData.some(
+                (s) => s.classId === session.classId
+              );
+              if (!sessionExists) {
+                queryClient.setQueryData<ClassSession[]>(
+                  ["classSessionSeries", session.seriesId],
+                  [...seriesData, session]
+                );
+              }
+            }
+          }
+        });
+      }
+
+      toast.error("クラスセッションの一括削除に失敗しました", {
+        id: "class-session-bulk-delete-error",
+        description: error.message,
+      });
+    },
+    onSuccess: (response, variables) => {
+      // Clean up temporary ID mappings on success
+      variables.classIds.forEach((id) => {
+        if (id.startsWith("temp-")) {
+          tempToServerIdMap.delete(id);
+        }
+      });
+
+      toast.success(response.message, {
+        id: "class-session-bulk-delete-success",
+      });
+    },
+    onSettled: (_, __, variables) => {
+      // Resolve IDs for proper invalidation
+      const resolvedIds = variables.classIds.map((id) =>
+        getResolvedClassSessionId(id)
+      );
+
+      // Invalidate queries in the background to ensure eventual consistency
+      queryClient.invalidateQueries({
+        queryKey: ["classSessions"],
+        refetchType: "none",
+      });
+
+      resolvedIds.forEach((id) => {
+        queryClient.invalidateQueries({
+          queryKey: ["classSession", id],
+          refetchType: "none",
+        });
+      });
+    },
+  });
+}
+
 // Hook for updating all future sessions in a series
 export function useClassSessionSeriesUpdate() {
   const queryClient = useQueryClient();
@@ -540,7 +797,9 @@ export function useClassSessionSeriesUpdate() {
       const { seriesId } = updatedSeries;
 
       // Cancel any outgoing refetches for the series
-      await queryClient.cancelQueries({ queryKey: ["classSessionSeries", seriesId] });
+      await queryClient.cancelQueries({
+        queryKey: ["classSessionSeries", seriesId],
+      });
 
       // Save the current sessions for this series
       const previousData = queryClient.getQueryData<ClassSession[]>([
@@ -567,9 +826,12 @@ export function useClassSessionSeriesUpdate() {
       });
     },
     onSuccess: (response) => {
-      toast.success(`${response.data.length}件の未来のクラスセッションを更新しました`, {
-        id: "class-session-series-update-success",
-      });
+      toast.success(
+        `${response.data.length}件の未来のクラスセッションを更新しました`,
+        {
+          id: "class-session-series-update-success",
+        }
+      );
     },
     onSettled: (_, __, variables) => {
       const { seriesId } = variables;
@@ -600,7 +862,9 @@ export function useClassSessionSeriesDelete() {
     },
     onMutate: async (seriesId) => {
       // Cancel any outgoing refetches for the series
-      await queryClient.cancelQueries({ queryKey: ["classSessionSeries", seriesId] });
+      await queryClient.cancelQueries({
+        queryKey: ["classSessionSeries", seriesId],
+      });
 
       // Save the current sessions for this series
       const previousData = queryClient.getQueryData<ClassSession[]>([
