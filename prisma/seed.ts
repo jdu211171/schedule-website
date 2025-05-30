@@ -241,7 +241,7 @@ async function main() {
     },
   });
 
-  await prisma.event.create({
+  await prisma.vacation.create({
     data: {
       name: "夏期休暇",
       startDate: new Date("2025-08-10"),

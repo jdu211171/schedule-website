@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { BoothTable } from "@/components/booth/booth-table";
-import { EventTable } from "@/components/event/event-table";
+import { VacationTable } from "@/components/vacation/vacation-table";
 import { StudentTypeTable } from "@/components/student-types/student-type-table";
 import { ClassTypeTable } from "@/components/class-type/class-type-table";
 import { SubjectTable } from "@/components/subject/subject-table";
@@ -60,7 +60,7 @@ export default function MasterDataPage() {
           <TabsTrigger value="studentTypes">生徒タイプ</TabsTrigger>
           <TabsTrigger value="booths">ブース</TabsTrigger>
           <TabsTrigger value="classTypes">授業タイプ</TabsTrigger>
-          <TabsTrigger value="events">イベント</TabsTrigger>
+          <TabsTrigger value="vacations">休日</TabsTrigger>
         </TabsList>
 
         <Card className="mt-4 p-4">
@@ -91,8 +91,8 @@ export default function MasterDataPage() {
           <TabsContent value="classTypes" className="mt-0">
             <ClassTypeTable />
           </TabsContent>
-          <TabsContent value="events" className="mt-0">
-            <EventTable />
+          <TabsContent value="vacations" className="mt-0">
+            <VacationTable />
           </TabsContent>
         </Card>
       </Tabs>

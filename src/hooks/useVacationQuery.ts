@@ -1,9 +1,9 @@
-// src/hooks/useEventQuery.ts
+// src/hooks/useVacationQuery.ts
 import { fetcher } from "@/lib/fetcher";
 import { useQuery } from "@tanstack/react-query";
-import { eventFilterSchema } from "@/schemas/event.schema";
+import { vacationFilterSchema } from "@/schemas/vacation.schema";
 
-type Event = {
+type Vacation = {
   id: string;
   name: string;
   startDate: Date;
@@ -16,7 +16,7 @@ type Event = {
   updatedAt: Date;
 };
 
-type UseEventsParams = {
+type UseVacationsParams = {
   page?: number;
   limit?: number;
   name?: string;
@@ -26,8 +26,8 @@ type UseEventsParams = {
   branchId?: string;
 };
 
-type EventsResponse = {
-  data: Event[];
+type VacationsResponse = {
+  data: Vacation[];
   pagination: {
     total: number;
     page: number;
@@ -36,11 +36,11 @@ type EventsResponse = {
   };
 };
 
-type SingleEventResponse = {
-  data: Event[];
+type SingleVacationResponse = {
+  data: Vacation[];
 };
 
-export function useEvents(params: UseEventsParams = {}) {
+export function useVacations(params: UseVacationsParams = {}) {
   const {
     page = 1,
     limit = 10,
@@ -51,7 +51,7 @@ export function useEvents(params: UseEventsParams = {}) {
     branchId,
   } = params;
 
-  const query = eventFilterSchema.parse({
+  const query = vacationFilterSchema.parse({
     page,
     limit,
     name,
@@ -75,9 +75,9 @@ export function useEvents(params: UseEventsParams = {}) {
     }, {} as Record<string, string>)
   ).toString();
 
-  return useQuery<EventsResponse>({
+  return useQuery<VacationsResponse>({
     queryKey: [
-      "events",
+      "vacations",
       page,
       limit,
       name,
@@ -87,17 +87,17 @@ export function useEvents(params: UseEventsParams = {}) {
       branchId,
     ],
     queryFn: async () =>
-      await fetcher<EventsResponse>(`/api/events?${searchParams}`),
+      await fetcher<VacationsResponse>(`/api/vacations?${searchParams}`),
   });
 }
 
-export function useEvent(eventId: string) {
-  return useQuery<Event>({
-    queryKey: ["event", eventId],
+export function useVacation(vacationId: string) {
+  return useQuery<Vacation>({
+    queryKey: ["vacation", vacationId],
     queryFn: async () =>
-      await fetcher<SingleEventResponse>(`/api/events/${eventId}`).then(
+      await fetcher<SingleVacationResponse>(`/api/vacations/${vacationId}`).then(
         (res) => res.data[0]
       ),
-    enabled: !!eventId,
+    enabled: !!vacationId,
   });
 }

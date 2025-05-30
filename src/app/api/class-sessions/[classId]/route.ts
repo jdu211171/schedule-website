@@ -104,13 +104,13 @@ const createDateTime = (dateStr: string, timeString: string): Date => {
   return date;
 };
 
-// Helper function to check if a date conflicts with any events
-const checkEventConflict = async (date: Date, branchId: string): Promise<boolean> => {
-  const events = await prisma.event.findMany({
+// Helper function to check if a date conflicts with any vacations
+const checkVacationConflict = async (date: Date, branchId: string): Promise<boolean> => {
+  const vacations = await prisma.vacation.findMany({
     where: {
       OR: [
         { branchId: branchId },
-        { branchId: null }, // Global events
+        { branchId: null }, // Global vacations
       ],
       AND: [
         { startDate: { lte: date } },
@@ -119,7 +119,7 @@ const checkEventConflict = async (date: Date, branchId: string): Promise<boolean
     },
   });
 
-  return events.length > 0;
+  return vacations.length > 0;
 };
 
 // GET a specific class session by ID
@@ -286,11 +286,11 @@ export const PATCH = withBranchAccess(
         const newDate = parseISO(date);
 
         // Check if the new date conflicts with any events
-        const hasEventConflict = await checkEventConflict(newDate, existingClassSession.branchId || branchId);
+        const hasVacationConflict = await checkVacationConflict(newDate, existingClassSession.branchId || branchId);
 
-        if (hasEventConflict) {
+        if (hasVacationConflict) {
           return NextResponse.json(
-            { error: "指定された日付はイベント期間中のため、クラスセッションを更新できません" },
+            { error: "指定された日付は休日期間中のため、クラスセッションを更新できません" },
             { status: 400 }
           );
         }

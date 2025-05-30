@@ -1,11 +1,11 @@
-// src/app/api/events/[eventId]/route.ts
+// src/app/api/vacations/[vacationId]/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { withBranchAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { eventUpdateSchema } from "@/schemas/event.schema";
-import { Event } from "@prisma/client";
+import { vacationUpdateSchema } from "@/schemas/vacation.schema";
+import { Vacation } from "@prisma/client";
 
-type FormattedEvent = {
+type FormattedVacation = {
   id: string;
   name: string;
   startDate: Date;
@@ -18,20 +18,20 @@ type FormattedEvent = {
   updatedAt: Date;
 };
 
-// Helper function to format event response
-const formatEvent = (
-  event: Event & { branch?: { name: string } | null }
-): FormattedEvent => ({
-  id: event.id,
-  name: event.name,
-  startDate: event.startDate,
-  endDate: event.endDate,
-  isRecurring: event.isRecurring,
-  notes: event.notes || null,
-  branchId: event.branchId || null,
-  branchName: event.branch?.name || null,
-  createdAt: event.createdAt,
-  updatedAt: event.updatedAt,
+// Helper function to format vacation response
+const formatVacation = (
+  vacation: Vacation & { branch?: { name: string } | null }
+): FormattedVacation => ({
+  id: vacation.id,
+  name: vacation.name,
+  startDate: vacation.startDate,
+  endDate: vacation.endDate,
+  isRecurring: vacation.isRecurring,
+  notes: vacation.notes || null,
+  branchId: vacation.branchId || null,
+  branchName: vacation.branch?.name || null,
+  createdAt: vacation.createdAt,
+  updatedAt: vacation.updatedAt,
 });
 
 // Helper function to create UTC date from date string or Date object
@@ -49,21 +49,21 @@ const createUTCDate = (dateInput: string | Date): Date => {
   }
 };
 
-// GET a specific event by ID
+// GET a specific vacation by ID
 export const GET = withBranchAccess(
   ["ADMIN", "STAFF", "TEACHER"],
   async (request: NextRequest, session, branchId) => {
-    const eventId = request.url.split("/").pop();
+    const vacationId = request.url.split("/").pop();
 
-    if (!eventId) {
+    if (!vacationId) {
       return NextResponse.json(
-        { error: "イベントIDが必要です" },
+        { error: "休日IDが必要です" },
         { status: 400 }
       );
     }
 
-    const event = await prisma.event.findUnique({
-      where: { id: eventId },
+    const vacation = await prisma.vacation.findUnique({
+      where: { id: vacationId },
       include: {
         branch: {
           select: {
@@ -73,30 +73,30 @@ export const GET = withBranchAccess(
       },
     });
 
-    if (!event) {
+    if (!vacation) {
       return NextResponse.json(
-        { error: "イベントが見つかりません" },
+        { error: "休日が見つかりません" },
         { status: 404 }
       );
     }
 
-    // Check if user has access to this event's branch (non-admin users)
+    // Check if user has access to this vacation's branch (non-admin users)
     if (
-      event.branchId &&
-      event.branchId !== branchId &&
+      vacation.branchId &&
+      vacation.branchId !== branchId &&
       session.user?.role !== "ADMIN"
     ) {
       return NextResponse.json(
-        { error: "このイベントにアクセスする権限がありません" },
+        { error: "この休日にアクセスする権限がありません" },
         { status: 403 }
       );
     }
 
     // Format response
-    const formattedEvent = formatEvent(event);
+    const formattedVacation = formatVacation(vacation);
 
     return NextResponse.json({
-      data: [formattedEvent],
+      data: [formattedVacation],
       pagination: {
         total: 1,
         page: 1,
@@ -107,15 +107,15 @@ export const GET = withBranchAccess(
   }
 );
 
-// PATCH - Update an event
+// PATCH - Update a vacation
 export const PATCH = withBranchAccess(
   ["ADMIN", "STAFF"],
   async (request: NextRequest, session, branchId) => {
     try {
-      const eventId = request.url.split("/").pop();
-      if (!eventId) {
+      const vacationId = request.url.split("/").pop();
+      if (!vacationId) {
         return NextResponse.json(
-          { error: "イベントIDが必要です" },
+          { error: "休日IDが必要です" },
           { status: 400 }
         );
       }
@@ -123,7 +123,7 @@ export const PATCH = withBranchAccess(
       const body = await request.json();
 
       // Validate request body
-      const result = eventUpdateSchema.safeParse({ ...body, eventId });
+      const result = vacationUpdateSchema.safeParse({ ...body, vacationId });
       if (!result.success) {
         return NextResponse.json(
           { error: result.error.message },
@@ -131,26 +131,26 @@ export const PATCH = withBranchAccess(
         );
       }
 
-      // Check if event exists
-      const existingEvent = await prisma.event.findUnique({
-        where: { id: eventId },
+      // Check if vacation exists
+      const existingVacation = await prisma.vacation.findUnique({
+        where: { id: vacationId },
       });
 
-      if (!existingEvent) {
+      if (!existingVacation) {
         return NextResponse.json(
-          { error: "イベントが見つかりません" },
+          { error: "休日が見つかりません" },
           { status: 404 }
         );
       }
 
-      // Check if user has access to this event's branch (non-admin users)
+      // Check if user has access to this vacation's branch (non-admin users)
       if (
-        existingEvent.branchId &&
-        existingEvent.branchId !== branchId &&
+        existingVacation.branchId &&
+        existingVacation.branchId !== branchId &&
         session.user?.role !== "ADMIN"
       ) {
         return NextResponse.json(
-          { error: "このイベントにアクセスする権限がありません" },
+          { error: "この休日にアクセスする権限がありません" },
           { status: 403 }
         );
       }
@@ -176,9 +176,9 @@ export const PATCH = withBranchAccess(
         );
       }
 
-      // Update event
-      const updatedEvent = await prisma.event.update({
-        where: { id: eventId },
+      // Update vacation
+      const updatedVacation = await prisma.vacation.update({
+        where: { id: vacationId },
         data: {
           name,
           startDate: startDateUTC,
@@ -196,11 +196,11 @@ export const PATCH = withBranchAccess(
       });
 
       // Format response
-      const formattedEvent = formatEvent(updatedEvent);
+      const formattedVacation = formatVacation(updatedVacation);
 
       return NextResponse.json({
-        data: [formattedEvent],
-        message: "イベントを更新しました",
+        data: [formattedVacation],
+        message: "休日を更新しました",
         pagination: {
           total: 1,
           page: 1,
@@ -209,62 +209,62 @@ export const PATCH = withBranchAccess(
         },
       });
     } catch (error) {
-      console.error("Error updating event:", error);
+      console.error("Error updating vacation:", error);
       return NextResponse.json(
-        { error: "イベントの更新に失敗しました" },
+        { error: "休日の更新に失敗しました" },
         { status: 500 }
       );
     }
   }
 );
 
-// DELETE - Delete an event
+// DELETE - Delete a vacation
 export const DELETE = withBranchAccess(
   ["ADMIN", "STAFF"],
   async (request: NextRequest, session, branchId) => {
-    const eventId = request.url.split("/").pop();
+    const vacationId = request.url.split("/").pop();
 
-    if (!eventId) {
+    if (!vacationId) {
       return NextResponse.json(
-        { error: "イベントIDが必要です" },
+        { error: "休日IDが必要です" },
         { status: 400 }
       );
     }
 
     try {
-      // Check if event exists
-      const event = await prisma.event.findUnique({
-        where: { id: eventId },
+      // Check if vacation exists
+      const vacation = await prisma.vacation.findUnique({
+        where: { id: vacationId },
       });
 
-      if (!event) {
+      if (!vacation) {
         return NextResponse.json(
-          { error: "イベントが見つかりません" },
+          { error: "休日が見つかりません" },
           { status: 404 }
         );
       }
 
-      // Check if user has access to this event's branch (non-admin users)
+      // Check if user has access to this vacation's branch (non-admin users)
       if (
-        event.branchId &&
-        event.branchId !== branchId &&
+        vacation.branchId &&
+        vacation.branchId !== branchId &&
         session.user?.role !== "ADMIN"
       ) {
         return NextResponse.json(
-          { error: "このイベントにアクセスする権限がありません" },
+          { error: "この休日にアクセスする権限がありません" },
           { status: 403 }
         );
       }
 
-      // Delete the event
-      await prisma.event.delete({
-        where: { id: eventId },
+      // Delete the vacation
+      await prisma.vacation.delete({
+        where: { id: vacationId },
       });
 
       return NextResponse.json(
         {
           data: [],
-          message: "イベントを削除しました",
+          message: "休日を削除しました",
           pagination: {
             total: 0,
             page: 0,
@@ -275,9 +275,9 @@ export const DELETE = withBranchAccess(
         { status: 200 }
       );
     } catch (error) {
-      console.error("Error deleting event:", error);
+      console.error("Error deleting vacation:", error);
       return NextResponse.json(
-        { error: "イベントの削除に失敗しました" },
+        { error: "休日の削除に失敗しました" },
         { status: 500 }
       );
     }

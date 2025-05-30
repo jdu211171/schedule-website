@@ -15,7 +15,7 @@ model Branch {
   booths        Booth[]
   userBranches  UserBranch[]
   classSessions ClassSession[]
-  events        Event[]
+  vacations     Vacation[]
   notifications Notification[]
   createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt     DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
@@ -255,7 +255,7 @@ model Notification {
  * This model stores holidays, vacations, and other non-class days.
  * Used for scheduling and availability calculations.
  */
-model Event {
+model Vacation {
   id          String   @id @default(cuid())
   name        String   @db.VarChar(100)
   notes       String?  @db.VarChar(255)
@@ -268,7 +268,7 @@ model Event {
   updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
   @@index([branchId])
-  @@map("events")
+  @@map("vacations")
 }
 
 /**

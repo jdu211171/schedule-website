@@ -120,22 +120,22 @@ const createUTCDateForFilter = (dateStr: string): Date => {
   return new Date(Date.UTC(year, month, day, 0, 0, 0, 0));
 };
 
-// Helper function to check if a date conflicts with any events
-const checkEventConflict = async (
+// Helper function to check if a date conflicts with any vacations
+const checkVacationConflict = async (
   date: Date,
   branchId: string
 ): Promise<boolean> => {
-  const events = await prisma.event.findMany({
+  const vacations = await prisma.vacation.findMany({
     where: {
       OR: [
         { branchId: branchId },
-        { branchId: null }, // Global events
+        { branchId: null }, // Global vacations
       ],
       AND: [{ startDate: { lte: date } }, { endDate: { gte: date } }],
     },
   });
 
-  return events.length > 0;
+  return vacations.length > 0;
 };
 
 // GET - List class sessions with pagination and filters
@@ -379,18 +379,18 @@ export const POST = withBranchAccess(
 
       // Handle one-time or recurring sessions
       if (!isRecurring) {
-        // Check if the date conflicts with any events
-        const hasEventConflict = await checkEventConflict(
+        // Check if the date conflicts with any vacations
+        const hasVacationConflict = await checkVacationConflict(
           dateObj,
           sessionBranchId
         );
 
-        if (hasEventConflict) {
+        if (hasVacationConflict) {
           return NextResponse.json(
             {
               data: [],
               message:
-                "指定された日付はイベント期間中のため、クラスセッションをスキップしました",
+                "指定された日付は休日期間中のため、クラスセッションをスキップしました",
               pagination: {
                 total: 0,
                 page: 1,
@@ -548,12 +548,12 @@ export const POST = withBranchAccess(
         const skippedEventDates: Date[] = [];
 
         for (const sessionDate of sessionDates) {
-          const hasEventConflict = await checkEventConflict(
+          const hasVacationConflict = await checkVacationConflict(
             sessionDate,
             sessionBranchId
           );
 
-          if (hasEventConflict) {
+          if (hasVacationConflict) {
             skippedEventDates.push(sessionDate);
           } else {
             validSessionDates.push(sessionDate);
@@ -566,7 +566,7 @@ export const POST = withBranchAccess(
             {
               data: [],
               message:
-                "すべての日付がイベント期間中のため、クラスセッションをスキップしました",
+                "すべての日付が休日期間中のため、クラスセッションをスキップしました",
               pagination: {
                 total: 0,
                 page: 1,
@@ -698,7 +698,7 @@ export const POST = withBranchAccess(
 
         // Add skipped dates information if any
         if (skippedEventDates.length > 0) {
-          message += `（${skippedEventDates.length}件の日付をイベント期間中のためスキップしました）`;
+          message += `（${skippedEventDates.length}件の日付を休日期間中のためスキップしました）`;
           responseData.message = message;
           responseData.skipped = {
             eventConflict: skippedEventDates.map((date) =>
