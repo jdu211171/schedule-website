@@ -117,6 +117,49 @@ model Student {
   @@map("students")
 }
 
+enum AvailabilityStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum AvailabilityType {
+  REGULAR
+  EXCEPTION
+}
+
+model UserAvailability {
+  id          String             @id @default(cuid())
+  userId      String             @map("user_id")
+  dayOfWeek   DayOfWeek?         // Null for exceptions
+  date        DateTime?          @db.Date // Null for regular availability
+  startTime   DateTime?          @db.Time(6) // Null for full-day/unavailable
+  endTime     DateTime?          @db.Time(6) // Null for full-day/unavailable
+  fullDay     Boolean?           @default(false)
+  type        AvailabilityType
+  status      AvailabilityStatus @default(PENDING)
+  reason      String?            @db.VarChar(255)
+  notes       String?            @db.VarChar(255)
+
+  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime           @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt   DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  // For batch exception updates
+  @@unique([userId, date], name: "user_exception_unique")
+
+  // For regular availability
+  @@unique([userId, dayOfWeek, startTime, endTime], name: "user_regular_unique")
+
+  // Optimized indexes for scheduling queries
+  @@index([userId, type, status])
+  @@index([date])
+  @@index([dayOfWeek])
+
+  @@map("user_availability")
+}
+
 /**
  * This model defines categories of students, such as elementary, middle, or high school.
  * Used to group students and relates to the Grade model.
@@ -297,6 +340,7 @@ model User {
   role               UserRole     @default(ADMIN)
   student            Student?
   teacher            Teacher?
+  availability       UserAvailability[]
 
   createdAt          DateTime      @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt          DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
