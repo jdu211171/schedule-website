@@ -1,11 +1,11 @@
-// src/app/api/events/route.ts
+// src/app/api/vacations/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { withBranchAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { eventCreateSchema, eventFilterSchema } from "@/schemas/event.schema";
-import { Event } from "@prisma/client";
+import { vacationCreateSchema, vacationFilterSchema } from "@/schemas/vacation.schema";
+import { Vacation } from "@prisma/client";
 
-type FormattedEvent = {
+type FormattedVacation = {
   id: string;
   name: string;
   startDate: Date;
@@ -18,20 +18,20 @@ type FormattedEvent = {
   updatedAt: Date;
 };
 
-// Helper function to format event response
-const formatEvent = (
-  event: Event & { branch?: { name: string } | null }
-): FormattedEvent => ({
-  id: event.id,
-  name: event.name,
-  startDate: event.startDate,
-  endDate: event.endDate,
-  isRecurring: event.isRecurring,
-  notes: event.notes || null,
-  branchId: event.branchId || null,
-  branchName: event.branch?.name || null,
-  createdAt: event.createdAt,
-  updatedAt: event.updatedAt,
+// Helper function to format vacation response
+const formatVacation = (
+  vacation: Vacation & { branch?: { name: string } | null }
+): FormattedVacation => ({
+  id: vacation.id,
+  name: vacation.name,
+  startDate: vacation.startDate,
+  endDate: vacation.endDate,
+  isRecurring: vacation.isRecurring,
+  notes: vacation.notes || null,
+  branchId: vacation.branchId || null,
+  branchName: vacation.branch?.name || null,
+  createdAt: vacation.createdAt,
+  updatedAt: vacation.updatedAt,
 });
 
 // Helper function to create UTC date from date string or Date object
@@ -49,7 +49,7 @@ const createUTCDate = (dateInput: string | Date): Date => {
   }
 };
 
-// GET - List events with pagination and filters
+// GET - List vacations with pagination and filters
 export const GET = withBranchAccess(
   ["ADMIN", "STAFF", "TEACHER"],
   async (request: NextRequest, session, branchId) => {
@@ -58,7 +58,7 @@ export const GET = withBranchAccess(
     const params = Object.fromEntries(url.searchParams.entries());
 
     // Validate and parse filter parameters
-    const result = eventFilterSchema.safeParse(params);
+    const result = vacationFilterSchema.safeParse(params);
     if (!result.success) {
       return NextResponse.json(
         { error: "フィルターパラメータが無効です" }, // "Invalid filter parameters"
@@ -107,10 +107,10 @@ export const GET = withBranchAccess(
     const skip = (page - 1) * limit;
 
     // Fetch total count
-    const total = await prisma.event.count({ where });
+    const total = await prisma.vacation.count({ where });
 
-    // Fetch events with branch
-    const events = await prisma.event.findMany({
+    // Fetch vacations with branch
+    const vacations = await prisma.vacation.findMany({
       where,
       include: {
         branch: {
@@ -124,11 +124,11 @@ export const GET = withBranchAccess(
       orderBy: { startDate: "asc" },
     });
 
-    // Format events
-    const formattedEvents = events.map(formatEvent);
+    // Format vacations
+    const formattedVacations = vacations.map(formatVacation);
 
     return NextResponse.json({
-      data: formattedEvents,
+      data: formattedVacations,
       pagination: {
         total,
         page,
@@ -139,7 +139,7 @@ export const GET = withBranchAccess(
   }
 );
 
-// POST - Create a new event
+// POST - Create a new vacation
 export const POST = withBranchAccess(
   ["ADMIN", "STAFF"],
   async (request: NextRequest, session, branchId) => {
@@ -147,7 +147,7 @@ export const POST = withBranchAccess(
       const body = await request.json();
 
       // Validate request body
-      const result = eventCreateSchema.safeParse(body);
+      const result = vacationCreateSchema.safeParse(body);
       if (!result.success) {
         return NextResponse.json(
           { error: "入力データが無効です" }, // "Invalid input data"
@@ -170,20 +170,20 @@ export const POST = withBranchAccess(
       }
 
       // For admin users, allow specifying branch. For others, use current branch
-      const eventBranchId =
+      const vacationBranchId =
         session.user?.role === "ADMIN" && result.data.branchId
           ? result.data.branchId
           : branchId;
 
-      // Create event
-      const newEvent = await prisma.event.create({
+      // Create vacation
+      const newVacation = await prisma.vacation.create({
         data: {
           name,
           startDate: startDateUTC,
           endDate: endDateUTC,
           isRecurring,
           notes,
-          branchId: eventBranchId,
+          branchId: vacationBranchId,
         },
         include: {
           branch: {
@@ -195,12 +195,12 @@ export const POST = withBranchAccess(
       });
 
       // Format response
-      const formattedEvent = formatEvent(newEvent);
+      const formattedVacation = formatVacation(newVacation);
 
       return NextResponse.json(
         {
-          data: [formattedEvent],
-          message: "イベントを作成しました",
+          data: [formattedVacation],
+          message: "休日を作成しました",
           pagination: {
             total: 1,
             page: 1,
@@ -211,9 +211,9 @@ export const POST = withBranchAccess(
         { status: 201 }
       );
     } catch (error) {
-      console.error("Error creating event:", error);
+      console.error("Error creating vacation:", error);
       return NextResponse.json(
-        { error: "イベントの作成に失敗しました" }, // "Failed to create event"
+        { error: "休日の作成に失敗しました" }, // "Failed to create vacation"
         { status: 500 }
       );
     }

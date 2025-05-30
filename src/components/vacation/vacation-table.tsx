@@ -8,7 +8,7 @@ import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/data-table";
-import { useEventDelete, getResolvedEventId } from "@/hooks/useEventMutation";
+import { useVacationDelete, getResolvedVacationId } from "@/hooks/useVacationMutation";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,9 +19,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useEvents } from "@/hooks/useEventQuery";
+import { useVacations } from "@/hooks/useVacationQuery";
 import { useSession } from "next-auth/react";
-import { EventFormDialog } from "./event-form-dialog";
+import { VacationFormDialog } from "./vacation-form-dialog";
 
 // Define custom column meta type
 interface ColumnMetaType {
@@ -31,8 +31,8 @@ interface ColumnMetaType {
   hidden?: boolean;
 }
 
-// Event type matching the API response
-type Event = {
+// Vacation type matching the API response
+type Vacation = {
   id: string;
   name: string;
   startDate: string | Date;
@@ -45,11 +45,11 @@ type Event = {
   updatedAt: Date;
 };
 
-export function EventTable() {
+export function VacationTable() {
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
   const pageSize = 10;
-  const { data: events, isLoading } = useEvents({
+  const { data: vacations, isLoading } = useVacations({
     page,
     limit: pageSize,
     name: searchTerm || undefined,
@@ -58,14 +58,14 @@ export function EventTable() {
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "ADMIN";
 
-  // Ensure the data type returned by useEvents matches the expected type
-  const typedEvents = events?.data || [];
+  // Ensure the data type returned by useVacations matches the expected type
+  const typedVacations = vacations?.data || [];
 
-  const totalCount = events?.pagination.total || 0;
-  const deleteEventMutation = useEventDelete();
+  const totalCount = vacations?.pagination.total || 0;
+  const deleteVacationMutation = useVacationDelete();
 
-  const [eventToEdit, setEventToEdit] = useState<Event | null>(null);
-  const [eventToDelete, setEventToDelete] = useState<Event | null>(null);
+  const [vacationToEdit, setVacationToEdit] = useState<Vacation | null>(null);
+  const [vacationToDelete, setVacationToDelete] = useState<Vacation | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
   // Format dates for display
@@ -75,7 +75,7 @@ export function EventTable() {
     return format(dateObj, "yyyy/MM/dd");
   };
 
-  const columns: ColumnDef<Event, unknown>[] = [
+  const columns: ColumnDef<Vacation, unknown>[] = [
     {
       accessorKey: "name",
       header: "名前",
@@ -127,7 +127,7 @@ export function EventTable() {
       header: "操作",
       cell: ({ row }) => {
         // Type-safe check for _optimistic property
-        const isOptimistic = (row.original as Event & { _optimistic?: boolean })
+        const isOptimistic = (row.original as Vacation & { _optimistic?: boolean })
           ._optimistic;
 
         return (
@@ -135,7 +135,7 @@ export function EventTable() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setEventToEdit(row.original)}
+              onClick={() => setVacationToEdit(row.original)}
             >
               <Pencil
                 className={`h-4 w-4 ${isOptimistic ? "opacity-70" : ""}`}
@@ -144,7 +144,7 @@ export function EventTable() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setEventToDelete(row.original)}
+              onClick={() => setVacationToDelete(row.original)}
             >
               <Trash2
                 className={`h-4 w-4 text-destructive ${
@@ -168,13 +168,13 @@ export function EventTable() {
     return !meta?.hidden;
   });
 
-  const handleDeleteEvent = () => {
-    if (eventToDelete) {
+  const handleDeleteVacation = () => {
+    if (vacationToDelete) {
       // Close the dialog immediately for better UX
-      // Use getResolvedEventId to resolve temp/server IDs
-      const eventId = getResolvedEventId(eventToDelete.id);
-      setEventToDelete(null);
-      deleteEventMutation.mutate(eventId);
+      // Use getResolvedVacationId to resolve temp/server IDs
+      const vacationId = getResolvedVacationId(vacationToDelete.id);
+      setVacationToDelete(null);
+      deleteVacationMutation.mutate(vacationId);
     }
   };
 
@@ -188,9 +188,9 @@ export function EventTable() {
     <>
       <DataTable
         columns={visibleColumns}
-        data={typedEvents}
-        isLoading={isLoading && !typedEvents.length} // Only show loading state on initial load
-        searchPlaceholder="イベントを検索..."
+        data={typedVacations}
+        isLoading={isLoading && !typedVacations.length} // Only show loading state on initial load
+        searchPlaceholder="休日を検索..."
         onSearch={setSearchTerm}
         searchValue={searchTerm}
         onCreateNew={() => setIsCreateDialogOpen(true)}
@@ -202,41 +202,41 @@ export function EventTable() {
         totalItems={totalCount}
       />
 
-      {/* Edit Event Dialog */}
-      {eventToEdit && (
-        <EventFormDialog
-          open={!!eventToEdit}
-          onOpenChange={(open: any) => !open && setEventToEdit(null)}
-          event={eventToEdit}
+      {/* Edit Vacation Dialog */}
+      {vacationToEdit && (
+        <VacationFormDialog
+          open={!!vacationToEdit}
+          onOpenChange={(open: any) => !open && setVacationToEdit(null)}
+          vacation={vacationToEdit}
         />
       )}
 
-      {/* Create Event Dialog */}
-      <EventFormDialog
+      {/* Create Vacation Dialog */}
+      <VacationFormDialog
         open={isCreateDialogOpen}
         onOpenChange={setIsCreateDialogOpen}
       />
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog
-        open={!!eventToDelete}
-        onOpenChange={(open) => !open && setEventToDelete(null)}
+        open={!!vacationToDelete}
+        onOpenChange={(open) => !open && setVacationToDelete(null)}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>本当に削除しますか？</AlertDialogTitle>
             <AlertDialogDescription>
-              この操作は元に戻せません。イベント「{eventToDelete?.name}
+              この操作は元に戻せません。休日「{vacationToDelete?.name}
               」を完全に削除します。
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>キャンセル</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleDeleteEvent}
-              disabled={deleteEventMutation.isPending}
+              onClick={handleDeleteVacation}
+              disabled={deleteVacationMutation.isPending}
             >
-              {deleteEventMutation.isPending ? "削除中..." : "削除"}
+              {deleteVacationMutation.isPending ? "削除中..." : "削除"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

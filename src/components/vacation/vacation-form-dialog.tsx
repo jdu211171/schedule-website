@@ -33,10 +33,10 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { CalendarIcon } from "lucide-react";
-import { useEventCreate, useEventUpdate } from "@/hooks/useEventMutation";
+import { useVacationCreate, useVacationUpdate } from "@/hooks/useVacationMutation";
 
-// Event type matching the API response
-type Event = {
+// Vacation type matching the API response
+type Vacation = {
   id: string;
   name: string;
   startDate: string | Date;
@@ -49,8 +49,8 @@ type Event = {
   updatedAt: Date;
 };
 
-// Form schema for event creation/editing
-const eventFormSchema = z
+// Form schema for vacation creation/editing
+const vacationFormSchema = z
   .object({
     name: z.string().min(1, "名前は必須です").max(100),
     startDate: z.date({
@@ -73,40 +73,40 @@ const eventFormSchema = z
     }
   );
 
-interface EventFormDialogProps {
+interface VacationFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  event?: Event | null;
+  vacation?: Vacation | null;
 }
 
-export function EventFormDialog({
+export function VacationFormDialog({
   open,
   onOpenChange,
-  event,
-}: EventFormDialogProps) {
-  const createEventMutation = useEventCreate();
-  const updateEventMutation = useEventUpdate();
-  const isEditing = !!event;
+  vacation,
+}: VacationFormDialogProps) {
+  const createVacationMutation = useVacationCreate();
+  const updateVacationMutation = useVacationUpdate();
+  const isEditing = !!vacation;
 
-  const form = useForm<z.infer<typeof eventFormSchema>>({
-    resolver: zodResolver(eventFormSchema),
+  const form = useForm<z.infer<typeof vacationFormSchema>>({
+    resolver: zodResolver(vacationFormSchema),
     defaultValues: {
-      name: event?.name || "",
-      startDate: event?.startDate ? new Date(event.startDate) : new Date(),
-      endDate: event?.endDate ? new Date(event.endDate) : new Date(),
-      isRecurring: event?.isRecurring ?? false,
-      notes: event?.notes ?? "",
+      name: vacation?.name || "",
+      startDate: vacation?.startDate ? new Date(vacation.startDate) : new Date(),
+      endDate: vacation?.endDate ? new Date(vacation.endDate) : new Date(),
+      isRecurring: vacation?.isRecurring ?? false,
+      notes: vacation?.notes ?? "",
     },
   });
 
   useEffect(() => {
-    if (event) {
+    if (vacation) {
       form.reset({
-        name: event.name || "",
-        startDate: event.startDate ? new Date(event.startDate) : new Date(),
-        endDate: event.endDate ? new Date(event.endDate) : new Date(),
-        isRecurring: event.isRecurring ?? false,
-        notes: event.notes ?? "",
+        name: vacation.name || "",
+        startDate: vacation.startDate ? new Date(vacation.startDate) : new Date(),
+        endDate: vacation.endDate ? new Date(vacation.endDate) : new Date(),
+        isRecurring: vacation.isRecurring ?? false,
+        notes: vacation.notes ?? "",
       });
     } else {
       form.reset({
@@ -117,9 +117,9 @@ export function EventFormDialog({
         notes: "",
       });
     }
-  }, [event, form]);
+  }, [vacation, form]);
 
-  function onSubmit(values: z.infer<typeof eventFormSchema>) {
+  function onSubmit(values: z.infer<typeof vacationFormSchema>) {
     // Ensure the notes field is explicitly included, even if empty
     const updatedValues = {
       ...values,
@@ -131,13 +131,13 @@ export function EventFormDialog({
     form.reset();
 
     // Then trigger the mutation
-    if (isEditing && event) {
-      updateEventMutation.mutate({
-        eventId: event.id,
+    if (isEditing && vacation) {
+      updateVacationMutation.mutate({
+        vacationId: vacation.id,
         ...updatedValues,
       });
     } else {
-      createEventMutation.mutate(updatedValues);
+      createVacationMutation.mutate(updatedValues);
     }
   }
 
@@ -156,7 +156,7 @@ export function EventFormDialog({
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>
-            {isEditing ? "イベントの編集" : "イベントの作成"}
+            {isEditing ? "休日の編集" : "休日の作成"}
           </DialogTitle>
         </DialogHeader>
         <Form {...form}>
@@ -171,7 +171,7 @@ export function EventFormDialog({
                   </FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="イベント名を入力してください"
+                      placeholder="休日名を入力してください"
                       {...field}
                     />
                   </FormControl>
@@ -275,7 +275,7 @@ export function EventFormDialog({
               render={({ field }) => (
                 <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
                   <div className="space-y-0.5">
-                    <FormLabel>定期イベント</FormLabel>
+                    <FormLabel>定期休日</FormLabel>
                   </div>
                   <FormControl>
                     <Switch

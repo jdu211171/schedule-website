@@ -1,7 +1,7 @@
-// src/schemas/event.schema.ts
+// src/schemas/vacation.schema.ts
 import { z } from "zod";
 
-export const eventCreateSchema = z.object({
+export const vacationCreateSchema = z.object({
   name: z.string().min(1, "名前は必須です").max(100),
   startDate: z.coerce.date(),
   endDate: z.coerce.date(),
@@ -10,8 +10,8 @@ export const eventCreateSchema = z.object({
   branchId: z.string().optional(), // Optional for admin, will be populated from context
 });
 
-export const eventUpdateSchema = z.object({
-  eventId: z.string(),
+export const vacationUpdateSchema = z.object({
+  vacationId: z.string(),
   name: z.string().min(1, "名前は必須です").max(100).optional(),
   startDate: z.coerce.date().optional(),
   endDate: z.coerce.date().optional(),
@@ -19,7 +19,7 @@ export const eventUpdateSchema = z.object({
   notes: z.string().max(255).optional().nullable(),
 });
 
-export const eventFilterSchema = z.object({
+export const vacationFilterSchema = z.object({
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().positive().default(10),
   name: z.string().optional(),
@@ -29,6 +29,6 @@ export const eventFilterSchema = z.object({
   branchId: z.string().optional(),
 });
 
-export type EventCreate = z.infer<typeof eventCreateSchema>;
-export type EventUpdate = z.infer<typeof eventUpdateSchema>;
-export type EventFilter = z.infer<typeof eventFilterSchema>;
+export type VacationCreate = z.infer<typeof vacationCreateSchema>;
+export type VacationUpdate = z.infer<typeof vacationUpdateSchema>;
+export type VacationFilter = z.infer<typeof vacationFilterSchema>;
