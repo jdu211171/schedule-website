@@ -146,12 +146,23 @@ model UserAvailability {
   createdAt   DateTime           @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt   DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
+  // Prevent overlapping availability entries for same user on same day/date
+  // For REGULAR availability: only one per user per dayOfWeek per time slot
+  @@unique([userId, dayOfWeek, startTime, endTime], name: "unique_regular_time_slot")
+  // For EXCEPTION availability: only one per user per date per time slot
+  @@unique([userId, date, startTime, endTime], name: "unique_exception_time_slot")
 
   // Optimized indexes for scheduling queries
-  @@index([userId, type, status])
-  @@index([date])
-  @@index([dayOfWeek])
-  @@index([userId, dayOfWeek])
+  @@index([userId, type, status], name: "idx_user_type_status")
+  @@index([date, status], name: "idx_date_status") // For exception queries
+  @@index([dayOfWeek, status], name: "idx_dayofweek_status") // For regular queries
+  @@index([userId, dayOfWeek, status], name: "idx_user_dayofweek_status") // For user regular availability
+  @@index([userId, date, status], name: "idx_user_date_status") // For user exception availability
+  @@index([userId, type, dayOfWeek, status], name: "idx_user_type_dayofweek_status") // For regular scheduling
+  @@index([userId, type, date, status], name: "idx_user_type_date_status") // For exception scheduling
+  @@index([status, type], name: "idx_status_type") // For admin approval queries
+  @@index([createdAt], name: "idx_created_at") // For chronological queries
+  @@index([startTime, endTime], name: "idx_time_range") // For time-based queries
 
   @@map("user_availability")
 }
