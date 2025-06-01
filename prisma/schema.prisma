@@ -146,16 +146,12 @@ model UserAvailability {
   createdAt   DateTime           @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt   DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
-  // For batch exception updates
-  @@unique([userId, date], name: "user_exception_unique")
-
-  // For regular availability
-  @@unique([userId, dayOfWeek, startTime, endTime], name: "user_regular_unique")
 
   // Optimized indexes for scheduling queries
   @@index([userId, type, status])
   @@index([date])
   @@index([dayOfWeek])
+  @@index([userId, dayOfWeek])
 
   @@map("user_availability")
 }
