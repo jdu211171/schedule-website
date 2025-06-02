@@ -202,7 +202,6 @@ export function StudentFormDialog({
           (student.status as
             | "ACTIVE"
             | "SICK"
-            | "TEMPORARILY_LEFT"
             | "PERMANENTLY_LEFT") || "ACTIVE",
         username: student.username || "",
         email: student.email || "",
