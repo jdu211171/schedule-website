@@ -89,6 +89,23 @@ export function ClassSessionFilter({
     setIsInitialized(true);
   }, []);
 
+  // Sync dateRange state when filters prop changes (e.g., when reset)
+  useEffect(() => {
+    if (filters.startDate && filters.endDate) {
+      setDateRange({
+        from: new Date(filters.startDate),
+        to: new Date(filters.endDate),
+      });
+    } else if (filters.startDate) {
+      setDateRange({
+        from: new Date(filters.startDate),
+        to: undefined,
+      });
+    } else {
+      setDateRange(undefined);
+    }
+  }, [filters.startDate, filters.endDate]);
+
   // Handle open/close change and save to localStorage
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
