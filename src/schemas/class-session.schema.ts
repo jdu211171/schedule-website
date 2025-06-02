@@ -71,6 +71,11 @@ export const classSessionFilterSchema = z.object({
   startDate: z.string().optional(), // "YYYY-MM-DD"
   endDate: z.string().optional(), // "YYYY-MM-DD"
   seriesId: z.string().optional(),
+  // Add filters for unset parameters
+  hasTeacher: z.coerce.boolean().optional(),
+  hasStudent: z.coerce.boolean().optional(),
+  hasSubject: z.coerce.boolean().optional(),
+  hasBooth: z.coerce.boolean().optional(),
 });
 
 export type ClassSessionCreate = z.infer<typeof classSessionCreateSchema>;

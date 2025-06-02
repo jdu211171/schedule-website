@@ -41,6 +41,7 @@ type FormattedTeacher = {
   email: string | null;
   lineId: string | null;
   notes: string | null;
+  status: string;
   username: string | null;
   password: string | null;
   branches: {
@@ -82,6 +83,7 @@ const formatTeacher = (teacher: TeacherWithIncludes): FormattedTeacher => {
     email: teacher.email,
     lineId: teacher.lineId,
     notes: teacher.notes,
+    status: teacher.status,
     username: teacher.user.username,
     password: teacher.user.passwordHash,
     branches:

@@ -26,6 +26,14 @@ import { TeacherFormDialog } from "./teacher-form-dialog";
 import { Teacher, useTeachers } from "@/hooks/useTeacherQuery";
 import { useAllSubjects } from "@/hooks/useSubjectQuery";
 import { useAllSubjectTypes } from "@/hooks/useSubjectTypeQuery";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { userStatusLabels } from "@/schemas/teacher.schema";
 
 // Define custom column meta type
 interface ColumnMetaType {
@@ -38,6 +46,7 @@ interface ColumnMetaType {
 export function TeacherTable() {
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
+  const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [passwordVisibility, setPasswordVisibility] = useState<
     Record<string, boolean>
   >({});
@@ -46,6 +55,7 @@ export function TeacherTable() {
     page,
     limit: pageSize,
     name: searchTerm || undefined,
+    status: selectedStatus === "all" ? undefined : selectedStatus,
   });
 
   // Fetch subjects and subject types for displaying names
@@ -72,6 +82,16 @@ export function TeacherTable() {
       accessorKey: "kanaName",
       header: "カナ",
       cell: ({ row }) => row.original.kanaName || "-",
+    },
+    {
+      accessorKey: "status",
+      header: "ステータス",
+      cell: ({ row }) => {
+        const status = row.original.status || "ACTIVE";
+        const label = userStatusLabels[status as keyof typeof userStatusLabels] || status;
+        const variant = status === "ACTIVE" ? "default" : "destructive";
+        return <Badge variant={variant}>{label}</Badge>;
+      },
     },
     {
       accessorKey: "username",
@@ -242,6 +262,30 @@ export function TeacherTable() {
 
   const totalPages = Math.ceil(totalCount / pageSize);
 
+  // Custom filter component for status
+  const CustomFilter = () => {
+    return (
+      <div className="flex items-center space-x-2">
+        <Select
+          value={selectedStatus}
+          onValueChange={setSelectedStatus}
+        >
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="ステータスで絞り込み" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">すべて</SelectItem>
+            {Object.entries(userStatusLabels).map(([value, label]) => (
+              <SelectItem key={value} value={value}>
+                {label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    );
+  };
+
   return (
     <>
       <DataTable
@@ -258,6 +302,7 @@ export function TeacherTable() {
         onPageChange={handlePageChange}
         pageSize={pageSize}
         totalItems={totalCount}
+        filterComponent={<CustomFilter />}
       />
 
       {/* Edit Teacher Dialog */}

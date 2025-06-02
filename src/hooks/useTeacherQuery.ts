@@ -11,6 +11,7 @@ export type Teacher = {
   email: string | null;
   lineId: string | null;
   notes: string | null;
+  status?: string;
   username: string | null;
   password: string | null;
   branches: {
@@ -30,6 +31,7 @@ type UseTeachersParams = {
   page?: number;
   limit?: number;
   name?: string;
+  status?: string;
 };
 
 type TeachersResponse = {
@@ -43,12 +45,13 @@ type TeachersResponse = {
 };
 
 export function useTeachers(params: UseTeachersParams = {}) {
-  const { page = 1, limit = 10, name } = params;
+  const { page = 1, limit = 10, name, status } = params;
 
   const queryParams: Record<string, string | undefined> = {
     page: page.toString(),
     limit: limit.toString(),
     name,
+    status,
   };
 
   const searchParams = new URLSearchParams(
@@ -61,7 +64,7 @@ export function useTeachers(params: UseTeachersParams = {}) {
   ).toString();
 
   return useQuery<TeachersResponse>({
-    queryKey: ["teachers", page, limit, name],
+    queryKey: ["teachers", page, limit, name, status],
     queryFn: async () =>
       await fetcher<TeachersResponse>(`/api/teachers?${searchParams}`),
   });

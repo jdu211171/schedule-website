@@ -9,6 +9,21 @@ export const subjectPreferenceSchema = z.object({
     .min(1, "少なくとも1つの科目タイプを選択してください"),
 });
 
+// User status enum
+export const userStatusEnum = z.enum([
+  "ACTIVE",
+  "SICK",
+  "TEMPORARILY_LEFT",
+  "PERMANENTLY_LEFT",
+]);
+
+export const userStatusLabels = {
+  ACTIVE: "在籍",
+  SICK: "病欠",
+  TEMPORARILY_LEFT: "一時退会",
+  PERMANENTLY_LEFT: "退会",
+} as const;
+
 export const studentBaseSchema = z.object({
   name: z
     .string()
@@ -36,6 +51,7 @@ export const studentBaseSchema = z.object({
     .max(255, "備考は255文字以内で入力してください")
     .optional()
     .nullable(),
+  status: userStatusEnum.optional().default("ACTIVE"),
   // User account related fields
   username: z.string().min(3, "ユーザー名は3文字以上で入力してください"),
   password: z
@@ -83,6 +99,7 @@ export const studentFilterSchema = z.object({
   name: z.string().optional(),
   studentTypeId: z.string().optional(),
   gradeYear: z.coerce.number().int().optional(),
+  status: userStatusEnum.optional(),
 });
 
 export type StudentCreate = z.infer<typeof studentCreateSchema>;

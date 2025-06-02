@@ -50,6 +50,7 @@ type FormattedStudent = {
   gradeYear: number | null;
   lineId: string | null;
   notes: string | null;
+  status: string;
   username: string | null;
   email: string | null;
   password: string | null;
@@ -93,6 +94,7 @@ const formatStudent = (student: StudentWithIncludes): FormattedStudent => {
     gradeYear: student.gradeYear,
     lineId: student.lineId,
     notes: student.notes,
+    status: student.status,
     username: student.user.username,
     email: student.user.email,
     password: student.user.passwordHash || null,
@@ -124,7 +126,7 @@ export const GET = withBranchAccess(
       );
     }
 
-    const { page, limit, name, studentTypeId, gradeYear } = result.data;
+    const { page, limit, name, studentTypeId, gradeYear, status } = result.data;
 
     // Build filter conditions
     const where: Record<string, any> = {};
@@ -142,6 +144,10 @@ export const GET = withBranchAccess(
 
     if (gradeYear !== undefined) {
       where.gradeYear = gradeYear;
+    }
+
+    if (status) {
+      where.status = status;
     }
 
     // Filter students by branch for non-admin users

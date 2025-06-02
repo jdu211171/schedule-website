@@ -40,7 +40,7 @@ import { useSubjects } from "@/hooks/useSubjectQuery";
 import { useBooths } from "@/hooks/useBoothQuery";
 import { useClassTypes } from "@/hooks/useClassTypeQuery";
 import { useSession } from "next-auth/react";
-import type { ClassSession } from "@prisma/client";
+import type { ClassSession, UserStatus } from "@prisma/client";
 import { ClassSessionFilter } from "./class-session-filter";
 
 // Define type for class session with additional fields from API
@@ -324,8 +324,28 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
   // Create filter component for the DataTable
   const filterComponent = (
     <ClassSessionFilter
-      teachers={teachersData?.data || []}
-      students={studentsData?.data || []}
+      teachers={
+        teachersData?.data
+          ?.filter(
+            (teacher): teacher is typeof teacher & { status: string } =>
+              teacher.status !== undefined
+          )
+          .map((teacher) => ({
+            ...teacher,
+            status: teacher.status as UserStatus,
+          })) || []
+      }
+      students={
+        studentsData?.data
+          ?.filter(
+            (student): student is typeof student & { status: string } =>
+              student.status !== undefined
+          )
+          .map((student) => ({
+            ...student,
+            status: student.status as UserStatus,
+          })) || []
+      }
       subjects={subjectsData?.data || []}
       classTypes={classTypesData?.data || []}
       booths={boothsData?.data || []}

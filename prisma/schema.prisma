@@ -1,3 +1,4 @@
+// src/prisma/schema.prisma
 generator client {
   provider = "prisma-client-js"
 }
@@ -6,6 +7,13 @@ datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
+}
+
+enum UserStatus {
+  ACTIVE
+  SICK
+  TEMPORARILY_LEFT
+  PERMANENTLY_LEFT
 }
 
 model Branch {
@@ -106,6 +114,7 @@ model Student {
   gradeYear               Int?                     @map("grade_year")
   lineId                  String?                  @map("line_id") @db.VarChar(50)
   notes                   String?                  @db.VarChar(255)
+  status                  UserStatus               @default(ACTIVE)
   studentClassEnrollments StudentClassEnrollment[]
   classSessions           ClassSession[]
   studentType             StudentType?             @relation(fields: [studentTypeId], references: [studentTypeId], onDelete: SetNull, onUpdate: Cascade)
@@ -224,6 +233,7 @@ model Teacher {
   email         String?        @db.VarChar(100)
   lineId        String?        @map("line_id") @db.VarChar(50)
   notes         String?        @db.VarChar(255)
+  status        UserStatus     @default(ACTIVE)
   classSessions ClassSession[]
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamp(6)

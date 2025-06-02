@@ -34,6 +34,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { userStatusLabels } from "@/schemas/student.schema";
 
 // Define custom column meta type
 interface ColumnMetaType {
@@ -48,6 +49,7 @@ export function StudentTable() {
   const [page, setPage] = useState(1);
   const [selectedStudentTypeId, setSelectedStudentTypeId] =
     useState<string>("all");
+  const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [passwordVisibility, setPasswordVisibility] = useState<
     Record<string, boolean>
   >({});
@@ -66,6 +68,7 @@ export function StudentTable() {
     name: searchTerm || undefined,
     studentTypeId:
       selectedStudentTypeId === "all" ? undefined : selectedStudentTypeId,
+    status: selectedStatus === "all" ? undefined : selectedStatus,
   });
 
   // Ensure the data type returned by useStudents matches the expected type
@@ -88,6 +91,16 @@ export function StudentTable() {
       accessorKey: "kanaName",
       header: "カナ",
       cell: ({ row }) => row.original.kanaName || "-",
+    },
+    {
+      accessorKey: "status",
+      header: "ステータス",
+      cell: ({ row }) => {
+        const status = row.original.status || "ACTIVE";
+        const label = userStatusLabels[status as keyof typeof userStatusLabels] || status;
+        const variant = status === "ACTIVE" ? "default" : "destructive";
+        return <Badge variant={variant}>{label}</Badge>;
+      },
     },
     {
       accessorKey: "studentTypeName",
@@ -274,7 +287,7 @@ export function StudentTable() {
 
   const totalPages = Math.ceil(totalCount / pageSize);
 
-  // Custom filter component for student types
+  // Custom filter component for student types and status
   const CustomFilter = () => {
     return (
       <div className="flex items-center space-x-2">
@@ -290,6 +303,19 @@ export function StudentTable() {
             {studentTypesResponse?.data.map((type) => (
               <SelectItem key={type.studentTypeId} value={type.studentTypeId}>
                 {type.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+          <SelectTrigger className="w-[140px]">
+            <SelectValue placeholder="ステータス" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">すべて</SelectItem>
+            {Object.entries(userStatusLabels).map(([value, label]) => (
+              <SelectItem key={value} value={value}>
+                {label}
               </SelectItem>
             ))}
           </SelectContent>
