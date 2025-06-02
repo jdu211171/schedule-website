@@ -1,18 +1,12 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { format } from "date-fns";
-import { ja } from "date-fns/locale";
-import { CalendarIcon, X, Filter, ChevronDown } from "lucide-react";
+import { X, Filter, ChevronDown } from "lucide-react";
+import { DateRange } from "react-day-picker";
 
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { DateRangePicker } from "@/components/date-range-picker";
 import {
   Select,
   SelectContent,
@@ -50,6 +44,7 @@ interface ClassSessionFilterProps {
     endDate?: string;
   };
   onFilterChange: (field: "teacherId" | "studentId" | "subjectId" | "classTypeId" | "boothId" | "startDate" | "endDate", value: string | undefined) => void;
+  onDateRangeChange: (range: DateRange | undefined) => void;
   onResetFilters: () => void;
 }
 
@@ -61,6 +56,7 @@ export function ClassSessionFilter({
   booths = [],
   filters,
   onFilterChange,
+  onDateRangeChange,
   onResetFilters,
 }: ClassSessionFilterProps) {
   // Storage key for filter open/closed persistence
@@ -69,9 +65,20 @@ export function ClassSessionFilter({
   // Initialize with a default value, will be updated after mount
   const [isOpen, setIsOpen] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(
-    filters.startDate ? new Date(filters.startDate) : undefined
-  );
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
+    if (filters.startDate && filters.endDate) {
+      return {
+        from: new Date(filters.startDate),
+        to: new Date(filters.endDate),
+      };
+    } else if (filters.startDate) {
+      return {
+        from: new Date(filters.startDate),
+        to: undefined,
+      };
+    }
+    return undefined;
+  });
 
   // On component mount, load the saved open/closed state from localStorage
   useEffect(() => {
@@ -88,15 +95,9 @@ export function ClassSessionFilter({
     localStorage.setItem(FILTER_OPEN_KEY, String(open));
   };
 
-  const handleDateSelect = (date: Date | undefined) => {
-    setSelectedDate(date);
-    if (date) {
-      onFilterChange("startDate", format(date, "yyyy-MM-dd"));
-      onFilterChange("endDate", format(date, "yyyy-MM-dd"));
-    } else {
-      onFilterChange("startDate", undefined);
-      onFilterChange("endDate", undefined);
-    }
+  const handleDateRangeSelect = (range: DateRange | undefined) => {
+    setDateRange(range);
+    onDateRangeChange(range);
   };
 
   // Count active filters
@@ -154,45 +155,14 @@ export function ClassSessionFilter({
       </div>
       <CollapsibleContent className="space-y-4">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6">
-          {/* Date filter with calendar */}
+          {/* Date range filter */}
           <div className="space-y-2 min-w-0">
-            <label className="text-xs font-medium">日付</label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !selectedDate && "text-muted-foreground"
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {selectedDate
-                    ? format(selectedDate, "yyyy年MM月dd日", { locale: ja })
-                    : "日付を選択"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={handleDateSelect}
-                  initialFocus
-                  locale={ja}
-                />
-                {selectedDate && (
-                  <div className="border-t p-3 text-right">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDateSelect(undefined)}
-                    >
-                      クリア
-                    </Button>
-                  </div>
-                )}
-              </PopoverContent>
-            </Popover>
+            <DateRangePicker
+              dateRange={dateRange}
+              onChange={handleDateRangeSelect}
+              label="日付範囲"
+              className="w-full"
+            />
           </div>
 
           {/* Teacher filter */}
