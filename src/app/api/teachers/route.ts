@@ -6,7 +6,7 @@ import {
   teacherCreateSchema,
   teacherFilterSchema,
 } from "@/schemas/teacher.schema";
-import { Teacher } from "@prisma/client";
+import { Teacher, DayOfWeek } from "@prisma/client";
 
 type TeacherWithIncludes = Teacher & {
   user: {
@@ -31,6 +31,15 @@ type TeacherWithIncludes = Teacher & {
         name: string;
       };
     }[];
+    availability?: {
+      id: string;
+      dayOfWeek: string | null;
+      startTime: Date | null;
+      endTime: Date | null;
+      fullDay: boolean | null;
+      type: string;
+      status: string;
+    }[];
   };
 };
 
@@ -52,6 +61,15 @@ type FormattedTeacher = {
   subjectPreferences: {
     subjectId: string;
     subjectTypeIds: string[];
+  }[];
+  regularAvailability: {
+    dayOfWeek: string;
+    timeSlots: {
+      id: string;
+      startTime: string;
+      endTime: string;
+    }[];
+    fullDay: boolean;
   }[];
   createdAt: Date;
   updatedAt: Date;
@@ -76,6 +94,69 @@ const formatTeacher = (teacher: TeacherWithIncludes): FormattedTeacher => {
     })
   );
 
+  // Process regular availability data
+  const availabilityMap = new Map<
+    string,
+    NonNullable<typeof teacher.user.availability>
+  >();
+
+  teacher.user.availability?.forEach((avail) => {
+    if (
+      avail.type === "REGULAR" &&
+      avail.status === "APPROVED" &&
+      avail.dayOfWeek
+    ) {
+      if (!availabilityMap.has(avail.dayOfWeek)) {
+        availabilityMap.set(avail.dayOfWeek, []);
+      }
+      availabilityMap.get(avail.dayOfWeek)!.push(avail);
+    }
+  });
+
+  const regularAvailability = Array.from(availabilityMap.entries()).map(
+    ([dayOfWeek, availabilities]) => {
+      // Check if any availability for this day is full day
+      const hasFullDay =
+        availabilities?.some((avail) => avail.fullDay) || false;
+
+      if (hasFullDay) {
+        return {
+          dayOfWeek,
+          timeSlots: [],
+          fullDay: true,
+        };
+      }
+
+      // Process time slots
+      const timeSlots =
+        availabilities
+          ?.filter(
+            (avail) => !avail.fullDay && avail.startTime && avail.endTime
+          )
+          .map((avail) => ({
+            id: avail.id,
+            startTime: avail.startTime
+              ? `${String(avail.startTime.getUTCHours()).padStart(
+                  2,
+                  "0"
+                )}:${String(avail.startTime.getUTCMinutes()).padStart(2, "0")}`
+              : "",
+            endTime: avail.endTime
+              ? `${String(avail.endTime.getUTCHours()).padStart(
+                  2,
+                  "0"
+                )}:${String(avail.endTime.getUTCMinutes()).padStart(2, "0")}`
+              : "",
+          })) || [];
+
+      return {
+        dayOfWeek,
+        timeSlots,
+        fullDay: false,
+      };
+    }
+  );
+
   return {
     teacherId: teacher.teacherId,
     userId: teacher.userId,
@@ -93,6 +174,7 @@ const formatTeacher = (teacher: TeacherWithIncludes): FormattedTeacher => {
         name: ub.branch.name,
       })) || [],
     subjectPreferences,
+    regularAvailability,
     createdAt: teacher.createdAt,
     updatedAt: teacher.updatedAt,
   };
@@ -194,6 +276,17 @@ export const GET = withBranchAccess(
                 },
               },
             },
+            availability: {
+              select: {
+                id: true,
+                dayOfWeek: true,
+                startTime: true,
+                endTime: true,
+                fullDay: true,
+                type: true,
+                status: true,
+              },
+            },
           },
         },
       },
@@ -239,6 +332,7 @@ export const POST = withBranchAccess(
         email,
         branchIds = [],
         subjectPreferences = [],
+        regularAvailability = [],
         ...teacherData
       } = result.data;
 
@@ -336,7 +430,7 @@ export const POST = withBranchAccess(
       // For teachers, use the password directly (no hashing)
       const passwordHash = password;
 
-      // Create user, teacher and branch associations in a transaction
+      // Create user, teacher and all related data in a transaction
       const newTeacher = await prisma.$transaction(async (tx) => {
         // Create user first
         const user = await tx.user.create({
@@ -383,7 +477,66 @@ export const POST = withBranchAccess(
           });
         }
 
-        // Return teacher with user and branch associations
+        // Create regular availability records if provided
+        if (regularAvailability.length > 0) {
+          const availabilityRecords = [];
+
+          for (const dayAvailability of regularAvailability) {
+            const { dayOfWeek, timeSlots, fullDay } = dayAvailability;
+
+            if (fullDay) {
+              // Create a full-day availability record
+              availabilityRecords.push({
+                userId: user.id,
+                dayOfWeek: dayOfWeek as DayOfWeek,
+                type: "REGULAR" as const,
+                status: "APPROVED" as const,
+                fullDay: true,
+                startTime: null,
+                endTime: null,
+                date: null,
+                reason: null,
+                notes: null,
+              });
+            } else if (timeSlots && timeSlots.length > 0) {
+              // Create availability records for each time slot
+              for (const slot of timeSlots) {
+                // Create time from string using epoch date for consistency
+                const [startHours, startMinutes] = slot.startTime
+                  .split(":")
+                  .map(Number);
+                const [endHours, endMinutes] = slot.endTime
+                  .split(":")
+                  .map(Number);
+
+                availabilityRecords.push({
+                  userId: user.id,
+                  dayOfWeek: dayOfWeek as DayOfWeek,
+                  type: "REGULAR" as const,
+                  status: "APPROVED" as const,
+                  fullDay: false,
+                  startTime: new Date(
+                    Date.UTC(2000, 0, 1, startHours, startMinutes, 0, 0)
+                  ),
+                  endTime: new Date(
+                    Date.UTC(2000, 0, 1, endHours, endMinutes, 0, 0)
+                  ),
+                  date: null,
+                  reason: null,
+                  notes: null,
+                });
+              }
+            }
+          }
+
+          if (availabilityRecords.length > 0) {
+            await tx.userAvailability.createMany({
+              data: availabilityRecords,
+            });
+          }
+        }
+
+        // Return teacher with all associations
         return tx.teacher.findUnique({
           where: { teacherId: teacher.teacherId },
           include: {
@@ -418,6 +571,17 @@ export const POST = withBranchAccess(
                         name: true,
                       },
                     },
+                  },
+                },
+                availability: {
+                  select: {
+                    id: true,
+                    dayOfWeek: true,
+                    startTime: true,
+                    endTime: true,
+                    fullDay: true,
+                    type: true,
+                    status: true,
                   },
                 },
               },
