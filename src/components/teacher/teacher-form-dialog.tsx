@@ -966,14 +966,14 @@ export function TeacherFormDialog({
                         />
 
                         {isEditing && (
-                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-6">
+                          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mt-6">
                             <div className="flex items-start gap-2">
-                              <Calendar className="h-4 w-4 text-blue-600 mt-0.5" />
+                              <Calendar className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5" />
                               <div className="text-sm">
-                                <p className="font-medium text-blue-900">
+                                <p className="font-medium text-blue-900 dark:text-blue-100">
                                   例外的な利用可能時間
                                 </p>
-                                <p className="text-blue-700 mt-1">
+                                <p className="text-blue-700 dark:text-blue-300 mt-1">
                                   特定の日付での利用可能時間の変更は、教師詳細ページの「例外設定」タブで管理できます。
                                 </p>
                               </div>

@@ -291,7 +291,7 @@ export function EnhancedAvailabilitySelector({ availability, onChange }: Enhance
                 ) : (
                   <div className="space-y-2">
                     {dayAvailability?.timeSlots.map((slot) => (
-                      <div key={slot.id} className="flex items-center justify-between p-2 bg-blue-50 rounded-md">
+                      <div key={slot.id} className="flex items-center justify-between p-2 bg-blue-50 dark:bg-blue-900/20 rounded-md">
                         <span className="text-sm">
                           {slot.startTime} - {slot.endTime}
                         </span>
@@ -300,7 +300,7 @@ export function EnhancedAvailabilitySelector({ availability, onChange }: Enhance
                           variant="ghost"
                           size="sm"
                           onClick={() => removeTimeSlot(day.value, slot.id)}
-                          className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                          className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20"
                         >
                           <X className="h-3 w-3" />
                         </Button>
