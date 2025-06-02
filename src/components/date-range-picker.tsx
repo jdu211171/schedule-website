@@ -36,23 +36,25 @@ export function DateRangePicker({ dateRange, onChange, label, className }: DateR
               !dateRange?.from && "text-muted-foreground"
             )}
           >
-            <div className="flex items-center gap-2">
-              <CalendarIcon className="h-4 w-4" />
-              {dateRange?.from ? (
-                dateRange.to ? (
-                  <span>
-                    {format(dateRange.from, "yyyy/MM/dd")} - {format(dateRange.to, "yyyy/MM/dd")}
-                  </span>
+            <div className="flex items-center gap-2 min-w-0 flex-1">
+              <CalendarIcon className="h-4 w-4 flex-shrink-0" />
+              <span className="truncate text-sm">
+                {dateRange?.from ? (
+                  dateRange.to ? (
+                    <>
+                      {format(dateRange.from, "MM/dd")} - {format(dateRange.to, "MM/dd")}
+                    </>
+                  ) : (
+                    format(dateRange.from, "MM/dd")
+                  )
                 ) : (
-                  format(dateRange.from, "yyyy/MM/dd")
-                )
-              ) : (
-                <span>日付の範囲を選択</span>
-              )}
+                  "日付の範囲を選択"
+                )}
+              </span>
             </div>
             {dateRange?.from && (
               <X
-                className="h-4 w-4 opacity-70 hover:opacity-100"
+                className="h-4 w-4 opacity-70 hover:opacity-100 flex-shrink-0"
                 onClick={handleClearClick}
               />
             )}

@@ -5,6 +5,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { Pencil, Trash2, CalendarIcon, MoreHorizontal } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { ja } from "date-fns/locale";
+import { DateRange } from "react-day-picker";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -118,6 +119,15 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
     value: string | undefined
   ) => {
     setFilters({ ...filters, [field]: value });
+    setPage(1); // Reset to first page when filter changes
+  };
+
+  const handleDateRangeChange = (range: DateRange | undefined) => {
+    setFilters({
+      ...filters,
+      startDate: range?.from ? format(range.from, "yyyy-MM-dd") : undefined,
+      endDate: range?.to ? format(range.to, "yyyy-MM-dd") : undefined,
+    });
     setPage(1); // Reset to first page when filter changes
   };
 
@@ -351,6 +361,7 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
       booths={boothsData?.data || []}
       filters={filters}
       onFilterChange={handleFilterChange}
+      onDateRangeChange={handleDateRangeChange}
       onResetFilters={resetFilters}
     />
   );
