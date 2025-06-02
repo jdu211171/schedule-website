@@ -85,14 +85,12 @@ export const regularAvailabilitySchema = z
 export const userStatusEnum = z.enum([
   "ACTIVE",
   "SICK",
-  "TEMPORARILY_LEFT",
   "PERMANENTLY_LEFT",
 ]);
 
 export const userStatusLabels = {
   ACTIVE: "在籍",
   SICK: "病欠",
-  TEMPORARILY_LEFT: "一時退会",
   PERMANENTLY_LEFT: "退会",
 } as const;
 

@@ -146,7 +146,7 @@ export function TeacherFormDialog({
         email: teacher.email || "",
         lineId: teacher.lineId || "",
         notes: teacher.notes || "",
-        status: (teacher.status as "ACTIVE" | "SICK" | "TEMPORARILY_LEFT" | "PERMANENTLY_LEFT") || "ACTIVE",
+        status: (teacher.status as "ACTIVE" | "SICK" | "PERMANENTLY_LEFT") || "ACTIVE",
         username: teacher.username || "",
         password: "",
         branchIds: branchIdsWithDefault,
