@@ -9,6 +9,78 @@ export const subjectPreferenceSchema = z.object({
     .min(1, "少なくとも1つの科目タイプを選択してください"),
 });
 
+// Time slot schema for regular availability
+export const timeSlotSchema = z
+  .object({
+    id: z.string(),
+    startTime: z
+      .string()
+      .regex(
+        /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/,
+        "有効な時間形式で入力してください"
+      ),
+    endTime: z
+      .string()
+      .regex(
+        /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/,
+        "有効な時間形式で入力してください"
+      ),
+  })
+  .refine((data) => data.startTime !== data.endTime, {
+    message: "開始時間と終了時間は異なる必要があります",
+  });
+
+// Regular availability schema for student registration
+export const regularAvailabilitySchema = z
+  .object({
+    dayOfWeek: z.enum([
+      "MONDAY",
+      "TUESDAY",
+      "WEDNESDAY",
+      "THURSDAY",
+      "FRIDAY",
+      "SATURDAY",
+      "SUNDAY",
+    ]),
+    timeSlots: z.array(timeSlotSchema).default([]),
+    fullDay: z.boolean().default(false),
+  })
+  .refine(
+    (data) => {
+      // If not full day, must have at least one time slot or be explicitly empty
+      if (!data.fullDay && data.timeSlots.length === 0) {
+        return true; // Allow empty time slots for days with no availability
+      }
+
+      // If full day, should not have time slots
+      if (data.fullDay && data.timeSlots.length > 0) {
+        return false;
+      }
+
+      // Check for overlapping time slots
+      if (data.timeSlots.length > 1) {
+        const sortedSlots = [...data.timeSlots].sort((a, b) =>
+          a.startTime.localeCompare(b.startTime)
+        );
+
+        for (let i = 0; i < sortedSlots.length - 1; i++) {
+          const current = sortedSlots[i];
+          const next = sortedSlots[i + 1];
+
+          if (current.endTime > next.startTime) {
+            return false;
+          }
+        }
+      }
+
+      return true;
+    },
+    {
+      message:
+        "時間帯が重複しているか、終日設定と時間指定が同時に設定されています",
+    }
+  );
+
 // User status enum
 export const userStatusEnum = z.enum([
   "ACTIVE",
@@ -72,6 +144,11 @@ export const studentBaseSchema = z.object({
     .optional(),
   // Subject preferences
   subjectPreferences: z.array(subjectPreferenceSchema).optional().default([]),
+  // Enhanced regular availability with multiple time slots
+  regularAvailability: z
+    .array(regularAvailabilitySchema)
+    .optional()
+    .default([]),
 });
 
 export const studentFormSchema = studentBaseSchema.extend({

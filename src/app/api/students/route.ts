@@ -6,7 +6,7 @@ import {
   studentCreateSchema,
   studentFilterSchema,
 } from "@/schemas/student.schema";
-import { Student } from "@prisma/client";
+import { Student, DayOfWeek } from "@prisma/client";
 
 type StudentWithIncludes = Student & {
   studentType: {
@@ -36,6 +36,15 @@ type StudentWithIncludes = Student & {
         name: string;
       };
     }[];
+    availability?: {
+      id: string;
+      dayOfWeek: string | null;
+      startTime: Date | null;
+      endTime: Date | null;
+      fullDay: boolean | null;
+      type: string;
+      status: string;
+    }[];
   };
 };
 
@@ -62,6 +71,15 @@ type FormattedStudent = {
     subjectId: string;
     subjectTypeIds: string[];
   }[];
+  regularAvailability: {
+    dayOfWeek: string;
+    timeSlots: {
+      id: string;
+      startTime: string;
+      endTime: string;
+    }[];
+    fullDay: boolean;
+  }[];
   createdAt: Date;
   updatedAt: Date;
 };
@@ -82,6 +100,46 @@ const formatStudent = (student: StudentWithIncludes): FormattedStudent => {
     subjectId,
     subjectTypeIds,
   }));
+
+  // Process regular availability data
+  const availabilityMap = new Map<string, NonNullable<typeof student.user.availability>>();
+
+  student.user.availability?.forEach(avail => {
+    if (avail.type === "REGULAR" && avail.status === "APPROVED" && avail.dayOfWeek) {
+      if (!availabilityMap.has(avail.dayOfWeek)) {
+        availabilityMap.set(avail.dayOfWeek, []);
+      }
+      availabilityMap.get(avail.dayOfWeek)!.push(avail);
+    }
+  });
+
+  const regularAvailability = Array.from(availabilityMap.entries()).map(([dayOfWeek, availabilities]) => {
+    // Check if any availability for this day is full day
+    const hasFullDay = availabilities?.some(avail => avail.fullDay) || false;
+
+    if (hasFullDay) {
+      return {
+        dayOfWeek,
+        timeSlots: [],
+        fullDay: true,
+      };
+    }
+
+    // Process time slots
+    const timeSlots = availabilities
+      ?.filter(avail => !avail.fullDay && avail.startTime && avail.endTime)
+      .map(avail => ({
+        id: avail.id,
+        startTime: avail.startTime ? `${String(avail.startTime.getUTCHours()).padStart(2, '0')}:${String(avail.startTime.getUTCMinutes()).padStart(2, '0')}` : '',
+        endTime: avail.endTime ? `${String(avail.endTime.getUTCHours()).padStart(2, '0')}:${String(avail.endTime.getUTCMinutes()).padStart(2, '0')}` : '',
+      })) || [];
+
+    return {
+      dayOfWeek,
+      timeSlots,
+      fullDay: false,
+    };
+  });
 
   return {
     studentId: student.studentId,
@@ -104,6 +162,7 @@ const formatStudent = (student: StudentWithIncludes): FormattedStudent => {
         name: ub.branch.name,
       })) || [],
     subjectPreferences,
+    regularAvailability,
     createdAt: student.createdAt,
     updatedAt: student.updatedAt,
   };
@@ -220,6 +279,17 @@ export const GET = withBranchAccess(
                 },
               },
             },
+            availability: {
+              select: {
+                id: true,
+                dayOfWeek: true,
+                startTime: true,
+                endTime: true,
+                fullDay: true,
+                type: true,
+                status: true,
+              },
+            },
           },
         },
       },
@@ -266,6 +336,7 @@ export const POST = withBranchAccess(
         studentTypeId,
         branchIds = [],
         subjectPreferences = [],
+        regularAvailability = [],
         ...studentData
       } = result.data;
 
@@ -393,11 +464,68 @@ export const POST = withBranchAccess(
           });
         }
 
+        // Create regular availability records if provided
+        if (regularAvailability.length > 0) {
+          const availabilityRecords = [];
+
+          for (const dayAvailability of regularAvailability) {
+            const { dayOfWeek, timeSlots, fullDay } = dayAvailability;
+
+            if (fullDay) {
+              // Create a full-day availability record
+              availabilityRecords.push({
+                userId: user.id,
+                dayOfWeek: dayOfWeek as DayOfWeek,
+                type: "REGULAR" as const,
+                status: "APPROVED" as const,
+                fullDay: true,
+                startTime: null,
+                endTime: null,
+                date: null,
+                reason: null,
+                notes: null,
+              });
+            } else if (timeSlots && timeSlots.length > 0) {
+              // Create availability records for each time slot
+              for (const slot of timeSlots) {
+                // Create time from string using epoch date for consistency
+                const [startHours, startMinutes] = slot.startTime.split(":").map(Number);
+                const [endHours, endMinutes] = slot.endTime.split(":").map(Number);
+
+                availabilityRecords.push({
+                  userId: user.id,
+                  dayOfWeek: dayOfWeek as DayOfWeek,
+                  type: "REGULAR" as const,
+                  status: "APPROVED" as const,
+                  fullDay: false,
+                  startTime: new Date(Date.UTC(2000, 0, 1, startHours, startMinutes, 0, 0)),
+                  endTime: new Date(Date.UTC(2000, 0, 1, endHours, endMinutes, 0, 0)),
+                  date: null,
+                  reason: null,
+                  notes: null,
+                });
+              }
+            }
+          }
+
+          if (availabilityRecords.length > 0) {
+            await tx.userAvailability.createMany({
+              data: availabilityRecords,
+            });
+          }
+        }
+
         // Return student with all associations
         return tx.student.findUnique({
           where: { studentId: student.studentId },
           include: {
-            studentType: true,
+            studentType: {
+              select: {
+                studentTypeId: true,
+                name: true,
+                maxYears: true,
+              },
+            },
             user: {
               select: {
                 username: true,
@@ -411,6 +539,35 @@ export const POST = withBranchAccess(
                         name: true,
                       },
                     },
+                  },
+                },
+                subjectPreferences: {
+                  select: {
+                    subjectId: true,
+                    subjectTypeId: true,
+                    subject: {
+                      select: {
+                        subjectId: true,
+                        name: true,
+                      },
+                    },
+                    subjectType: {
+                      select: {
+                        subjectTypeId: true,
+                        name: true,
+                      },
+                    },
+                  },
+                },
+                availability: {
+                  select: {
+                    id: true,
+                    dayOfWeek: true,
+                    startTime: true,
+                    endTime: true,
+                    fullDay: true,
+                    type: true,
+                    status: true,
                   },
                 },
               },
