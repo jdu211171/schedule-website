@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Pencil, Trash2, CalendarIcon, MoreHorizontal } from "lucide-react";
 import { format, parseISO } from "date-fns";
@@ -14,6 +14,7 @@ import { useClassSessions } from "@/hooks/useClassSessionQuery";
 import {
   useClassSessionDelete,
   useClassSessionSeriesDelete,
+  useClassSessionBulkDelete,
   getResolvedClassSessionId,
 } from "@/hooks/useClassSessionMutation";
 import {
@@ -70,15 +71,43 @@ interface ClassSessionTableProps {
 export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) {
   const [page, setPage] = useState(1);
   const pageSize = 10;
-  const [filters, setFilters] = useState({
-    teacherId: undefined as string | undefined,
-    studentId: undefined as string | undefined,
-    subjectId: undefined as string | undefined,
-    classTypeId: undefined as string | undefined,
-    boothId: undefined as string | undefined,
-    startDate: undefined as string | undefined,
-    endDate: undefined as string | undefined,
+
+  // Storage key for filter persistence
+  const FILTERS_STORAGE_KEY = "classsession_filters";
+
+  // Initialize filters with localStorage values or defaults
+  const [filters, setFilters] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const savedFilters = localStorage.getItem(FILTERS_STORAGE_KEY);
+      if (savedFilters) {
+        try {
+          return JSON.parse(savedFilters);
+        } catch (error) {
+          console.error('Error parsing saved filters:', error);
+        }
+      }
+    }
+    return {
+      teacherId: undefined as string | undefined,
+      studentId: undefined as string | undefined,
+      subjectId: undefined as string | undefined,
+      classTypeId: undefined as string | undefined,
+      boothId: undefined as string | undefined,
+      startDate: undefined as string | undefined,
+      endDate: undefined as string | undefined,
+    };
   });
+
+  // Save filters to localStorage whenever they change
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(FILTERS_STORAGE_KEY, JSON.stringify(filters));
+    }
+  }, [filters]);
+
+  // Row selection state for multiselect
+  const [selectedRowsForDeletion, setSelectedRowsForDeletion] = useState<ExtendedClassSession[]>([]);
+  const [isConfirmingBulkDelete, setIsConfirmingBulkDelete] = useState(false);
 
   // Fetch class sessions with filters
   const { data: classSessions, isLoading } = useClassSessions({
@@ -102,6 +131,7 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
   const { data: boothsData } = useBooths({ limit: 100 });  const totalCount = classSessions?.pagination.total || 0;
   const deleteClassSessionMutation = useClassSessionDelete();
   const deleteClassSessionSeriesMutation = useClassSessionSeriesDelete();
+  const bulkDeleteClassSessionMutation = useClassSessionBulkDelete();
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "ADMIN";
   const [sessionToEdit, setSessionToEdit] = useState<ExtendedClassSession | null>(null);
@@ -132,7 +162,7 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
   };
 
   const resetFilters = () => {
-    setFilters({
+    const defaultFilters = {
       teacherId: undefined,
       studentId: undefined,
       subjectId: undefined,
@@ -140,8 +170,13 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
       boothId: undefined,
       startDate: undefined,
       endDate: undefined,
-    });
+    };
+    setFilters(defaultFilters);
     setPage(1);
+    // Clear localStorage when resetting
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(FILTERS_STORAGE_KEY);
+    }
   };
 
   const columns: ColumnDef<ExtendedClassSession, unknown>[] = [
@@ -325,6 +360,23 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
     }
   };
 
+  const handleBulkDelete = (selectedRowData: ExtendedClassSession[]) => {
+    if (selectedRowData.length === 0) return;
+    setSelectedRowsForDeletion(selectedRowData);
+    setIsConfirmingBulkDelete(true);
+  };
+
+  const confirmBulkDelete = () => {
+    if (selectedRowsForDeletion.length === 0) return;
+
+    const classIds = selectedRowsForDeletion.map(session => session.classId);
+    bulkDeleteClassSessionMutation.mutate({ classIds });
+
+    // Clear selection and close dialog
+    setSelectedRowsForDeletion([]);
+    setIsConfirmingBulkDelete(false);
+  };
+
   const handlePageChange = (newPage: number) => {
     setPage(newPage + 1);
   };
@@ -380,6 +432,8 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
         pageSize={pageSize}
         totalItems={totalCount}
         filterComponent={filterComponent}
+        enableRowSelection={true}
+        onBatchDelete={handleBulkDelete}
       />
 
       {/* Edit Session Dialog */}
@@ -476,6 +530,38 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {deleteClassSessionSeriesMutation.isPending ? "削除中..." : "シリーズを削除"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk Delete Confirmation Dialog */}
+      <AlertDialog
+        open={isConfirmingBulkDelete}
+        onOpenChange={(open) => !open && setIsConfirmingBulkDelete(false)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>選択した授業を一括削除しますか？</AlertDialogTitle>
+            <AlertDialogDescription>
+              この操作は元に戻せません。
+              選択された<strong>{selectedRowsForDeletion.length}件</strong>の授業を完全に削除します。
+              {selectedRowsForDeletion.some((session: ExtendedClassSession) => session.seriesId) && (
+                <strong className="block mt-2 text-destructive">
+                  注意: 選択した授業の中に繰り返しシリーズの一部が含まれています。
+                  この操作は選択した授業のみを削除し、シリーズ全体は削除されません。
+                </strong>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>キャンセル</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmBulkDelete}
+              disabled={bulkDeleteClassSessionMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {bulkDeleteClassSessionMutation.isPending ? "削除中..." : `${selectedRowsForDeletion.length}件を削除`}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
