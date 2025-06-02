@@ -9,6 +9,21 @@ export const subjectPreferenceSchema = z.object({
     .min(1, "少なくとも1つの科目タイプを選択してください"),
 });
 
+// User status enum
+export const userStatusEnum = z.enum([
+  "ACTIVE",
+  "SICK",
+  "TEMPORARILY_LEFT",
+  "PERMANENTLY_LEFT",
+]);
+
+export const userStatusLabels = {
+  ACTIVE: "在籍",
+  SICK: "病欠",
+  TEMPORARILY_LEFT: "一時退会",
+  PERMANENTLY_LEFT: "退会",
+} as const;
+
 // 共通フィールドのベーススキーマ
 const teacherBaseSchema = z.object({
   name: z
@@ -35,6 +50,7 @@ const teacherBaseSchema = z.object({
     .max(255, "備考は255文字以内で入力してください")
     .optional()
     .nullable(),
+  status: userStatusEnum.optional().default("ACTIVE"),
   username: z.string().min(3, "ユーザー名は3文字以上で入力してください"),
   // パスワードはフォーム上は任意、作成時は必須
   password: z
@@ -73,6 +89,7 @@ export const teacherFilterSchema = z.object({
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().positive().default(10),
   name: z.string().optional(),
+  status: userStatusEnum.optional(),
 });
 
 export type TeacherCreate = z.infer<typeof teacherCreateSchema>;

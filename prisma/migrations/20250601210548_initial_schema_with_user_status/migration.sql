@@ -1,4 +1,7 @@
 -- CreateEnum
+CREATE TYPE "UserStatus" AS ENUM ('AVAILABLE', 'SICK', 'TEMPORARILY_UNAVAILABLE', 'PERMANENTLY_LEFT');
+
+-- CreateEnum
 CREATE TYPE "AvailabilityStatus" AS ENUM ('PENDING', 'APPROVED', 'REJECTED');
 
 -- CreateEnum
@@ -84,6 +87,7 @@ CREATE TABLE "students" (
     "grade_year" INTEGER,
     "line_id" VARCHAR(50),
     "notes" VARCHAR(255),
+    "status" "UserStatus" NOT NULL DEFAULT 'AVAILABLE',
     "created_at" TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -143,6 +147,7 @@ CREATE TABLE "teachers" (
     "email" VARCHAR(100),
     "line_id" VARCHAR(50),
     "notes" VARCHAR(255),
+    "status" "UserStatus" NOT NULL DEFAULT 'AVAILABLE',
     "created_at" TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -290,16 +295,40 @@ CREATE UNIQUE INDEX "students_user_id_key" ON "students"("user_id");
 CREATE INDEX "students_student_type_id_idx" ON "students"("student_type_id");
 
 -- CreateIndex
-CREATE INDEX "user_availability_user_id_type_status_idx" ON "user_availability"("user_id", "type", "status");
+CREATE INDEX "idx_user_type_status" ON "user_availability"("user_id", "type", "status");
 
 -- CreateIndex
-CREATE INDEX "user_availability_date_idx" ON "user_availability"("date");
+CREATE INDEX "idx_date_status" ON "user_availability"("date", "status");
 
 -- CreateIndex
-CREATE INDEX "user_availability_dayOfWeek_idx" ON "user_availability"("dayOfWeek");
+CREATE INDEX "idx_dayofweek_status" ON "user_availability"("dayOfWeek", "status");
 
 -- CreateIndex
-CREATE INDEX "user_availability_user_id_dayOfWeek_idx" ON "user_availability"("user_id", "dayOfWeek");
+CREATE INDEX "idx_user_dayofweek_status" ON "user_availability"("user_id", "dayOfWeek", "status");
+
+-- CreateIndex
+CREATE INDEX "idx_user_date_status" ON "user_availability"("user_id", "date", "status");
+
+-- CreateIndex
+CREATE INDEX "idx_user_type_dayofweek_status" ON "user_availability"("user_id", "type", "dayOfWeek", "status");
+
+-- CreateIndex
+CREATE INDEX "idx_user_type_date_status" ON "user_availability"("user_id", "type", "date", "status");
+
+-- CreateIndex
+CREATE INDEX "idx_status_type" ON "user_availability"("status", "type");
+
+-- CreateIndex
+CREATE INDEX "idx_created_at" ON "user_availability"("created_at");
+
+-- CreateIndex
+CREATE INDEX "idx_time_range" ON "user_availability"("startTime", "endTime");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "user_availability_user_id_dayOfWeek_startTime_endTime_key" ON "user_availability"("user_id", "dayOfWeek", "startTime", "endTime");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "user_availability_user_id_date_startTime_endTime_key" ON "user_availability"("user_id", "date", "startTime", "endTime");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "student_class_enrollments_class_id_student_id_key" ON "student_class_enrollments"("class_id", "student_id");

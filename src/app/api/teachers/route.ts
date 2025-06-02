@@ -42,6 +42,7 @@ type FormattedTeacher = {
   email: string | null;
   lineId: string | null;
   notes: string | null;
+  status: string;
   username: string | null;
   password: string | null;
   branches: {
@@ -83,6 +84,7 @@ const formatTeacher = (teacher: TeacherWithIncludes): FormattedTeacher => {
     email: teacher.email,
     lineId: teacher.lineId,
     notes: teacher.notes,
+    status: teacher.status,
     username: teacher.user.username,
     password: teacher.user.passwordHash || null,
     branches:
@@ -113,7 +115,7 @@ export const GET = withBranchAccess(
       );
     }
 
-    const { page, limit, name } = result.data;
+    const { page, limit, name, status } = result.data;
 
     // Build filter conditions
     const where: any = {};
@@ -123,6 +125,10 @@ export const GET = withBranchAccess(
         { name: { contains: name, mode: "insensitive" } },
         { kanaName: { contains: name, mode: "insensitive" } },
       ];
+    }
+
+    if (status) {
+      where.status = status;
     }
 
     // Filter teachers by branch for non-admin users

@@ -167,6 +167,10 @@ export const GET = withBranchAccess(
       startDate,
       endDate,
       seriesId,
+      hasTeacher,
+      hasStudent,
+      hasSubject,
+      hasBooth,
     } = result.data;
 
     // Build filter conditions
@@ -219,6 +223,23 @@ export const GET = withBranchAccess(
 
     if (seriesId) {
       where.seriesId = seriesId;
+    }
+
+    // Add filters for unset parameters
+    if (hasTeacher !== undefined) {
+      where.teacherId = hasTeacher ? { not: null } : null;
+    }
+
+    if (hasStudent !== undefined) {
+      where.studentId = hasStudent ? { not: null } : null;
+    }
+
+    if (hasSubject !== undefined) {
+      where.subjectId = hasSubject ? { not: null } : null;
+    }
+
+    if (hasBooth !== undefined) {
+      where.boothId = hasBooth ? { not: null } : null;
     }
 
     // Date range filtering - FIXED to use UTC dates

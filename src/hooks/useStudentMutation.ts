@@ -71,6 +71,7 @@ export function useStudentCreate() {
                 gradeYear: newStudent.gradeYear || null,
                 lineId: newStudent.lineId || null,
                 notes: newStudent.notes || null,
+                status: newStudent.status || "ACTIVE",
                 username: newStudent.username,
                 email: newStudent.email || null,
                 password: newStudent.password || null,

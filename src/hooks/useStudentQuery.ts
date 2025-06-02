@@ -13,6 +13,7 @@ export type Student = {
   gradeYear: number | null;
   lineId: string | null;
   notes: string | null;
+  status: string;
   username: string | null;
   email: string | null;
   password: string | null;
@@ -35,6 +36,7 @@ type UseStudentsParams = {
   name?: string;
   studentTypeId?: string;
   gradeYear?: number;
+  status?: string;
 };
 
 type StudentsResponse = {
@@ -48,7 +50,14 @@ type StudentsResponse = {
 };
 
 export function useStudents(params: UseStudentsParams = {}) {
-  const { page = 1, limit = 10, name, studentTypeId, gradeYear } = params;
+  const {
+    page = 1,
+    limit = 10,
+    name,
+    studentTypeId,
+    gradeYear,
+    status,
+  } = params;
 
   const queryParams: Record<string, string | undefined> = {
     page: page.toString(),
@@ -56,6 +65,7 @@ export function useStudents(params: UseStudentsParams = {}) {
     name,
     studentTypeId,
     gradeYear: gradeYear?.toString(),
+    status,
   };
 
   const searchParams = new URLSearchParams(
@@ -68,7 +78,7 @@ export function useStudents(params: UseStudentsParams = {}) {
   ).toString();
 
   return useQuery<StudentsResponse>({
-    queryKey: ["students", page, limit, name, studentTypeId, gradeYear],
+    queryKey: ["students", page, limit, name, studentTypeId, gradeYear, status],
     queryFn: async () =>
       await fetcher<StudentsResponse>(`/api/students?${searchParams}`),
   });

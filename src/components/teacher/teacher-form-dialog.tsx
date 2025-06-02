@@ -1,3 +1,4 @@
+// src/components/teacher/teacher-form-dialog.tsx
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -51,6 +52,7 @@ import {
   teacherCreateSchema,
   teacherUpdateSchema,
   type TeacherFormValues,
+  userStatusLabels,
 } from "@/schemas/teacher.schema";
 import type { Teacher } from "@/hooks/useTeacherQuery";
 import { useSession } from "next-auth/react";
@@ -118,6 +120,7 @@ export function TeacherFormDialog({
       email: "",
       lineId: "",
       notes: "",
+      status: "ACTIVE",
       username: "",
       password: "",
       branchIds: [],
@@ -143,6 +146,7 @@ export function TeacherFormDialog({
         email: teacher.email || "",
         lineId: teacher.lineId || "",
         notes: teacher.notes || "",
+        status: (teacher.status as "ACTIVE" | "SICK" | "TEMPORARILY_LEFT" | "PERMANENTLY_LEFT") || "ACTIVE",
         username: teacher.username || "",
         password: "",
         branchIds: branchIdsWithDefault,
@@ -161,6 +165,7 @@ export function TeacherFormDialog({
         email: "",
         lineId: "",
         notes: "",
+        status: "ACTIVE",
         username: "",
         password: "",
         branchIds: defaultBranchId ? [defaultBranchId] : [],
@@ -320,6 +325,7 @@ export function TeacherFormDialog({
       email: "",
       lineId: "",
       notes: "",
+      status: "ACTIVE",
       username: "",
       password: "",
       branchIds: defaultBranchId ? [defaultBranchId] : [],
@@ -403,6 +409,39 @@ export function TeacherFormDialog({
                     )}
                   />
                 </div>
+
+                {/* Status - Full width */}
+                <FormField
+                  control={form.control}
+                  name="status"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm font-medium">
+                        ステータス
+                      </FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="h-11">
+                            <SelectValue placeholder="ステータスを選択" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {Object.entries(userStatusLabels).map(
+                            ([value, label]) => (
+                              <SelectItem key={value} value={value}>
+                                {label}
+                              </SelectItem>
+                            )
+                          )}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
                 {/* Email and LINE ID - Responsive grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
