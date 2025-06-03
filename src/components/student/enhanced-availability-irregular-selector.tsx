@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
+import { DatePicker } from "../date-picker";
 
 interface TimeSlot {
   id: string;
@@ -16,15 +17,15 @@ interface TimeSlot {
   endTime: string;
 }
 
-interface RegularAvailability {
-  dayOfWeek: "MONDAY" | "TUESDAY" | "WEDNESDAY" | "THURSDAY" | "FRIDAY" | "SATURDAY" | "SUNDAY";
-  timeSlots: TimeSlot[];
-  fullDay: boolean;
-}
+interface IrregularAvailability {
+    date:Date;
+    timeSlots: TimeSlot[];
+    fullDay: boolean;
+  }
 
 interface EnhancedAvailabilitySelectorProps {
-  availability: RegularAvailability[];
-  onChange: (availability: RegularAvailability[]) => void;
+  availability: IrregularAvailability[];
+  onChange: (availability: IrregularAvailability[]) => void;
 }
 
 const DAYS_OF_WEEK = [
@@ -44,19 +45,19 @@ const TIME_PRESETS = [
   { label: "夜間 (19:00-22:00)", start: "19:00", end: "22:00" },
 ] as const;
 
-export function EnhancedAvailabilitySelector({ availability, onChange }: EnhancedAvailabilitySelectorProps) {
-  const [selectedDay, setSelectedDay] = useState<typeof DAYS_OF_WEEK[number]["value"] | "">("");
+export function EnhancedAvailabilityIrregularSelector({ availability, onChange }: EnhancedAvailabilitySelectorProps) {
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
   const [startTime, setStartTime] = useState<string>("09:00");
   const [endTime, setEndTime] = useState<string>("17:00");
 
-  // Get availability for a specific day
-  function getDayAvailability(dayOfWeek: typeof DAYS_OF_WEEK[number]["value"]): RegularAvailability | undefined {
-    return availability.find(item => item.dayOfWeek === dayOfWeek);
+//   Get availability for a specific day
+function getDateAvailability(date: Date): IrregularAvailability | undefined {
+    return availability.find(item => item.date === date);
   }
 
   // Add new time slot to a day
   function addTimeSlot() {
-    if (!selectedDay || startTime >= endTime) return;
+    if (!selectedDate || startTime >= endTime) return;
 
     const newSlot: TimeSlot = {
       id: crypto.randomUUID(),
@@ -65,7 +66,7 @@ export function EnhancedAvailabilitySelector({ availability, onChange }: Enhance
     };
 
     // Check for overlaps with existing slots
-    const dayAvailability = getDayAvailability(selectedDay)
+    const dayAvailability = getDateAvailability(selectedDate)
     if (dayAvailability && !dayAvailability.fullDay) {
       const existingSlots = dayAvailability.timeSlots
       const hasOverlap = existingSlots.some(slot => {
@@ -79,7 +80,7 @@ export function EnhancedAvailabilitySelector({ availability, onChange }: Enhance
     }
 
     const updatedAvailability = [...availability]
-    const existingIndex = updatedAvailability.findIndex(item => item.dayOfWeek === selectedDay)
+    const existingIndex = updatedAvailability.findIndex(item => item.date === selectedDate)
 
     if (existingIndex >= 0) {
       // Add to existing day
@@ -91,7 +92,7 @@ export function EnhancedAvailabilitySelector({ availability, onChange }: Enhance
     } else {
       // Create new day availability
       updatedAvailability.push({
-        dayOfWeek: selectedDay,
+        date: selectedDate,
         timeSlots: [newSlot],
         fullDay: false
       })
@@ -105,9 +106,9 @@ export function EnhancedAvailabilitySelector({ availability, onChange }: Enhance
   }
 
   // Remove a specific time slot
-  function removeTimeSlot(dayOfWeek: typeof DAYS_OF_WEEK[number]["value"], slotId: string) {
+  function removeTimeSlot(date: Date, slotId: string) {
     const updatedAvailability = availability.map(item => {
-      if (item.dayOfWeek === dayOfWeek) {
+      if (item.date === date) {
         const updatedTimeSlots = item.timeSlots.filter(slot => slot.id !== slotId)
         return {
           ...item,
@@ -121,9 +122,9 @@ export function EnhancedAvailabilitySelector({ availability, onChange }: Enhance
   }
 
   // Toggle full day for a specific day
-  function toggleFullDay(dayOfWeek: typeof DAYS_OF_WEEK[number]["value"]) {
+  function toggleFullDay(date: Date) {
     const updatedAvailability = [...availability]
-    const existingIndex = updatedAvailability.findIndex(item => item.dayOfWeek === dayOfWeek)
+    const existingIndex = updatedAvailability.findIndex(item => item.date === date)
 
     if (existingIndex >= 0) {
       const current = updatedAvailability[existingIndex]
@@ -141,7 +142,7 @@ export function EnhancedAvailabilitySelector({ availability, onChange }: Enhance
     } else {
       // Create new full day entry
       updatedAvailability.push({
-        dayOfWeek: dayOfWeek,
+        date: date,
         timeSlots: [],
         fullDay: true
       })
@@ -176,18 +177,7 @@ export function EnhancedAvailabilitySelector({ availability, onChange }: Enhance
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="space-y-2">
                 <Label className="text-xs">曜日</Label>
-                <Select value={selectedDay} onValueChange={(value) => setSelectedDay(value as typeof selectedDay)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="曜日を選択" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {DAYS_OF_WEEK.map((day) => (
-                      <SelectItem key={day.value} value={day.value}>
-                        {day.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <DatePicker onChange={setSelectedDate} value={selectedDate}/>
               </div>
 
               <div className="space-y-2">
@@ -213,7 +203,7 @@ export function EnhancedAvailabilitySelector({ availability, onChange }: Enhance
                 <Button
                   type="button"
                   onClick={addTimeSlot}
-                  disabled={!selectedDay || startTime >= endTime}
+                  disabled={!selectedDate || startTime >= endTime}
                   className="w-full"
                 >
                   <Plus className="h-4 w-4 mr-2" />
@@ -259,29 +249,29 @@ export function EnhancedAvailabilitySelector({ availability, onChange }: Enhance
           </Button>
         </div>
 
-        {DAYS_OF_WEEK.map((day) => {
-          const dayAvailability = getDayAvailability(day.value)
+        {availability.length > 0 ? availability.map((availableDate) => {
+          const dayAvailability = getDateAvailability(availableDate.date)
           const hasAvailability = dayAvailability && (dayAvailability.fullDay || dayAvailability.timeSlots.length > 0)
 
           return (
-            <Card key={day.value} className={hasAvailability ? "border-blue-200" : "border-gray-200"}>
+            <Card key={availableDate.date.toDateString()} className={hasAvailability ? "border-blue-200" : "border-gray-200"}>
               <CardContent className="pt-4">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
-                    <Label className="font-medium">{day.label}</Label>
+                    <Label className="font-medium">{availableDate.date.toDateString()}</Label>
                     {hasAvailability && (
                       <Badge variant="secondary" className="text-xs">
                         設定済み
                       </Badge>
                     )}
                   </div>
-                  <div className="flex items-center gap-2">
+                  {/* <div className="flex items-center gap-2">
                     <Checkbox
                       checked={dayAvailability?.fullDay || false}
                       onCheckedChange={() => toggleFullDay(day.value)}
                     />
                     <Label className="text-sm">終日利用可能</Label>
-                  </div>
+                  </div> */}
                 </div>
 
                 {dayAvailability?.fullDay ? (
@@ -291,7 +281,7 @@ export function EnhancedAvailabilitySelector({ availability, onChange }: Enhance
                 ) : (
                   <div className="space-y-2">
                     {dayAvailability?.timeSlots.map((slot) => (
-                      <div key={slot.id} className="flex items-center justify-between p-2 bg-blue-50 dark:bg-blue-900/20 rounded-md">
+                      <div key={slot.id} className="flex items-center justify-between p-2 bg-blue-50 rounded-md text-black">
                         <span className="text-sm">
                           {slot.startTime} - {slot.endTime}
                         </span>
@@ -299,8 +289,8 @@ export function EnhancedAvailabilitySelector({ availability, onChange }: Enhance
                           type="button"
                           variant="ghost"
                           size="sm"
-                          onClick={() => removeTimeSlot(day.value, slot.id)}
-                          className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20"
+                          onClick={() => removeTimeSlot(availableDate.date, slot.id)}
+                          className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
                         >
                           <X className="h-3 w-3" />
                         </Button>
@@ -316,7 +306,7 @@ export function EnhancedAvailabilitySelector({ availability, onChange }: Enhance
               </CardContent>
             </Card>
           )
-        })}
+        }) : (<div className="text-center">現在の利用可能時間設定してください！</div>)}
       </div>
     </div>
   )
