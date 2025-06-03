@@ -116,6 +116,7 @@ model Student {
   status                  UserStatus               @default(ACTIVE)
   studentClassEnrollments StudentClassEnrollment[]
   classSessions           ClassSession[]
+  teacherPreferences       StudentTeacherPreference[]
   studentType             StudentType?             @relation(fields: [studentTypeId], references: [studentTypeId], onDelete: SetNull, onUpdate: Cascade)
   user                    User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt               DateTime                 @default(now()) @map("created_at") @db.Timestamp(6)
@@ -234,6 +235,7 @@ model Teacher {
   notes         String?        @db.VarChar(255)
   status        UserStatus     @default(ACTIVE)
   classSessions ClassSession[]
+  studentPreferences       StudentTeacherPreference[]
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt     DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
@@ -246,6 +248,7 @@ model SubjectType {
   name                  String       @unique @db.VarChar(100)
   notes                 String?      @db.VarChar(255)
   preferences           UserSubjectPreference[]
+  studentTeacherPreferences StudentTeacherPreference[]
   createdAt             DateTime     @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt             DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
@@ -268,6 +271,29 @@ model UserSubjectPreference {
   @@index([subjectTypeId])
 }
 
+model StudentTeacherPreference {
+  id            String      @id @default(cuid())
+  studentId     String      @map("student_id")
+  teacherId     String      @map("teacher_id")
+  subjectId     String      @map("subject_id")
+  subjectTypeId String      @map("subject_type_id")
+
+  student       Student     @relation(fields: [studentId], references: [studentId], onDelete: Cascade)
+  teacher       Teacher     @relation(fields: [teacherId], references: [teacherId], onDelete: Cascade)
+  subject       Subject     @relation(fields: [subjectId], references: [subjectId], onDelete: Cascade)
+  subjectType   SubjectType @relation(fields: [subjectTypeId], references: [subjectTypeId], onDelete: Cascade)
+
+  createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt     DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  @@unique([studentId, teacherId, subjectId, subjectTypeId])
+  @@index([studentId])
+  @@index([teacherId])
+  @@index([subjectId])
+  @@index([subjectTypeId])
+  @@map("student_teacher_preferences")
+}
+
 /**
  * This model defines the subjects taught at the school.
  * This is the core subject entity in the three-tier subject management system.
@@ -279,6 +305,7 @@ model Subject {
   notes                 String?        @db.VarChar(255)
   classSessions         ClassSession[]
   preferences           UserSubjectPreference[]
+  studentTeacherPreferences StudentTeacherPreference[]
   createdAt             DateTime       @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt             DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 

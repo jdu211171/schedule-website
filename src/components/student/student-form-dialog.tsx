@@ -18,6 +18,7 @@ import {
   Save,
   RotateCcw,
   Check,
+  Users,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -79,6 +80,8 @@ import { useStudentTypes } from "@/hooks/useStudentTypeQuery";
 import type { Student } from "@/hooks/useStudentQuery";
 import { useAllSubjects } from "@/hooks/useSubjectQuery";
 import { useAllSubjectTypes } from "@/hooks/useSubjectTypeQuery";
+import { useTeachersBySubjectPreference } from "@/hooks/useTeachersBySubjectPreference";
+import { useTeachers } from "@/hooks/useTeacherQuery";
 
 interface TimeSlot {
   id: string;
@@ -102,6 +105,7 @@ interface RegularAvailability {
 interface StudentSubject {
   subjectId: string;
   subjectTypeIds: string[];
+  preferredTeacherIds?: string[];
 }
 
 interface StudentFormDialogProps {
@@ -152,7 +156,18 @@ export function StudentFormDialog({
   const [selectedSubjectTypes, setSelectedSubjectTypes] = useState<string[]>(
     []
   );
+  const [selectedTeacherIds, setSelectedTeacherIds] = useState<string[]>([]);
   const [isAllSelected, setIsAllSelected] = useState(false);
+
+  // Fetch teachers based on selected subject and types
+  const { data: availableTeachers = [], isLoading: isLoadingTeachers } = useTeachersBySubjectPreference(
+    currentSubject,
+    selectedSubjectTypes
+  );
+
+  // Fetch all teachers for name resolution when displaying selected subjects
+  const { data: allTeachersResponse } = useTeachers({ limit: 1000 });
+  const allTeachers = allTeachersResponse?.data || [];
 
   // Enhanced regular availability state
   const [regularAvailability, setRegularAvailability] = useState<
@@ -217,8 +232,6 @@ export function StudentFormDialog({
       }
 
       // Initialize regular availability if it exists
-      // Note: regularAvailability is not currently included in the Student type
-      // This would need to be added to the API response and Student type
       const studentWithAvailability = student as Student & {
         regularAvailability?: RegularAvailability[];
       };
@@ -354,7 +367,10 @@ export function StudentFormDialog({
     }
 
     // Add student subjects and regular availability to submission data
-    submissionData.subjectPreferences = studentSubjects;
+    submissionData.subjectPreferences = studentSubjects.map((sp) => ({
+      ...sp,
+      preferredTeacherIds: sp.preferredTeacherIds || [],
+    }));
 
     // Convert regularAvailability to the schema format (already matches the expected format)
     submissionData.regularAvailability = regularAvailability;
@@ -392,6 +408,7 @@ export function StudentFormDialog({
   function handleSubjectChange(subjectId: string) {
     setCurrentSubject(subjectId);
     setSelectedSubjectTypes([]);
+    setSelectedTeacherIds([]);
     setIsAllSelected(false);
   }
 
@@ -411,6 +428,8 @@ export function StudentFormDialog({
         return newSelection;
       }
     });
+    // Reset teacher selection when subject types change
+    setSelectedTeacherIds([]);
   }
 
   // Handle "Select All" toggle
@@ -423,6 +442,19 @@ export function StudentFormDialog({
       setSelectedSubjectTypes(allTypeIds);
       setIsAllSelected(true);
     }
+    // Reset teacher selection when subject types change
+    setSelectedTeacherIds([]);
+  }
+
+  // Handle teacher selection
+  function handleTeacherToggle(teacherId: string) {
+    setSelectedTeacherIds((prev) => {
+      if (prev.includes(teacherId)) {
+        return prev.filter((id) => id !== teacherId);
+      } else {
+        return [...prev, teacherId];
+      }
+    });
   }
 
   // Add current subject and selected types
@@ -440,6 +472,7 @@ export function StudentFormDialog({
           updated[existingIndex] = {
             ...updated[existingIndex],
             subjectTypeIds: selectedSubjectTypes,
+            preferredTeacherIds: selectedTeacherIds,
           };
           return updated;
         } else {
@@ -449,6 +482,7 @@ export function StudentFormDialog({
             {
               subjectId: currentSubject,
               subjectTypeIds: selectedSubjectTypes,
+              preferredTeacherIds: selectedTeacherIds,
             },
           ];
         }
@@ -457,6 +491,7 @@ export function StudentFormDialog({
       // Reset selection
       setCurrentSubject(undefined);
       setSelectedSubjectTypes([]);
+      setSelectedTeacherIds([]);
       setIsAllSelected(false);
     }
   }
@@ -486,6 +521,7 @@ export function StudentFormDialog({
     setRegularAvailability([]);
     setCurrentSubject(undefined);
     setSelectedSubjectTypes([]);
+    setSelectedTeacherIds([]);
     setIsAllSelected(false);
     setAvailabilityErrors([]);
     setActiveTab("basic");
@@ -843,7 +879,7 @@ export function StudentFormDialog({
                       <CardHeader>
                         <CardTitle className="text-lg flex items-center gap-2">
                           <BookOpen className="h-5 w-5" />
-                          科目・科目タイプ選択
+                          科目・科目タイプ・講師選択
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-4">
@@ -940,6 +976,105 @@ export function StudentFormDialog({
                               </PopoverContent>
                             </Popover>
                           </div>
+
+                          {/* Teacher selection - only show when subject and types are selected */}
+                          {currentSubject && selectedSubjectTypes.length > 0 && (
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium flex items-center gap-2">
+                                <Users className="h-4 w-4" />
+                                希望講師（任意）
+                              </label>
+
+                              {isLoadingTeachers ? (
+                                <div className="flex items-center justify-center h-11 border rounded-lg bg-muted/50">
+                                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                  <span className="text-sm text-muted-foreground">
+                                    講師を読み込み中...
+                                  </span>
+                                </div>
+                              ) : availableTeachers.length > 0 ? (
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <Button
+                                      variant="outline"
+                                      className="h-11 w-full justify-between"
+                                    >
+                                      {selectedTeacherIds.length > 0
+                                        ? `${selectedTeacherIds.length}名選択中`
+                                        : "希望講師を選択（任意）"}
+                                      <Users
+                                        className={`ml-2 h-4 w-4 ${
+                                          selectedTeacherIds.length > 0
+                                            ? "opacity-100"
+                                            : "opacity-50"
+                                        }`}
+                                      />
+                                    </Button>
+                                  </PopoverTrigger>
+                                  <PopoverContent
+                                    className="w-full p-0"
+                                    align="start"
+                                  >
+                                    <Command>
+                                      <CommandInput placeholder="講師を検索..." />
+                                      <CommandList>
+                                        <CommandEmpty>
+                                          該当する講師がいません
+                                        </CommandEmpty>
+                                        <CommandGroup className="max-h-64 overflow-auto">
+                                          {availableTeachers.map((teacher) => (
+                                            <CommandItem
+                                              key={teacher.teacherId}
+                                              onSelect={() =>
+                                                handleTeacherToggle(
+                                                  teacher.teacherId
+                                                )
+                                              }
+                                              className="flex items-center gap-2"
+                                            >
+                                              <Checkbox
+                                                checked={selectedTeacherIds.includes(
+                                                  teacher.teacherId
+                                                )}
+                                                className="mr-2"
+                                              />
+                                              <div className="flex-1">
+                                                <div className="font-medium">
+                                                  {teacher.name}
+                                                </div>
+                                                {teacher.kanaName && (
+                                                  <div className="text-xs text-muted-foreground">
+                                                    {teacher.kanaName}
+                                                  </div>
+                                                )}
+                                              </div>
+                                            </CommandItem>
+                                          ))}
+                                        </CommandGroup>
+                                      </CommandList>
+                                    </Command>
+                                  </PopoverContent>
+                                </Popover>
+                              ) : (
+                                <div className="text-sm text-muted-foreground p-3 border rounded-lg bg-muted/30">
+                                  選択された科目・科目タイプに対応する講師がいません
+                                </div>
+                              )}
+
+                              {selectedTeacherIds.length > 0 && (
+                                <div className="flex flex-wrap gap-2 mt-2">
+                                  {selectedTeacherIds.map(teacherId => {
+                                    const teacher = availableTeachers.find(t => t.teacherId === teacherId);
+                                    return teacher ? (
+                                      <Badge key={teacherId} variant="secondary">
+                                        {teacher.name}
+                                      </Badge>
+                                    ) : null;
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
 
                         <div className="flex justify-end">
@@ -998,16 +1133,38 @@ export function StudentFormDialog({
                                         <X className="h-4 w-4" />
                                       </Button>
                                     </div>
-                                    <div className="flex flex-wrap gap-1">
-                                      {types.map((type) => (
-                                        <Badge
-                                          key={type.subjectTypeId}
-                                          variant="secondary"
-                                          className="text-xs"
-                                        >
-                                          {type.name}
-                                        </Badge>
-                                      ))}
+                                    <div className="space-y-2">
+                                      <div className="flex flex-wrap gap-1">
+                                        {types.map((type) => (
+                                          <Badge
+                                            key={type.subjectTypeId}
+                                            variant="secondary"
+                                            className="text-xs"
+                                          >
+                                            {type.name}
+                                          </Badge>
+                                        ))}
+                                      </div>
+                                      {studentSubject.preferredTeacherIds && studentSubject.preferredTeacherIds.length > 0 && (
+                                        <div className="pt-2 border-t">
+                                          <div className="text-xs text-muted-foreground mb-1">希望講師:</div>
+                                          <div className="flex flex-wrap gap-1">
+                                            {studentSubject.preferredTeacherIds.map((teacherId) => {
+                                              const teacher = allTeachers.find(t => t.teacherId === teacherId);
+                                              return (
+                                                <Badge
+                                                  key={teacherId}
+                                                  variant="outline"
+                                                  className="text-xs"
+                                                >
+                                                  <Users className="h-3 w-3 mr-1" />
+                                                  {teacher?.name || teacherId}
+                                                </Badge>
+                                              );
+                                            })}
+                                          </div>
+                                        </div>
+                                      )}
                                     </div>
                                   </div>
                                 );

@@ -43,6 +43,15 @@ type StudentWithIncludes = Student & {
       notes: string | null;
     }[];
   };
+  teacherPreferences?: {
+    teacherId: string;
+    subjectId: string;
+    subjectTypeId: string;
+    teacher: {
+      teacherId: string;
+      name: string;
+    };
+  }[];
 };
 
 // Define the return type for the formatted student
@@ -68,6 +77,7 @@ export type FormattedStudent = {
   subjectPreferences: {
     subjectId: string;
     subjectTypeIds: string[];
+    preferredTeacherIds?: string[];
   }[];
   regularAvailability: {
     dayOfWeek: string;
@@ -85,25 +95,54 @@ export type FormattedStudent = {
 // Helper function to format student response with proper typing
 const formatStudent = (student: StudentWithIncludes): FormattedStudent => {
   // Group subject preferences by subjectId
-  const subjectPreferencesMap = new Map<string, string[]>();
+  const subjectPreferencesMap = new Map<
+    string,
+    { subjectTypeIds: string[]; preferredTeacherIds: string[] }
+  >();
 
-  student.user.subjectPreferences?.forEach(pref => {
+  student.user.subjectPreferences?.forEach((pref) => {
     if (!subjectPreferencesMap.has(pref.subjectId)) {
-      subjectPreferencesMap.set(pref.subjectId, []);
+      subjectPreferencesMap.set(pref.subjectId, {
+        subjectTypeIds: [],
+        preferredTeacherIds: [],
+      });
     }
-    subjectPreferencesMap.get(pref.subjectId)!.push(pref.subjectTypeId);
+    subjectPreferencesMap
+      .get(pref.subjectId)!
+      .subjectTypeIds.push(pref.subjectTypeId);
   });
 
-  const subjectPreferences = Array.from(subjectPreferencesMap.entries()).map(([subjectId, subjectTypeIds]) => ({
-    subjectId,
-    subjectTypeIds,
-  }));
+  // Add teacher preferences
+  student.teacherPreferences?.forEach((pref) => {
+    const subjectPref = subjectPreferencesMap.get(pref.subjectId);
+    if (
+      subjectPref &&
+      !subjectPref.preferredTeacherIds.includes(pref.teacherId)
+    ) {
+      subjectPref.preferredTeacherIds.push(pref.teacherId);
+    }
+  });
+
+  const subjectPreferences = Array.from(subjectPreferencesMap.entries()).map(
+    ([subjectId, { subjectTypeIds, preferredTeacherIds }]) => ({
+      subjectId,
+      subjectTypeIds,
+      preferredTeacherIds,
+    })
+  );
 
   // Process regular availability data
-  const availabilityMap = new Map<string, NonNullable<typeof student.user.availability>>();
+  const availabilityMap = new Map<
+    string,
+    NonNullable<typeof student.user.availability>
+  >();
 
-  student.user.availability?.forEach(avail => {
-    if (avail.type === "REGULAR" && avail.status === "APPROVED" && avail.dayOfWeek) {
+  student.user.availability?.forEach((avail) => {
+    if (
+      avail.type === "REGULAR" &&
+      avail.status === "APPROVED" &&
+      avail.dayOfWeek
+    ) {
       if (!availabilityMap.has(avail.dayOfWeek)) {
         availabilityMap.set(avail.dayOfWeek, []);
       }
@@ -111,37 +150,45 @@ const formatStudent = (student: StudentWithIncludes): FormattedStudent => {
     }
   });
 
-  const regularAvailability = Array.from(availabilityMap.entries()).map(([dayOfWeek, availabilities]) => {
-    // Check if any availability for this day is full day
-    const hasFullDay = availabilities?.some(avail => avail.fullDay) || false;
+  const regularAvailability = Array.from(availabilityMap.entries()).map(
+    ([dayOfWeek, availabilities]) => {
+      // Check if any availability for this day is full day
+      const hasFullDay =
+        availabilities?.some((avail) => avail.fullDay) || false;
 
-    if (hasFullDay) {
+      if (hasFullDay) {
+        return {
+          dayOfWeek,
+          timeSlots: [],
+          fullDay: true,
+        };
+      }
+
+      // Process time slots
+      const timeSlots =
+        availabilities
+          ?.filter(
+            (avail) => !avail.fullDay && avail.startTime && avail.endTime
+          )
+          .map((avail) => ({
+            id: avail.id,
+            startTime: `${String(avail.startTime!.getUTCHours()).padStart(
+              2,
+              "0"
+            )}:${String(avail.startTime!.getUTCMinutes()).padStart(2, "0")}`,
+            endTime: `${String(avail.endTime!.getUTCHours()).padStart(
+              2,
+              "0"
+            )}:${String(avail.endTime!.getUTCMinutes()).padStart(2, "0")}`,
+          })) || [];
+
       return {
         dayOfWeek,
-        timeSlots: [],
-        fullDay: true,
+        timeSlots,
+        fullDay: false,
       };
     }
-
-    // Process time slots
-    const timeSlots = availabilities
-      ?.filter(avail => !avail.fullDay && avail.startTime && avail.endTime)
-      .map(avail => ({
-        id: avail.id,
-        startTime: `${String(avail.startTime!.getUTCHours()).padStart(2, "0")}:${String(
-          avail.startTime!.getUTCMinutes()
-        ).padStart(2, "0")}`,
-        endTime: `${String(avail.endTime!.getUTCHours()).padStart(2, "0")}:${String(
-          avail.endTime!.getUTCMinutes()
-        ).padStart(2, "0")}`,
-      })) || [];
-
-    return {
-      dayOfWeek,
-      timeSlots,
-      fullDay: false,
-    };
-  });
+  );
 
   return {
     studentId: student.studentId,
@@ -222,6 +269,19 @@ export const GET = withBranchAccess(
             },
           },
         },
+        teacherPreferences: {
+          select: {
+            teacherId: true,
+            subjectId: true,
+            subjectTypeId: true,
+            teacher: {
+              select: {
+                teacherId: true,
+                name: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -281,8 +341,15 @@ export const PATCH = withBranchAccess(
         );
       }
 
-      const { username, password, email, branchIds, subjectPreferences = [], regularAvailability = [], ...studentData } =
-        result.data;
+      const {
+        username,
+        password,
+        email,
+        branchIds,
+        subjectPreferences = [],
+        regularAvailability = [],
+        ...studentData
+      } = result.data;
 
       // Check username uniqueness if being updated
       if (username && username !== existingStudent.user.username) {
@@ -329,7 +396,9 @@ export const PATCH = withBranchAccess(
       // Validate subject preferences if provided
       if (subjectPreferences.length > 0) {
         // Check if all subjectIds exist
-        const subjectIds = [...new Set(subjectPreferences.map(pref => pref.subjectId))];
+        const subjectIds = [
+          ...new Set(subjectPreferences.map((pref) => pref.subjectId)),
+        ];
         const subjectCount = await prisma.subject.count({
           where: { subjectId: { in: subjectIds } },
         });
@@ -342,7 +411,9 @@ export const PATCH = withBranchAccess(
         }
 
         // Check if all subjectTypeIds exist
-        const subjectTypeIds = [...new Set(subjectPreferences.flatMap(pref => pref.subjectTypeIds))];
+        const subjectTypeIds = [
+          ...new Set(subjectPreferences.flatMap((pref) => pref.subjectTypeIds)),
+        ];
         const subjectTypeCount = await prisma.subjectType.count({
           where: { subjectTypeId: { in: subjectTypeIds } },
         });
@@ -352,6 +423,24 @@ export const PATCH = withBranchAccess(
             { error: "一部の科目タイプIDが存在しません" }, // "Some subject type IDs do not exist"
             { status: 400 }
           );
+        }
+
+        // Check if all preferred teachers exist
+        const allTeacherIds = subjectPreferences.flatMap(
+          (pref) => pref.preferredTeacherIds || []
+        );
+        const uniqueTeacherIds = [...new Set(allTeacherIds)];
+        if (uniqueTeacherIds.length > 0) {
+          const teacherCount = await prisma.teacher.count({
+            where: { teacherId: { in: uniqueTeacherIds } },
+          });
+
+          if (teacherCount !== uniqueTeacherIds.length) {
+            return NextResponse.json(
+              { error: "一部の講師IDが存在しません" },
+              { status: 400 }
+            );
+          }
         }
       }
 
@@ -400,19 +489,43 @@ export const PATCH = withBranchAccess(
             where: { userId: existingStudent.userId },
           });
 
+          // Delete existing teacher preferences for this student
+          await tx.studentTeacherPreference.deleteMany({
+            where: { studentId },
+          });
+
           // Flatten the subject preferences into individual records
-          const userSubjectPreferenceRecords = subjectPreferences.flatMap(pref =>
-            pref.subjectTypeIds.map(subjectTypeId => ({
-              userId: existingStudent.userId,
-              subjectId: pref.subjectId,
-              subjectTypeId,
-            }))
+          const userSubjectPreferenceRecords = subjectPreferences.flatMap(
+            (pref) =>
+              pref.subjectTypeIds.map((subjectTypeId) => ({
+                userId: existingStudent.userId,
+                subjectId: pref.subjectId,
+                subjectTypeId,
+              }))
           );
 
           // Create new subject preferences
           if (userSubjectPreferenceRecords.length > 0) {
             await tx.userSubjectPreference.createMany({
               data: userSubjectPreferenceRecords,
+            });
+          }
+
+          // Create teacher preferences if provided
+          const teacherPreferenceData = subjectPreferences.flatMap((pref) =>
+            (pref.preferredTeacherIds || []).flatMap((teacherId) =>
+              pref.subjectTypeIds.map((subjectTypeId) => ({
+                studentId,
+                teacherId,
+                subjectId: pref.subjectId,
+                subjectTypeId,
+              }))
+            )
+          );
+
+          if (teacherPreferenceData.length > 0) {
+            await tx.studentTeacherPreference.createMany({
+              data: teacherPreferenceData,
             });
           }
         }
@@ -423,7 +536,7 @@ export const PATCH = withBranchAccess(
           await tx.userAvailability.deleteMany({
             where: {
               userId: existingStudent.userId,
-              type: "REGULAR"
+              type: "REGULAR",
             },
           });
 
@@ -450,8 +563,12 @@ export const PATCH = withBranchAccess(
               // Create availability records for each time slot
               for (const slot of timeSlots) {
                 // Create time from string using epoch date for consistency
-                const [startHours, startMinutes] = slot.startTime.split(":").map(Number);
-                const [endHours, endMinutes] = slot.endTime.split(":").map(Number);
+                const [startHours, startMinutes] = slot.startTime
+                  .split(":")
+                  .map(Number);
+                const [endHours, endMinutes] = slot.endTime
+                  .split(":")
+                  .map(Number);
 
                 availabilityRecords.push({
                   userId: existingStudent.userId,
@@ -459,8 +576,12 @@ export const PATCH = withBranchAccess(
                   type: "REGULAR" as const,
                   status: "APPROVED" as const,
                   fullDay: false,
-                  startTime: new Date(Date.UTC(2000, 0, 1, startHours, startMinutes, 0, 0)),
-                  endTime: new Date(Date.UTC(2000, 0, 1, endHours, endMinutes, 0, 0)),
+                  startTime: new Date(
+                    Date.UTC(2000, 0, 1, startHours, startMinutes, 0, 0)
+                  ),
+                  endTime: new Date(
+                    Date.UTC(2000, 0, 1, endHours, endMinutes, 0, 0)
+                  ),
                   date: null,
                   reason: null,
                   notes: null,
@@ -526,6 +647,19 @@ export const PATCH = withBranchAccess(
                     date: true,
                     reason: true,
                     notes: true,
+                  },
+                },
+              },
+            },
+            teacherPreferences: {
+              select: {
+                teacherId: true,
+                subjectId: true,
+                subjectTypeId: true,
+                teacher: {
+                  select: {
+                    teacherId: true,
+                    name: true,
                   },
                 },
               },

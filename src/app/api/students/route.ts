@@ -46,6 +46,15 @@ type StudentWithIncludes = Student & {
       status: string;
     }[];
   };
+  teacherPreferences?: {
+    teacherId: string;
+    subjectId: string;
+    subjectTypeId: string;
+    teacher: {
+      teacherId: string;
+      name: string;
+    };
+  }[];
 };
 
 type FormattedStudent = {
@@ -70,6 +79,7 @@ type FormattedStudent = {
   subjectPreferences: {
     subjectId: string;
     subjectTypeIds: string[];
+    preferredTeacherIds?: string[];
   }[];
   regularAvailability: {
     dayOfWeek: string;
@@ -87,25 +97,54 @@ type FormattedStudent = {
 // Helper function to format student response with proper typing
 const formatStudent = (student: StudentWithIncludes): FormattedStudent => {
   // Group subject preferences by subjectId
-  const subjectPreferencesMap = new Map<string, string[]>();
+  const subjectPreferencesMap = new Map<
+    string,
+    { subjectTypeIds: string[]; preferredTeacherIds: string[] }
+  >();
 
-  student.user.subjectPreferences?.forEach(pref => {
+  student.user.subjectPreferences?.forEach((pref) => {
     if (!subjectPreferencesMap.has(pref.subjectId)) {
-      subjectPreferencesMap.set(pref.subjectId, []);
+      subjectPreferencesMap.set(pref.subjectId, {
+        subjectTypeIds: [],
+        preferredTeacherIds: [],
+      });
     }
-    subjectPreferencesMap.get(pref.subjectId)!.push(pref.subjectTypeId);
+    subjectPreferencesMap
+      .get(pref.subjectId)!
+      .subjectTypeIds.push(pref.subjectTypeId);
   });
 
-  const subjectPreferences = Array.from(subjectPreferencesMap.entries()).map(([subjectId, subjectTypeIds]) => ({
-    subjectId,
-    subjectTypeIds,
-  }));
+  // Add teacher preferences
+  student.teacherPreferences?.forEach((pref) => {
+    const subjectPref = subjectPreferencesMap.get(pref.subjectId);
+    if (
+      subjectPref &&
+      !subjectPref.preferredTeacherIds.includes(pref.teacherId)
+    ) {
+      subjectPref.preferredTeacherIds.push(pref.teacherId);
+    }
+  });
+
+  const subjectPreferences = Array.from(subjectPreferencesMap.entries()).map(
+    ([subjectId, { subjectTypeIds, preferredTeacherIds }]) => ({
+      subjectId,
+      subjectTypeIds,
+      preferredTeacherIds,
+    })
+  );
 
   // Process regular availability data
-  const availabilityMap = new Map<string, NonNullable<typeof student.user.availability>>();
+  const availabilityMap = new Map<
+    string,
+    NonNullable<typeof student.user.availability>
+  >();
 
-  student.user.availability?.forEach(avail => {
-    if (avail.type === "REGULAR" && avail.status === "APPROVED" && avail.dayOfWeek) {
+  student.user.availability?.forEach((avail) => {
+    if (
+      avail.type === "REGULAR" &&
+      avail.status === "APPROVED" &&
+      avail.dayOfWeek
+    ) {
       if (!availabilityMap.has(avail.dayOfWeek)) {
         availabilityMap.set(avail.dayOfWeek, []);
       }
@@ -113,33 +152,49 @@ const formatStudent = (student: StudentWithIncludes): FormattedStudent => {
     }
   });
 
-  const regularAvailability = Array.from(availabilityMap.entries()).map(([dayOfWeek, availabilities]) => {
-    // Check if any availability for this day is full day
-    const hasFullDay = availabilities?.some(avail => avail.fullDay) || false;
+  const regularAvailability = Array.from(availabilityMap.entries()).map(
+    ([dayOfWeek, availabilities]) => {
+      // Check if any availability for this day is full day
+      const hasFullDay =
+        availabilities?.some((avail) => avail.fullDay) || false;
 
-    if (hasFullDay) {
+      if (hasFullDay) {
+        return {
+          dayOfWeek,
+          timeSlots: [],
+          fullDay: true,
+        };
+      }
+
+      // Process time slots
+      const timeSlots =
+        availabilities
+          ?.filter(
+            (avail) => !avail.fullDay && avail.startTime && avail.endTime
+          )
+          .map((avail) => ({
+            id: avail.id,
+            startTime: avail.startTime
+              ? `${String(avail.startTime.getUTCHours()).padStart(
+                  2,
+                  "0"
+                )}:${String(avail.startTime.getUTCMinutes()).padStart(2, "0")}`
+              : "",
+            endTime: avail.endTime
+              ? `${String(avail.endTime.getUTCHours()).padStart(
+                  2,
+                  "0"
+                )}:${String(avail.endTime.getUTCMinutes()).padStart(2, "0")}`
+              : "",
+          })) || [];
+
       return {
         dayOfWeek,
-        timeSlots: [],
-        fullDay: true,
+        timeSlots,
+        fullDay: false,
       };
     }
-
-    // Process time slots
-    const timeSlots = availabilities
-      ?.filter(avail => !avail.fullDay && avail.startTime && avail.endTime)
-      .map(avail => ({
-        id: avail.id,
-        startTime: avail.startTime ? `${String(avail.startTime.getUTCHours()).padStart(2, '0')}:${String(avail.startTime.getUTCMinutes()).padStart(2, '0')}` : '',
-        endTime: avail.endTime ? `${String(avail.endTime.getUTCHours()).padStart(2, '0')}:${String(avail.endTime.getUTCMinutes()).padStart(2, '0')}` : '',
-      })) || [];
-
-    return {
-      dayOfWeek,
-      timeSlots,
-      fullDay: false,
-    };
-  });
+  );
 
   return {
     studentId: student.studentId,
@@ -292,6 +347,19 @@ export const GET = withBranchAccess(
             },
           },
         },
+        teacherPreferences: {
+          select: {
+            teacherId: true,
+            subjectId: true,
+            subjectTypeId: true,
+            teacher: {
+              select: {
+                teacherId: true,
+                name: true,
+              },
+            },
+          },
+        },
       },
       skip,
       take: limit,
@@ -388,7 +456,7 @@ export const POST = withBranchAccess(
       // Validate subject preferences if provided
       if (subjectPreferences.length > 0) {
         // Check if all subjects exist
-        const subjectIds = subjectPreferences.map(pref => pref.subjectId);
+        const subjectIds = subjectPreferences.map((pref) => pref.subjectId);
         const subjectCount = await prisma.subject.count({
           where: { subjectId: { in: subjectIds } },
         });
@@ -401,7 +469,9 @@ export const POST = withBranchAccess(
         }
 
         // Check if all subject types exist
-        const subjectTypeIds = subjectPreferences.flatMap(pref => pref.subjectTypeIds);
+        const subjectTypeIds = subjectPreferences.flatMap(
+          (pref) => pref.subjectTypeIds
+        );
         const uniqueSubjectTypeIds = [...new Set(subjectTypeIds)];
         const subjectTypeCount = await prisma.subjectType.count({
           where: { subjectTypeId: { in: uniqueSubjectTypeIds } },
@@ -412,6 +482,24 @@ export const POST = withBranchAccess(
             { error: "一部の科目タイプIDが存在しません" },
             { status: 400 }
           );
+        }
+
+        // Check if all preferred teachers exist
+        const allTeacherIds = subjectPreferences.flatMap(
+          (pref) => pref.preferredTeacherIds || []
+        );
+        const uniqueTeacherIds = [...new Set(allTeacherIds)];
+        if (uniqueTeacherIds.length > 0) {
+          const teacherCount = await prisma.teacher.count({
+            where: { teacherId: { in: uniqueTeacherIds } },
+          });
+
+          if (teacherCount !== uniqueTeacherIds.length) {
+            return NextResponse.json(
+              { error: "一部の講師IDが存在しません" },
+              { status: 400 }
+            );
+          }
         }
       }
 
@@ -451,17 +539,36 @@ export const POST = withBranchAccess(
 
         // Create user subject preferences if provided
         if (subjectPreferences.length > 0) {
-          const userSubjectPreferencesData = subjectPreferences.flatMap(pref =>
-            pref.subjectTypeIds.map(subjectTypeId => ({
-              userId: user.id,
-              subjectId: pref.subjectId,
-              subjectTypeId,
-            }))
+          const userSubjectPreferencesData = subjectPreferences.flatMap(
+            (pref) =>
+              pref.subjectTypeIds.map((subjectTypeId) => ({
+                userId: user.id,
+                subjectId: pref.subjectId,
+                subjectTypeId,
+              }))
           );
 
           await tx.userSubjectPreference.createMany({
             data: userSubjectPreferencesData,
           });
+
+          // Create teacher preferences if provided
+          const teacherPreferenceData = subjectPreferences.flatMap((pref) =>
+            (pref.preferredTeacherIds || []).flatMap((teacherId) =>
+              pref.subjectTypeIds.map((subjectTypeId) => ({
+                studentId: student.studentId,
+                teacherId,
+                subjectId: pref.subjectId,
+                subjectTypeId,
+              }))
+            )
+          );
+
+          if (teacherPreferenceData.length > 0) {
+            await tx.studentTeacherPreference.createMany({
+              data: teacherPreferenceData,
+            });
+          }
         }
 
         // Create regular availability records if provided
@@ -489,8 +596,12 @@ export const POST = withBranchAccess(
               // Create availability records for each time slot
               for (const slot of timeSlots) {
                 // Create time from string using epoch date for consistency
-                const [startHours, startMinutes] = slot.startTime.split(":").map(Number);
-                const [endHours, endMinutes] = slot.endTime.split(":").map(Number);
+                const [startHours, startMinutes] = slot.startTime
+                  .split(":")
+                  .map(Number);
+                const [endHours, endMinutes] = slot.endTime
+                  .split(":")
+                  .map(Number);
 
                 availabilityRecords.push({
                   userId: user.id,
@@ -498,8 +609,12 @@ export const POST = withBranchAccess(
                   type: "REGULAR" as const,
                   status: "APPROVED" as const,
                   fullDay: false,
-                  startTime: new Date(Date.UTC(2000, 0, 1, startHours, startMinutes, 0, 0)),
-                  endTime: new Date(Date.UTC(2000, 0, 1, endHours, endMinutes, 0, 0)),
+                  startTime: new Date(
+                    Date.UTC(2000, 0, 1, startHours, startMinutes, 0, 0)
+                  ),
+                  endTime: new Date(
+                    Date.UTC(2000, 0, 1, endHours, endMinutes, 0, 0)
+                  ),
                   date: null,
                   reason: null,
                   notes: null,
@@ -568,6 +683,19 @@ export const POST = withBranchAccess(
                     fullDay: true,
                     type: true,
                     status: true,
+                  },
+                },
+              },
+            },
+            teacherPreferences: {
+              select: {
+                teacherId: true,
+                subjectId: true,
+                subjectTypeId: true,
+                teacher: {
+                  select: {
+                    teacherId: true,
+                    name: true,
                   },
                 },
               },

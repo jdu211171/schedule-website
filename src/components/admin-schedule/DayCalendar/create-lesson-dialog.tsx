@@ -16,10 +16,10 @@ import {
 } from './types/class-session';
 import { SearchableSelect, SearchableSelectItem } from '../searchable-select';
 
-function DateRangePicker({ 
-  dateRange, 
-  setDateRange, 
-  placeholder = "期間を選択" 
+function DateRangePicker({
+  dateRange,
+  setDateRange,
+  placeholder = "期間を選択"
 }: {
   dateRange: DateRange | undefined;
   setDateRange: (dateRange: DateRange | undefined) => void;
@@ -27,23 +27,23 @@ function DateRangePicker({
 }) {
   const [open, setOpen] = useState(false);
   const [tempRange, setTempRange] = useState<DateRange | undefined>(dateRange);
-  
+
   useEffect(() => {
     setTempRange(dateRange);
   }, [dateRange]);
-  
+
   const handleOpenChange = (isOpen: boolean) => {
     setOpen(isOpen);
     if (!isOpen) {
       setTempRange(dateRange);
     }
   };
-  
+
   const handleApply = () => {
     setDateRange(tempRange);
     setOpen(false);
   };
-  
+
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
@@ -68,15 +68,15 @@ function DateRangePicker({
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent 
-        className="w-auto p-0" 
-        style={{ 
+      <PopoverContent
+        className="w-auto p-0"
+        style={{
           zIndex: 9999,
-          position: 'relative', 
-          pointerEvents: 'auto' 
-        }} 
-        align="start" 
-        side="bottom" 
+          position: 'relative',
+          pointerEvents: 'auto'
+        }}
+        align="start"
+        side="bottom"
         sideOffset={8}
         forceMount
       >
@@ -100,8 +100,8 @@ function DateRangePicker({
                 </>
               )}
             </div>
-            <Button 
-              size="sm" 
+            <Button
+              size="sm"
               onClick={handleApply}
               disabled={!tempRange?.from || !tempRange?.to}
             >
@@ -169,16 +169,16 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
   const [teacherId, setTeacherId] = useState<string>('');
   const [studentId, setStudentId] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
-  
+
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [selectedDays, setSelectedDays] = useState<number[]>([]);
-  
+
   const [studentTypes, setStudentTypes] = useState<StudentType[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [classTypes, setClassTypes] = useState<ClassType[]>([]);
-  
+
   const [isLoadingStudentTypes, setIsLoadingStudentTypes] = useState<boolean>(false);
   const [isLoadingStudents, setIsLoadingStudents] = useState<boolean>(false);
   const [isLoadingSubjects, setIsLoadingSubjects] = useState<boolean>(false);
@@ -188,18 +188,27 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
 
   const [regularClassTypeId, setRegularClassTypeId] = useState<string>('');
 
+  // Validation state
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+
+  // Track initialization state to prevent saving defaults to localStorage
+  const [isInitialized, setIsInitialized] = useState<boolean>(false);
+
+  // Local storage key for persistent fields
+  const STORAGE_KEY = 'create-lesson-dialog-persistent-fields';
+
   useEffect(() => {
     const loadClassTypes = async () => {
       setIsLoadingClassTypes(true);
       try {
         const response = await fetcher<{ data: ClassType[] }>('/api/class-types');
         setClassTypes(response.data || []);
-        
+
         const regularType = response.data.find(type => type.name === '通常授業');
-        
+
         if (regularType) {
           setRegularClassTypeId(regularType.classTypeId);
-          setSelectedClassTypeId(regularType.classTypeId);
+          // Don't set selectedClassTypeId here anymore - let initialization handle it
         }
       } catch (err) {
         console.error("授業タイプの読み込みエラー:", err);
@@ -208,11 +217,57 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
         setIsLoadingClassTypes(false);
       }
     };
-    
+
     if (open) {
       loadClassTypes();
     }
   }, [open]);
+
+  // Initialize form data when dialog opens - after class types are loaded
+  useEffect(() => {
+    if (open && classTypes.length > 0 && regularClassTypeId) {
+      // Load persistent constant values from localStorage
+      const savedData = localStorage.getItem(STORAGE_KEY);
+
+      // First set defaults for all fields
+      setSelectedClassTypeId(regularClassTypeId);
+      setIsRecurring(false);
+      setStudentTypeId('');
+      setStudentId('');
+      setSubjectId('');
+      setTeacherId('');
+      setNotes('');
+
+      const lessonDate = typeof lessonData.date === 'string' ? new Date(lessonData.date) : lessonData.date;
+
+      if (savedData) {
+        try {
+          const parsedData = JSON.parse(savedData);
+          console.log('Loading persistent fields from localStorage:', parsedData);
+
+          // Only restore weekdays
+          setSelectedDays(parsedData.selectedDays || []);
+        } catch (error) {
+          console.error("Error loading saved constant fields:", error);
+          // Fallback to default values
+          setSelectedDays([]);
+        }
+      } else {
+        // No saved data, use defaults
+        setSelectedDays([]);
+      }
+
+      // Always set date range to lesson date (not persistent)
+      setDateRange({ from: lessonDate, to: undefined });
+
+      setError(null);
+      setValidationErrors([]);
+      setIsInitialized(true);
+    } else if (!open) {
+      // Reset initialization state when dialog closes
+      setIsInitialized(false);
+    }
+  }, [open, classTypes.length, regularClassTypeId, lessonData.date]);
 
   useEffect(() => {
     const loadStudentTypes = async () => {
@@ -227,7 +282,7 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
         setIsLoadingStudentTypes(false);
       }
     };
-    
+
     if (open) {
       loadStudentTypes();
     }
@@ -246,39 +301,44 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
         setIsLoadingSubjects(false);
       }
     };
-    
+
     if (open && studentId) {
       loadSubjects();
     }
   }, [open, studentId]);
 
+  // Save persistent data to localStorage whenever relevant fields change (only constant values)
+  useEffect(() => {
+    if (open && isInitialized) {
+      const persistentData = {
+        selectedDays, // Only save weekdays
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(persistentData));
+    }
+  }, [selectedDays, open, isInitialized]);
+
   useEffect(() => {
     if (open) {
-      setIsRecurring(false);
-      setStudentTypeId('');
-      setStudentId('');
-      setSubjectId('');
-      setTeacherId('');
-      setNotes('');
       const lessonDate = typeof lessonData.date === 'string' ? new Date(lessonData.date) : lessonData.date;
-      setDateRange({ from: lessonDate, to: undefined });
-      setSelectedDays([]);
-      setError(null);
+      if (!isRecurring) {
+        // Always reset to lesson date for non-recurring lessons
+        setDateRange({ from: lessonDate, to: undefined });
+      }
     }
-  }, [open, lessonData.date]);
+  }, [open, lessonData.date, isRecurring]);
 
   const loadStudentsByType = useCallback(async (selectedStudentTypeId: string) => {
     if (!selectedStudentTypeId) return;
-    
+
     setIsLoadingStudents(true);
     setStudents([]);
     setStudentId('');
-    
+
     try {
-      const url = selectedStudentTypeId 
-        ? `/api/students?studentTypeId=${selectedStudentTypeId}` 
+      const url = selectedStudentTypeId
+        ? `/api/students?studentTypeId=${selectedStudentTypeId}`
         : '/api/students';
-      
+
       const response = await fetcher<{ data: Student[] }>(url);
       setStudents(response.data || []);
     } catch (err) {
@@ -288,12 +348,12 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
       setIsLoadingStudents(false);
     }
   }, []);
-  
+
   const loadTeachers = useCallback(async () => {
     setIsLoadingTeachers(true);
     setTeachers([]);
     setTeacherId('');
-    
+
     try {
       const response = await fetcher<{ data: Teacher[] }>('/api/teachers');
       setTeachers(response.data || []);
@@ -304,7 +364,7 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
       setIsLoadingTeachers(false);
     }
   }, []);
-  
+
   useEffect(() => {
     if (studentTypeId) {
       loadStudentsByType(studentTypeId);
@@ -313,7 +373,7 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
       setStudentId('');
     }
   }, [studentTypeId, loadStudentsByType]);
-  
+
   useEffect(() => {
     if (studentId) {
       if (!subjects.length) {
@@ -329,10 +389,10 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
             setIsLoadingSubjects(false);
           }
         };
-        
+
         loadSubjects();
       }
-      
+
       if (!teachers.length) {
         loadTeachers();
       }
@@ -353,11 +413,59 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
     });
   };
 
+  // Validation function
+  const validateForm = (): string[] => {
+    const errors: string[] = [];
+
+    if (!selectedClassTypeId) {
+      errors.push("授業のタイプを選択してください。");
+    }
+
+    if (!studentTypeId) {
+      errors.push("生徒タイプを選択してください。");
+    }
+
+    if (!studentId) {
+      errors.push("生徒を選択してください。");
+    }
+
+    if (!subjectId) {
+      errors.push("科目を選択してください。");
+    }
+
+    if (!teacherId) {
+      errors.push("講師を選択してください。");
+    }
+
+    // Date range validation - specific handling for recurring vs non-recurring
+    if (isRecurring) {
+      // For recurring lessons (通常授業), both start and end dates are required
+      if (!dateRange?.from) {
+        errors.push("通常授業の場合は期間の開始日を選択してください。");
+      }
+      if (!dateRange?.to) {
+        errors.push("通常授業の場合は期間の終了日を選択してください。");
+      }
+    } else {
+      // For non-recurring lessons, only start date is required
+      if (!dateRange?.from) {
+        errors.push("期間の開始日を選択してください。");
+      }
+    }
+
+    return errors;
+  };
+
   const handleSubmit = () => {
-    if (!studentId || !subjectId || !teacherId || !selectedClassTypeId || !dateRange?.from) {
+    // Validate form before submission
+    const errors = validateForm();
+    setValidationErrors(errors);
+
+    // If there are validation errors, don't submit
+    if (errors.length > 0) {
       return;
     }
-    
+
     const payload: CreateClassSessionPayload = {
       date: formatDateToString(lessonData.date),
       startTime: lessonData.startTime,
@@ -369,15 +477,15 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
       notes: notes || "",
       classTypeId: selectedClassTypeId
     };
-    
-    if (isRecurring) {
+
+    if (isRecurring && dateRange?.from) {
       payload.isRecurring = true;
       payload.startDate = format(dateRange.from, 'yyyy-MM-dd');
-      
+
       if (dateRange.to) {
         payload.endDate = format(dateRange.to, 'yyyy-MM-dd');
       }
-      
+
       if (selectedDays.length > 0) {
         payload.daysOfWeek = selectedDays;
       } else {
@@ -391,7 +499,34 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
     console.log("--------------------------------------------");
 
     onSave(payload);
-    onOpenChange(false); 
+    onOpenChange(false);
+  };  // Reset persistent fields to default values
+  const handleReset = () => {
+    // Reset all fields to defaults
+    setSelectedClassTypeId(regularClassTypeId || '');
+    setIsRecurring(false);
+    setStudentTypeId('');
+    setStudentId('');
+    setSubjectId('');
+    setTeacherId('');
+    setNotes('');
+
+    // Reset persistent constant values
+    setSelectedDays([]);
+
+    // Reset date range to current lesson date
+    const lessonDate = typeof lessonData.date === 'string' ? new Date(lessonData.date) : lessonData.date;
+    setDateRange({ from: lessonDate, to: undefined });
+
+    // Clear localStorage (only constant values)
+    localStorage.removeItem(STORAGE_KEY);
+
+    // Clear errors
+    setError(null);
+    setValidationErrors([]);
+
+    // Reset initialization state so changes can be saved again
+    setIsInitialized(true);
   };
 
   const isLoading = isLoadingStudentTypes || isLoadingStudents || isLoadingSubjects || isLoadingTeachers || isLoadingClassTypes;
@@ -442,7 +577,7 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
           </DialogDescription>
         </DialogHeader>
 
-        <div 
+        <div
           className="flex-1 overflow-y-auto px-1 [&::-webkit-scrollbar]:w-[6px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-thumb]:rounded-[3px] [&::-webkit-scrollbar-thumb:hover]:bg-muted-foreground"
           style={{
             scrollbarWidth: 'thin',
@@ -493,7 +628,7 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
                 disabled={isLoadingClassTypes || classTypes.length === 0}
               />
             </div>
-            
+
             {isRecurring && (
               <div className="space-y-3 p-3 rounded-md border border-input bg-muted/30">
                 <div>
@@ -506,7 +641,7 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
                     />
                   </div>
                 </div>
-                
+
                 <div>
                   <label className="text-sm font-medium mb-2 block text-foreground">曜日を選択</label>
                   <div className="flex flex-wrap gap-2">
@@ -517,9 +652,9 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
                         onClick={() => handleDayToggle(day.value)}
                         className={`
                           w-8 h-8 rounded-full flex items-center justify-center text-sm
-                          transition-colors duration-200 
-                          ${selectedDays.includes(day.value) 
-                            ? 'bg-primary text-primary-foreground' 
+                          transition-colors duration-200
+                          ${selectedDays.includes(day.value)
+                            ? 'bg-primary text-primary-foreground'
                             : 'bg-muted text-muted-foreground border border-input'
                           }
                         `}
@@ -529,8 +664,8 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
                     ))}
                   </div>
                   <div className="text-xs mt-1 text-muted-foreground">
-                    {selectedDays.length === 0 
-                      ? "曜日が選択されていない場合、選択した日付の曜日が使用されます。" 
+                    {selectedDays.length === 0
+                      ? "曜日が選択されていない場合、選択した日付の曜日が使用されます。"
                       : `選択された曜日: ${selectedDays.map(d => daysOfWeek.find(day => day.value === d)?.label).join(', ')}`
                     }
                   </div>
@@ -559,12 +694,12 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
                 onValueChange={setStudentId}
                 items={studentItems}
                 placeholder={
-                  isLoadingStudents 
-                    ? "生徒を読み込み中..." 
-                    : !studentTypeId 
-                    ? "先に生徒タイプを選択してください" 
-                    : students.length === 0 
-                    ? "この生徒タイプの生徒はいません" 
+                  isLoadingStudents
+                    ? "生徒を読み込み中..."
+                    : !studentTypeId
+                    ? "先に生徒タイプを選択してください"
+                    : students.length === 0
+                    ? "この生徒タイプの生徒はいません"
                     : "生徒を選択"
                 }
                 searchPlaceholder="生徒を検索..."
@@ -581,12 +716,12 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
                 onValueChange={setSubjectId}
                 items={subjectItems}
                 placeholder={
-                  isLoadingSubjects 
-                    ? "科目を読み込み中..." 
-                    : !studentId 
-                    ? "先に生徒を選択してください" 
-                    : subjects.length === 0 
-                    ? "科目がありません" 
+                  isLoadingSubjects
+                    ? "科目を読み込み中..."
+                    : !studentId
+                    ? "先に生徒を選択してください"
+                    : subjects.length === 0
+                    ? "科目がありません"
                     : "科目を選択"
                 }
                 searchPlaceholder="科目を検索..."
@@ -603,12 +738,12 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
                 onValueChange={setTeacherId}
                 items={teacherItems}
                 placeholder={
-                  isLoadingTeachers 
-                    ? "講師を読み込み中..." 
-                    : !studentId 
-                    ? "先に生徒を選択してください" 
-                    : teachers.length === 0 
-                    ? "講師はいません" 
+                  isLoadingTeachers
+                    ? "講師を読み込み中..."
+                    : !studentId
+                    ? "先に生徒を選択してください"
+                    : teachers.length === 0
+                    ? "講師はいません"
                     : "講師を選択"
                 }
                 searchPlaceholder="講師を検索..."
@@ -617,7 +752,7 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
                 disabled={isLoadingTeachers || !studentId || teachers.length === 0}
               />
             </div>
-            
+
             <div>
               <label htmlFor="notes" className="text-sm font-medium mb-1 block text-foreground">メモ</label>
               <textarea
@@ -628,30 +763,50 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
                 placeholder="授業に関するメモを入力してください"
               />
             </div>
-            
+
             {error && (
               <div className="p-3 rounded bg-destructive/10 border border-destructive/20 text-destructive text-sm">
                 {error}
+              </div>
+            )}
+
+            {validationErrors.length > 0 && (
+              <div className="p-3 rounded bg-destructive/10 border border-destructive/20 text-destructive text-sm">
+                <div className="font-medium mb-2">入力内容を確認してください:</div>
+                <ul className="list-disc list-inside space-y-1">
+                  {validationErrors.map((error, index) => (
+                    <li key={index}>{error}</li>
+                  ))}
+                </ul>
               </div>
             )}
           </div>
         </div>
 
         <DialogFooter className="flex-shrink-0 pt-2">
-          <Button
-            variant="outline"
-            className="transition-all duration-200 hover:bg-accent hover:text-accent-foreground active:scale-[0.98] focus:ring-2 focus:ring-primary/30 focus:outline-none"
-            onClick={() => onOpenChange(false)}
-          >
-            キャンセル
-          </Button>
-          <Button
-            className="transition-all duration-200 hover:brightness-110 active:scale-[0.98] focus:ring-2 focus:ring-primary/30 focus:outline-none"
-            onClick={handleSubmit}
-            disabled={isLoading || !studentTypeId || !studentId || !subjectId || !teacherId || !selectedClassTypeId}
-          >
-            {isLoading ? "読み込み中..." : "作成"}
-          </Button>
+          <div className="flex gap-2 w-full">
+            <Button
+              variant="outline"
+              className="transition-all duration-200 hover:bg-accent hover:text-accent-foreground active:scale-[0.98] focus:ring-2 focus:ring-primary/30 focus:outline-none"
+              onClick={() => onOpenChange(false)}
+            >
+              キャンセル
+            </Button>
+            <Button
+              variant="destructive"
+              className="transition-all duration-200 hover:brightness-110 active:scale-[0.98] focus:ring-2 focus:ring-destructive/30 focus:outline-none"
+              onClick={handleReset}
+            >
+              リセット
+            </Button>
+            <Button
+              className="ml-auto transition-all duration-200 hover:brightness-110 active:scale-[0.98] focus:ring-2 focus:ring-primary/30 focus:outline-none"
+              onClick={handleSubmit}
+              disabled={isLoading || !studentTypeId || !studentId || !subjectId || !teacherId || !selectedClassTypeId}
+            >
+              {isLoading ? "読み込み中..." : "作成"}
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
