@@ -351,7 +351,7 @@ export default function Navbar() {
 
   return (
     <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="container mx-auto sm:px-6">
         <div className="flex h-16 items-center justify-between">
           {/* Left section - Logo and Desktop Navigation */}
           <div className="flex items-center space-x-4 lg:space-x-8">

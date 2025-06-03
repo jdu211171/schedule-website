@@ -422,7 +422,7 @@ export const POST = withBranchAccess(
                 eventConflict: [format(dateObj, "yyyy年MM月dd日")],
               },
             },
-            { status: 200 }
+            { status: 400 }
           );
         }
 

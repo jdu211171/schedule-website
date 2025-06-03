@@ -61,7 +61,7 @@ export function useSubjectTypeCreate() {
       queries.forEach(([queryKey]) => {
         const currentData =
           queryClient.getQueryData<SubjectTypesResponse>(queryKey);
-        if (currentData) {
+        if (currentData && Array.isArray(currentData.data)) {
           // Create optimistic subject type
           const optimisticSubjectType: SubjectType = {
             subjectTypeId: tempId,
@@ -119,7 +119,7 @@ export function useSubjectTypeCreate() {
       queries.forEach(([queryKey]) => {
         const currentData =
           queryClient.getQueryData<SubjectTypesResponse>(queryKey);
-        if (currentData) {
+        if (currentData && Array.isArray(currentData.data)) {
           queryClient.setQueryData<SubjectTypesResponse>(queryKey, {
             ...currentData,
             data: currentData.data.map((subjectType) =>
@@ -188,7 +188,7 @@ export function useSubjectTypeUpdate() {
       queries.forEach(([queryKey]) => {
         const currentData =
           queryClient.getQueryData<SubjectTypesResponse>(queryKey);
-        if (currentData) {
+        if (currentData && Array.isArray(currentData.data)) {
           queryClient.setQueryData<SubjectTypesResponse>(queryKey, {
             ...currentData,
             data: currentData.data.map((subjectType) =>
@@ -302,7 +302,7 @@ export function useSubjectTypeDelete() {
       // Save the subject type being deleted
       let deletedSubjectType: SubjectType | undefined;
       for (const [, data] of queries) {
-        if (data) {
+        if (data && Array.isArray(data.data)) {
           const found = data.data.find(
             (subjectType) => subjectType.subjectTypeId === subjectTypeId
           );
@@ -318,7 +318,7 @@ export function useSubjectTypeDelete() {
         const currentData =
           queryClient.getQueryData<SubjectTypesResponse>(queryKey);
 
-        if (currentData) {
+        if (currentData && Array.isArray(currentData.data)) {
           queryClient.setQueryData<SubjectTypesResponse>(queryKey, {
             ...currentData,
             data: currentData.data.filter(
