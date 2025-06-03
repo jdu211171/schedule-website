@@ -1,12 +1,13 @@
 // src/schemas/student.schema.ts
 import { z } from "zod";
 
-// Subject preference schema for student registration
+// Subject preference schema for student registration - UPDATED
 export const subjectPreferenceSchema = z.object({
   subjectId: z.string().min(1, "科目を選択してください"),
   subjectTypeIds: z
     .array(z.string())
     .min(1, "少なくとも1つの科目タイプを選択してください"),
+  preferredTeacherIds: z.array(z.string()).optional().default([]), // Added teacher preferences
 });
 
 // Time slot schema for regular availability
@@ -82,11 +83,7 @@ export const regularAvailabilitySchema = z
   );
 
 // User status enum
-export const userStatusEnum = z.enum([
-  "ACTIVE",
-  "SICK",
-  "PERMANENTLY_LEFT",
-]);
+export const userStatusEnum = z.enum(["ACTIVE", "SICK", "PERMANENTLY_LEFT"]);
 
 export const userStatusLabels = {
   ACTIVE: "在籍",
