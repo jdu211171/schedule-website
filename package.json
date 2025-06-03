@@ -73,7 +73,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "15.2.3",
+    "eslint-config-next": "15.3.3",
     "prisma": "^6.8.2",
     "shadcn": "^2.4.0-canary.17",
     "tailwindcss": "^4",
