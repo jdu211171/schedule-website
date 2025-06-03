@@ -61,7 +61,7 @@ export function useStudentTypeCreate() {
           queries.forEach(([queryKey]) => {
             const currentData =
               queryClient.getQueryData<StudentTypesResponse>(queryKey);
-            if (currentData) {
+            if (currentData && Array.isArray(currentData.data)) {
               // Create optimistic student type
               const optimisticStudentType: StudentType = {
                 studentTypeId: tempId,
@@ -121,7 +121,7 @@ export function useStudentTypeCreate() {
           queries.forEach(([queryKey]) => {
             const currentData =
               queryClient.getQueryData<StudentTypesResponse>(queryKey);
-            if (currentData) {
+            if (currentData && Array.isArray(currentData.data)) {
               queryClient.setQueryData<StudentTypesResponse>(queryKey, {
                 ...currentData,
                 data: currentData.data.map((studentType) =>
@@ -190,7 +190,7 @@ export function useStudentTypeUpdate() {
           queries.forEach(([queryKey]) => {
             const currentData =
               queryClient.getQueryData<StudentTypesResponse>(queryKey);
-            if (currentData) {
+            if (currentData && Array.isArray(currentData.data)) {
               queryClient.setQueryData<StudentTypesResponse>(queryKey, {
                 ...currentData,
                 data: currentData.data.map((studentType) =>
@@ -304,7 +304,7 @@ export function useStudentTypeDelete() {
           // Save the student type being deleted
           let deletedStudentType: StudentType | undefined;
           for (const [, data] of queries) {
-            if (data) {
+            if (data && Array.isArray(data.data)) {
               const found = data.data.find(
                 (studentType) => studentType.studentTypeId === studentTypeId
               );
@@ -320,7 +320,7 @@ export function useStudentTypeDelete() {
             const currentData =
               queryClient.getQueryData<StudentTypesResponse>(queryKey);
 
-            if (currentData) {
+            if (currentData && Array.isArray(currentData.data)) {
               queryClient.setQueryData<StudentTypesResponse>(queryKey, {
                 ...currentData,
                 data: currentData.data.filter(
