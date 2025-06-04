@@ -63,7 +63,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { EnhancedAvailabilitySelector } from "../student/enhanced-availability-selector";
 
 import {
   type TeacherCreate,
@@ -78,6 +77,7 @@ import { useTeacherCreate, useTeacherUpdate } from "@/hooks/useTeacherMutation";
 import type { Teacher } from "@/hooks/useTeacherQuery";
 import { useAllSubjects } from "@/hooks/useSubjectQuery";
 import { useAllSubjectTypes } from "@/hooks/useSubjectTypeQuery";
+import { EnhancedAvailabilityRegularSelector } from "../student/enhanced-availability-regular-selector";
 
 interface TimeSlot {
   id: string;
@@ -960,7 +960,7 @@ export function TeacherFormDialog({
                           </Alert>
                         )}
 
-                        <EnhancedAvailabilitySelector
+                        <EnhancedAvailabilityRegularSelector
                           availability={regularAvailability}
                           onChange={setRegularAvailability}
                         />
