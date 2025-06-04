@@ -63,8 +63,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { EnhancedAvailabilitySelector } from "../student/enhanced-availability-selector";
-
 import {
   type TeacherCreate,
   type TeacherUpdate,
@@ -78,6 +76,7 @@ import { useTeacherCreate, useTeacherUpdate } from "@/hooks/useTeacherMutation";
 import type { Teacher } from "@/hooks/useTeacherQuery";
 import { useAllSubjects } from "@/hooks/useSubjectQuery";
 import { useAllSubjectTypes } from "@/hooks/useSubjectTypeQuery";
+import { EnhancedAvailabilitySelector } from "../student/enhanced-availability-selector";
 
 interface TimeSlot {
   id: string;
@@ -191,11 +190,7 @@ export function TeacherFormDialog({
         email: teacher.email || "",
         lineId: teacher.lineId || "",
         notes: teacher.notes || "",
-        status:
-          (teacher.status as
-            | "ACTIVE"
-            | "SICK"
-            | "PERMANENTLY_LEFT") || "ACTIVE",
+        status: (teacher.status as "ACTIVE" | "SICK" | "PERMANENTLY_LEFT") || "ACTIVE",
         username: teacher.username || "",
         password: "",
         branchIds: branchIdsWithDefault,
@@ -625,7 +620,7 @@ export function TeacherFormDialog({
                             name="email"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel className="text-sm font-medium">
+                                <FormLabel className="text-sm font-medium after:content-['*'] after:ml-1 after:text-destructive">
                                   メールアドレス
                                 </FormLabel>
                                 <FormControl>
