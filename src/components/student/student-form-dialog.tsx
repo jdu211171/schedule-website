@@ -391,18 +391,40 @@ export function StudentFormDialog({
     // Convert regularAvailability to the schema format (already matches the expected format)
     submissionData.regularAvailability = regularAvailability;
 
-    // type xatosi ⬇️⬇️
+    // Prepare exceptional availability data for submission
+    if (irregularAvailability.length > 0) {
+      const exceptionalAvailabilityData = irregularAvailability.flatMap((item) => {
+        if (item.fullDay) {
+          // Full day availability
+          return [{
+            userId: submissionData.studentId || undefined,
+            date: item.date,
+            fullDay: true,
+            type: "EXCEPTION" as const,
+            startTime: null as string | null,
+            endTime: null as string | null,
+            reason: null as string | null,
+            notes: null as string | null,
+          }];
+        } else {
+          // Time slot based availability
+          return item.timeSlots.map((slot) => ({
+            userId: submissionData.studentId || undefined,
+            date: item.date,
+            fullDay: false,
+            type: "EXCEPTION" as const,
+            startTime: slot.startTime as string | null,
+            endTime: slot.endTime as string | null,
+            reason: null as string | null,
+            notes: null as string | null,
+          }));
+        }
+      });
 
-    // submissionData.regularAvailability = [
-    //   ...irregularAvailability.map((item) => ({
-    //     date: item.date,
-    //     timeSlots: item.timeSlots,
-    //     fullDay: item.fullDay,
-    //   })),
-    // ];
-    
-    // type xatosi ⬆️⬆️
-    
+      // Add exceptional availability to submission data for backend processing
+      (submissionData as any).exceptionalAvailability = exceptionalAvailabilityData;
+    }
+
     if (isEditing && student) {
       if (!submissionData.password || submissionData.password === "") {
         delete submissionData.password;
@@ -422,15 +444,14 @@ export function StudentFormDialog({
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { studentId, ...createValues } = submissionData;
       const parsedData = studentCreateSchema.parse(createValues);
-      console.log(parsedData);
-      
-      // createStudentMutation.mutate(parsedData as StudentCreate, {
-      //   onSuccess: () => {
-      //     onOpenChange(false);
-      //     form.reset();
-      //     localStorage.removeItem(STORAGE_KEY);
-      //   },
-      // });
+
+      createStudentMutation.mutate(parsedData as StudentCreate, {
+        onSuccess: () => {
+          onOpenChange(false);
+          form.reset();
+          localStorage.removeItem(STORAGE_KEY);
+        },
+      });
     }
   }
 
@@ -610,14 +631,14 @@ export function StudentFormDialog({
                     className="flex items-center gap-2 "
                   >
                     <Clock className="h-4 w-4" />
-                    通常利用可能時間
+                    通常時
                   </TabsTrigger>
                   <TabsTrigger
                     value="availabilityIrregular"
                     className="flex items-center gap-2"
                   >
                     <Clock className="h-4 w-4" />
-                    特別利用可能時間
+                    特別時
                   </TabsTrigger>
                   <TabsTrigger
                     value="branches"

@@ -58,7 +58,7 @@ export function useSubjectCreate() {
           queries.forEach(([queryKey]) => {
             const currentData =
               queryClient.getQueryData<SubjectsResponse>(queryKey);
-            if (currentData) {
+            if (currentData && Array.isArray(currentData.data)) {
               // Create optimistic subject
               const optimisticSubject: Subject = {
                 subjectId: tempId,
@@ -116,7 +116,7 @@ export function useSubjectCreate() {
           queries.forEach(([queryKey]) => {
             const currentData =
               queryClient.getQueryData<SubjectsResponse>(queryKey);
-            if (currentData) {
+            if (currentData && Array.isArray(currentData.data)) {
               queryClient.setQueryData<SubjectsResponse>(queryKey, {
                 ...currentData,
                 data: currentData.data.map((subject) =>
@@ -181,7 +181,7 @@ export function useSubjectUpdate() {
           queries.forEach(([queryKey]) => {
             const currentData =
               queryClient.getQueryData<SubjectsResponse>(queryKey);
-            if (currentData) {
+            if (currentData && Array.isArray(currentData.data)) {
               queryClient.setQueryData<SubjectsResponse>(queryKey, {
                 ...currentData,
                 data: currentData.data.map((subject) =>
@@ -304,7 +304,7 @@ export function useSubjectDelete() {
         const currentData =
           queryClient.getQueryData<SubjectsResponse>(queryKey);
 
-        if (currentData) {
+        if (currentData && Array.isArray(currentData.data)) {
           queryClient.setQueryData<SubjectsResponse>(queryKey, {
             ...currentData,
             data: currentData.data.filter(

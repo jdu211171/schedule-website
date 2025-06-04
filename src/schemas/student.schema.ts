@@ -144,6 +144,22 @@ export const studentBaseSchema = z.object({
     .array(regularAvailabilitySchema)
     .optional()
     .default([]),
+  // Exceptional availability for specific dates
+  exceptionalAvailability: z
+    .array(
+      z.object({
+        userId: z.string().optional(),
+        date: z.date(),
+        fullDay: z.boolean().default(false),
+        type: z.literal("EXCEPTION"),
+        startTime: z.string().optional().nullable(),
+        endTime: z.string().optional().nullable(),
+        reason: z.string().optional().nullable(),
+        notes: z.string().optional().nullable(),
+      })
+    )
+    .optional()
+    .default([]),
 });
 
 export const studentFormSchema = studentBaseSchema.extend({
