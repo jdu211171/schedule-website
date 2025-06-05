@@ -86,7 +86,7 @@ export const userStatusEnum = z.enum(["ACTIVE", "SICK", "PERMANENTLY_LEFT"]);
 
 export const userStatusLabels = {
   ACTIVE: "在籍",
-  SICK: "病欠",
+  SICK: "休会",
   PERMANENTLY_LEFT: "退会",
 } as const;
 
