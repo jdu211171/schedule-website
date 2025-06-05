@@ -595,7 +595,7 @@ export function TeacherFormDialog({
                     className="flex items-center gap-2"
                   >
                     <MapPin className="h-4 w-4" />
-                    支店
+                    校舎
                   </TabsTrigger>
                 </TabsList>
 
@@ -1090,7 +1090,7 @@ export function TeacherFormDialog({
                       <CardHeader>
                         <CardTitle className="text-lg flex items-center gap-2">
                           <MapPin className="h-5 w-5" />
-                          支店配属
+                          校舎配属
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-4">
@@ -1100,7 +1100,7 @@ export function TeacherFormDialog({
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel className="text-sm font-medium after:content-['*'] after:ml-1 after:text-destructive">
-                                所属支店（複数選択可）
+                                所属校舎（複数選択可）
                               </FormLabel>
                               <FormControl>
                                 <div className="mb-6">
@@ -1111,9 +1111,9 @@ export function TeacherFormDialog({
                                       value: branch.branchId,
                                       label: branch.name,
                                     })) || []}
-                                    placeholder="支店を選択してください"
-                                    searchPlaceholder="支店名を検索..."
-                                    emptyMessage="該当する支店が見つかりません"
+                                    placeholder="校舎を選択してください"
+                                    searchPlaceholder="校舎名を検索..."
+                                    emptyMessage="該当する校舎が見つかりません"
                                     loading={isBranchesLoading}
                                     disabled={isBranchesLoading}
                                     defaultValues={defaultBranchId ? [defaultBranchId] : []}
@@ -1146,7 +1146,7 @@ export function TeacherFormDialog({
                               {defaultBranchId && (
                                 <p className="text-xs text-muted-foreground mt-2 bg-muted/50 p-2 rounded-md">
                                   💡
-                                  デフォルト支店は自動的に選択され、削除することはできません
+                                  デフォルト校舎は自動的に選択され、削除することはできません
                                 </p>
                               )}
                             </FormItem>

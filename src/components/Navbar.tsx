@@ -231,10 +231,10 @@ function BranchSelector() {
         disabled={isLoading}
       >
         <SelectTrigger className="w-full sm:w-[180px] text-sm">
-          <SelectValue placeholder="支店を選択">
+          <SelectValue placeholder="校舎を選択">
             {selectedBranchId
               ? branches.find((b) => b.branchId === selectedBranchId)?.name
-              : "支店を選択"}
+              : "校舎を選択"}
           </SelectValue>
         </SelectTrigger>
         <SelectContent>

@@ -157,7 +157,7 @@ export const PATCH = withBranchAccess(
 
         if (branchCount !== branchIds.length) {
           return NextResponse.json(
-            { error: "一部の支店IDが存在しません" }, // "Some branch IDs do not exist"
+            { error: "一部の校舎IDが存在しません" }, // "Some branch IDs do not exist"
             { status: 400 }
           );
         }

@@ -272,7 +272,7 @@ export function StaffFormDialog({
               <div className="space-y-4">
                 <div className="flex items-center gap-2">
                   <h3 className="text-sm font-medium text-muted-foreground">
-                    支店配属
+                    校舎配属
                   </h3>
                   <Separator className="flex-1" />
                 </div>
@@ -283,7 +283,7 @@ export function StaffFormDialog({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-sm font-medium after:content-['*'] after:ml-1 after:text-destructive">
-                        勤務支店（複数選択可）
+                        勤務校舎（複数選択可）
                       </FormLabel>
                       <FormControl>
                         <div className="mb-6">
@@ -294,9 +294,9 @@ export function StaffFormDialog({
                               value: branch.branchId,
                               label: branch.name,
                             })) || []}
-                            placeholder="支店を選択してください"
-                            searchPlaceholder="支店名を検索..."
-                            emptyMessage="該当する支店が見つかりません"
+                            placeholder="校舎を選択してください"
+                            searchPlaceholder="校舎名を検索..."
+                            emptyMessage="該当する校舎が見つかりません"
                             loading={isBranchesLoading}
                             disabled={isBranchesLoading}
                             defaultValues={defaultBranchId ? [defaultBranchId] : []}
@@ -330,7 +330,7 @@ export function StaffFormDialog({
                       {defaultBranchId && (
                         <p className="text-xs text-muted-foreground mt-2 bg-muted/50 p-2 rounded-md">
                           💡
-                          デフォルト支店は自動的に選択され、削除することはできません
+                          デフォルト校舎は自動的に選択され、削除することはできません
                         </p>
                       )}
                     </FormItem>

@@ -59,7 +59,7 @@ export function withBranchAccess(
 
     if (!selectedBranchId) {
       return NextResponse.json(
-        { error: "支店が選択されていません。先に支店を選択してください。" },
+        { error: "校舎が選択されていません。先に校舎を選択してください。" },
         { status: 400 }
       );
     }

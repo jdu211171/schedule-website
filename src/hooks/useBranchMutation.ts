@@ -96,7 +96,7 @@ export function useBranchCreate() {
             tempToServerIdMap.delete(context.tempId);
           }
 
-          toast.error("支店の追加に失敗しました", {
+          toast.error("校舎の追加に失敗しました", {
             id: "branch-create-error",
             description: error.message,
           });
@@ -126,7 +126,7 @@ export function useBranchCreate() {
             }
           });
 
-          toast.success("支店を追加しました", {
+          toast.success("校舎を追加しました", {
             id: "branch-create-success",
           });
         },
@@ -226,13 +226,13 @@ export function useBranchUpdate() {
               context.previousBranch
             );
           }
-          toast.error("支店の更新に失敗しました", {
+          toast.error("校舎の更新に失敗しました", {
             id: "branch-update-error",
             description: error.message,
           });
         },
         onSuccess: (data) => {
-          toast.success("支店を更新しました", {
+          toast.success("校舎を更新しました", {
             id: "branch-update-success",
           });
         },
@@ -353,7 +353,7 @@ export function useBranchDelete() {
         queryClient.setQueryData(["branch", resolvedId], context.deletedBranch);
       }
 
-      toast.error("支店の削除に失敗しました", {
+      toast.error("校舎の削除に失敗しました", {
         id: "branch-delete-error",
         description: error.message,
       });
@@ -364,7 +364,7 @@ export function useBranchDelete() {
         tempToServerIdMap.delete(branchId);
       }
 
-      toast.success("支店を削除しました", {
+      toast.success("校舎を削除しました", {
         id: "branch-delete-success",
       });
     },

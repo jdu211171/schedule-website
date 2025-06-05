@@ -135,7 +135,7 @@ export const studentBaseSchema = z.object({
     .optional()
     .nullable(),
   branchIds: z
-    .array(z.string(), { invalid_type_error: "支店を選択してください" })
+    .array(z.string(), { invalid_type_error: "校舎を選択してください" })
     .optional(),
   // Subject preferences
   subjectPreferences: z.array(subjectPreferenceSchema).optional().default([]),
