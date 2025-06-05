@@ -44,6 +44,9 @@ type StudentWithIncludes = Student & {
       fullDay: boolean | null;
       type: string;
       status: string;
+      date: Date | null;
+      reason: string | null;
+      notes: string | null;
     }[];
   };
   teacherPreferences?: {
@@ -89,6 +92,17 @@ type FormattedStudent = {
       endTime: string;
     }[];
     fullDay: boolean;
+  }[];
+  exceptionalAvailability: {
+    date: string;
+    timeSlots: {
+      id: string;
+      startTime: string;
+      endTime: string;
+    }[];
+    fullDay: boolean;
+    reason?: string | null;
+    notes?: string | null;
   }[];
   createdAt: Date;
   updatedAt: Date;
@@ -196,6 +210,44 @@ const formatStudent = (student: StudentWithIncludes): FormattedStudent => {
     }
   );
 
+  // Process exceptional availability data
+  const exceptionalAvailability: FormattedStudent['exceptionalAvailability'] = [];
+
+  student.user.availability?.forEach((avail) => {
+    if (
+      avail.type === "EXCEPTION" &&
+      avail.status === "APPROVED" &&
+      avail.date
+    ) {
+      const dateStr = avail.date.toISOString().split('T')[0];
+
+      // Check if we already have an entry for this date
+      let dateEntry = exceptionalAvailability.find(ea => ea.date === dateStr);
+
+      if (!dateEntry) {
+        dateEntry = {
+          date: dateStr,
+          timeSlots: [],
+          fullDay: false,
+          reason: avail.reason,
+          notes: avail.notes
+        };
+        exceptionalAvailability.push(dateEntry);
+      }
+
+      if (avail.fullDay) {
+        dateEntry.fullDay = true;
+        dateEntry.timeSlots = [];
+      } else if (avail.startTime && avail.endTime && !dateEntry.fullDay) {
+        dateEntry.timeSlots.push({
+          id: avail.id,
+          startTime: `${String(avail.startTime.getUTCHours()).padStart(2, "0")}:${String(avail.startTime.getUTCMinutes()).padStart(2, "0")}`,
+          endTime: `${String(avail.endTime.getUTCHours()).padStart(2, "0")}:${String(avail.endTime.getUTCMinutes()).padStart(2, "0")}`
+        });
+      }
+    }
+  });
+
   return {
     studentId: student.studentId,
     userId: student.userId,
@@ -218,6 +270,7 @@ const formatStudent = (student: StudentWithIncludes): FormattedStudent => {
       })) || [],
     subjectPreferences,
     regularAvailability,
+    exceptionalAvailability,
     createdAt: student.createdAt,
     updatedAt: student.updatedAt,
   };
@@ -343,6 +396,9 @@ export const GET = withBranchAccess(
                 fullDay: true,
                 type: true,
                 status: true,
+                date: true,
+                reason: true,
+                notes: true,
               },
             },
           },
@@ -736,6 +792,9 @@ export const POST = withBranchAccess(
                     fullDay: true,
                     type: true,
                     status: true,
+                    date: true,
+                    reason: true,
+                    notes: true,
                   },
                 },
               },

@@ -149,7 +149,8 @@ export const studentBaseSchema = z.object({
     .array(
       z.object({
         userId: z.string().optional(),
-        date: z.date(),
+        date: z.coerce.date(),
+        endDate: z.coerce.date().optional(), // Added for date range support
         fullDay: z.boolean().default(false),
         type: z.literal("EXCEPTION"),
         startTime: z.string().optional().nullable(),

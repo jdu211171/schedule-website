@@ -24,6 +24,27 @@ export type Student = {
   subjectPreferences: {
     subjectId: string;
     subjectTypeIds: string[];
+    preferredTeacherIds?: string[];
+  }[];
+  regularAvailability: {
+    dayOfWeek: string;
+    timeSlots: {
+      id: string;
+      startTime: string;
+      endTime: string;
+    }[];
+    fullDay: boolean;
+  }[];
+  exceptionalAvailability: {
+    date: string;
+    timeSlots: {
+      id: string;
+      startTime: string;
+      endTime: string;
+    }[];
+    fullDay: boolean;
+    reason?: string | null;
+    notes?: string | null;
   }[];
   createdAt: Date;
   updatedAt: Date;

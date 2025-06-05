@@ -180,7 +180,7 @@ export function StudentFormDialog({
     RegularAvailability[]
   >([]);
   const [irregularAvailability, setIrregularAvailability] = useState<
-  IrregularAvailability[]
+    IrregularAvailability[]
   >([]);
   const [availabilityErrors, setAvailabilityErrors] = useState<string[]>([]);
 
@@ -243,7 +243,19 @@ export function StudentFormDialog({
       // Initialize regular availability if it exists
       const studentWithAvailability = student as Student & {
         regularAvailability?: RegularAvailability[];
+        exceptionalAvailability?: {
+          date: string;
+          timeSlots: {
+            id: string;
+            startTime: string;
+            endTime: string;
+          }[];
+          fullDay: boolean;
+          reason?: string | null;
+          notes?: string | null;
+        }[];
       };
+
       if (
         studentWithAvailability.regularAvailability &&
         studentWithAvailability.regularAvailability.length > 0
@@ -251,6 +263,22 @@ export function StudentFormDialog({
         setRegularAvailability(studentWithAvailability.regularAvailability);
       } else {
         setRegularAvailability([]);
+      }
+
+      // Initialize exceptional availability if it exists
+      if (
+        studentWithAvailability.exceptionalAvailability &&
+        studentWithAvailability.exceptionalAvailability.length > 0
+      ) {
+        // Convert date strings to Date objects
+        const irregularAvailabilityData = studentWithAvailability.exceptionalAvailability.map(ea => ({
+          date: new Date(ea.date),
+          timeSlots: ea.timeSlots,
+          fullDay: ea.fullDay
+        }));
+        setIrregularAvailability(irregularAvailabilityData);
+      } else {
+        setIrregularAvailability([]);
       }
     } else {
       // For create, default to defaultBranchId only
@@ -270,6 +298,7 @@ export function StudentFormDialog({
       });
       setStudentSubjects([]);
       setRegularAvailability([]);
+      setIrregularAvailability([]);
     }
   }, [student, form, defaultBranchId]);
 
@@ -570,6 +599,7 @@ export function StudentFormDialog({
     });
     setStudentSubjects([]);
     setRegularAvailability([]);
+    setIrregularAvailability([]);
     setCurrentSubject(undefined);
     setSelectedSubjectTypes([]);
     setSelectedTeacherIds([]);
@@ -1266,14 +1296,14 @@ export function StudentFormDialog({
                         />
 
                         {isEditing && (
-                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-6">
+                          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mt-6">
                             <div className="flex items-start gap-2">
-                              <Calendar className="h-4 w-4 text-blue-600 mt-0.5" />
+                              <Calendar className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5" />
                               <div className="text-sm">
-                                <p className="font-medium text-blue-900">
+                                <p className="font-medium text-blue-900 dark:text-blue-100">
                                   例外的な利用可能時間
                                 </p>
-                                <p className="text-blue-700 mt-1">
+                                <p className="text-blue-700 dark:text-blue-300 mt-1">
                                   特定の日付での利用可能時間の変更は、生徒詳細ページの「例外設定」タブで管理できます。
                                 </p>
                               </div>
@@ -1288,11 +1318,11 @@ export function StudentFormDialog({
                       <CardHeader>
                         <CardTitle className="text-lg flex items-center gap-2">
                           <Clock className="h-5 w-5" />
-                          定期利用可能時間tobetsu
+                          例外的な利用可能時間
                         </CardTitle>
                         <p className="text-sm text-muted-foreground">
-                          生徒の通常の利用可能時間を曜日ごとに設定してください。各曜日に複数の時間帯を設定することができます。
-                          特別な日程については、後で例外設定で管理できます。
+                          特定の日付での利用可能時間を設定してください。各日付に複数の時間帯を設定することができます。
+                          ここで設定した例外的な利用可能時間は、通常の利用可能時間より優先されます。
                         </p>
                       </CardHeader>
                       <CardContent>
@@ -1315,15 +1345,15 @@ export function StudentFormDialog({
                         />
 
                         {isEditing && (
-                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-6">
+                          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mt-6">
                             <div className="flex items-start gap-2">
-                              <Calendar className="h-4 w-4 text-blue-600 mt-0.5" />
+                              <Calendar className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5" />
                               <div className="text-sm">
-                                <p className="font-medium text-blue-900">
-                                  例外的な利用可能時間
+                                <p className="font-medium text-blue-900 dark:text-blue-100">
+                                  例外的な利用可能時間の管理
                                 </p>
-                                <p className="text-blue-700 mt-1">
-                                  特定の日付での利用可能時間の変更は、生徒詳細ページの「例外設定」タブで管理できます。
+                                <p className="text-blue-700 dark:text-blue-300 mt-1">
+                                  保存後、より詳細な例外的な利用可能時間の管理は、生徒詳細ページの「例外設定」タブで行うことができます。
                                 </p>
                               </div>
                             </div>
