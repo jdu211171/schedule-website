@@ -22,6 +22,26 @@ export type Teacher = {
     subjectId: string;
     subjectTypeIds: string[];
   }[];
+  regularAvailability: {
+    dayOfWeek: string;
+    timeSlots: {
+      id: string;
+      startTime: string;
+      endTime: string;
+    }[];
+    fullDay: boolean;
+  }[];
+  exceptionalAvailability: {
+    date: string;
+    timeSlots: {
+      id: string;
+      startTime: string;
+      endTime: string;
+    }[];
+    fullDay: boolean;
+    reason?: string | null;
+    notes?: string | null;
+  }[];
   createdAt: Date;
   updatedAt: Date;
   _optimistic?: boolean;

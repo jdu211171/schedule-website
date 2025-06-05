@@ -384,7 +384,7 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
           <DialogHeader>
             <DialogTitle>
               {mode === 'view' ? '授業の詳細' : '授業の編集'}
-              <span className={`text-sm font-normal ml-2 ${isRecurringLesson ? 'text-blue-500 dark:text-blue-400' : 'text-red-500 dark:text-red-400'}`}>
+              <span className={`text-sm font-normal ml-2 ${isRecurringLesson ? 'text-indigo-500 dark:text-indigo-400' : 'text-red-500 dark:text-red-400'}`}>
                 ({lesson.classType?.name || lesson.classTypeName || '不明'})
               </span>
             </DialogTitle>
