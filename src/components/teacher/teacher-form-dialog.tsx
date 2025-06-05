@@ -78,6 +78,7 @@ import type { Teacher } from "@/hooks/useTeacherQuery";
 import { useAllSubjects } from "@/hooks/useSubjectQuery";
 import { useAllSubjectTypes } from "@/hooks/useSubjectTypeQuery";
 import { EnhancedAvailabilityRegularSelector } from "../student/enhanced-availability-regular-selector";
+import { EnhancedAvailabilityIrregularSelector } from "../student/enhanced-availability-irregular-selector";
 
 interface TimeSlot {
   id: string;
@@ -94,6 +95,12 @@ interface RegularAvailability {
     | "FRIDAY"
     | "SATURDAY"
     | "SUNDAY";
+  timeSlots: TimeSlot[];
+  fullDay: boolean;
+}
+
+interface IrregularAvailability {
+  date: Date;
   timeSlots: TimeSlot[];
   fullDay: boolean;
 }
@@ -154,6 +161,9 @@ export function TeacherFormDialog({
   const [regularAvailability, setRegularAvailability] = useState<
     RegularAvailability[]
   >([]);
+  const [irregularAvailability, setIrregularAvailability] = useState<
+    IrregularAvailability[]
+  >([]);
   const [availabilityErrors, setAvailabilityErrors] = useState<string[]>([]);
 
   // Local storage key
@@ -213,6 +223,17 @@ export function TeacherFormDialog({
       // This would need to be added to the API response and Teacher type
       const teacherWithAvailability = teacher as Teacher & {
         regularAvailability?: RegularAvailability[];
+        exceptionalAvailability?: {
+          date: string;
+          timeSlots: {
+            id: string;
+            startTime: string;
+            endTime: string;
+          }[];
+          fullDay: boolean;
+          reason?: string | null;
+          notes?: string | null;
+        }[];
       };
       if (
         teacherWithAvailability.regularAvailability &&
@@ -221,6 +242,22 @@ export function TeacherFormDialog({
         setRegularAvailability(teacherWithAvailability.regularAvailability);
       } else {
         setRegularAvailability([]);
+      }
+
+      // Initialize exceptional availability if it exists
+      if (
+        teacherWithAvailability.exceptionalAvailability &&
+        teacherWithAvailability.exceptionalAvailability.length > 0
+      ) {
+        // Convert date strings to Date objects
+        const irregularAvailabilityData = teacherWithAvailability.exceptionalAvailability.map(ea => ({
+          date: new Date(ea.date),
+          timeSlots: ea.timeSlots,
+          fullDay: ea.fullDay
+        }));
+        setIrregularAvailability(irregularAvailabilityData);
+      } else {
+        setIrregularAvailability([]);
       }
     } else {
       // For create, default to defaultBranchId only
@@ -238,6 +275,7 @@ export function TeacherFormDialog({
       });
       setTeacherSubjects([]);
       setRegularAvailability([]);
+      setIrregularAvailability([]);
     }
   }, [teacher, form, defaultBranchId]);
 
@@ -250,6 +288,7 @@ export function TeacherFormDialog({
         form.reset(parsedData.formValues);
         setTeacherSubjects(parsedData.teacherSubjects || []);
         setRegularAvailability(parsedData.regularAvailability || []);
+        setIrregularAvailability(parsedData.irregularAvailability || []);
       } catch (error) {
         console.error("Failed to parse saved form data:", error);
       }
@@ -265,12 +304,13 @@ export function TeacherFormDialog({
           formValues,
           teacherSubjects,
           regularAvailability,
+          irregularAvailability,
         })
       );
     });
 
     return () => subscription.unsubscribe();
-  }, [form, teacherSubjects, regularAvailability, STORAGE_KEY]);
+  }, [form, teacherSubjects, regularAvailability, irregularAvailability, STORAGE_KEY]);
 
   // Validate availability data
   useEffect(() => {
@@ -339,6 +379,38 @@ export function TeacherFormDialog({
 
     // Convert regularAvailability to the schema format (already matches the expected format)
     submissionData.regularAvailability = regularAvailability;
+
+    // Add exceptional availability data if it exists
+    if (irregularAvailability.length > 0) {
+      const exceptionalAvailabilityData = irregularAvailability.flatMap((item) => {
+        if (item.fullDay) {
+          // Full day availability
+          return [{
+            userId: submissionData.teacherId || undefined,
+            date: item.date, // Keep as Date object
+            fullDay: true,
+            type: "EXCEPTION" as const,
+            startTime: null as string | null,
+            endTime: null as string | null,
+            reason: null as string | null,
+            notes: null as string | null,
+          }];
+        } else {
+          // Time slot based availability
+          return item.timeSlots.map((slot) => ({
+            userId: submissionData.teacherId || undefined,
+            date: item.date, // Keep as Date object
+            fullDay: false,
+            type: "EXCEPTION" as const,
+            startTime: slot.startTime as string | null,
+            endTime: slot.endTime as string | null,
+            reason: null as string | null,
+            notes: null as string | null,
+          }));
+        }
+      });
+      submissionData.exceptionalAvailability = exceptionalAvailabilityData;
+    }
 
     if (isEditing && teacher) {
       if (!submissionData.password || submissionData.password === "") {
@@ -463,6 +535,7 @@ export function TeacherFormDialog({
     });
     setTeacherSubjects([]);
     setRegularAvailability([]);
+    setIrregularAvailability([]);
     setCurrentSubject(undefined);
     setSelectedSubjectTypes([]);
     setIsAllSelected(false);
@@ -496,7 +569,7 @@ export function TeacherFormDialog({
                 onValueChange={setActiveTab}
                 className="w-full"
               >
-                <TabsList className="grid w-full grid-cols-5 mb-6">
+                <TabsList className="grid w-full grid-cols-6 mb-6">
                   <TabsTrigger
                     value="basic"
                     className="flex items-center gap-2"
@@ -523,7 +596,14 @@ export function TeacherFormDialog({
                     className="flex items-center gap-2"
                   >
                     <Clock className="h-4 w-4" />
-                    利用可能時間
+                    通常時
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="availabilityIrregular"
+                    className="flex items-center gap-2"
+                  >
+                    <Clock className="h-4 w-4" />
+                    特別時
                   </TabsTrigger>
                   <TabsTrigger
                     value="branches"
@@ -975,6 +1055,42 @@ export function TeacherFormDialog({
                                 </p>
                                 <p className="text-blue-700 dark:text-blue-300 mt-1">
                                   特定の日付での利用可能時間の変更は、教師詳細ページの「例外設定」タブで管理できます。
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+
+                  <TabsContent value="availabilityIrregular" className="space-y-6 mt-0">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg flex items-center gap-2">
+                          <Clock className="h-5 w-5" />
+                          例外的な利用可能時間
+                        </CardTitle>
+                        <p className="text-sm text-muted-foreground">
+                          特定の日付での利用可能時間を設定してください。各日付に複数の時間帯を設定することができます。
+                        </p>
+                      </CardHeader>
+                      <CardContent>
+                        <EnhancedAvailabilityIrregularSelector
+                          availability={irregularAvailability}
+                          onChange={setIrregularAvailability}
+                        />
+
+                        {isEditing && (
+                          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mt-6">
+                            <div className="flex items-start gap-2">
+                              <Calendar className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5" />
+                              <div className="text-sm">
+                                <p className="font-medium text-blue-900 dark:text-blue-100">
+                                  例外的な利用可能時間の管理
+                                </p>
+                                <p className="text-blue-700 dark:text-blue-300 mt-1">
+                                  保存後、より詳細な例外的な利用可能時間の管理は、教師詳細ページの「例外設定」タブで行うことができます。
                                 </p>
                               </div>
                             </div>
