@@ -49,6 +49,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { SearchableMultiSelect } from "@/components/admin-schedule/searchable-multi-select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -141,10 +142,6 @@ export function StudentFormDialog({
   // Fetch real data for subjects and subject types
   const { data: subjects = [] } = useAllSubjects();
   const { data: subjectTypes = [] } = useAllSubjectTypes();
-
-  // Branch selection state
-  const [branchSearchTerm, setBranchSearchTerm] = useState("");
-  const [showBranchDropdown, setShowBranchDropdown] = useState(false);
 
   // Use the selected branch from session instead of first branch
   const defaultBranchId =
@@ -610,12 +607,6 @@ export function StudentFormDialog({
   }
 
   // Filter branches based on search term
-  const filteredBranches =
-    branchesResponse?.data.filter(
-      (branch: { branchId: string; name: string }) =>
-        branch.name.toLowerCase().includes(branchSearchTerm.toLowerCase())
-    ) || [];
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[1200px] max-h-[95vh] overflow-hidden flex flex-col">
@@ -1381,171 +1372,46 @@ export function StudentFormDialog({
                                 所属支店（複数選択可）
                               </FormLabel>
                               <FormControl>
-                                {isBranchesLoading ? (
-                                  <div className="flex items-center justify-center h-11 border rounded-lg bg-muted/50">
-                                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                    <span className="text-sm text-muted-foreground">
-                                      支店情報を読み込み中...
-                                    </span>
-                                  </div>
-                                ) : (
-                                  <div className="relative">
-                                    <Input
-                                      placeholder="支店名を検索..."
-                                      value={branchSearchTerm}
-                                      onChange={(e) => {
-                                        setBranchSearchTerm(e.target.value);
-                                        setShowBranchDropdown(
-                                          e.target.value.trim() !== ""
-                                        );
-                                      }}
-                                      onFocus={() => {
-                                        if (branchSearchTerm.trim() !== "") {
-                                          setShowBranchDropdown(true);
-                                        }
-                                      }}
-                                      onBlur={() => {
-                                        setTimeout(
-                                          () => setShowBranchDropdown(false),
-                                          200
-                                        );
-                                      }}
-                                      className="h-11"
-                                    />
-
-                                    {showBranchDropdown && (
-                                      <div className="absolute z-10 w-full mt-1 bg-background border rounded-md shadow-lg max-h-60 overflow-auto">
-                                        {filteredBranches.map(
-                                          (branch: {
-                                            branchId: string;
-                                            name: string;
-                                          }) => {
-                                            const isAlreadySelected =
-                                              field.value?.includes(
-                                                branch.branchId
-                                              );
-                                            const isDefault =
-                                              branch.branchId ===
-                                              defaultBranchId;
-
-                                            return (
-                                              <div
-                                                key={branch.branchId}
-                                                className={`p-3 hover:bg-accent cursor-pointer flex items-center justify-between ${
-                                                  isAlreadySelected
-                                                    ? "bg-accent/50"
-                                                    : ""
-                                                }`}
-                                                onClick={() => {
-                                                  if (!isAlreadySelected) {
-                                                    const currentValues =
-                                                      field.value || [];
-                                                    let newValues = [
-                                                      ...currentValues,
-                                                      branch.branchId,
-                                                    ];
-
-                                                    // Always ensure default branch is included
-                                                    if (
-                                                      defaultBranchId &&
-                                                      !newValues.includes(
-                                                        defaultBranchId
-                                                      )
-                                                    ) {
-                                                      newValues = [
-                                                        defaultBranchId,
-                                                        ...newValues,
-                                                      ];
-                                                    }
-
-                                                    field.onChange(newValues);
-                                                  }
-                                                  setBranchSearchTerm("");
-                                                  setShowBranchDropdown(false);
-                                                }}
-                                              >
-                                                <span className="flex-1">
-                                                  {branch.name}
-                                                </span>
-                                                <div className="flex items-center gap-2">
-                                                  {isDefault && (
-                                                    <Badge
-                                                      variant="secondary"
-                                                      className="text-xs"
-                                                    >
-                                                      デフォルト
-                                                    </Badge>
-                                                  )}
-                                                  {isAlreadySelected && (
-                                                    <Badge
-                                                      variant="outline"
-                                                      className="text-xs"
-                                                    >
-                                                      選択済み
-                                                    </Badge>
-                                                  )}
-                                                </div>
-                                              </div>
-                                            );
-                                          }
+                                <div className="mb-6">
+                                  <SearchableMultiSelect
+                                    value={field.value || []}
+                                    onValueChange={field.onChange}
+                                    items={branchesResponse?.data.map((branch: { branchId: string; name: string }) => ({
+                                      value: branch.branchId,
+                                      label: branch.name,
+                                    })) || []}
+                                    placeholder="支店を選択してください"
+                                    searchPlaceholder="支店名を検索..."
+                                    emptyMessage="該当する支店が見つかりません"
+                                    loading={isBranchesLoading}
+                                    disabled={isBranchesLoading}
+                                    defaultValues={defaultBranchId ? [defaultBranchId] : []}
+                                    renderSelectedBadge={(item, isDefault, onRemove) => (
+                                      <Badge
+                                        key={item.value}
+                                        variant={isDefault ? "default" : "secondary"}
+                                        className="flex items-center gap-1 px-3 py-1"
+                                      >
+                                        <span>{item.label}</span>
+                                        {isDefault && (
+                                          <span className="text-xs">(デフォルト)</span>
                                         )}
-                                        {filteredBranches.length === 0 && (
-                                          <div className="p-3 text-muted-foreground text-center">
-                                            該当する支店が見つかりません
-                                          </div>
+                                        {!isDefault && onRemove && (
+                                          <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-4 w-4 p-0 ml-1 hover:bg-muted rounded-full"
+                                            onClick={onRemove}
+                                          >
+                                            <X className="h-3 w-3" />
+                                          </Button>
                                         )}
-                                      </div>
+                                      </Badge>
                                     )}
-                                  </div>
-                                )}
+                                  />
+                                </div>
                               </FormControl>
-
-                              {/* Display selected branches */}
-                              <div className="flex flex-wrap gap-2 mt-3">
-                                {(field.value || []).map((branchId, index) => {
-                                  const branch = branchesResponse?.data.find(
-                                    (b: { branchId: string; name: string }) =>
-                                      b.branchId === branchId
-                                  );
-                                  const isDefault =
-                                    branchId === defaultBranchId;
-
-                                  return (
-                                    <Badge
-                                      key={index}
-                                      variant={
-                                        isDefault ? "default" : "secondary"
-                                      }
-                                      className="flex items-center gap-1 px-3 py-1"
-                                    >
-                                      <span>{branch?.name || branchId}</span>
-                                      {isDefault && (
-                                        <span className="text-xs">
-                                          (デフォルト)
-                                        </span>
-                                      )}
-                                      {!isDefault && (
-                                        <Button
-                                          type="button"
-                                          variant="ghost"
-                                          size="sm"
-                                          className="h-4 w-4 p-0 ml-1 hover:bg-muted rounded-full"
-                                          onClick={() => {
-                                            const newValues = [
-                                              ...(field.value || []),
-                                            ];
-                                            newValues.splice(index, 1);
-                                            field.onChange(newValues);
-                                          }}
-                                        >
-                                          <X className="h-3 w-3" />
-                                        </Button>
-                                      )}
-                                    </Badge>
-                                  );
-                                })}
-                              </div>
-
                               <FormMessage />
                               {defaultBranchId && (
                                 <p className="text-xs text-muted-foreground mt-2 bg-muted/50 p-2 rounded-md">
