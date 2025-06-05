@@ -44,7 +44,7 @@ const TIME_PRESETS = [
   { label: "夜間 (19:00-22:00)", start: "19:00", end: "22:00" },
 ] as const;
 
-export function EnhancedAvailabilitySelector({ availability, onChange }: EnhancedAvailabilitySelectorProps) {
+export function EnhancedAvailabilityRegularSelector({ availability, onChange }: EnhancedAvailabilitySelectorProps) {
   const [selectedDay, setSelectedDay] = useState<typeof DAYS_OF_WEEK[number]["value"] | "">("");
   const [startTime, setStartTime] = useState<string>("09:00");
   const [endTime, setEndTime] = useState<string>("17:00");

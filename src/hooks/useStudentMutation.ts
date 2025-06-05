@@ -76,7 +76,30 @@ export function useStudentCreate() {
                 email: newStudent.email || null,
                 password: newStudent.password || null,
                 branches: [],
-                subjectPreferences: [],
+                subjectPreferences: newStudent.subjectPreferences || [],
+                regularAvailability: (newStudent.regularAvailability || []).map(ra => ({
+                  dayOfWeek: ra.dayOfWeek,
+                  timeSlots: ra.timeSlots || [],
+                  fullDay: ra.fullDay
+                })),
+                exceptionalAvailability: (newStudent.exceptionalAvailability || []).map(ea => {
+                  // Convert schema format to API response format
+                  const timeSlots = [];
+                  if (!ea.fullDay && ea.startTime && ea.endTime) {
+                    timeSlots.push({
+                      id: crypto.randomUUID(),
+                      startTime: ea.startTime,
+                      endTime: ea.endTime
+                    });
+                  }
+                  return {
+                    date: ea.date instanceof Date ? ea.date.toISOString().split('T')[0] : ea.date,
+                    timeSlots,
+                    fullDay: ea.fullDay,
+                    reason: ea.reason || null,
+                    notes: ea.notes || null
+                  };
+                }),
                 createdAt: new Date(),
                 updatedAt: new Date(),
                 _optimistic: true,
@@ -200,6 +223,33 @@ export function useStudentUpdate() {
                         ...student,
                         ...updatedStudent,
                         name: updatedStudent.name || student.name,
+                        // Convert availability data to match Student interface
+                        regularAvailability: updatedStudent.regularAvailability
+                          ? updatedStudent.regularAvailability.map(ra => ({
+                              dayOfWeek: ra.dayOfWeek,
+                              timeSlots: ra.timeSlots || [],
+                              fullDay: ra.fullDay
+                            }))
+                          : student.regularAvailability,
+                        exceptionalAvailability: updatedStudent.exceptionalAvailability
+                          ? updatedStudent.exceptionalAvailability.map(ea => {
+                              const timeSlots = [];
+                              if (!ea.fullDay && ea.startTime && ea.endTime) {
+                                timeSlots.push({
+                                  id: crypto.randomUUID(),
+                                  startTime: ea.startTime,
+                                  endTime: ea.endTime
+                                });
+                              }
+                              return {
+                                date: ea.date instanceof Date ? ea.date.toISOString().split('T')[0] : ea.date,
+                                timeSlots,
+                                fullDay: ea.fullDay,
+                                reason: ea.reason || null,
+                                notes: ea.notes || null
+                              };
+                            })
+                          : student.exceptionalAvailability,
                         updatedAt: new Date(),
                       }
                     : student
@@ -208,12 +258,40 @@ export function useStudentUpdate() {
             }
           });
           if (previousStudent) {
-            queryClient.setQueryData<Student>(["student", resolvedId], {
+            const updatedData = {
               ...previousStudent,
               ...updatedStudent,
               name: updatedStudent.name || previousStudent.name,
+              // Convert availability data to match Student interface
+              regularAvailability: updatedStudent.regularAvailability
+                ? updatedStudent.regularAvailability.map(ra => ({
+                    dayOfWeek: ra.dayOfWeek,
+                    timeSlots: ra.timeSlots || [],
+                    fullDay: ra.fullDay
+                  }))
+                : previousStudent.regularAvailability,
+              exceptionalAvailability: updatedStudent.exceptionalAvailability
+                ? updatedStudent.exceptionalAvailability.map(ea => {
+                    const timeSlots = [];
+                    if (!ea.fullDay && ea.startTime && ea.endTime) {
+                      timeSlots.push({
+                        id: crypto.randomUUID(),
+                        startTime: ea.startTime,
+                        endTime: ea.endTime
+                      });
+                    }
+                    return {
+                      date: ea.date instanceof Date ? ea.date.toISOString().split('T')[0] : ea.date,
+                      timeSlots,
+                      fullDay: ea.fullDay,
+                      reason: ea.reason || null,
+                      notes: ea.notes || null
+                    };
+                  })
+                : previousStudent.exceptionalAvailability,
               updatedAt: new Date(),
-            });
+            };
+            queryClient.setQueryData<Student>(["student", resolvedId], updatedData);
           }
           return { previousStudents, previousStudent };
         },

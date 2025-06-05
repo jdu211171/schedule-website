@@ -73,6 +73,17 @@ type FormattedTeacher = {
     }[];
     fullDay: boolean;
   }[];
+  exceptionalAvailability: {
+    date: string;
+    timeSlots: {
+      id: string;
+      startTime: string;
+      endTime: string;
+    }[];
+    fullDay: boolean;
+    reason?: string | null;
+    notes?: string | null;
+  }[];
   createdAt: Date;
   updatedAt: Date;
 };
@@ -155,6 +166,44 @@ const formatTeacher = (teacher: TeacherWithIncludes): FormattedTeacher => {
     }
   );
 
+  // Process exceptional availability data
+  const exceptionalAvailability: FormattedTeacher['exceptionalAvailability'] = [];
+
+  teacher.user.availability?.forEach((avail) => {
+    if (
+      avail.type === "EXCEPTION" &&
+      avail.status === "APPROVED" &&
+      avail.date
+    ) {
+      const dateStr = avail.date.toISOString().split('T')[0];
+
+      // Check if we already have an entry for this date
+      let dateEntry = exceptionalAvailability.find(ea => ea.date === dateStr);
+
+      if (!dateEntry) {
+        dateEntry = {
+          date: dateStr,
+          timeSlots: [],
+          fullDay: false,
+          reason: avail.reason,
+          notes: avail.notes
+        };
+        exceptionalAvailability.push(dateEntry);
+      }
+
+      if (avail.fullDay) {
+        dateEntry.fullDay = true;
+        dateEntry.timeSlots = [];
+      } else if (avail.startTime && avail.endTime && !dateEntry.fullDay) {
+        dateEntry.timeSlots.push({
+          id: avail.id,
+          startTime: `${String(avail.startTime.getUTCHours()).padStart(2, "0")}:${String(avail.startTime.getUTCMinutes()).padStart(2, "0")}`,
+          endTime: `${String(avail.endTime.getUTCHours()).padStart(2, "0")}:${String(avail.endTime.getUTCMinutes()).padStart(2, "0")}`
+        });
+      }
+    }
+  });
+
   return {
     teacherId: teacher.teacherId,
     userId: teacher.userId,
@@ -173,6 +222,7 @@ const formatTeacher = (teacher: TeacherWithIncludes): FormattedTeacher => {
       })) || [],
     subjectPreferences,
     regularAvailability,
+    exceptionalAvailability,
     createdAt: teacher.createdAt,
     updatedAt: teacher.updatedAt,
   };
@@ -181,7 +231,7 @@ const formatTeacher = (teacher: TeacherWithIncludes): FormattedTeacher => {
 // GET a specific teacher
 export const GET = withBranchAccess(
   ["ADMIN", "STAFF"],
-  async (request: NextRequest, session) => {
+  async (request: NextRequest) => {
     const teacherId = request.url.split("/").pop();
 
     if (!teacherId) {
@@ -268,7 +318,7 @@ export const GET = withBranchAccess(
 // PATCH - Update a teacher
 export const PATCH = withBranchAccess(
   ["ADMIN", "STAFF"],
-  async (request: NextRequest, session) => {
+  async (request: NextRequest) => {
     try {
       const teacherId = request.url.split("/").pop();
       if (!teacherId) {
@@ -309,6 +359,7 @@ export const PATCH = withBranchAccess(
         branchIds,
         subjectPreferences,
         regularAvailability = [],
+        exceptionalAvailability = [],
         ...teacherData
       } = result.data;
 
@@ -518,6 +569,66 @@ export const PATCH = withBranchAccess(
           }
         }
 
+        // Update exceptional availability if provided
+        if (exceptionalAvailability.length > 0) {
+          // Delete existing exceptional availability records for this user
+          await tx.userAvailability.deleteMany({
+            where: {
+              userId: existingTeacher.userId,
+              type: "EXCEPTION",
+            },
+          });
+
+          const exceptionalRecords = [];
+
+          for (const exceptionalItem of exceptionalAvailability) {
+            const { date, fullDay, startTime, endTime, reason, notes } = exceptionalItem;
+
+            if (fullDay) {
+              // Create a full-day exceptional availability record
+              exceptionalRecords.push({
+                userId: existingTeacher.userId,
+                dayOfWeek: null,
+                type: "EXCEPTION" as const,
+                status: "APPROVED" as const,
+                fullDay: true,
+                startTime: null,
+                endTime: null,
+                date: date,
+                reason: reason || null,
+                notes: notes || null,
+              });
+            } else if (startTime && endTime) {
+              // Create time-specific exceptional availability record
+              const [startHours, startMinutes] = startTime.split(":").map(Number);
+              const [endHours, endMinutes] = endTime.split(":").map(Number);
+
+              exceptionalRecords.push({
+                userId: existingTeacher.userId,
+                dayOfWeek: null,
+                type: "EXCEPTION" as const,
+                status: "APPROVED" as const,
+                fullDay: false,
+                startTime: new Date(
+                  Date.UTC(2000, 0, 1, startHours, startMinutes, 0, 0)
+                ),
+                endTime: new Date(
+                  Date.UTC(2000, 0, 1, endHours, endMinutes, 0, 0)
+                ),
+                date: date,
+                reason: reason || null,
+                notes: notes || null,
+              });
+            }
+          }
+
+          if (exceptionalRecords.length > 0) {
+            await tx.userAvailability.createMany({
+              data: exceptionalRecords,
+            });
+          }
+        }
+
         // Return updated teacher with user and branch associations
         return tx.teacher.findUnique({
           where: { teacherId },
@@ -604,7 +715,7 @@ export const PATCH = withBranchAccess(
 // DELETE - Delete a teacher
 export const DELETE = withBranchAccess(
   ["ADMIN", "STAFF"],
-  async (request: NextRequest, session) => {
+  async (request: NextRequest) => {
     const teacherId = request.url.split("/").pop();
 
     if (!teacherId) {
