@@ -79,6 +79,7 @@ export function BranchTable() {
         return (
           <div className="flex justify-end gap-2">
             <Button
+              disabled={row.original.branchId === currentBranch && true}
               variant="ghost"
               size="icon"
               onClick={() => setBranchToEdit(row.original)}
