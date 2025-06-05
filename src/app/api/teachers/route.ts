@@ -39,6 +39,9 @@ type TeacherWithIncludes = Teacher & {
       fullDay: boolean | null;
       type: string;
       status: string;
+      date: Date | null;
+      reason: string | null;
+      notes: string | null;
     }[];
   };
 };
@@ -70,6 +73,17 @@ type FormattedTeacher = {
       endTime: string;
     }[];
     fullDay: boolean;
+  }[];
+  exceptionalAvailability: {
+    date: string;
+    timeSlots: {
+      id: string;
+      startTime: string;
+      endTime: string;
+    }[];
+    fullDay: boolean;
+    reason?: string | null;
+    notes?: string | null;
   }[];
   createdAt: Date;
   updatedAt: Date;
@@ -157,6 +171,44 @@ const formatTeacher = (teacher: TeacherWithIncludes): FormattedTeacher => {
     }
   );
 
+  // Process exceptional availability data
+  const exceptionalAvailability: FormattedTeacher['exceptionalAvailability'] = [];
+
+  teacher.user.availability?.forEach((avail) => {
+    if (
+      avail.type === "EXCEPTION" &&
+      avail.status === "APPROVED" &&
+      avail.date
+    ) {
+      const dateStr = avail.date.toISOString().split('T')[0];
+
+      // Check if we already have an entry for this date
+      let dateEntry = exceptionalAvailability.find(ea => ea.date === dateStr);
+
+      if (!dateEntry) {
+        dateEntry = {
+          date: dateStr,
+          timeSlots: [],
+          fullDay: false,
+          reason: avail.reason,
+          notes: avail.notes
+        };
+        exceptionalAvailability.push(dateEntry);
+      }
+
+      if (avail.fullDay) {
+        dateEntry.fullDay = true;
+        dateEntry.timeSlots = [];
+      } else if (avail.startTime && avail.endTime && !dateEntry.fullDay) {
+        dateEntry.timeSlots.push({
+          id: avail.id,
+          startTime: `${String(avail.startTime.getUTCHours()).padStart(2, "0")}:${String(avail.startTime.getUTCMinutes()).padStart(2, "0")}`,
+          endTime: `${String(avail.endTime.getUTCHours()).padStart(2, "0")}:${String(avail.endTime.getUTCMinutes()).padStart(2, "0")}`
+        });
+      }
+    }
+  });
+
   return {
     teacherId: teacher.teacherId,
     userId: teacher.userId,
@@ -175,6 +227,7 @@ const formatTeacher = (teacher: TeacherWithIncludes): FormattedTeacher => {
       })) || [],
     subjectPreferences,
     regularAvailability,
+    exceptionalAvailability,
     createdAt: teacher.createdAt,
     updatedAt: teacher.updatedAt,
   };
@@ -200,7 +253,7 @@ export const GET = withBranchAccess(
     const { page, limit, name, status } = result.data;
 
     // Build filter conditions
-    const where: any = {};
+    const where: Record<string, unknown> = {};
 
     if (name) {
       where.OR = [
@@ -285,6 +338,9 @@ export const GET = withBranchAccess(
                 fullDay: true,
                 type: true,
                 status: true,
+                date: true,
+                reason: true,
+                notes: true,
               },
             },
           },
@@ -333,6 +389,7 @@ export const POST = withBranchAccess(
         branchIds = [],
         subjectPreferences = [],
         regularAvailability = [],
+        exceptionalAvailability = [],
         ...teacherData
       } = result.data;
 
@@ -536,6 +593,58 @@ export const POST = withBranchAccess(
           }
         }
 
+        // Create exceptional availability records if provided
+        if (exceptionalAvailability.length > 0) {
+          const exceptionalRecords = [];
+
+          for (const exceptionalItem of exceptionalAvailability) {
+            const { date, fullDay, startTime, endTime, reason, notes } = exceptionalItem;
+
+            if (fullDay) {
+              // Create a full-day exceptional availability record
+              exceptionalRecords.push({
+                userId: user.id,
+                dayOfWeek: null,
+                type: "EXCEPTION" as const,
+                status: "APPROVED" as const,
+                fullDay: true,
+                startTime: null,
+                endTime: null,
+                date: date,
+                reason: reason || null,
+                notes: notes || null,
+              });
+            } else if (startTime && endTime) {
+              // Create time-specific exceptional availability record
+              const [startHours, startMinutes] = startTime.split(":").map(Number);
+              const [endHours, endMinutes] = endTime.split(":").map(Number);
+
+              exceptionalRecords.push({
+                userId: user.id,
+                dayOfWeek: null,
+                type: "EXCEPTION" as const,
+                status: "APPROVED" as const,
+                fullDay: false,
+                startTime: new Date(
+                  Date.UTC(2000, 0, 1, startHours, startMinutes, 0, 0)
+                ),
+                endTime: new Date(
+                  Date.UTC(2000, 0, 1, endHours, endMinutes, 0, 0)
+                ),
+                date: date,
+                reason: reason || null,
+                notes: notes || null,
+              });
+            }
+          }
+
+          if (exceptionalRecords.length > 0) {
+            await tx.userAvailability.createMany({
+              data: exceptionalRecords,
+            });
+          }
+        }
+
         // Return teacher with all associations
         return tx.teacher.findUnique({
           where: { teacherId: teacher.teacherId },
@@ -582,6 +691,9 @@ export const POST = withBranchAccess(
                     fullDay: true,
                     type: true,
                     status: true,
+                    date: true,
+                    reason: true,
+                    notes: true,
                   },
                 },
               },

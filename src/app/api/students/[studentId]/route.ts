@@ -88,6 +88,17 @@ export type FormattedStudent = {
     }[];
     fullDay: boolean;
   }[];
+  exceptionalAvailability: {
+    date: string;
+    timeSlots: {
+      id: string;
+      startTime: string;
+      endTime: string;
+    }[];
+    fullDay: boolean;
+    reason?: string | null;
+    notes?: string | null;
+  }[];
   createdAt: Date;
   updatedAt: Date;
 };
@@ -190,6 +201,44 @@ const formatStudent = (student: StudentWithIncludes): FormattedStudent => {
     }
   );
 
+  // Process exceptional availability data
+  const exceptionalAvailability: FormattedStudent['exceptionalAvailability'] = [];
+
+  student.user.availability?.forEach((avail) => {
+    if (
+      avail.type === "EXCEPTION" &&
+      avail.status === "APPROVED" &&
+      avail.date
+    ) {
+      const dateStr = avail.date.toISOString().split('T')[0];
+
+      // Check if we already have an entry for this date
+      let dateEntry = exceptionalAvailability.find(ea => ea.date === dateStr);
+
+      if (!dateEntry) {
+        dateEntry = {
+          date: dateStr,
+          timeSlots: [],
+          fullDay: false,
+          reason: avail.reason,
+          notes: avail.notes
+        };
+        exceptionalAvailability.push(dateEntry);
+      }
+
+      if (avail.fullDay) {
+        dateEntry.fullDay = true;
+        dateEntry.timeSlots = [];
+      } else if (avail.startTime && avail.endTime && !dateEntry.fullDay) {
+        dateEntry.timeSlots.push({
+          id: avail.id,
+          startTime: `${String(avail.startTime.getUTCHours()).padStart(2, "0")}:${String(avail.startTime.getUTCMinutes()).padStart(2, "0")}`,
+          endTime: `${String(avail.endTime.getUTCHours()).padStart(2, "0")}:${String(avail.endTime.getUTCMinutes()).padStart(2, "0")}`
+        });
+      }
+    }
+  });
+
   return {
     studentId: student.studentId,
     userId: student.userId,
@@ -212,6 +261,7 @@ const formatStudent = (student: StudentWithIncludes): FormattedStudent => {
       })) || [],
     subjectPreferences,
     regularAvailability,
+    exceptionalAvailability,
     createdAt: student.createdAt,
     updatedAt: student.updatedAt,
   };
@@ -265,6 +315,20 @@ export const GET = withBranchAccess(
                     name: true,
                   },
                 },
+              },
+            },
+            availability: {
+              select: {
+                id: true,
+                dayOfWeek: true,
+                type: true,
+                status: true,
+                fullDay: true,
+                startTime: true,
+                endTime: true,
+                date: true,
+                reason: true,
+                notes: true,
               },
             },
           },
@@ -348,6 +412,7 @@ export const PATCH = withBranchAccess(
         branchIds,
         subjectPreferences = [],
         regularAvailability = [],
+        exceptionalAvailability = [],
         ...studentData
       } = result.data;
 
@@ -597,6 +662,76 @@ export const PATCH = withBranchAccess(
           }
         }
 
+        // Update exceptional availability if provided
+        if (exceptionalAvailability.length > 0) {
+          // Delete existing exceptional availability records for this user
+          await tx.userAvailability.deleteMany({
+            where: {
+              userId: existingStudent.userId,
+              type: "EXCEPTION",
+            },
+          });
+
+          const exceptionalRecords = [];
+
+          for (const exceptionalItem of exceptionalAvailability) {
+            const { date, fullDay, startTime, endTime, reason, notes } = exceptionalItem;
+
+            // Create UTC date from the date input
+            const createUTCDate = (dateInput: Date): Date => {
+              const year = dateInput.getFullYear();
+              const month = dateInput.getMonth();
+              const day = dateInput.getDate();
+              return new Date(Date.UTC(year, month, day, 0, 0, 0, 0));
+            };
+
+            const dateUTC = createUTCDate(date);
+
+            if (fullDay) {
+              // Create a full-day exceptional availability record
+              exceptionalRecords.push({
+                userId: existingStudent.userId,
+                dayOfWeek: null,
+                type: "EXCEPTION" as const,
+                status: "APPROVED" as const,
+                fullDay: true,
+                startTime: null,
+                endTime: null,
+                date: dateUTC,
+                reason: reason || null,
+                notes: notes || null,
+              });
+            } else if (startTime && endTime) {
+              // Create time-specific exceptional availability record
+              const [startHours, startMinutes] = startTime.split(":").map(Number);
+              const [endHours, endMinutes] = endTime.split(":").map(Number);
+
+              exceptionalRecords.push({
+                userId: existingStudent.userId,
+                dayOfWeek: null,
+                type: "EXCEPTION" as const,
+                status: "APPROVED" as const,
+                fullDay: false,
+                startTime: new Date(
+                  Date.UTC(2000, 0, 1, startHours, startMinutes, 0, 0)
+                ),
+                endTime: new Date(
+                  Date.UTC(2000, 0, 1, endHours, endMinutes, 0, 0)
+                ),
+                date: dateUTC,
+                reason: reason || null,
+                notes: notes || null,
+              });
+            }
+          }
+
+          if (exceptionalRecords.length > 0) {
+            await tx.userAvailability.createMany({
+              data: exceptionalRecords,
+            });
+          }
+        }
+
         // Return updated student with user and branch associations
         return tx.student.findUnique({
           where: { studentId },
@@ -723,7 +858,22 @@ export const DELETE = withBranchAccess(
 
       // Delete student, user and branch associations in a transaction
       await prisma.$transaction(async (tx) => {
-        // Delete branch associations first
+        // Delete user availability first
+        await tx.userAvailability.deleteMany({
+          where: { userId: student.userId },
+        });
+
+        // Delete student teacher preferences
+        await tx.studentTeacherPreference.deleteMany({
+          where: { studentId },
+        });
+
+        // Delete user subject preferences
+        await tx.userSubjectPreference.deleteMany({
+          where: { userId: student.userId },
+        });
+
+        // Delete branch associations
         await tx.userBranch.deleteMany({
           where: { userId: student.userId },
         });
