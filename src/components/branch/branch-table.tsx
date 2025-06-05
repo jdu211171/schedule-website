@@ -51,6 +51,8 @@ export function BranchTable() {
   const totalCount = branches?.pagination.total || 0;
   const deleteBranchMutation = useBranchDelete();
 
+  const currentBranch = localStorage.getItem('selectedBranchId')
+
   const [branchToEdit, setBranchToEdit] = useState<Branch | null>(null);
   const [branchToDelete, setBranchToDelete] = useState<Branch | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -77,6 +79,7 @@ export function BranchTable() {
         return (
           <div className="flex justify-end gap-2">
             <Button
+              disabled={row.original.branchId === currentBranch && true}
               variant="ghost"
               size="icon"
               onClick={() => setBranchToEdit(row.original)}
@@ -86,6 +89,7 @@ export function BranchTable() {
               />
             </Button>
             <Button
+              disabled={row.original.branchId === currentBranch && true}
               variant="ghost"
               size="icon"
               onClick={() => setBranchToDelete(row.original)}
