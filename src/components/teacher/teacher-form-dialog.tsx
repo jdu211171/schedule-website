@@ -63,7 +63,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-
 import {
   type TeacherCreate,
   type TeacherUpdate,
@@ -201,11 +200,7 @@ export function TeacherFormDialog({
         email: teacher.email || "",
         lineId: teacher.lineId || "",
         notes: teacher.notes || "",
-        status:
-          (teacher.status as
-            | "ACTIVE"
-            | "SICK"
-            | "PERMANENTLY_LEFT") || "ACTIVE",
+        status: (teacher.status as "ACTIVE" | "SICK" | "PERMANENTLY_LEFT") || "ACTIVE",
         username: teacher.username || "",
         password: "",
         branchIds: branchIdsWithDefault,
@@ -705,7 +700,7 @@ export function TeacherFormDialog({
                             name="email"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel className="text-sm font-medium">
+                                <FormLabel className="text-sm font-medium after:content-['*'] after:ml-1 after:text-destructive">
                                   メールアドレス
                                 </FormLabel>
                                 <FormControl>
