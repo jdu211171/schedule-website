@@ -128,9 +128,10 @@ export const PATCH = withBranchAccess(
         );
       }
 
-      const { name, notes, userIds } = result.data as {
+      const { name, notes, order, userIds } = result.data as {
         name?: string;
         notes?: string | null;
+        order?: number | null;
         userIds?: string[];
       };
 
@@ -159,6 +160,7 @@ export const PATCH = withBranchAccess(
           data: {
             name,
             notes,
+            order,
           },
         });
 

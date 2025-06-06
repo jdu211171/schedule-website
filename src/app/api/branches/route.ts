@@ -64,7 +64,7 @@ export const GET = withBranchAccess(["ADMIN"], async (request: NextRequest) => {
     );
   }
 
-  const { page, limit, name, sortBy, sortOrder } = result.data;
+  const { page, limit, name } = result.data;
 
   // Build filter conditions
   const where: Record<string, unknown> = {};
@@ -76,18 +76,11 @@ export const GET = withBranchAccess(["ADMIN"], async (request: NextRequest) => {
     };
   }
 
-  // Build orderBy based on sortBy and sortOrder
-  const orderBy: Prisma.BranchOrderByWithRelationInput[] = [];
-
-  // Primary sort
-  if (sortBy === "order") {
-    // Sort nulls last for order field
-    orderBy.push({ order: { sort: sortOrder, nulls: "last" } });
-    // Secondary sort by name for items with same order
-    orderBy.push({ name: "asc" });
-  } else {
-    orderBy.push({ [sortBy]: sortOrder });
-  }
+  // ALWAYS sort by order field to maintain admin-defined sequence
+  const orderBy: Prisma.BranchOrderByWithRelationInput[] = [
+    { order: { sort: "asc", nulls: "last" } },
+    { name: "asc" }, // Secondary sort by name for branches with same order
+  ];
 
   // Calculate pagination
   const skip = (page - 1) * limit;
@@ -153,10 +146,12 @@ export const POST = withBranchAccess(
       const {
         name,
         notes,
+        order,
         userIds = [],
       } = result.data as {
         name: string;
         notes?: string | null;
+        order?: number | null;
         userIds?: string[];
       };
 
@@ -186,25 +181,28 @@ export const POST = withBranchAccess(
         }
       }
 
-      // Get the current maximum order value
-      const maxOrderResult = await prisma.branch.aggregate({
-        _max: {
-          order: true,
-        },
-      });
-
-      const newOrder = maxOrderResult._max.order
-        ? maxOrderResult._max.order + 1
-        : 1;
+      // Determine the order value
+      let finalOrder = order;
+      if (!finalOrder) {
+        // Get the current maximum order value
+        const maxOrderResult = await prisma.branch.aggregate({
+          _max: {
+            order: true,
+          },
+        });
+        finalOrder = maxOrderResult._max.order
+          ? maxOrderResult._max.order + 1
+          : 1;
+      }
 
       // Create branch and user associations in a transaction
       const newBranch = await prisma.$transaction(async (tx) => {
-        // Create branch with initial order
+        // Create branch with order
         const branch = await tx.branch.create({
           data: {
             name,
             notes,
-            order: newOrder,
+            order: finalOrder,
           },
         });
 

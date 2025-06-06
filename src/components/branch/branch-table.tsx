@@ -2,13 +2,14 @@
 "use client";
 
 import { useState } from "react";
+import * as React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Pencil, Trash2 } from "lucide-react";
-
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { DataTable } from "@/components/data-table";
+import { SortableDataTable } from "@/components/ui/sortable-data-table";
+import { useBranches } from "@/hooks/useBranchQuery";
 import {
+  useBranchUpdate,
   useBranchDelete,
   getResolvedBranchId,
 } from "@/hooks/useBranchMutation";
@@ -24,91 +25,80 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Branch } from "@/hooks/useBranchQuery";
 import { BranchFormDialog } from "./branch-form-dialog";
-import { useBranches } from "@/hooks/useBranchQuery";
-import { useSession } from "next-auth/react";
-
-// Define custom column meta type
-interface ColumnMetaType {
-  align?: "left" | "center" | "right";
-  headerClassName?: string;
-  cellClassName?: string;
-  hidden?: boolean;
-}
 
 export function BranchTable() {
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
+  const [isSortMode, setIsSortMode] = useState(false);
+  const [localBranches, setLocalBranches] = useState<Branch[]>([]);
   const pageSize = 10;
+
   const { data: branches, isLoading } = useBranches({
     page,
     limit: pageSize,
     name: searchTerm || undefined,
   });
 
-  // Ensure the data type returned by useBranches matches the expected type
-  const typedBranches = branches?.data || [];
-
-  const totalCount = branches?.pagination.total || 0;
+  const updateBranchMutation = useBranchUpdate();
   const deleteBranchMutation = useBranchDelete();
 
-  const currentBranch = localStorage.getItem('selectedBranchId')
+  const currentBranch = localStorage.getItem("selectedBranchId");
+
+  // Use local state during sort mode, otherwise use server data
+  const typedBranches = isSortMode ? localBranches : branches?.data || [];
+
+  // Update local state when server data changes
+  React.useEffect(() => {
+    if (branches?.data && !isSortMode) {
+      setLocalBranches(branches.data);
+    }
+  }, [branches?.data, isSortMode]);
 
   const [branchToEdit, setBranchToEdit] = useState<Branch | null>(null);
   const [branchToDelete, setBranchToDelete] = useState<Branch | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
-  const columns: ColumnDef<Branch, unknown>[] = [
+  const columns: ColumnDef<Branch>[] = [
     {
       accessorKey: "name",
       header: "名前",
+      cell: ({ row }) => (
+        <span className="font-medium">{row.original.name}</span>
+      ),
     },
     {
       accessorKey: "notes",
       header: "メモ",
-      cell: ({ row }) => row.original.notes || "-",
-    },
-    {
-      id: "actions",
-      header: "操作",
-      cell: ({ row }) => {
-        // Type-safe check for _optimistic property
-        const isOptimistic = (
-          row.original as Branch & { _optimistic?: boolean }
-        )._optimistic;
-
-        return (
-          <div className="flex justify-end gap-2">
-            <Button
-              disabled={row.original.branchId === currentBranch && true}
-              variant="ghost"
-              size="icon"
-              onClick={() => setBranchToEdit(row.original)}
-            >
-              <Pencil
-                className={`h-4 w-4 ${isOptimistic ? "opacity-70" : ""}`}
-              />
-            </Button>
-            <Button
-              disabled={row.original.branchId === currentBranch && true}
-              variant="ghost"
-              size="icon"
-              onClick={() => setBranchToDelete(row.original)}
-            >
-              <Trash2
-                className={`h-4 w-4 text-destructive ${
-                  isOptimistic ? "opacity-70" : ""
-                }`}
-              />
-            </Button>
-          </div>
-        );
-      },
-      meta: {
-        align: "right",
-        headerClassName: "pr-8", // Add padding-right to ONLY the header
-      } as ColumnMetaType,
+      cell: ({ row }) => (
+        <span className="text-muted-foreground">
+          {row.original.notes || "-"}
+        </span>
+      ),
     },
   ];
+
+  const handleReorder = (items: Branch[]) => {
+    // Update local state immediately for visual feedback
+    setLocalBranches(items);
+
+    // Log the new order for debugging
+    console.log(
+      "New order:",
+      items.map((item) => ({ id: item.branchId, name: item.name }))
+    );
+
+    // TODO: Implement order update API when you add the order field
+    // const branchIds = items.map((item) => item.branchId);
+    // updateOrderMutation.mutate({ branchIds });
+  };
+
+  const handleSortModeChange = (enabled: boolean) => {
+    if (enabled && branches?.data) {
+      // When entering sort mode, sync local state with server data
+      setLocalBranches(branches.data);
+    }
+    setIsSortMode(enabled);
+  };
 
   const handleDeleteBranch = () => {
     if (branchToDelete) {
@@ -120,28 +110,59 @@ export function BranchTable() {
     }
   };
 
-  const handlePageChange = (newPage: number) => {
-    setPage(newPage + 1);
-  };
+  const renderActions = (branch: Branch) => {
+    // Type-safe check for _optimistic property
+    const isOptimistic = (branch as Branch & { _optimistic?: boolean })
+      ._optimistic;
 
-  const totalPages = Math.ceil(totalCount / pageSize);
+    return (
+      <div className="flex justify-end gap-2">
+        <Button
+          disabled={branch.branchId === currentBranch}
+          variant="ghost"
+          size="icon"
+          onClick={() => setBranchToEdit(branch)}
+        >
+          <Pencil className={`h-4 w-4 ${isOptimistic ? "opacity-70" : ""}`} />
+        </Button>
+        <Button
+          disabled={branch.branchId === currentBranch}
+          variant="ghost"
+          size="icon"
+          onClick={() => setBranchToDelete(branch)}
+        >
+          <Trash2
+            className={`h-4 w-4 text-destructive ${
+              isOptimistic ? "opacity-70" : ""
+            }`}
+          />
+        </Button>
+      </div>
+    );
+  };
 
   return (
     <>
-      <DataTable
-        columns={columns}
+      <SortableDataTable
         data={typedBranches}
-        isLoading={isLoading && !typedBranches.length} // Only show loading state on initial load
-        searchPlaceholder="校舎を検索..."
-        onSearch={setSearchTerm}
+        columns={columns}
+        isSortMode={isSortMode}
+        onSortModeChange={handleSortModeChange}
+        onReorder={handleReorder}
+        getItemId={(branch) => branch.branchId}
         searchValue={searchTerm}
+        onSearchChange={setSearchTerm}
+        searchPlaceholder="校舎を検索..."
+        createLabel="新規作成"
         onCreateNew={() => setIsCreateDialogOpen(true)}
-        createNewLabel="新規作成"
+        isLoading={isLoading}
         pageIndex={page - 1}
-        pageCount={totalPages || 1}
-        onPageChange={handlePageChange}
+        pageCount={Math.ceil((branches?.pagination.total || 0) / pageSize)}
         pageSize={pageSize}
-        totalItems={totalCount}
+        totalItems={branches?.pagination.total}
+        onPageChange={(newPage) => setPage(newPage + 1)}
+        renderActions={renderActions}
+        isItemDisabled={(branch) => branch.branchId === currentBranch}
       />
 
       {/* Edit Branch Dialog */}

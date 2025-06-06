@@ -23,6 +23,7 @@ export const branchFilterSchema = z.object({
 export const branchCreateSchema = z.object({
   name: z.string().min(1).max(100),
   notes: z.string().max(255).optional().nullable(),
+  order: z.number().int().min(1).optional().nullable(),
 });
 
 // For updating an existing branch
@@ -30,6 +31,7 @@ export const branchUpdateSchema = z.object({
   branchId: z.string(),
   name: z.string().min(1).max(100).optional(),
   notes: z.string().max(255).optional().nullable(),
+  order: z.number().int().min(1).optional().nullable(),
   userIds: z.array(z.string()).optional(),
 });
 
