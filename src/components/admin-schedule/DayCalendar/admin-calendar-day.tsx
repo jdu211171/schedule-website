@@ -48,7 +48,7 @@ const VIEW_START_DATE_KEY = "admin_calendar_view_start_date";
 const SELECTED_DAYS_KEY = "admin_calendar_selected_days_v2";
 
 interface AdminCalendarDayProps {
-  selectedBranchId?: string;
+  selectedBranchId: string;
 }
 
 const getUniqueKeyForDate = (date: Date, index: number): string => {
@@ -118,7 +118,8 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
       }
     }
 
-    return [viewStartDate];
+    // FIXED: Always return only today for initial render
+    return [today];
   });
 
   const [selectedClassTypeId, setSelectedClassTypeId] = useState<string>('');
@@ -238,10 +239,9 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
   const handleStartDateChange = useCallback((newStartDate: Date) => {
     setViewStartDate(newStartDate);
     
-    // Clear selected days and select first day of new range
+    // FIXED: Clear selected days and select only the new start date
     setSelectedDays([newStartDate]);
     
-    // Clear filters for old dates
     setDayFilters({});
   }, []);
 

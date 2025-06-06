@@ -277,6 +277,14 @@ const TimeHeader = React.memo(({
 
 TimeHeader.displayName = 'TimeHeader';
 
+// FIXED: Helper function to normalize date comparison
+const normalizeDate = (date: string | Date): string => {
+  if (date instanceof Date) {
+    return date.toISOString().split('T')[0];
+  }
+  return typeof date === 'string' ? date.split('T')[0] : date;
+};
+
 const DayCalendarComponent: React.FC<DayCalendarProps> = ({
   date,
   booths,
@@ -310,8 +318,32 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
     return date.toISOString().split('T')[0];
   }, [date]);
 
+  // FIXED: Better date filtering using normalized dates
   const filteredSessions = useMemo(() => {
-    return classSessions.filter(session => isSameDay(session.date, date));
+    const targetDateStr = normalizeDate(date);
+    
+    console.log('Filtering sessions for date:', targetDateStr);
+    console.log('Available sessions:', classSessions.map(s => ({
+      classId: s.classId,
+      date: s.date,
+      normalizedDate: normalizeDate(s.date),
+      startTime: s.startTime,
+      endTime: s.endTime
+    })));
+    
+    const filtered = classSessions.filter(session => {
+      const sessionDateStr = normalizeDate(session.date);
+      const matches = sessionDateStr === targetDateStr;
+      
+      if (!matches) {
+        console.log(`Session ${session.classId} date mismatch: ${sessionDateStr} !== ${targetDateStr}`);
+      }
+      
+      return matches;
+    });
+    
+    console.log('Filtered sessions:', filtered.length);
+    return filtered;
   }, [classSessions, date]);
   
   const totalGridWidth = useMemo(() => {
