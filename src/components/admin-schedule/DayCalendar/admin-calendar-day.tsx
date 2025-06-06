@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { addDays, isSameDay, startOfDay } from 'date-fns';
+import { startOfDay } from 'date-fns';
 import { useBooths } from '@/hooks/useBoothQuery';
 import { useTeachers, useTeacher } from '@/hooks/useTeacherQuery';
 import { useStudents, useStudent } from '@/hooks/useStudentQuery';
@@ -78,14 +78,6 @@ const TIME_SLOTS: TimeSlot[] = Array.from({ length: 57 }, (_el, i) => {
 });
 
 export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayProps) {
-  if (!selectedBranchId) {
-    return (
-      <div className="flex justify-center p-8 text-muted-foreground">
-        Пожалуйста, выберите филиал для отображения расписания.
-      </div>
-    );
-  }
-
   const today = useMemo(() => startOfDay(new Date()), []);
   
   const [viewStartDate, setViewStartDate] = useState<Date>(() => {
@@ -166,9 +158,6 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
   const teacherUserId = teacherData?.userId;
   const studentUserId = studentData?.userId;
   
-  const { data: teacherPreferences } = useUserSubjectPreferencesByUser(teacherUserId || '');
-  const { data: studentPreferences } = useUserSubjectPreferencesByUser(studentUserId || '');
-
   const booths = useMemo(() => boothsResponse?.data || [], [boothsResponse]);
   const teachers = useMemo(() => teachersResponse?.data || [], [teachersResponse]);
   const students = useMemo(() => studentsResponse?.data || [], [studentsResponse]);
@@ -180,6 +169,10 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
   }, [selectedDays]);
 
   const enhancedDayFilters = useMemo(() => {
+    if (!selectedBranchId) {
+      return {};
+    }
+
     const enhanced: Record<string, DayFilters> = {};
 
     Object.entries(dayFilters).forEach(([dateKey, filters]) => {
@@ -198,7 +191,10 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
     return enhanced;
   }, [dayFilters, selectedBranchId, selectedDatesStrings]);
 
-  const classSessionQueries = useMultipleDaysClassSessions(selectedDatesStrings, enhancedDayFilters);
+  const classSessionQueries = useMultipleDaysClassSessions(
+    selectedBranchId ? selectedDatesStrings : [], 
+    enhancedDayFilters
+  );
 
   const classSessionsByDate = useMemo(() => {
     const sessionsByDate: Record<string, ExtendedClassSessionWithRelations[]> = {};
@@ -308,7 +304,7 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
       const dateStr = typeof lessonData.date === 'string' ?
         lessonData.date : formatDateToString(lessonData.date);
 
-      const requestBody: any = {
+      const requestBody: Record<string, unknown> = {
         date: dateStr,
         startTime: lessonData.startTime,
         endTime: lessonData.endTime,
@@ -364,13 +360,12 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
         throw new Error(errorMessage || `エラー ${response.status}: ${response.statusText}`);
       }
 
-      let responseData;
-      try {
-        if (contentType && contentType.includes("application/json")) {
-          responseData = await response.json();
+      if (contentType && contentType.includes("application/json")) {
+        try {
+          await response.json();
+        } catch (parseError) {
+          console.warn("応答のパースエラー:", parseError);
         }
-      } catch (parseError) {
-        console.warn("応答のパースエラー:", parseError);
       }
 
       setShowCreateDialog(false);
@@ -386,13 +381,13 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
     }
   }, [refreshData]);
 
-  const handleUpdateLesson = useCallback((lessonId: string) => {
+  const handleUpdateLesson = useCallback(() => {
     setShowLessonDialog(false);
     refreshData();
     setSelectedLesson(null);
   }, [refreshData]);
 
-  const handleDeleteLesson = useCallback((lessonId: string) => {
+  const handleDeleteLesson = useCallback(() => {
     setShowLessonDialog(false);
     refreshData();
     setSelectedLesson(null);
@@ -424,6 +419,14 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
   };
 
   const hasActiveSelections = Boolean(selectedClassTypeId || selectedTeacherId || selectedStudentId);
+
+  if (!selectedBranchId) {
+    return (
+      <div className="flex justify-center p-8 text-muted-foreground">
+        Please select a branch to display the schedule.
+      </div>
+    );
+  }
 
   if (isLoadingData) {
     return <div className="flex justify-center p-8 text-foreground dark:text-foreground">データを読み込み中...</div>;

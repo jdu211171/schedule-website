@@ -7,17 +7,15 @@ import { useTeacher } from '@/hooks/useTeacherQuery';
 interface AvailabilityLayerProps {
   timeSlots: TimeSlot[];
   booths: { boothId: string; name: string }[];
-  teacherAvailability?: boolean[]; // Массив доступности для слотов времени
-  studentAvailability?: boolean[]; // Массив доступности для слотов времени
+  teacherAvailability?: boolean[];
+  studentAvailability?: boolean[];
   timeSlotHeight: number;
 }
 
-// Цветовая схема
 const AVAILABILITY_COLORS = {
-  teacher: 'rgba(34, 197, 94, 0.2)',     // Зеленый 20%
-  student: 'rgba(251, 191, 36, 0.2)',    // Янтарный 20%
-  both: 'rgba(59, 130, 246, 0.4)',       // Синий 40% (заметное пересечение)
-  // Темная тема
+  teacher: 'rgba(34, 197, 94, 0.2)',
+  student: 'rgba(251, 191, 36, 0.2)',
+  both: 'rgba(59, 130, 246, 0.4)',
   teacherDark: 'rgba(34, 197, 94, 0.15)',
   studentDark: 'rgba(251, 191, 36, 0.15)',
   bothDark: 'rgba(59, 130, 246, 0.3)',
@@ -30,9 +28,6 @@ export const AvailabilityLayer: React.FC<AvailabilityLayerProps> = ({
   studentAvailability,
   timeSlotHeight,
 }) => {
-  // Добавим отладку с идентификацией
-
-
   const availabilityBlocks = useMemo(() => {
     const blocks: React.JSX.Element[] = [];
     
@@ -40,14 +35,12 @@ export const AvailabilityLayer: React.FC<AvailabilityLayerProps> = ({
       return blocks;
     }
 
-    // Для каждого временного слота создаем блок в строке заголовка времени
     timeSlots.forEach((slot, slotIndex) => {
       const hasTeacher = teacherAvailability?.[slotIndex] || false;
       const hasStudent = studentAvailability?.[slotIndex] || false;
       
       if (!hasTeacher && !hasStudent) return;
 
-      // Определяем цвет на основе доступности
       let backgroundColor: string;
       if (hasTeacher && hasStudent) {
         backgroundColor = AVAILABILITY_COLORS.both;
@@ -57,10 +50,9 @@ export const AvailabilityLayer: React.FC<AvailabilityLayerProps> = ({
         backgroundColor = AVAILABILITY_COLORS.student;
       }
 
-      // Создаем блок только в строке заголовка (где показано время)
       const key = `availability-header-${slotIndex}`;
-      const left = slotIndex * 40; // Позиция по горизонтали
-      const top = 0; // В самом верху контейнера
+      const left = slotIndex * 40;
+      const top = 0;
       
       blocks.push(
         <div
@@ -88,7 +80,6 @@ export const AvailabilityLayer: React.FC<AvailabilityLayerProps> = ({
   );
 };
 
-// Вспомогательная функция для конвертации доступности в массив boolean для слотов
 export function convertAvailabilityToSlots(
   availability: {
     timeSlots: {
@@ -104,29 +95,23 @@ export function convertAvailabilityToSlots(
   if (!availability) return result;
   
   if (availability.fullDay) {
-    // Если полный день - все слоты доступны
     return new Array(timeSlots.length).fill(true);
   }
   
-  // Для каждого доступного временного промежутка
   availability.timeSlots.forEach(({ startTime, endTime }) => {
-    // Находим индексы начала и конца
     const startIndex = timeSlots.findIndex(slot => slot.start === startTime);
     let endIndex = timeSlots.findIndex(slot => slot.start === endTime);
     
-    // Если не нашли точное совпадение для конца, ищем слот, который заканчивается в это время
     if (endIndex === -1) {
       endIndex = timeSlots.findIndex(slot => slot.end === endTime);
       if (endIndex !== -1) {
-        endIndex++; // Включаем этот слот тоже
+        endIndex++;
       }
     }
     
     if (startIndex !== -1) {
-      // Если endIndex не найден, заполняем до конца дня или до последнего слота
       const end = endIndex !== -1 ? endIndex : timeSlots.length;
       
-      // Помечаем слоты как доступные
       for (let i = startIndex; i < end; i++) {
         if (i < result.length) {
           result[i] = true;
@@ -135,16 +120,9 @@ export function convertAvailabilityToSlots(
     }
   });
   
-  console.log('Converted availability:', {
-    availableSlots: result.filter(x => x).length,
-    totalSlots: result.length,
-    indices: result.map((available, idx) => available ? idx : -1).filter(x => x >= 0)
-  });
-  
   return result;
 }
 
-// Тип для API ответа доступности
 export interface AvailabilityResponse {
   regularAvailability: {
     dayOfWeek: string;
@@ -168,7 +146,6 @@ export interface AvailabilityResponse {
   }[];
 }
 
-// Функция для получения доступности на конкретную дату
 export function getAvailabilityForDate(
   date: Date,
   availability: AvailabilityResponse
@@ -176,10 +153,11 @@ export function getAvailabilityForDate(
   timeSlots: { startTime: string; endTime: string }[];
   fullDay: boolean;
 } | null {
-  const dateStr = date.toISOString().split('T')[0];
-  const dayOfWeek = date.getDay();
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const dateStr = `${year}-${month}-${day}`;
   
-  // Сначала проверяем исключительную доступность
   const exceptional = availability.exceptionalAvailability.find(
     exc => exc.date === dateStr
   );
@@ -191,13 +169,12 @@ export function getAvailabilityForDate(
     };
   }
   
-  // Затем проверяем регулярную доступность
-  // Конвертируем день недели в строку (MONDAY, TUESDAY, etc.)
+  const dayOfWeek = date.getDay();
   const dayNames = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
   const dayName = dayNames[dayOfWeek];
   
   const regular = availability.regularAvailability.find(
-    reg => reg.dayOfWeek === dayName || reg.dayOfWeek === dayOfWeek.toString()
+    reg => reg.dayOfWeek === dayName
   );
   
   if (regular) {
@@ -210,7 +187,6 @@ export function getAvailabilityForDate(
   return null;
 }
 
-// Hook для получения доступности учителя и студента
 export function useAvailability(
   teacherId: string | undefined,
   studentId: string | undefined,
@@ -228,8 +204,6 @@ export function useAvailability(
       exceptionalAvailability: teacher.exceptionalAvailability || []
     });
     
-    console.log(`Teacher availability for ${date.toISOString().split('T')[0]}:`, availability);
-    
     return convertAvailabilityToSlots(availability, timeSlots);
   }, [teacher, teacherId, date, timeSlots]);
   
@@ -240,8 +214,6 @@ export function useAvailability(
       regularAvailability: student.regularAvailability || [],
       exceptionalAvailability: student.exceptionalAvailability || []
     });
-    
-    console.log(`Student availability for ${date.toISOString().split('T')[0]}:`, availability);
     
     return convertAvailabilityToSlots(availability, timeSlots);
   }, [student, studentId, date, timeSlots]);
