@@ -48,7 +48,7 @@ const VIEW_START_DATE_KEY = "admin_calendar_view_start_date";
 const SELECTED_DAYS_KEY = "admin_calendar_selected_days_v2";
 
 interface AdminCalendarDayProps {
-  selectedBranchId: string;
+  selectedBranchId?: string;
 }
 
 const getUniqueKeyForDate = (date: Date, index: number): string => {
@@ -78,6 +78,14 @@ const TIME_SLOTS: TimeSlot[] = Array.from({ length: 57 }, (_el, i) => {
 });
 
 export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayProps) {
+  if (!selectedBranchId) {
+    return (
+      <div className="flex justify-center p-8 text-muted-foreground">
+        Пожалуйста, выберите филиал для отображения расписания.
+      </div>
+    );
+  }
+
   const today = useMemo(() => startOfDay(new Date()), []);
   
   const [viewStartDate, setViewStartDate] = useState<Date>(() => {
@@ -118,7 +126,6 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
       }
     }
 
-    // FIXED: Always return only today for initial render
     return [today];
   });
 
@@ -178,12 +185,12 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
     Object.entries(dayFilters).forEach(([dateKey, filters]) => {
       enhanced[dateKey] = {
         ...filters,
-        ...(selectedBranchId && { branchId: selectedBranchId })
+        branchId: selectedBranchId
       };
     });
 
     selectedDatesStrings.forEach(dateStr => {
-      if (!enhanced[dateStr] && selectedBranchId) {
+      if (!enhanced[dateStr]) {
         enhanced[dateStr] = { branchId: selectedBranchId };
       }
     });
@@ -238,10 +245,7 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
 
   const handleStartDateChange = useCallback((newStartDate: Date) => {
     setViewStartDate(newStartDate);
-    
-    // FIXED: Clear selected days and select only the new start date
     setSelectedDays([newStartDate]);
-    
     setDayFilters({});
   }, []);
 
