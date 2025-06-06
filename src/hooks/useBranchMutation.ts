@@ -2,7 +2,7 @@
 import { fetcher } from "@/lib/fetcher";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { BranchCreate, BranchUpdate } from "@/schemas/branch.schema";
+import { BranchCreate, BranchUpdate, BranchOrderUpdate } from "@/schemas/branch.schema";
 import { Branch } from "@/hooks/useBranchQuery";
 
 type BranchesResponse = {
@@ -64,6 +64,7 @@ export function useBranchCreate() {
                 branchId: tempId,
                 name: newBranch.name,
                 notes: newBranch.notes || null,
+                order: null,
                 createdAt: new Date(),
                 updatedAt: new Date(),
                 _optimistic: true, // Flag to identify optimistic entries
@@ -379,6 +380,96 @@ export function useBranchDelete() {
       });
       queryClient.invalidateQueries({
         queryKey: ["branch", resolvedId],
+        refetchType: "none",
+      });
+    },
+  });
+}
+
+export function useBranchOrderUpdate() {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    { message: string },
+    Error,
+    BranchOrderUpdate,
+    BranchMutationContext
+  >({
+    mutationFn: (data) =>
+      fetcher("/api/branches/order", {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      }),
+    onMutate: async ({ branchIds }) => {
+      await queryClient.cancelQueries({ queryKey: ["branches"] });
+
+      const queries = queryClient.getQueriesData<BranchesResponse>({
+        queryKey: ["branches"],
+      });
+
+      const previousBranches: Record<string, BranchesResponse> = {};
+      queries.forEach(([queryKey, data]) => {
+        if (data) {
+          previousBranches[JSON.stringify(queryKey)] = data;
+        }
+      });
+
+      // Optimistically update the order
+      queries.forEach(([queryKey]) => {
+        const currentData = queryClient.getQueryData<BranchesResponse>(queryKey);
+        if (currentData) {
+          const updatedData = {
+            ...currentData,
+            data: currentData.data.map((branch) => {
+              const newOrder = branchIds.indexOf(branch.branchId);
+              return newOrder !== -1
+                ? { ...branch, order: newOrder + 1 }
+                : branch;
+            }),
+          };
+
+          // Re-sort the data based on the query parameters
+          const queryKeyArray = queryKey as any[];
+          const sortBy = queryKeyArray[4] || 'order';
+          const sortOrder = queryKeyArray[5] || 'asc';
+
+          if (sortBy === 'order') {
+            updatedData.data.sort((a, b) => {
+              const aOrder = a.order ?? Number.MAX_SAFE_INTEGER;
+              const bOrder = b.order ?? Number.MAX_SAFE_INTEGER;
+              return sortOrder === 'asc' ? aOrder - bOrder : bOrder - aOrder;
+            });
+          }
+
+          queryClient.setQueryData<BranchesResponse>(queryKey, updatedData);
+        }
+      });
+
+      return { previousBranches };
+    },
+    onError: (error, _, context) => {
+      if (context?.previousBranches) {
+        Object.entries(context.previousBranches).forEach(
+          ([queryKeyStr, data]) => {
+            const queryKey = JSON.parse(queryKeyStr);
+            queryClient.setQueryData(queryKey, data);
+          }
+        );
+      }
+
+      toast.error("校舎の順序更新に失敗しました", {
+        id: "branch-order-error",
+        description: error.message,
+      });
+    },
+    onSuccess: () => {
+      toast.success("校舎の順序を更新しました", {
+        id: "branch-order-success",
+      });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["branches"],
         refetchType: "none",
       });
     },

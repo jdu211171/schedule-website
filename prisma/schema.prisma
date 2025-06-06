@@ -19,6 +19,7 @@ model Branch {
   branchId      String         @id @default(cuid()) @map("branch_id")
   name          String         @db.VarChar(100)
   notes         String?        @db.VarChar(255)
+  order         Int?           @map("order")
   booths        Booth[]
   userBranches  UserBranch[]
   classSessions ClassSession[]
@@ -27,6 +28,7 @@ model Branch {
   createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt     DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
+  @@index([order])
   @@map("branches")
 }
 

@@ -34,6 +34,7 @@ import {
   type StaffFormValues,
 } from "@/schemas/staff.schema";
 import type { Staff } from "@/hooks/useStaffQuery";
+import { useAllBranchesOrdered } from "@/hooks/useBranchQuery";
 
 interface StaffFormDialogProps {
   open: boolean;
@@ -50,14 +51,11 @@ export function StaffFormDialog({
   const updateStaffMutation = useStaffUpdate();
   const { data: session } = useSession();
 
-  // Get branches from session instead of fetching
-  const branchesResponse = session?.user?.branches
-    ? { data: session.user.branches }
-    : { data: [] };
-  const isBranchesLoading = !session?.user?.branches;
+  // Use ordered branches from API
+  const { data: branches = [], isLoading: isBranchesLoading } = useAllBranchesOrdered();
 
   // Use the selected branch from session instead of first branch
-  const defaultBranchId = session?.user?.selectedBranchId || session?.user?.branches?.[0]?.branchId;
+  const defaultBranchId = session?.user?.selectedBranchId || branches?.[0]?.branchId;
 
   const isEditing = !!staff;
   const isSubmitting =
@@ -290,10 +288,10 @@ export function StaffFormDialog({
                           <SearchableMultiSelect
                             value={field.value || []}
                             onValueChange={field.onChange}
-                            items={branchesResponse?.data.map((branch: { branchId: string; name: string }) => ({
+                            items={branches.map((branch) => ({
                               value: branch.branchId,
                               label: branch.name,
-                            })) || []}
+                            }))}
                             placeholder="校舎を選択してください"
                             searchPlaceholder="校舎名を検索..."
                             emptyMessage="該当する校舎が見つかりません"

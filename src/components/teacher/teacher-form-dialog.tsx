@@ -79,6 +79,7 @@ import { useAllSubjectTypes } from "@/hooks/useSubjectTypeQuery";
 import { EnhancedAvailabilityRegularSelector } from "../student/enhanced-availability-regular-selector";
 import { EnhancedAvailabilityIrregularSelector } from "../student/enhanced-availability-irregular-selector";
 import { SearchableMultiSelect } from "@/components/admin-schedule/searchable-multi-select";
+import { useAllBranchesOrdered } from "@/hooks/useBranchQuery";
 
 interface TimeSlot {
   id: string;
@@ -126,18 +127,15 @@ export function TeacherFormDialog({
   const { data: session } = useSession();
   const [activeTab, setActiveTab] = useState("basic");
 
-  const branchesResponse = session?.user?.branches
-    ? { data: session.user.branches }
-    : { data: [] };
-  const isBranchesLoading = !session?.user?.branches;
+  const { data: branches = [], isLoading: isBranchesLoading } =
+    useAllBranchesOrdered();
+
+  const defaultBranchId =
+    session?.user?.selectedBranchId || branches?.[0]?.branchId;
 
   // Fetch real data for subjects and subject types
   const { data: subjects = [] } = useAllSubjects();
   const { data: subjectTypes = [] } = useAllSubjectTypes();
-
-  // Use the selected branch from session instead of first branch
-  const defaultBranchId =
-    session?.user?.selectedBranchId || session?.user?.branches?.[0]?.branchId;
 
   const isEditing = !!teacher;
   const isSubmitting =
@@ -1123,17 +1121,12 @@ export function TeacherFormDialog({
                                   <SearchableMultiSelect
                                     value={field.value || []}
                                     onValueChange={field.onChange}
-                                    items={
-                                      branchesResponse?.data.map(
-                                        (branch: {
-                                          branchId: string;
-                                          name: string;
-                                        }) => ({
-                                          value: branch.branchId,
-                                          label: branch.name,
-                                        })
-                                      ) || []
-                                    }
+                                    items={branches.map(
+                                      (branch) => ({
+                                        value: branch.branchId,
+                                        label: branch.name,
+                                      })
+                                    )}
                                     placeholder="校舎を選択してください"
                                     searchPlaceholder="校舎名を検索..."
                                     emptyMessage="該当する校舎が見つかりません"

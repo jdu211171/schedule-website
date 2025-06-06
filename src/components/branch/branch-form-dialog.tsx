@@ -21,6 +21,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -31,6 +32,7 @@ import { Branch } from "@/hooks/useBranchQuery";
 const branchFormSchema = z.object({
   name: z.string().min(1, "名前は必須です").max(100),
   notes: z.string().max(255).optional().nullable(),
+  order: z.coerce.number().int().min(1).optional().nullable(),
 });
 
 interface BranchFormDialogProps {
@@ -53,6 +55,7 @@ export function BranchFormDialog({
     defaultValues: {
       name: branch?.name || "",
       notes: branch?.notes ?? "", // Use empty string when null
+      order: branch?.order ?? undefined,
     },
   });
 
@@ -61,11 +64,13 @@ export function BranchFormDialog({
       form.reset({
         name: branch.name || "",
         notes: branch.notes ?? "", // Use empty string when null
+        order: branch.order ?? undefined,
       });
     } else {
       form.reset({
         name: "",
         notes: "",
+        order: undefined,
       });
     }
   }, [branch, form]);
@@ -137,6 +142,31 @@ export function BranchFormDialog({
                       value={field.value ?? ""} // Ensure value is never null
                     />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="order"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>表示順序</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      placeholder="例: 1, 2, 3..."
+                      {...field}
+                      value={field.value ?? ""}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        field.onChange(value === "" ? undefined : value);
+                      }}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    数値が小さいほど上に表示されます。空欄の場合は自動的に最後に配置されます。
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}

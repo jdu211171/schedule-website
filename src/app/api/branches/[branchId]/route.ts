@@ -21,6 +21,7 @@ type FormattedBranch = {
   branchId: string;
   name: string;
   notes: string | null;
+  order: number | null;
   users: {
     id: string;
     name: string | null;
@@ -37,61 +38,59 @@ const formatBranch = (branch: BranchWithUsers): FormattedBranch => ({
   branchId: branch.branchId,
   name: branch.name,
   notes: branch.notes,
+  order: branch.order,
   users: branch.userBranches.map((ub) => ub.user),
   createdAt: branch.createdAt,
   updatedAt: branch.updatedAt,
 });
 
 // GET a specific branch by ID
-export const GET = withBranchAccess(
-  ["ADMIN"],
-  async (request: NextRequest) => {
-    const branchId = request.url.split("/").pop();
+export const GET = withBranchAccess(["ADMIN"], async (request: NextRequest) => {
+  const branchId = request.url.split("/").pop();
 
-    if (!branchId) {
-      return NextResponse.json(
-        { error: "教室IDは必須です" },
-        { status: 400 }
-      );
-    }
+  if (!branchId) {
+    return NextResponse.json({ error: "教室IDは必須です" }, { status: 400 });
+  }
 
-    const branch = await prisma.branch.findUnique({
-      where: { branchId },
-      include: {
-        userBranches: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                username: true,
-                email: true,
-                role: true,
-              },
+  const branch = await prisma.branch.findUnique({
+    where: { branchId },
+    include: {
+      userBranches: {
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              username: true,
+              email: true,
+              role: true,
             },
           },
         },
       },
-    });
+    },
+  });
 
-    if (!branch) {
-      return NextResponse.json({ error: "教室が見つかりません" }, { status: 404 });
-    }
-
-    // Format response
-    const formattedBranch = formatBranch(branch);
-
-    return NextResponse.json({
-      data: [formattedBranch],
-      pagination: {
-        total: 1,
-        page: 1,
-        limit: 1,
-        pages: 1,
-      },
-    });
+  if (!branch) {
+    return NextResponse.json(
+      { error: "教室が見つかりません" },
+      { status: 404 }
+    );
   }
-);
+
+  // Format response
+  const formattedBranch = formatBranch(branch);
+
+  return NextResponse.json({
+    data: [formattedBranch],
+    pagination: {
+      total: 1,
+      page: 1,
+      limit: 1,
+      pages: 1,
+    },
+  });
+});
 
 // PATCH - Update a branch
 export const PATCH = withBranchAccess(
@@ -129,7 +128,12 @@ export const PATCH = withBranchAccess(
         );
       }
 
-      const { name, notes, userIds } = result.data as { name?: string; notes?: string | null; userIds?: string[] };
+      const { name, notes, order, userIds } = result.data as {
+        name?: string;
+        notes?: string | null;
+        order?: number | null;
+        userIds?: string[];
+      };
 
       // Check name uniqueness if being updated
       if (name && name !== existingBranch.name) {
@@ -156,6 +160,7 @@ export const PATCH = withBranchAccess(
           data: {
             name,
             notes,
+            order,
           },
         });
 
@@ -231,10 +236,7 @@ export const DELETE = withBranchAccess(
     const branchId = request.url.split("/").pop();
 
     if (!branchId) {
-      return NextResponse.json(
-        { error: "教室IDは必須です" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "教室IDは必須です" }, { status: 400 });
     }
 
     try {
