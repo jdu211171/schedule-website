@@ -9,6 +9,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Button } from "@/components/ui/button"
 import { CalendarIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
+import type { DateRange } from "react-day-picker"
 
 type DaySelectorProps = {
   startDate: Date
@@ -21,7 +22,6 @@ const getDateKey = (date: Date): string => {
   return date.toISOString().split("T")[0]
 }
 
-// Японские сокращения дней недели
 const japaneseWeekdays = ["日", "月", "火", "水", "木", "金", "土"]
 
 export const DaySelector: React.FC<DaySelectorProps> = ({
@@ -49,14 +49,26 @@ export const DaySelector: React.FC<DaySelectorProps> = ({
     return days
   }, [startDate])
 
+  // Создаем DateRange для календаря
+  const dateRange = useMemo((): DateRange => ({
+    from: startDate,
+    to: addDays(startDate, 6)
+  }), [startDate])
+
   const isDaySelected = (date: Date) => {
     return selectedDays.some((selectedDate) => isSameDay(selectedDate, date))
   }
 
-  const handleStartDateChange = (date: Date | undefined) => {
-    if (date) {
-      onStartDateChange(date)
+  const handleDateRangeSelect = (range: DateRange | undefined) => {
+    // При любом клике всегда берем первую дату из range и делаем её стартовой
+    if (range?.from) {
+      onStartDateChange(range.from)
       setCalendarOpen(false)
+    }
+    // Если пользователь кликнул на уже выбранную дату (range будет undefined)
+    // или если это второй клик в стандартном range picker
+    else if (range === undefined) {
+      // В этом случае мы не делаем ничего, ждем следующий клик
     }
   }
 
@@ -70,7 +82,7 @@ export const DaySelector: React.FC<DaySelectorProps> = ({
   return (
     <div className="flex items-center gap-4">
       <div className="flex items-center gap-2">
-        <span className="text-sm font-medium text-foreground">表示期間:</span>
+        {/* <span className="text-sm font-medium text-foreground">表示期間:</span> */}
 
         <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
           <PopoverTrigger asChild>
@@ -83,53 +95,29 @@ export const DaySelector: React.FC<DaySelectorProps> = ({
               {format(startDate, "M月d日", { locale: ja })} - {format(addDays(startDate, 6), "M月d日", { locale: ja })}
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
+          <PopoverContent className="w-auto p-0" align="start" sideOffset={8}>
             <Calendar
               mode="single"
               selected={startDate}
-              onSelect={handleStartDateChange}
+              onSelect={(date) => {
+                if (date) {
+                  onStartDateChange(date)
+                  setCalendarOpen(false)
+                }
+              }}
               disabled={(date) => date < today || date > maxDate}
               initialFocus
               locale={ja}
+              numberOfMonths={2}
+              showOutsideDays={true}
               modifiers={{
-                // Подсвечиваем весь 7-дневный диапазон
-                rangeStart: (date) => isSameDay(date, startDate),
-                rangeMiddle: (date) => {
+                range: (date) => {
                   const daysDiff = Math.floor((date.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
-                  return daysDiff > 0 && daysDiff < 6
-                },
-                rangeEnd: (date) => isSameDay(date, addDays(startDate, 6)),
-                // Выбранные дни в диапазоне
-                selectedInRange: (date) => {
-                  const daysDiff = Math.floor((date.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
-                  const isInRange = daysDiff >= 0 && daysDiff <= 6
-                  return isInRange && isDaySelected(date)
-                },
+                  return daysDiff >= 0 && daysDiff <= 6
+                }
               }}
-              modifiersStyles={{
-                rangeStart: {
-                  backgroundColor: "hsl(var(--primary))",
-                  color: "hsl(var(--primary-foreground))",
-                  borderRadius: "6px 0 0 6px",
-                  fontWeight: "bold",
-                },
-                rangeMiddle: {
-                  backgroundColor: "hsl(var(--primary) / 0.1)",
-                  color: "hsl(var(--foreground))",
-                  borderRadius: "0",
-                },
-                rangeEnd: {
-                  backgroundColor: "hsl(var(--primary) / 0.3)",
-                  color: "hsl(var(--foreground))",
-                  borderRadius: "0 6px 6px 0",
-                  border: "1px solid hsl(var(--primary) / 0.5)",
-                },
-                selectedInRange: {
-                  backgroundColor: "hsl(var(--primary))",
-                  color: "hsl(var(--primary-foreground))",
-                  fontWeight: "bold",
-                  border: "2px solid hsl(var(--primary))",
-                },
+              modifiersClassNames={{
+                range: "bg-primary/20 text-foreground"
               }}
             />
             <div className="p-3 border-t">
@@ -154,7 +142,7 @@ export const DaySelector: React.FC<DaySelectorProps> = ({
       </div>
 
       <div className="flex items-center gap-2">
-        <span className="text-sm font-medium text-foreground">選択日:</span>
+        {/* <span className="text-sm font-medium text-foreground">選択日:</span> */}
 
         <div className="flex space-x-1">
           {displayDays.map((date, index) => {
@@ -169,11 +157,9 @@ export const DaySelector: React.FC<DaySelectorProps> = ({
                 key={getDateKey(date)}
                 className={cn(
                   "relative inline-flex flex-col items-center justify-center w-12 h-12 rounded-lg transition-colors cursor-pointer",
-                  // Ховер только для невыбранных дней
                   !isSelected && "hover:bg-accent hover:text-accent-foreground",
-                  // Выбранные дни - более насыщенный ховер
                   isSelected && "bg-primary text-primary-foreground ring-2 ring-primary hover:bg-primary/90",
-                  !isSelected && isToday && "bg-yellow-50 text-yellow-800 border border-yellow-200",
+                  !isSelected && isToday && "bg-yellow-50 text-yellow-800 border border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-300 dark:border-yellow-700",
                   !isSelected && !isToday && "bg-background text-foreground border border-input",
                 )}
                 title={format(date, "yyyy年M月d日（E）", { locale: ja })}
@@ -187,7 +173,6 @@ export const DaySelector: React.FC<DaySelectorProps> = ({
                 <span className="text-sm font-medium leading-none">{dayNumber}</span>
                 <span className="text-[10px] text-muted-foreground mt-0.5">{dayOfWeek}</span>
 
-                {/* Индикатор начала месяца */}
                 {date.getDate() === 1 && (
                   <span className="absolute -top-1 -right-1 text-[8px] px-1 bg-muted text-muted-foreground rounded">
                     {monthName}
