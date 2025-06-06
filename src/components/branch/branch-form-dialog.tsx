@@ -105,7 +105,7 @@ export function BranchFormDialog({
     >
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>{isEditing ? "支店の編集" : "支店の作成"}</DialogTitle>
+          <DialogTitle>{isEditing ? "校舎の編集" : "校舎の作成"}</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -118,7 +118,7 @@ export function BranchFormDialog({
                     名前
                   </FormLabel>
                   <FormControl>
-                    <Input placeholder="支店名を入力してください" {...field} />
+                    <Input placeholder="校舎名を入力してください" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

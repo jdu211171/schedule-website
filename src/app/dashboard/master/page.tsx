@@ -51,7 +51,7 @@ export default function MasterDataPage() {
         className="w-full"
       >
         <TabsList className="w-full overflow-x-auto scrollbar-hide">
-          <TabsTrigger value="branches">支店</TabsTrigger>
+          <TabsTrigger value="branches">校舎</TabsTrigger>
           <TabsTrigger value="staff">スタッフ</TabsTrigger>
           <TabsTrigger value="students">生徒</TabsTrigger>
           <TabsTrigger value="teachers">教師</TabsTrigger>

@@ -42,25 +42,25 @@ export function SearchableMultiSelect({
   const containerRef = React.useRef<HTMLDivElement>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
   const [highlightedIndex, setHighlightedIndex] = React.useState(0);
-  
+
   // Filter items
   const filteredItems = React.useMemo(() => {
     if (!searchQuery.trim()) return items;
-    
+
     const query = searchQuery.toLowerCase();
-    return items.filter(item => 
+    return items.filter(item =>
       item.label.toLowerCase().includes(query) ||
       (item.description && item.description.toLowerCase().includes(query))
     );
   }, [items, searchQuery]);
-  
+
   // Reset highlighted index when items change, but only if current index is out of bounds
   React.useEffect(() => {
     if (filteredItems.length > 0 && highlightedIndex >= filteredItems.length) {
       setHighlightedIndex(Math.max(0, filteredItems.length - 1));
     }
   }, [filteredItems.length, highlightedIndex]);
-  
+
   // Handle outside clicks
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -74,7 +74,7 @@ export function SearchableMultiSelect({
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
   }, [open]);
-  
+
   // Focus input when opening and reset when closing
   React.useEffect(() => {
     if (open && inputRef.current) {
@@ -88,7 +88,7 @@ export function SearchableMultiSelect({
       setSearchQuery("");
     }
   }, [open]);
-  
+
   const handleSelect = (itemValue: string) => {
     const newValue = value.includes(itemValue)
       ? value.filter(v => v !== itemValue)
@@ -105,7 +105,7 @@ export function SearchableMultiSelect({
     const newValue = value.filter(v => v !== itemValue);
     onValueChange(newValue);
   };
-  
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (!open && e.key === 'Enter') {
       e.preventDefault();
@@ -118,13 +118,13 @@ export function SearchableMultiSelect({
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault();
-        setHighlightedIndex(prev => 
+        setHighlightedIndex(prev =>
           prev < filteredItems.length - 1 ? prev + 1 : 0
         );
         break;
       case 'ArrowUp':
         e.preventDefault();
-        setHighlightedIndex(prev => 
+        setHighlightedIndex(prev =>
           prev > 0 ? prev - 1 : filteredItems.length - 1
         );
         break;
@@ -150,11 +150,11 @@ export function SearchableMultiSelect({
         <div className="flex flex-wrap gap-2 mb-3">
           {selectedItems.map((item) => {
             const isDefault = defaultValues.includes(item.value);
-            
+
             if (renderSelectedBadge) {
               return renderSelectedBadge(item, isDefault, isDefault ? undefined : () => handleRemove(item.value));
             }
-            
+
             return (
               <Badge
                 key={item.value}
@@ -207,7 +207,7 @@ export function SearchableMultiSelect({
 
       {/* Dropdown */}
       {open && (
-        <div 
+        <div
           className={cn(
             "absolute z-50 mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-md",
             "animate-in fade-in-0 zoom-in-95"
@@ -253,7 +253,7 @@ export function SearchableMultiSelect({
                   const isSelected = value.includes(item.value);
                   const isHighlighted = highlightedIndex === index;
                   const isDefault = defaultValues.includes(item.value);
-                  
+
                   return (
                     <div
                       key={item.value}

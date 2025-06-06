@@ -7,8 +7,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
+import { TimePresetSelector } from "../TimePresetSelector";
 
 interface TimeSlot {
   id: string;
@@ -17,7 +24,14 @@ interface TimeSlot {
 }
 
 interface RegularAvailability {
-  dayOfWeek: "MONDAY" | "TUESDAY" | "WEDNESDAY" | "THURSDAY" | "FRIDAY" | "SATURDAY" | "SUNDAY";
+  dayOfWeek:
+    | "MONDAY"
+    | "TUESDAY"
+    | "WEDNESDAY"
+    | "THURSDAY"
+    | "FRIDAY"
+    | "SATURDAY"
+    | "SUNDAY";
   timeSlots: TimeSlot[];
   fullDay: boolean;
 }
@@ -37,133 +51,132 @@ const DAYS_OF_WEEK = [
   { value: "SUNDAY", label: "日曜日", short: "日" },
 ] as const;
 
-const TIME_PRESETS = [
-  { label: "午前 (9:00-12:00)", start: "09:00", end: "12:00" },
-  { label: "午後 (13:00-17:00)", start: "13:00", end: "17:00" },
-  { label: "夕方 (17:00-21:00)", start: "17:00", end: "21:00" },
-  { label: "夜間 (19:00-22:00)", start: "19:00", end: "22:00" },
-] as const;
-
-export function EnhancedAvailabilityRegularSelector({ availability, onChange }: EnhancedAvailabilitySelectorProps) {
-  const [selectedDay, setSelectedDay] = useState<typeof DAYS_OF_WEEK[number]["value"] | "">("");
+export function EnhancedAvailabilityRegularSelector({
+  availability,
+  onChange,
+}: EnhancedAvailabilitySelectorProps) {
+  const [selectedDay, setSelectedDay] = useState<
+    (typeof DAYS_OF_WEEK)[number]["value"] | ""
+  >("");
   const [startTime, setStartTime] = useState<string>("09:00");
   const [endTime, setEndTime] = useState<string>("17:00");
 
-  // Get availability for a specific day
-  function getDayAvailability(dayOfWeek: typeof DAYS_OF_WEEK[number]["value"]): RegularAvailability | undefined {
-    return availability.find(item => item.dayOfWeek === dayOfWeek);
+  function getDayAvailability(
+    dayOfWeek: (typeof DAYS_OF_WEEK)[number]["value"]
+  ): RegularAvailability | undefined {
+    return availability.find((item) => item.dayOfWeek === dayOfWeek);
   }
 
-  // Add new time slot to a day
   function addTimeSlot() {
     if (!selectedDay || startTime >= endTime) return;
 
     const newSlot: TimeSlot = {
       id: crypto.randomUUID(),
       startTime,
-      endTime
+      endTime,
     };
 
-    // Check for overlaps with existing slots
-    const dayAvailability = getDayAvailability(selectedDay)
+    const dayAvailability = getDayAvailability(selectedDay);
     if (dayAvailability && !dayAvailability.fullDay) {
-      const existingSlots = dayAvailability.timeSlots
-      const hasOverlap = existingSlots.some(slot => {
-        return (startTime < slot.endTime && endTime > slot.startTime)
-      })
+      const existingSlots = dayAvailability.timeSlots;
+      const hasOverlap = existingSlots.some((slot) => {
+        return startTime < slot.endTime && endTime > slot.startTime;
+      });
 
       if (hasOverlap) {
-        alert("選択した時間帯は既存の時間帯と重複しています")
-        return
+        alert("選択した時間帯は既存の時間帯と重複しています");
+        return;
       }
     }
 
-    const updatedAvailability = [...availability]
-    const existingIndex = updatedAvailability.findIndex(item => item.dayOfWeek === selectedDay)
+    const updatedAvailability = [...availability];
+    const existingIndex = updatedAvailability.findIndex(
+      (item) => item.dayOfWeek === selectedDay
+    );
 
     if (existingIndex >= 0) {
-      // Add to existing day
       updatedAvailability[existingIndex] = {
         ...updatedAvailability[existingIndex],
-        timeSlots: [...updatedAvailability[existingIndex].timeSlots, newSlot].sort((a, b) => a.startTime.localeCompare(b.startTime)),
-        fullDay: false
-      }
+        timeSlots: [
+          ...updatedAvailability[existingIndex].timeSlots,
+          newSlot,
+        ].sort((a, b) => a.startTime.localeCompare(b.startTime)),
+        fullDay: false,
+      };
     } else {
-      // Create new day availability
       updatedAvailability.push({
         dayOfWeek: selectedDay,
         timeSlots: [newSlot],
-        fullDay: false
-      })
+        fullDay: false,
+      });
     }
 
-    onChange(updatedAvailability)
-
-    // Reset selection
-    setStartTime("09:00")
-    setEndTime("17:00")
+    onChange(updatedAvailability);
+    setStartTime("09:00");
+    setEndTime("17:00");
   }
 
-  // Remove a specific time slot
-  function removeTimeSlot(dayOfWeek: typeof DAYS_OF_WEEK[number]["value"], slotId: string) {
-    const updatedAvailability = availability.map(item => {
-      if (item.dayOfWeek === dayOfWeek) {
-        const updatedTimeSlots = item.timeSlots.filter(slot => slot.id !== slotId)
-        return {
-          ...item,
-          timeSlots: updatedTimeSlots
+  function removeTimeSlot(
+    dayOfWeek: (typeof DAYS_OF_WEEK)[number]["value"],
+    slotId: string
+  ) {
+    const updatedAvailability = availability
+      .map((item) => {
+        if (item.dayOfWeek === dayOfWeek) {
+          const updatedTimeSlots = item.timeSlots.filter(
+            (slot) => slot.id !== slotId
+          );
+          return {
+            ...item,
+            timeSlots: updatedTimeSlots,
+          };
         }
-      }
-      return item
-    }).filter(item => item.timeSlots.length > 0 || item.fullDay)
+        return item;
+      })
+      .filter((item) => item.timeSlots.length > 0 || item.fullDay);
 
-    onChange(updatedAvailability)
+    onChange(updatedAvailability);
   }
 
-  // Toggle full day for a specific day
-  function toggleFullDay(dayOfWeek: typeof DAYS_OF_WEEK[number]["value"]) {
-    const updatedAvailability = [...availability]
-    const existingIndex = updatedAvailability.findIndex(item => item.dayOfWeek === dayOfWeek)
+  function toggleFullDay(dayOfWeek: (typeof DAYS_OF_WEEK)[number]["value"]) {
+    const updatedAvailability = [...availability];
+    const existingIndex = updatedAvailability.findIndex(
+      (item) => item.dayOfWeek === dayOfWeek
+    );
 
     if (existingIndex >= 0) {
-      const current = updatedAvailability[existingIndex]
+      const current = updatedAvailability[existingIndex];
       if (current.fullDay) {
-        // Remove full day (remove the entire entry)
-        updatedAvailability.splice(existingIndex, 1)
+        updatedAvailability.splice(existingIndex, 1);
       } else {
-        // Set to full day (clear time slots)
         updatedAvailability[existingIndex] = {
           ...current,
           fullDay: true,
-          timeSlots: []
-        }
+          timeSlots: [],
+        };
       }
     } else {
-      // Create new full day entry
       updatedAvailability.push({
         dayOfWeek: dayOfWeek,
         timeSlots: [],
-        fullDay: true
-      })
+        fullDay: true,
+      });
     }
 
-    onChange(updatedAvailability)
+    onChange(updatedAvailability);
   }
 
-  // Apply time preset
-  function applyPreset(preset: typeof TIME_PRESETS[number]) {
-    setStartTime(preset.start)
-    setEndTime(preset.end)
+  function applyPreset(preset: { label: string; start: string; end: string }) {
+    setStartTime(preset.start);
+    setEndTime(preset.end);
   }
 
-  // Clear all availability
   function clearAll() {
-    onChange([])
+    onChange([]);
   }
 
   return (
     <div className="space-y-6">
-      {/* Time Slot Addition Form */}
       <Card>
         <CardContent className="pt-6">
           <div className="space-y-4">
@@ -172,11 +185,15 @@ export function EnhancedAvailabilityRegularSelector({ availability, onChange }: 
               <Label className="text-sm font-medium">新しい時間帯を追加</Label>
             </div>
 
-            {/* Day Selection */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="space-y-2">
                 <Label className="text-xs">曜日</Label>
-                <Select value={selectedDay} onValueChange={(value) => setSelectedDay(value as typeof selectedDay)}>
+                <Select
+                  value={selectedDay}
+                  onValueChange={(value) =>
+                    setSelectedDay(value as typeof selectedDay)
+                  }
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="曜日を選択" />
                   </SelectTrigger>
@@ -222,28 +239,11 @@ export function EnhancedAvailabilityRegularSelector({ availability, onChange }: 
               </div>
             </div>
 
-            {/* Time Presets */}
-            <div className="space-y-2">
-              <Label className="text-xs">時間プリセット</Label>
-              <div className="flex flex-wrap gap-2">
-                {TIME_PRESETS.map((preset, index) => (
-                  <Button
-                    key={index}
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => applyPreset(preset)}
-                  >
-                    {preset.label}
-                  </Button>
-                ))}
-              </div>
-            </div>
+            <TimePresetSelector onPresetSelect={applyPreset} />
           </div>
         </CardContent>
       </Card>
 
-      {/* Current Availability Display */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <Label className="text-sm font-medium">現在の利用可能時間</Label>
@@ -260,11 +260,18 @@ export function EnhancedAvailabilityRegularSelector({ availability, onChange }: 
         </div>
 
         {DAYS_OF_WEEK.map((day) => {
-          const dayAvailability = getDayAvailability(day.value)
-          const hasAvailability = dayAvailability && (dayAvailability.fullDay || dayAvailability.timeSlots.length > 0)
+          const dayAvailability = getDayAvailability(day.value);
+          const hasAvailability =
+            dayAvailability &&
+            (dayAvailability.fullDay || dayAvailability.timeSlots.length > 0);
 
           return (
-            <Card key={day.value} className={hasAvailability ? "border-blue-200" : "border-gray-200"}>
+            <Card
+              key={day.value}
+              className={
+                hasAvailability ? "border-blue-200" : "border-gray-200"
+              }
+            >
               <CardContent className="pt-4">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
@@ -291,7 +298,10 @@ export function EnhancedAvailabilityRegularSelector({ availability, onChange }: 
                 ) : (
                   <div className="space-y-2">
                     {dayAvailability?.timeSlots.map((slot) => (
-                      <div key={slot.id} className="flex items-center justify-between p-2 bg-blue-50 dark:bg-blue-900/20 rounded-md">
+                      <div
+                        key={slot.id}
+                        className="flex items-center justify-between p-2 bg-blue-50 dark:bg-blue-900/20 rounded-md"
+                      >
                         <span className="text-sm">
                           {slot.startTime} - {slot.endTime}
                         </span>
@@ -306,7 +316,8 @@ export function EnhancedAvailabilityRegularSelector({ availability, onChange }: 
                         </Button>
                       </div>
                     ))}
-                    {(!dayAvailability || dayAvailability.timeSlots.length === 0) && (
+                    {(!dayAvailability ||
+                      dayAvailability.timeSlots.length === 0) && (
                       <div className="text-sm text-muted-foreground">
                         利用不可
                       </div>
@@ -315,9 +326,9 @@ export function EnhancedAvailabilityRegularSelector({ availability, onChange }: 
                 )}
               </CardContent>
             </Card>
-          )
+          );
         })}
       </div>
     </div>
-  )
+  );
 }

@@ -105,7 +105,7 @@ export function VacationTable() {
     },
     {
       accessorKey: "branchName",
-      header: "支店",
+      header: "校舎",
       cell: ({ row }) =>
         row.original.branchName ? (
           <Badge variant="outline">{row.original.branchName}</Badge>

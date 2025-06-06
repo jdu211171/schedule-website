@@ -343,7 +343,7 @@ export function ExceptionalAvailabilityForm({
               <FormLabel className="text-sm font-medium">理由</FormLabel>
               <FormControl>
                 <Input
-                  placeholder="例: 定期試験、病欠、学校行事"
+                  placeholder="例: 定期試験、休会、学校行事"
                   {...field}
                   value={field.value || ""}
                   className="h-10"

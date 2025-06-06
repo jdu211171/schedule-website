@@ -171,7 +171,10 @@ const formatTeacher = (teacher: TeacherWithIncludes): FormattedTeacher => {
     }
   );
 
-  // Process exceptional availability data
+  // Process exceptional availability data - filter out past dates
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // Set to start of day for comparison
+
   const exceptionalAvailability: FormattedTeacher['exceptionalAvailability'] = [];
 
   teacher.user.availability?.forEach((avail) => {
@@ -180,6 +183,13 @@ const formatTeacher = (teacher: TeacherWithIncludes): FormattedTeacher => {
       avail.status === "APPROVED" &&
       avail.date
     ) {
+      // Skip past dates
+      const availDate = new Date(avail.date);
+      availDate.setHours(0, 0, 0, 0);
+      if (availDate < today) {
+        return; // Skip this entry
+      }
+
       const dateStr = avail.date.toISOString().split('T')[0];
 
       // Check if we already have an entry for this date
@@ -446,7 +456,7 @@ export const POST = withBranchAccess(
 
         if (branchCount !== finalBranchIds.length) {
           return NextResponse.json(
-            { error: "一部の支店IDが存在しません" }, // "Some branch IDs do not exist"
+            { error: "一部の校舎IDが存在しません" }, // "Some branch IDs do not exist"
             { status: 400 }
           );
         }

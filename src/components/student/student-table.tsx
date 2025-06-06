@@ -173,7 +173,7 @@ export function StudentTable() {
     },
     {
       accessorKey: "branches",
-      header: "支店",
+      header: "校舎",
       cell: ({ row }) => {
         const branches = row.original.branches || [];
         if (branches.length === 0) return "-";

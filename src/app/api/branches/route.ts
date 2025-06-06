@@ -144,7 +144,7 @@ export const POST = withBranchAccess(
 
       if (existingBranch) {
         return NextResponse.json(
-          { error: "支店名は既に使用されています" },
+          { error: "校舎名は既に使用されています" },
           { status: 409 }
         );
       }
@@ -205,7 +205,7 @@ export const POST = withBranchAccess(
       });
 
       if (!newBranch) {
-        throw new Error("支店の作成に失敗しました");
+        throw new Error("校舎の作成に失敗しました");
       }
 
       // Format response
@@ -226,7 +226,7 @@ export const POST = withBranchAccess(
     } catch (error) {
       console.error("Error creating branch:", error);
       return NextResponse.json(
-        { error: "支店の作成に失敗しました" },
+        { error: "校舎の作成に失敗しました" },
         { status: 500 }
       );
     }

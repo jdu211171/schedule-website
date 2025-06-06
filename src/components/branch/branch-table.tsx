@@ -132,7 +132,7 @@ export function BranchTable() {
         columns={columns}
         data={typedBranches}
         isLoading={isLoading && !typedBranches.length} // Only show loading state on initial load
-        searchPlaceholder="支店を検索..."
+        searchPlaceholder="校舎を検索..."
         onSearch={setSearchTerm}
         searchValue={searchTerm}
         onCreateNew={() => setIsCreateDialogOpen(true)}
@@ -168,7 +168,7 @@ export function BranchTable() {
           <AlertDialogHeader>
             <AlertDialogTitle>本当に削除しますか？</AlertDialogTitle>
             <AlertDialogDescription>
-              この操作は元に戻せません。支店「{branchToDelete?.name}
+              この操作は元に戻せません。校舎「{branchToDelete?.name}
               」を完全に削除します。
             </AlertDialogDescription>
           </AlertDialogHeader>

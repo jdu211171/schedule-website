@@ -87,7 +87,7 @@ export const userStatusEnum = z.enum(["ACTIVE", "SICK", "PERMANENTLY_LEFT"]);
 
 export const userStatusLabels = {
   ACTIVE: "在籍",
-  SICK: "病欠",
+  SICK: "休会",
   PERMANENTLY_LEFT: "退会",
 } as const;
 
@@ -135,7 +135,7 @@ export const studentBaseSchema = z.object({
     .optional()
     .nullable(),
   branchIds: z
-    .array(z.string(), { invalid_type_error: "支店を選択してください" })
+    .array(z.string(), { invalid_type_error: "校舎を選択してください" })
     .optional(),
   // Subject preferences
   subjectPreferences: z.array(subjectPreferenceSchema).optional().default([]),

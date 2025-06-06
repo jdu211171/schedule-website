@@ -238,7 +238,7 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
     },
     {
       accessorKey: "branchName",
-      header: "支店",
+      header: "校舎",
       cell: ({ row }) =>
         (row.original as ExtendedClassSession).branchName ? (
           <Badge variant="outline">{(row.original as ExtendedClassSession).branchName}</Badge>
