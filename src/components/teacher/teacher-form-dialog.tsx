@@ -197,7 +197,9 @@ export function TeacherFormDialog({
         email: teacher.email || "",
         lineId: teacher.lineId || "",
         notes: teacher.notes || "",
-        status: (teacher.status as "ACTIVE" | "SICK" | "PERMANENTLY_LEFT") || "ACTIVE",
+        status:
+          (teacher.status as "ACTIVE" | "SICK" | "PERMANENTLY_LEFT") ||
+          "ACTIVE",
         username: teacher.username || "",
         password: "",
         branchIds: branchIdsWithDefault,
@@ -242,11 +244,12 @@ export function TeacherFormDialog({
         teacherWithAvailability.exceptionalAvailability.length > 0
       ) {
         // Convert date strings to Date objects
-        const irregularAvailabilityData = teacherWithAvailability.exceptionalAvailability.map(ea => ({
-          date: new Date(ea.date),
-          timeSlots: ea.timeSlots,
-          fullDay: ea.fullDay
-        }));
+        const irregularAvailabilityData =
+          teacherWithAvailability.exceptionalAvailability.map((ea) => ({
+            date: new Date(ea.date),
+            timeSlots: ea.timeSlots,
+            fullDay: ea.fullDay,
+          }));
         setIrregularAvailability(irregularAvailabilityData);
       } else {
         setIrregularAvailability([]);
@@ -302,7 +305,13 @@ export function TeacherFormDialog({
     });
 
     return () => subscription.unsubscribe();
-  }, [form, teacherSubjects, regularAvailability, irregularAvailability, STORAGE_KEY]);
+  }, [
+    form,
+    teacherSubjects,
+    regularAvailability,
+    irregularAvailability,
+    STORAGE_KEY,
+  ]);
 
   // Validate availability data
   useEffect(() => {
@@ -374,33 +383,37 @@ export function TeacherFormDialog({
 
     // Add exceptional availability data if it exists
     if (irregularAvailability.length > 0) {
-      const exceptionalAvailabilityData = irregularAvailability.flatMap((item) => {
-        if (item.fullDay) {
-          // Full day availability
-          return [{
-            userId: submissionData.teacherId || undefined,
-            date: item.date, // Keep as Date object
-            fullDay: true,
-            type: "EXCEPTION" as const,
-            startTime: null as string | null,
-            endTime: null as string | null,
-            reason: null as string | null,
-            notes: null as string | null,
-          }];
-        } else {
-          // Time slot based availability
-          return item.timeSlots.map((slot) => ({
-            userId: submissionData.teacherId || undefined,
-            date: item.date, // Keep as Date object
-            fullDay: false,
-            type: "EXCEPTION" as const,
-            startTime: slot.startTime as string | null,
-            endTime: slot.endTime as string | null,
-            reason: null as string | null,
-            notes: null as string | null,
-          }));
+      const exceptionalAvailabilityData = irregularAvailability.flatMap(
+        (item) => {
+          if (item.fullDay) {
+            // Full day availability
+            return [
+              {
+                userId: submissionData.teacherId || undefined,
+                date: item.date, // Keep as Date object
+                fullDay: true,
+                type: "EXCEPTION" as const,
+                startTime: null as string | null,
+                endTime: null as string | null,
+                reason: null as string | null,
+                notes: null as string | null,
+              },
+            ];
+          } else {
+            // Time slot based availability
+            return item.timeSlots.map((slot) => ({
+              userId: submissionData.teacherId || undefined,
+              date: item.date, // Keep as Date object
+              fullDay: false,
+              type: "EXCEPTION" as const,
+              startTime: slot.startTime as string | null,
+              endTime: slot.endTime as string | null,
+              reason: null as string | null,
+              notes: null as string | null,
+            }));
+          }
         }
-      });
+      );
       submissionData.exceptionalAvailability = exceptionalAvailabilityData;
     }
 
@@ -1049,7 +1062,10 @@ export function TeacherFormDialog({
                     </Card>
                   </TabsContent>
 
-                  <TabsContent value="availabilityIrregular" className="space-y-6 mt-0">
+                  <TabsContent
+                    value="availabilityIrregular"
+                    className="space-y-6 mt-0"
+                  >
                     <Card>
                       <CardHeader>
                         <CardTitle className="text-lg flex items-center gap-2">
@@ -1107,25 +1123,42 @@ export function TeacherFormDialog({
                                   <SearchableMultiSelect
                                     value={field.value || []}
                                     onValueChange={field.onChange}
-                                    items={branchesResponse?.data.map((branch: { branchId: string; name: string }) => ({
-                                      value: branch.branchId,
-                                      label: branch.name,
-                                    })) || []}
+                                    items={
+                                      branchesResponse?.data.map(
+                                        (branch: {
+                                          branchId: string;
+                                          name: string;
+                                        }) => ({
+                                          value: branch.branchId,
+                                          label: branch.name,
+                                        })
+                                      ) || []
+                                    }
                                     placeholder="校舎を選択してください"
                                     searchPlaceholder="校舎名を検索..."
                                     emptyMessage="該当する校舎が見つかりません"
                                     loading={isBranchesLoading}
                                     disabled={isBranchesLoading}
-                                    defaultValues={defaultBranchId ? [defaultBranchId] : []}
-                                    renderSelectedBadge={(item, isDefault, onRemove) => (
+                                    defaultValues={
+                                      defaultBranchId ? [defaultBranchId] : []
+                                    }
+                                    renderSelectedBadge={(
+                                      item,
+                                      isDefault,
+                                      onRemove
+                                    ) => (
                                       <Badge
                                         key={item.value}
-                                        variant={isDefault ? "default" : "secondary"}
+                                        variant={
+                                          isDefault ? "default" : "secondary"
+                                        }
                                         className="flex items-center gap-1 px-3 py-1"
                                       >
                                         <span>{item.label}</span>
                                         {isDefault && (
-                                          <span className="text-xs">(デフォルト)</span>
+                                          <span className="text-xs">
+                                            (デフォルト)
+                                          </span>
                                         )}
                                         {!isDefault && onRemove && (
                                           <Button

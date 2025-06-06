@@ -11,6 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { DatePicker } from "../date-picker";
 import { DateRangePicker } from "../date-range-picker";
 import { DateRange } from "react-day-picker";
+import { TimePresetSelector } from "../TimePresetSelector";
 
 interface TimeSlot {
   id: string;
@@ -52,13 +53,6 @@ const DAYS_OF_WEEK = [
   { value: "SUNDAY", label: "日曜日", short: "日" },
 ] as const;
 
-const TIME_PRESETS = [
-  { label: "午前 (9:00-12:00)", start: "09:00", end: "12:00" },
-  { label: "午後 (13:00-17:00)", start: "13:00", end: "17:00" },
-  { label: "夕方 (17:00-21:00)", start: "17:00", end: "21:00" },
-  { label: "夜間 (19:00-22:00)", start: "19:00", end: "22:00" },
-] as const;
-
 export function EnhancedAvailabilityIrregularSelector({
   availability,
   onChange,
@@ -69,15 +63,21 @@ export function EnhancedAvailabilityIrregularSelector({
   );
 
   // Individual date mode states
-  const [selectedDateRange, setSelectedDateRange] = useState<DateRange | undefined>(undefined);
+  const [selectedDateRange, setSelectedDateRange] = useState<
+    DateRange | undefined
+  >(undefined);
   const [startTime, setStartTime] = useState<string>("09:00");
   const [endTime, setEndTime] = useState<string>("17:00");
   const [useDateRange, setUseDateRange] = useState<boolean>(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
 
   // Pattern mode states
-  const [patternDateRange, setPatternDateRange] = useState<DateRange | undefined>(undefined);
-  const [weekdayPatterns, setWeekdayPatterns] = useState<Map<string, WeekdayPattern>>(new Map());
+  const [patternDateRange, setPatternDateRange] = useState<
+    DateRange | undefined
+  >(undefined);
+  const [weekdayPatterns, setWeekdayPatterns] = useState<
+    Map<string, WeekdayPattern>
+  >(new Map());
   const [currentWeekday, setCurrentWeekday] = useState<string>("");
 
   // Helper function to get all dates in a range
@@ -386,7 +386,7 @@ export function EnhancedAvailabilityIrregularSelector({
   }
 
   // Apply time preset
-  function applyPreset(preset: (typeof TIME_PRESETS)[number]) {
+  function applyPreset(preset: { label: string; start: string; end: string }) {
     setStartTime(preset.start);
     setEndTime(preset.end);
   }
@@ -571,22 +571,7 @@ export function EnhancedAvailabilityIrregularSelector({
               </div>
 
               {/* Time Presets */}
-              <div className="space-y-2">
-                <Label className="text-xs">時間プリセット</Label>
-                <div className="flex flex-wrap gap-2">
-                  {TIME_PRESETS.map((preset, index) => (
-                    <Button
-                      key={index}
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => applyPreset(preset)}
-                    >
-                      {preset.label}
-                    </Button>
-                  ))}
-                </div>
-              </div>
+              <TimePresetSelector onPresetSelect={applyPreset} />
 
               {/* Info for date range mode */}
               {useDateRange && selectedDateRange?.from && (
@@ -702,22 +687,7 @@ export function EnhancedAvailabilityIrregularSelector({
                 </div>
 
                 {/* Time Presets */}
-                <div className="space-y-2">
-                  <Label className="text-xs">時間プリセット</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {TIME_PRESETS.map((preset, index) => (
-                      <Button
-                        key={index}
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => applyPreset(preset)}
-                      >
-                        {preset.label}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
+                <TimePresetSelector onPresetSelect={applyPreset} />
               </div>
             </CardContent>
           </Card>
@@ -903,7 +873,9 @@ export function EnhancedAvailabilityIrregularSelector({
                         type="button"
                         variant="ghost"
                         size="sm"
-                        onClick={() => removeDateAvailability(availableDate.date)}
+                        onClick={() =>
+                          removeDateAvailability(availableDate.date)
+                        }
                         className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20"
                         title="この日付の設定を削除"
                       >
