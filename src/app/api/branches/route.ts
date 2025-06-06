@@ -5,8 +5,9 @@ import { prisma } from "@/lib/prisma";
 import {
   branchCreateSchema,
   branchFilterSchema,
+  BRANCH_SORT_FIELDS,
 } from "@/schemas/branch.schema";
-import { Branch, UserBranch } from "@prisma/client";
+import { Branch, UserBranch, Prisma } from "@prisma/client";
 import { z } from "zod";
 
 type BranchWithUsers = Branch & {
@@ -25,6 +26,7 @@ type FormattedBranch = {
   branchId: string;
   name: string;
   notes: string | null;
+  order: number | null;
   users: {
     id: string;
     name: string | null;
@@ -41,83 +43,94 @@ const formatBranch = (branch: BranchWithUsers): FormattedBranch => ({
   branchId: branch.branchId,
   name: branch.name,
   notes: branch.notes,
+  order: branch.order,
   users: branch.userBranches.map((ub) => ub.user),
   createdAt: branch.createdAt,
   updatedAt: branch.updatedAt,
 });
 
 // GET - List branches with pagination and filters
-export const GET = withBranchAccess(
-  ["ADMIN"],
-  async (request: NextRequest) => {
-    // Parse query parameters
-    const url = new URL(request.url);
-    const params = Object.fromEntries(url.searchParams.entries());
+export const GET = withBranchAccess(["ADMIN"], async (request: NextRequest) => {
+  // Parse query parameters
+  const url = new URL(request.url);
+  const params = Object.fromEntries(url.searchParams.entries());
 
-    // Validate and parse filter parameters
-    const result = branchFilterSchema.safeParse(params);
-    if (!result.success) {
-      return NextResponse.json(
-        { error: "フィルターパラメータが無効です" },
-        { status: 400 }
-      );
-    }
+  // Validate and parse filter parameters
+  const result = branchFilterSchema.safeParse(params);
+  if (!result.success) {
+    return NextResponse.json(
+      { error: "フィルターパラメータが無効です" },
+      { status: 400 }
+    );
+  }
 
-    const { page, limit, name } = result.data;
+  const { page, limit, name, sortBy, sortOrder } = result.data;
 
-    // Build filter conditions
-    const where: Record<string, unknown> = {};
+  // Build filter conditions
+  const where: Record<string, unknown> = {};
 
-    if (name) {
-      where.name = {
-        contains: name,
-        mode: "insensitive",
-      };
-    }
+  if (name) {
+    where.name = {
+      contains: name,
+      mode: "insensitive",
+    };
+  }
 
-    // Calculate pagination
-    const skip = (page - 1) * limit;
+  // Build orderBy based on sortBy and sortOrder
+  const orderBy: Prisma.BranchOrderByWithRelationInput[] = [];
 
-    // Fetch total count
-    const total = await prisma.branch.count({ where });
+  // Primary sort
+  if (sortBy === "order") {
+    // Sort nulls last for order field
+    orderBy.push({ order: { sort: sortOrder, nulls: "last" } });
+    // Secondary sort by name for items with same order
+    orderBy.push({ name: "asc" });
+  } else {
+    orderBy.push({ [sortBy]: sortOrder });
+  }
 
-    // Fetch branches with users
-    const branches = await prisma.branch.findMany({
-      where,
-      include: {
-        userBranches: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                username: true,
-                email: true,
-                role: true,
-              },
+  // Calculate pagination
+  const skip = (page - 1) * limit;
+
+  // Fetch total count
+  const total = await prisma.branch.count({ where });
+
+  // Fetch branches with users
+  const branches = await prisma.branch.findMany({
+    where,
+    include: {
+      userBranches: {
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              username: true,
+              email: true,
+              role: true,
             },
           },
         },
       },
-      skip,
-      take: limit,
-      orderBy: { name: "asc" },
-    });
+    },
+    skip,
+    take: limit,
+    orderBy,
+  });
 
-    // Format branches
-    const formattedBranches = branches.map(formatBranch);
+  // Format branches
+  const formattedBranches = branches.map(formatBranch);
 
-    return NextResponse.json({
-      data: formattedBranches,
-      pagination: {
-        total,
-        page,
-        limit,
-        pages: Math.ceil(total / limit),
-      },
-    });
-  }
-);
+  return NextResponse.json({
+    data: formattedBranches,
+    pagination: {
+      total,
+      page,
+      limit,
+      pages: Math.ceil(total / limit),
+    },
+  });
+});
 
 // POST - Create a new branch
 export const POST = withBranchAccess(
@@ -127,7 +140,9 @@ export const POST = withBranchAccess(
       const body = await request.json();
 
       // Validate request body
-      const result = branchCreateSchema.extend({ userIds: z.array(z.string()).optional() }).safeParse(body);
+      const result = branchCreateSchema
+        .extend({ userIds: z.array(z.string()).optional() })
+        .safeParse(body);
       if (!result.success) {
         return NextResponse.json(
           { error: "入力データが無効です" },
@@ -135,7 +150,15 @@ export const POST = withBranchAccess(
         );
       }
 
-      const { name, notes, userIds = [] } = result.data as { name: string; notes?: string | null; userIds?: string[] };
+      const {
+        name,
+        notes,
+        userIds = [],
+      } = result.data as {
+        name: string;
+        notes?: string | null;
+        userIds?: string[];
+      };
 
       // Check if branch name already exists
       const existingBranch = await prisma.branch.findFirst({
@@ -163,13 +186,25 @@ export const POST = withBranchAccess(
         }
       }
 
+      // Get the current maximum order value
+      const maxOrderResult = await prisma.branch.aggregate({
+        _max: {
+          order: true,
+        },
+      });
+
+      const newOrder = maxOrderResult._max.order
+        ? maxOrderResult._max.order + 1
+        : 1;
+
       // Create branch and user associations in a transaction
       const newBranch = await prisma.$transaction(async (tx) => {
-        // Create branch
+        // Create branch with initial order
         const branch = await tx.branch.create({
           data: {
             name,
             notes,
+            order: newOrder,
           },
         });
 
