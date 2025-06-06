@@ -5,7 +5,7 @@ import { useTeachers, useTeacher } from '@/hooks/useTeacherQuery';
 import { useStudents, useStudent } from '@/hooks/useStudentQuery';
 import { useSubjects } from '@/hooks/useSubjectQuery';
 import { useClassTypes } from '@/hooks/useClassTypeQuery';
-import { useUserSubjectPreferencesByUser } from '@/hooks/useUserSubjectPreferenceQuery';
+// import { useUserSubjectPreferencesByUser } from '@/hooks/useUserSubjectPreferenceQuery';
 import { ExtendedClassSessionWithRelations, useMultipleDaysClassSessions, DayFilters } from '@/hooks/useClassSessionQuery';
 import { DaySelector } from './day-selector';
 import { DayCalendar } from './day-calendar';
@@ -80,21 +80,21 @@ const TIME_SLOTS: TimeSlot[] = Array.from({ length: 57 }, (_el, i) => {
 export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayProps) {
   const today = useMemo(() => startOfDay(new Date()), []);
   
-  const [viewStartDate, setViewStartDate] = useState<Date>(() => {
-    if (typeof window !== 'undefined') {
+  const [viewStartDate, setViewStartDate] = useState<Date>(today);
+  const [selectedDays, setSelectedDays] = useState<Date[]>([today]);
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // Load saved data after component mounts to prevent hydration issues
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !isInitialized) {
       const saved = localStorage.getItem(VIEW_START_DATE_KEY);
       if (saved) {
         const date = new Date(saved);
         if (!isNaN(date.getTime()) && date >= today) {
-          return startOfDay(date);
+          setViewStartDate(startOfDay(date));
         }
       }
-    }
-    return today;
-  });
 
-  const [selectedDays, setSelectedDays] = useState<Date[]>(() => {
-    if (typeof window !== 'undefined') {
       const savedDaysJson = localStorage.getItem(SELECTED_DAYS_KEY);
       if (savedDaysJson) {
         try {
@@ -109,17 +109,17 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
             });
 
             if (validDates.length > 0) {
-              return validDates;
+              setSelectedDays(validDates);
             }
           }
         } catch (error) {
           console.error('Error parsing saved selected days:', error);
         }
       }
-    }
 
-    return [today];
-  });
+      setIsInitialized(true);
+    }
+  }, [today, isInitialized]);
 
   const [selectedClassTypeId, setSelectedClassTypeId] = useState<string>('');
   const [selectedTeacherId, setSelectedTeacherId] = useState<string>('');
@@ -134,17 +134,21 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
   const [resetSelectionKey, setResetSelectionKey] = useState<number>(0);
 
   useEffect(() => {
-    localStorage.setItem(VIEW_START_DATE_KEY, viewStartDate.toISOString());
-  }, [viewStartDate]);
+    if (isInitialized) {
+      localStorage.setItem(VIEW_START_DATE_KEY, viewStartDate.toISOString());
+    }
+  }, [viewStartDate, isInitialized]);
 
   useEffect(() => {
-    const daysToSave = selectedDays.map(d => d.toISOString());
-    if (daysToSave.length > 0) {
-      localStorage.setItem(SELECTED_DAYS_KEY, JSON.stringify(daysToSave));
-    } else {
-      localStorage.removeItem(SELECTED_DAYS_KEY);
+    if (isInitialized) {
+      const daysToSave = selectedDays.map(d => d.toISOString());
+      if (daysToSave.length > 0) {
+        localStorage.setItem(SELECTED_DAYS_KEY, JSON.stringify(daysToSave));
+      } else {
+        localStorage.removeItem(SELECTED_DAYS_KEY);
+      }
     }
-  }, [selectedDays]);
+  }, [selectedDays, isInitialized]);
 
   const { data: boothsResponse, isLoading: isLoadingBooths } = useBooths({ limit: 100 });
   const { data: teachersResponse, isLoading: isLoadingTeachers } = useTeachers({ limit: 100 });
@@ -423,9 +427,13 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
   if (!selectedBranchId) {
     return (
       <div className="flex justify-center p-8 text-muted-foreground">
-        Please select a branch to display the schedule.
+        Пожалуйста, выберите филиал для отображения расписания.
       </div>
     );
+  }
+
+  if (!isInitialized) {
+    return <div className="flex justify-center p-8 text-foreground dark:text-foreground">初期化中...</div>;
   }
 
   if (isLoadingData) {
