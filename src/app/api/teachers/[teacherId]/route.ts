@@ -166,7 +166,10 @@ const formatTeacher = (teacher: TeacherWithIncludes): FormattedTeacher => {
     }
   );
 
-  // Process exceptional availability data
+  // Process exceptional availability data - filter out past dates
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // Set to start of day for comparison
+
   const exceptionalAvailability: FormattedTeacher['exceptionalAvailability'] = [];
 
   teacher.user.availability?.forEach((avail) => {
@@ -175,6 +178,13 @@ const formatTeacher = (teacher: TeacherWithIncludes): FormattedTeacher => {
       avail.status === "APPROVED" &&
       avail.date
     ) {
+      // Skip past dates
+      const availDate = new Date(avail.date);
+      availDate.setHours(0, 0, 0, 0);
+      if (availDate < today) {
+        return; // Skip this entry
+      }
+
       const dateStr = avail.date.toISOString().split('T')[0];
 
       // Check if we already have an entry for this date
@@ -569,9 +579,9 @@ export const PATCH = withBranchAccess(
           }
         }
 
-        // Update exceptional availability if provided
-        if (exceptionalAvailability.length > 0) {
-          // Delete existing exceptional availability records for this user
+        // Update exceptional availability if provided or if empty array (to clear all)
+        if (exceptionalAvailability !== undefined) {
+          // Always delete existing exceptional availability records when exceptionalAvailability is provided
           await tx.userAvailability.deleteMany({
             where: {
               userId: existingTeacher.userId,
@@ -579,53 +589,66 @@ export const PATCH = withBranchAccess(
             },
           });
 
-          const exceptionalRecords = [];
+          // Only create new records if there are any
+          if (exceptionalAvailability.length > 0) {
+            const exceptionalRecords = [];
 
-          for (const exceptionalItem of exceptionalAvailability) {
-            const { date, fullDay, startTime, endTime, reason, notes } = exceptionalItem;
+            for (const exceptionalItem of exceptionalAvailability) {
+              const { date, fullDay, startTime, endTime, reason, notes } = exceptionalItem;
 
-            if (fullDay) {
-              // Create a full-day exceptional availability record
-              exceptionalRecords.push({
-                userId: existingTeacher.userId,
-                dayOfWeek: null,
-                type: "EXCEPTION" as const,
-                status: "APPROVED" as const,
-                fullDay: true,
-                startTime: null,
-                endTime: null,
-                date: date,
-                reason: reason || null,
-                notes: notes || null,
-              });
-            } else if (startTime && endTime) {
-              // Create time-specific exceptional availability record
-              const [startHours, startMinutes] = startTime.split(":").map(Number);
-              const [endHours, endMinutes] = endTime.split(":").map(Number);
+              // Create UTC date from the date input
+              const createUTCDate = (dateInput: Date): Date => {
+                const year = dateInput.getFullYear();
+                const month = dateInput.getMonth();
+                const day = dateInput.getDate();
+                return new Date(Date.UTC(year, month, day, 0, 0, 0, 0));
+              };
 
-              exceptionalRecords.push({
-                userId: existingTeacher.userId,
-                dayOfWeek: null,
-                type: "EXCEPTION" as const,
-                status: "APPROVED" as const,
-                fullDay: false,
-                startTime: new Date(
-                  Date.UTC(2000, 0, 1, startHours, startMinutes, 0, 0)
-                ),
-                endTime: new Date(
-                  Date.UTC(2000, 0, 1, endHours, endMinutes, 0, 0)
-                ),
-                date: date,
-                reason: reason || null,
-                notes: notes || null,
+              const dateUTC = createUTCDate(date);
+
+              if (fullDay) {
+                // Create a full-day exceptional availability record
+                exceptionalRecords.push({
+                  userId: existingTeacher.userId,
+                  dayOfWeek: null,
+                  type: "EXCEPTION" as const,
+                  status: "APPROVED" as const,
+                  fullDay: true,
+                  startTime: null,
+                  endTime: null,
+                  date: dateUTC,
+                  reason: reason || null,
+                  notes: notes || null,
+                });
+              } else if (startTime && endTime) {
+                // Create time-specific exceptional availability record
+                const [startHours, startMinutes] = startTime.split(":").map(Number);
+                const [endHours, endMinutes] = endTime.split(":").map(Number);
+
+                exceptionalRecords.push({
+                  userId: existingTeacher.userId,
+                  dayOfWeek: null,
+                  type: "EXCEPTION" as const,
+                  status: "APPROVED" as const,
+                  fullDay: false,
+                  startTime: new Date(
+                    Date.UTC(2000, 0, 1, startHours, startMinutes, 0, 0)
+                  ),
+                  endTime: new Date(
+                    Date.UTC(2000, 0, 1, endHours, endMinutes, 0, 0)
+                  ),
+                  date: dateUTC,
+                  reason: reason || null,
+                  notes: notes || null,
+                });
+              }
+            }
+
+            if (exceptionalRecords.length > 0) {
+              await tx.userAvailability.createMany({
+                data: exceptionalRecords,
               });
             }
-          }
-
-          if (exceptionalRecords.length > 0) {
-            await tx.userAvailability.createMany({
-              data: exceptionalRecords,
-            });
           }
         }
 
