@@ -131,9 +131,11 @@ export const studentBaseSchema = z.object({
     .nullable(),
   email: z
     .string()
-    .email("有効なメールアドレス形式で入力してください")
     .optional()
-    .nullable(),
+    .nullable()
+    .refine((val) => !val || z.string().email().safeParse(val).success, {
+      message: "有効なメールアドレス形式で入力してください",
+    }),
   branchIds: z
     .array(z.string(), { invalid_type_error: "校舎を選択してください" })
     .optional(),
