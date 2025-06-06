@@ -70,6 +70,19 @@ export function useBranches(params: UseBranchesParams = {}) {
   });
 }
 
+// New hook for getting all branches in order (useful for dropdowns/selects)
+export function useAllBranchesOrdered() {
+  return useQuery<Branch[]>({
+    queryKey: ["branches-all-ordered"],
+    queryFn: async () => {
+      const response = await fetcher<BranchesResponse>(
+        `/api/branches?limit=100&sortBy=order&sortOrder=asc`
+      );
+      return response.data;
+    },
+  });
+}
+
 export function useBranch(branchId: string) {
   return useQuery<Branch>({
     queryKey: ["branch", branchId],

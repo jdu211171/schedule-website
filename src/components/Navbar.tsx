@@ -39,6 +39,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { useAllBranchesOrdered } from "@/hooks/useBranchQuery";
 
 interface NavItemType {
   title: string;
@@ -106,11 +107,8 @@ function BranchSelector() {
   );
   const [isLoading, setIsLoading] = React.useState(false);
 
-  // Use branches from session instead of making an API request
-  const branches = React.useMemo(
-    () => session?.user?.branches || [],
-    [session]
-  );
+  // Use ordered branches from API
+  const { data: branches = [], isLoading: isBranchesLoading } = useAllBranchesOrdered();
 
   const handleBranchChange = React.useCallback(
     async (value: string) => {
@@ -164,7 +162,6 @@ function BranchSelector() {
 
   // Initialize the selected branch from session first, then localStorage
   React.useEffect(() => {
-    // If user has a selected branch in session, prioritize that
     if (
       session?.user?.selectedBranchId &&
       branches.some((b) => b.branchId === session.user!.selectedBranchId)
@@ -228,7 +225,7 @@ function BranchSelector() {
       <Select
         value={selectedBranchId || undefined}
         onValueChange={handleBranchChange}
-        disabled={isLoading}
+        disabled={isLoading || isBranchesLoading}
       >
         <SelectTrigger className="w-full sm:w-[180px] text-sm">
           <SelectValue placeholder="校舎を選択">

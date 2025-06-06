@@ -84,6 +84,7 @@ import { useAllSubjects } from "@/hooks/useSubjectQuery";
 import { useAllSubjectTypes } from "@/hooks/useSubjectTypeQuery";
 import { useTeachersBySubjectPreference } from "@/hooks/useTeachersBySubjectPreference";
 import { useTeachers } from "@/hooks/useTeacherQuery";
+import { useAllBranchesOrdered } from "@/hooks/useBranchQuery";
 
 interface TimeSlot {
   id: string;
@@ -131,10 +132,8 @@ export function StudentFormDialog({
   const { data: session } = useSession();
   const [activeTab, setActiveTab] = useState("basic");
 
-  const branchesResponse = session?.user?.branches
-    ? { data: session.user.branches }
-    : { data: [] };
-  const isBranchesLoading = !session?.user?.branches;
+  const { data: branches = [], isLoading: isBranchesLoading } = useAllBranchesOrdered();
+  const defaultBranchId = session?.user?.selectedBranchId || branches?.[0]?.branchId;
 
   const { data: studentTypesResponse, isLoading: isStudentTypesLoading } =
     useStudentTypes();
@@ -144,9 +143,6 @@ export function StudentFormDialog({
   const { data: subjectTypes = [] } = useAllSubjectTypes();
 
   // Use the selected branch from session instead of first branch
-  const defaultBranchId =
-    session?.user?.selectedBranchId || session?.user?.branches?.[0]?.branchId;
-
   const isEditing = !!student;
   const isSubmitting =
     createStudentMutation.isPending || updateStudentMutation.isPending;
@@ -204,8 +200,7 @@ export function StudentFormDialog({
 
   useEffect(() => {
     if (student) {
-      const branchIds =
-        student.branches?.map((branch) => branch.branchId) || [];
+      const branchIds = student.branches?.map((branch) => branch.branchId) || [];
       // Ensure defaultBranchId is always included
       const branchIdsWithDefault =
         defaultBranchId && !branchIds.includes(defaultBranchId)
@@ -1376,10 +1371,10 @@ export function StudentFormDialog({
                                   <SearchableMultiSelect
                                     value={field.value || []}
                                     onValueChange={field.onChange}
-                                    items={branchesResponse?.data.map((branch: { branchId: string; name: string }) => ({
+                                    items={branches.map((branch) => ({
                                       value: branch.branchId,
                                       label: branch.name,
-                                    })) || []}
+                                    }))}
                                     placeholder="校舎を選択してください"
                                     searchPlaceholder="校舎名を検索..."
                                     emptyMessage="該当する校舎が見つかりません"
