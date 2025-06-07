@@ -94,15 +94,20 @@ model ClassSession {
 
 /**
  * This model defines different types of classes offered by the school.
+ * Now supports hierarchical structure where class types can have parent-child relationships.
  */
 model ClassType {
   classTypeId   String         @id @default(cuid()) @map("class_type_id")
   name          String         @db.VarChar(100)
   notes         String?        @db.VarChar(255)
+  parentId      String?        @map("parent_id")
+  parent        ClassType?     @relation("ClassTypeHierarchy", fields: [parentId], references: [classTypeId], onDelete: SetNull, onUpdate: Cascade)
+  children      ClassType[]    @relation("ClassTypeHierarchy")
   classSessions ClassSession[]
   createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt     DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
+  @@index([parentId])
   @@map("class_types")
 }
 

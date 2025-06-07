@@ -8,22 +8,62 @@ import {
 } from "@/schemas/class-type.schema";
 import { ClassType } from "@prisma/client";
 
+type ClassTypeWithRelations = ClassType & {
+  parent?: ClassType | null;
+  children?: ClassType[];
+};
+
 type FormattedClassType = {
   classTypeId: string;
   name: string;
   notes: string | null;
+  parentId: string | null;
+  parent?: FormattedClassType | null;
+  children?: FormattedClassType[];
   createdAt: Date;
   updatedAt: Date;
 };
 
 // Helper function to format classType response
-const formatClassType = (classType: ClassType): FormattedClassType => ({
+const formatClassType = (
+  classType: ClassTypeWithRelations
+): FormattedClassType => ({
   classTypeId: classType.classTypeId,
   name: classType.name,
   notes: classType.notes,
+  parentId: classType.parentId,
+  parent: classType.parent ? formatClassType(classType.parent) : undefined,
+  children: classType.children?.map(formatClassType),
   createdAt: classType.createdAt,
   updatedAt: classType.updatedAt,
 });
+
+// Helper function to validate hierarchy (prevent cycles)
+const validateHierarchy = async (
+  classTypeId: string,
+  parentId: string
+): Promise<boolean> => {
+  if (classTypeId === parentId) {
+    return false; // Cannot be parent of itself
+  }
+
+  // Check if parentId would create a cycle by traversing up the hierarchy
+  let currentParentId: string | null = parentId;
+  while (currentParentId) {
+    if (currentParentId === classTypeId) {
+      return false; // Cycle detected
+    }
+
+    const parentClassType: any = await prisma.classType.findUnique({
+      where: { classTypeId: currentParentId },
+      select: { parentId: true },
+    });
+
+    currentParentId = parentClassType?.parentId || null;
+  }
+
+  return true;
+};
 
 // GET - List class types with pagination and filters
 export const GET = withRole(
@@ -42,7 +82,8 @@ export const GET = withRole(
       );
     }
 
-    const { page, limit, name } = result.data;
+    const { page, limit, name, parentId, includeChildren, includeParent } =
+      result.data;
 
     // Build filter conditions
     const where: any = {};
@@ -51,6 +92,22 @@ export const GET = withRole(
       where.name = {
         contains: name,
         mode: "insensitive",
+      };
+    }
+
+    // Filter by parentId (including null for top-level)
+    if (parentId !== undefined) {
+      where.parentId = parentId;
+    }
+
+    // Build include conditions
+    const include: any = {};
+    if (includeParent) {
+      include.parent = true;
+    }
+    if (includeChildren) {
+      include.children = {
+        orderBy: { name: "asc" },
       };
     }
 
@@ -63,6 +120,7 @@ export const GET = withRole(
     // Fetch class types
     const classTypes = await prisma.classType.findMany({
       where,
+      include,
       skip,
       take: limit,
       orderBy: { name: "asc" },
@@ -99,7 +157,7 @@ export const POST = withRole(
         );
       }
 
-      const { name, notes } = result.data;
+      const { name, notes, parentId } = result.data;
 
       // Check if class type name already exists globally
       const existingClassType = await prisma.classType.findFirst({
@@ -115,11 +173,30 @@ export const POST = withRole(
         );
       }
 
+      // If parentId is provided, validate it exists
+      if (parentId) {
+        const parentExists = await prisma.classType.findUnique({
+          where: { classTypeId: parentId },
+        });
+
+        if (!parentExists) {
+          return NextResponse.json(
+            { error: "指定された親クラスタイプが見つかりません" }, // "Specified parent class type not found"
+            { status: 400 }
+          );
+        }
+      }
+
       // Create class type
       const newClassType = await prisma.classType.create({
         data: {
           name,
           notes,
+          parentId,
+        },
+        include: {
+          parent: true,
+          children: true,
         },
       });
 

@@ -5,22 +5,62 @@ import { prisma } from "@/lib/prisma";
 import { classTypeUpdateSchema } from "@/schemas/class-type.schema";
 import { ClassType } from "@prisma/client";
 
+type ClassTypeWithRelations = ClassType & {
+  parent?: ClassType | null;
+  children?: ClassType[];
+};
+
 type FormattedClassType = {
   classTypeId: string;
   name: string;
   notes: string | null;
+  parentId: string | null;
+  parent?: FormattedClassType | null;
+  children?: FormattedClassType[];
   createdAt: Date;
   updatedAt: Date;
 };
 
 // Helper function to format classType response
-const formatClassType = (classType: ClassType): FormattedClassType => ({
+const formatClassType = (
+  classType: ClassTypeWithRelations
+): FormattedClassType => ({
   classTypeId: classType.classTypeId,
   name: classType.name,
   notes: classType.notes,
+  parentId: classType.parentId,
+  parent: classType.parent ? formatClassType(classType.parent) : undefined,
+  children: classType.children?.map(formatClassType),
   createdAt: classType.createdAt,
   updatedAt: classType.updatedAt,
 });
+
+// Helper function to validate hierarchy (prevent cycles)
+const validateHierarchy = async (
+  classTypeId: string,
+  parentId: string
+): Promise<boolean> => {
+  if (classTypeId === parentId) {
+    return false; // Cannot be parent of itself
+  }
+
+  // Check if parentId would create a cycle by traversing up the hierarchy
+  let currentParentId: string | null = parentId;
+  while (currentParentId) {
+    if (currentParentId === classTypeId) {
+      return false; // Cycle detected
+    }
+
+    const parentClassType: any = await prisma.classType.findUnique({
+      where: { classTypeId: currentParentId },
+      select: { parentId: true },
+    });
+
+    currentParentId = parentClassType?.parentId || null;
+  }
+
+  return true;
+};
 
 // GET a specific class type by ID
 export const GET = withRole(
@@ -35,8 +75,25 @@ export const GET = withRole(
       );
     }
 
+    // Parse query parameters for includes
+    const url = new URL(request.url);
+    const includeChildren = url.searchParams.get("includeChildren") === "true";
+    const includeParent = url.searchParams.get("includeParent") === "true";
+
+    // Build include conditions
+    const include: any = {};
+    if (includeParent) {
+      include.parent = true;
+    }
+    if (includeChildren) {
+      include.children = {
+        orderBy: { name: "asc" },
+      };
+    }
+
     const classType = await prisma.classType.findUnique({
       where: { classTypeId },
+      include,
     });
 
     if (!classType) {
@@ -97,7 +154,7 @@ export const PATCH = withRole(
         );
       }
 
-      const { name, notes } = result.data;
+      const { name, notes, parentId } = result.data;
 
       // Check name uniqueness if being updated
       if (name && name !== existingClassType.name) {
@@ -116,12 +173,51 @@ export const PATCH = withRole(
         }
       }
 
+      // If parentId is being updated, validate hierarchy
+      if (parentId !== undefined && parentId !== existingClassType.parentId) {
+        if (parentId) {
+          // Check if parent exists
+          const parentExists = await prisma.classType.findUnique({
+            where: { classTypeId: parentId },
+          });
+
+          if (!parentExists) {
+            return NextResponse.json(
+              { error: "指定された親クラスタイプが見つかりません" },
+              { status: 400 }
+            );
+          }
+
+          // Validate hierarchy to prevent cycles
+          const isValidHierarchy = await validateHierarchy(
+            classTypeId,
+            parentId
+          );
+          if (!isValidHierarchy) {
+            return NextResponse.json(
+              {
+                error:
+                  "階層構造が循環参照になるため、この親クラスタイプを設定できません",
+              },
+              { status: 400 }
+            );
+          }
+        }
+      }
+
       // Update class type
       const updatedClassType = await prisma.classType.update({
         where: { classTypeId },
         data: {
           name,
           notes,
+          parentId,
+        },
+        include: {
+          parent: true,
+          children: {
+            orderBy: { name: "asc" },
+          },
         },
       });
 
@@ -167,6 +263,7 @@ export const DELETE = withRole(
         where: { classTypeId },
         include: {
           classSessions: { take: 1 }, // Check if there are any associated class sessions
+          children: { take: 1 }, // Check if there are any child class types
         },
       });
 
@@ -183,6 +280,17 @@ export const DELETE = withRole(
           {
             error:
               "関連するクラスセッションがあるため、このクラスタイプを削除できません",
+          },
+          { status: 400 }
+        );
+      }
+
+      // Prevent deletion if class type has children
+      if (classType.children.length > 0) {
+        return NextResponse.json(
+          {
+            error:
+              "サブクラスタイプが存在するため、このクラスタイプを削除できません。先にサブクラスタイプを削除してください。",
           },
           { status: 400 }
         );
