@@ -2,8 +2,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withBranchAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { vacationCreateSchema, vacationFilterSchema } from "@/schemas/vacation.schema";
-import { Vacation } from "@prisma/client";
+import {
+  vacationCreateSchema,
+  vacationFilterSchema,
+} from "@/schemas/vacation.schema";
+import { Vacation, Prisma } from "@prisma/client";
 
 type FormattedVacation = {
   id: string;
@@ -12,6 +15,7 @@ type FormattedVacation = {
   endDate: Date;
   isRecurring: boolean;
   notes: string | null;
+  order: number | null;
   branchId: string | null;
   branchName: string | null;
   createdAt: Date;
@@ -28,6 +32,7 @@ const formatVacation = (
   endDate: vacation.endDate,
   isRecurring: vacation.isRecurring,
   notes: vacation.notes || null,
+  order: vacation.order || null,
   branchId: vacation.branchId || null,
   branchName: vacation.branch?.name || null,
   createdAt: vacation.createdAt,
@@ -66,7 +71,16 @@ export const GET = withBranchAccess(
       );
     }
 
-    const { page, limit, name, startDate, endDate, isRecurring } = result.data;
+    const {
+      page,
+      limit,
+      name,
+      startDate,
+      endDate,
+      isRecurring,
+      sortBy,
+      sortOrder,
+    } = result.data;
 
     // Build filter conditions
     const where: any = {};
@@ -103,6 +117,18 @@ export const GET = withBranchAccess(
       where.isRecurring = isRecurring;
     }
 
+    // Build order by conditions - prioritize order field like branches
+    const orderBy: Prisma.VacationOrderByWithRelationInput[] = [];
+
+    if (sortBy === "order") {
+      orderBy.push(
+        { order: { sort: sortOrder, nulls: "last" } },
+        { name: "asc" } // Secondary sort by name for vacations with same order
+      );
+    } else {
+      orderBy.push({ [sortBy]: sortOrder });
+    }
+
     // Calculate pagination
     const skip = (page - 1) * limit;
 
@@ -121,7 +147,7 @@ export const GET = withBranchAccess(
       },
       skip,
       take: limit,
-      orderBy: { startDate: "asc" },
+      orderBy,
     });
 
     // Format vacations
@@ -155,7 +181,8 @@ export const POST = withBranchAccess(
         );
       }
 
-      const { name, startDate, endDate, isRecurring, notes } = result.data;
+      const { name, startDate, endDate, isRecurring, notes, order } =
+        result.data;
 
       // Convert dates to UTC to avoid timezone issues
       const startDateUTC = createUTCDate(startDate);
@@ -175,6 +202,23 @@ export const POST = withBranchAccess(
           ? result.data.branchId
           : branchId;
 
+      // Determine the order value
+      let finalOrder = order;
+      if (!finalOrder) {
+        // Get the current maximum order value for vacations in the same branch (or global if no branch)
+        const maxOrderResult = await prisma.vacation.aggregate({
+          _max: {
+            order: true,
+          },
+          where: {
+            branchId: vacationBranchId,
+          },
+        });
+        finalOrder = maxOrderResult._max.order
+          ? maxOrderResult._max.order + 1
+          : 1;
+      }
+
       // Create vacation
       const newVacation = await prisma.vacation.create({
         data: {
@@ -183,6 +227,7 @@ export const POST = withBranchAccess(
           endDate: endDateUTC,
           isRecurring,
           notes,
+          order: finalOrder,
           branchId: vacationBranchId,
         },
         include: {

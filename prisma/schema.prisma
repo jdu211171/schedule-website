@@ -362,11 +362,13 @@ model Vacation {
   endDate     DateTime
   branchId    String?  @map("branch_id")
   isRecurring Boolean  @default(false)
+  order       Int?     @map("order")
   branch      Branch?  @relation(fields: [branchId], references: [branchId], onDelete: SetNull, onUpdate: Cascade)
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
   @@index([branchId])
+  @@index([order])
   @@map("vacations")
 }
 

@@ -1,7 +1,10 @@
 // src/hooks/useVacationQuery.ts
 import { fetcher } from "@/lib/fetcher";
 import { useQuery } from "@tanstack/react-query";
-import { vacationFilterSchema } from "@/schemas/vacation.schema";
+import {
+  vacationFilterSchema,
+  type VacationSortField,
+} from "@/schemas/vacation.schema";
 
 type Vacation = {
   id: string;
@@ -10,6 +13,7 @@ type Vacation = {
   endDate: Date;
   isRecurring: boolean;
   notes: string | null;
+  order: number | null;
   branchId: string | null;
   branchName: string | null;
   createdAt: Date;
@@ -24,6 +28,8 @@ type UseVacationsParams = {
   endDate?: Date;
   isRecurring?: boolean;
   branchId?: string;
+  sortBy?: VacationSortField;
+  sortOrder?: "asc" | "desc";
 };
 
 type VacationsResponse = {
@@ -49,6 +55,8 @@ export function useVacations(params: UseVacationsParams = {}) {
     endDate,
     isRecurring,
     branchId,
+    sortBy = "order",
+    sortOrder = "asc",
   } = params;
 
   const query = vacationFilterSchema.parse({
@@ -59,6 +67,8 @@ export function useVacations(params: UseVacationsParams = {}) {
     endDate,
     isRecurring,
     branchId,
+    sortBy,
+    sortOrder,
   });
 
   const searchParams = new URLSearchParams(
@@ -85,9 +95,24 @@ export function useVacations(params: UseVacationsParams = {}) {
       endDate,
       isRecurring,
       branchId,
+      sortBy,
+      sortOrder,
     ],
     queryFn: async () =>
       await fetcher<VacationsResponse>(`/api/vacations?${searchParams}`),
+  });
+}
+
+// New hook for getting all vacations in order (useful for dropdowns/selects)
+export function useAllVacationsOrdered() {
+  return useQuery<Vacation[]>({
+    queryKey: ["vacations-all-ordered"],
+    queryFn: async () => {
+      const response = await fetcher<VacationsResponse>(
+        `/api/vacations?limit=100&sortBy=order&sortOrder=asc`
+      );
+      return response.data;
+    },
   });
 }
 
@@ -95,9 +120,9 @@ export function useVacation(vacationId: string) {
   return useQuery<Vacation>({
     queryKey: ["vacation", vacationId],
     queryFn: async () =>
-      await fetcher<SingleVacationResponse>(`/api/vacations/${vacationId}`).then(
-        (res) => res.data[0]
-      ),
+      await fetcher<SingleVacationResponse>(
+        `/api/vacations/${vacationId}`
+      ).then((res) => res.data[0]),
     enabled: !!vacationId,
   });
 }

@@ -12,6 +12,7 @@ type FormattedVacation = {
   endDate: Date;
   isRecurring: boolean;
   notes: string | null;
+  order: number | null;
   branchId: string | null;
   branchName: string | null;
   createdAt: Date;
@@ -28,6 +29,7 @@ const formatVacation = (
   endDate: vacation.endDate,
   isRecurring: vacation.isRecurring,
   notes: vacation.notes || null,
+  order: vacation.order || null,
   branchId: vacation.branchId || null,
   branchName: vacation.branch?.name || null,
   createdAt: vacation.createdAt,
@@ -56,10 +58,7 @@ export const GET = withBranchAccess(
     const vacationId = request.url.split("/").pop();
 
     if (!vacationId) {
-      return NextResponse.json(
-        { error: "休日IDが必要です" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "休日IDが必要です" }, { status: 400 });
     }
 
     const vacation = await prisma.vacation.findUnique({
@@ -155,7 +154,8 @@ export const PATCH = withBranchAccess(
         );
       }
 
-      const { name, startDate, endDate, isRecurring, notes } = result.data;
+      const { name, startDate, endDate, isRecurring, notes, order } =
+        result.data;
 
       // Convert dates to UTC if they are provided
       let startDateUTC, endDateUTC;
@@ -185,6 +185,7 @@ export const PATCH = withBranchAccess(
           endDate: endDateUTC,
           isRecurring,
           notes,
+          order,
         },
         include: {
           branch: {
@@ -225,10 +226,7 @@ export const DELETE = withBranchAccess(
     const vacationId = request.url.split("/").pop();
 
     if (!vacationId) {
-      return NextResponse.json(
-        { error: "休日IDが必要です" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "休日IDが必要です" }, { status: 400 });
     }
 
     try {

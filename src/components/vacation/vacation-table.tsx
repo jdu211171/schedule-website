@@ -1,14 +1,20 @@
+// src/components/vacation/vacation-table.tsx
 "use client";
 
 import { useState } from "react";
+import * as React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Pencil, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { DataTable } from "@/components/data-table";
-import { useVacationDelete, getResolvedVacationId } from "@/hooks/useVacationMutation";
+import { SortableDataTable } from "@/components/ui/sortable-data-table";
+import {
+  useVacationDelete,
+  useVacationOrderUpdate,
+  getResolvedVacationId,
+} from "@/hooks/useVacationMutation";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,6 +45,7 @@ type Vacation = {
   endDate: string | Date;
   isRecurring: boolean;
   notes: string | null;
+  order: number | null;
   branchId: string | null;
   branchName: string | null;
   createdAt: Date;
@@ -48,7 +55,10 @@ type Vacation = {
 export function VacationTable() {
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
+  const [isSortMode, setIsSortMode] = useState(false);
+  const [localVacations, setLocalVacations] = useState<Vacation[]>([]);
   const pageSize = 10;
+
   const { data: vacations, isLoading } = useVacations({
     page,
     limit: pageSize,
@@ -58,14 +68,23 @@ export function VacationTable() {
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "ADMIN";
 
-  // Ensure the data type returned by useVacations matches the expected type
-  const typedVacations = vacations?.data || [];
-
-  const totalCount = vacations?.pagination.total || 0;
   const deleteVacationMutation = useVacationDelete();
+  const updateOrderMutation = useVacationOrderUpdate();
+
+  // Use local state during sort mode, otherwise use server data
+  const typedVacations = isSortMode ? localVacations : vacations?.data || [];
+
+  // Update local state when server data changes
+  React.useEffect(() => {
+    if (vacations?.data && !isSortMode) {
+      setLocalVacations(vacations.data);
+    }
+  }, [vacations?.data, isSortMode]);
 
   const [vacationToEdit, setVacationToEdit] = useState<Vacation | null>(null);
-  const [vacationToDelete, setVacationToDelete] = useState<Vacation | null>(null);
+  const [vacationToDelete, setVacationToDelete] = useState<Vacation | null>(
+    null
+  );
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
   // Format dates for display
@@ -75,10 +94,13 @@ export function VacationTable() {
     return format(dateObj, "yyyy/MM/dd");
   };
 
-  const columns: ColumnDef<Vacation, unknown>[] = [
+  const columns: ColumnDef<Vacation>[] = [
     {
       accessorKey: "name",
       header: "名前",
+      cell: ({ row }) => (
+        <span className="font-medium">{row.original.name}</span>
+      ),
     },
     {
       accessorKey: "startDate",
@@ -120,45 +142,11 @@ export function VacationTable() {
     {
       accessorKey: "notes",
       header: "メモ",
-      cell: ({ row }) => row.original.notes || "-",
-    },
-    {
-      id: "actions",
-      header: "操作",
-      cell: ({ row }) => {
-        // Type-safe check for _optimistic property
-        const isOptimistic = (row.original as Vacation & { _optimistic?: boolean })
-          ._optimistic;
-
-        return (
-          <div className="flex justify-end gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setVacationToEdit(row.original)}
-            >
-              <Pencil
-                className={`h-4 w-4 ${isOptimistic ? "opacity-70" : ""}`}
-              />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setVacationToDelete(row.original)}
-            >
-              <Trash2
-                className={`h-4 w-4 text-destructive ${
-                  isOptimistic ? "opacity-70" : ""
-                }`}
-              />
-            </Button>
-          </div>
-        );
-      },
-      meta: {
-        align: "right",
-        headerClassName: "pr-8", // Add padding-right to ONLY the header
-      } as ColumnMetaType,
+      cell: ({ row }) => (
+        <span className="text-muted-foreground">
+          {row.original.notes || "-"}
+        </span>
+      ),
     },
   ];
 
@@ -167,6 +155,29 @@ export function VacationTable() {
     const meta = col.meta as ColumnMetaType | undefined;
     return !meta?.hidden;
   });
+
+  const handleReorder = (items: Vacation[]) => {
+    // Update local state immediately for visual feedback
+    setLocalVacations(items);
+
+    // Log the new order for debugging
+    console.log(
+      "New order:",
+      items.map((item) => ({ id: item.id, name: item.name }))
+    );
+
+    // Resolve vacation IDs (handle temp vs server IDs) and send update request
+    const vacationIds = items.map((item) => getResolvedVacationId(item.id));
+    updateOrderMutation.mutate({ vacationIds });
+  };
+
+  const handleSortModeChange = (enabled: boolean) => {
+    if (enabled && vacations?.data) {
+      // When entering sort mode, sync local state with server data
+      setLocalVacations(vacations.data);
+    }
+    setIsSortMode(enabled);
+  };
 
   const handleDeleteVacation = () => {
     if (vacationToDelete) {
@@ -178,28 +189,56 @@ export function VacationTable() {
     }
   };
 
-  const handlePageChange = (newPage: number) => {
-    setPage(newPage + 1);
-  };
+  const renderActions = (vacation: Vacation) => {
+    // Type-safe check for _optimistic property
+    const isOptimistic = (vacation as Vacation & { _optimistic?: boolean })
+      ._optimistic;
 
-  const totalPages = Math.ceil(totalCount / pageSize);
+    return (
+      <div className="flex justify-end gap-2">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setVacationToEdit(vacation)}
+        >
+          <Pencil className={`h-4 w-4 ${isOptimistic ? "opacity-70" : ""}`} />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setVacationToDelete(vacation)}
+        >
+          <Trash2
+            className={`h-4 w-4 text-destructive ${
+              isOptimistic ? "opacity-70" : ""
+            }`}
+          />
+        </Button>
+      </div>
+    );
+  };
 
   return (
     <>
-      <DataTable
-        columns={visibleColumns}
+      <SortableDataTable
         data={typedVacations}
-        isLoading={isLoading && !typedVacations.length} // Only show loading state on initial load
-        searchPlaceholder="休日を検索..."
-        onSearch={setSearchTerm}
+        columns={visibleColumns}
+        isSortMode={isSortMode}
+        onSortModeChange={handleSortModeChange}
+        onReorder={handleReorder}
+        getItemId={(vacation) => vacation.id}
         searchValue={searchTerm}
+        onSearchChange={setSearchTerm}
+        searchPlaceholder="休日を検索..."
+        createLabel="新規作成"
         onCreateNew={() => setIsCreateDialogOpen(true)}
-        createNewLabel="新規作成"
+        isLoading={isLoading}
         pageIndex={page - 1}
-        pageCount={totalPages || 1}
-        onPageChange={handlePageChange}
+        pageCount={Math.ceil((vacations?.pagination.total || 0) / pageSize)}
         pageSize={pageSize}
-        totalItems={totalCount}
+        totalItems={vacations?.pagination.total}
+        onPageChange={(newPage) => setPage(newPage + 1)}
+        renderActions={renderActions}
       />
 
       {/* Edit Vacation Dialog */}

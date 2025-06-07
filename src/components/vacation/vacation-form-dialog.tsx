@@ -1,3 +1,4 @@
+// src/components/vacation/vacation-form-dialog.tsx
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -21,6 +22,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -33,7 +35,10 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { CalendarIcon } from "lucide-react";
-import { useVacationCreate, useVacationUpdate } from "@/hooks/useVacationMutation";
+import {
+  useVacationCreate,
+  useVacationUpdate,
+} from "@/hooks/useVacationMutation";
 
 // Vacation type matching the API response
 type Vacation = {
@@ -43,6 +48,7 @@ type Vacation = {
   endDate: string | Date;
   isRecurring: boolean;
   notes: string | null;
+  order: number | null;
   branchId: string | null;
   branchName: string | null;
   createdAt: Date;
@@ -61,6 +67,7 @@ const vacationFormSchema = z
     }),
     isRecurring: z.boolean().default(false),
     notes: z.string().max(255).optional().nullable(),
+    order: z.coerce.number().int().min(1).optional().nullable(),
   })
   .refine(
     (data) => {
@@ -92,10 +99,13 @@ export function VacationFormDialog({
     resolver: zodResolver(vacationFormSchema),
     defaultValues: {
       name: vacation?.name || "",
-      startDate: vacation?.startDate ? new Date(vacation.startDate) : new Date(),
+      startDate: vacation?.startDate
+        ? new Date(vacation.startDate)
+        : new Date(),
       endDate: vacation?.endDate ? new Date(vacation.endDate) : new Date(),
       isRecurring: vacation?.isRecurring ?? false,
       notes: vacation?.notes ?? "",
+      order: vacation?.order ?? undefined,
     },
   });
 
@@ -103,10 +113,13 @@ export function VacationFormDialog({
     if (vacation) {
       form.reset({
         name: vacation.name || "",
-        startDate: vacation.startDate ? new Date(vacation.startDate) : new Date(),
+        startDate: vacation.startDate
+          ? new Date(vacation.startDate)
+          : new Date(),
         endDate: vacation.endDate ? new Date(vacation.endDate) : new Date(),
         isRecurring: vacation.isRecurring ?? false,
         notes: vacation.notes ?? "",
+        order: vacation.order ?? undefined,
       });
     } else {
       form.reset({
@@ -115,6 +128,7 @@ export function VacationFormDialog({
         endDate: new Date(),
         isRecurring: false,
         notes: "",
+        order: undefined,
       });
     }
   }, [vacation, form]);
@@ -155,9 +169,7 @@ export function VacationFormDialog({
     >
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>
-            {isEditing ? "休日の編集" : "休日の作成"}
-          </DialogTitle>
+          <DialogTitle>{isEditing ? "休日の編集" : "休日の作成"}</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -170,10 +182,7 @@ export function VacationFormDialog({
                     名前
                   </FormLabel>
                   <FormControl>
-                    <Input
-                      placeholder="休日名を入力してください"
-                      {...field}
-                    />
+                    <Input placeholder="休日名を入力してください" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -209,7 +218,11 @@ export function VacationFormDialog({
                           </Button>
                         </FormControl>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start" onClick={(e) => e.stopPropagation()}>
+                      <PopoverContent
+                        className="w-auto p-0"
+                        align="start"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <Calendar
                           mode="single"
                           selected={field.value}
@@ -252,7 +265,11 @@ export function VacationFormDialog({
                           </Button>
                         </FormControl>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start" onClick={(e) => e.stopPropagation()}>
+                      <PopoverContent
+                        className="w-auto p-0"
+                        align="start"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <Calendar
                           mode="single"
                           selected={field.value}
@@ -283,6 +300,33 @@ export function VacationFormDialog({
                       onCheckedChange={field.onChange}
                     />
                   </FormControl>
+                </FormItem>
+              )}
+            />
+
+            {/* Order Field */}
+            <FormField
+              control={form.control}
+              name="order"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>表示順序</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      placeholder="例: 1, 2, 3..."
+                      {...field}
+                      value={field.value ?? ""}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        field.onChange(value === "" ? undefined : value);
+                      }}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    数値が小さいほど上に表示されます。空欄の場合は自動的に最後に配置されます。
+                  </FormDescription>
+                  <FormMessage />
                 </FormItem>
               )}
             />
