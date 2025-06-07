@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withBranchAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { boothCreateSchema, boothFilterSchema } from "@/schemas/booth.schema";
-import { Booth } from "@prisma/client";
+import { Booth, Prisma } from "@prisma/client";
 
 type FormattedBooth = {
   boothId: string;
@@ -12,6 +12,7 @@ type FormattedBooth = {
   name: string;
   status: boolean;
   notes: string | null;
+  order: number | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -26,6 +27,7 @@ const formatBooth = (
   name: booth.name,
   status: booth.status ?? true,
   notes: booth.notes,
+  order: booth.order,
   createdAt: booth.createdAt,
   updatedAt: booth.updatedAt,
 });
@@ -47,7 +49,7 @@ export const GET = withBranchAccess(
       );
     }
 
-    const { page, limit, name, status } = result.data;
+    const { page, limit, name, status, sortBy, sortOrder } = result.data;
 
     // Build filter conditions
     const where: any = {
@@ -63,6 +65,16 @@ export const GET = withBranchAccess(
 
     if (status !== undefined) {
       where.status = status;
+    }
+
+    // Build ordering - ALWAYS sort by order field first to maintain admin-defined sequence
+    const orderBy: Prisma.BoothOrderByWithRelationInput[] = [];
+
+    if (sortBy === "order") {
+      orderBy.push({ order: { sort: sortOrder, nulls: "last" } });
+      orderBy.push({ name: "asc" }); // Secondary sort by name for booths with same order
+    } else {
+      orderBy.push({ [sortBy]: sortOrder });
     }
 
     // Calculate pagination
@@ -83,7 +95,7 @@ export const GET = withBranchAccess(
       },
       skip,
       take: limit,
-      orderBy: { name: "asc" },
+      orderBy,
     });
 
     // Format booths
@@ -117,7 +129,7 @@ export const POST = withBranchAccess(
         );
       }
 
-      const { name, status, notes } = result.data;
+      const { name, status, notes, order } = result.data;
 
       // Check if booth name already exists in this branch
       const existingBooth = await prisma.booth.findFirst({
@@ -134,10 +146,26 @@ export const POST = withBranchAccess(
         );
       }
 
+      // Determine the order value
+      let finalOrder = order;
+      if (!finalOrder) {
+        // Get the current maximum order value for this branch
+        const maxOrderResult = await prisma.booth.aggregate({
+          where: { branchId },
+          _max: {
+            order: true,
+          },
+        });
+        finalOrder = maxOrderResult._max.order
+          ? maxOrderResult._max.order + 1
+          : 1;
+      }
+
       console.log("Creating booth with data:", {
         name,
         status,
         notes,
+        order: finalOrder,
         branchId,
       });
 
@@ -147,6 +175,7 @@ export const POST = withBranchAccess(
           name,
           status,
           notes,
+          order: finalOrder,
           branchId,
         },
         include: {

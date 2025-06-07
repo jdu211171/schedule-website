@@ -12,6 +12,7 @@ type FormattedBooth = {
   name: string;
   status: boolean;
   notes: string | null;
+  order: number | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -26,6 +27,7 @@ const formatBooth = (
   name: booth.name,
   status: booth.status ?? true,
   notes: booth.notes,
+  order: booth.order,
   createdAt: booth.createdAt,
   updatedAt: booth.updatedAt,
 });
@@ -125,7 +127,7 @@ export const PATCH = withBranchAccess(
         );
       }
 
-      const { name, status, notes } = result.data;
+      const { name, status, notes, order } = result.data;
 
       // Check name uniqueness if being updated
       if (name && name !== existingBooth.name) {
@@ -152,6 +154,7 @@ export const PATCH = withBranchAccess(
           name,
           status,
           notes,
+          order,
         },
         include: {
           branch: {

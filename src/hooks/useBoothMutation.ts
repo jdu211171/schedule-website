@@ -1,8 +1,13 @@
+// src/hooks/useBoothMutation.ts
 import { fetcher } from "@/lib/fetcher";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Booth } from "@prisma/client";
 import { toast } from "sonner";
-import { BoothCreate, BoothUpdate } from "@/schemas/booth.schema";
+import {
+  BoothCreate,
+  BoothUpdate,
+  BoothOrderUpdate,
+} from "@/schemas/booth.schema";
 
 type FormattedBooth = {
   boothId: string;
@@ -11,6 +16,7 @@ type FormattedBooth = {
   name: string;
   status: boolean;
   notes: string | null;
+  order: number | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -106,6 +112,7 @@ export function useBoothCreate() {
             name: newBooth.name, // This is crucial - ensure name is included
             status: newBooth.status ?? true,
             notes: newBooth.notes || null,
+            order: null,
             createdAt: new Date(),
             updatedAt: new Date(),
             _optimistic: true, // Flag to identify optimistic entries
@@ -410,6 +417,96 @@ export function useBoothDelete() {
       });
       queryClient.invalidateQueries({
         queryKey: ["booth", resolvedId],
+        refetchType: "none",
+      });
+    },
+  });
+}
+
+export function useBoothOrderUpdate() {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    { message: string },
+    Error,
+    BoothOrderUpdate,
+    BoothMutationContext
+  >({
+    mutationFn: (data) =>
+      fetcher("/api/booths/order", {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      }),
+    onMutate: async ({ boothIds }) => {
+      await queryClient.cancelQueries({ queryKey: ["booths"] });
+
+      const queries = queryClient.getQueriesData<BoothsQueryData>({
+        queryKey: ["booths"],
+      });
+
+      const previousBooths: Record<string, BoothsQueryData> = {};
+      queries.forEach(([queryKey, data]) => {
+        if (data) {
+          previousBooths[JSON.stringify(queryKey)] = data;
+        }
+      });
+
+      // Optimistically update the order
+      queries.forEach(([queryKey]) => {
+        const currentData = queryClient.getQueryData<BoothsQueryData>(queryKey);
+        if (currentData) {
+          const updatedData = {
+            ...currentData,
+            data: currentData.data.map((booth) => {
+              const newOrder = boothIds.indexOf(booth.boothId);
+              return newOrder !== -1
+                ? { ...booth, order: newOrder + 1 }
+                : booth;
+            }),
+          };
+
+          // Re-sort the data based on the query parameters
+          const queryKeyArray = queryKey as any[];
+          const sortBy = queryKeyArray[4] || "order";
+          const sortOrder = queryKeyArray[5] || "asc";
+
+          if (sortBy === "order") {
+            updatedData.data.sort((a, b) => {
+              const aOrder = a.order ?? Number.MAX_SAFE_INTEGER;
+              const bOrder = b.order ?? Number.MAX_SAFE_INTEGER;
+              return sortOrder === "asc" ? aOrder - bOrder : bOrder - aOrder;
+            });
+          }
+
+          queryClient.setQueryData<BoothsQueryData>(queryKey, updatedData);
+        }
+      });
+
+      return { previousBooths };
+    },
+    onError: (error, _, context) => {
+      if (context?.previousBooths) {
+        Object.entries(context.previousBooths).forEach(
+          ([queryKeyStr, data]) => {
+            const queryKey = JSON.parse(queryKeyStr);
+            queryClient.setQueryData(queryKey, data);
+          }
+        );
+      }
+
+      toast.error("ブースの順序更新に失敗しました", {
+        id: "booth-order-error",
+        description: error.message,
+      });
+    },
+    onSuccess: () => {
+      toast.success("ブースの順序を更新しました", {
+        id: "booth-order-success",
+      });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["booths"],
         refetchType: "none",
       });
     },

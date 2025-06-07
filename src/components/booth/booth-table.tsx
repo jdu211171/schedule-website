@@ -1,13 +1,19 @@
+// src/components/booth/booth-table.tsx
 "use client";
 
 import { useState } from "react";
+import * as React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Pencil, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { DataTable } from "@/components/data-table";
-import { useBoothDelete, getResolvedBoothId } from "@/hooks/useBoothMutation";
+import { SortableDataTable } from "@/components/ui/sortable-data-table";
+import {
+  useBoothDelete,
+  useBoothOrderUpdate,
+  getResolvedBoothId,
+} from "@/hooks/useBoothMutation";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,37 +29,40 @@ import { BoothFormDialog } from "./booth-form-dialog";
 import { useBooths } from "@/hooks/useBoothQuery";
 import { useSession } from "next-auth/react";
 
-// Define custom column meta type
-interface ColumnMetaType {
-  align?: "left" | "center" | "right";
-  headerClassName?: string;
-  cellClassName?: string;
-  hidden?: boolean;
-}
-
-// Define extended booth type that includes branchName
+// Define extended booth type that includes branchName and order
 type ExtendedBooth = Booth & {
   branchName: string;
+  order: number | null;
   _optimistic?: boolean;
 };
 
 export function BoothTable() {
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
+  const [isSortMode, setIsSortMode] = useState(false);
+  const [localBooths, setLocalBooths] = useState<ExtendedBooth[]>([]);
   const pageSize = 10;
+
   const { data: booths, isLoading } = useBooths({
     page,
     limit: pageSize,
     name: searchTerm || undefined,
   });
 
-  // Ensure the data type returned by useBooths matches the expected type
-  const typedBooths = booths?.data;
-
-  const totalCount = booths?.pagination.total || 0;
   const deleteBoothMutation = useBoothDelete();
+  const updateOrderMutation = useBoothOrderUpdate();
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "ADMIN";
+
+  // Use local state during sort mode, otherwise use server data
+  const typedBooths = isSortMode ? localBooths : booths?.data || [];
+
+  // Update local state when server data changes
+  React.useEffect(() => {
+    if (booths?.data && !isSortMode) {
+      setLocalBooths(booths.data);
+    }
+  }, [booths?.data, isSortMode]);
 
   const [boothToEdit, setBoothToEdit] = useState<ExtendedBooth | null>(null);
   const [boothToDelete, setBoothToDelete] = useState<ExtendedBooth | null>(
@@ -61,20 +70,21 @@ export function BoothTable() {
   );
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
-  const columns: ColumnDef<ExtendedBooth, unknown>[] = [
+  const columns: ColumnDef<ExtendedBooth>[] = [
     {
       accessorKey: "name",
       header: "名前",
+      cell: ({ row }) => (
+        <span className="font-medium">{row.original.name}</span>
+      ),
     },
     {
       accessorKey: "status",
       header: "ステータス",
       cell: ({ row }) => (
-        row.original.status ? (
-          <Badge variant="outline">{row.original.status ? "使用可" : "使用不可"}</Badge>
-        ) : (
-          "-"
-        )
+        <Badge variant="outline">
+          {row.original.status ? "使用可" : "使用不可"}
+        </Badge>
       ),
     },
     {
@@ -89,58 +99,47 @@ export function BoothTable() {
       // Only show for admins
       meta: {
         hidden: !isAdmin,
-      } as ColumnMetaType,
+      },
     },
     {
       accessorKey: "notes",
       header: "メモ",
-      cell: ({ row }) => row.original.notes || "-",
-    },
-    {
-      id: "actions",
-      header: "操作",
-      cell: ({ row }) => {
-        // Type-safe check for _optimistic property
-        const isOptimistic = row.original._optimistic;
-
-        return (
-          <div className="flex justify-end gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setBoothToEdit(row.original)}
-            >
-              <Pencil
-                className={`h-4 w-4 ${isOptimistic ? "opacity-70" : ""}`}
-              />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setBoothToDelete(row.original)}
-              // disabled={isOptimistic}
-            >
-              <Trash2
-                className={`h-4 w-4 text-destructive ${
-                  isOptimistic ? "opacity-70" : ""
-                }`}
-              />
-            </Button>
-          </div>
-        );
-      },
-      meta: {
-        align: "right",
-        headerClassName: "pr-8", // Add padding-right to ONLY the header
-      } as ColumnMetaType,
+      cell: ({ row }) => (
+        <span className="text-muted-foreground">
+          {row.original.notes || "-"}
+        </span>
+      ),
     },
   ];
 
   // Filter out the branch column if user is not admin
   const visibleColumns = columns.filter((col) => {
-    const meta = col.meta as ColumnMetaType | undefined;
+    const meta = col.meta as any;
     return !meta?.hidden;
   });
+
+  const handleReorder = (items: ExtendedBooth[]) => {
+    // Update local state immediately for visual feedback
+    setLocalBooths(items);
+
+    // Log the new order for debugging
+    console.log(
+      "New order:",
+      items.map((item) => ({ id: item.boothId, name: item.name }))
+    );
+
+    // Resolve booth IDs (handle temp vs server IDs) and send update request
+    const boothIds = items.map((item) => getResolvedBoothId(item.boothId));
+    updateOrderMutation.mutate({ boothIds });
+  };
+
+  const handleSortModeChange = (enabled: boolean) => {
+    if (enabled && booths?.data) {
+      // When entering sort mode, sync local state with server data
+      setLocalBooths(booths.data);
+    }
+    setIsSortMode(enabled);
+  };
 
   const handleDeleteBooth = () => {
     if (boothToDelete) {
@@ -152,28 +151,55 @@ export function BoothTable() {
     }
   };
 
-  const handlePageChange = (newPage: number) => {
-    setPage(newPage + 1);
-  };
+  const renderActions = (booth: ExtendedBooth) => {
+    // Type-safe check for _optimistic property
+    const isOptimistic = booth._optimistic;
 
-  const totalPages = Math.ceil(totalCount / pageSize);
+    return (
+      <div className="flex justify-end gap-2">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setBoothToEdit(booth)}
+        >
+          <Pencil className={`h-4 w-4 ${isOptimistic ? "opacity-70" : ""}`} />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setBoothToDelete(booth)}
+        >
+          <Trash2
+            className={`h-4 w-4 text-destructive ${
+              isOptimistic ? "opacity-70" : ""
+            }`}
+          />
+        </Button>
+      </div>
+    );
+  };
 
   return (
     <>
-      <DataTable
+      <SortableDataTable
+        data={typedBooths}
         columns={visibleColumns}
-        data={typedBooths || []}
-        isLoading={isLoading && !typedBooths} // Only show loading state on initial load
-        searchPlaceholder="ブースを検索..."
-        onSearch={setSearchTerm}
+        isSortMode={isSortMode}
+        onSortModeChange={handleSortModeChange}
+        onReorder={handleReorder}
+        getItemId={(booth) => booth.boothId}
         searchValue={searchTerm}
+        onSearchChange={setSearchTerm}
+        searchPlaceholder="ブースを検索..."
+        createLabel="新規作成"
         onCreateNew={() => setIsCreateDialogOpen(true)}
-        createNewLabel="新規作成"
+        isLoading={isLoading}
         pageIndex={page - 1}
-        pageCount={totalPages || 1}
-        onPageChange={handlePageChange}
+        pageCount={Math.ceil((booths?.pagination.total || 0) / pageSize)}
         pageSize={pageSize}
-        totalItems={totalCount}
+        totalItems={booths?.pagination.total}
+        onPageChange={(newPage) => setPage(newPage + 1)}
+        renderActions={renderActions}
       />
 
       {/* Edit Booth Dialog */}

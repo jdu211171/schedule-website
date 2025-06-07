@@ -48,11 +48,13 @@ model Booth {
   name          String         @db.VarChar(100)
   status        Boolean?       @default(true)
   notes         String?        @db.VarChar(255)
+  order         Int?           @map("order")
   branch        Branch         @relation(fields: [branchId], references: [branchId], onDelete: Cascade)
   classSessions ClassSession[]
   createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt     DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
+  @@index([order])
   @@map("booths")
 }
 
