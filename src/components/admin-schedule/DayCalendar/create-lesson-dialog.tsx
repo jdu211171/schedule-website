@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { DateRange } from "react-day-picker";
@@ -15,6 +15,11 @@ import {
   formatDateToString
 } from './types/class-session';
 import { SearchableSelect, SearchableSelectItem } from '../searchable-select';
+import { UserSubjectPreference } from '@/hooks/useUserSubjectPreferenceQuery';
+import { useSubjects } from '@/hooks/useSubjectQuery';
+import { useSubjectTypes } from '@/hooks/useSubjectTypeQuery';
+import { useTeachers } from '@/hooks/useTeacherQuery';
+import { useStudents } from '@/hooks/useStudentQuery';
 
 function DateRangePicker({
   dateRange,
@@ -114,45 +119,38 @@ function DateRangePicker({
   );
 }
 
+import { Teacher } from '@/hooks/useTeacherQuery';
+import { Student } from '@/hooks/useStudentQuery';
+
 interface Booth {
   boothId: string;
   name: string;
 }
 
+interface ExtendedNewClassSessionData extends NewClassSessionData {
+  classTypeId?: string;
+  teacherId?: string;
+  studentId?: string;
+}
+
 type CreateLessonDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  lessonData: NewClassSessionData;
+  lessonData: ExtendedNewClassSessionData;
   onSave: (data: CreateClassSessionPayload) => Promise<void> | void;
   booths: Booth[];
+  preselectedClassTypeId?: string;
+  preselectedTeacherId?: string;
+  preselectedStudentId?: string;
+  teacherName?: string;
+  studentName?: string;
+  teacherData?: Teacher | null;
+  studentData?: Student | null;
 };
-
-interface Teacher {
-  teacherId: string;
-  name: string;
-}
-
-interface Student {
-  studentId: string;
-  name: string;
-  studentTypeId?: string;
-}
-
-interface Subject {
-  subjectId: string;
-  name: string;
-}
 
 interface ClassType {
   classTypeId: string;
   name: string;
-}
-
-interface StudentType {
-  studentTypeId: string;
-  name: string;
-  maxYears?: number;
-  description?: string;
 }
 
 export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
@@ -160,42 +158,79 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
   onOpenChange,
   lessonData,
   onSave,
-  booths
+  booths,
+  preselectedClassTypeId,
+  preselectedTeacherId,
+  preselectedStudentId,
+  teacherName = '',
+  studentName = '',
+  teacherData,
+  studentData
 }) => {
+  const [isInitializing, setIsInitializing] = useState(true);
   const [selectedClassTypeId, setSelectedClassTypeId] = useState<string>('');
+  const [selectedTeacherId, setSelectedTeacherId] = useState<string>('');
+  const [selectedStudentId, setSelectedStudentId] = useState<string>('');
   const [isRecurring, setIsRecurring] = useState<boolean>(false);
-  const [studentTypeId, setStudentTypeId] = useState<string>('');
   const [subjectId, setSubjectId] = useState<string>('');
-  const [teacherId, setTeacherId] = useState<string>('');
-  const [studentId, setStudentId] = useState<string>('');
+  const [subjectTypeId, setSubjectTypeId] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
 
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [selectedDays, setSelectedDays] = useState<number[]>([]);
 
-  const [studentTypes, setStudentTypes] = useState<StudentType[]>([]);
-  const [students, setStudents] = useState<Student[]>([]);
-  const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [classTypes, setClassTypes] = useState<ClassType[]>([]);
-
-  const [isLoadingStudentTypes, setIsLoadingStudentTypes] = useState<boolean>(false);
-  const [isLoadingStudents, setIsLoadingStudents] = useState<boolean>(false);
-  const [isLoadingSubjects, setIsLoadingSubjects] = useState<boolean>(false);
-  const [isLoadingTeachers, setIsLoadingTeachers] = useState<boolean>(false);
   const [isLoadingClassTypes, setIsLoadingClassTypes] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   const [regularClassTypeId, setRegularClassTypeId] = useState<string>('');
-
-  // Validation state
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
-  // Track initialization state to prevent saving defaults to localStorage
-  const [isInitialized, setIsInitialized] = useState<boolean>(false);
-
-  // Local storage key for persistent fields
   const STORAGE_KEY = 'create-lesson-dialog-persistent-fields';
+
+  const { data: subjectsResponse } = useSubjects({ limit: 100 });
+  const { data: subjectTypesResponse } = useSubjectTypes({ limit: 100 });
+  const { data: teachersResponse } = useTeachers({ limit: 100 });
+  const { data: studentsResponse } = useStudents({ limit: 100 });
+  
+  const subjects = subjectsResponse?.data || [];
+  const subjectTypes = subjectTypesResponse?.data || [];
+  const teachers = teachersResponse?.data || [];
+  const students = studentsResponse?.data || [];
+
+  const filteredSubjects = useMemo(() => {
+    if (!teacherData || !studentData) {
+      return subjects;
+    }
+
+    const teacherSubjectIds = new Set(
+      teacherData.subjectPreferences?.map(p => p.subjectId) || []
+    );
+    const studentSubjectIds = new Set(
+      studentData.subjectPreferences?.map(p => p.subjectId) || []
+    );
+
+    return subjects.filter(subject => 
+      teacherSubjectIds.has(subject.subjectId) && 
+      studentSubjectIds.has(subject.subjectId)
+    );
+  }, [subjects, teacherData, studentData]);
+
+  const filteredSubjectTypes = useMemo(() => {
+    if (!subjectId || !studentData) {
+      return subjectTypes;
+    }
+
+    const studentPref = studentData.subjectPreferences?.find(
+      pref => pref.subjectId === subjectId
+    );
+    
+    if (!studentPref) return [];
+
+    return subjectTypes.filter(type => 
+      studentPref.subjectTypeIds.includes(type.subjectTypeId)
+    );
+  }, [subjectTypes, subjectId, studentData]);
 
   useEffect(() => {
     const loadClassTypes = async () => {
@@ -205,13 +240,11 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
         setClassTypes(response.data || []);
 
         const regularType = response.data.find(type => type.name === '通常授業');
-
         if (regularType) {
           setRegularClassTypeId(regularType.classTypeId);
-          // Don't set selectedClassTypeId here anymore - let initialization handle it
         }
       } catch (err) {
-        console.error("授業タイプの読み込みエラー:", err);
+        console.error("Error loading class types:", err);
         setError("授業タイプの読み込みに失敗しました");
       } finally {
         setIsLoadingClassTypes(false);
@@ -223,185 +256,64 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
     }
   }, [open]);
 
-  // Initialize form data when dialog opens - after class types are loaded
   useEffect(() => {
     if (open && classTypes.length > 0 && regularClassTypeId) {
-      // Load persistent constant values from localStorage
-      const savedData = localStorage.getItem(STORAGE_KEY);
+      const initializeDialog = () => {
+        setIsInitializing(true);
 
-      // First set defaults for all fields
-      setSelectedClassTypeId(regularClassTypeId);
-      setIsRecurring(false);
-      setStudentTypeId('');
-      setStudentId('');
-      setSubjectId('');
-      setTeacherId('');
-      setNotes('');
+        const correctClassTypeId = preselectedClassTypeId || lessonData.classTypeId || regularClassTypeId || '';
+        const correctIsRecurring = correctClassTypeId === regularClassTypeId;
 
-      const lessonDate = typeof lessonData.date === 'string' ? new Date(lessonData.date) : lessonData.date;
+        const lessonDate = typeof lessonData.date === 'string' ? new Date(lessonData.date) : lessonData.date;
 
-      if (savedData) {
+        let savedData = null;
         try {
-          const parsedData = JSON.parse(savedData);
-          console.log('Loading persistent fields from localStorage:', parsedData);
-
-          // Only restore weekdays
-          setSelectedDays(parsedData.selectedDays || []);
+          const savedDataStr = localStorage.getItem(STORAGE_KEY);
+          if (savedDataStr) {
+            savedData = JSON.parse(savedDataStr);
+          }
         } catch (error) {
-          console.error("Error loading saved constant fields:", error);
-          // Fallback to default values
-          setSelectedDays([]);
+          console.error("Error loading saved data:", error);
         }
-      } else {
-        // No saved data, use defaults
-        setSelectedDays([]);
-      }
 
-      // Always set date range to lesson date (not persistent)
-      setDateRange({ from: lessonDate, to: undefined });
+        setSelectedClassTypeId(correctClassTypeId);
+        setSelectedTeacherId(preselectedTeacherId || '');
+        setSelectedStudentId(preselectedStudentId || '');
+        setIsRecurring(correctIsRecurring);
+        setSubjectId('');
+        setSubjectTypeId('');
+        setNotes('');
+        setSelectedDays(savedData?.selectedDays || []);
+        setDateRange({ from: lessonDate, to: correctIsRecurring ? undefined : undefined });
+        setError(null);
+        setValidationErrors([]);
 
-      setError(null);
-      setValidationErrors([]);
-      setIsInitialized(true);
+        setIsInitializing(false);
+      };
+
+      initializeDialog();
     } else if (!open) {
-      // Reset initialization state when dialog closes
-      setIsInitialized(false);
+      setIsInitializing(true);
     }
-  }, [open, classTypes.length, regularClassTypeId, lessonData.date]);
+  }, [open, classTypes.length, regularClassTypeId, lessonData, preselectedClassTypeId, preselectedTeacherId, preselectedStudentId]);
 
   useEffect(() => {
-    const loadStudentTypes = async () => {
-      setIsLoadingStudentTypes(true);
-      try {
-        const response = await fetcher<{ data: StudentType[] }>('/api/student-types');
-        setStudentTypes(response.data || []);
-      } catch (err) {
-        console.error("生徒タイプの読み込みエラー:", err);
-        setError("生徒タイプの読み込みに失敗しました");
-      } finally {
-        setIsLoadingStudentTypes(false);
-      }
-    };
-
-    if (open) {
-      loadStudentTypes();
-    }
-  }, [open]);
-
-  useEffect(() => {
-    const loadSubjects = async () => {
-      setIsLoadingSubjects(true);
-      try {
-        const response = await fetcher<{ data: Subject[] }>('/api/subjects');
-        setSubjects(response.data || []);
-      } catch (err) {
-        console.error("科目の読み込みエラー:", err);
-        setError("科目の読み込みに失敗しました");
-      } finally {
-        setIsLoadingSubjects(false);
-      }
-    };
-
-    if (open && studentId) {
-      loadSubjects();
-    }
-  }, [open, studentId]);
-
-  // Save persistent data to localStorage whenever relevant fields change (only constant values)
-  useEffect(() => {
-    if (open && isInitialized) {
+    if (open && !isInitializing) {
       const persistentData = {
-        selectedDays, // Only save weekdays
+        selectedDays,
+        selectedTeacherId,
+        selectedStudentId,
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(persistentData));
     }
-  }, [selectedDays, open, isInitialized]);
+  }, [selectedDays, selectedTeacherId, selectedStudentId, open, isInitializing]);
 
   useEffect(() => {
-    if (open) {
+    if (open && !isRecurring) {
       const lessonDate = typeof lessonData.date === 'string' ? new Date(lessonData.date) : lessonData.date;
-      if (!isRecurring) {
-        // Always reset to lesson date for non-recurring lessons
-        setDateRange({ from: lessonDate, to: undefined });
-      }
+      setDateRange({ from: lessonDate, to: undefined });
     }
   }, [open, lessonData.date, isRecurring]);
-
-  const loadStudentsByType = useCallback(async (selectedStudentTypeId: string) => {
-    if (!selectedStudentTypeId) return;
-
-    setIsLoadingStudents(true);
-    setStudents([]);
-    setStudentId('');
-
-    try {
-      const url = selectedStudentTypeId
-        ? `/api/students?studentTypeId=${selectedStudentTypeId}`
-        : '/api/students';
-
-      const response = await fetcher<{ data: Student[] }>(url);
-      setStudents(response.data || []);
-    } catch (err) {
-      console.error("生徒の読み込みエラー:", err);
-      setError("生徒を読み込めませんでした");
-    } finally {
-      setIsLoadingStudents(false);
-    }
-  }, []);
-
-  const loadTeachers = useCallback(async () => {
-    setIsLoadingTeachers(true);
-    setTeachers([]);
-    setTeacherId('');
-
-    try {
-      const response = await fetcher<{ data: Teacher[] }>('/api/teachers');
-      setTeachers(response.data || []);
-    } catch (err) {
-      console.error("講師の読み込みエラー:", err);
-      setError("講師を読み込めませんでした");
-    } finally {
-      setIsLoadingTeachers(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (studentTypeId) {
-      loadStudentsByType(studentTypeId);
-    } else {
-      setStudents([]);
-      setStudentId('');
-    }
-  }, [studentTypeId, loadStudentsByType]);
-
-  useEffect(() => {
-    if (studentId) {
-      if (!subjects.length) {
-        const loadSubjects = async () => {
-          setIsLoadingSubjects(true);
-          try {
-            const response = await fetcher<{ data: Subject[] }>('/api/subjects');
-            setSubjects(response.data || []);
-          } catch (err) {
-            console.error("科目の読み込みエラー:", err);
-            setError("科目の読み込みに失敗しました");
-          } finally {
-            setIsLoadingSubjects(false);
-          }
-        };
-
-        loadSubjects();
-      }
-
-      if (!teachers.length) {
-        loadTeachers();
-      }
-    }
-  }, [studentId, subjects.length, teachers.length, loadTeachers]);
-
-  useEffect(() => {
-    setIsRecurring(selectedClassTypeId === regularClassTypeId);
-  }, [selectedClassTypeId, regularClassTypeId]);
 
   const handleDayToggle = (day: number) => {
     setSelectedDays(prev => {
@@ -413,7 +325,6 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
     });
   };
 
-  // Validation function
   const validateForm = (): string[] => {
     const errors: string[] = [];
 
@@ -421,11 +332,11 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
       errors.push("授業のタイプを選択してください。");
     }
 
-    if (!studentTypeId) {
-      errors.push("生徒タイプを選択してください。");
+    if (!selectedTeacherId) {
+      errors.push("教師を選択してください。");
     }
 
-    if (!studentId) {
+    if (!selectedStudentId) {
       errors.push("生徒を選択してください。");
     }
 
@@ -433,13 +344,11 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
       errors.push("科目を選択してください。");
     }
 
-    if (!teacherId) {
-      errors.push("講師を選択してください。");
+    if (!subjectTypeId) {
+      errors.push("科目タイプを選択してください。");
     }
 
-    // Date range validation - specific handling for recurring vs non-recurring
     if (isRecurring) {
-      // For recurring lessons (通常授業), both start and end dates are required
       if (!dateRange?.from) {
         errors.push("通常授業の場合は期間の開始日を選択してください。");
       }
@@ -447,7 +356,6 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
         errors.push("通常授業の場合は期間の終了日を選択してください。");
       }
     } else {
-      // For non-recurring lessons, only start date is required
       if (!dateRange?.from) {
         errors.push("期間の開始日を選択してください。");
       }
@@ -456,12 +364,28 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
     return errors;
   };
 
+  const canSubmit = useMemo(() => {
+    if (isInitializing) return false;
+    
+    const hasRequiredFields = selectedClassTypeId && 
+                             selectedTeacherId && 
+                             selectedStudentId && 
+                             subjectId && 
+                             subjectTypeId;
+    
+    if (!hasRequiredFields) return false;
+    
+    if (isRecurring) {
+      return dateRange?.from && dateRange?.to;
+    } else {
+      return dateRange?.from;
+    }
+  }, [isInitializing, selectedClassTypeId, selectedTeacherId, selectedStudentId, subjectId, subjectTypeId, isRecurring, dateRange]);
+
   const handleSubmit = () => {
-    // Validate form before submission
     const errors = validateForm();
     setValidationErrors(errors);
 
-    // If there are validation errors, don't submit
     if (errors.length > 0) {
       return;
     }
@@ -472,8 +396,8 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
       endTime: lessonData.endTime,
       boothId: lessonData.boothId,
       subjectId: subjectId,
-      teacherId: teacherId,
-      studentId: studentId,
+      teacherId: selectedTeacherId,
+      studentId: selectedStudentId,
       notes: notes || "",
       classTypeId: selectedClassTypeId
     };
@@ -494,42 +418,33 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
       }
     }
 
-    console.log("------ ДАННЫЕ ИЗ ДИАЛОГА -------");
-    console.log(JSON.stringify(payload, null, 2));
-    console.log("--------------------------------------------");
+    console.log("Payload from dialog:", JSON.stringify(payload, null, 2));
 
     onSave(payload);
     onOpenChange(false);
-  };  // Reset persistent fields to default values
-  const handleReset = () => {
-    // Reset all fields to defaults
-    setSelectedClassTypeId(regularClassTypeId || '');
-    setIsRecurring(false);
-    setStudentTypeId('');
-    setStudentId('');
-    setSubjectId('');
-    setTeacherId('');
-    setNotes('');
-
-    // Reset persistent constant values
-    setSelectedDays([]);
-
-    // Reset date range to current lesson date
-    const lessonDate = typeof lessonData.date === 'string' ? new Date(lessonData.date) : lessonData.date;
-    setDateRange({ from: lessonDate, to: undefined });
-
-    // Clear localStorage (only constant values)
-    localStorage.removeItem(STORAGE_KEY);
-
-    // Clear errors
-    setError(null);
-    setValidationErrors([]);
-
-    // Reset initialization state so changes can be saved again
-    setIsInitialized(true);
   };
 
-  const isLoading = isLoadingStudentTypes || isLoadingStudents || isLoadingSubjects || isLoadingTeachers || isLoadingClassTypes;
+  const handleReset = () => {
+    const correctClassTypeId = preselectedClassTypeId || regularClassTypeId || '';
+    const correctIsRecurring = correctClassTypeId === regularClassTypeId;
+    const lessonDate = typeof lessonData.date === 'string' ? new Date(lessonData.date) : lessonData.date;
+
+    setSelectedClassTypeId(correctClassTypeId);
+    setSelectedTeacherId(preselectedTeacherId || '');
+    setSelectedStudentId(preselectedStudentId || '');
+    setIsRecurring(correctIsRecurring);
+    setSubjectId('');
+    setSubjectTypeId('');
+    setNotes('');
+    setSelectedDays([]);
+    setDateRange({ from: lessonDate, to: undefined });
+
+    localStorage.removeItem(STORAGE_KEY);
+    setError(null);
+    setValidationErrors([]);
+  };
+
+  const isLoading = isLoadingClassTypes;
 
   const daysOfWeek = [
     { label: '月', value: 1 },
@@ -541,15 +456,21 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
     { label: '日', value: 0 }
   ];
 
-  const classTypeItems: SearchableSelectItem[] = classTypes.map((type) => ({
-    value: type.classTypeId,
+  const selectedClassType = classTypes.find(type => type.classTypeId === selectedClassTypeId);
+
+  const subjectItems: SearchableSelectItem[] = filteredSubjects.map((subject) => ({
+    value: subject.subjectId,
+    label: subject.name,
+  }));
+
+  const subjectTypeItems: SearchableSelectItem[] = filteredSubjectTypes.map((type) => ({
+    value: type.subjectTypeId,
     label: type.name,
   }));
 
-  const studentTypeItems: SearchableSelectItem[] = studentTypes.map((type) => ({
-    value: type.studentTypeId,
-    label: type.name,
-    description: type.description
+  const teacherItems: SearchableSelectItem[] = teachers.map((teacher) => ({
+    value: teacher.teacherId,
+    label: teacher.name,
   }));
 
   const studentItems: SearchableSelectItem[] = students.map((student) => ({
@@ -557,15 +478,20 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
     label: student.name,
   }));
 
-  const subjectItems: SearchableSelectItem[] = subjects.map((subject) => ({
-    value: subject.subjectId,
-    label: subject.name,
-  }));
-
-  const teacherItems: SearchableSelectItem[] = teachers.map((teacher) => ({
-    value: teacher.teacherId,
-    label: teacher.name,
-  }));
+  if (isInitializing) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>授業の作成</DialogTitle>
+          </DialogHeader>
+          <div className="flex items-center justify-center py-8">
+            <div className="text-muted-foreground">読み込み中...</div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -616,17 +542,35 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
             </div>
 
             <div>
-              <label htmlFor="class-type-select" className="text-sm font-medium mb-1 block text-foreground">授業のタイプ <span className="text-destructive">*</span></label>
-              <SearchableSelect
-                value={selectedClassTypeId}
-                onValueChange={setSelectedClassTypeId}
-                items={classTypeItems}
-                placeholder="授業タイプを選択"
-                searchPlaceholder="授業タイプを検索..."
-                emptyMessage="授業タイプが見つかりません"
-                loading={isLoadingClassTypes}
-                disabled={isLoadingClassTypes || classTypes.length === 0}
-              />
+              <label className="text-sm font-medium text-foreground">授業のタイプ</label>
+              <div className="border rounded-md p-2 mt-1 bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground border-input">
+                {selectedClassType?.name || '未選択'}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="teacher-select" className="text-sm font-medium mb-1 block text-foreground">教師 <span className="text-destructive">*</span></label>
+                <SearchableSelect
+                  value={selectedTeacherId}
+                  onValueChange={setSelectedTeacherId}
+                  items={teacherItems}
+                  placeholder="教師を選択"
+                  searchPlaceholder="教師を検索..."
+                  emptyMessage="教師が見つかりません"
+                />
+              </div>
+              <div>
+                <label htmlFor="student-select" className="text-sm font-medium mb-1 block text-foreground">生徒 <span className="text-destructive">*</span></label>
+                <SearchableSelect
+                  value={selectedStudentId}
+                  onValueChange={setSelectedStudentId}
+                  items={studentItems}
+                  placeholder="生徒を選択"
+                  searchPlaceholder="生徒を検索..."
+                  emptyMessage="生徒が見つかりません"
+                />
+              </div>
             </div>
 
             {isRecurring && (
@@ -674,83 +618,52 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
             )}
 
             <div>
-              <label htmlFor="student-type-select" className="text-sm font-medium mb-1 block text-foreground">生徒タイプ <span className="text-destructive">*</span></label>
-              <SearchableSelect
-                value={studentTypeId}
-                onValueChange={setStudentTypeId}
-                items={studentTypeItems}
-                placeholder="生徒タイプを選択"
-                searchPlaceholder="生徒タイプを検索..."
-                emptyMessage="生徒タイプが見つかりません"
-                loading={isLoadingStudentTypes}
-                disabled={isLoadingStudentTypes}
-              />
-            </div>
-
-            <div>
-              <label htmlFor="student-select" className="text-sm font-medium mb-1 block text-foreground">生徒 <span className="text-destructive">*</span></label>
-              <SearchableSelect
-                value={studentId}
-                onValueChange={setStudentId}
-                items={studentItems}
-                placeholder={
-                  isLoadingStudents
-                    ? "生徒を読み込み中..."
-                    : !studentTypeId
-                    ? "先に生徒タイプを選択してください"
-                    : students.length === 0
-                    ? "この生徒タイプの生徒はいません"
-                    : "生徒を選択"
-                }
-                searchPlaceholder="生徒を検索..."
-                emptyMessage="生徒が見つかりません"
-                loading={isLoadingStudents}
-                disabled={isLoadingStudents || !studentTypeId || students.length === 0}
-              />
-            </div>
-
-            <div>
               <label htmlFor="subject-select" className="text-sm font-medium mb-1 block text-foreground">科目 <span className="text-destructive">*</span></label>
               <SearchableSelect
                 value={subjectId}
-                onValueChange={setSubjectId}
+                onValueChange={(value) => {
+                  setSubjectId(value);
+                  setSubjectTypeId('');
+                }}
                 items={subjectItems}
                 placeholder={
-                  isLoadingSubjects
-                    ? "科目を読み込み中..."
-                    : !studentId
-                    ? "先に生徒を選択してください"
-                    : subjects.length === 0
-                    ? "科目がありません"
+                  filteredSubjects.length === 0
+                    ? "共通の科目がありません"
                     : "科目を選択"
                 }
                 searchPlaceholder="科目を検索..."
                 emptyMessage="科目が見つかりません"
-                loading={isLoadingSubjects}
-                disabled={isLoadingSubjects || !studentId || subjects.length === 0}
+                disabled={filteredSubjects.length === 0}
               />
+              {filteredSubjects.length === 0 && (
+                <div className="text-xs text-destructive mt-1">
+                  選択された教師と生徒に共通の科目がありません
+                </div>
+              )}
             </div>
 
             <div>
-              <label htmlFor="teacher-select" className="text-sm font-medium mb-1 block text-foreground">講師 <span className="text-destructive">*</span></label>
+              <label htmlFor="subject-type-select" className="text-sm font-medium mb-1 block text-foreground">科目タイプ <span className="text-destructive">*</span></label>
               <SearchableSelect
-                value={teacherId}
-                onValueChange={setTeacherId}
-                items={teacherItems}
+                value={subjectTypeId}
+                onValueChange={setSubjectTypeId}
+                items={subjectTypeItems}
                 placeholder={
-                  isLoadingTeachers
-                    ? "講師を読み込み中..."
-                    : !studentId
-                    ? "先に生徒を選択してください"
-                    : teachers.length === 0
-                    ? "講師はいません"
-                    : "講師を選択"
+                  !subjectId
+                    ? "先に科目を選択してください"
+                    : filteredSubjectTypes.length === 0
+                    ? "利用可能な科目タイプがありません"
+                    : "科目タイプを選択"
                 }
-                searchPlaceholder="講師を検索..."
-                emptyMessage="講師が見つかりません"
-                loading={isLoadingTeachers}
-                disabled={isLoadingTeachers || !studentId || teachers.length === 0}
+                searchPlaceholder="科目タイプを検索..."
+                emptyMessage="科目タイプが見つかりません"
+                disabled={!subjectId || filteredSubjectTypes.length === 0}
               />
+              {subjectId && filteredSubjectTypes.length === 0 && (
+                <div className="text-xs text-destructive mt-1">
+                  生徒はこの科目のタイプを希望していません
+                </div>
+              )}
             </div>
 
             <div>
@@ -802,7 +715,7 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
             <Button
               className="ml-auto transition-all duration-200 hover:brightness-110 active:scale-[0.98] focus:ring-2 focus:ring-primary/30 focus:outline-none"
               onClick={handleSubmit}
-              disabled={isLoading || !studentTypeId || !studentId || !subjectId || !teacherId || !selectedClassTypeId}
+              disabled={!canSubmit || isLoading}
             >
               {isLoading ? "読み込み中..." : "作成"}
             </Button>

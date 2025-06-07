@@ -23,12 +23,48 @@ type TeacherMutationContext = {
   tempId?: string;
 };
 
-// Maintain a mapping between temporary IDs and server IDs
 const tempToServerIdMap = new Map<string, string>();
 
 export function getResolvedTeacherId(id: string): string {
   return tempToServerIdMap.get(id) || id;
 }
+
+const convertExceptionalAvailability = (
+  availability: any[]
+): Teacher['exceptionalAvailability'] => {
+  if (!availability || !Array.isArray(availability)) return [];
+  
+  return availability.map((item) => {
+    // If it's already in the correct format (has timeSlots), return as is
+    if ('timeSlots' in item && Array.isArray(item.timeSlots)) {
+      return {
+        date: item.date instanceof Date ? item.date.toISOString().split('T')[0] : item.date,
+        timeSlots: item.timeSlots,
+        fullDay: item.fullDay,
+        reason: item.reason || null,
+        notes: item.notes || null
+      };
+    }
+    
+    // Convert from schema format (startTime/endTime) to interface format (timeSlots)
+    const timeSlots = [];
+    if (!item.fullDay && item.startTime && item.endTime) {
+      timeSlots.push({
+        id: crypto.randomUUID(),
+        startTime: item.startTime,
+        endTime: item.endTime
+      });
+    }
+    
+    return {
+      date: item.date instanceof Date ? item.date.toISOString().split('T')[0] : item.date,
+      timeSlots,
+      fullDay: item.fullDay || false,
+      reason: item.reason || null,
+      notes: item.notes || null
+    };
+  });
+};
 
 export function useTeacherCreate() {
   const queryClient = useQueryClient();
@@ -59,7 +95,6 @@ export function useTeacherCreate() {
         const currentData =
           queryClient.getQueryData<TeachersResponse>(queryKey);
         if (currentData) {
-          // Create optimistic teacher
           const optimisticTeacher: Teacher = {
             teacherId: tempId,
             userId: tempId,
@@ -72,6 +107,8 @@ export function useTeacherCreate() {
             password: newTeacher.password || null,
             branches: [],
             subjectPreferences: newTeacher.subjectPreferences || [],
+            regularAvailability: newTeacher.regularAvailability || [],
+            exceptionalAvailability: convertExceptionalAvailability(newTeacher.exceptionalAvailability || []),
             createdAt: new Date(),
             updatedAt: new Date(),
             _optimistic: true,
@@ -99,7 +136,6 @@ export function useTeacherCreate() {
         );
       }
 
-      // Clean up the ID mapping if we created one
       if (context?.tempId) {
         tempToServerIdMap.delete(context.tempId);
       }
@@ -112,11 +148,9 @@ export function useTeacherCreate() {
     onSuccess: (response, _, context) => {
       if (!context?.tempId) return;
 
-      // Store the mapping between temporary ID and server ID
       const newTeacher = response.data[0];
       tempToServerIdMap.set(context.tempId, newTeacher.teacherId);
 
-      // Update all teacher queries
       const queries = queryClient.getQueriesData<TeachersResponse>({
         queryKey: ["teachers"],
       });
@@ -199,6 +233,14 @@ export function useTeacherUpdate() {
                       updatedTeacher.subjectPreferences !== undefined
                         ? updatedTeacher.subjectPreferences
                         : teacher.subjectPreferences,
+                    regularAvailability:
+                      updatedTeacher.regularAvailability !== undefined
+                        ? updatedTeacher.regularAvailability
+                        : teacher.regularAvailability,
+                    exceptionalAvailability:
+                      updatedTeacher.exceptionalAvailability !== undefined
+                        ? convertExceptionalAvailability(updatedTeacher.exceptionalAvailability)
+                        : teacher.exceptionalAvailability,
                     updatedAt: new Date(),
                   }
                 : teacher
@@ -215,6 +257,14 @@ export function useTeacherUpdate() {
             updatedTeacher.subjectPreferences !== undefined
               ? updatedTeacher.subjectPreferences
               : previousTeacher.subjectPreferences,
+          regularAvailability:
+            updatedTeacher.regularAvailability !== undefined
+              ? updatedTeacher.regularAvailability
+              : previousTeacher.regularAvailability,
+          exceptionalAvailability:
+            updatedTeacher.exceptionalAvailability !== undefined
+              ? convertExceptionalAvailability(updatedTeacher.exceptionalAvailability)
+              : previousTeacher.exceptionalAvailability,
           updatedAt: new Date(),
         });
       }
@@ -244,10 +294,8 @@ export function useTeacherUpdate() {
       });
     },
     onSuccess: (data) => {
-      // Find the updated teacher from the response
       const updatedTeacher = data?.data?.[0];
       if (updatedTeacher) {
-        // Update all teacher queries to replace the teacher with the updated one
         const queries = queryClient.getQueriesData<TeachersResponse>({
           queryKey: ["teachers"],
         });
@@ -265,7 +313,6 @@ export function useTeacherUpdate() {
             });
           }
         });
-        // Also update the single teacher query if it exists
         queryClient.setQueryData(
           ["teacher", updatedTeacher.teacherId],
           updatedTeacher

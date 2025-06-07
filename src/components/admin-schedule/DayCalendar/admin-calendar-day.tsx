@@ -1,14 +1,20 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
+import { startOfDay } from 'date-fns';
 import { useBooths } from '@/hooks/useBoothQuery';
-import { useTeachers } from '@/hooks/useTeacherQuery';
-import { useStudents } from '@/hooks/useStudentQuery';
+import { useTeachers, useTeacher } from '@/hooks/useTeacherQuery';
+import { useStudents, useStudent } from '@/hooks/useStudentQuery';
 import { useSubjects } from '@/hooks/useSubjectQuery';
+import { useClassTypes } from '@/hooks/useClassTypeQuery';
+// import { useUserSubjectPreferencesByUser } from '@/hooks/useUserSubjectPreferenceQuery';
 import { ExtendedClassSessionWithRelations, useMultipleDaysClassSessions, DayFilters } from '@/hooks/useClassSessionQuery';
 import { DaySelector } from './day-selector';
 import { DayCalendar } from './day-calendar';
 import { CreateLessonDialog } from './create-lesson-dialog';
 import { LessonDialog } from './lesson-dialog';
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from '@/components/ui/button';
+import { SearchableSelect, SearchableSelectItem } from '../searchable-select';
+import { X } from 'lucide-react';
 import {
   getDateKey,
 } from '../date';
@@ -38,8 +44,8 @@ interface ApiErrorResponse {
   issues?: Array<{ message: string }>;
 }
 
-// Storage key for selected days persistence
-const SELECTED_DAYS_KEY = "admin_calendar_selected_days";
+const VIEW_START_DATE_KEY = "admin_calendar_view_start_date";
+const SELECTED_DAYS_KEY = "admin_calendar_selected_days_v2";
 
 interface AdminCalendarDayProps {
   selectedBranchId?: string;
@@ -72,15 +78,23 @@ const TIME_SLOTS: TimeSlot[] = Array.from({ length: 57 }, (_el, i) => {
 });
 
 export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayProps) {
-  // State for selected days - will be properly initialized after mount
-  const [selectedDays, setSelectedDays] = useState<Date[]>(() => {
-    // Create current date
-    const today = new Date();
-    today.setHours(12, 0, 0, 0); // Set to noon to avoid timezone issues
-    const todayDateKey = getDateKey(today);
+  const today = useMemo(() => startOfDay(new Date()), []);
+  
+  const [viewStartDate, setViewStartDate] = useState<Date>(today);
+  const [selectedDays, setSelectedDays] = useState<Date[]>([today]);
+  const [isInitialized, setIsInitialized] = useState(false);
 
-    // Try to get saved days from localStorage during initial render
-    if (typeof window !== 'undefined') {
+  // Load saved data after component mounts to prevent hydration issues
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !isInitialized) {
+      const saved = localStorage.getItem(VIEW_START_DATE_KEY);
+      if (saved) {
+        const date = new Date(saved);
+        if (!isNaN(date.getTime()) && date >= today) {
+          setViewStartDate(startOfDay(date));
+        }
+      }
+
       const savedDaysJson = localStorage.getItem(SELECTED_DAYS_KEY);
       if (savedDaysJson) {
         try {
@@ -90,25 +104,26 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
               .map((dateStr: string) => new Date(dateStr))
               .filter((date: Date) => !isNaN(date.getTime()));
 
-            // Filter to only include dates from today onwards
             const validDates = parsedDates.filter(date => {
-              const dateKey = getDateKey(date);
-              return dateKey >= todayDateKey;
+              return date >= today;
             });
 
             if (validDates.length > 0) {
-              return validDates;
+              setSelectedDays(validDates);
             }
           }
         } catch (error) {
           console.error('Error parsing saved selected days:', error);
         }
       }
-    }
 
-    // Default to current date if no saved days or all saved days are in the past
-    return [today];
-  });
+      setIsInitialized(true);
+    }
+  }, [today, isInitialized]);
+
+  const [selectedClassTypeId, setSelectedClassTypeId] = useState<string>('');
+  const [selectedTeacherId, setSelectedTeacherId] = useState<string>('');
+  const [selectedStudentId, setSelectedStudentId] = useState<string>('');
 
   const [dayFilters, setDayFilters] = useState<Record<string, DayFilters>>({});
   const [showCreateDialog, setShowCreateDialog] = useState<boolean>(false);
@@ -118,69 +133,61 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
   const [dialogMode, setDialogMode] = useState<'view' | 'edit'>('view');
   const [resetSelectionKey, setResetSelectionKey] = useState<number>(0);
 
-  // Clean up old dates from localStorage on mount
   useEffect(() => {
-    const today = new Date();
-    today.setHours(12, 0, 0, 0);
-    const todayDateKey = getDateKey(today);
+    if (isInitialized) {
+      localStorage.setItem(VIEW_START_DATE_KEY, viewStartDate.toISOString());
+    }
+  }, [viewStartDate, isInitialized]);
 
-    const savedDaysJson = localStorage.getItem(SELECTED_DAYS_KEY);
-    if (savedDaysJson) {
-      try {
-        const savedDays = JSON.parse(savedDaysJson);
-        if (Array.isArray(savedDays) && savedDays.length > 0) {
-          const validDates = savedDays.filter((dateStr: string) => {
-            const date = new Date(dateStr);
-            return !isNaN(date.getTime()) && getDateKey(date) >= todayDateKey;
-          });
-
-          // Update localStorage if we filtered out old dates
-          if (validDates.length !== savedDays.length) {
-            if (validDates.length > 0) {
-              localStorage.setItem(SELECTED_DAYS_KEY, JSON.stringify(validDates));
-            } else {
-              localStorage.removeItem(SELECTED_DAYS_KEY);
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Error cleaning up old dates:', error);
+  useEffect(() => {
+    if (isInitialized) {
+      const daysToSave = selectedDays.map(d => d.toISOString());
+      if (daysToSave.length > 0) {
+        localStorage.setItem(SELECTED_DAYS_KEY, JSON.stringify(daysToSave));
+      } else {
         localStorage.removeItem(SELECTED_DAYS_KEY);
       }
     }
-  }, []);
+  }, [selectedDays, isInitialized]);
 
-  // Fetch all required data
   const { data: boothsResponse, isLoading: isLoadingBooths } = useBooths({ limit: 100 });
   const { data: teachersResponse, isLoading: isLoadingTeachers } = useTeachers({ limit: 100 });
   const { data: studentsResponse, isLoading: isLoadingStudents } = useStudents({ limit: 100 });
   const { data: subjectsResponse, isLoading: isLoadingSubjects } = useSubjects({ limit: 100 });
+  const { data: classTypesResponse, isLoading: isLoadingClassTypes } = useClassTypes({ limit: 100 });
 
-  // Memoize data arrays
+  const { data: teacherData } = useTeacher(selectedTeacherId);
+  const { data: studentData } = useStudent(selectedStudentId);
+  
+  const teacherUserId = teacherData?.userId;
+  const studentUserId = studentData?.userId;
+  
   const booths = useMemo(() => boothsResponse?.data || [], [boothsResponse]);
   const teachers = useMemo(() => teachersResponse?.data || [], [teachersResponse]);
   const students = useMemo(() => studentsResponse?.data || [], [studentsResponse]);
   const subjects = useMemo(() => subjectsResponse?.data || [], [subjectsResponse]);
+  const classTypes = useMemo(() => classTypesResponse?.data || [], [classTypesResponse]);
 
   const selectedDatesStrings = useMemo(() => {
     return selectedDays.map(day => getDateKey(day));
   }, [selectedDays]);
 
-  // Create enhanced filters that include branchId when available
   const enhancedDayFilters = useMemo(() => {
+    if (!selectedBranchId) {
+      return {};
+    }
+
     const enhanced: Record<string, DayFilters> = {};
 
-    // Add filters for dates that have specific filters
     Object.entries(dayFilters).forEach(([dateKey, filters]) => {
       enhanced[dateKey] = {
         ...filters,
-        ...(selectedBranchId && { branchId: selectedBranchId })
+        branchId: selectedBranchId
       };
     });
 
-    // Add branchId filter for dates without specific filters
     selectedDatesStrings.forEach(dateStr => {
-      if (!enhanced[dateStr] && selectedBranchId) {
+      if (!enhanced[dateStr]) {
         enhanced[dateStr] = { branchId: selectedBranchId };
       }
     });
@@ -188,7 +195,10 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
     return enhanced;
   }, [dayFilters, selectedBranchId, selectedDatesStrings]);
 
-  const classSessionQueries = useMultipleDaysClassSessions(selectedDatesStrings, enhancedDayFilters);
+  const classSessionQueries = useMultipleDaysClassSessions(
+    selectedBranchId ? selectedDatesStrings : [], 
+    enhancedDayFilters
+  );
 
   const classSessionsByDate = useMemo(() => {
     const sessionsByDate: Record<string, ExtendedClassSessionWithRelations[]> = {};
@@ -210,7 +220,7 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
     return classSessionQueries.some(query => query.isLoading || query.isFetching);
   }, [classSessionQueries]);
 
-  const isLoadingData = isLoadingBooths || isLoadingTeachers || isLoadingStudents || isLoadingSubjects;
+  const isLoadingData = isLoadingBooths || isLoadingTeachers || isLoadingStudents || isLoadingSubjects || isLoadingClassTypes;
 
   const timeSlots = TIME_SLOTS;
 
@@ -233,6 +243,12 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
     classSessionQueries.forEach(query => query.refetch());
   }, [classSessionQueries, selectedDatesStrings, newLessonData, selectedLesson]);
 
+  const handleStartDateChange = useCallback((newStartDate: Date) => {
+    setViewStartDate(newStartDate);
+    setSelectedDays([newStartDate]);
+    setDayFilters({});
+  }, []);
+
   const handleDaySelect = useCallback((date: Date, isSelected: boolean) => {
     setSelectedDays(prev => {
       const dateStrSet = new Set(prev.map(d => getDateKey(d)));
@@ -246,7 +262,6 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
       } else {
         if (!dateStrSet.has(dateStr)) return prev;
 
-        // Remove filters for this day when day is deselected
         setDayFilters(prev => {
           const newFilters = { ...prev };
           delete newFilters[dateStr];
@@ -254,13 +269,6 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
         });
 
         newDays = prev.filter(d => getDateKey(d) !== dateStr);
-      }
-
-      // Save to localStorage only if there are selected days
-      if (newDays.length > 0) {
-        localStorage.setItem(SELECTED_DAYS_KEY, JSON.stringify(newDays.map(d => d.toISOString())));
-      } else {
-        localStorage.removeItem(SELECTED_DAYS_KEY);
       }
 
       return newDays;
@@ -275,11 +283,19 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
   }, []);
 
   const handleCreateLesson = useCallback((date: Date, startTime: string, endTime: string, boothId: string) => {
-    const lessonData = { date, startTime, endTime, boothId };
+    const lessonData = { 
+      date, 
+      startTime, 
+      endTime, 
+      boothId,
+      classTypeId: selectedClassTypeId,
+      teacherId: selectedTeacherId,
+      studentId: selectedStudentId
+    };
     setNewLessonData(lessonData);
     setShowCreateDialog(true);
     setResetSelectionKey(prev => prev + 1);
-  }, []);
+  }, [selectedClassTypeId, selectedTeacherId, selectedStudentId]);
 
   const handleLessonClick = useCallback((lesson: ExtendedClassSessionWithRelations) => {
     setSelectedLesson(lesson);
@@ -292,7 +308,7 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
       const dateStr = typeof lessonData.date === 'string' ?
         lessonData.date : formatDateToString(lessonData.date);
 
-      const requestBody: any = {
+      const requestBody: Record<string, unknown> = {
         date: dateStr,
         startTime: lessonData.startTime,
         endTime: lessonData.endTime,
@@ -348,13 +364,12 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
         throw new Error(errorMessage || `エラー ${response.status}: ${response.statusText}`);
       }
 
-      let responseData;
-      try {
-        if (contentType && contentType.includes("application/json")) {
-          responseData = await response.json();
+      if (contentType && contentType.includes("application/json")) {
+        try {
+          await response.json();
+        } catch (parseError) {
+          console.warn("応答のパースエラー:", parseError);
         }
-      } catch (parseError) {
-        console.warn("応答のパースエラー:", parseError);
       }
 
       setShowCreateDialog(false);
@@ -370,17 +385,56 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
     }
   }, [refreshData]);
 
-  const handleUpdateLesson = useCallback((lessonId: string) => {
+  const handleUpdateLesson = useCallback(() => {
     setShowLessonDialog(false);
     refreshData();
     setSelectedLesson(null);
   }, [refreshData]);
 
-  const handleDeleteLesson = useCallback((lessonId: string) => {
+  const handleDeleteLesson = useCallback(() => {
     setShowLessonDialog(false);
     refreshData();
     setSelectedLesson(null);
   }, [refreshData]);
+
+  const classTypeItems: SearchableSelectItem[] = classTypes.map((type) => ({
+    value: type.classTypeId,
+    label: type.name,
+  }));
+
+  const teacherItems: SearchableSelectItem[] = teachers.map((teacher) => ({
+    value: teacher.teacherId,
+    label: teacher.name,
+  }));
+
+  const studentItems: SearchableSelectItem[] = students.map((student) => ({
+    value: student.studentId,
+    label: student.name,
+  }));
+
+  const clearClassType = () => setSelectedClassTypeId('');
+  const clearTeacher = () => setSelectedTeacherId('');
+  const clearStudent = () => setSelectedStudentId('');
+
+  const clearAllSelections = () => {
+    setSelectedClassTypeId('');
+    setSelectedTeacherId('');
+    setSelectedStudentId('');
+  };
+
+  const hasActiveSelections = Boolean(selectedClassTypeId || selectedTeacherId || selectedStudentId);
+
+  if (!selectedBranchId) {
+    return (
+      <div className="flex justify-center p-8 text-muted-foreground">
+        Пожалуйста, выберите филиал для отображения расписания.
+      </div>
+    );
+  }
+
+  if (!isInitialized) {
+    return <div className="flex justify-center p-8 text-foreground dark:text-foreground">初期化中...</div>;
+  }
 
   if (isLoadingData) {
     return <div className="flex justify-center p-8 text-foreground dark:text-foreground">データを読み込み中...</div>;
@@ -388,11 +442,115 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
 
   return (
     <div className="flex flex-col space-y-4 p-4">
+      <div className="bg-background border rounded-lg p-4 space-y-4">
+        <h3 className="text-sm font-medium text-muted-foreground">授業作成の設定</h3>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="flex items-end gap-1">
+            <div className="flex-1">
+              <label className="text-sm font-medium mb-1 block">授業タイプ</label>
+              <SearchableSelect
+                value={selectedClassTypeId}
+                onValueChange={setSelectedClassTypeId}
+                items={classTypeItems}
+                placeholder="授業タイプを選択"
+                searchPlaceholder="授業タイプを検索..."
+                emptyMessage="授業タイプが見つかりません"
+                disabled={isLoadingClassTypes}
+              />
+            </div>
+            {selectedClassTypeId && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearClassType}
+                className="h-10 w-10 p-0 hover:bg-destructive/10 hover:text-destructive"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+          
+          <div className="flex items-end gap-1">
+            <div className="flex-1">
+              <label className="text-sm font-medium mb-1 block">教師</label>
+              <SearchableSelect
+                value={selectedTeacherId}
+                onValueChange={setSelectedTeacherId}
+                items={teacherItems}
+                placeholder="教師を選択"
+                searchPlaceholder="教師を検索..."
+                emptyMessage="教師が見つかりません"
+                disabled={isLoadingTeachers}
+              />
+            </div>
+            {selectedTeacherId && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearTeacher}
+                className="h-10 w-10 p-0 hover:bg-destructive/10 hover:text-destructive"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+          
+          <div className="flex items-end gap-1">
+            <div className="flex-1">
+              <label className="text-sm font-medium mb-1 block">生徒</label>
+              <SearchableSelect
+                value={selectedStudentId}
+                onValueChange={setSelectedStudentId}
+                items={studentItems}
+                placeholder="生徒を選択"
+                searchPlaceholder="生徒を検索..."
+                emptyMessage="生徒が見つかりません"
+                disabled={isLoadingStudents}
+              />
+            </div>
+            {selectedStudentId && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearStudent}
+                className="h-10 w-10 p-0 hover:bg-destructive/10 hover:text-destructive"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <div className="text-sm text-muted-foreground">
+            {selectedClassTypeId && selectedTeacherId && selectedStudentId ? (
+              '選択された設定で授業を作成できます。カレンダーで時間枠をドラッグして授業を作成してください。'
+            ) : (
+              '授業を作成するには、授業タイプ、教師、生徒をすべて選択してください。'
+            )}
+          </div>
+          
+          {hasActiveSelections && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={clearAllSelections}
+              className="h-8 text-xs whitespace-nowrap"
+            >
+              すべてクリア
+            </Button>
+          )}
+        </div>
+      </div>
+
       <div className="flex flex-col sm:flex-row justify-between items-center space-y-2 sm:space-y-0">
         <h2 className="text-xl font-semibold text-foreground dark:text-foreground"></h2>
         <DaySelector
+          startDate={viewStartDate}
           selectedDays={selectedDays}
           onSelectDay={handleDaySelect}
+          onStartDateChange={handleStartDateChange}
         />
       </div>
 
@@ -457,6 +615,9 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
                 resetSelectionKey={resetSelectionKey}
                 filters={currentFilters}
                 onFiltersChange={(filters) => handleFiltersChange(dateKey, filters)}
+                selectedTeacherId={selectedTeacherId}
+                selectedStudentId={selectedStudentId}
+                selectedClassTypeId={selectedClassTypeId}
               />
             </div>
           );
@@ -475,6 +636,13 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
           lessonData={newLessonData}
           onSave={handleSaveNewLesson}
           booths={booths}
+          preselectedClassTypeId={selectedClassTypeId}
+          preselectedTeacherId={selectedTeacherId}
+          preselectedStudentId={selectedStudentId}
+          teacherName={teacherData?.name || ''}
+          studentName={studentData?.name || ''}
+          teacherData={teacherData}
+          studentData={studentData}
         />
       )}
 

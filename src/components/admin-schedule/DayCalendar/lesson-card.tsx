@@ -17,18 +17,15 @@ interface LessonCardProps {
   maxZIndex?: number;
 }
 
-// Улучшенная функция извлечения времени
 const extractTime = (timeValue: string | Date | undefined): string => {
   if (!timeValue) return '';
   
   try {
     if (typeof timeValue === 'string') {
-      // Если формат времени уже "HH:MM" (как в API)
       if (/^\d{2}:\d{2}$/.test(timeValue)) {
         return timeValue;
       }
       
-      // Для ISO формата
       const timeMatch = timeValue.match(/T(\d{2}:\d{2}):/);
       if (timeMatch && timeMatch[1]) {
         return timeMatch[1];
@@ -54,12 +51,10 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
   const startTime = useMemo(() => extractTime(lesson.startTime), [lesson.startTime]);
   const endTime = useMemo(() => extractTime(lesson.endTime), [lesson.endTime]);
   
-  // Находим ближайший временной слот для начала урока
   const startSlotIndex = useMemo(() => {
     const exactMatch = timeSlots.findIndex(slot => slot.start === startTime);
     if (exactMatch >= 0) return exactMatch;
     
-    // Если точного совпадения нет, ищем ближайший слот
     return timeSlots.findIndex(slot => {
       const slotTime = slot.start.split(':').map(Number);
       const startTimeArr = startTime.split(':').map(Number);
@@ -73,12 +68,10 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
     });
   }, [startTime, timeSlots]);
   
-  // Находим ближайший временной слот для окончания урока
   const endSlotIndex = useMemo(() => {
     const exactMatch = timeSlots.findIndex(slot => slot.start === endTime);
     if (exactMatch >= 0) return exactMatch;
     
-    // Если точного совпадения нет, ищем ближайший слот
     const matchedIndex = timeSlots.findIndex(slot => {
       const slotTime = slot.start.split(':').map(Number);
       const endTimeArr = endTime.split(':').map(Number);
@@ -91,22 +84,19 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
       return slotMinutes <= endMinutes && endMinutes < (slotMinutes + 30);
     });
     
-    return matchedIndex >= 0 ? matchedIndex : startSlotIndex + 3; // Если не нашли, берем +3 слота от начала (1.5 часа)
+    return matchedIndex >= 0 ? matchedIndex : startSlotIndex + 3;
   }, [endTime, timeSlots, startSlotIndex]);
   
-  // Находим индекс кабинета
   const boothIndex = useMemo(() => {
-    // Точное совпадение по boothId
     const exactMatch = booths.findIndex(booth => booth.boothId === lesson.boothId);
     if (exactMatch >= 0) return exactMatch;
     
-    // Если не нашли, проверяем по имени кабинета
     const nameMatch = booths.findIndex(booth => 
       booth.name === lesson.boothName || 
       (typeof lesson.booth === 'object' && lesson.booth && booth.name === lesson.booth.name)
     );
     
-    return nameMatch >= 0 ? nameMatch : 0; // Если ни одно не совпало, используем первый кабинет
+    return nameMatch >= 0 ? nameMatch : 0;
   }, [booths, lesson.boothId, lesson.boothName, lesson.booth]);
   
   const isValidPosition = startSlotIndex >= 0 && endSlotIndex > startSlotIndex && boothIndex >= 0;
@@ -128,9 +118,8 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
       boothIndex 
     });
     
-    // Расчет продолжительности урока в минутах
     const calculateDurationInSlots = () => {
-      if (!startTime || !endTime) return 3; // По умолчанию 1.5 часа (3 слота по 30 минут)
+      if (!startTime || !endTime) return 3;
       
       const [startHour, startMin] = startTime.split(':').map(Number);
       const [endHour, endMin] = endTime.split(':').map(Number);
@@ -140,18 +129,14 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
       }
       
       const durationMinutes = ((endHour - startHour) * 60) + (endMin - startMin);
-      return Math.max(1, Math.ceil(durationMinutes / 30)); // Предполагаем, что один слот = 30 минут
+      return Math.max(1, Math.ceil(durationMinutes / 30));
     };
     
-    // Вычисляем примерную продолжительность урока
     const durationSlots = calculateDurationInSlots();
     
-    // Если не удалось определить позицию, но у нас есть время начала
-    // Пытаемся определить ближайший слот
     if (startTime) {
       const [hour, minute] = startTime.split(':').map(Number);
       if (!isNaN(hour) && !isNaN(minute)) {
-        // Ищем ближайший слот по времени
         const totalMinutes = hour * 60 + minute;
         let closestSlotIndex = -1;
         let minDiff = Infinity;
@@ -177,23 +162,22 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
       }
     }
     
-    // Если все методы не сработали, используем начало дня и стандартную продолжительность
     return {
-      effectiveStartIndex: 0, // Начало дня
+      effectiveStartIndex: 0,
       effectiveDuration: durationSlots
     };
   }, [isValidPosition, startSlotIndex, endSlotIndex, startTime, endTime, timeSlots, lesson.classId, boothIndex, lesson.boothId]);
   
   const colors = useMemo(() => {
-    // Определяем, является ли урок повторяющимся на основе наличия seriesId
     const isRecurringLesson = lesson.seriesId !== null && lesson.seriesId !== undefined;
+    const subjectName = lesson.subject?.name || lesson.subjectName || '';
     
     if (isRecurringLesson) {
       return {
-        background: 'bg-blue-100 dark:bg-blue-900/70',
-        border: 'border-blue-300 dark:border-blue-700',
-        text: 'text-blue-800 dark:text-blue-100',
-        hover: 'hover:bg-blue-200 dark:hover:bg-blue-800'
+        background: 'bg-indigo-100 dark:bg-indigo-900/70',
+        border: 'border-indigo-300 dark:border-indigo-700',
+        text: 'text-indigo-800 dark:text-indigo-100',
+        hover: 'hover:bg-indigo-200 dark:hover:bg-indigo-800'
       };
     } else {
       return {
@@ -203,13 +187,12 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
         hover: 'hover:bg-red-200 dark:hover:bg-red-800'
       };
     }
-  }, [lesson.seriesId]);
+  }, [lesson.seriesId, lesson.subject?.name, lesson.subjectName]);
   
-  // Рассчитываем CSS стиль
   const style = useMemo(() => ({
     position: 'absolute',
     left: `${effectiveStartIndex * 40 + 100}px`,
-    top: `${(boothIndex + 1) * timeSlotHeight}px`,
+    top: `${boothIndex * timeSlotHeight}px`, 
     width: `${effectiveDuration * 40}px`,
     height: `${timeSlotHeight - 2}px`,
     zIndex: maxZIndex - 1
@@ -217,13 +200,11 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
   
   const isNarrow = effectiveDuration <= 1;
   
-  // Защита от рендеринга вне видимой области
   if (effectiveStartIndex < 0) {
     console.error('Невозможно отобразить урок - недопустимый индекс начала:', effectiveStartIndex);
     return null;
   }
 
-  // Используем данные как из вложенных объектов, так и из плоских свойств (как в API)
   const subjectName = lesson.subject?.name || lesson.subjectName || 'Предмет не указан';
   const teacherName = lesson.teacher?.name || lesson.teacherName || 'Преподаватель не указан';
   const studentName = lesson.student?.name || lesson.studentName || 'Студент не указан';
