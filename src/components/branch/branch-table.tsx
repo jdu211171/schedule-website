@@ -11,6 +11,7 @@ import { useBranches } from "@/hooks/useBranchQuery";
 import {
   useBranchUpdate,
   useBranchDelete,
+  useBranchOrderUpdate,
   getResolvedBranchId,
 } from "@/hooks/useBranchMutation";
 import {
@@ -41,6 +42,7 @@ export function BranchTable() {
 
   const updateBranchMutation = useBranchUpdate();
   const deleteBranchMutation = useBranchDelete();
+  const updateOrderMutation = useBranchOrderUpdate();
 
   const currentBranch = localStorage.getItem("selectedBranchId");
 
@@ -87,9 +89,9 @@ export function BranchTable() {
       items.map((item) => ({ id: item.branchId, name: item.name }))
     );
 
-    // TODO: Implement order update API when you add the order field
-    // const branchIds = items.map((item) => item.branchId);
-    // updateOrderMutation.mutate({ branchIds });
+    // Resolve branch IDs (handle temp vs server IDs) and send update request
+    const branchIds = items.map((item) => getResolvedBranchId(item.branchId));
+    updateOrderMutation.mutate({ branchIds });
   };
 
   const handleSortModeChange = (enabled: boolean) => {
