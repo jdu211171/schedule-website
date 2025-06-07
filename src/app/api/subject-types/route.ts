@@ -5,13 +5,15 @@ import { prisma } from "@/lib/prisma";
 import {
   subjectTypeCreateSchema,
   subjectTypeFilterSchema,
+  SUBJECT_TYPE_SORT_FIELDS,
 } from "@/schemas/subject-type.schema";
-import { SubjectType } from "@prisma/client";
+import { SubjectType, Prisma } from "@prisma/client";
 
 type FormattedSubjectType = {
   subjectTypeId: string;
   name: string;
   notes: string | null;
+  order: number | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -21,6 +23,7 @@ const formatSubjectType = (subjectType: SubjectType): FormattedSubjectType => ({
   subjectTypeId: subjectType.subjectTypeId,
   name: subjectType.name,
   notes: subjectType.notes,
+  order: subjectType.order,
   createdAt: subjectType.createdAt,
   updatedAt: subjectType.updatedAt,
 });
@@ -45,7 +48,7 @@ export const GET = withBranchAccess(
     const { page, limit, name } = result.data;
 
     // Build filter conditions
-    const where: { name?: { contains: string; mode: "insensitive" } } = {};
+    const where: Record<string, unknown> = {};
 
     if (name) {
       where.name = {
@@ -53,6 +56,12 @@ export const GET = withBranchAccess(
         mode: "insensitive",
       };
     }
+
+    // ALWAYS sort by order field to maintain admin-defined sequence
+    const orderBy: Prisma.SubjectTypeOrderByWithRelationInput[] = [
+      { order: { sort: "asc", nulls: "last" } },
+      { name: "asc" }, // Secondary sort by name for subject types with same order
+    ];
 
     // Calculate pagination
     const skip = (page - 1) * limit;
@@ -65,7 +74,7 @@ export const GET = withBranchAccess(
       where,
       skip,
       take: limit,
-      orderBy: { name: "asc" },
+      orderBy,
     });
 
     // Format subject types
@@ -99,7 +108,7 @@ export const POST = withBranchAccess(
         );
       }
 
-      const { name, notes } = result.data;
+      const { name, notes, order } = result.data;
 
       // Check if subject type name already exists (globally)
       const existingSubjectType = await prisma.subjectType.findFirst({
@@ -115,11 +124,26 @@ export const POST = withBranchAccess(
         );
       }
 
+      // Determine the order value
+      let finalOrder = order;
+      if (!finalOrder) {
+        // Get the current maximum order value
+        const maxOrderResult = await prisma.subjectType.aggregate({
+          _max: {
+            order: true,
+          },
+        });
+        finalOrder = maxOrderResult._max.order
+          ? maxOrderResult._max.order + 1
+          : 1;
+      }
+
       // Create subject type
       const newSubjectType = await prisma.subjectType.create({
         data: {
           name,
           notes,
+          order: finalOrder,
         },
       });
 

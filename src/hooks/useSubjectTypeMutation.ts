@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   SubjectTypeCreate,
+  SubjectTypeOrderUpdate,
   SubjectTypeUpdate,
 } from "@/schemas/subject-type.schema";
 import { SubjectType } from "@/hooks/useSubjectTypeQuery";
@@ -399,6 +400,99 @@ export function useSubjectTypeDelete() {
       });
       queryClient.invalidateQueries({
         queryKey: ["subjectType", resolvedId],
+        refetchType: "none",
+      });
+    },
+  });
+}
+
+export function useSubjectTypeOrderUpdate() {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    { message: string },
+    Error,
+    SubjectTypeOrderUpdate,
+    SubjectTypeMutationContext
+  >({
+    mutationFn: (data) =>
+      fetcher("/api/subject-types/order", {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      }),
+    onMutate: async ({ subjectTypeIds }) => {
+      await queryClient.cancelQueries({ queryKey: ["subjectTypes"] });
+
+      const queries = queryClient.getQueriesData<SubjectTypesResponse>({
+        queryKey: ["subjectTypes"],
+      });
+
+      const previousSubjectTypes: Record<string, SubjectTypesResponse> = {};
+      queries.forEach(([queryKey, data]) => {
+        if (data) {
+          previousSubjectTypes[JSON.stringify(queryKey)] = data;
+        }
+      });
+
+      // Optimistically update the order
+      queries.forEach(([queryKey]) => {
+        const currentData =
+          queryClient.getQueryData<SubjectTypesResponse>(queryKey);
+        if (currentData) {
+          const updatedData = {
+            ...currentData,
+            data: currentData.data.map((subjectType) => {
+              const newOrder = subjectTypeIds.indexOf(
+                subjectType.subjectTypeId
+              );
+              return newOrder !== -1
+                ? { ...subjectType, order: newOrder + 1 }
+                : subjectType;
+            }),
+          };
+
+          // Re-sort the data based on the query parameters
+          const queryKeyArray = queryKey as any[];
+          const sortBy = queryKeyArray[4] || "order";
+          const sortOrder = queryKeyArray[5] || "asc";
+
+          if (sortBy === "order") {
+            updatedData.data.sort((a, b) => {
+              const aOrder = a.order ?? Number.MAX_SAFE_INTEGER;
+              const bOrder = b.order ?? Number.MAX_SAFE_INTEGER;
+              return sortOrder === "asc" ? aOrder - bOrder : bOrder - aOrder;
+            });
+          }
+
+          queryClient.setQueryData<SubjectTypesResponse>(queryKey, updatedData);
+        }
+      });
+
+      return { previousSubjectTypes };
+    },
+    onError: (error, _, context) => {
+      if (context?.previousSubjectTypes) {
+        Object.entries(context.previousSubjectTypes).forEach(
+          ([queryKeyStr, data]) => {
+            const queryKey = JSON.parse(queryKeyStr);
+            queryClient.setQueryData(queryKey, data);
+          }
+        );
+      }
+
+      toast.error("科目タイプの順序更新に失敗しました", {
+        id: "subject-type-order-error",
+        description: error.message,
+      });
+    },
+    onSuccess: () => {
+      toast.success("科目タイプの順序を更新しました", {
+        id: "subject-type-order-success",
+      });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["subjectTypes"],
         refetchType: "none",
       });
     },

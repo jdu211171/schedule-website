@@ -249,11 +249,13 @@ model SubjectType {
   subjectTypeId         String       @id @default(cuid()) @map("subject_type_id")
   name                  String       @unique @db.VarChar(100)
   notes                 String?      @db.VarChar(255)
+  order                 Int?         @map("order")
   preferences           UserSubjectPreference[]
   studentTeacherPreferences StudentTeacherPreference[]
   createdAt             DateTime     @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt             DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
+  @@index([order])
   @@map("subject_types")
 }
 

@@ -9,6 +9,7 @@ type FormattedSubjectType = {
   subjectTypeId: string;
   name: string;
   notes: string | null;
+  order: number | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -18,6 +19,7 @@ const formatSubjectType = (subjectType: SubjectType): FormattedSubjectType => ({
   subjectTypeId: subjectType.subjectTypeId,
   name: subjectType.name,
   notes: subjectType.notes,
+  order: subjectType.order,
   createdAt: subjectType.createdAt,
   updatedAt: subjectType.updatedAt,
 });
@@ -83,7 +85,7 @@ export const PATCH = withBranchAccess(
       });
       if (!result.success) {
         return NextResponse.json(
-          { error: result.error.message },
+          { error: "入力内容に誤りがあります: " + result.error.message },
           { status: 400 }
         );
       }
@@ -100,7 +102,7 @@ export const PATCH = withBranchAccess(
         );
       }
 
-      const { name, notes } = result.data;
+      const { name, notes, order } = result.data;
 
       // Check name uniqueness if being updated
       if (name && name !== existingSubjectType.name) {
@@ -125,6 +127,7 @@ export const PATCH = withBranchAccess(
         data: {
           name,
           notes,
+          order,
         },
       });
 

@@ -1,12 +1,16 @@
 // src/hooks/useSubjectTypeQuery.ts
 import { fetcher } from "@/lib/fetcher";
 import { useQuery } from "@tanstack/react-query";
-import { subjectTypeFilterSchema } from "@/schemas/subject-type.schema";
+import {
+  subjectTypeFilterSchema,
+  type SubjectTypeSortField,
+} from "@/schemas/subject-type.schema";
 
 export type SubjectType = {
   subjectTypeId: string;
   name: string;
   notes: string | null;
+  order: number | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -15,6 +19,8 @@ type UseSubjectTypesParams = {
   page?: number;
   limit?: number;
   name?: string;
+  sortBy?: SubjectTypeSortField;
+  sortOrder?: "asc" | "desc";
 };
 
 type SubjectTypesResponse = {
@@ -32,12 +38,20 @@ type SingleSubjectTypeResponse = {
 };
 
 export function useSubjectTypes(params: UseSubjectTypesParams = {}) {
-  const { page = 1, limit = 10, name } = params;
+  const {
+    page = 1,
+    limit = 10,
+    name,
+    sortBy = "order",
+    sortOrder = "asc",
+  } = params;
 
   const query = subjectTypeFilterSchema.parse({
     page,
     limit,
     name,
+    sortBy,
+    sortOrder,
   });
 
   const searchParams = new URLSearchParams(
@@ -50,9 +64,22 @@ export function useSubjectTypes(params: UseSubjectTypesParams = {}) {
   ).toString();
 
   return useQuery<SubjectTypesResponse>({
-    queryKey: ["subjectTypes", page, limit, name],
+    queryKey: ["subjectTypes", page, limit, name, sortBy, sortOrder],
     queryFn: async () =>
       await fetcher<SubjectTypesResponse>(`/api/subject-types?${searchParams}`),
+  });
+}
+
+// New hook for getting all subject types in order (useful for dropdowns/selects)
+export function useAllSubjectTypesOrdered() {
+  return useQuery<SubjectType[]>({
+    queryKey: ["subjectTypes-all-ordered"],
+    queryFn: async () => {
+      const response = await fetcher<SubjectTypesResponse>(
+        `/api/subject-types?limit=100&sortBy=order&sortOrder=asc`
+      );
+      return response.data;
+    },
   });
 }
 

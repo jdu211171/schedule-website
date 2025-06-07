@@ -2,14 +2,17 @@
 "use client";
 
 import { useState } from "react";
+import * as React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Pencil, Trash2 } from "lucide-react";
-
 import { Button } from "@/components/ui/button";
-import { DataTable } from "@/components/data-table";
+import { SortableDataTable } from "@/components/ui/sortable-data-table";
+import { useSubjectTypes } from "@/hooks/useSubjectTypeQuery";
 import {
+  useSubjectTypeUpdate,
   useSubjectTypeDelete,
   getResolvedSubjectTypeId,
+  useSubjectTypeOrderUpdate,
 } from "@/hooks/useSubjectTypeMutation";
 import {
   AlertDialog,
@@ -21,32 +24,37 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { SubjectType } from "@/hooks/useSubjectTypeQuery";
 import { SubjectTypeFormDialog } from "./subject-type-form-dialog";
-import { SubjectType, useSubjectTypes } from "@/hooks/useSubjectTypeQuery";
-
-// Define custom column meta type
-interface ColumnMetaType {
-  align?: "left" | "center" | "right";
-  headerClassName?: string;
-  cellClassName?: string;
-  hidden?: boolean;
-}
 
 export function SubjectTypeTable() {
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
+  const [isSortMode, setIsSortMode] = useState(false);
+  const [localSubjectTypes, setLocalSubjectTypes] = useState<SubjectType[]>([]);
   const pageSize = 10;
+
   const { data: subjectTypes, isLoading } = useSubjectTypes({
     page,
     limit: pageSize,
     name: searchTerm || undefined,
   });
 
-  // Ensure the data type returned by useSubjectTypes matches the expected type
-  const typedSubjectTypes = subjectTypes?.data || [];
-
-  const totalCount = subjectTypes?.pagination.total || 0;
+  const updateSubjectTypeMutation = useSubjectTypeUpdate();
   const deleteSubjectTypeMutation = useSubjectTypeDelete();
+  const updateOrderMutation = useSubjectTypeOrderUpdate();
+
+  // Use local state during sort mode, otherwise use server data
+  const typedSubjectTypes = isSortMode
+    ? localSubjectTypes
+    : subjectTypes?.data || [];
+
+  // Update local state when server data changes
+  React.useEffect(() => {
+    if (subjectTypes?.data && !isSortMode) {
+      setLocalSubjectTypes(subjectTypes.data);
+    }
+  }, [subjectTypes?.data, isSortMode]);
 
   const [subjectTypeToEdit, setSubjectTypeToEdit] =
     useState<SubjectType | null>(null);
@@ -54,59 +62,49 @@ export function SubjectTypeTable() {
     useState<SubjectType | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
-  const columns: ColumnDef<SubjectType, unknown>[] = [
+  const columns: ColumnDef<SubjectType>[] = [
     {
       accessorKey: "name",
       header: "科目タイプ名",
+      cell: ({ row }) => (
+        <span className="font-medium">{row.original.name}</span>
+      ),
     },
     {
       accessorKey: "notes",
       header: "メモ",
-      cell: ({ row }) => row.original.notes || "-",
-    },
-    {
-      id: "actions",
-      header: "操作",
-      cell: ({ row }) => {
-        // Type-safe check for _optimistic property
-        const isOptimistic = (
-          row.original as SubjectType & { _optimistic?: boolean }
-        )._optimistic;
-
-        return (
-          <div className="flex justify-end gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setSubjectTypeToEdit(row.original)}
-            >
-              <Pencil
-                className={`h-4 w-4 ${isOptimistic ? "opacity-70" : ""}`}
-              />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setSubjectTypeToDelete(row.original)}
-            >
-              <Trash2
-                className={`h-4 w-4 text-destructive ${
-                  isOptimistic ? "opacity-70" : ""
-                }`}
-              />
-            </Button>
-          </div>
-        );
-      },
-      meta: {
-        align: "right",
-        headerClassName: "pr-8", // Add padding-right to ONLY the header
-      } as ColumnMetaType,
+      cell: ({ row }) => (
+        <span className="text-muted-foreground">
+          {row.original.notes || "-"}
+        </span>
+      ),
     },
   ];
 
-  // Filter out the branch column if user is not admin
-  const visibleColumns = columns;
+  const handleReorder = (items: SubjectType[]) => {
+    // Update local state immediately for visual feedback
+    setLocalSubjectTypes(items);
+
+    // Log the new order for debugging
+    console.log(
+      "New order:",
+      items.map((item) => ({ id: item.subjectTypeId, name: item.name }))
+    );
+
+    // Resolve subject type IDs (handle temp vs server IDs) and send update request
+    const subjectTypeIds = items.map((item) =>
+      getResolvedSubjectTypeId(item.subjectTypeId)
+    );
+    updateOrderMutation.mutate({ subjectTypeIds });
+  };
+
+  const handleSortModeChange = (enabled: boolean) => {
+    if (enabled && subjectTypes?.data) {
+      // When entering sort mode, sync local state with server data
+      setLocalSubjectTypes(subjectTypes.data);
+    }
+    setIsSortMode(enabled);
+  };
 
   const handleDeleteSubjectType = () => {
     if (subjectTypeToDelete) {
@@ -120,28 +118,57 @@ export function SubjectTypeTable() {
     }
   };
 
-  const handlePageChange = (newPage: number) => {
-    setPage(newPage + 1);
-  };
+  const renderActions = (subjectType: SubjectType) => {
+    // Type-safe check for _optimistic property
+    const isOptimistic = (
+      subjectType as SubjectType & { _optimistic?: boolean }
+    )._optimistic;
 
-  const totalPages = Math.ceil(totalCount / pageSize);
+    return (
+      <div className="flex justify-end gap-2">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setSubjectTypeToEdit(subjectType)}
+        >
+          <Pencil className={`h-4 w-4 ${isOptimistic ? "opacity-70" : ""}`} />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setSubjectTypeToDelete(subjectType)}
+        >
+          <Trash2
+            className={`h-4 w-4 text-destructive ${
+              isOptimistic ? "opacity-70" : ""
+            }`}
+          />
+        </Button>
+      </div>
+    );
+  };
 
   return (
     <>
-      <DataTable
-        columns={visibleColumns}
+      <SortableDataTable
         data={typedSubjectTypes}
-        isLoading={isLoading && !typedSubjectTypes.length} // Only show loading state on initial load
-        searchPlaceholder="科目タイプを検索..."
-        onSearch={setSearchTerm}
+        columns={columns}
+        isSortMode={isSortMode}
+        onSortModeChange={handleSortModeChange}
+        onReorder={handleReorder}
+        getItemId={(subjectType) => subjectType.subjectTypeId}
         searchValue={searchTerm}
+        onSearchChange={setSearchTerm}
+        searchPlaceholder="科目タイプを検索..."
+        createLabel="新規作成"
         onCreateNew={() => setIsCreateDialogOpen(true)}
-        createNewLabel="新規作成"
+        isLoading={isLoading}
         pageIndex={page - 1}
-        pageCount={totalPages || 1}
-        onPageChange={handlePageChange}
+        pageCount={Math.ceil((subjectTypes?.pagination.total || 0) / pageSize)}
         pageSize={pageSize}
-        totalItems={totalCount}
+        totalItems={subjectTypes?.pagination.total}
+        onPageChange={(newPage) => setPage(newPage + 1)}
+        renderActions={renderActions}
       />
 
       {/* Edit SubjectType Dialog */}
