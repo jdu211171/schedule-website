@@ -10,6 +10,7 @@ type FormattedStudentType = {
   name: string;
   maxYears: number | null;
   description: string | null;
+  order: number | null;
   studentCount: number;
   createdAt: Date;
   updatedAt: Date;
@@ -29,6 +30,7 @@ const formatStudentType = async (
     name: studentType.name,
     maxYears: studentType.maxYears,
     description: studentType.description,
+    order: studentType.order,
     studentCount,
     createdAt: studentType.createdAt,
     updatedAt: studentType.updatedAt,
@@ -113,7 +115,7 @@ export const PATCH = withBranchAccess(
         );
       }
 
-      const { name, maxYears, description } = result.data;
+      const { name, maxYears, description, order } = result.data;
 
       // Check name uniqueness if being updated
       if (name && name !== existingStudentType.name) {
@@ -139,6 +141,7 @@ export const PATCH = withBranchAccess(
           name,
           maxYears,
           description,
+          order,
         },
       });
 

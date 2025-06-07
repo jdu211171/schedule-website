@@ -2,13 +2,16 @@
 "use client";
 
 import { useState } from "react";
+import * as React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Pencil, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { DataTable } from "@/components/data-table";
+import { SortableDataTable } from "@/components/ui/sortable-data-table";
+import { useStudentTypes } from "@/hooks/useStudentTypeQuery";
 import {
   useStudentTypeDelete,
+  useStudentTypeOrderUpdate,
   getResolvedStudentTypeId,
 } from "@/hooks/useStudentTypeMutation";
 import {
@@ -22,21 +25,16 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { StudentTypeFormDialog } from "./student-type-form-dialog";
-import { StudentType, useStudentTypes } from "@/hooks/useStudentTypeQuery";
+import { StudentType } from "@/hooks/useStudentTypeQuery";
 import { useSession } from "next-auth/react";
-
-// Define custom column meta type
-interface ColumnMetaType {
-  align?: "left" | "center" | "right";
-  headerClassName?: string;
-  cellClassName?: string;
-  hidden?: boolean;
-}
 
 export function StudentTypeTable() {
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
+  const [isSortMode, setIsSortMode] = useState(false);
+  const [localStudentTypes, setLocalStudentTypes] = useState<StudentType[]>([]);
   const pageSize = 10;
+
   const { data: studentTypes, isLoading } = useStudentTypes({
     page,
     limit: pageSize,
@@ -46,11 +44,20 @@ export function StudentTypeTable() {
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "ADMIN";
 
-  // Ensure the data type returned by useStudentTypes matches the expected type
-  const typedStudentTypes = studentTypes?.data || [];
-
-  const totalCount = studentTypes?.pagination.total || 0;
   const deleteStudentTypeMutation = useStudentTypeDelete();
+  const updateOrderMutation = useStudentTypeOrderUpdate();
+
+  // Use local state during sort mode, otherwise use server data
+  const typedStudentTypes = isSortMode
+    ? localStudentTypes
+    : studentTypes?.data || [];
+
+  // Update local state when server data changes
+  React.useEffect(() => {
+    if (studentTypes?.data && !isSortMode) {
+      setLocalStudentTypes(studentTypes.data);
+    }
+  }, [studentTypes?.data, isSortMode]);
 
   const [studentTypeToEdit, setStudentTypeToEdit] =
     useState<StudentType | null>(null);
@@ -58,67 +65,58 @@ export function StudentTypeTable() {
     useState<StudentType | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
-  const columns: ColumnDef<StudentType, unknown>[] = [
+  const columns: ColumnDef<StudentType>[] = [
     {
       accessorKey: "name",
       header: "名前",
+      cell: ({ row }) => (
+        <span className="font-medium">{row.original.name}</span>
+      ),
     },
     {
       accessorKey: "maxYears",
       header: "最大学年数",
-      cell: ({ row }) => row.original.maxYears || "-",
+      cell: ({ row }) => (
+        <span className="text-muted-foreground">
+          {row.original.maxYears || "-"}
+        </span>
+      ),
     },
     {
       accessorKey: "description",
       header: "説明",
-      cell: ({ row }) => row.original.description || "-",
-    },
-    {
-      id: "actions",
-      header: "操作",
-      cell: ({ row }) => {
-        // Type-safe check for _optimistic property
-        const isOptimistic = (
-          row.original as StudentType & { _optimistic?: boolean }
-        )._optimistic;
-
-        return (
-          <div className="flex justify-end gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setStudentTypeToEdit(row.original)}
-            >
-              <Pencil
-                className={`h-4 w-4 ${isOptimistic ? "opacity-70" : ""}`}
-              />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setStudentTypeToDelete(row.original)}
-            >
-              <Trash2
-                className={`h-4 w-4 text-destructive ${
-                  isOptimistic ? "opacity-70" : ""
-                }`}
-              />
-            </Button>
-          </div>
-        );
-      },
-      meta: {
-        align: "right",
-        headerClassName: "pr-8", // Add padding-right to ONLY the header
-      } as ColumnMetaType,
+      cell: ({ row }) => (
+        <span className="text-muted-foreground">
+          {row.original.description || "-"}
+        </span>
+      ),
     },
   ];
 
-  // Filter out columns if needed
-  const visibleColumns = columns.filter((col) => {
-    const meta = col.meta as ColumnMetaType | undefined;
-    return !meta?.hidden;
-  });
+  const handleReorder = (items: StudentType[]) => {
+    // Update local state immediately for visual feedback
+    setLocalStudentTypes(items);
+
+    // Log the new order for debugging
+    console.log(
+      "New order:",
+      items.map((item) => ({ id: item.studentTypeId, name: item.name }))
+    );
+
+    // Resolve student type IDs (handle temp vs server IDs) and send update request
+    const studentTypeIds = items.map((item) =>
+      getResolvedStudentTypeId(item.studentTypeId)
+    );
+    updateOrderMutation.mutate({ studentTypeIds });
+  };
+
+  const handleSortModeChange = (enabled: boolean) => {
+    if (enabled && studentTypes?.data) {
+      // When entering sort mode, sync local state with server data
+      setLocalStudentTypes(studentTypes.data);
+    }
+    setIsSortMode(enabled);
+  };
 
   const handleDeleteStudentType = () => {
     if (studentTypeToDelete) {
@@ -132,35 +130,64 @@ export function StudentTypeTable() {
     }
   };
 
-  const handlePageChange = (newPage: number) => {
-    setPage(newPage + 1);
-  };
+  const renderActions = (studentType: StudentType) => {
+    // Type-safe check for _optimistic property
+    const isOptimistic = (
+      studentType as StudentType & { _optimistic?: boolean }
+    )._optimistic;
 
-  const totalPages = Math.ceil(totalCount / pageSize);
+    return (
+      <div className="flex justify-end gap-2">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setStudentTypeToEdit(studentType)}
+        >
+          <Pencil className={`h-4 w-4 ${isOptimistic ? "opacity-70" : ""}`} />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setStudentTypeToDelete(studentType)}
+        >
+          <Trash2
+            className={`h-4 w-4 text-destructive ${
+              isOptimistic ? "opacity-70" : ""
+            }`}
+          />
+        </Button>
+      </div>
+    );
+  };
 
   return (
     <>
-      <DataTable
-        columns={visibleColumns}
+      <SortableDataTable
         data={typedStudentTypes}
-        isLoading={isLoading && !typedStudentTypes.length} // Only show loading state on initial load
-        searchPlaceholder="生徒タイプを検索..."
-        onSearch={setSearchTerm}
+        columns={columns}
+        isSortMode={isSortMode}
+        onSortModeChange={handleSortModeChange}
+        onReorder={handleReorder}
+        getItemId={(studentType) => studentType.studentTypeId}
         searchValue={searchTerm}
+        onSearchChange={setSearchTerm}
+        searchPlaceholder="生徒タイプを検索..."
+        createLabel="新規作成"
         onCreateNew={() => setIsCreateDialogOpen(true)}
-        createNewLabel="新規作成"
+        isLoading={isLoading}
         pageIndex={page - 1}
-        pageCount={totalPages || 1}
-        onPageChange={handlePageChange}
+        pageCount={Math.ceil((studentTypes?.pagination.total || 0) / pageSize)}
         pageSize={pageSize}
-        totalItems={totalCount}
+        totalItems={studentTypes?.pagination.total}
+        onPageChange={(newPage) => setPage(newPage + 1)}
+        renderActions={renderActions}
       />
 
       {/* Edit StudentType Dialog */}
       {studentTypeToEdit && (
         <StudentTypeFormDialog
           open={!!studentTypeToEdit}
-          onOpenChange={(open: any) => !open && setStudentTypeToEdit(null)}
+          onOpenChange={(open) => !open && setStudentTypeToEdit(null)}
           studentType={studentTypeToEdit}
         />
       )}

@@ -21,6 +21,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -39,6 +40,7 @@ const studentTypeFormSchema = z.object({
     .transform((val) => (val === "" ? undefined : parseInt(val, 10)))
     .optional(),
   description: z.string().max(255).optional().nullable(),
+  order: z.coerce.number().int().min(1).optional().nullable(),
 });
 
 interface StudentTypeFormDialogProps {
@@ -63,6 +65,7 @@ export function StudentTypeFormDialog({
       name: studentType?.name || "",
       maxYears: studentType?.maxYears || undefined,
       description: studentType?.description ?? "",
+      order: studentType?.order ?? undefined,
     },
   });
 
@@ -72,12 +75,14 @@ export function StudentTypeFormDialog({
         name: studentType.name || "",
         maxYears: studentType.maxYears || undefined,
         description: studentType.description ?? "",
+        order: studentType.order ?? undefined,
       });
     } else {
       form.reset({
         name: "",
         maxYears: undefined,
         description: "",
+        order: undefined,
       });
     }
   }, [studentType, form]);
@@ -174,6 +179,32 @@ export function StudentTypeFormDialog({
                       value={field.value ?? ""} // Ensure value is never null
                     />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="order"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>表示順序</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      placeholder="例: 1, 2, 3..."
+                      {...field}
+                      value={field.value ?? ""}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        field.onChange(value === "" ? undefined : value);
+                      }}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    数値が小さいほど上に表示されます。空欄の場合は自動的に最後に配置されます。
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}

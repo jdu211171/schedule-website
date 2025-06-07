@@ -6,13 +6,14 @@ import {
   studentTypeCreateSchema,
   studentTypeFilterSchema,
 } from "@/schemas/student-type.schema";
-import { StudentType } from "@prisma/client";
+import { StudentType, Prisma } from "@prisma/client";
 
 type FormattedStudentType = {
   studentTypeId: string;
   name: string;
   maxYears: number | null;
   description: string | null;
+  order: number | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -23,6 +24,7 @@ const formatStudentType = (studentType: StudentType): FormattedStudentType => ({
   name: studentType.name,
   maxYears: studentType.maxYears,
   description: studentType.description,
+  order: studentType.order,
   createdAt: studentType.createdAt,
   updatedAt: studentType.updatedAt,
 });
@@ -47,7 +49,7 @@ export const GET = withBranchAccess(
     const { page, limit, name } = result.data;
 
     // Build filter conditions
-    const where: any = {};
+    const where: Record<string, unknown> = {};
 
     if (name) {
       where.name = {
@@ -55,6 +57,12 @@ export const GET = withBranchAccess(
         mode: "insensitive",
       };
     }
+
+    // ALWAYS sort by order field to maintain admin-defined sequence
+    const orderBy: Prisma.StudentTypeOrderByWithRelationInput[] = [
+      { order: { sort: "asc", nulls: "last" } },
+      { name: "asc" }, // Secondary sort by name for student types with same order
+    ];
 
     // Calculate pagination
     const skip = (page - 1) * limit;
@@ -67,7 +75,7 @@ export const GET = withBranchAccess(
       where,
       skip,
       take: limit,
-      orderBy: { name: "asc" },
+      orderBy,
     });
 
     // Format student types
@@ -101,7 +109,7 @@ export const POST = withBranchAccess(
         );
       }
 
-      const { name, maxYears, description } = result.data;
+      const { name, maxYears, description, order } = result.data;
 
       // Check if student type name already exists
       const existingStudentType = await prisma.studentType.findFirst({
@@ -115,12 +123,27 @@ export const POST = withBranchAccess(
         );
       }
 
+      // Determine the order value
+      let finalOrder = order;
+      if (!finalOrder) {
+        // Get the current maximum order value
+        const maxOrderResult = await prisma.studentType.aggregate({
+          _max: {
+            order: true,
+          },
+        });
+        finalOrder = maxOrderResult._max.order
+          ? maxOrderResult._max.order + 1
+          : 1;
+      }
+
       // Create student type
       const newStudentType = await prisma.studentType.create({
         data: {
           name,
           maxYears,
           description,
+          order: finalOrder,
         },
       });
 
