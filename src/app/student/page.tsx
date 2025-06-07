@@ -93,7 +93,7 @@ export default function StudentPage() {
   }
 
   return (
-    <div className="w-full max-w-7xl mx-auto">
+    <div>
       <Tabs
         defaultValue="WEEK"
         value={viewType}
