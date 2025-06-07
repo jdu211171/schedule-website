@@ -164,7 +164,7 @@ export const StudentScheduleWeekViewer: React.FC<WeekViewerProps> = ({
         </div>
 
         {/* Content Grid */}
-        <div className="grid grid-cols-7 min-h-[400px]">
+        <div className="grid grid-cols-7 border-l border-b border-gray-200 dark:border-gray-700 min-h-[550px]">
           {days.map((day, dayIndex) => {
             const lessonsOnDay = lessons.filter((lesson) => {
               const lessonDate = lesson.date;
