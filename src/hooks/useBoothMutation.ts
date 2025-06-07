@@ -467,8 +467,8 @@ export function useBoothOrderUpdate() {
 
           // Re-sort the data based on the query parameters
           const queryKeyArray = queryKey as any[];
-          const sortBy = queryKeyArray[4] || "order";
-          const sortOrder = queryKeyArray[5] || "asc";
+          const sortBy = queryKeyArray[5] || "order";
+          const sortOrder = queryKeyArray[6] || "asc";
 
           if (sortBy === "order") {
             updatedData.data.sort((a, b) => {
