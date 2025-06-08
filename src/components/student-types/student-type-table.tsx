@@ -78,7 +78,7 @@ export function StudentTypeTable() {
       header: "最大学年数",
       cell: ({ row }) => (
         <span className="text-muted-foreground">
-          {row.original.maxYears || "-"}
+          {row.original.maxYears ? `${row.original.maxYears}年` : "-"}
         </span>
       ),
     },

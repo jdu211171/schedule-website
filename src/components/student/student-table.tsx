@@ -97,7 +97,8 @@ export function StudentTable() {
       header: "ステータス",
       cell: ({ row }) => {
         const status = row.original.status || "ACTIVE";
-        const label = userStatusLabels[status as keyof typeof userStatusLabels] || status;
+        const label =
+          userStatusLabels[status as keyof typeof userStatusLabels] || status;
         const variant = status === "ACTIVE" ? "default" : "destructive";
         return <Badge variant={variant}>{label}</Badge>;
       },
@@ -116,7 +117,7 @@ export function StudentTable() {
       accessorKey: "gradeYear",
       header: "学年",
       cell: ({ row }) =>
-        row.original.gradeYear !== null ? row.original.gradeYear : "-",
+        row.original.gradeYear !== null ? `${row.original.gradeYear}年生` : "-",
     },
     {
       accessorKey: "username",
