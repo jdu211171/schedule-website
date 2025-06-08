@@ -165,6 +165,33 @@ export const studentBaseSchema = z.object({
     .default([]),
 });
 
+// Dynamic form schema that accepts student types for validation
+export const createStudentFormSchema = (studentTypes?: Array<{ studentTypeId: string; maxYears: number | null }>) => {
+  return studentBaseSchema.extend({
+    studentId: z.string().optional(),
+  }).refine((data) => {
+    // Skip validation if either field is missing
+    if (!data.studentTypeId || !data.gradeYear) {
+      return true;
+    }
+
+    // Find the selected student type
+    const selectedStudentType = studentTypes?.find(type => type.studentTypeId === data.studentTypeId);
+
+    // If student type not found or has no maxYears limit, allow any grade year
+    if (!selectedStudentType || !selectedStudentType.maxYears) {
+      return true;
+    }
+
+    // Validate that gradeYear doesn't exceed maxYears
+    return data.gradeYear <= selectedStudentType.maxYears;
+  }, {
+    message: "学年が選択された生徒タイプの最大学年数を超えています",
+    path: ["gradeYear"],
+  });
+};
+
+// Default form schema for backward compatibility
 export const studentFormSchema = studentBaseSchema.extend({
   studentId: z.string().optional(),
 });
