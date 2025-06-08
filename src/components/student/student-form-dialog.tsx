@@ -74,7 +74,7 @@ import {
   studentCreateSchema,
   studentUpdateSchema,
   type StudentFormValues,
-  studentFormSchema,
+  createStudentFormSchema,
   userStatusLabels,
 } from "@/schemas/student.schema";
 import { useStudentCreate, useStudentUpdate } from "@/hooks/useStudentMutation";
@@ -180,8 +180,16 @@ export function StudentFormDialog({
   // Local storage key
   const STORAGE_KEY = `student-form-${student?.studentId || "new"}`;
 
+  // Create dynamic schema using student types data for grade year validation
+  const studentTypes = studentTypesResponse?.data?.map(type => ({
+    studentTypeId: type.studentTypeId,
+    maxYears: type.maxYears
+  })) || [];
+
+  const dynamicSchema = createStudentFormSchema(studentTypes);
+
   const form = useForm<StudentFormValues>({
-    resolver: zodResolver(studentFormSchema),
+    resolver: zodResolver(dynamicSchema),
     defaultValues: {
       name: "",
       kanaName: "",
