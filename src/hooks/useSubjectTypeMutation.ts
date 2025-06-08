@@ -1,5 +1,5 @@
 // src/hooks/useSubjectTypeMutation.ts
-import { fetcher } from "@/lib/fetcher";
+import { fetcher, CustomError } from "@/lib/fetcher";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -8,6 +8,14 @@ import {
   SubjectTypeUpdate,
 } from "@/schemas/subject-type.schema";
 import { SubjectType } from "@/hooks/useSubjectTypeQuery";
+
+// Helper function to extract error message from CustomError or regular Error
+const getErrorMessage = (error: Error): string => {
+  if (error instanceof CustomError) {
+    return (error.info.error as string) || error.message;
+  }
+  return error.message;
+};
 
 type SubjectTypesResponse = {
   data: SubjectType[];
@@ -102,7 +110,7 @@ export function useSubjectTypeCreate() {
 
       toast.error("科目タイプの追加に失敗しました", {
         id: "subject-type-create-error",
-        description: error.message,
+        description: getErrorMessage(error),
       });
     },
     onSuccess: (response, _, context) => {
@@ -236,7 +244,7 @@ export function useSubjectTypeUpdate() {
       }
       toast.error("科目タイプの更新に失敗しました", {
         id: "subject-type-update-error",
-        description: error.message,
+        description: getErrorMessage(error),
       });
     },
     onSuccess: () => {
@@ -376,7 +384,7 @@ export function useSubjectTypeDelete() {
 
       toast.error("科目タイプの削除に失敗しました", {
         id: "subject-type-delete-error",
-        description: error.message,
+        description: getErrorMessage(error),
       });
     },
     onSuccess: (data, subjectTypeId) => {
@@ -482,7 +490,7 @@ export function useSubjectTypeOrderUpdate() {
 
       toast.error("科目タイプの順序更新に失敗しました", {
         id: "subject-type-order-error",
-        description: error.message,
+        description: getErrorMessage(error),
       });
     },
     onSuccess: () => {

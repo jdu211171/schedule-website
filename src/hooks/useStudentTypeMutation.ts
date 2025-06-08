@@ -1,5 +1,5 @@
 // src/hooks/useStudentTypeMutation.ts
-import { fetcher } from "@/lib/fetcher";
+import { fetcher, CustomError } from "@/lib/fetcher";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -8,6 +8,14 @@ import {
   StudentTypeOrderUpdate,
 } from "@/schemas/student-type.schema";
 import { StudentType } from "./useStudentTypeQuery";
+
+// Helper function to extract error message from CustomError or regular Error
+const getErrorMessage = (error: Error): string => {
+  if (error instanceof CustomError) {
+    return (error.info.error as string) || error.message;
+  }
+  return error.message;
+};
 
 type StudentTypesResponse = {
   data: StudentType[];
@@ -104,7 +112,7 @@ export function useStudentTypeCreate() {
 
       toast.error("生徒タイプの追加に失敗しました", {
         id: "student-type-create-error",
-        description: error.message,
+        description: getErrorMessage(error),
       });
     },
     onSuccess: (response, _, context) => {
@@ -238,7 +246,7 @@ export function useStudentTypeUpdate() {
       }
       toast.error("生徒タイプの更新に失敗しました", {
         id: "student-type-update-error",
-        description: error.message,
+        description: getErrorMessage(error),
       });
     },
     onSuccess: (data) => {
@@ -378,7 +386,7 @@ export function useStudentTypeDelete() {
 
       toast.error("生徒タイプの削除に失敗しました", {
         id: "student-type-delete-error",
-        description: error.message,
+        description: getErrorMessage(error),
       });
     },
     onSuccess: (data, studentTypeId) => {
@@ -490,7 +498,7 @@ export function useStudentTypeOrderUpdate() {
 
       toast.error("生徒タイプの順序更新に失敗しました", {
         id: "student-type-order-error",
-        description: error.message,
+        description: getErrorMessage(error),
       });
     },
     onSuccess: () => {

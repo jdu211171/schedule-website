@@ -1,5 +1,5 @@
 // src/hooks/useVacationMutation.ts
-import { fetcher } from "@/lib/fetcher";
+import { fetcher, CustomError } from "@/lib/fetcher";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -7,6 +7,14 @@ import {
   VacationUpdate,
   VacationOrderUpdate,
 } from "@/schemas/vacation.schema";
+
+// Helper function to extract error message from CustomError or regular Error
+const getErrorMessage = (error: Error): string => {
+  if (error instanceof CustomError) {
+    return (error.info.error as string) || error.message;
+  }
+  return error.message;
+};
 
 type Vacation = {
   id: string;
@@ -120,7 +128,7 @@ export function useVacationCreate() {
 
       toast.error("休日の追加に失敗しました", {
         id: "vacation-create-error",
-        description: error.message,
+        description: getErrorMessage(error),
       });
     },
     onSuccess: (response, _, context) => {
@@ -254,7 +262,7 @@ export function useVacationUpdate() {
       }
       toast.error("休日の更新に失敗しました", {
         id: "vacation-update-error",
-        description: error.message,
+        description: getErrorMessage(error),
       });
     },
     onSuccess: (data) => {
@@ -383,7 +391,7 @@ export function useVacationDelete() {
 
         toast.error("休日の削除に失敗しました", {
           id: "vacation-delete-error",
-          description: error.message,
+          description: getErrorMessage(error),
         });
       },
       onSuccess: (data, vacationId) => {
@@ -485,7 +493,7 @@ export function useVacationOrderUpdate() {
 
       toast.error("休日の順序更新に失敗しました", {
         id: "vacation-order-error",
-        description: error.message,
+        description: getErrorMessage(error),
       });
     },
     onSuccess: () => {

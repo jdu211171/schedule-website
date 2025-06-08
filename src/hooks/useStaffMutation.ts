@@ -1,8 +1,16 @@
 // src/hooks/useStaffMutation.ts
-import { fetcher } from "@/lib/fetcher";
+import { fetcher, CustomError } from "@/lib/fetcher";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Staff } from "./useStaffQuery";
+
+// Helper function to extract error message from CustomError or regular Error
+const getErrorMessage = (error: Error): string => {
+  if (error instanceof CustomError) {
+    return (error.info.error as string) || error.message;
+  }
+  return error.message;
+};
 
 type StaffCreate = {
   username: string;
@@ -117,7 +125,7 @@ export function useStaffCreate() {
 
           toast.error("スタッフの追加に失敗しました", {
             id: "staff-create-error",
-            description: error.message,
+            description: getErrorMessage(error),
           });
         },
         onSuccess: (response, _, context) => {
@@ -251,7 +259,7 @@ export function useStaffUpdate() {
           }
           toast.error("スタッフの更新に失敗しました", {
             id: "staff-update-error",
-            description: error.message,
+            description: getErrorMessage(error),
           });
         },
         onSuccess: (data) => {
@@ -394,7 +402,7 @@ export function useStaffDelete() {
 
       toast.error("スタッフの削除に失敗しました", {
         id: "staff-delete-error",
-        description: error.message,
+        description: getErrorMessage(error),
       });
     },
     onSuccess: (data, staffId) => {

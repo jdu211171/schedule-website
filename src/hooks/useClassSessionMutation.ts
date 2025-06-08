@@ -1,5 +1,5 @@
 // src/hooks/useClassSessionMutation.ts
-import { fetcher } from "@/lib/fetcher";
+import { fetcher, CustomError } from "@/lib/fetcher";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -9,6 +9,14 @@ import {
   ClassSessionBulkDelete,
 } from "@/schemas/class-session.schema";
 import { ClassSession } from "@prisma/client";
+
+// Helper function to extract error message from CustomError or regular Error
+const getErrorMessage = (error: Error): string => {
+  if (error instanceof CustomError) {
+    return (error.info.error as string) || error.message;
+  }
+  return error.message;
+};
 
 type ClassSessionResponse = {
   data: ClassSession[];
@@ -177,7 +185,7 @@ export function useClassSessionCreate() {
 
       toast.error("クラスセッションの追加に失敗しました", {
         id: "class-session-create-error",
-        description: error.message,
+        description: getErrorMessage(error),
       });
     },
     onSuccess: (response, newClassSession, context) => {
@@ -363,7 +371,7 @@ export function useClassSessionUpdate() {
 
       toast.error("クラスセッションの更新に失敗しました", {
         id: "class-session-update-error",
-        description: error.message,
+        description: getErrorMessage(error),
       });
     },
     onSuccess: () => {
@@ -548,7 +556,7 @@ export function useClassSessionDelete() {
 
       toast.error("クラスセッションの削除に失敗しました", {
         id: "class-session-delete-error",
-        description: error.message,
+        description: getErrorMessage(error),
       });
     },
     onSuccess: (_, classId) => {
@@ -741,7 +749,7 @@ export function useClassSessionBulkDelete() {
 
       toast.error("クラスセッションの一括削除に失敗しました", {
         id: "class-session-bulk-delete-error",
-        description: error.message,
+        description: getErrorMessage(error),
       });
     },
     onSuccess: (response, variables) => {
@@ -820,9 +828,9 @@ export function useClassSessionSeriesUpdate() {
         );
       }
 
-      toast.error("シリーズの更新に失敗しました", {
+      toast.error("クラスセッションシリーズの更新に失敗しました", {
         id: "class-session-series-update-error",
-        description: error.message,
+        description: getErrorMessage(error),
       });
     },
     onSuccess: (response) => {
@@ -885,9 +893,9 @@ export function useClassSessionSeriesDelete() {
         );
       }
 
-      toast.error("シリーズの削除に失敗しました", {
+      toast.error("クラスセッションシリーズの削除に失敗しました", {
         id: "class-session-series-delete-error",
-        description: error.message,
+        description: getErrorMessage(error),
       });
     },
     onSuccess: () => {

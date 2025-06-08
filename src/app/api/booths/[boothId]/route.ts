@@ -129,6 +129,20 @@ export const PATCH = withBranchAccess(
 
       const { name, status, notes, order } = result.data;
 
+      // Check if status is being changed to false and there are associated class sessions
+      if (status === false && existingBooth.status !== false) {
+        const classSessionsCount = await prisma.classSession.count({
+          where: { boothId: boothId },
+        });
+
+        if (classSessionsCount > 0) {
+          return NextResponse.json(
+            { error: "このブースには授業セッションが割り当てられているため、利用不可にできません" },
+            { status: 409 }
+          );
+        }
+      }
+
       // Check name uniqueness if being updated
       if (name && name !== existingBooth.name) {
         const nameExists = await prisma.booth.findFirst({
