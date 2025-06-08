@@ -5,7 +5,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { useEffect } from "react";
-import { format } from "date-fns";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -27,14 +26,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
-import { CalendarIcon } from "lucide-react";
+import { DateRangePicker } from "@/components/date-range-picker";
 import {
   useVacationCreate,
   useVacationUpdate,
@@ -59,26 +51,30 @@ type Vacation = {
 const vacationFormSchema = z
   .object({
     name: z.string().min(1, "名前は必須です").max(100),
-    startDate: z.date({
-      required_error: "開始日は必須です",
-    }),
-    endDate: z.date({
-      required_error: "終了日は必須です",
-    }),
+    dateRange: z.object({
+      from: z.date({
+        required_error: "開始日は必須です",
+      }),
+      to: z.date({
+        required_error: "終了日は必須です",
+      }).optional(),
+    }).refine(
+      (data) => {
+        // Ensure end date is after or equal to start date if end date exists
+        if (data.to) {
+          return data.to >= data.from;
+        }
+        return true;
+      },
+      {
+        message: "終了日は開始日以降でなければなりません",
+        path: ["to"],
+      }
+    ),
     isRecurring: z.boolean().default(false),
     notes: z.string().max(255).optional().nullable(),
     order: z.coerce.number().int().min(1).optional().nullable(),
-  })
-  .refine(
-    (data) => {
-      // Ensure end date is after or equal to start date
-      return data.endDate >= data.startDate;
-    },
-    {
-      message: "終了日は開始日以降でなければなりません",
-      path: ["endDate"],
-    }
-  );
+  });
 
 interface VacationFormDialogProps {
   open: boolean;
@@ -99,10 +95,12 @@ export function VacationFormDialog({
     resolver: zodResolver(vacationFormSchema),
     defaultValues: {
       name: vacation?.name || "",
-      startDate: vacation?.startDate
-        ? new Date(vacation.startDate)
-        : new Date(),
-      endDate: vacation?.endDate ? new Date(vacation.endDate) : new Date(),
+      dateRange: {
+        from: vacation?.startDate
+          ? new Date(vacation.startDate)
+          : new Date(),
+        to: vacation?.endDate ? new Date(vacation.endDate) : undefined,
+      },
       isRecurring: vacation?.isRecurring ?? false,
       notes: vacation?.notes ?? "",
       order: vacation?.order ?? undefined,
@@ -113,10 +111,12 @@ export function VacationFormDialog({
     if (vacation) {
       form.reset({
         name: vacation.name || "",
-        startDate: vacation.startDate
-          ? new Date(vacation.startDate)
-          : new Date(),
-        endDate: vacation.endDate ? new Date(vacation.endDate) : new Date(),
+        dateRange: {
+          from: vacation.startDate
+            ? new Date(vacation.startDate)
+            : new Date(),
+          to: vacation.endDate ? new Date(vacation.endDate) : undefined,
+        },
         isRecurring: vacation.isRecurring ?? false,
         notes: vacation.notes ?? "",
         order: vacation.order ?? undefined,
@@ -124,8 +124,10 @@ export function VacationFormDialog({
     } else {
       form.reset({
         name: "",
-        startDate: new Date(),
-        endDate: new Date(),
+        dateRange: {
+          from: new Date(),
+          to: undefined,
+        },
         isRecurring: false,
         notes: "",
         order: undefined,
@@ -134,10 +136,14 @@ export function VacationFormDialog({
   }, [vacation, form]);
 
   function onSubmit(values: z.infer<typeof vacationFormSchema>) {
-    // Ensure the notes field is explicitly included, even if empty
-    const updatedValues = {
-      ...values,
+    // Transform the date range to individual start and end dates for the API
+    const submitValues = {
+      name: values.name,
+      startDate: values.dateRange.from,
+      endDate: values.dateRange.to || values.dateRange.from, // If no end date, use start date
+      isRecurring: values.isRecurring,
       notes: values.notes ?? "", // Ensure notes is at least an empty string, not undefined
+      order: values.order,
     };
 
     // Close the dialog immediately for better UX
@@ -148,10 +154,10 @@ export function VacationFormDialog({
     if (isEditing && vacation) {
       updateVacationMutation.mutate({
         vacationId: vacation.id,
-        ...updatedValues,
+        ...submitValues,
       });
     } else {
-      createVacationMutation.mutate(updatedValues);
+      createVacationMutation.mutate(submitValues);
     }
   }
 
@@ -189,101 +195,25 @@ export function VacationFormDialog({
               )}
             />
 
-            <div className="grid grid-cols-2 gap-4">
-              {/* Start Date Picker */}
-              <FormField
-                control={form.control}
-                name="startDate"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col">
-                    <FormLabel className="after:content-['*'] after:ml-1 after:text-destructive">
-                      開始日
-                    </FormLabel>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            variant={"outline"}
-                            className={cn(
-                              "pl-3 text-left font-normal",
-                              !field.value && "text-muted-foreground"
-                            )}
-                          >
-                            {field.value ? (
-                              format(field.value, "yyyy/MM/dd")
-                            ) : (
-                              <span>日付を選択</span>
-                            )}
-                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent
-                        className="w-auto p-0"
-                        align="start"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <Calendar
-                          mode="single"
-                          selected={field.value}
-                          onSelect={field.onChange}
-                          disabled={(date) => date < new Date("1900-01-01")}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {/* End Date Picker */}
-              <FormField
-                control={form.control}
-                name="endDate"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col">
-                    <FormLabel className="after:content-['*'] after:ml-1 after:text-destructive">
-                      終了日
-                    </FormLabel>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            variant={"outline"}
-                            className={cn(
-                              "pl-3 text-left font-normal",
-                              !field.value && "text-muted-foreground"
-                            )}
-                          >
-                            {field.value ? (
-                              format(field.value, "yyyy/MM/dd")
-                            ) : (
-                              <span>日付を選択</span>
-                            )}
-                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent
-                        className="w-auto p-0"
-                        align="start"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <Calendar
-                          mode="single"
-                          selected={field.value}
-                          onSelect={field.onChange}
-                          disabled={(date) => date < new Date("1900-01-01")}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+            {/* Date Range Picker */}
+            <FormField
+              control={form.control}
+              name="dateRange"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel className="after:content-['*'] after:ml-1 after:text-destructive">
+                    期間
+                  </FormLabel>
+                  <FormControl>
+                    <DateRangePicker
+                      dateRange={field.value}
+                      onChange={field.onChange}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             {/* Is Recurring Switch */}
             <FormField
