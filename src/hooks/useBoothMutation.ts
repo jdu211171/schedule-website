@@ -1,5 +1,5 @@
 // src/hooks/useBoothMutation.ts
-import { fetcher } from "@/lib/fetcher";
+import { fetcher, CustomError } from "@/lib/fetcher";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Booth } from "@prisma/client";
 import { toast } from "sonner";
@@ -8,6 +8,14 @@ import {
   BoothUpdate,
   BoothOrderUpdate,
 } from "@/schemas/booth.schema";
+
+// Helper function to extract error message from CustomError or regular Error
+const getErrorMessage = (error: Error): string => {
+  if (error instanceof CustomError) {
+    return (error.info.error as string) || error.message;
+  }
+  return error.message;
+};
 
 type FormattedBooth = {
   boothId: string;
@@ -147,7 +155,7 @@ export function useBoothCreate() {
 
       toast.error("ブースの追加に失敗しました", {
         id: "booth-create-error",
-        description: error.message,
+        description: getErrorMessage(error),
       });
     },
     onSuccess: (response, _, context) => {
@@ -269,9 +277,13 @@ export function useBoothUpdate() {
       if (context?.previousBooth) {
         queryClient.setQueryData(["booth", resolvedId], context.previousBooth);
       }
+
+      // Extract the specific error message from the API response
+      const errorMessage = getErrorMessage(error);
+
       toast.error("ブースの更新に失敗しました", {
         id: "booth-update-error",
-        description: error.message,
+        description: errorMessage,
       });
     },
     onSuccess: (data) => {
@@ -393,7 +405,7 @@ export function useBoothDelete() {
 
       toast.error("ブースの削除に失敗しました", {
         id: "booth-delete-error",
-        description: error.message,
+        description: getErrorMessage(error),
       });
     },
     onSuccess: (data, boothId) => {
@@ -496,7 +508,7 @@ export function useBoothOrderUpdate() {
 
       toast.error("ブースの順序更新に失敗しました", {
         id: "booth-order-error",
-        description: error.message,
+        description: getErrorMessage(error),
       });
     },
     onSuccess: () => {
