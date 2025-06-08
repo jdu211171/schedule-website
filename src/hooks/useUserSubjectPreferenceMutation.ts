@@ -1,5 +1,5 @@
 // src/hooks/useUserSubjectPreferenceMutation.ts
-import { fetcher } from "@/lib/fetcher";
+import { fetcher, CustomError } from "@/lib/fetcher";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -7,6 +7,14 @@ import {
   UserSubjectPreferenceUpdate,
 } from "@/schemas/user-subject-preference.schema";
 import { UserSubjectPreference } from "@/hooks/useUserSubjectPreferenceQuery";
+
+// Helper function to extract error message from CustomError or regular Error
+const getErrorMessage = (error: Error): string => {
+  if (error instanceof CustomError) {
+    return (error.info.error as string) || error.message;
+  }
+  return error.message;
+};
 
 type UserSubjectPreferencesResponse = {
   data: UserSubjectPreference[];
@@ -112,7 +120,7 @@ export function useUserSubjectPreferenceCreate() {
 
       toast.error("ユーザー科目設定の追加に失敗しました", {
         id: "user-subject-preference-create-error",
-        description: error.message,
+        description: getErrorMessage(error),
       });
     },
     onSuccess: (response, _, context) => {
@@ -268,7 +276,7 @@ export function useUserSubjectPreferenceUpdate() {
       }
       toast.error("ユーザー科目設定の更新に失敗しました", {
         id: "user-subject-preference-update-error",
-        description: error.message,
+        description: getErrorMessage(error),
       });
     },
     onSuccess: () => {
@@ -407,7 +415,7 @@ export function useUserSubjectPreferenceDelete() {
 
       toast.error("ユーザー科目設定の削除に失敗しました", {
         id: "user-subject-preference-delete-error",
-        description: error.message,
+        description: getErrorMessage(error),
       });
     },
     onSuccess: (data, id) => {

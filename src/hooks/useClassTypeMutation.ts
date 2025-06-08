@@ -1,9 +1,17 @@
 // src/hooks/useClassTypeMutation.ts
-import { fetcher } from "@/lib/fetcher";
+import { fetcher, CustomError } from "@/lib/fetcher";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ClassTypeCreate, ClassTypeUpdate } from "@/schemas/class-type.schema";
 import { ClassType } from "@/hooks/useClassTypeQuery";
+
+// Helper function to extract error message from CustomError or regular Error
+const getErrorMessage = (error: Error): string => {
+  if (error instanceof CustomError) {
+    return (error.info.error as string) || error.message;
+  }
+  return error.message;
+};
 
 type ClassTypesResponse = {
   data: ClassType[];
@@ -99,7 +107,7 @@ export function useClassTypeCreate() {
 
       toast.error("クラスタイプの追加に失敗しました", {
         id: "class-type-create-error",
-        description: error.message,
+        description: getErrorMessage(error),
       });
     },
     onSuccess: (response, _, context) => {
@@ -231,7 +239,7 @@ export function useClassTypeUpdate() {
       }
       toast.error("クラスタイプの更新に失敗しました", {
         id: "class-type-update-error",
-        description: error.message,
+        description: getErrorMessage(error),
       });
     },
     onSuccess: (data) => {
@@ -371,7 +379,7 @@ export function useClassTypeDelete() {
 
       toast.error("クラスタイプの削除に失敗しました", {
         id: "class-type-delete-error",
-        description: error.message,
+        description: getErrorMessage(error),
       });
     },
     onSuccess: (data, classTypeId) => {

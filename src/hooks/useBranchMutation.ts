@@ -1,9 +1,17 @@
 // src/hooks/useBranchMutation.ts
-import { fetcher } from "@/lib/fetcher";
+import { fetcher, CustomError } from "@/lib/fetcher";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { BranchCreate, BranchUpdate, BranchOrderUpdate } from "@/schemas/branch.schema";
 import { Branch } from "@/hooks/useBranchQuery";
+
+// Helper function to extract error message from CustomError or regular Error
+const getErrorMessage = (error: Error): string => {
+  if (error instanceof CustomError) {
+    return (error.info.error as string) || error.message;
+  }
+  return error.message;
+};
 
 type BranchesResponse = {
   data: Branch[];
@@ -99,7 +107,7 @@ export function useBranchCreate() {
 
           toast.error("校舎の追加に失敗しました", {
             id: "branch-create-error",
-            description: error.message,
+            description: getErrorMessage(error),
           });
         },
         onSuccess: (response, _, context) => {
@@ -229,7 +237,7 @@ export function useBranchUpdate() {
           }
           toast.error("校舎の更新に失敗しました", {
             id: "branch-update-error",
-            description: error.message,
+            description: getErrorMessage(error),
           });
         },
         onSuccess: (data) => {
@@ -356,7 +364,7 @@ export function useBranchDelete() {
 
       toast.error("校舎の削除に失敗しました", {
         id: "branch-delete-error",
-        description: error.message,
+        description: getErrorMessage(error),
       });
     },
     onSuccess: (data, branchId) => {
@@ -459,7 +467,7 @@ export function useBranchOrderUpdate() {
 
       toast.error("校舎の順序更新に失敗しました", {
         id: "branch-order-error",
-        description: error.message,
+        description: getErrorMessage(error),
       });
     },
     onSuccess: () => {

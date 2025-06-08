@@ -1,9 +1,17 @@
 // src/hooks/useTeacherMutation.ts
-import { fetcher } from "@/lib/fetcher";
+import { fetcher, CustomError } from "@/lib/fetcher";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { TeacherCreate, TeacherUpdate } from "@/schemas/teacher.schema";
 import { Teacher } from "./useTeacherQuery";
+
+// Helper function to extract error message from CustomError or regular Error
+const getErrorMessage = (error: Error): string => {
+  if (error instanceof CustomError) {
+    return (error.info.error as string) || error.message;
+  }
+  return error.message;
+};
 
 type TeachersResponse = {
   data: Teacher[];
@@ -33,7 +41,7 @@ const convertExceptionalAvailability = (
   availability: any[]
 ): Teacher['exceptionalAvailability'] => {
   if (!availability || !Array.isArray(availability)) return [];
-  
+
   return availability.map((item) => {
     // If it's already in the correct format (has timeSlots), return as is
     if ('timeSlots' in item && Array.isArray(item.timeSlots)) {
@@ -45,7 +53,7 @@ const convertExceptionalAvailability = (
         notes: item.notes || null
       };
     }
-    
+
     // Convert from schema format (startTime/endTime) to interface format (timeSlots)
     const timeSlots = [];
     if (!item.fullDay && item.startTime && item.endTime) {
@@ -55,7 +63,7 @@ const convertExceptionalAvailability = (
         endTime: item.endTime
       });
     }
-    
+
     return {
       date: item.date instanceof Date ? item.date.toISOString().split('T')[0] : item.date,
       timeSlots,
@@ -142,7 +150,7 @@ export function useTeacherCreate() {
 
       toast.error("教師の追加に失敗しました", {
         id: "teacher-create-error",
-        description: error.message,
+        description: getErrorMessage(error),
       });
     },
     onSuccess: (response, _, context) => {
@@ -290,7 +298,7 @@ export function useTeacherUpdate() {
       }
       toast.error("教師の更新に失敗しました", {
         id: "teacher-update-error",
-        description: error.message,
+        description: getErrorMessage(error),
       });
     },
     onSuccess: (data) => {
@@ -430,7 +438,7 @@ export function useTeacherDelete() {
 
       toast.error("教師の削除に失敗しました", {
         id: "teacher-delete-error",
-        description: error.message,
+        description: getErrorMessage(error),
       });
     },
     onSuccess: (data, teacherId) => {

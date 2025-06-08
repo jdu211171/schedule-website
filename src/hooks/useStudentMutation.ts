@@ -1,9 +1,17 @@
 // src/hooks/useStudentMutation.ts
-import { fetcher } from "@/lib/fetcher";
+import { fetcher, CustomError } from "@/lib/fetcher";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { StudentCreate, StudentUpdate } from "@/schemas/student.schema";
 import { Student } from "./useStudentQuery";
+
+// Helper function to extract error message from CustomError or regular Error
+const getErrorMessage = (error: Error): string => {
+  if (error instanceof CustomError) {
+    return (error.info.error as string) || error.message;
+  }
+  return error.message;
+};
 
 type StudentsResponse = {
   data: Student[];
@@ -134,7 +142,7 @@ export function useStudentCreate() {
 
           toast.error("生徒の追加に失敗しました", {
             id: "student-create-error",
-            description: error.message,
+            description: getErrorMessage(error),
           });
         },
         onSuccess: (response, _, context) => {
@@ -315,7 +323,7 @@ export function useStudentUpdate() {
           }
           toast.error("生徒の更新に失敗しました", {
             id: "student-update-error",
-            description: error.message,
+            description: getErrorMessage(error),
           });
         },
         onSuccess: (data) => {
@@ -457,7 +465,7 @@ export function useStudentDelete() {
 
           toast.error("生徒の削除に失敗しました", {
             id: "student-delete-error",
-            description: error.message,
+            description: getErrorMessage(error),
           });
         },
         onSuccess: (data, studentId) => {

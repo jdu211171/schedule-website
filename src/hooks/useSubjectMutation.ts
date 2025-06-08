@@ -1,9 +1,17 @@
 // src/hooks/useSubjectMutation.ts
-import { fetcher } from "@/lib/fetcher";
+import { fetcher, CustomError } from "@/lib/fetcher";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { SubjectCreate, SubjectUpdate } from "@/schemas/subject.schema";
 import { Subject } from "@/hooks/useSubjectQuery";
+
+// Helper function to extract error message from CustomError or regular Error
+const getErrorMessage = (error: Error): string => {
+  if (error instanceof CustomError) {
+    return (error.info.error as string) || error.message;
+  }
+  return error.message;
+};
 
 type SubjectsResponse = {
   data: Subject[];
@@ -98,7 +106,7 @@ export function useSubjectCreate() {
 
           toast.error("科目の追加に失敗しました", {
             id: "subject-create-error",
-            description: error.message,
+            description: getErrorMessage(error),
           });
         },
         onSuccess: (response, _, context) => {
@@ -228,7 +236,7 @@ export function useSubjectUpdate() {
           }
           toast.error("科目の更新に失敗しました", {
             id: "subject-update-error",
-            description: error.message,
+            description: getErrorMessage(error),
           });
         },
         onSuccess: () => {
@@ -358,7 +366,7 @@ export function useSubjectDelete() {
 
       toast.error("科目の削除に失敗しました", {
         id: "subject-delete-error",
-        description: error.message,
+        description: getErrorMessage(error),
       });
     },
     onSuccess: (data, subjectId) => {
