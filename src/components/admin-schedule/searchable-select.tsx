@@ -1,11 +1,15 @@
 import * as React from "react";
-import { Check, ChevronsUpDown, Search, X } from "lucide-react";
+import { Check, ChevronsUpDown, Search, X, CheckCircle2, AlertTriangle, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface SearchableSelectItem {
   value: string;
   label: string;
   description?: string;
+  compatibilityType?: 'perfect' | 'subject-only' | 'teacher-only' | 'student-only' | 'no-preferences' | 'mismatch' | 'no-teacher-selected' | 'no-student-selected' | 'teacher-no-prefs' | 'student-no-prefs';
+  matchingSubjectsCount?: number;
+  partialMatchingSubjectsCount?: number;
+  icon?: string;
 }
 
 interface SearchableSelectProps {
@@ -18,7 +22,77 @@ interface SearchableSelectProps {
   disabled?: boolean;
   className?: string;
   loading?: boolean;
+  showCompatibilityIcons?: boolean;
 }
+
+const getCompatibilityIcon = (compatibilityType?: string) => {
+  switch (compatibilityType) {
+    case 'perfect':
+      return <CheckCircle2 className="h-3 w-3 text-green-500" />;
+    case 'subject-only':
+      return <AlertTriangle className="h-3 w-3 text-orange-500" />;
+    case 'teacher-only':
+      return <Users className="h-3 w-3 text-blue-500" />;
+    case 'student-only':
+      return <Users className="h-3 w-3 text-orange-500" />;
+    case 'mismatch':
+      return <AlertTriangle className="h-3 w-3 text-red-500" />;
+    case 'teacher-no-prefs':
+    case 'student-no-prefs':
+      return <Users className="h-3 w-3 text-gray-400" />;
+    default:
+      return null;
+  }
+};
+
+const getCompatibilityDescription = (item: SearchableSelectItem): string => {
+  if (item.description) return item.description;
+  
+  switch (item.compatibilityType) {
+    case 'perfect':
+      return '完全一致';
+    case 'subject-only':
+      return '科目一致（レベル違い）';
+    case 'teacher-only':
+      return '教師のみ';
+    case 'student-only':
+      return '生徒のみ';
+    case 'mismatch':
+      return '共通設定なし';
+    case 'teacher-no-prefs':
+      return '教師の設定なし';
+    case 'student-no-prefs':
+      return '生徒の設定なし';
+    case 'no-teacher-selected':
+      return '教師未選択';
+    case 'no-student-selected':
+      return '生徒未選択';
+    default:
+      return '';
+  }
+};
+
+const getItemPriority = (item: SearchableSelectItem): number => {
+  // Higher priority = shown first
+  switch (item.compatibilityType) {
+    case 'perfect':
+      return 5;
+    case 'subject-only':
+      return 4;
+    case 'teacher-only':
+    case 'student-only':
+      return 3;
+    case 'teacher-no-prefs':
+    case 'student-no-prefs':
+      return 2;
+    case 'no-preferences':
+      return 1;
+    case 'mismatch':
+      return 0;
+    default:
+      return -1;
+  }
+};
 
 export function SearchableSelect({
   value,
@@ -30,6 +104,7 @@ export function SearchableSelect({
   disabled = false,
   className = "",
   loading = false,
+  showCompatibilityIcons = false,
 }: SearchableSelectProps) {
   const [open, setOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState("");
@@ -42,16 +117,35 @@ export function SearchableSelect({
     [items, value]
   );
   
-  // Filter items
+  // Filter and sort items
   const filteredItems = React.useMemo(() => {
-    if (!searchQuery.trim()) return items;
+    let filtered = items;
     
-    const query = searchQuery.toLowerCase();
-    return items.filter(item => 
-      item.label.toLowerCase().includes(query) ||
-      (item.description && item.description.toLowerCase().includes(query))
-    );
-  }, [items, searchQuery]);
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = items.filter(item => 
+        item.label.toLowerCase().includes(query) ||
+        (item.description && item.description.toLowerCase().includes(query))
+      );
+    }
+    
+    // Sort by compatibility priority if showCompatibilityIcons is true
+    if (showCompatibilityIcons) {
+      filtered = filtered.sort((a, b) => {
+        const priorityA = getItemPriority(a);
+        const priorityB = getItemPriority(b);
+        
+        if (priorityA !== priorityB) {
+          return priorityB - priorityA; // Higher priority first
+        }
+        
+        // If same priority, sort alphabetically
+        return a.label.localeCompare(b.label);
+      });
+    }
+    
+    return filtered;
+  }, [items, searchQuery, showCompatibilityIcons]);
   
   // Reset highlighted index when items change
   React.useEffect(() => {
@@ -143,9 +237,12 @@ export function SearchableSelect({
         aria-expanded={open}
         aria-haspopup="listbox"
       >
-        <span className="truncate">
-          {loading ? "..." : selectedItem ? selectedItem.label : placeholder}
-        </span>
+        <div className="flex items-center gap-2 truncate">
+          {showCompatibilityIcons && selectedItem && getCompatibilityIcon(selectedItem.compatibilityType)}
+          <span className="truncate">
+            {loading ? "..." : selectedItem ? selectedItem.label : placeholder}
+          </span>
+        </div>
         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
       </button>
 
@@ -199,6 +296,8 @@ export function SearchableSelect({
                 {filteredItems.map((item, index) => {
                   const isSelected = value === item.value;
                   const isHighlighted = highlightedIndex === index;
+                  const compatibilityIcon = showCompatibilityIcons ? getCompatibilityIcon(item.compatibilityType) : null;
+                  const compatibilityDescription = showCompatibilityIcons ? getCompatibilityDescription(item) : item.description;
                   
                   return (
                     <div
@@ -221,10 +320,23 @@ export function SearchableSelect({
                       aria-selected={isSelected}
                     >
                       <div className="flex flex-1 flex-col">
-                        <span>{item.label}</span>
-                        {item.description && (
+                        <div className="flex items-center gap-2">
+                          {compatibilityIcon}
+                          <span>{item.label}</span>
+                          {item.matchingSubjectsCount !== undefined && item.matchingSubjectsCount > 0 && (
+                            <span className="text-xs bg-green-100 text-green-800 px-1.5 py-0.5 rounded-full">
+                              {item.matchingSubjectsCount}
+                            </span>
+                          )}
+                          {item.partialMatchingSubjectsCount !== undefined && item.partialMatchingSubjectsCount > 0 && (
+                            <span className="text-xs bg-orange-100 text-orange-800 px-1.5 py-0.5 rounded-full">
+                              ±{item.partialMatchingSubjectsCount}
+                            </span>
+                          )}
+                        </div>
+                        {compatibilityDescription && (
                           <span className="text-xs text-muted-foreground">
-                            {item.description}
+                            {compatibilityDescription}
                           </span>
                         )}
                       </div>

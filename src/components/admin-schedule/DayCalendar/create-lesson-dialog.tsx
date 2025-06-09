@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, X, CheckCircle2, AlertTriangle, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fetcher } from '@/lib/fetcher';
 import {
@@ -15,11 +15,7 @@ import {
   formatDateToString
 } from './types/class-session';
 import { SearchableSelect, SearchableSelectItem } from '../searchable-select';
-import { UserSubjectPreference } from '@/hooks/useUserSubjectPreferenceQuery';
-import { useSubjects } from '@/hooks/useSubjectQuery';
-import { useSubjectTypes } from '@/hooks/useSubjectTypeQuery';
-import { useTeachers } from '@/hooks/useTeacherQuery';
-import { useStudents } from '@/hooks/useStudentQuery';
+import { useSmartSelection, EnhancedTeacher, EnhancedStudent, SubjectCompatibility } from '@/hooks/useSmartSelection';
 
 function DateRangePicker({
   dateRange,
@@ -188,49 +184,164 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
 
   const STORAGE_KEY = 'create-lesson-dialog-persistent-fields';
 
-  const { data: subjectsResponse } = useSubjects({ limit: 100 });
-  const { data: subjectTypesResponse } = useSubjectTypes({ limit: 100 });
-  const { data: teachersResponse } = useTeachers({ limit: 100 });
-  const { data: studentsResponse } = useStudents({ limit: 100 });
-  
-  const subjects = subjectsResponse?.data || [];
-  const subjectTypes = subjectTypesResponse?.data || [];
-  const teachers = teachersResponse?.data || [];
-  const students = studentsResponse?.data || [];
+  // Use smart selection hook with enhanced data
+  const {
+    enhancedTeachers,
+    enhancedStudents,
+    enhancedSubjects,
+    filteredSubjectTypes,
+    getCompatibilityInfo,
+    hasTeacherSelected,
+    hasStudentSelected
+  } = useSmartSelection({
+    selectedTeacherId,
+    selectedStudentId,
+    selectedSubjectId: subjectId
+  });
 
-  const filteredSubjects = useMemo(() => {
-    if (!teacherData || !studentData) {
-      return subjects;
-    }
+  // Check if subject selection is meaningful
+  const canSelectSubject = useMemo(() => {
+    return Boolean(selectedTeacherId || selectedStudentId);
+  }, [selectedTeacherId, selectedStudentId]);
 
-    const teacherSubjectIds = new Set(
-      teacherData.subjectPreferences?.map(p => p.subjectId) || []
-    );
-    const studentSubjectIds = new Set(
-      studentData.subjectPreferences?.map(p => p.subjectId) || []
-    );
-
-    return subjects.filter(subject => 
-      teacherSubjectIds.has(subject.subjectId) && 
-      studentSubjectIds.has(subject.subjectId)
-    );
-  }, [subjects, teacherData, studentData]);
-
-  const filteredSubjectTypes = useMemo(() => {
-    if (!subjectId || !studentData) {
-      return subjectTypes;
-    }
-
-    const studentPref = studentData.subjectPreferences?.find(
-      pref => pref.subjectId === subjectId
-    );
+  // Create enhanced items for SearchableSelect components
+  const teacherItems: SearchableSelectItem[] = enhancedTeachers.map((teacher) => {
+    let description = '';
+    let matchingSubjectsCount = 0;
+    let partialMatchingSubjectsCount = 0;
     
-    if (!studentPref) return [];
+    if (teacher.compatibilityType === 'perfect') {
+      description = `${teacher.matchingSubjectsCount}件の完全一致`;
+      matchingSubjectsCount = teacher.matchingSubjectsCount;
+      if (teacher.partialMatchingSubjectsCount > 0) {
+        description += `, ${teacher.partialMatchingSubjectsCount}件の部分一致`;
+        partialMatchingSubjectsCount = teacher.partialMatchingSubjectsCount;
+      }
+    } else if (teacher.compatibilityType === 'subject-only') {
+      description = `${teacher.partialMatchingSubjectsCount}件の部分一致`;
+      partialMatchingSubjectsCount = teacher.partialMatchingSubjectsCount;
+    } else if (teacher.compatibilityType === 'mismatch') {
+      description = '共通科目なし';
+    } else if (teacher.compatibilityType === 'teacher-no-prefs') {
+      description = '科目設定なし';
+    } else if (teacher.compatibilityType === 'student-no-prefs') {
+      description = '生徒の設定なし（全対応可）';
+    }
 
-    return subjectTypes.filter(type => 
-      studentPref.subjectTypeIds.includes(type.subjectTypeId)
-    );
-  }, [subjectTypes, subjectId, studentData]);
+    return {
+      value: teacher.teacherId,
+      label: teacher.name,
+      description,
+      compatibilityType: teacher.compatibilityType,
+      matchingSubjectsCount,
+      partialMatchingSubjectsCount
+    };
+  });
+
+  const studentItems: SearchableSelectItem[] = enhancedStudents.map((student) => {
+    let description = '';
+    let matchingSubjectsCount = 0;
+    let partialMatchingSubjectsCount = 0;
+    
+    if (student.compatibilityType === 'perfect') {
+      description = `${student.matchingSubjectsCount}件の完全一致`;
+      matchingSubjectsCount = student.matchingSubjectsCount;
+      if (student.partialMatchingSubjectsCount > 0) {
+        description += `, ${student.partialMatchingSubjectsCount}件の部分一致`;
+        partialMatchingSubjectsCount = student.partialMatchingSubjectsCount;
+      }
+    } else if (student.compatibilityType === 'subject-only') {
+      description = `${student.partialMatchingSubjectsCount}件の部分一致`;
+      partialMatchingSubjectsCount = student.partialMatchingSubjectsCount;
+    } else if (student.compatibilityType === 'mismatch') {
+      description = '共通科目なし';
+    } else if (student.compatibilityType === 'student-no-prefs') {
+      description = '科目設定なし';
+    } else if (student.compatibilityType === 'teacher-no-prefs') {
+      description = '教師の設定なし（全対応可）';
+    }
+
+    return {
+      value: student.studentId,
+      label: student.name,
+      description,
+      compatibilityType: student.compatibilityType,
+      matchingSubjectsCount,
+      partialMatchingSubjectsCount
+    };
+  });
+
+  const subjectItems: SearchableSelectItem[] = enhancedSubjects.map((subject) => {
+    let description = '';
+    
+    switch (subject.compatibilityType) {
+      case 'perfect':
+        description = '完全一致（科目・レベル両方）';
+        break;
+      case 'subject-only':
+        description = '部分一致（科目のみ・レベル違い）';
+        break;
+      case 'teacher-only':
+        description = '教師のみ対応';
+        break;
+      case 'student-only':
+        description = '生徒のみ希望';
+        break;
+      case 'mismatch':
+        description = '対応なし';
+        break;
+      case 'no-preferences':
+        description = '全員利用可能';
+        break;
+    }
+
+    return {
+      value: subject.subjectId,
+      label: subject.name,
+      description,
+      compatibilityType: subject.compatibilityType
+    };
+  });
+
+  const subjectTypeItems: SearchableSelectItem[] = filteredSubjectTypes.map((type) => ({
+    value: type.subjectTypeId,
+    label: type.name,
+  }));
+
+  // Get compatibility info for display
+  const compatibilityInfo = getCompatibilityInfo();
+
+  // Updated handlers - no more filtering, just selection
+  const handleTeacherChange = (teacherId: string) => {
+    setSelectedTeacherId(teacherId);
+  };
+
+  const handleStudentChange = (studentId: string) => {
+    setSelectedStudentId(studentId);
+  };
+
+  const handleSubjectChange = (subjectId: string) => {
+    setSubjectId(subjectId);
+    setSubjectTypeId(''); // Still reset subject type when subject changes
+  };
+
+  // Clear functions
+  const clearTeacher = () => {
+    setSelectedTeacherId('');
+  };
+
+  const clearStudent = () => {
+    setSelectedStudentId('');
+  };
+
+  const clearSubject = () => {
+    setSubjectId('');
+    setSubjectTypeId('');
+  };
+
+  const clearSubjectType = () => {
+    setSubjectTypeId('');
+  };
 
   useEffect(() => {
     const loadClassTypes = async () => {
@@ -458,26 +569,6 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
 
   const selectedClassType = classTypes.find(type => type.classTypeId === selectedClassTypeId);
 
-  const subjectItems: SearchableSelectItem[] = filteredSubjects.map((subject) => ({
-    value: subject.subjectId,
-    label: subject.name,
-  }));
-
-  const subjectTypeItems: SearchableSelectItem[] = filteredSubjectTypes.map((type) => ({
-    value: type.subjectTypeId,
-    label: type.name,
-  }));
-
-  const teacherItems: SearchableSelectItem[] = teachers.map((teacher) => ({
-    value: teacher.teacherId,
-    label: teacher.name,
-  }));
-
-  const studentItems: SearchableSelectItem[] = students.map((student) => ({
-    value: student.studentId,
-    label: student.name,
-  }));
-
   if (isInitializing) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -549,29 +640,109 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
             </div>
 
             <div className="grid grid-cols-2 gap-4">
+              {/* Enhanced Teacher Select */}
               <div>
-                <label htmlFor="teacher-select" className="text-sm font-medium mb-1 block text-foreground">教師 <span className="text-destructive">*</span></label>
-                <SearchableSelect
-                  value={selectedTeacherId}
-                  onValueChange={setSelectedTeacherId}
-                  items={teacherItems}
-                  placeholder="教師を選択"
-                  searchPlaceholder="教師を検索..."
-                  emptyMessage="教師が見つかりません"
-                />
+                <label htmlFor="teacher-select" className="text-sm font-medium mb-1 block text-foreground">
+                  教師 <span className="text-destructive">*</span>
+                  {hasStudentSelected && (
+                    <span className="text-xs text-muted-foreground ml-1">
+                      ({enhancedTeachers.filter((t: EnhancedTeacher) => t.compatibilityType === 'perfect').length} 完全一致)
+                    </span>
+                  )}
+                </label>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1">
+                    <SearchableSelect
+                      value={selectedTeacherId}
+                      onValueChange={handleTeacherChange}
+                      items={teacherItems}
+                      placeholder="教師を選択"
+                      searchPlaceholder="教師を検索..."
+                      emptyMessage="教師が見つかりません"
+                      showCompatibilityIcons={hasStudentSelected}
+                    />
+                  </div>
+                  {selectedTeacherId && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={clearTeacher}
+                      className="px-2"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
               </div>
+              
+              {/* Enhanced Student Select */}
               <div>
-                <label htmlFor="student-select" className="text-sm font-medium mb-1 block text-foreground">生徒 <span className="text-destructive">*</span></label>
-                <SearchableSelect
-                  value={selectedStudentId}
-                  onValueChange={setSelectedStudentId}
-                  items={studentItems}
-                  placeholder="生徒を選択"
-                  searchPlaceholder="生徒を検索..."
-                  emptyMessage="生徒が見つかりません"
-                />
+                <label htmlFor="student-select" className="text-sm font-medium mb-1 block text-foreground">
+                  生徒 <span className="text-destructive">*</span>
+                  {hasTeacherSelected && (
+                    <span className="text-xs text-muted-foreground ml-1">
+                      ({enhancedStudents.filter((s: EnhancedStudent) => s.compatibilityType === 'perfect').length} 完全一致)
+                    </span>
+                  )}
+                </label>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1">
+                    <SearchableSelect
+                      value={selectedStudentId}
+                      onValueChange={handleStudentChange}
+                      items={studentItems}
+                      placeholder="生徒を選択"
+                      searchPlaceholder="生徒を検索..."
+                      emptyMessage="生徒が見つかりません"
+                      showCompatibilityIcons={hasTeacherSelected}
+                    />
+                  </div>
+                  {selectedStudentId && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={clearStudent}
+                      className="px-2"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
+
+            {/* Enhanced Compatibility Indicator */}
+            {compatibilityInfo && (
+              <div className={`text-xs p-3 rounded-md border ${
+                compatibilityInfo.compatibilityType === 'perfect' 
+                  ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800' 
+                  : compatibilityInfo.compatibilityType === 'subject-only'
+                  ? 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:text-orange-300 dark:border-orange-800'
+                  : compatibilityInfo.compatibilityType === 'mismatch'
+                  ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-800'
+                  : 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800'
+              }`}>
+                <div className="flex items-center gap-2">
+                  {compatibilityInfo.compatibilityType === 'perfect' && (
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  )}
+                  {compatibilityInfo.compatibilityType === 'subject-only' && (
+                    <AlertTriangle className="h-4 w-4 text-orange-600" />
+                  )}
+                  {compatibilityInfo.compatibilityType === 'mismatch' && (
+                    <AlertTriangle className="h-4 w-4 text-amber-600" />
+                  )}
+                  {(compatibilityInfo.compatibilityType === 'teacher-only' || 
+                    compatibilityInfo.compatibilityType === 'student-only' ||
+                    compatibilityInfo.compatibilityType === 'no-preferences') && (
+                    <Users className="h-4 w-4 text-blue-600" />
+                  )}
+                  <span>{compatibilityInfo.message}</span>
+                </div>
+              </div>
+            )}
 
             {isRecurring && (
               <div className="space-y-3 p-3 rounded-md border border-input bg-muted/30">
@@ -617,53 +788,92 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
               </div>
             )}
 
+            {/* Enhanced Subject Select */}
             <div>
-              <label htmlFor="subject-select" className="text-sm font-medium mb-1 block text-foreground">科目 <span className="text-destructive">*</span></label>
-              <SearchableSelect
-                value={subjectId}
-                onValueChange={(value) => {
-                  setSubjectId(value);
-                  setSubjectTypeId('');
-                }}
-                items={subjectItems}
-                placeholder={
-                  filteredSubjects.length === 0
-                    ? "共通の科目がありません"
-                    : "科目を選択"
-                }
-                searchPlaceholder="科目を検索..."
-                emptyMessage="科目が見つかりません"
-                disabled={filteredSubjects.length === 0}
-              />
-              {filteredSubjects.length === 0 && (
-                <div className="text-xs text-destructive mt-1">
-                  選択された教師と生徒に共通の科目がありません
+              <label htmlFor="subject-select" className="text-sm font-medium mb-1 block text-foreground">
+                科目 <span className="text-destructive">*</span>
+                {!canSelectSubject && (
+                  <span className="text-xs text-amber-600 dark:text-amber-500 ml-2">
+                    (推奨: 教師と生徒を選択すると適合度が表示されます)
+                  </span>
+                )}
+                {canSelectSubject && (
+                  <span className="text-xs text-muted-foreground ml-1">
+                    ({enhancedSubjects.filter((s: SubjectCompatibility) => s.compatibilityType === 'perfect').length} 完全一致, {enhancedSubjects.length} 総数)
+                  </span>
+                )}
+              </label>
+              <div className="flex items-center gap-2">
+                <div className="flex-1">
+                  <SearchableSelect
+                    value={subjectId}
+                    onValueChange={handleSubjectChange}
+                    items={subjectItems}
+                    placeholder="科目を選択"
+                    searchPlaceholder="科目を検索..."
+                    emptyMessage="科目が見つかりません"
+                    showCompatibilityIcons={canSelectSubject}
+                  />
                 </div>
-              )}
+                {subjectId && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={clearSubject}
+                    className="px-2"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             </div>
 
+            {/* Subject Type Select */}
             <div>
-              <label htmlFor="subject-type-select" className="text-sm font-medium mb-1 block text-foreground">科目タイプ <span className="text-destructive">*</span></label>
-              <SearchableSelect
-                value={subjectTypeId}
-                onValueChange={setSubjectTypeId}
-                items={subjectTypeItems}
-                placeholder={
-                  !subjectId
-                    ? "先に科目を選択してください"
-                    : filteredSubjectTypes.length === 0
-                    ? "利用可能な科目タイプがありません"
-                    : "科目タイプを選択"
-                }
-                searchPlaceholder="科目タイプを検索..."
-                emptyMessage="科目タイプが見つかりません"
-                disabled={!subjectId || filteredSubjectTypes.length === 0}
-              />
-              {subjectId && filteredSubjectTypes.length === 0 && (
-                <div className="text-xs text-destructive mt-1">
-                  生徒はこの科目のタイプを希望していません
+              <label htmlFor="subject-type-select" className="text-sm font-medium mb-1 block text-foreground">
+                科目タイプ <span className="text-destructive">*</span>
+                {!subjectId && (
+                  <span className="text-xs text-amber-600 dark:text-amber-500 ml-2">
+                    (科目を先に選択してください)
+                  </span>
+                )}
+                {subjectId && (
+                  <span className="text-xs text-muted-foreground ml-1">
+                    ({filteredSubjectTypes.length} 利用可能)
+                  </span>
+                )}
+              </label>
+              <div className="flex items-center gap-2">
+                <div className="flex-1">
+                  <SearchableSelect
+                    value={subjectTypeId}
+                    onValueChange={setSubjectTypeId}
+                    items={subjectTypeItems}
+                    placeholder={
+                      !subjectId
+                        ? "先に科目を選択してください"
+                        : filteredSubjectTypes.length === 0
+                        ? "利用可能な科目タイプがありません"
+                        : "科目タイプを選択"
+                    }
+                    searchPlaceholder="科目タイプを検索..."
+                    emptyMessage="科目タイプが見つかりません"
+                    disabled={!subjectId || filteredSubjectTypes.length === 0}
+                  />
                 </div>
-              )}
+                {subjectTypeId && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={clearSubjectType}
+                    className="px-2"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             </div>
 
             <div>
