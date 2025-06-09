@@ -14,17 +14,23 @@ export async function requireAuth() {
 }
 
 export async function loginUser(usernameOrEmail: string, password: string) {
-  "use client";
   try {
-    const res = await signIn("credentials", { usernameOrEmail, password, redirect: false, });
-    console.log("Login response:", res);
+    await signIn("credentials", {
+      usernameOrEmail,
+      password,
+      redirect: false,
+    });
+
+    return { success: true };
   } catch (error) {
     if (error instanceof AuthError) {
-      console.error("Authentication error:", error.message);
-      throw new Error("Credentials are invalid");
+      switch (error.type) {
+        case "CredentialsSignin":
+          throw new Error("ログインIDまたはパスワードが正しくありません");
+        default:
+          throw new Error("ログインに失敗しました");
+      }
     }
-
-    console.error("Error logging in:", error);
-    throw new Error("An error occurred while logging in");
+    throw error;
   }
 }
