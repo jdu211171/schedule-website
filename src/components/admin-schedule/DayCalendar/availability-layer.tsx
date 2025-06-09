@@ -13,12 +13,12 @@ interface AvailabilityLayerProps {
 }
 
 const AVAILABILITY_COLORS = {
-  teacher: 'rgba(34, 197, 94, 0.2)',
+  teacher: 'rgba(59, 130, 246, 0.2)',
   student: 'rgba(251, 191, 36, 0.2)',
-  both: 'rgba(59, 130, 246, 0.4)',
-  teacherDark: 'rgba(34, 197, 94, 0.15)',
+  both: 'rgba(34, 197, 94, 0.4)',
+  teacherDark: 'rgba(59, 130, 246, 0.15)',
   studentDark: 'rgba(251, 191, 36, 0.15)',
-  bothDark: 'rgba(59, 130, 246, 0.3)',
+  bothDark: 'rgba(34, 197, 94, 0.3)',
 };
 
 export const AvailabilityLayer: React.FC<AvailabilityLayerProps> = ({
