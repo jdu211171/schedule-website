@@ -95,7 +95,7 @@ export function useUserSubjectPreferencesByUser(userId: string) {
     queryKey: ["userSubjectPreferences", "byUser", userId],
     queryFn: async () => {
       const response = await fetcher<UserSubjectPreferencesResponse>(
-        `/api/user-subject-preferences?userId=${userId}&limit=1000`
+        `/api/user-subject-preferences?userId=${userId}&limit=100`
       );
       return response.data;
     },
@@ -113,7 +113,7 @@ export function useUserSubjectPreferencesBySubject(subjectId: string) {
     queryKey: ["userSubjectPreferences", "bySubject", subjectId],
     queryFn: async () => {
       const response = await fetcher<UserSubjectPreferencesResponse>(
-        `/api/user-subject-preferences?subjectId=${subjectId}&limit=1000`
+        `/api/user-subject-preferences?subjectId=${subjectId}&limit=100`
       );
       return response.data;
     },
@@ -131,7 +131,7 @@ export function useUserSubjectPreferencesBySubjectType(subjectTypeId: string) {
     queryKey: ["userSubjectPreferences", "bySubjectType", subjectTypeId],
     queryFn: async () => {
       const response = await fetcher<UserSubjectPreferencesResponse>(
-        `/api/user-subject-preferences?subjectTypeId=${subjectTypeId}&limit=1000`
+        `/api/user-subject-preferences?subjectTypeId=${subjectTypeId}&limit=100`
       );
       return response.data;
     },

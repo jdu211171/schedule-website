@@ -78,7 +78,7 @@ const AdminCalendarWeek: React.FC<AdminCalendarWeekProps> = ({
   const [filters, setFilters] = useState<DayFilters>({});
 
   // Data hooks
-  const { data: boothsResponse } = useBooths();
+  const { data: boothsResponse } = useBooths({ status: true });
   const { data: teachersResponse } = useTeachers();
   const { data: studentsResponse } = useStudents();
   const { data: subjectsResponse } = useSubjects();

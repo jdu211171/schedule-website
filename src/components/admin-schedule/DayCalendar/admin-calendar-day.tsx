@@ -150,7 +150,7 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
     }
   }, [selectedDays, isInitialized]);
 
-  const { data: boothsResponse, isLoading: isLoadingBooths } = useBooths({ limit: 100 });
+  const { data: boothsResponse, isLoading: isLoadingBooths } = useBooths({ limit: 100, status: true });
   const { data: teachersResponse, isLoading: isLoadingTeachers } = useTeachers({ limit: 100 });
   const { data: studentsResponse, isLoading: isLoadingStudents } = useStudents({ limit: 100 });
   const { data: subjectsResponse, isLoading: isLoadingSubjects } = useSubjects({ limit: 100 });
@@ -173,30 +173,23 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
   }, [selectedDays]);
 
   const enhancedDayFilters = useMemo(() => {
-    if (!selectedBranchId) {
-      return {};
-    }
-
     const enhanced: Record<string, DayFilters> = {};
-
+  
     Object.entries(dayFilters).forEach(([dateKey, filters]) => {
-      enhanced[dateKey] = {
-        ...filters,
-        branchId: selectedBranchId
-      };
+      enhanced[dateKey] = { ...filters };
     });
-
+  
     selectedDatesStrings.forEach(dateStr => {
       if (!enhanced[dateStr]) {
-        enhanced[dateStr] = { branchId: selectedBranchId };
+        enhanced[dateStr] = {};
       }
     });
-
+  
     return enhanced;
-  }, [dayFilters, selectedBranchId, selectedDatesStrings]);
+  }, [dayFilters, selectedDatesStrings]);
 
   const classSessionQueries = useMultipleDaysClassSessions(
-    selectedBranchId ? selectedDatesStrings : [], 
+    selectedDatesStrings, 
     enhancedDayFilters
   );
 

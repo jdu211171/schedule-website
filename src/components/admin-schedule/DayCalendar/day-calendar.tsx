@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { ExtendedClassSessionWithRelations, DayFilters } from '@/hooks/useClassSessionQuery'; 
-import { isSameDay } from '../date';
+import { getDateKey } from '../date';
 import { LessonCard } from './lesson-card';
 import { DayCalendarFilters } from './day-calendar-filters';
 import { AvailabilityLayer, useAvailability } from './availability-layer';
@@ -102,24 +102,22 @@ const CalendarCell = React.memo(({
       data-start-time={timeSlot.start}
       data-selected={isSelected ? "true" : "false"}
       className={`
-        border-r border-b relative select-none
-        ${timeSlot.index % 4 === 0 
-          ? "bg-muted dark:bg-muted" 
-          : "bg-background dark:bg-background"
-        }
-        ${!canDrag
-          ? "cursor-not-allowed opacity-60"
-          : isSelecting 
-            ? "cursor-move" 
-            : "hover:bg-accent dark:hover:bg-accent cursor-pointer"
-        }
-        ${isSelected 
-          ? "!bg-blue-200 dark:!bg-blue-900 !opacity-100 shadow-inner" 
-          : ""
-        }
-        border-border dark:border-border
-        ${!isSelecting ? "transition-none" : ""}
-      `}
+  border-r border-b relative select-none
+  ${timeSlot.index % 4 === 0 
+    ? "bg-muted dark:bg-muted" 
+    : "bg-background dark:bg-background"
+  }
+  ${isSelecting 
+    ? "cursor-move" 
+    : "hover:bg-accent dark:hover:bg-accent cursor-pointer"
+  }
+  ${isSelected 
+    ? "!bg-blue-200 dark:!bg-blue-900 !opacity-100 shadow-inner" 
+    : ""
+  }
+  border-border dark:border-border
+  ${!isSelecting ? "transition-none" : ""}
+`}
       style={{ 
         width: `${CELL_WIDTH}px`, 
         minWidth: `${CELL_WIDTH}px`,
@@ -280,7 +278,7 @@ TimeHeader.displayName = 'TimeHeader';
 // FIXED: Helper function to normalize date comparison
 const normalizeDate = (date: string | Date): string => {
   if (date instanceof Date) {
-    return date.toISOString().split('T')[0];
+    return getDateKey(date); // Use our fixed getDateKey function
   }
   return typeof date === 'string' ? date.split('T')[0] : date;
 };
@@ -315,21 +313,21 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
   );
 
   const dateKey = useMemo(() => {
-    return date.toISOString().split('T')[0];
+    return getDateKey(date); // Use consistent date formatting
   }, [date]);
 
   // FIXED: Better date filtering using normalized dates
   const filteredSessions = useMemo(() => {
     const targetDateStr = normalizeDate(date);
     
-    console.log('Filtering sessions for date:', targetDateStr);
-    console.log('Available sessions:', classSessions.map(s => ({
-      classId: s.classId,
-      date: s.date,
-      normalizedDate: normalizeDate(s.date),
-      startTime: s.startTime,
-      endTime: s.endTime
-    })));
+    // console.log('Filtering sessions for date:', targetDateStr);
+    // console.log('Available sessions:', classSessions.map(s => ({
+    //   classId: s.classId,
+    //   date: s.date,
+    //   normalizedDate: normalizeDate(s.date),
+    //   startTime: s.startTime,
+    //   endTime: s.endTime
+    // })));
     
     const filtered = classSessions.filter(session => {
       const sessionDateStr = normalizeDate(session.date);
@@ -342,7 +340,7 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
       return matches;
     });
     
-    console.log('Filtered sessions:', filtered.length);
+    // console.log('Filtered sessions:', filtered.length);
     return filtered;
   }, [classSessions, date]);
   
@@ -355,8 +353,8 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
   }, [date]);
   
   const canDrag = useMemo(() => {
-    return Boolean(selectedClassTypeId && selectedTeacherId && selectedStudentId);
-  }, [selectedClassTypeId, selectedTeacherId, selectedStudentId]);
+    return true; // Always allow dragging
+  }, []);
   
   const cancelSelection = useCallback(() => {
     setSelection(initialSelectionState);
@@ -373,10 +371,7 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
   const handleStartSelection = useCallback((boothIndex: number, timeIndex: number, e: React.MouseEvent) => {
     e.preventDefault();
     
-    if (!canDrag) {
-      return;
-    }
-    
+    // Always allow selection - no canDrag check
     const start = { row: boothIndex, col: timeIndex };
     
     setSelection({
@@ -386,7 +381,7 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
     });
     document.body.classList.add('cursor-move');
     createLessonCalledRef.current = false;
-  }, [canDrag]);
+  }, []);
 
   const handleCellHover = useCallback((boothIndex: number, timeIndex: number, e: React.MouseEvent) => {
     if (!selection.isSelecting || !selection.start) return;
