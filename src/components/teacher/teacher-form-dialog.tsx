@@ -80,6 +80,7 @@ import { EnhancedAvailabilityRegularSelector } from "../student/enhanced-availab
 import { EnhancedAvailabilityIrregularSelector } from "../student/enhanced-availability-irregular-selector";
 import { SearchableMultiSelect } from "@/components/admin-schedule/searchable-multi-select";
 import { useAllBranchesOrdered } from "@/hooks/useBranchQuery";
+import { EnhancedStateButton } from "../ui/enhanced-state-button";
 
 interface TimeSlot {
   id: string;
@@ -141,6 +142,16 @@ export function TeacherFormDialog({
   const isSubmitting =
     createTeacherMutation.isPending || updateTeacherMutation.isPending;
 
+  // Keep dialog open setting
+  const KEEP_OPEN_STORAGE_KEY = "teacher-form-keep-open";
+  const [keepDialogOpen, setKeepDialogOpen] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const savedKeepOpen = localStorage.getItem(KEEP_OPEN_STORAGE_KEY);
+      return savedKeepOpen ? JSON.parse(savedKeepOpen) : false;
+    }
+    return false;
+  });
+
   // Subject selection state
   const [teacherSubjects, setTeacherSubjects] = useState<TeacherSubject[]>([]);
   const [currentSubject, setCurrentSubject] = useState<string | undefined>(
@@ -178,6 +189,24 @@ export function TeacherFormDialog({
       teacherId: undefined,
     },
   });
+
+  // Load keep dialog open setting from localStorage when dialog opens
+  useEffect(() => {
+    if (open) {
+      const savedKeepOpen = localStorage.getItem(KEEP_OPEN_STORAGE_KEY);
+      if (savedKeepOpen !== null) {
+        const parsed = JSON.parse(savedKeepOpen);
+        setKeepDialogOpen(parsed);
+      }
+    }
+  }, [open]);
+
+  // Save keep dialog open setting to localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(KEEP_OPEN_STORAGE_KEY, JSON.stringify(keepDialogOpen));
+    }
+  }, [keepDialogOpen]);
 
   useEffect(() => {
     if (teacher) {
@@ -425,9 +454,13 @@ export function TeacherFormDialog({
       });
       updateTeacherMutation.mutate(parsedData as TeacherUpdate, {
         onSuccess: () => {
-          onOpenChange(false);
-          form.reset();
-          localStorage.removeItem(STORAGE_KEY);
+          if (!keepDialogOpen) {
+            onOpenChange(false);
+            localStorage.removeItem(STORAGE_KEY);
+          }
+          if (!keepDialogOpen) {
+            form.reset();
+          }
         },
       });
     } else {
@@ -436,13 +469,90 @@ export function TeacherFormDialog({
       const parsedData = teacherCreateSchema.parse(createValues);
       createTeacherMutation.mutate(parsedData as TeacherCreate, {
         onSuccess: () => {
-          onOpenChange(false);
-          form.reset();
-          localStorage.removeItem(STORAGE_KEY);
+          if (!keepDialogOpen) {
+            onOpenChange(false);
+            localStorage.removeItem(STORAGE_KEY);
+          }
+          if (!keepDialogOpen) {
+            form.reset();
+          }
         },
       });
     }
   }
+
+  // Enhanced state button async handler
+  const handleEnhancedSubmit = async () => {
+    const isValid = await form.trigger();
+    if (!isValid || availabilityErrors.length > 0) {
+      throw new Error("フォームの入力内容に問題があります");
+    }
+
+    return new Promise<void>((resolve, reject) => {
+      const values = form.getValues();
+      const submissionData = { ...values };
+
+      // Add teacher subjects and regular availability to submission data
+      submissionData.subjectPreferences = teacherSubjects;
+      submissionData.regularAvailability = regularAvailability;
+
+      // Add exceptional availability data if it exists
+      if (irregularAvailability.length > 0) {
+        const exceptionalAvailabilityData = irregularAvailability.flatMap(
+          (item) => {
+            if (item.fullDay) {
+              return [
+                {
+                  userId: submissionData.teacherId || undefined,
+                  date: item.date,
+                  fullDay: true,
+                  type: "EXCEPTION" as const,
+                  startTime: null as string | null,
+                  endTime: null as string | null,
+                  reason: null as string | null,
+                  notes: null as string | null,
+                },
+              ];
+            } else {
+              return item.timeSlots.map((slot) => ({
+                userId: submissionData.teacherId || undefined,
+                date: item.date,
+                fullDay: false,
+                type: "EXCEPTION" as const,
+                startTime: slot.startTime as string | null,
+                endTime: slot.endTime as string | null,
+                reason: null as string | null,
+                notes: null as string | null,
+              }));
+            }
+          }
+        );
+        submissionData.exceptionalAvailability = exceptionalAvailabilityData;
+      }
+
+      if (isEditing && teacher) {
+        if (!submissionData.password || submissionData.password === "") {
+          delete submissionData.password;
+        }
+        const parsedData = teacherUpdateSchema.parse({
+          ...submissionData,
+          teacherId: teacher.teacherId,
+        });
+        updateTeacherMutation.mutate(parsedData as TeacherUpdate, {
+          onSuccess: () => resolve(),
+          onError: (error) => reject(error),
+        });
+      } else {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { teacherId, ...createValues } = submissionData;
+        const parsedData = teacherCreateSchema.parse(createValues);
+        createTeacherMutation.mutate(parsedData as TeacherCreate, {
+          onSuccess: () => resolve(),
+          onError: (error) => reject(error),
+        });
+      }
+    });
+  };
 
   // Handle subject selection
   function handleSubjectChange(subjectId: string) {
@@ -546,6 +656,22 @@ export function TeacherFormDialog({
     setActiveTab("basic");
     localStorage.removeItem(STORAGE_KEY);
   }
+
+  // Enhanced button presets
+  const saveButtonPresets = {
+    create: {
+      defaultState: { label: "教師を作成", icon: Save },
+      loadingState: { label: "作成中...", icon: Loader2 },
+      successState: { label: "作成完了!", icon: Check },
+      errorState: { label: "作成失敗", icon: X },
+    },
+    update: {
+      defaultState: { label: "変更を保存", icon: Save },
+      loadingState: { label: "保存中...", icon: Loader2 },
+      successState: { label: "保存完了!", icon: Check },
+      errorState: { label: "保存失敗", icon: X },
+    },
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -1121,12 +1247,10 @@ export function TeacherFormDialog({
                                   <SearchableMultiSelect
                                     value={field.value || []}
                                     onValueChange={field.onChange}
-                                    items={branches.map(
-                                      (branch) => ({
-                                        value: branch.branchId,
-                                        label: branch.name,
-                                      })
-                                    )}
+                                    items={branches.map((branch) => ({
+                                      value: branch.branchId,
+                                      label: branch.name,
+                                    }))}
                                     placeholder="校舎を選択してください"
                                     searchPlaceholder="校舎名を検索..."
                                     emptyMessage="該当する校舎が見つかりません"
@@ -1188,48 +1312,78 @@ export function TeacherFormDialog({
         </div>
 
         <DialogFooter className="flex-shrink-0 pt-4 border-t">
-          <div className="flex flex-col-reverse sm:flex-row gap-3 w-full sm:w-auto">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={isSubmitting}
-              className="w-full sm:w-auto"
-            >
-              キャンセル
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={handleReset}
-              disabled={isSubmitting}
-              className="w-full sm:w-auto"
-            >
-              <RotateCcw className="h-4 w-4 mr-2" />
-              リセット
-            </Button>
-            <Button
-              type="submit"
-              onClick={form.handleSubmit(onSubmit)}
-              disabled={
-                isBranchesLoading ||
-                isSubmitting ||
-                availabilityErrors.length > 0
-              }
-              className="w-full sm:w-auto min-w-[120px]"
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  {isEditing ? "保存中..." : "作成中..."}
-                </>
+          <div className="flex flex-col gap-4 w-full">
+            {/* Keep dialog open toggle */}
+            <div className="flex items-center space-x-2 justify-center">
+              <Checkbox
+                id="keep-dialog-open"
+                checked={keepDialogOpen}
+                onCheckedChange={(checked) => setKeepDialogOpen(checked === true)}
+              />
+              <label
+                htmlFor="keep-dialog-open"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                保存後もダイアログを開いたまま保持する
+              </label>
+            </div>
+
+            <div className="flex flex-col-reverse sm:flex-row gap-3 w-full sm:w-auto sm:ml-auto">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                disabled={isSubmitting}
+                className="w-full sm:w-auto"
+              >
+                キャンセル
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={handleReset}
+                disabled={isSubmitting}
+                className="w-full sm:w-auto"
+              >
+                <RotateCcw className="h-4 w-4 mr-2" />
+                リセット
+              </Button>
+
+              {keepDialogOpen ? (
+                <EnhancedStateButton
+                  {...(isEditing
+                    ? saveButtonPresets.update
+                    : saveButtonPresets.create)}
+                  onClick={handleEnhancedSubmit}
+                  disabled={isBranchesLoading || availabilityErrors.length > 0}
+                  className="w-full sm:w-auto min-w-[120px]"
+                  autoResetDelay={1500}
+                />
               ) : (
-                <>
-                  <Save className="h-4 w-4 mr-2" />
-                  {isEditing ? "変更を保存" : "教師を作成"}
-                </>
+                <Button
+                  type="submit"
+                  onClick={form.handleSubmit(onSubmit)}
+                  disabled={
+                    isBranchesLoading ||
+                    isSubmitting ||
+                    availabilityErrors.length > 0
+                  }
+                  className="w-full sm:w-auto min-w-[120px]"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      {isEditing ? "保存中..." : "作成中..."}
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4 mr-2" />
+                      {isEditing ? "変更を保存" : "教師を作成"}
+                    </>
+                  )}
+                </Button>
               )}
-            </Button>
+            </div>
           </div>
         </DialogFooter>
       </DialogContent>
