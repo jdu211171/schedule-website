@@ -5,7 +5,6 @@ import { useTeachers, useTeacher } from '@/hooks/useTeacherQuery';
 import { useStudents, useStudent } from '@/hooks/useStudentQuery';
 import { useSubjects } from '@/hooks/useSubjectQuery';
 import { useClassTypes } from '@/hooks/useClassTypeQuery';
-// import { useUserSubjectPreferencesByUser } from '@/hooks/useUserSubjectPreferenceQuery';
 import { ExtendedClassSessionWithRelations, useMultipleDaysClassSessions, DayFilters } from '@/hooks/useClassSessionQuery';
 import { DaySelector } from './day-selector';
 import { DayCalendar } from './day-calendar';
@@ -84,7 +83,6 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
   const [selectedDays, setSelectedDays] = useState<Date[]>([today]);
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // Load saved data after component mounts to prevent hydration issues
   useEffect(() => {
     if (typeof window !== 'undefined' && !isInitialized) {
       const saved = localStorage.getItem(VIEW_START_DATE_KEY);
@@ -436,7 +434,30 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
   return (
     <div className="flex flex-col space-y-4 p-4">
       <div className="bg-background border rounded-lg p-4 space-y-4">
-        <h3 className="text-sm font-medium text-muted-foreground">授業作成の設定</h3>
+        <div className="flex items-start justify-between">
+          <h3 className="text-sm font-medium text-muted-foreground">授業作成の設定</h3>
+          
+          {/* Availability Legend */}
+          {(selectedTeacherId || selectedStudentId) && (
+            <div className="flex-shrink-0">
+              <div className="text-xs text-muted-foreground mb-1">空き時間表示:</div>
+              <div className="flex items-center gap-3 text-xs">
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 rounded-sm bg-green-400/40 border border-green-300"></div>
+                  <span className="text-green-700 dark:text-green-300">両方OK</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 rounded-sm bg-blue-400/40 border border-blue-300"></div>
+                  <span className="text-blue-700 dark:text-blue-300">教師のみ</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 rounded-sm bg-yellow-400/40 border border-yellow-300"></div>
+                  <span className="text-yellow-700 dark:text-yellow-300">生徒のみ</span>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="flex items-end gap-1">

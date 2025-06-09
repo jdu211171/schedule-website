@@ -1,5 +1,4 @@
-// LessonDialog.tsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
@@ -11,6 +10,7 @@ import { useClassSessionDelete, useClassSessionUpdate, useClassSessionSeriesUpda
 import { SearchableSelect, SearchableSelectItem } from '../searchable-select';
 import { TimeInput } from '@/components/ui/time-input';
 import { ConfirmDeleteDialog } from '../confirm-delete-dialog';
+import { useAvailability } from './availability-layer';
 
 interface Booth {
   boothId: string;
@@ -66,6 +66,28 @@ type LessonDialogProps = {
   students?: Student[];
   subjects?: Subject[];
 };
+
+const DEFAULT_TIME_SLOTS = Array.from({ length: 57 }, (_, i) => {
+  const hours = Math.floor(i / 4) + 8;
+  const startMinutes = (i % 4) * 15;
+  let endHours, endMinutes;
+
+  if (startMinutes === 45) {
+    endHours = hours + 1;
+    endMinutes = 0;
+  } else {
+    endHours = hours;
+    endMinutes = startMinutes + 15;
+  }
+
+  return {
+    index: i,
+    start: `${hours.toString().padStart(2, '0')}:${startMinutes.toString().padStart(2, '0')}`,
+    end: `${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`,
+    display: `${hours}:${startMinutes === 0 ? '00' : startMinutes} - ${endHours}:${endMinutes === 0 ? '00' : endMinutes}`,
+    shortDisplay: i % 4 === 0 ? `${hours}:00` : ''
+  };
+});
 
 function convertToEditableUI(lesson: ExtendedClassSessionWithRelations): EditableLessonUI {
   const getTimeFromValue = (timeValue: string | Date | undefined): string => {
@@ -127,7 +149,7 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [editMode, setEditMode] = useState<EditMode>('single');
   const [deleteMode, setDeleteMode] = useState<DeleteMode>('single');
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false); // State for delete confirmation dialog
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const deleteClassMutation = useClassSessionDelete();
   const deleteSeriesMutation = useClassSessionSeriesDelete();
@@ -136,10 +158,23 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
 
   const isRecurringLesson = lesson.seriesId !== null;
 
+  const getDisplayDate = (): Date => {
+    if (lesson.date instanceof Date) {
+      return lesson.date;
+    }
+    return new Date(lesson.date as string);
+  };
+
+  const { teacherAvailability, studentAvailability } = useAvailability(
+    editedLesson?.teacherId || lesson.teacherId || undefined,
+    editedLesson?.studentId || lesson.studentId || undefined,
+    getDisplayDate(),
+    DEFAULT_TIME_SLOTS
+  );
+
   useEffect(() => {
     if (lesson && open) {
       setEditedLesson(convertToEditableUI(lesson));
-      // Reset edit mode when dialog opens
       setEditMode('single');
       setDeleteMode('single');
     } else if (!open) {
@@ -147,11 +182,10 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
       setError(null);
       setEditMode('single');
       setDeleteMode('single');
-      setShowDeleteConfirm(false); // Reset delete confirmation when dialog closes
+      setShowDeleteConfirm(false);
     }
   }, [lesson, open]);
 
-  // When edit mode changes, update delete mode to match for better UX
   useEffect(() => {
     if (isRecurringLesson) {
       setDeleteMode(editMode === 'series' ? 'series' : 'single');
@@ -198,7 +232,6 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
     }
 
     if (editMode === 'series' && lesson.seriesId) {
-      // Save entire series
       const seriesToSave: {
         seriesId: string;
         teacherId?: string | null;
@@ -251,7 +284,6 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
         }
       });
     } else {
-      // Save single lesson
       const lessonToSave: {
         classId: string;
         teacherId?: string | null;
@@ -306,17 +338,14 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
     }
   };
 
-  // Updated delete handler - now opens confirmation dialog
   const handleDeleteClick = () => {
     setShowDeleteConfirm(true);
   };
 
-  // Actual delete function - called after confirmation
   const handleDelete = () => {
     if (!lesson.classId) return;
 
     if (deleteMode === 'series' && lesson.seriesId) {
-      // Delete entire series
       deleteSeriesMutation.mutate(lesson.seriesId, {
         onSuccess: () => {
           onDelete(lesson.classId);
@@ -327,7 +356,6 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
         }
       });
     } else {
-      // Delete single lesson
       deleteClassMutation.mutate(lesson.classId, {
         onSuccess: () => {
           onDelete(lesson.classId);
@@ -338,13 +366,6 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
         }
       });
     }
-  };
-
-  const getDisplayDate = (): Date => {
-    if (lesson.date instanceof Date) {
-      return lesson.date;
-    }
-    return new Date(lesson.date as string);
   };
 
   const canSave = () => {
@@ -394,7 +415,6 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
-            {/* Edit Mode Selection - only show for recurring lessons in edit mode */}
             {mode === 'edit' && isRecurringLesson && (
               <div className="p-3 border rounded-lg bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
                 <RadioGroup
@@ -418,7 +438,6 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
               </div>
             )}
 
-            {/* Delete Mode Selection - only show for recurring lessons when delete confirmation is open */}
             {showDeleteConfirm && isRecurringLesson && (
               <div className="p-3 border rounded-lg bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800">
                 <div className="mb-2">
@@ -445,7 +464,6 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
               </div>
             )}
 
-            {/* Date (non-editable) and Booth (editable) */}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium text-foreground">日付</label>
@@ -474,7 +492,6 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
               </div>
             </div>
 
-            {/* Start time (editable) and End time (editable) */}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium text-foreground">開始時間 {mode === 'edit' && <span className="text-destructive">*</span>}</label>
@@ -484,6 +501,9 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
                       value={editedLesson.formattedStartTime || ''}
                       onChange={(value) => handleInputChange('formattedStartTime', value)}
                       placeholder="開始時間を選択"
+                      teacherAvailability={teacherAvailability}
+                      studentAvailability={studentAvailability}
+                      timeSlots={DEFAULT_TIME_SLOTS}
                     />
                   </div>
                 ) : (
@@ -500,6 +520,9 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
                       value={editedLesson.formattedEndTime || ''}
                       onChange={(value) => handleInputChange('formattedEndTime', value)}
                       placeholder="終了時間を選択"
+                      teacherAvailability={teacherAvailability}
+                      studentAvailability={studentAvailability}
+                      timeSlots={DEFAULT_TIME_SLOTS}
                     />
                   </div>
                 ) : (
@@ -510,7 +533,6 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
               </div>
             </div>
 
-            {/* Subject (editable) and Class Type (non-editable) */}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium mb-1 block text-foreground">科目</label>
@@ -537,7 +559,6 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
               </div>
             </div>
 
-            {/* Teacher (editable) and Student (editable) */}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium mb-1 block text-foreground">講師</label>
@@ -575,7 +596,6 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
               </div>
             </div>
 
-            {/* Notes - editable in edit mode, shown only if exists in view mode */}
             {mode === 'edit' && (
               <div>
                 <label className="text-sm font-medium text-foreground">メモ</label>
@@ -610,7 +630,7 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
                 <Button
                   variant="destructive"
                   className="transition-all duration-200 hover:brightness-110 active:scale-[0.98] focus:ring-2 focus:ring-destructive/30 focus:outline-none"
-                  onClick={handleDeleteClick} // Changed to show confirmation dialog
+                  onClick={handleDeleteClick}
                   disabled={deleteClassMutation.isPending || deleteSeriesMutation.isPending}
                 >
                   削除{isRecurringLesson ? '...' : ''}
@@ -662,7 +682,6 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
       <ConfirmDeleteDialog
         open={showDeleteConfirm}
         onOpenChange={setShowDeleteConfirm}
