@@ -83,6 +83,19 @@ export function useAllBranchesOrdered() {
   });
 }
 
+// Secure hook for getting the authenticated user's accessible branches
+export function useUserBranches() {
+  return useQuery<Branch[]>({
+    queryKey: ["user-branches"],
+    queryFn: async () => {
+      const response = await fetcher<{ data: Branch[]; total: number }>(
+        `/api/users/me/branches`
+      );
+      return response.data;
+    },
+  });
+}
+
 export function useBranch(branchId: string) {
   return useQuery<Branch>({
     queryKey: ["branch", branchId],

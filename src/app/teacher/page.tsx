@@ -5,7 +5,7 @@ import { StudentScheduleMonthViewer } from "@/components/student-schedule/studen
 import { StudentScheduleWeekViewer } from "@/components/student-schedule/student-schedule-week-viewer";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useClassSessionsDateRange } from "@/hooks/useClassSessionQuery";
+import { useTeacherClassSessionsDateRange } from "@/hooks/useClassSessionQuery";
 import {
   endOfMonth,
   endOfWeek,
@@ -13,7 +13,6 @@ import {
   startOfMonth,
   startOfWeek,
 } from "date-fns";
-import { useSession } from "next-auth/react";
 import { useMemo, useState } from "react";
 
 const daysOfWeek = ["月", "火", "水", "木", "金", "土", "日"];
@@ -40,7 +39,6 @@ const getColor = (subjecType: "通常授業" | "特別授業") => {
 export default function TeacherPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewType, setViewType] = useState<"WEEK" | "MONTH">("WEEK");
-  const { data: session } = useSession();
 
   // Calculate date ranges based on view type
   const { startDate, endDate } = useMemo(() => {
@@ -64,10 +62,9 @@ export default function TeacherPage() {
     }
   }, [currentDate, viewType]);
 
-  const { data, error, isPending } = useClassSessionsDateRange({
+  const { data, error, isPending } = useTeacherClassSessionsDateRange({
     startDate,
     endDate,
-    teacherId: session?.user?.userId || "",
   });
 
   if (isPending) {

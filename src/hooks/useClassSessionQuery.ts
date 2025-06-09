@@ -1,5 +1,5 @@
 import { fetcher } from "@/lib/fetcher";
-import { ClassSessionFilter, classSessionFilterSchema } from "@/schemas/class-session.schema";
+import { classSessionFilterSchema } from "@/schemas/class-session.schema";
 import { Prisma } from "@prisma/client";
 import { useQuery, useQueries, UseQueryResult } from "@tanstack/react-query";
 import { useMemo } from "react";
@@ -262,4 +262,120 @@ export function useMultipleWeeksClassSessions(selectedWeeks: Date[], filters: Da
     allSessions,
     isLoading
   };
+}
+
+// NEW SECURE HOOKS - Use server-side authentication instead of client-provided user IDs
+
+export function useTeacherClassSessionsDateRange(params: {
+  startDate: string;
+  endDate: string;
+  subjectId?: string;
+  studentId?: string;
+  page?: number;
+  limit?: number;
+}) {
+  const { startDate, endDate, subjectId, studentId, page = 1, limit = 50 } = params;
+
+  return useQuery<ClassSessionsResponse>({
+    queryKey: ["teacherClassSessions", "dateRange", startDate, endDate, subjectId, studentId, page, limit],
+    queryFn: async () => {
+      const queryParams = new URLSearchParams({
+        startDate,
+        endDate,
+        page: page.toString(),
+        limit: limit.toString(),
+      });
+
+      if (subjectId) queryParams.append("subjectId", subjectId);
+      if (studentId) queryParams.append("studentId", studentId);
+
+      return await fetcher<ClassSessionsResponse>(`/api/teachers/me/class-sessions?${queryParams.toString()}`);
+    },
+    enabled: !!startDate && !!endDate,
+  });
+}
+
+export function useStudentClassSessionsDateRange(params: {
+  startDate: string;
+  endDate: string;
+  subjectId?: string;
+  teacherId?: string;
+  page?: number;
+  limit?: number;
+}) {
+  const { startDate, endDate, subjectId, teacherId, page = 1, limit = 50 } = params;
+
+  return useQuery<ClassSessionsResponse>({
+    queryKey: ["studentClassSessions", "dateRange", startDate, endDate, subjectId, teacherId, page, limit],
+    queryFn: async () => {
+      const queryParams = new URLSearchParams({
+        startDate,
+        endDate,
+        page: page.toString(),
+        limit: limit.toString(),
+      });
+
+      if (subjectId) queryParams.append("subjectId", subjectId);
+      if (teacherId) queryParams.append("teacherId", teacherId);
+
+      return await fetcher<ClassSessionsResponse>(`/api/students/me/class-sessions?${queryParams.toString()}`);
+    },
+    enabled: !!startDate && !!endDate,
+  });
+}
+
+export function useTeacherClassSessionsByDate(date: string, params: {
+  subjectId?: string;
+  studentId?: string;
+  limit?: number;
+} = {}) {
+  const { subjectId, studentId, limit } = params;
+
+  return useQuery<ClassSessionsResponse>({
+    queryKey: ["teacherClassSessions", "byDate", date, subjectId, studentId],
+    queryFn: async () => {
+      const queryParams = new URLSearchParams({
+        startDate: date,
+        endDate: date,
+        page: "1",
+      });
+
+      if (limit !== undefined) {
+        queryParams.append("limit", limit.toString());
+      }
+      if (subjectId) queryParams.append("subjectId", subjectId);
+      if (studentId) queryParams.append("studentId", studentId);
+
+      return await fetcher<ClassSessionsResponse>(`/api/teachers/me/class-sessions?${queryParams.toString()}`);
+    },
+    enabled: !!date,
+  });
+}
+
+export function useStudentClassSessionsByDate(date: string, params: {
+  subjectId?: string;
+  teacherId?: string;
+  limit?: number;
+} = {}) {
+  const { subjectId, teacherId, limit } = params;
+
+  return useQuery<ClassSessionsResponse>({
+    queryKey: ["studentClassSessions", "byDate", date, subjectId, teacherId],
+    queryFn: async () => {
+      const queryParams = new URLSearchParams({
+        startDate: date,
+        endDate: date,
+        page: "1",
+      });
+
+      if (limit !== undefined) {
+        queryParams.append("limit", limit.toString());
+      }
+      if (subjectId) queryParams.append("subjectId", subjectId);
+      if (teacherId) queryParams.append("teacherId", teacherId);
+
+      return await fetcher<ClassSessionsResponse>(`/api/students/me/class-sessions?${queryParams.toString()}`);
+    },
+    enabled: !!date,
+  });
 }
