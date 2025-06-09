@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, X, Clock, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -61,10 +61,47 @@ export function EnhancedAvailabilityRegularSelector({
   const [startTime, setStartTime] = useState<string>("09:00");
   const [endTime, setEndTime] = useState<string>("17:00");
 
+  // Load persistent time values from local storage on mount
+  useEffect(() => {
+    const savedStartTime = localStorage.getItem("availabilityStartTime");
+    const savedEndTime = localStorage.getItem("availabilityEndTime");
+
+    if (savedStartTime) {
+      setStartTime(savedStartTime);
+    }
+    if (savedEndTime) {
+      setEndTime(savedEndTime);
+    }
+  }, []);
+
+  // Save time values to local storage when they change
+  useEffect(() => {
+    localStorage.setItem("availabilityStartTime", startTime);
+  }, [startTime]);
+
+  useEffect(() => {
+    localStorage.setItem("availabilityEndTime", endTime);
+  }, [endTime]);
+
   function getDayAvailability(
     dayOfWeek: (typeof DAYS_OF_WEEK)[number]["value"]
   ): RegularAvailability | undefined {
     return availability.find((item) => item.dayOfWeek === dayOfWeek);
+  }
+
+  function checkForOverlap(
+    dayOfWeek: (typeof DAYS_OF_WEEK)[number]["value"] | "",
+    start: string,
+    end: string
+  ): boolean {
+    if (!dayOfWeek || start >= end) return false;
+
+    const dayAvailability = getDayAvailability(dayOfWeek);
+    if (!dayAvailability || dayAvailability.fullDay) return false;
+
+    return dayAvailability.timeSlots.some((slot) => {
+      return start < slot.endTime && end > slot.startTime;
+    });
   }
 
   function addTimeSlot() {
@@ -112,8 +149,7 @@ export function EnhancedAvailabilityRegularSelector({
     }
 
     onChange(updatedAvailability);
-    setStartTime("09:00");
-    setEndTime("17:00");
+    // Remove the static time reset - keep user's preferred times persistent
   }
 
   function removeTimeSlot(
@@ -230,7 +266,11 @@ export function EnhancedAvailabilityRegularSelector({
                 <Button
                   type="button"
                   onClick={addTimeSlot}
-                  disabled={!selectedDay || startTime >= endTime}
+                  disabled={
+                    !selectedDay ||
+                    startTime >= endTime ||
+                    checkForOverlap(selectedDay, startTime, endTime)
+                  }
                   className="w-full"
                 >
                   <Plus className="h-4 w-4 mr-2" />

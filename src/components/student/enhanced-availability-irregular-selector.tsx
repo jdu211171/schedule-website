@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, X, Clock, RotateCcw, Calendar, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -80,6 +80,28 @@ export function EnhancedAvailabilityIrregularSelector({
   >(new Map());
   const [currentWeekday, setCurrentWeekday] = useState<string>("");
 
+  // Load persistent time values from local storage on mount
+  useEffect(() => {
+    const savedStartTime = localStorage.getItem("irregularAvailabilityStartTime");
+    const savedEndTime = localStorage.getItem("irregularAvailabilityEndTime");
+
+    if (savedStartTime) {
+      setStartTime(savedStartTime);
+    }
+    if (savedEndTime) {
+      setEndTime(savedEndTime);
+    }
+  }, []);
+
+  // Save time values to local storage when they change
+  useEffect(() => {
+    localStorage.setItem("irregularAvailabilityStartTime", startTime);
+  }, [startTime]);
+
+  useEffect(() => {
+    localStorage.setItem("irregularAvailabilityEndTime", endTime);
+  }, [endTime]);
+
   // Helper function to get all dates in a range
   function getDatesInRange(dateRange: DateRange): Date[] {
     if (!dateRange.from) return [];
@@ -118,6 +140,42 @@ export function EnhancedAvailabilityIrregularSelector({
     return availability.find(
       (item) => item.date.toDateString() === date.toDateString()
     );
+  }
+
+  // Check for overlaps in the current selection
+  function checkForOverlap(start: string, end: string): boolean {
+    if (start >= end) return false;
+
+    const datesToCheck: Date[] = [];
+
+    if (useDateRange && selectedDateRange?.from) {
+      datesToCheck.push(...getDatesInRange(selectedDateRange));
+    } else if (!useDateRange && selectedDate) {
+      datesToCheck.push(selectedDate);
+    }
+
+    if (datesToCheck.length === 0) return false;
+
+    return datesToCheck.some((date) => {
+      const dayAvailability = getDateAvailability(date);
+      if (!dayAvailability || dayAvailability.fullDay) return false;
+
+      return dayAvailability.timeSlots.some((slot) => {
+        return start < slot.endTime && end > slot.startTime;
+      });
+    });
+  }
+
+  // Check for overlaps in weekday patterns
+  function checkForWeekdayOverlap(weekday: string, start: string, end: string): boolean {
+    if (!weekday || start >= end) return false;
+
+    const currentPattern = weekdayPatterns.get(weekday);
+    if (!currentPattern || currentPattern.fullDay) return false;
+
+    return currentPattern.timeSlots.some((slot) => {
+      return start < slot.endTime && end > slot.startTime;
+    });
   }
 
   // Get weekday pattern
@@ -193,9 +251,7 @@ export function EnhancedAvailabilityIrregularSelector({
 
     onChange(updatedAvailability);
 
-    // Reset only time inputs, keep date selection for multiple slot creation
-    setStartTime("09:00");
-    setEndTime("17:00");
+    // Remove the static time reset - keep user's preferred times persistent
     // Keep date picker values so users can add multiple time slots to the same day
   }
 
@@ -234,9 +290,7 @@ export function EnhancedAvailabilityIrregularSelector({
     newPatterns.set(currentWeekday, updatedPattern);
     setWeekdayPatterns(newPatterns);
 
-    // Reset time inputs
-    setStartTime("09:00");
-    setEndTime("17:00");
+    // Remove the static time reset - keep user's preferred times persistent
   }
 
   // Remove time slot from weekday pattern
@@ -554,7 +608,8 @@ export function EnhancedAvailabilityIrregularSelector({
                     disabled={
                       (!useDateRange && !selectedDate) ||
                       (useDateRange && !selectedDateRange?.from) ||
-                      startTime >= endTime
+                      startTime >= endTime ||
+                      checkForOverlap(startTime, endTime)
                     }
                     className="w-full"
                   >
@@ -677,7 +732,11 @@ export function EnhancedAvailabilityIrregularSelector({
                     <Button
                       type="button"
                       onClick={addWeekdayTimeSlot}
-                      disabled={!currentWeekday || startTime >= endTime}
+                      disabled={
+                        !currentWeekday ||
+                        startTime >= endTime ||
+                        checkForWeekdayOverlap(currentWeekday, startTime, endTime)
+                      }
                       className="w-full"
                     >
                       <Plus className="h-4 w-4 mr-2" />
