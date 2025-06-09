@@ -39,7 +39,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { useAllBranchesOrdered } from "@/hooks/useBranchQuery";
+import { useUserBranches } from "@/hooks/useBranchQuery";
 
 interface NavItemType {
   title: string;
@@ -107,8 +107,8 @@ function BranchSelector() {
   );
   const [isLoading, setIsLoading] = React.useState(false);
 
-  // Use ordered branches from API
-  const { data: branches = [], isLoading: isBranchesLoading } = useAllBranchesOrdered();
+  // Use user's accessible branches from secure API
+  const { data: branches = [], isLoading: isBranchesLoading } = useUserBranches();
 
   const handleBranchChange = React.useCallback(
     async (value: string) => {
