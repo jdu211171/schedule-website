@@ -8,6 +8,7 @@ export type ClassType = {
   name: string;
   notes: string | null;
   parentId: string | null;
+  order: number | null;
   parent?: ClassType | null;
   children?: ClassType[];
   createdAt: Date;

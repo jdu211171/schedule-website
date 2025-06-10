@@ -36,17 +36,6 @@ import {
   useClassTypeUpdate,
 } from "@/hooks/useClassTypeMutation";
 import { ClassType, useAllClassTypes } from "@/hooks/useClassTypeQuery";
-import { useSession } from "next-auth/react";
-
-// Root class types that should always exist
-const ROOT_CLASS_TYPES = [
-  { value: "補習授業", label: "補習授業" },
-  { value: "通常授業", label: "通常授業" },
-  { value: "特別授業", label: "特別授業" },
-] as const;
-
-const isRootClassType = (name: string) =>
-  ROOT_CLASS_TYPES.some(root => root.value === name);
 
 // Form schema for class type creation/editing
 const classTypeFormSchema = z.object({
@@ -69,7 +58,6 @@ export function ClassTypeFormDialog({
   const createClassTypeMutation = useClassTypeCreate();
   const updateClassTypeMutation = useClassTypeUpdate();
   const isEditing = !!classType;
-  const { data: session } = useSession();
 
   // Fetch all class types for parent selection
   const { data: allClassTypes } = useAllClassTypes();
@@ -122,9 +110,16 @@ export function ClassTypeFormDialog({
     }
   }
 
-  // Get available parent options (exclude current item when editing)
+  // Get available parent options - only show root class types (those without parents)
+  // and exclude current item when editing
   const parentOptions = (allClassTypes || []).filter(
-    (type) => !isEditing || type.classTypeId !== classType?.classTypeId
+    (type) => {
+      // Only include root class types (those without a parent)
+      const isRoot = !type.parentId;
+      // Exclude current item when editing
+      const isNotCurrentItem = !isEditing || type.classTypeId !== classType?.classTypeId;
+      return isRoot && isNotCurrentItem;
+    }
   );
 
   return (

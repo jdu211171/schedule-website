@@ -1,10 +1,20 @@
 // src/schemas/class-type.schema.ts
 import { z } from "zod";
 
+// Valid sort fields for class types
+export const CLASS_TYPE_SORT_FIELDS = [
+  "order",
+  "name",
+  "createdAt",
+  "updatedAt",
+] as const;
+export type ClassTypeSortField = (typeof CLASS_TYPE_SORT_FIELDS)[number];
+
 export const classTypeCreateSchema = z.object({
   name: z.string().min(1, "名前は必須です").max(100),
   notes: z.string().max(255).optional().nullable(),
   parentId: z.string().optional().nullable(),
+  order: z.number().int().min(1).optional().nullable(),
 });
 
 export const classTypeUpdateSchema = z.object({
@@ -12,6 +22,7 @@ export const classTypeUpdateSchema = z.object({
   name: z.string().min(1, "名前は必須です").max(100).optional(),
   notes: z.string().max(255).optional().nullable(),
   parentId: z.string().optional().nullable(),
+  order: z.number().int().min(1).optional().nullable(),
 });
 
 export const classTypeFilterSchema = z.object({
@@ -21,8 +32,16 @@ export const classTypeFilterSchema = z.object({
   parentId: z.string().optional().nullable(), // Filter by parent ID
   includeChildren: z.coerce.boolean().default(false), // Include children in response
   includeParent: z.coerce.boolean().default(false), // Include parent in response
+  sortBy: z.enum(CLASS_TYPE_SORT_FIELDS).default("order"),
+  sortOrder: z.enum(["asc", "desc"]).default("asc"),
+});
+
+// For updating class type order
+export const classTypeOrderUpdateSchema = z.object({
+  classTypeIds: z.array(z.string()).min(1),
 });
 
 export type ClassTypeCreate = z.infer<typeof classTypeCreateSchema>;
 export type ClassTypeUpdate = z.infer<typeof classTypeUpdateSchema>;
 export type ClassTypeFilter = z.infer<typeof classTypeFilterSchema>;
+export type ClassTypeOrderUpdate = z.infer<typeof classTypeOrderUpdateSchema>;

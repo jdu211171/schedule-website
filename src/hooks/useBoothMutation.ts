@@ -466,7 +466,7 @@ export function useBoothOrderUpdate() {
       // Optimistically update the order
       queries.forEach(([queryKey]) => {
         const currentData = queryClient.getQueryData<BoothsQueryData>(queryKey);
-        if (currentData) {
+        if (currentData?.data) {
           const updatedData = {
             ...currentData,
             data: currentData.data.map((booth) => {

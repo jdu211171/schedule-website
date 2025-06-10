@@ -77,6 +77,7 @@ export function useClassTypeCreate() {
             name: newClassType.name,
             notes: newClassType.notes || null,
             parentId: newClassType.parentId || null,
+            order: newClassType.order || null,
             createdAt: new Date(),
             updatedAt: new Date(),
             _optimistic: true,
@@ -99,6 +100,7 @@ export function useClassTypeCreate() {
           name: newClassType.name,
           notes: newClassType.notes || null,
           parentId: newClassType.parentId || null,
+          order: newClassType.order || null,
           createdAt: new Date(),
           updatedAt: new Date(),
           _optimistic: true,
@@ -475,6 +477,56 @@ export function useClassTypeOrderUpdate() {
       });
 
       const previousAllClassTypes = queryClient.getQueryData<ClassType[]>(["classTypes", "all"]);
+
+      // Optimistically update the order
+      queries.forEach(([queryKey]) => {
+        const currentData = queryClient.getQueryData<ClassTypesResponse>(queryKey);
+        if (currentData?.data) {
+          const updatedData = {
+            ...currentData,
+            data: currentData.data.map((classType) => {
+              const newOrder = classTypeIds.indexOf(classType.classTypeId);
+              return newOrder !== -1
+                ? { ...classType, order: newOrder + 1 }
+                : classType;
+            }),
+          };
+
+          // Re-sort the data based on the query parameters
+          const queryKeyArray = queryKey as any[];
+          const sortBy = queryKeyArray[5] || "order";
+          const sortOrder = queryKeyArray[6] || "asc";
+
+          if (sortBy === "order") {
+            updatedData.data.sort((a, b) => {
+              const aOrder = a.order ?? Number.MAX_SAFE_INTEGER;
+              const bOrder = b.order ?? Number.MAX_SAFE_INTEGER;
+              return sortOrder === "asc" ? aOrder - bOrder : bOrder - aOrder;
+            });
+          }
+
+          queryClient.setQueryData<ClassTypesResponse>(queryKey, updatedData);
+        }
+      });
+
+      // Update the "all" query if it exists
+      if (previousAllClassTypes && Array.isArray(previousAllClassTypes)) {
+        const updatedAllClassTypes = previousAllClassTypes.map((classType) => {
+          const newOrder = classTypeIds.indexOf(classType.classTypeId);
+          return newOrder !== -1
+            ? { ...classType, order: newOrder + 1 }
+            : classType;
+        });
+
+        // Sort by order
+        updatedAllClassTypes.sort((a, b) => {
+          const aOrder = a.order ?? Number.MAX_SAFE_INTEGER;
+          const bOrder = b.order ?? Number.MAX_SAFE_INTEGER;
+          return aOrder - bOrder;
+        });
+
+        queryClient.setQueryData<ClassType[]>(["classTypes", "all"], updatedAllClassTypes);
+      }
 
       return { previousClassTypes, previousAllClassTypes };
     },

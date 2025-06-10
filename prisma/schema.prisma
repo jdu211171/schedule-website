@@ -103,6 +103,7 @@ model ClassType {
   name          String         @db.VarChar(100)
   notes         String?        @db.VarChar(255)
   parentId      String?        @map("parent_id")
+  order         Int?           @map("order")
   parent        ClassType?     @relation("ClassTypeHierarchy", fields: [parentId], references: [classTypeId], onDelete: SetNull, onUpdate: Cascade)
   children      ClassType[]    @relation("ClassTypeHierarchy")
   classSessions ClassSession[]
@@ -110,6 +111,7 @@ model ClassType {
   updatedAt     DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
   @@index([parentId])
+  @@index([order])
   @@map("class_types")
 }
 
