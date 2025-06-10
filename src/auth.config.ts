@@ -238,9 +238,6 @@ export default {
 
         if (pathname.startsWith("/student") && role !== "STUDENT")
           return NextResponse.redirect(`${origin}${homeFor(role)}`);
-
-        if (pathname.startsWith("/dashboard") && role !== "STAFF")
-          return NextResponse.redirect(`${origin}${homeFor(role)}`);
       }
 
       /* 4.  Everything else → allow */
