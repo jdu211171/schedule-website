@@ -2,13 +2,15 @@
 "use client";
 
 import { useState } from "react";
+import * as React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Pencil, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { DataTable } from "@/components/data-table";
+import { SortableDataTable } from "@/components/ui/sortable-data-table";
 import {
   useClassTypeDelete,
+  useClassTypeOrderUpdate,
   getResolvedClassTypeId,
 } from "@/hooks/useClassTypeMutation";
 import {
@@ -33,10 +35,23 @@ interface ColumnMetaType {
   hidden?: boolean;
 }
 
+// Helper function to calculate the level of nesting for a class type
+function getClassTypeLevel(classType: ClassType, allClassTypes: ClassType[]): number {
+  if (!classType.parentId) return 0;
+
+  const parent = allClassTypes.find(type => type.classTypeId === classType.parentId);
+  if (!parent) return 0;
+
+  return 1 + getClassTypeLevel(parent, allClassTypes);
+}
+
 export function ClassTypeTable() {
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
+  const [isSortMode, setIsSortMode] = useState(false);
+  const [localClassTypes, setLocalClassTypes] = useState<ClassType[]>([]);
   const pageSize = 10;
+
   const { data: classTypes, isLoading } = useClassTypes({
     page,
     limit: pageSize,
@@ -46,11 +61,22 @@ export function ClassTypeTable() {
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "ADMIN";
 
-  // Ensure the data type returned by useClassTypes matches the expected type
-  const typedClassTypes = classTypes?.data || [];
+  const deleteClassTypeMutation = useClassTypeDelete();
+  const updateOrderMutation = useClassTypeOrderUpdate();
+
+  // Use local state during sort mode, otherwise use server data
+  const typedClassTypes = isSortMode
+    ? localClassTypes
+    : classTypes?.data || [];
+
+  // Update local state when server data changes
+  React.useEffect(() => {
+    if (classTypes?.data && !isSortMode) {
+      setLocalClassTypes(classTypes.data);
+    }
+  }, [classTypes?.data, isSortMode]);
 
   const totalCount = classTypes?.pagination.total || 0;
-  const deleteClassTypeMutation = useClassTypeDelete();
 
   const [classTypeToEdit, setClassTypeToEdit] = useState<ClassType | null>(
     null
@@ -60,62 +86,72 @@ export function ClassTypeTable() {
   );
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
-  const columns: ColumnDef<ClassType, unknown>[] = [
+  const columns: ColumnDef<ClassType>[] = [
     {
       accessorKey: "name",
-      header: "クラスタイプ名",
+      header: "名前",
+      cell: ({ row }) => {
+        const level = getClassTypeLevel(row.original, typedClassTypes);
+        const indent = "　".repeat(level); // Japanese space for indentation
+        return (
+          <span className="font-medium">
+            {indent}{row.original.name}
+          </span>
+        );
+      },
+    },
+    {
+      accessorKey: "parentId",
+      header: "親クラスタイプ",
+      cell: ({ row }) => {
+        if (!row.original.parentId) return (
+          <span className="text-muted-foreground">ルート</span>
+        );
+        const parent = typedClassTypes.find(
+          (type) => type.classTypeId === row.original.parentId
+        );
+        return (
+          <span className="text-muted-foreground">
+            {parent?.name || "-"}
+          </span>
+        );
+      },
     },
     {
       accessorKey: "notes",
       header: "メモ",
-      cell: ({ row }) => row.original.notes || "-",
-    },
-    {
-      id: "actions",
-      header: "操作",
-      cell: ({ row }) => {
-        // Type-safe check for _optimistic property
-        const isOptimistic = (
-          row.original as ClassType & { _optimistic?: boolean }
-        )._optimistic;
-
-        return (
-          <div className="flex justify-end gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setClassTypeToEdit(row.original)}
-            >
-              <Pencil
-                className={`h-4 w-4 ${isOptimistic ? "opacity-70" : ""}`}
-              />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setClassTypeToDelete(row.original)}
-            >
-              <Trash2
-                className={`h-4 w-4 text-destructive ${
-                  isOptimistic ? "opacity-70" : ""
-                }`}
-              />
-            </Button>
-          </div>
-        );
-      },
-      meta: {
-        align: "right",
-        headerClassName: "pr-8", // Add padding-right to ONLY the header
-      } as ColumnMetaType,
+      cell: ({ row }) => (
+        <span className="text-muted-foreground">
+          {row.original.notes || "-"}
+        </span>
+      ),
     },
   ];
 
-  // Filter out the branch column if user is not admin
-  const visibleColumns = columns.filter((col) => {
-    const meta = col.meta as ColumnMetaType | undefined;
-    return !meta?.hidden;
-  });
+  const handleReorder = (items: ClassType[]) => {
+    // Update local state immediately for visual feedback
+    setLocalClassTypes(items);
+
+    // Log the new order for debugging
+    console.log(
+      "New order:",
+      items.map((item) => ({ id: item.classTypeId, name: item.name }))
+    );
+
+    // Resolve class type IDs (handle temp vs server IDs) and send update request
+    const classTypeIds = items.map((item) =>
+      getResolvedClassTypeId(item.classTypeId)
+    );
+    updateOrderMutation.mutate({ classTypeIds });
+  };
+
+  const handleSortModeChange = (enabled: boolean) => {
+    if (enabled && classTypes?.data) {
+      // When entering sort mode, sync local state with server data
+      setLocalClassTypes(classTypes.data);
+    }
+    setIsSortMode(enabled);
+  };
 
   const handleDeleteClassType = () => {
     if (classTypeToDelete) {
@@ -127,28 +163,59 @@ export function ClassTypeTable() {
     }
   };
 
-  const handlePageChange = (newPage: number) => {
-    setPage(newPage + 1);
+  const renderActions = (classType: ClassType) => {
+    // Type-safe check for _optimistic property
+    const isOptimistic = (
+      classType as ClassType & { _optimistic?: boolean }
+    )._optimistic;
+
+    return (
+      <div className="flex justify-end gap-2">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setClassTypeToEdit(classType)}
+        >
+          <Pencil className={`h-4 w-4 ${isOptimistic ? "opacity-70" : ""}`} />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setClassTypeToDelete(classType)}
+        >
+          <Trash2
+            className={`h-4 w-4 text-destructive ${
+              isOptimistic ? "opacity-70" : ""
+            }`}
+          />
+        </Button>
+      </div>
+    );
   };
 
   const totalPages = Math.ceil(totalCount / pageSize);
 
   return (
     <>
-      <DataTable
-        columns={visibleColumns}
+      <SortableDataTable
         data={typedClassTypes}
-        isLoading={isLoading && !typedClassTypes.length} // Only show loading state on initial load
-        searchPlaceholder="クラスタイプを検索..."
-        onSearch={setSearchTerm}
+        columns={columns}
+        isSortMode={isSortMode}
+        onSortModeChange={handleSortModeChange}
+        onReorder={handleReorder}
+        getItemId={(classType) => classType.classTypeId}
         searchValue={searchTerm}
+        onSearchChange={setSearchTerm}
+        searchPlaceholder="クラスタイプを検索..."
+        createLabel="新規作成"
         onCreateNew={() => setIsCreateDialogOpen(true)}
-        createNewLabel="新規作成"
+        isLoading={isLoading}
         pageIndex={page - 1}
         pageCount={totalPages || 1}
-        onPageChange={handlePageChange}
         pageSize={pageSize}
         totalItems={totalCount}
+        onPageChange={(newPage) => setPage(newPage + 1)}
+        renderActions={renderActions}
       />
 
       {/* Edit ClassType Dialog */}

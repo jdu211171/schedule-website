@@ -25,15 +25,22 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   useClassTypeCreate,
   useClassTypeUpdate,
 } from "@/hooks/useClassTypeMutation";
-import { ClassType } from "@/hooks/useClassTypeQuery";
-import { useSession } from "next-auth/react";
+import { ClassType, useAllClassTypes } from "@/hooks/useClassTypeQuery";
 
 // Form schema for class type creation/editing
 const classTypeFormSchema = z.object({
   name: z.string().min(1, "名前は必須です").max(100),
+  parentId: z.string().nullable().optional(),
   notes: z.string().max(255).optional().nullable(),
 });
 
@@ -44,19 +51,22 @@ interface ClassTypeFormDialogProps {
 }
 
 export function ClassTypeFormDialog({
-  open,
-  onOpenChange,
-  classType,
-}: ClassTypeFormDialogProps) {
+                                      open,
+                                      onOpenChange,
+                                      classType,
+                                    }: ClassTypeFormDialogProps) {
   const createClassTypeMutation = useClassTypeCreate();
   const updateClassTypeMutation = useClassTypeUpdate();
   const isEditing = !!classType;
-  const { data: session } = useSession();
+
+  // Fetch all class types for parent selection
+  const { data: allClassTypes } = useAllClassTypes();
 
   const form = useForm<z.infer<typeof classTypeFormSchema>>({
     resolver: zodResolver(classTypeFormSchema),
     defaultValues: {
       name: classType?.name || "",
+      parentId: classType?.parentId || null,
       notes: classType?.notes ?? "",
     },
   });
@@ -65,11 +75,13 @@ export function ClassTypeFormDialog({
     if (classType) {
       form.reset({
         name: classType.name || "",
+        parentId: classType.parentId || null,
         notes: classType.notes ?? "",
       });
     } else {
       form.reset({
         name: "",
+        parentId: null,
         notes: "",
       });
     }
@@ -79,7 +91,8 @@ export function ClassTypeFormDialog({
     // Ensure the notes field is explicitly included, even if empty
     const updatedValues = {
       ...values,
-      notes: values.notes ?? "", // Ensure notes is at least an empty string, not undefined
+      notes: values.notes ?? "",
+      parentId: values.parentId || null,
     };
 
     // Close the dialog immediately for better UX
@@ -96,6 +109,18 @@ export function ClassTypeFormDialog({
       createClassTypeMutation.mutate(updatedValues);
     }
   }
+
+  // Get available parent options - only show root class types (those without parents)
+  // and exclude current item when editing
+  const parentOptions = (allClassTypes || []).filter(
+    (type) => {
+      // Only include root class types (those without a parent)
+      const isRoot = !type.parentId;
+      // Exclude current item when editing
+      const isNotCurrentItem = !isEditing || type.classTypeId !== classType?.classTypeId;
+      return isRoot && isNotCurrentItem;
+    }
+  );
 
   return (
     <Dialog
@@ -130,6 +155,35 @@ export function ClassTypeFormDialog({
                       {...field}
                     />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="parentId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>親クラスタイプ</FormLabel>
+                  <Select
+                    onValueChange={(value) => field.onChange(value === "none" ? null : value)}
+                    value={field.value || "none"}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="親クラスタイプを選択（任意）" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="none">なし（ルートレベル）</SelectItem>
+                      {parentOptions.map((type) => (
+                        <SelectItem key={type.classTypeId} value={type.classTypeId}>
+                          {type.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}

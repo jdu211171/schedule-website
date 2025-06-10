@@ -15,6 +15,7 @@ type FormattedClassType = {
   name: string;
   notes: string | null;
   parentId: string | null;
+  order: number | null;
   parent?: FormattedClassType | null;
   children?: FormattedClassType[];
   createdAt: Date;
@@ -29,6 +30,7 @@ const formatClassType = (
   name: classType.name,
   notes: classType.notes,
   parentId: classType.parentId,
+  order: classType.order,
   parent: classType.parent ? formatClassType(classType.parent) : undefined,
   children: classType.children?.map(formatClassType),
   createdAt: classType.createdAt,
@@ -154,7 +156,7 @@ export const PATCH = withRole(
         );
       }
 
-      const { name, notes, parentId } = result.data;
+      const { name, notes, parentId, order } = result.data;
 
       // Check name uniqueness if being updated
       if (name && name !== existingClassType.name) {
@@ -212,6 +214,7 @@ export const PATCH = withRole(
           name,
           notes,
           parentId,
+          order,
         },
         include: {
           parent: true,

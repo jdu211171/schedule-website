@@ -6,7 +6,7 @@ import {
   classTypeCreateSchema,
   classTypeFilterSchema,
 } from "@/schemas/class-type.schema";
-import { ClassType } from "@prisma/client";
+import { ClassType, Prisma } from "@prisma/client";
 
 type ClassTypeWithRelations = ClassType & {
   parent?: ClassType | null;
@@ -18,6 +18,7 @@ type FormattedClassType = {
   name: string;
   notes: string | null;
   parentId: string | null;
+  order: number | null;
   parent?: FormattedClassType | null;
   children?: FormattedClassType[];
   createdAt: Date;
@@ -32,6 +33,7 @@ const formatClassType = (
   name: classType.name,
   notes: classType.notes,
   parentId: classType.parentId,
+  order: classType.order,
   parent: classType.parent ? formatClassType(classType.parent) : undefined,
   children: classType.children?.map(formatClassType),
   createdAt: classType.createdAt,
@@ -82,7 +84,7 @@ export const GET = withRole(
       );
     }
 
-    const { page, limit, name, parentId, includeChildren, includeParent } =
+    const { page, limit, name, parentId, includeChildren, includeParent, sortBy, sortOrder } =
       result.data;
 
     // Build filter conditions
@@ -111,6 +113,16 @@ export const GET = withRole(
       };
     }
 
+    // Build ordering - ALWAYS sort by order field first to maintain admin-defined sequence
+    const orderBy: Prisma.ClassTypeOrderByWithRelationInput[] = [];
+
+    if (sortBy === "order") {
+      orderBy.push({ order: { sort: sortOrder, nulls: "last" } });
+      orderBy.push({ name: "asc" }); // Secondary sort by name for class types with same order
+    } else {
+      orderBy.push({ [sortBy]: sortOrder });
+    }
+
     // Calculate pagination
     const skip = (page - 1) * limit;
 
@@ -123,7 +135,7 @@ export const GET = withRole(
       include,
       skip,
       take: limit,
-      orderBy: { name: "asc" },
+      orderBy,
     });
 
     // Format class types
@@ -157,7 +169,7 @@ export const POST = withRole(
         );
       }
 
-      const { name, notes, parentId } = result.data;
+      const { name, notes, parentId, order } = result.data;
 
       // Check if class type name already exists globally
       const existingClassType = await prisma.classType.findFirst({
@@ -187,12 +199,34 @@ export const POST = withRole(
         }
       }
 
+      // Determine the order value
+      let finalOrder = order;
+      if (!finalOrder) {
+        // Get the current maximum order value
+        const maxOrderResult = await prisma.classType.aggregate({
+          _max: {
+            order: true,
+          },
+        });
+        finalOrder = maxOrderResult._max.order
+          ? maxOrderResult._max.order + 1
+          : 1;
+      }
+
+      console.log("Creating class type with data:", {
+        name,
+        notes,
+        parentId,
+        order: finalOrder,
+      });
+
       // Create class type
       const newClassType = await prisma.classType.create({
         data: {
           name,
           notes,
           parentId,
+          order: finalOrder,
         },
         include: {
           parent: true,
