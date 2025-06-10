@@ -1,6 +1,7 @@
 // auth.config.ts
 import type { NextAuthConfig } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
+import Google from "next-auth/providers/google";
 import { prisma } from "./lib/prisma";
 import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
@@ -10,8 +11,14 @@ const protectedRoots = ["/dashboard", "/teacher", "/student"] as const;
 
 export default {
   session: { strategy: "jwt" },
-
   providers: [
+    Google({
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      // Allow linking OAuth accounts to existing accounts with same email
+      // This allows users who signed up with credentials to later login with Google
+      allowDangerousEmailAccountLinking: true,
+    }),
     Credentials({
       credentials: {
         usernameOrEmail: {
@@ -57,9 +64,9 @@ export default {
         const ok = ["TEACHER", "STUDENT"].includes(user.role)
           ? creds.password === user.passwordHash
           : await bcrypt.compare(
-              creds.password as string,
-              user.passwordHash as string
-            );
+            creds.password as string,
+            user.passwordHash as string
+          );
 
         if (!ok) throw new Error("Invalid credentials");
 
@@ -106,6 +113,103 @@ export default {
     }),
   ],
   callbacks: {
+    async signIn({ user, account }) {
+      // For Google OAuth, only allow existing users to sign in
+      if (account?.provider === "google") {
+        console.log("🔍 Google OAuth attempt:", {
+          email: user.email,
+          name: user.name,
+        });
+
+        if (!user.email) {
+          console.log("❌ No email provided");
+          return false;
+        }
+
+        let existingUser;
+        try {
+          // Check if user exists in database
+          existingUser = await prisma.user.findUnique({
+            where: { email: user.email },
+            include: {
+              teacher: true,
+              student: true,
+              branches: {
+                include: {
+                  branch: {
+                    select: {
+                      branchId: true,
+                      name: true,
+                    },
+                  },
+                },
+              },
+            },
+          });
+
+          console.log("🔍 Database lookup result:", {
+            found: !!existingUser,
+            email: user.email,
+            role: existingUser?.role,
+          });
+
+          if (!existingUser) {
+            console.log("❌ User not found in database:", user.email);
+            // User doesn't exist, prevent signup
+            return false;
+          }
+        } catch (error) {
+          console.error("❌ Database error during Google OAuth:", error);
+          return false;
+        }
+
+        console.log("✅ User found, setting up user data");
+
+        // User exists, allow sign in and attach additional data
+        // For ADMIN users, fetch all branches
+        let userBranches;
+        if (existingUser.role === 'ADMIN') {
+          const allBranches = await prisma.branch.findMany({
+            select: {
+              branchId: true,
+              name: true,
+            },
+            orderBy: { name: 'asc' }
+          });
+          userBranches = allBranches;
+        } else {
+          // For non-ADMIN, use branches associated with the user
+          userBranches =
+            existingUser.branches?.map((ub: any) => ({
+              branchId: ub.branch.branchId,
+              name: ub.branch.name,
+            })) || [];
+        }
+
+        // Determine initial selectedBranchId
+        let selectedBranchId: string | null = null;
+        if (userBranches.length > 0) {
+          selectedBranchId = userBranches[0].branchId;
+        }
+
+        // Attach additional user data
+        user.role = existingUser.role;
+        user.username = existingUser.username ?? "";
+        user.userId = existingUser.teacher?.teacherId || existingUser.student?.studentId || "";
+        user.branches = userBranches;
+        user.selectedBranchId = selectedBranchId;
+
+        console.log("✅ Google OAuth success:", {
+          role: existingUser.role,
+          branchCount: userBranches.length,
+        });
+
+        return true;
+      }
+
+      // For other providers (credentials), allow normal flow
+      return true;
+    },
     authorized({ request, auth }) {
       const { pathname, origin } = request.nextUrl;
       const isLoggedIn = Boolean(auth?.user);

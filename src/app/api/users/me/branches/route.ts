@@ -5,7 +5,7 @@ import { auth } from "@/auth";
 
 // GET - Get branches accessible to the authenticated user
 export const GET = withRole(
-  ["ADMIN", "TEACHER", "STUDENT"],
+  ["ADMIN", "TEACHER", "STUDENT", "STAFF"],
   async (request: NextRequest, session) => {
     try {
       if (!session?.user?.id) {

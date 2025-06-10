@@ -50,7 +50,7 @@ const formatBranch = (branch: BranchWithUsers): FormattedBranch => ({
 });
 
 // GET - List branches with pagination and filters
-export const GET = withBranchAccess(["ADMIN"], async (request: NextRequest) => {
+export const GET = withBranchAccess(["ADMIN", "STAFF"], async (request: NextRequest) => {
   // Parse query parameters
   const url = new URL(request.url);
   const params = Object.fromEntries(url.searchParams.entries());
