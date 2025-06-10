@@ -13,6 +13,7 @@ import { BranchTable } from "@/components/branch/branch-table";
 import { StudentTable } from "@/components/student/student-table";
 import { TeacherTable } from "@/components/teacher/teacher-table";
 import { SubjectTypeTable } from "@/components/subject-type/subject-type-table";
+import { useSession } from "next-auth/react";
 
 // Storage key for tab persistence
 const ACTIVE_TAB_KEY = "masterpage_active_tab";
@@ -21,6 +22,7 @@ export default function MasterDataPage() {
   // Initialize with a default value, will be updated after mount
   const [activeTab, setActiveTab] = useState("staff");
   const [isInitialized, setIsInitialized] = useState(false);
+  const { data: session } = useSession();
 
   // On component mount, load the saved tab from localStorage
   useEffect(() => {
@@ -51,8 +53,12 @@ export default function MasterDataPage() {
         className="w-full"
       >
         <TabsList className="w-full overflow-x-auto scrollbar-hide">
-          <TabsTrigger value="branches">校舎</TabsTrigger>
-          <TabsTrigger value="staff">スタッフ</TabsTrigger>
+          {session?.user?.role === "ADMIN" && (
+            <>
+              <TabsTrigger value="branches">校舎</TabsTrigger>
+              <TabsTrigger value="staff">スタッフ</TabsTrigger>
+            </>
+          )}
           <TabsTrigger value="students">生徒</TabsTrigger>
           <TabsTrigger value="teachers">教師</TabsTrigger>
           <TabsTrigger value="subjects">科目</TabsTrigger>
