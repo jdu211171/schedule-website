@@ -230,6 +230,9 @@ export default {
 
       /* 3.  Role-based gating */
       if (isLoggedIn) {
+        if (pathname === "/")
+          return NextResponse.redirect(`${origin}${homeFor(role)}`);
+
         if (pathname.startsWith("/dashboard") && (role !== "ADMIN" && role !== "STAFF"))
           return NextResponse.redirect(`${origin}${homeFor(role)}`);
 
