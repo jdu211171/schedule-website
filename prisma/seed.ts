@@ -142,27 +142,35 @@ async function main() {
   });
 
   // 1‑d. Subject Types
-  const academicSubjectType = await prisma.subjectType.create({
+  const elementarySubjectType = await prisma.subjectType.create({
     data: {
-      name: "学科",
-      notes: "主要な学科科目",
+      name: "小学生",
+      notes: "",
       order: 1,
     },
   });
 
-  const skillSubjectType = await prisma.subjectType.create({
+  const juniorExamSubjectType = await prisma.subjectType.create({
     data: {
-      name: "技能",
-      notes: "技能系科目",
+      name: "中学受験生",
+      notes: "",
       order: 2,
     },
   });
 
-  const testPrepSubjectType = await prisma.subjectType.create({
+  const juniorSubjectType = await prisma.subjectType.create({
     data: {
-      name: "受験対策",
-      notes: "受験・試験対策科目",
+      name: "中学生",
+      notes: "",
       order: 3,
+    },
+  });
+
+  const highExamSubjectType = await prisma.subjectType.create({
+    data: {
+      name: "高校受験生",
+      notes: "",
+      order: 4,
     },
   });
 
@@ -695,50 +703,50 @@ async function main() {
       {
         userId: teacherUser1.id,
         subjectId: mathSubject.subjectId,
-        subjectTypeId: academicSubjectType.subjectTypeId,
+        subjectTypeId: elementarySubjectType.subjectTypeId,
       },
       {
         userId: teacherUser1.id,
         subjectId: scienceSubject.subjectId,
-        subjectTypeId: academicSubjectType.subjectTypeId,
+        subjectTypeId: elementarySubjectType.subjectTypeId,
       },
 
       // Teacher 2 - English and Japanese
       {
         userId: teacherUser2.id,
         subjectId: englishSubject.subjectId,
-        subjectTypeId: academicSubjectType.subjectTypeId,
+        subjectTypeId: juniorSubjectType.subjectTypeId,
       },
       {
         userId: teacherUser2.id,
         subjectId: japaneseSubject.subjectId,
-        subjectTypeId: academicSubjectType.subjectTypeId,
+        subjectTypeId: juniorSubjectType.subjectTypeId,
       },
 
       // Teacher 3 - Social Studies
       {
         userId: teacherUser3.id,
         subjectId: socialSubject.subjectId,
-        subjectTypeId: academicSubjectType.subjectTypeId,
+        subjectTypeId: juniorSubjectType.subjectTypeId,
       },
 
       // Teacher 4 - Science
       {
         userId: teacherUser4.id,
         subjectId: scienceSubject.subjectId,
-        subjectTypeId: academicSubjectType.subjectTypeId,
+        subjectTypeId: highExamSubjectType.subjectTypeId,
       },
 
       // Teacher 5 - Programming
       {
         userId: teacherUser5.id,
         subjectId: programmingSubject.subjectId,
-        subjectTypeId: skillSubjectType.subjectTypeId,
+        subjectTypeId: elementarySubjectType.subjectTypeId,
       },
       {
         userId: teacherUser5.id,
         subjectId: businessSubject.subjectId,
-        subjectTypeId: skillSubjectType.subjectTypeId,
+        subjectTypeId: elementarySubjectType.subjectTypeId,
       },
     ],
     skipDuplicates: true,
@@ -752,7 +760,7 @@ async function main() {
         studentId: student1.studentId,
         teacherId: teacher1.teacherId,
         subjectId: mathSubject.subjectId,
-        subjectTypeId: academicSubjectType.subjectTypeId,
+        subjectTypeId: elementarySubjectType.subjectTypeId,
       },
 
       // Student 2 (Middle) prefers Teacher 2 for English
@@ -760,7 +768,7 @@ async function main() {
         studentId: student2.studentId,
         teacherId: teacher2.teacherId,
         subjectId: englishSubject.subjectId,
-        subjectTypeId: academicSubjectType.subjectTypeId,
+        subjectTypeId: juniorSubjectType.subjectTypeId,
       },
 
       // Student 3 (High School) prefers Teacher 1 for Math and Teacher 4 for Science
@@ -768,13 +776,13 @@ async function main() {
         studentId: student3.studentId,
         teacherId: teacher1.teacherId,
         subjectId: mathSubject.subjectId,
-        subjectTypeId: testPrepSubjectType.subjectTypeId,
+        subjectTypeId: highExamSubjectType.subjectTypeId,
       },
       {
         studentId: student3.studentId,
         teacherId: teacher4.teacherId,
         subjectId: scienceSubject.subjectId,
-        subjectTypeId: testPrepSubjectType.subjectTypeId,
+        subjectTypeId: highExamSubjectType.subjectTypeId,
       },
 
       // Student 4 (Middle) prefers Teacher 1 for Math
@@ -782,7 +790,7 @@ async function main() {
         studentId: student4.studentId,
         teacherId: teacher1.teacherId,
         subjectId: mathSubject.subjectId,
-        subjectTypeId: academicSubjectType.subjectTypeId,
+        subjectTypeId: juniorExamSubjectType.subjectTypeId,
       },
 
       // Student 5 (Adult) prefers Teacher 5 for Programming
@@ -790,7 +798,7 @@ async function main() {
         studentId: student5.studentId,
         teacherId: teacher5.teacherId,
         subjectId: programmingSubject.subjectId,
-        subjectTypeId: skillSubjectType.subjectTypeId,
+        subjectTypeId: elementarySubjectType.subjectTypeId,
       },
 
       // Student 6 (Elementary) prefers Teacher 2 for Japanese
@@ -798,7 +806,7 @@ async function main() {
         studentId: student6.studentId,
         teacherId: teacher2.teacherId,
         subjectId: japaneseSubject.subjectId,
-        subjectTypeId: academicSubjectType.subjectTypeId,
+        subjectTypeId: elementarySubjectType.subjectTypeId,
       },
 
       // Student 7 (High School) prefers Teacher 4 for Science
@@ -806,7 +814,7 @@ async function main() {
         studentId: student7.studentId,
         teacherId: teacher4.teacherId,
         subjectId: scienceSubject.subjectId,
-        subjectTypeId: academicSubjectType.subjectTypeId,
+        subjectTypeId: highExamSubjectType.subjectTypeId,
       },
 
       // Student 8 (Ronin) prefers multiple teachers for exam prep
@@ -814,13 +822,13 @@ async function main() {
         studentId: student8.studentId,
         teacherId: teacher1.teacherId,
         subjectId: mathSubject.subjectId,
-        subjectTypeId: testPrepSubjectType.subjectTypeId,
+        subjectTypeId: highExamSubjectType.subjectTypeId,
       },
       {
         studentId: student8.studentId,
         teacherId: teacher4.teacherId,
         subjectId: scienceSubject.subjectId,
-        subjectTypeId: testPrepSubjectType.subjectTypeId,
+        subjectTypeId: highExamSubjectType.subjectTypeId,
       },
     ],
     skipDuplicates: true,
