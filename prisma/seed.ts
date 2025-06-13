@@ -225,59 +225,186 @@ async function main() {
   });
 
   // 1‑f. Booths
-  const boothA = await prisma.booth.create({
+  // Main Branch Booths (Booth-1 to Booth-7)
+  const booth1 = await prisma.booth.create({
     data: {
-      name: "Booth‑A",
+      name: "Booth‑1",
       branchId: mainBranch.branchId,
-      notes: "1F 奥側",
+      notes: "",
       order: 1,
     },
   });
 
-  const boothB = await prisma.booth.create({
+  const booth2 = await prisma.booth.create({
     data: {
-      name: "Booth‑B",
+      name: "Booth‑2",
       branchId: mainBranch.branchId,
-      notes: "1F 手前側",
+      notes: "",
       order: 2,
     },
   });
 
-  const boothC = await prisma.booth.create({
+  const booth3 = await prisma.booth.create({
     data: {
-      name: "Booth‑C",
+      name: "Booth‑3",
       branchId: mainBranch.branchId,
-      notes: "2F 大教室",
+      notes: "",
       order: 3,
     },
   });
 
-  // East Branch Booths
-  const eastBoothA = await prisma.booth.create({
+  const booth4 = await prisma.booth.create({
     data: {
-      name: "East‑A",
-      branchId: eastBranch.branchId,
-      notes: "東校 個別指導室A",
-      order: 1,
+      name: "Booth‑4",
+      branchId: mainBranch.branchId,
+      notes: "",
+      order: 4,
     },
   });
 
-  const eastBoothB = await prisma.booth.create({
+  const booth5 = await prisma.booth.create({
     data: {
-      name: "East‑B",
-      branchId: eastBranch.branchId,
-      notes: "東校 個別指導室B",
-      order: 2,
+      name: "Booth‑5",
+      branchId: mainBranch.branchId,
+      notes: "",
+      order: 5,
     },
   });
 
-  // West Branch Booths
-  const westBoothA = await prisma.booth.create({
+  const booth6 = await prisma.booth.create({
     data: {
-      name: "West‑A",
+      name: "Booth‑6",
+      branchId: mainBranch.branchId,
+      notes: "",
+      order: 6,
+    },
+  });
+
+  const booth7 = await prisma.booth.create({
+    data: {
+      name: "Booth‑7",
+      branchId: mainBranch.branchId,
+      notes: "",
+      order: 7,
+    },
+  });
+
+  // East Branch Booths (Booth-8 to Booth-14)
+  const booth8 = await prisma.booth.create({
+    data: {
+      name: "Booth‑8",
+      branchId: eastBranch.branchId,
+      notes: "",
+      order: 8,
+    },
+  });
+
+  const booth9 = await prisma.booth.create({
+    data: {
+      name: "Booth‑9",
+      branchId: eastBranch.branchId,
+      notes: "",
+      order: 9,
+    },
+  });
+
+  const booth10 = await prisma.booth.create({
+    data: {
+      name: "Booth‑10",
+      branchId: eastBranch.branchId,
+      notes: "",
+      order: 10,
+    },
+  });
+
+  const booth11 = await prisma.booth.create({
+    data: {
+      name: "Booth‑11",
+      branchId: eastBranch.branchId,
+      notes: "",
+      order: 11,
+    },
+  });
+
+  const booth12 = await prisma.booth.create({
+    data: {
+      name: "Booth‑12",
+      branchId: eastBranch.branchId,
+      notes: "",
+      order: 12,
+    },
+  });
+
+  const booth13 = await prisma.booth.create({
+    data: {
+      name: "Booth‑13",
+      branchId: eastBranch.branchId,
+      notes: "",
+      order: 13,
+    },
+  });
+
+  const booth14 = await prisma.booth.create({
+    data: {
+      name: "Booth‑14",
+      branchId: eastBranch.branchId,
+      notes: "",
+      order: 14,
+    },
+  });
+
+  // West Branch Booths (Booth-15 to Booth-20)
+  const booth15 = await prisma.booth.create({
+    data: {
+      name: "Booth‑15",
       branchId: westBranch.branchId,
-      notes: "西校 指導室A",
-      order: 1,
+      notes: "",
+      order: 15,
+    },
+  });
+
+  const booth16 = await prisma.booth.create({
+    data: {
+      name: "Booth‑16",
+      branchId: westBranch.branchId,
+      notes: "",
+      order: 16,
+    },
+  });
+
+  const booth17 = await prisma.booth.create({
+    data: {
+      name: "Booth‑17",
+      branchId: westBranch.branchId,
+      notes: "",
+      order: 17,
+    },
+  });
+
+  const booth18 = await prisma.booth.create({
+    data: {
+      name: "Booth‑18",
+      branchId: westBranch.branchId,
+      notes: "",
+      order: 18,
+    },
+  });
+
+  const booth19 = await prisma.booth.create({
+    data: {
+      name: "Booth‑19",
+      branchId: westBranch.branchId,
+      notes: "",
+      order: 19,
+    },
+  });
+
+  const booth20 = await prisma.booth.create({
+    data: {
+      name: "Booth‑20",
+      branchId: westBranch.branchId,
+      notes: "",
+      order: 20,
     },
   });
 
@@ -1036,7 +1163,7 @@ async function main() {
       studentId: student1.studentId,
       subjectId: mathSubject.subjectId,
       classTypeId: regularClassType.classTypeId,
-      boothId: boothA.boothId,
+      boothId: booth1.boothId,
       date: getRelativeDateUTC(15),
       startTime: new Date(Date.UTC(getRelativeDate(15).getFullYear(), getRelativeDate(15).getMonth(), getRelativeDate(15).getDate(), 9, 0, 0, 0)),
       endTime: new Date(Date.UTC(getRelativeDate(15).getFullYear(), getRelativeDate(15).getMonth(), getRelativeDate(15).getDate(), 10, 30, 0, 0)),
@@ -1052,7 +1179,7 @@ async function main() {
       studentId: student2.studentId,
       subjectId: englishSubject.subjectId,
       classTypeId: regularClassType.classTypeId,
-      boothId: boothB.boothId,
+      boothId: booth2.boothId,
       date: getRelativeDateUTC(16),
       startTime: new Date(Date.UTC(getRelativeDate(16).getFullYear(), getRelativeDate(16).getMonth(), getRelativeDate(16).getDate(), 14, 0, 0, 0)),
       endTime: new Date(Date.UTC(getRelativeDate(16).getFullYear(), getRelativeDate(16).getMonth(), getRelativeDate(16).getDate(), 15, 30, 0, 0)),
@@ -1068,7 +1195,7 @@ async function main() {
       studentId: student3.studentId,
       subjectId: mathSubject.subjectId,
       classTypeId: testPrepClassType.classTypeId,
-      boothId: boothC.boothId,
+      boothId: booth3.boothId,
       date: getRelativeDateUTC(17),
       startTime: new Date(Date.UTC(getRelativeDate(17).getFullYear(), getRelativeDate(17).getMonth(), getRelativeDate(17).getDate(), 16, 0, 0, 0)),
       endTime: new Date(Date.UTC(getRelativeDate(17).getFullYear(), getRelativeDate(17).getMonth(), getRelativeDate(17).getDate(), 18, 0, 0, 0)),
@@ -1084,7 +1211,7 @@ async function main() {
       studentId: student3.studentId,
       subjectId: scienceSubject.subjectId,
       classTypeId: testPrepClassType.classTypeId,
-      boothId: eastBoothA.boothId,
+      boothId: booth8.boothId,
       date: getRelativeDateUTC(18),
       startTime: new Date(Date.UTC(getRelativeDate(18).getFullYear(), getRelativeDate(18).getMonth(), getRelativeDate(18).getDate(), 10, 0, 0, 0)),
       endTime: new Date(Date.UTC(getRelativeDate(18).getFullYear(), getRelativeDate(18).getMonth(), getRelativeDate(18).getDate(), 12, 0, 0, 0)),
@@ -1100,7 +1227,7 @@ async function main() {
       studentId: student5.studentId,
       subjectId: programmingSubject.subjectId,
       classTypeId: specialClassType.classTypeId,
-      boothId: westBoothA.boothId,
+      boothId: booth15.boothId,
       date: getRelativeDateUTC(19),
       startTime: new Date(Date.UTC(getRelativeDate(19).getFullYear(), getRelativeDate(19).getMonth(), getRelativeDate(19).getDate(), 19, 0, 0, 0)),
       endTime: new Date(Date.UTC(getRelativeDate(19).getFullYear(), getRelativeDate(19).getMonth(), getRelativeDate(19).getDate(), 21, 0, 0, 0)),
@@ -1116,7 +1243,7 @@ async function main() {
       studentId: student6.studentId,
       subjectId: japaneseSubject.subjectId,
       classTypeId: regularClassType.classTypeId,
-      boothId: boothA.boothId,
+      boothId: booth4.boothId,
       date: getRelativeDateUTC(20),
       startTime: new Date(Date.UTC(getRelativeDate(20).getFullYear(), getRelativeDate(20).getMonth(), getRelativeDate(20).getDate(), 11, 0, 0, 0)),
       endTime: new Date(Date.UTC(getRelativeDate(20).getFullYear(), getRelativeDate(20).getMonth(), getRelativeDate(20).getDate(), 12, 0, 0, 0)),
@@ -1132,7 +1259,7 @@ async function main() {
       studentId: student7.studentId,
       subjectId: scienceSubject.subjectId,
       classTypeId: regularClassType.classTypeId,
-      boothId: eastBoothB.boothId,
+      boothId: booth9.boothId,
       date: getRelativeDateUTC(21),
       startTime: new Date(Date.UTC(getRelativeDate(21).getFullYear(), getRelativeDate(21).getMonth(), getRelativeDate(21).getDate(), 15, 0, 0, 0)),
       endTime: new Date(Date.UTC(getRelativeDate(21).getFullYear(), getRelativeDate(21).getMonth(), getRelativeDate(21).getDate(), 16, 30, 0, 0)),
@@ -1148,7 +1275,7 @@ async function main() {
       studentId: student8.studentId,
       subjectId: mathSubject.subjectId,
       classTypeId: testPrepClassType.classTypeId,
-      boothId: boothB.boothId,
+      boothId: booth5.boothId,
       date: getRelativeDateUTC(22),
       startTime: new Date(Date.UTC(getRelativeDate(22).getFullYear(), getRelativeDate(22).getMonth(), getRelativeDate(22).getDate(), 9, 0, 0, 0)),
       endTime: new Date(Date.UTC(getRelativeDate(22).getFullYear(), getRelativeDate(22).getMonth(), getRelativeDate(22).getDate(), 12, 0, 0, 0)),
