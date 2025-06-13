@@ -225,22 +225,43 @@ export default {
 
       /* 2.  Already logged in & visiting /auth/* → kick them to their home */
       if (isLoggedIn && pathname.startsWith("/auth")) {
-        return NextResponse.redirect(`${origin}${homeFor(role)}`);
+        const homeUrl = homeFor(role);
+        // Prevent redirect loop by checking if destination differs from current path
+        if (homeUrl !== pathname) {
+          return NextResponse.redirect(`${origin}${homeUrl}`);
+        }
       }
 
       /* 3.  Role-based gating */
       if (isLoggedIn) {
-        if (pathname === "/")
-          return NextResponse.redirect(`${origin}${homeFor(role)}`);
+        if (pathname === "/") {
+          const homeUrl = homeFor(role);
+          // Prevent redirect loop by checking if destination differs from current path
+          if (homeUrl !== pathname) {
+            return NextResponse.redirect(`${origin}${homeUrl}`);
+          }
+        }
 
-        if (pathname.startsWith("/dashboard") && (role !== "ADMIN" && role !== "STAFF"))
-          return NextResponse.redirect(`${origin}${homeFor(role)}`);
+        if (pathname.startsWith("/dashboard") && (role !== "ADMIN" && role !== "STAFF")) {
+          const homeUrl = homeFor(role);
+          if (homeUrl !== pathname) {
+            return NextResponse.redirect(`${origin}${homeUrl}`);
+          }
+        }
 
-        if (pathname.startsWith("/teacher") && role !== "TEACHER")
-          return NextResponse.redirect(`${origin}${homeFor(role)}`);
+        if (pathname.startsWith("/teacher") && role !== "TEACHER") {
+          const homeUrl = homeFor(role);
+          if (homeUrl !== pathname) {
+            return NextResponse.redirect(`${origin}${homeUrl}`);
+          }
+        }
 
-        if (pathname.startsWith("/student") && role !== "STUDENT")
-          return NextResponse.redirect(`${origin}${homeFor(role)}`);
+        if (pathname.startsWith("/student") && role !== "STUDENT") {
+          const homeUrl = homeFor(role);
+          if (homeUrl !== pathname) {
+            return NextResponse.redirect(`${origin}${homeUrl}`);
+          }
+        }
       }
 
       /* 4.  Everything else → allow */
@@ -285,6 +306,16 @@ export default {
 } satisfies NextAuthConfig;
 
 function homeFor(role?: UserRole) {
+  // Validate that the role is one of the expected UserRole values
+  const validRoles: UserRole[] = ["ADMIN", "TEACHER", "STUDENT", "STAFF"];
+
+  if (!role || !validRoles.includes(role)) {
+    // For users with invalid/missing roles, redirect to a safe fallback
+    // You might want to redirect to a profile completion page or error page instead
+    console.warn(`Invalid or missing user role: ${role}. Redirecting to root.`);
+    return "/";
+  }
+
   switch (role) {
     case "ADMIN":
       return "/dashboard";
@@ -295,6 +326,8 @@ function homeFor(role?: UserRole) {
     case "STAFF":
       return "/dashboard";
     default:
+      // This should never be reached due to the validation above, but keeping for safety
+      console.warn(`Unhandled user role: ${role}. Redirecting to root.`);
       return "/";
   }
 }
