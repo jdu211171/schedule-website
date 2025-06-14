@@ -37,10 +37,16 @@ import {
 } from "@/hooks/useClassTypeMutation";
 import { ClassType, useAllClassTypes } from "@/hooks/useClassTypeQuery";
 
+// Helper function to check if a class type is protected (root level types like 通常授業 and 特別授業)
+function isProtectedClassType(classType: ClassType): boolean {
+  // Protected class types are root level types (no parent) with specific names
+  return !classType.parentId && (classType.name === "通常授業" || classType.name === "特別授業");
+}
+
 // Form schema for class type creation/editing
 const classTypeFormSchema = z.object({
   name: z.string().min(1, "名前は必須です").max(100),
-  parentId: z.string().nullable().optional(),
+  parentId: z.string().min(1, "親クラスタイプは必須です"),
   notes: z.string().max(255).optional().nullable(),
 });
 
@@ -59,6 +65,9 @@ export function ClassTypeFormDialog({
   const updateClassTypeMutation = useClassTypeUpdate();
   const isEditing = !!classType;
 
+  // Check if trying to edit a protected class type
+  const isProtected = classType ? isProtectedClassType(classType) : false;
+
   // Fetch all class types for parent selection
   const { data: allClassTypes } = useAllClassTypes();
 
@@ -66,7 +75,7 @@ export function ClassTypeFormDialog({
     resolver: zodResolver(classTypeFormSchema),
     defaultValues: {
       name: classType?.name || "",
-      parentId: classType?.parentId || null,
+      parentId: classType?.parentId || "",
       notes: classType?.notes ?? "",
     },
   });
@@ -75,13 +84,13 @@ export function ClassTypeFormDialog({
     if (classType) {
       form.reset({
         name: classType.name || "",
-        parentId: classType.parentId || null,
+        parentId: classType.parentId || "",
         notes: classType.notes ?? "",
       });
     } else {
       form.reset({
         name: "",
-        parentId: null,
+        parentId: "",
         notes: "",
       });
     }
@@ -92,7 +101,7 @@ export function ClassTypeFormDialog({
     const updatedValues = {
       ...values,
       notes: values.notes ?? "",
-      parentId: values.parentId || null,
+      parentId: values.parentId, // parentId is now required, no need to default to null
     };
 
     // Close the dialog immediately for better UX
@@ -110,13 +119,13 @@ export function ClassTypeFormDialog({
     }
   }
 
-  // Get available parent options - only show root class types (those without parents)
+  // Get available parent options - only show root class types (通常授業 and 特別授業)
   // and exclude current item when editing
   const parentOptions = (allClassTypes || []).filter(
     (type) => {
-      // Only include root class types (those without a parent)
+      // Only include root class types (those without a parent) - these should be 通常授業 and 特別授業
       const isRoot = !type.parentId;
-      // Exclude current item when editing
+      // Exclude current item when editing to prevent circular references
       const isNotCurrentItem = !isEditing || type.classTypeId !== classType?.classTypeId;
       return isRoot && isNotCurrentItem;
     }
@@ -139,8 +148,16 @@ export function ClassTypeFormDialog({
             {isEditing ? "クラスタイプの編集" : "クラスタイプの作成"}
           </DialogTitle>
         </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        {/* Prevent editing protected class types */}
+        {isEditing && isProtected ? (
+          <div className="p-4 text-center">
+            <p className="text-muted-foreground">
+              この基本クラスタイプは編集できません。
+            </p>
+          </div>
+        ) : (
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">{/* ...existing form content... */}
             <FormField
               control={form.control}
               name="name"
@@ -165,18 +182,19 @@ export function ClassTypeFormDialog({
               name="parentId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>親クラスタイプ</FormLabel>
+                  <FormLabel className="after:content-['*'] after:ml-1 after:text-destructive">
+                    親クラスタイプ
+                  </FormLabel>
                   <Select
-                    onValueChange={(value) => field.onChange(value === "none" ? null : value)}
-                    value={field.value || "none"}
+                    onValueChange={field.onChange}
+                    value={field.value}
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="親クラスタイプを選択（任意）" />
+                        <SelectValue placeholder="親クラスタイプを選択してください" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="none">なし（ルートレベル）</SelectItem>
                       {parentOptions.map((type) => (
                         <SelectItem key={type.classTypeId} value={type.classTypeId}>
                           {type.name}
@@ -213,6 +231,7 @@ export function ClassTypeFormDialog({
             </DialogFooter>
           </form>
         </Form>
+        )}
       </DialogContent>
     </Dialog>
   );

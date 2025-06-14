@@ -117,6 +117,7 @@ async function main() {
     data: {
       name: "通常授業",
       notes: "週次の通常授業枠",
+      order: 1,
     },
   });
 
@@ -124,13 +125,16 @@ async function main() {
     data: {
       name: "特別授業",
       notes: "夏期講習やイベントなどの特別枠",
+      order: 2,
     },
   });
 
-  const testPrepClassType = await prisma.classType.create({
+  const rescheduleClassType = await prisma.classType.create({
     data: {
-      name: "テスト対策",
-      notes: "定期テスト・入試対策授業",
+      name: "振替授業",
+      notes: "",
+      parentId: specialClassType.classTypeId,
+      order: 3,
     },
   });
 
@@ -138,6 +142,17 @@ async function main() {
     data: {
       name: "補習授業",
       notes: "欠席者向けの補習授業",
+      parentId: specialClassType.classTypeId,
+      order: 4,
+    },
+  });
+
+  const testPrepClassType = await prisma.classType.create({
+    data: {
+      name: "テスト対策",
+      notes: "定期テスト・入試対策授業",
+      parentId: specialClassType.classTypeId,
+      order: 5,
     },
   });
 

@@ -22,6 +22,12 @@ type FormattedClassType = {
   updatedAt: Date;
 };
 
+// Helper function to check if a class type is protected (root level types)
+const isProtectedClassType = (classType: { name: string; parentId: string | null }): boolean => {
+  // Protected class types are root level types (no parent) with specific names
+  return !classType.parentId && (classType.name === "通常授業" || classType.name === "特別授業");
+};
+
 // Helper function to format classType response
 const formatClassType = (
   classType: ClassTypeWithRelations
@@ -156,6 +162,14 @@ export const PATCH = withRole(
         );
       }
 
+      // Check if this is a protected class type (通常授業 or 特別授業)
+      if (isProtectedClassType(existingClassType)) {
+        return NextResponse.json(
+          { error: "この基本クラスタイプは編集できません" },
+          { status: 403 }
+        );
+      }
+
       const { name, notes, parentId, order } = result.data;
 
       // Check name uniqueness if being updated
@@ -274,6 +288,14 @@ export const DELETE = withRole(
         return NextResponse.json(
           { error: "クラスタイプが見つかりません" },
           { status: 404 }
+        );
+      }
+
+      // Check if this is a protected class type (通常授業 or 特別授業)
+      if (isProtectedClassType(classType)) {
+        return NextResponse.json(
+          { error: "この基本クラスタイプは削除できません" },
+          { status: 403 }
         );
       }
 
