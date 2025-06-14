@@ -4,12 +4,15 @@ import { TimeSlot } from './admin-calendar-day';
 import { useStudent } from '@/hooks/useStudentQuery';
 import { useTeacher } from '@/hooks/useTeacherQuery';
 
+type AvailabilityMode = 'with-special' | 'regular-only';
+
 interface AvailabilityLayerProps {
   timeSlots: TimeSlot[];
   booths: { boothId: string; name: string }[];
   teacherAvailability?: boolean[];
   studentAvailability?: boolean[];
   timeSlotHeight: number;
+  availabilityMode?: AvailabilityMode;
 }
 
 const AVAILABILITY_COLORS = {
@@ -19,6 +22,13 @@ const AVAILABILITY_COLORS = {
   teacherDark: 'rgba(59, 130, 246, 0.15)',
   studentDark: 'rgba(251, 191, 36, 0.15)',
   bothDark: 'rgba(34, 197, 94, 0.3)',
+  // Цвета для режима "только обычные" (немного светлее)
+  teacherRegular: 'rgba(59, 130, 246, 0.15)',
+  studentRegular: 'rgba(251, 191, 36, 0.15)',
+  bothRegular: 'rgba(34, 197, 94, 0.3)',
+  teacherRegularDark: 'rgba(59, 130, 246, 0.1)',
+  studentRegularDark: 'rgba(251, 191, 36, 0.1)',
+  bothRegularDark: 'rgba(34, 197, 94, 0.2)',
 };
 
 export const AvailabilityLayer: React.FC<AvailabilityLayerProps> = ({
@@ -27,6 +37,7 @@ export const AvailabilityLayer: React.FC<AvailabilityLayerProps> = ({
   teacherAvailability,
   studentAvailability,
   timeSlotHeight,
+  availabilityMode = 'with-special',
 }) => {
   const availabilityBlocks = useMemo(() => {
     const blocks: React.JSX.Element[] = [];
@@ -42,12 +53,19 @@ export const AvailabilityLayer: React.FC<AvailabilityLayerProps> = ({
       if (!hasTeacher && !hasStudent) return;
 
       let backgroundColor: string;
+      
       if (hasTeacher && hasStudent) {
-        backgroundColor = AVAILABILITY_COLORS.both;
+        backgroundColor = availabilityMode === 'with-special' 
+          ? AVAILABILITY_COLORS.both 
+          : AVAILABILITY_COLORS.bothRegular;
       } else if (hasTeacher) {
-        backgroundColor = AVAILABILITY_COLORS.teacher;
+        backgroundColor = availabilityMode === 'with-special' 
+          ? AVAILABILITY_COLORS.teacher 
+          : AVAILABILITY_COLORS.teacherRegular;
       } else {
-        backgroundColor = AVAILABILITY_COLORS.student;
+        backgroundColor = availabilityMode === 'with-special' 
+          ? AVAILABILITY_COLORS.student 
+          : AVAILABILITY_COLORS.studentRegular;
       }
 
       const key = `availability-header-${slotIndex}`;
@@ -71,7 +89,7 @@ export const AvailabilityLayer: React.FC<AvailabilityLayerProps> = ({
     });
 
     return blocks;
-  }, [timeSlots, teacherAvailability, studentAvailability, timeSlotHeight]);
+  }, [timeSlots, teacherAvailability, studentAvailability, timeSlotHeight, availabilityMode]);
 
   return (
     <div className="absolute inset-0 pointer-events-none">
@@ -146,9 +164,11 @@ export interface AvailabilityResponse {
   }[];
 }
 
+// Обновленная функция с поддержкой режима
 export function getAvailabilityForDate(
   date: Date,
-  availability: AvailabilityResponse
+  availability: AvailabilityResponse,
+  mode: AvailabilityMode = 'with-special'
 ): {
   timeSlots: { startTime: string; endTime: string }[];
   fullDay: boolean;
@@ -162,7 +182,8 @@ export function getAvailabilityForDate(
     exc => exc.date === dateStr
   );
   
-  if (exceptional) {
+  // В режиме "только обычные" игнорируем особые предпочтения (токубецу кибоу)
+  if (exceptional && mode === 'with-special') {
     return {
       timeSlots: exceptional.timeSlots,
       fullDay: exceptional.fullDay
@@ -187,11 +208,13 @@ export function getAvailabilityForDate(
   return null;
 }
 
+// Обновленный хук с поддержкой режима
 export function useAvailability(
   teacherId: string | undefined,
   studentId: string | undefined,
   date: Date,
-  timeSlots: TimeSlot[]
+  timeSlots: TimeSlot[],
+  availabilityMode: AvailabilityMode = 'with-special'
 ) {
   const { data: teacher } = useTeacher(teacherId || '');
   const { data: student } = useStudent(studentId || '');
@@ -202,10 +225,10 @@ export function useAvailability(
     const availability = getAvailabilityForDate(date, {
       regularAvailability: teacher.regularAvailability || [],
       exceptionalAvailability: teacher.exceptionalAvailability || []
-    });
+    }, availabilityMode);
     
     return convertAvailabilityToSlots(availability, timeSlots);
-  }, [teacher, teacherId, date, timeSlots]);
+  }, [teacher, teacherId, date, timeSlots, availabilityMode]);
   
   const studentAvailability = useMemo(() => {
     if (!student || !studentId) return undefined;
@@ -213,10 +236,10 @@ export function useAvailability(
     const availability = getAvailabilityForDate(date, {
       regularAvailability: student.regularAvailability || [],
       exceptionalAvailability: student.exceptionalAvailability || []
-    });
+    }, availabilityMode);
     
     return convertAvailabilityToSlots(availability, timeSlots);
-  }, [student, studentId, date, timeSlots]);
+  }, [student, studentId, date, timeSlots, availabilityMode]);
   
   return {
     teacherAvailability,

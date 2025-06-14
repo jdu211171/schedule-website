@@ -12,6 +12,8 @@ import { CreateLessonDialog } from './create-lesson-dialog';
 import { LessonDialog } from './lesson-dialog';
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { SearchableSelect, SearchableSelectItem } from '../searchable-select';
 import { X } from 'lucide-react';
 import {
@@ -49,6 +51,8 @@ const SELECTED_DAYS_KEY = "admin_calendar_selected_days_v2";
 interface AdminCalendarDayProps {
   selectedBranchId?: string;
 }
+
+type AvailabilityMode = 'with-special' | 'regular-only';
 
 const getUniqueKeyForDate = (date: Date, index: number): string => {
   return `${getDateKey(date)}-${index}`;
@@ -123,6 +127,9 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
   const [selectedTeacherId, setSelectedTeacherId] = useState<string>('');
   const [selectedStudentId, setSelectedStudentId] = useState<string>('');
 
+  const [globalAvailabilityMode, setGlobalAvailabilityMode] = useState<AvailabilityMode>('with-special');
+  const [dayAvailabilitySettings, setDayAvailabilitySettings] = useState<Record<string, AvailabilityMode>>({});
+
   const [dayFilters, setDayFilters] = useState<Record<string, DayFilters>>({});
   const [showCreateDialog, setShowCreateDialog] = useState<boolean>(false);
   const [newLessonData, setNewLessonData] = useState<NewClassSessionData | null>(null);
@@ -166,6 +173,11 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
   const subjects = useMemo(() => subjectsResponse?.data || [], [subjectsResponse]);
   const classTypes = useMemo(() => classTypesResponse?.data || [], [classTypesResponse]);
 
+  // Фильтруем только родительские типы для селекта в настройках
+  const parentClassTypes = useMemo(() => {
+    return classTypes.filter(type => !type.parentId) || [];
+  }, [classTypes]);
+  
   const selectedDatesStrings = useMemo(() => {
     return selectedDays.map(day => getDateKey(day));
   }, [selectedDays]);
@@ -274,19 +286,26 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
   }, []);
 
   const handleCreateLesson = useCallback((date: Date, startTime: string, endTime: string, boothId: string) => {
+    // Если тип не выбран, используем "通常授業" по умолчанию
+    let defaultClassTypeId = selectedClassTypeId;
+    if (!defaultClassTypeId) {
+      const defaultType = parentClassTypes.find(type => type.name === '通常授業');
+      defaultClassTypeId = defaultType?.classTypeId || '';
+    }
+    
     const lessonData = { 
       date, 
       startTime, 
       endTime, 
       boothId,
-      classTypeId: selectedClassTypeId,
+      classTypeId: defaultClassTypeId,
       teacherId: selectedTeacherId,
       studentId: selectedStudentId
     };
     setNewLessonData(lessonData);
     setShowCreateDialog(true);
     setResetSelectionKey(prev => prev + 1);
-  }, [selectedClassTypeId, selectedTeacherId, selectedStudentId]);
+  }, [selectedClassTypeId, selectedTeacherId, selectedStudentId, parentClassTypes]);
 
   const handleLessonClick = useCallback((lesson: ExtendedClassSessionWithRelations) => {
     setSelectedLesson(lesson);
@@ -388,7 +407,33 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
     setSelectedLesson(null);
   }, [refreshData]);
 
-  const classTypeItems: SearchableSelectItem[] = classTypes.map((type) => ({
+  const handleGlobalAvailabilityModeChange = useCallback((checked: boolean) => {
+    const newMode: AvailabilityMode = checked ? 'regular-only' : 'with-special';
+    setGlobalAvailabilityMode(newMode);
+    
+    const updatedSettings: Record<string, AvailabilityMode> = {};
+    selectedDays.forEach(day => {
+      updatedSettings[getDateKey(day)] = newMode;
+    });
+    setDayAvailabilitySettings(updatedSettings);
+    
+    console.log('Global availability mode changed to:', newMode);
+  }, [selectedDays]);
+
+  const handleDayAvailabilityModeChange = useCallback((dateKey: string, mode: AvailabilityMode) => {
+    setDayAvailabilitySettings(prev => ({
+      ...prev,
+      [dateKey]: mode
+    }));
+    console.log(`Day ${dateKey} availability mode changed to:`, mode);
+  }, []);
+
+  const getAvailabilityModeForDay = useCallback((dateKey: string): AvailabilityMode => {
+    return dayAvailabilitySettings[dateKey] || globalAvailabilityMode;
+  }, [dayAvailabilitySettings, globalAvailabilityMode]);
+
+  // Items для родительских типов уроков (только те, что без parentId)
+  const classTypeItems: SearchableSelectItem[] = parentClassTypes.map((type) => ({
     value: type.classTypeId,
     label: type.name,
   }));
@@ -414,6 +459,7 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
   };
 
   const hasActiveSelections = Boolean(selectedClassTypeId || selectedTeacherId || selectedStudentId);
+  const canCreateLessons = Boolean(selectedTeacherId && selectedStudentId);
 
   if (!selectedBranchId) {
     return (
@@ -437,7 +483,6 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
         <div className="flex items-start justify-between">
           <h3 className="text-sm font-medium text-muted-foreground">授業作成の設定</h3>
           
-          {/* Availability Legend */}
           {(selectedTeacherId || selectedStudentId) && (
             <div className="flex-shrink-0">
               <div className="text-xs text-muted-foreground mb-1">空き時間表示:</div>
@@ -458,18 +503,37 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
             </div>
           )}
         </div>
+
+        <div className="flex items-center space-x-3 p-3 bg-muted/50 rounded-md">
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="global-availability-mode"
+              checked={globalAvailabilityMode === 'regular-only'}
+              onCheckedChange={handleGlobalAvailabilityModeChange}
+            />
+            <Label htmlFor="global-availability-mode" className="text-sm font-medium">
+              通常希望のみ表示
+            </Label>
+          </div>
+          <div className="text-xs text-muted-foreground">
+            {globalAvailabilityMode === 'regular-only' 
+              ? '特別希望を除外して通常希望のみ表示します'
+              : '特別希望を優先して表示します（デフォルト）'
+            }
+          </div>
+        </div>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="flex items-end gap-1">
             <div className="flex-1">
-              <label className="text-sm font-medium mb-1 block">授業タイプ</label>
+              <label className="text-sm font-medium mb-1 block">授業タイプ（基本）</label>
               <SearchableSelect
                 value={selectedClassTypeId}
                 onValueChange={setSelectedClassTypeId}
                 items={classTypeItems}
-                placeholder="授業タイプを選択"
-                searchPlaceholder="授業タイプを検索..."
-                emptyMessage="授業タイプが見つかりません"
+                placeholder="基本タイプを選択"
+                searchPlaceholder="基本タイプを検索..."
+                emptyMessage="基本タイプが見つかりません"
                 disabled={isLoadingClassTypes}
               />
             </div>
@@ -540,8 +604,10 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
           <div className="text-sm text-muted-foreground">
             {selectedClassTypeId && selectedTeacherId && selectedStudentId ? (
               '選択された設定で授業を作成できます。カレンダーで時間枠をドラッグして授業を作成してください。'
+            ) : selectedTeacherId && selectedStudentId ? (
+              '授業タイプが選択されていません。作成時は「通常授業」が使用されます。'
             ) : (
-              '授業を作成するには、授業タイプ、教師、生徒をすべて選択してください。'
+              '授業を作成するには、教師と生徒を選択してください。授業タイプは任意です（未選択時は「通常授業」）。'
             )}
           </div>
           
@@ -587,6 +653,7 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
           const uniqueKey = getUniqueKeyForDate(day, index);
           const sessions = classSessionsByDate[dateKey] || [];
           const currentFilters = dayFilters[dateKey] || {};
+          const availabilityMode = getAvailabilityModeForDay(dateKey);
 
           const queryIndex = selectedDatesStrings.indexOf(dateKey);
           const isLoadingThisDay = queryIndex !== -1 ?
@@ -632,6 +699,8 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
                 selectedTeacherId={selectedTeacherId}
                 selectedStudentId={selectedStudentId}
                 selectedClassTypeId={selectedClassTypeId}
+                availabilityMode={availabilityMode}
+                onAvailabilityModeChange={(mode) => handleDayAvailabilityModeChange(dateKey, mode)}
               />
             </div>
           );
