@@ -11,6 +11,7 @@ import { SearchableSelect, SearchableSelectItem } from '../searchable-select';
 import { TimeInput } from '@/components/ui/time-input';
 import { ConfirmDeleteDialog } from '../confirm-delete-dialog';
 import { useAvailability } from './availability-layer';
+import { fetcher } from '@/lib/fetcher';
 
 interface Booth {
   boothId: string;
@@ -30,6 +31,12 @@ interface Student {
 interface Subject {
   subjectId: string;
   name: string;
+}
+
+interface ClassType {
+  classTypeId: string;
+  name: string;
+  parentId?: string | null;
 }
 
 interface EditableLessonUI {
@@ -151,6 +158,12 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
   const [deleteMode, setDeleteMode] = useState<DeleteMode>('single');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
+  // Состояния для типов уроков
+  const [classTypes, setClassTypes] = useState<ClassType[]>([]);
+  const [selectedParentClassTypeId, setSelectedParentClassTypeId] = useState<string>('');
+  const [selectedChildClassTypeId, setSelectedChildClassTypeId] = useState<string>('');
+  const [isLoadingClassTypes, setIsLoadingClassTypes] = useState<boolean>(false);
+
   const deleteClassMutation = useClassSessionDelete();
   const deleteSeriesMutation = useClassSessionSeriesDelete();
   const updateClassMutation = useClassSessionUpdate();
@@ -172,19 +185,63 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
     DEFAULT_TIME_SLOTS
   );
 
+  // Фильтруем типы уроков
+  const parentClassTypes = useMemo(() => {
+    return classTypes.filter(type => !type.parentId) || [];
+  }, [classTypes]);
+
+  const childClassTypes = useMemo(() => {
+    if (!selectedParentClassTypeId) return [];
+    return classTypes.filter(type => type.parentId === selectedParentClassTypeId) || [];
+  }, [classTypes, selectedParentClassTypeId]);
+
+  // Загрузка типов уроков
+  useEffect(() => {
+    if (open) {
+      const loadClassTypes = async () => {
+        setIsLoadingClassTypes(true);
+        try {
+          const response = await fetcher<{ data: ClassType[] }>('/api/class-types');
+          setClassTypes(response.data || []);
+        } catch (err) {
+          console.error("Error loading class types:", err);
+        } finally {
+          setIsLoadingClassTypes(false);
+        }
+      };
+      loadClassTypes();
+    }
+  }, [open]);
+
   useEffect(() => {
     if (lesson && open) {
       setEditedLesson(convertToEditableUI(lesson));
       setEditMode('single');
       setDeleteMode('single');
+
+      // Определяем родительский и дочерний типы
+      if (lesson.classTypeId && classTypes.length > 0) {
+        const currentType = classTypes.find(type => type.classTypeId === lesson.classTypeId);
+        if (currentType) {
+          if (!currentType.parentId) {
+            setSelectedParentClassTypeId(currentType.classTypeId);
+            setSelectedChildClassTypeId('');
+          } else {
+            setSelectedParentClassTypeId(currentType.parentId);
+            setSelectedChildClassTypeId(currentType.classTypeId);
+          }
+        }
+      }
     } else if (!open) {
       setEditedLesson(null);
       setError(null);
       setEditMode('single');
       setDeleteMode('single');
       setShowDeleteConfirm(false);
+      setSelectedParentClassTypeId('');
+      setSelectedChildClassTypeId('');
     }
-  }, [lesson, open]);
+  }, [lesson, open, classTypes]);
 
   useEffect(() => {
     if (isRecurringLesson) {
@@ -226,10 +283,32 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
     setEditedLesson(updatedLesson);
   };
 
+  const handleParentClassTypeChange = (parentTypeId: string) => {
+    setSelectedParentClassTypeId(parentTypeId);
+    setSelectedChildClassTypeId('');
+    
+    // Обновляем classTypeId в editedLesson
+    const updatedLesson = { ...editedLesson };
+    updatedLesson.classTypeId = parentTypeId;
+    setEditedLesson(updatedLesson);
+  };
+
+  const handleChildClassTypeChange = (childTypeId: string) => {
+    setSelectedChildClassTypeId(childTypeId);
+    
+    // Обновляем classTypeId в editedLesson
+    const updatedLesson = { ...editedLesson };
+    updatedLesson.classTypeId = childTypeId;
+    setEditedLesson(updatedLesson);
+  };
+
   const handleSave = () => {
     if (!editedLesson || !editedLesson.classId) {
       return;
     }
+
+    // Определяем финальный classTypeId
+    const finalClassTypeId = selectedChildClassTypeId || selectedParentClassTypeId;
 
     if (editMode === 'series' && lesson.seriesId) {
       const seriesToSave: {
@@ -241,6 +320,7 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
         endTime?: string;
         boothId?: string;
         notes?: string | null;
+        classTypeId?: string;
       } = {
         seriesId: lesson.seriesId
       };
@@ -273,6 +353,10 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
         seriesToSave.notes = editedLesson.notes || "";
       }
 
+      if (finalClassTypeId) {
+        seriesToSave.classTypeId = finalClassTypeId;
+      }
+
       updateSeriesMutation.mutate(seriesToSave, {
         onSuccess: () => {
           onSave(editedLesson.classId, true);
@@ -293,6 +377,7 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
         endTime?: string;
         boothId?: string;
         notes?: string | null;
+        classTypeId?: string;
       } = {
         classId: editedLesson.classId
       };
@@ -323,6 +408,10 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
 
       if (editedLesson.notes !== undefined) {
         lessonToSave.notes = editedLesson.notes || "";
+      }
+
+      if (finalClassTypeId) {
+        lessonToSave.classTypeId = finalClassTypeId;
       }
 
       updateClassMutation.mutate(lessonToSave, {
@@ -396,7 +485,20 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
     label: subject.name,
   }));
 
+  const parentClassTypeItems: SearchableSelectItem[] = parentClassTypes.map((type) => ({
+    value: type.classTypeId,
+    label: type.name,
+  }));
+
+  const childClassTypeItems: SearchableSelectItem[] = childClassTypes.map((type) => ({
+    value: type.classTypeId,
+    label: type.name,
+  }));
+
   const isLoading = updateClassMutation.isPending || updateSeriesMutation.isPending;
+
+  const selectedParentClassType = parentClassTypes.find(type => type.classTypeId === selectedParentClassTypeId);
+  const selectedChildClassType = childClassTypes.find(type => type.classTypeId === selectedChildClassTypeId);
 
   return (
     <>
@@ -533,6 +635,52 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
               </div>
             </div>
 
+            {/* Селекты для типов уроков - только в режиме редактирования */}
+            {mode === 'edit' && (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium mb-1 block text-foreground">授業タイプ（基本）</label>
+                  <SearchableSelect
+                    value={selectedParentClassTypeId}
+                    onValueChange={handleParentClassTypeChange}
+                    items={parentClassTypeItems}
+                    placeholder="基本タイプを選択"
+                    searchPlaceholder="基本タイプを検索..."
+                    emptyMessage="基本タイプが見つかりません"
+                    disabled={isLoadingClassTypes}
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-1 block text-foreground">授業タイプ（詳細）</label>
+                  <SearchableSelect
+                    value={selectedChildClassTypeId}
+                    onValueChange={handleChildClassTypeChange}
+                    items={childClassTypeItems}
+                    placeholder={
+                      !selectedParentClassTypeId
+                        ? "先に基本タイプを選択"
+                        : childClassTypes.length === 0
+                        ? "詳細タイプなし"
+                        : "詳細タイプを選択（任意）"
+                    }
+                    searchPlaceholder="詳細タイプを検索..."
+                    emptyMessage="詳細タイプが見つかりません"
+                    disabled={!selectedParentClassTypeId || childClassTypes.length === 0}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Информация о текущем типе в режиме просмотра */}
+            {mode === 'view' && (
+              <div>
+                <label className="text-sm font-medium mb-1 block text-foreground">授業タイプ</label>
+                <div className="border rounded-md p-2 mt-1 bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground border-input">
+                  {lesson.classType?.name || lesson.classTypeName || '指定なし'}
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium mb-1 block text-foreground">科目</label>
@@ -552,15 +700,6 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
                 )}
               </div>
               <div>
-                <label className="text-sm font-medium mb-1 block text-foreground">授業タイプ</label>
-                <div className="border rounded-md p-2 mt-1 bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground border-input">
-                  {lesson.classType?.name || lesson.classTypeName || '指定なし'}
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
                 <label className="text-sm font-medium mb-1 block text-foreground">講師</label>
                 {mode === 'edit' ? (
                   <SearchableSelect
@@ -577,23 +716,24 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
                   </div>
                 )}
               </div>
-              <div>
-                <label className="text-sm font-medium mb-1 block text-foreground">生徒</label>
-                {mode === 'edit' ? (
-                  <SearchableSelect
-                    value={editedLesson.studentId || ''}
-                    onValueChange={(value) => handleInputChange('studentId', value)}
-                    items={studentItems}
-                    placeholder="生徒を選択"
-                    searchPlaceholder="生徒を検索..."
-                    emptyMessage="生徒が見つかりません"
-                  />
-                ) : (
-                  <div className="border rounded-md p-2 mt-1 bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground border-input">
-                    {lesson.student?.name || lesson.studentName || '指定なし'}
-                  </div>
-                )}
-              </div>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-1 block text-foreground">生徒</label>
+              {mode === 'edit' ? (
+                <SearchableSelect
+                  value={editedLesson.studentId || ''}
+                  onValueChange={(value) => handleInputChange('studentId', value)}
+                  items={studentItems}
+                  placeholder="生徒を選択"
+                  searchPlaceholder="生徒を検索..."
+                  emptyMessage="生徒が見つかりません"
+                />
+              ) : (
+                <div className="border rounded-md p-2 mt-1 bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground border-input">
+                  {lesson.student?.name || lesson.studentName || '指定なし'}
+                </div>
+              )}
             </div>
 
             {mode === 'edit' && (

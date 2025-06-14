@@ -6,6 +6,8 @@ import { getDateKey } from '../date';
 import { LessonCard } from './lesson-card';
 import { DayCalendarFilters } from './day-calendar-filters';
 import { AvailabilityLayer, useAvailability } from './availability-layer';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 export type TimeSlot = {
   index: number;
@@ -25,6 +27,8 @@ interface Booth {
   name: string;
 }
 
+type AvailabilityMode = 'with-special' | 'regular-only';
+
 type DayCalendarProps = {
   date: Date;
   booths: Booth[];
@@ -38,6 +42,8 @@ type DayCalendarProps = {
   selectedTeacherId?: string;
   selectedStudentId?: string;
   selectedClassTypeId?: string;
+  availabilityMode?: AvailabilityMode;
+  onAvailabilityModeChange?: (mode: AvailabilityMode) => void;
 };
 
 const CELL_WIDTH = 40; 
@@ -211,11 +217,13 @@ BoothRow.displayName = 'BoothRow';
 const TimeHeader = React.memo(({ 
   timeSlots,
   teacherAvailability,
-  studentAvailability
+  studentAvailability,
+  availabilityMode
 }: { 
   timeSlots: TimeSlot[],
   teacherAvailability?: boolean[],
-  studentAvailability?: boolean[]
+  studentAvailability?: boolean[],
+  availabilityMode?: AvailabilityMode
 }) => {
   return (
     <div 
@@ -266,6 +274,7 @@ const TimeHeader = React.memo(({
             teacherAvailability={teacherAvailability}
             studentAvailability={studentAvailability}
             timeSlotHeight={TIME_SLOT_HEIGHT}
+            availabilityMode={availabilityMode}
           />
         )}
       </div>
@@ -295,7 +304,9 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
   onFiltersChange,
   selectedTeacherId,
   selectedStudentId,
-  selectedClassTypeId
+  selectedClassTypeId,
+  availabilityMode = 'with-special',
+  onAvailabilityModeChange
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(1200); 
@@ -305,11 +316,13 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
   const createLessonCalledRef = useRef(false);
   const lastResizeTime = useRef(0);
 
+  // Передаем availabilityMode в useAvailability
   const { teacherAvailability, studentAvailability } = useAvailability(
     selectedTeacherId,
     selectedStudentId,
     date,
-    timeSlots
+    timeSlots,
+    availabilityMode
   );
 
   const dateKey = useMemo(() => {
@@ -319,15 +332,6 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
   // FIXED: Better date filtering using normalized dates
   const filteredSessions = useMemo(() => {
     const targetDateStr = normalizeDate(date);
-    
-    // console.log('Filtering sessions for date:', targetDateStr);
-    // console.log('Available sessions:', classSessions.map(s => ({
-    //   classId: s.classId,
-    //   date: s.date,
-    //   normalizedDate: normalizeDate(s.date),
-    //   startTime: s.startTime,
-    //   endTime: s.endTime
-    // })));
     
     const filtered = classSessions.filter(session => {
       const sessionDateStr = normalizeDate(session.date);
@@ -340,7 +344,6 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
       return matches;
     });
     
-    // console.log('Filtered sessions:', filtered.length);
     return filtered;
   }, [classSessions, date]);
   
@@ -487,6 +490,12 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
     };
   }, [selection.isSelecting, cancelSelection]);
 
+  // Обработчик для индивидуального switch
+  const handleDayAvailabilityToggle = useCallback((checked: boolean) => {
+    const newMode: AvailabilityMode = checked ? 'regular-only' : 'with-special';
+    onAvailabilityModeChange?.(newMode);
+  }, [onAvailabilityModeChange]);
+
   return (
     <div className="border rounded-md overflow-hidden shadow-sm bg-background dark:bg-background border-border dark:border-border">
       <div className="p-3 border-b bg-muted dark:bg-muted border-border dark:border-border">
@@ -510,15 +519,34 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
             )}
           </div>
           
-          {onFiltersChange && (
-            <div className="flex-1 pt-0.5 flex justify-end">
-              <DayCalendarFilters
-                filters={filters}
-                dateKey={dateKey}
-                onFiltersChange={onFiltersChange}
-              />
-            </div>
-          )}
+          <div className="flex items-center gap-4">
+            {/* Индивидуальный switch для каждой таблицы дня - показываем всегда если есть колбэк */}
+            {onAvailabilityModeChange && (
+              <div className="flex items-center space-x-2 bg-background/80 border border-border rounded-md px-2 py-1">
+                <Switch
+                  id={`day-availability-${dateKey}`}
+                  checked={availabilityMode === 'regular-only'}
+                  onCheckedChange={handleDayAvailabilityToggle}
+                />
+                <Label htmlFor={`day-availability-${dateKey}`} className="text-xs font-medium cursor-pointer">
+                  通常のみ
+                </Label>
+                <span className="text-xs text-muted-foreground">
+                  ({availabilityMode === 'regular-only' ? 'ON' : 'OFF'})
+                </span>
+              </div>
+            )}
+            
+            {onFiltersChange && (
+              <div className="flex-1 pt-0.5 flex justify-end">
+                <DayCalendarFilters
+                  filters={filters}
+                  dateKey={dateKey}
+                  onFiltersChange={onFiltersChange}
+                />
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -538,6 +566,7 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
             timeSlots={timeSlots}
             teacherAvailability={teacherAvailability}
             studentAvailability={studentAvailability}
+            availabilityMode={availabilityMode}
           />
 
           <div className="relative">
