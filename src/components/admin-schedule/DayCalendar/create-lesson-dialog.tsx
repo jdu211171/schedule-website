@@ -167,11 +167,11 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
   studentData
 }) => {
   const [isInitializing, setIsInitializing] = useState(true);
-  
+
   // Теперь у нас два отдельных селекта для родительского и дочернего типов
   const [selectedParentClassTypeId, setSelectedParentClassTypeId] = useState<string>('');
   const [selectedChildClassTypeId, setSelectedChildClassTypeId] = useState<string>('');
-  
+
   const [selectedTeacherId, setSelectedTeacherId] = useState<string>('');
   const [selectedStudentId, setSelectedStudentId] = useState<string>('');
   const [isRecurring, setIsRecurring] = useState<boolean>(false);
@@ -191,8 +191,6 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
 
   const [regularClassTypeId, setRegularClassTypeId] = useState<string>('');
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
-
-  const STORAGE_KEY = 'create-lesson-dialog-persistent-fields';
 
   // Use smart selection hook with enhanced data
   const {
@@ -258,7 +256,7 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
     let description = '';
     let matchingSubjectsCount = 0;
     let partialMatchingSubjectsCount = 0;
-    
+
     if (teacher.compatibilityType === 'perfect') {
       description = `${teacher.matchingSubjectsCount}件の完全一致`;
       matchingSubjectsCount = teacher.matchingSubjectsCount;
@@ -291,7 +289,7 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
     let description = '';
     let matchingSubjectsCount = 0;
     let partialMatchingSubjectsCount = 0;
-    
+
     if (student.compatibilityType === 'perfect') {
       description = `${student.matchingSubjectsCount}件の完全一致`;
       matchingSubjectsCount = student.matchingSubjectsCount;
@@ -322,7 +320,7 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
 
   const subjectItems: SearchableSelectItem[] = enhancedSubjects.map((subject) => {
     let description = '';
-    
+
     switch (subject.compatibilityType) {
       case 'perfect':
         description = '完全一致（科目・レベル両方）';
@@ -384,7 +382,7 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
   const handleParentClassTypeChange = (parentTypeId: string) => {
     setSelectedParentClassTypeId(parentTypeId);
     setSelectedChildClassTypeId(''); // Сбрасываем дочерний тип при смене родительского
-    
+
     // Обновляем режим повторения в зависимости от типа
     const parentType = parentClassTypes.find(type => type.classTypeId === parentTypeId);
     if (parentType) {
@@ -483,16 +481,6 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
         const correctIsRecurring = correctParentClassTypeId === regularClassTypeId;
         const lessonDate = typeof lessonData.date === 'string' ? new Date(lessonData.date) : lessonData.date;
 
-        let savedData = null;
-        try {
-          const savedDataStr = localStorage.getItem(STORAGE_KEY);
-          if (savedDataStr) {
-            savedData = JSON.parse(savedDataStr);
-          }
-        } catch (error) {
-          console.error("Error loading saved data:", error);
-        }
-
         setSelectedParentClassTypeId(correctParentClassTypeId);
         setSelectedChildClassTypeId(correctChildClassTypeId);
         setSelectedTeacherId(preselectedTeacherId || '');
@@ -500,20 +488,17 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
         setIsRecurring(correctIsRecurring);
         setSubjectId('');
         setNotes('');
-        
+
         // Инициализируем время из lessonData
         setStartTime(lessonData.startTime);
         setEndTime(lessonData.endTime);
-        
-        setSelectedDays(savedData?.selectedDays || []);
+
         setDateRange({ from: lessonDate, to: correctIsRecurring ? undefined : undefined });
-        
+
         // По умолчанию выбираем день недели соответствующий дате создания
-        if (!savedData?.selectedDays || savedData.selectedDays.length === 0) {
-          const dayOfWeek = lessonDate.getDay();
-          setSelectedDays([dayOfWeek]);
-        }
-        
+        const dayOfWeek = lessonDate.getDay();
+        setSelectedDays([dayOfWeek]);
+
         setError(null);
         setValidationErrors([]);
 
@@ -525,17 +510,6 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
       setIsInitializing(true);
     }
   }, [open, classTypes.length, regularClassTypeId, lessonData, preselectedClassTypeId, preselectedTeacherId, preselectedStudentId]);
-
-  useEffect(() => {
-    if (open && !isInitializing) {
-      const persistentData = {
-        selectedDays,
-        selectedTeacherId,
-        selectedStudentId,
-      };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(persistentData));
-    }
-  }, [selectedDays, selectedTeacherId, selectedStudentId, open, isInitializing]);
 
   useEffect(() => {
     if (open && !isRecurring) {
@@ -603,19 +577,19 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
 
   const canSubmit = useMemo(() => {
     if (isInitializing) return false;
-    
-    const hasRequiredFields = selectedParentClassTypeId && 
-                             selectedTeacherId && 
-                             selectedStudentId && 
+
+    const hasRequiredFields = selectedParentClassTypeId &&
+                             selectedTeacherId &&
+                             selectedStudentId &&
                              subjectId &&
                              startTime &&
                              endTime;
-    
+
     if (!hasRequiredFields) return false;
-    
+
     // Проверяем корректность времени
     if (startTime >= endTime) return false;
-    
+
     if (isRecurring) {
       return dateRange?.from && dateRange?.to;
     } else {
@@ -669,8 +643,8 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
   };
 
   const handleReset = () => {
-    const correctParentTypeId = preselectedClassTypeId ? 
-      (classTypes.find(type => type.classTypeId === preselectedClassTypeId && !type.parentId)?.classTypeId || regularClassTypeId) : 
+    const correctParentTypeId = preselectedClassTypeId ?
+      (classTypes.find(type => type.classTypeId === preselectedClassTypeId && !type.parentId)?.classTypeId || regularClassTypeId) :
       regularClassTypeId;
     const correctIsRecurring = correctParentTypeId === regularClassTypeId;
     const lessonDate = typeof lessonData.date === 'string' ? new Date(lessonData.date) : lessonData.date;
@@ -687,7 +661,6 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
     setSelectedDays([]);
     setDateRange({ from: lessonDate, to: undefined });
 
-    localStorage.removeItem(STORAGE_KEY);
     setError(null);
     setValidationErrors([]);
   };
@@ -929,7 +902,7 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
                   )}
                 </div>
               </div>
-              
+
               {/* Enhanced Student Select */}
               <div>
                 <label htmlFor="student-select" className="text-sm font-medium mb-1 block text-foreground">
@@ -970,8 +943,8 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
             {/* Enhanced Compatibility Indicator */}
             {compatibilityInfo && (
               <div className={`text-xs p-3 rounded-md border ${
-                compatibilityInfo.compatibilityType === 'perfect' 
-                  ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800' 
+                compatibilityInfo.compatibilityType === 'perfect'
+                  ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800'
                   : compatibilityInfo.compatibilityType === 'subject-only'
                   ? 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:text-orange-300 dark:border-orange-800'
                   : compatibilityInfo.compatibilityType === 'mismatch'
@@ -988,7 +961,7 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
                   {compatibilityInfo.compatibilityType === 'mismatch' && (
                     <AlertTriangle className="h-4 w-4 text-amber-600" />
                   )}
-                  {(compatibilityInfo.compatibilityType === 'teacher-only' || 
+                  {(compatibilityInfo.compatibilityType === 'teacher-only' ||
                     compatibilityInfo.compatibilityType === 'student-only' ||
                     compatibilityInfo.compatibilityType === 'no-preferences') && (
                     <Users className="h-4 w-4 text-blue-600" />
