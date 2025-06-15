@@ -142,8 +142,8 @@ export function TeacherFormDialog({
   const isSubmitting =
     createTeacherMutation.isPending || updateTeacherMutation.isPending;
 
-  // Keep dialog open setting
-  const KEEP_OPEN_STORAGE_KEY = "teacher-form-keep-open";
+  // Keep dialog open setting - shared across student and teacher forms
+  const KEEP_OPEN_STORAGE_KEY = "form-keep-open";
   const [keepDialogOpen, setKeepDialogOpen] = useState(() => {
     if (typeof window !== 'undefined') {
       const savedKeepOpen = localStorage.getItem(KEEP_OPEN_STORAGE_KEY);
