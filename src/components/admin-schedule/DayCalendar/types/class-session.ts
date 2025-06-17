@@ -48,13 +48,21 @@ export interface ClassSessionBase {
   
   export function formatDateToString(date: Date | string): string {
     if (date instanceof Date) {
-      return date.toISOString().split('T')[0];
+      // Format the date using local time to avoid timezone conversion issues
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
     } else if (typeof date === 'string') {
       if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
         return date;
       }
       try {
-        return new Date(date).toISOString().split('T')[0];
+        const parsedDate = new Date(date);
+        const year = parsedDate.getFullYear();
+        const month = String(parsedDate.getMonth() + 1).padStart(2, '0');
+        const day = String(parsedDate.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
       } catch (e) {
         console.error("Ошибка преобразования даты:", e);
         return '';
