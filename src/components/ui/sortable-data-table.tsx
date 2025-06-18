@@ -47,6 +47,7 @@ interface SortableDataTableProps<TData, TValue> {
   onSortModeChange: (enabled: boolean) => void;
   onReorder: (items: TData[]) => void;
   getItemId: (item: TData) => UniqueIdentifier;
+  showSortMode?: boolean; // New prop to control sort mode visibility
 
   // Optional props
   searchValue?: string;
@@ -78,6 +79,7 @@ export function SortableDataTable<
   onSortModeChange,
   onReorder,
   getItemId,
+  showSortMode = true, // Default to true for backward compatibility
   searchValue = "",
   onSearchChange,
   searchPlaceholder = "検索...",
@@ -280,16 +282,18 @@ export function SortableDataTable<
       pageSize={pageSize}
       totalItems={totalItems}
       filterComponent={
-        <div className="flex justify-end">
-          <Toggle
-            pressed={isSortMode}
-            onPressedChange={onSortModeChange}
-            aria-label="並び替えモード"
-          >
-            <GripVertical className="h-4 w-4 mr-2" />
-            並び替えモード
-          </Toggle>
-        </div>
+        showSortMode && (
+          <div className="flex justify-end">
+            <Toggle
+              pressed={isSortMode}
+              onPressedChange={onSortModeChange}
+              aria-label="並び替えモード"
+            >
+              <GripVertical className="h-4 w-4 mr-2" />
+              並び替えモード
+            </Toggle>
+          </div>
+        )
       }
     />
   );

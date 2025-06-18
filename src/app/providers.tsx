@@ -34,7 +34,12 @@ export function Providers({ children }: { children: ReactNode }) {
         <SessionProvider>{children}</SessionProvider>
       </ThemeProvider>
       <ReactQueryDevtools initialIsOpen={false} />
-      <Toaster duration={10000} />
+      <Toaster
+        duration={10000}
+        position="top-center"
+        richColors
+        closeButton
+      />
       <Analytics />
       <SpeedInsights />
     </QueryClientProvider>

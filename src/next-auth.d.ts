@@ -10,6 +10,7 @@ declare module "next-auth" {
     userId?: string;
     branches?: { branchId: string; name: string }[];
     selectedBranchId?: string | null;
+    isRestrictedAdmin?: boolean;
   }
 
   interface Session {
@@ -19,6 +20,7 @@ declare module "next-auth" {
       userId?: string;
       branches?: { branchId: string; name: string }[];
       selectedBranchId?: string | null;
+      isRestrictedAdmin?: boolean;
     } & DefaultSession["user"];
   }
 }

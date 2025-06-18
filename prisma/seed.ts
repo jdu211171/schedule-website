@@ -436,6 +436,7 @@ async function main() {
       username: "ADMIN01",
       passwordHash: hashSync("admin123"),
       role: UserRole.ADMIN,
+      order: 1,
     },
   });
 
@@ -449,6 +450,7 @@ async function main() {
       username: "STAFF01",
       passwordHash: hashSync("staff123"),
       role: UserRole.STAFF,
+      order: 2,
     },
   });
 
@@ -461,6 +463,7 @@ async function main() {
       username: "STAFF02",
       passwordHash: hashSync("staff123"),
       role: UserRole.STAFF,
+      order: 3,
     },
   });
 
@@ -474,6 +477,7 @@ async function main() {
       username: "TEACHER01",
       passwordHash: "teacher123",
       role: UserRole.TEACHER,
+      order: 4,
     },
   });
 
@@ -486,6 +490,7 @@ async function main() {
       username: "TEACHER02",
       passwordHash: "teacher123",
       role: UserRole.TEACHER,
+      order: 5,
     },
   });
 
@@ -498,6 +503,7 @@ async function main() {
       username: "TEACHER03",
       passwordHash: "teacher123",
       role: UserRole.TEACHER,
+      order: 6,
     },
   });
 
@@ -510,6 +516,7 @@ async function main() {
       username: "TEACHER04",
       passwordHash: "teacher123",
       role: UserRole.TEACHER,
+      order: 7,
     },
   });
 
@@ -522,6 +529,7 @@ async function main() {
       username: "TEACHER05",
       passwordHash: "teacher123",
       role: UserRole.TEACHER,
+      order: 8,
     },
   });
 
@@ -535,6 +543,7 @@ async function main() {
       username: "STUDENT01",
       passwordHash: "student123",
       role: UserRole.STUDENT,
+      order: 9,
     },
   });
 
@@ -547,6 +556,7 @@ async function main() {
       username: "STUDENT02",
       passwordHash: "student123",
       role: UserRole.STUDENT,
+      order: 10,
     },
   });
 
@@ -559,6 +569,7 @@ async function main() {
       username: "STUDENT03",
       passwordHash: "student123",
       role: UserRole.STUDENT,
+      order: 11,
     },
   });
 
@@ -571,6 +582,7 @@ async function main() {
       username: "STUDENT04",
       passwordHash: "student123",
       role: UserRole.STUDENT,
+      order: 12,
     },
   });
 
@@ -583,6 +595,7 @@ async function main() {
       username: "STUDENT05",
       passwordHash: "student123",
       role: UserRole.STUDENT,
+      order: 13,
     },
   });
 
@@ -595,6 +608,7 @@ async function main() {
       username: "STUDENT06",
       passwordHash: "student123",
       role: UserRole.STUDENT,
+      order: 14,
     },
   });
 
@@ -607,6 +621,7 @@ async function main() {
       username: "STUDENT07",
       passwordHash: "student123",
       role: UserRole.STUDENT,
+      order: 15,
     },
   });
 
@@ -619,6 +634,7 @@ async function main() {
       username: "STUDENT08",
       passwordHash: "student123",
       role: UserRole.STUDENT,
+      order: 16,
     },
   });
 

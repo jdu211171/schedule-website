@@ -398,6 +398,8 @@ model User {
   username           String?      @unique
   passwordHash       String?
   role               UserRole     @default(ADMIN)
+  order              Int?          @map("order")
+  isRestrictedAdmin  Boolean      @default(false) @map("is_restricted_admin")
   student            Student?
   teacher            Teacher?
   availability       UserAvailability[]
@@ -405,6 +407,7 @@ model User {
   createdAt          DateTime      @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt          DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
+  @@index([order])
   @@map("users")
 }
 

@@ -61,6 +61,8 @@ export default {
 
         if (!user) throw new Error("Invalid credentials");
 
+        // Check password based on user role
+        // ADMIN and STAFF use hashed passwords, TEACHER and STUDENT use plain text
         const ok = ["TEACHER", "STUDENT"].includes(user.role)
           ? creds.password === user.passwordHash
           : await bcrypt.compare(
@@ -108,6 +110,7 @@ export default {
           userId: user.teacher?.teacherId || user.student?.studentId || "",
           branches: userBranches,
           selectedBranchId,
+          isRestrictedAdmin: user.isRestrictedAdmin ?? false,
         };
       },
     }),
@@ -180,7 +183,7 @@ export default {
         } else {
           // For non-ADMIN, use branches associated with the user
           userBranches =
-            existingUser.branches?.map((ub: any) => ({
+            existingUser.branches?.map((ub) => ({
               branchId: ub.branch.branchId,
               name: ub.branch.name,
             })) || [];
@@ -198,6 +201,7 @@ export default {
         user.userId = existingUser.teacher?.teacherId || existingUser.student?.studentId || "";
         user.branches = userBranches;
         user.selectedBranchId = selectedBranchId;
+        user.isRestrictedAdmin = existingUser.isRestrictedAdmin ?? false;
 
         console.log("✅ Google OAuth success:", {
           role: existingUser.role,
@@ -276,6 +280,7 @@ export default {
         token.userId = user.userId;
         token.branches = user.branches;
         token.selectedBranchId = user.selectedBranchId;
+        token.isRestrictedAdmin = user.isRestrictedAdmin;
       }
 
       // Handle session updates (when update() is called from frontend)
@@ -297,6 +302,7 @@ export default {
           name: string;
         }[];
         session.user.selectedBranchId = token.selectedBranchId as string | null;
+        session.user.isRestrictedAdmin = token.isRestrictedAdmin as boolean;
       }
       return session;
     },

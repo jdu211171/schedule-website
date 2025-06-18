@@ -13,6 +13,7 @@ import { BranchTable } from "@/components/branch/branch-table";
 import { StudentTable } from "@/components/student/student-table";
 import { TeacherTable } from "@/components/teacher/teacher-table";
 import { SubjectTypeTable } from "@/components/subject-type/subject-type-table";
+import { AdminUserTable } from "@/components/admin-user/admin-user-table";
 import { useSession } from "next-auth/react";
 
 // Storage key for tab persistence
@@ -56,6 +57,10 @@ export default function MasterDataPage() {
           {session?.user?.role === "ADMIN" && (
             <>
               <TabsTrigger value="branches">校舎</TabsTrigger>
+              {/* Only show admin management for non-restricted admins */}
+              {!session?.user?.isRestrictedAdmin && (
+                <TabsTrigger value="admins">管理者</TabsTrigger>
+              )}
               <TabsTrigger value="staff">スタッフ</TabsTrigger>
             </>
           )}
@@ -73,6 +78,12 @@ export default function MasterDataPage() {
           <TabsContent value="branches" className="mt-0">
             <BranchTable />
           </TabsContent>
+          {/* Only show admin management content for non-restricted admins */}
+          {session?.user?.role === "ADMIN" && !session?.user?.isRestrictedAdmin && (
+            <TabsContent value="admins" className="mt-0">
+              <AdminUserTable />
+            </TabsContent>
+          )}
           <TabsContent value="staff" className="mt-0">
             <StaffTable />
           </TabsContent>

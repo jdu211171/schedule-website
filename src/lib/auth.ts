@@ -37,6 +37,33 @@ export function withRole(allowedRoles: UserRole[], handler: RouteHandler) {
   };
 }
 
+// Wrapper function that excludes restricted admins from certain operations
+export function withFullAdminRole(handler: RouteHandler) {
+  return async (request: NextRequest) => {
+    const session = await auth();
+
+    console.log("withFullAdminRole check:", {
+      hasSession: !!session,
+      hasUser: !!session?.user,
+      role: session?.user?.role,
+      isRestrictedAdmin: session?.user?.isRestrictedAdmin
+    });
+
+    // Check if user is authenticated and is a full admin (not restricted)
+    if (
+      !session ||
+      !session.user ||
+      session.user.role !== "ADMIN" ||
+      session.user.isRestrictedAdmin === true
+    ) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Pass request and session to the handler
+    return handler(request, session as Session);
+  };
+}
+
 // Wrapper function to check roles, validate branch access, and pass session to handler
 export function withBranchAccess(
   allowedRoles: UserRole[],
