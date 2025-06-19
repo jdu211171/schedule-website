@@ -333,6 +333,9 @@ export function ClassSessionFormDialog({
         daysOfWeek: formattedValues.isRecurring
           ? formattedValues.daysOfWeek
           : undefined,
+        checkAvailability: true,
+        skipConflicts: false,
+        forceCreate: false,
       });
     }
 
