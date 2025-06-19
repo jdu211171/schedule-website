@@ -19,6 +19,10 @@ export const classSessionCreateSchema = z.object({
   startDate: z.string().optional(), // When recurring sessions begin "YYYY-MM-DD"
   endDate: z.string().optional(), // When recurring sessions end "YYYY-MM-DD"
   daysOfWeek: z.array(z.number().min(0).max(6)).optional(), // 0 = Sunday, 6 = Saturday
+  // Availability checking options
+  checkAvailability: z.boolean().optional().default(true),
+  skipConflicts: z.boolean().optional().default(false),
+  forceCreate: z.boolean().optional().default(false),
 });
 
 // Schema for updating an existing class session
@@ -77,6 +81,28 @@ export const classSessionFilterSchema = z.object({
   hasSubject: z.coerce.boolean().optional(),
   hasBooth: z.coerce.boolean().optional(),
 });
+
+// Response types for conflict information
+export type ConflictInfo = {
+  date: string;
+  dayOfWeek: string;
+  type:
+    | "VACATION"
+    | "TEACHER_UNAVAILABLE"
+    | "STUDENT_UNAVAILABLE"
+    | "TEACHER_WRONG_TIME"
+    | "STUDENT_WRONG_TIME";
+  details: string;
+  participant?: {
+    id: string;
+    name: string;
+    role: "teacher" | "student";
+  };
+  availableSlots?: Array<{
+    startTime: string;
+    endTime: string;
+  }>;
+};
 
 export type ClassSessionCreate = z.infer<typeof classSessionCreateSchema>;
 export type ClassSessionUpdate = z.infer<typeof classSessionUpdateSchema>;
