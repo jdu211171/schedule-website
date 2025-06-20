@@ -63,6 +63,8 @@ type ConflictInfo = {
     startTime: string;
     endTime: string;
   };
+  // NEW: Include the created session data when forceCreate is used
+  session?: FormattedClassSession;
 };
 
 // Helper function to format class session response
@@ -229,7 +231,11 @@ const checkUserAvailability = async (
   let isAvailable = false;
 
   if (availability.length === 0) {
-    return { available: false, conflictType: "UNAVAILABLE", availableSlots: [] };
+    return {
+      available: false,
+      conflictType: "UNAVAILABLE",
+      availableSlots: [],
+    };
   }
 
   for (const slot of availability) {
@@ -601,8 +607,13 @@ export const POST = withBranchAccess(
             );
 
             if (!availability.available) {
-              const hasAlternativeSlots = availability.availableSlots && availability.availableSlots.length > 0;
-              const conflictType = availability.conflictType === "UNAVAILABLE" ? "TEACHER_UNAVAILABLE" : "TEACHER_WRONG_TIME";
+              const hasAlternativeSlots =
+                availability.availableSlots &&
+                availability.availableSlots.length > 0;
+              const conflictType =
+                availability.conflictType === "UNAVAILABLE"
+                  ? "TEACHER_UNAVAILABLE"
+                  : "TEACHER_WRONG_TIME";
 
               let details = "";
               if (availability.conflictType === "UNAVAILABLE") {
@@ -646,8 +657,13 @@ export const POST = withBranchAccess(
             );
 
             if (!availability.available) {
-              const hasAlternativeSlots = availability.availableSlots && availability.availableSlots.length > 0;
-              const conflictType = availability.conflictType === "UNAVAILABLE" ? "STUDENT_UNAVAILABLE" : "STUDENT_WRONG_TIME";
+              const hasAlternativeSlots =
+                availability.availableSlots &&
+                availability.availableSlots.length > 0;
+              const conflictType =
+                availability.conflictType === "UNAVAILABLE"
+                  ? "STUDENT_UNAVAILABLE"
+                  : "STUDENT_WRONG_TIME";
 
               let details = "";
               if (availability.conflictType === "UNAVAILABLE") {
@@ -702,36 +718,36 @@ export const POST = withBranchAccess(
                 {
                   AND: [
                     { startTime: { lte: startDateTime } },
-                    { endTime: { gt: startDateTime } }
-                  ]
+                    { endTime: { gt: startDateTime } },
+                  ],
                 },
                 // Session ends during existing session
                 {
                   AND: [
                     { startTime: { lt: endDateTime } },
-                    { endTime: { gte: endDateTime } }
-                  ]
+                    { endTime: { gte: endDateTime } },
+                  ],
                 },
                 // Session completely contains existing session
                 {
                   AND: [
                     { startTime: { gte: startDateTime } },
-                    { endTime: { lte: endDateTime } }
-                  ]
-                }
-              ]
+                    { endTime: { lte: endDateTime } },
+                  ],
+                },
+              ],
             },
             include: {
               teacher: {
-                select: { name: true }
+                select: { name: true },
               },
               student: {
-                select: { name: true }
+                select: { name: true },
               },
               booth: {
-                select: { name: true }
-              }
-            }
+                select: { name: true },
+              },
+            },
           });
 
           if (boothConflict) {
@@ -750,26 +766,34 @@ export const POST = withBranchAccess(
                   teacherName: boothConflict.teacher?.name || "不明",
                   studentName: boothConflict.student?.name || "不明",
                   startTime: conflictStartTime,
-                  endTime: conflictEndTime
-                }
+                  endTime: conflictEndTime,
+                },
               });
             }
           }
-        }        // Handle conflicts based on user preference
+        }
+
+        // Handle conflicts based on user preference
         if (conflicts.length > 0 && !forceCreate) {
           // Create a more descriptive message based on conflict types
-          const conflictTypes = [...new Set(conflicts.map(c => c.type))];
-          const hasAvailableSlots = conflicts.some(c => c.availableSlots && c.availableSlots.length > 0);
+          const conflictTypes = [...new Set(conflicts.map((c) => c.type))];
+          const hasAvailableSlots = conflicts.some(
+            (c) => c.availableSlots && c.availableSlots.length > 0
+          );
           let message = "";
 
           if (conflictTypes.includes("BOOTH_CONFLICT")) {
-            message = "指定されたブースが既に使用されています。別の時間帯またはブースを選択するか、強制作成を選択してください。";
+            message =
+              "指定されたブースが既に使用されています。別の時間帯またはブースを選択するか、強制作成を選択してください。";
           } else if (conflictTypes.includes("VACATION")) {
-            message = "指定された日付は休暇期間です。別の日付を選択するか、強制作成を選択してください。";
+            message =
+              "指定された日付は休暇期間です。別の日付を選択するか、強制作成を選択してください。";
           } else if (conflictTypes.includes("TEACHER_UNAVAILABLE")) {
-            message = "講師がその日は利用できません。別の日付を選択するか、強制作成を選択してください。";
+            message =
+              "講師がその日は利用できません。別の日付を選択するか、強制作成を選択してください。";
           } else if (conflictTypes.includes("STUDENT_UNAVAILABLE")) {
-            message = "生徒がその日は利用できません。別の日付を選択するか、強制作成を選択してください。";
+            message =
+              "生徒がその日は利用できません。別の日付を選択するか、強制作成を選択してください。";
           } else if (conflictTypes.includes("TEACHER_WRONG_TIME")) {
             message = hasAvailableSlots
               ? "講師の利用可能時間と一致しません。利用可能な時間帯から選択するか、強制作成を選択してください。"
@@ -779,7 +803,8 @@ export const POST = withBranchAccess(
               ? "生徒の利用可能時間と一致しません。利用可能な時間帯から選択するか、強制作成を選択してください。"
               : "生徒の利用可能時間と一致しません。別の時間帯を選択するか、強制作成を選択してください。";
           } else {
-            message = "スケジュールの競合が見つかりました。詳細を確認し、必要に応じて調整してください。";
+            message =
+              "スケジュールの競合が見つかりました。詳細を確認し、必要に応じて調整してください。";
           }
 
           return NextResponse.json(
@@ -837,6 +862,15 @@ export const POST = withBranchAccess(
 
         const formattedSession = formatClassSession(newClassSession);
 
+        // If forceCreate was used and there were conflicts, include the session data in conflicts
+        const finalConflicts =
+          conflicts.length > 0 && forceCreate
+            ? conflicts.map((conflict) => ({
+                ...conflict,
+                session: formattedSession, // Include the created session data
+              }))
+            : conflicts;
+
         return NextResponse.json(
           {
             data: [formattedSession],
@@ -844,7 +878,7 @@ export const POST = withBranchAccess(
               conflicts.length > 0
                 ? "クラスセッションを作成しました（競合あり）"
                 : "クラスセッションを作成しました",
-            conflicts: conflicts.length > 0 ? conflicts : undefined,
+            conflicts: finalConflicts.length > 0 ? finalConflicts : undefined,
             pagination: {
               total: 1,
               page: 1,
@@ -855,6 +889,7 @@ export const POST = withBranchAccess(
           { status: 201 }
         );
       } else {
+        // Recurring sessions logic...
         // Validate recurring session parameters
         if (!endDate) {
           return NextResponse.json(
@@ -919,6 +954,7 @@ export const POST = withBranchAccess(
 
         // Check for conflicts on all dates
         const allConflicts: ConflictInfo[] = [];
+        const sessionConflictMap = new Map<string, ConflictInfo[]>(); // Map date to conflicts for that date
         const validSessionDates: Date[] = [];
         const skippedDates: Date[] = [];
 
@@ -977,8 +1013,13 @@ export const POST = withBranchAccess(
             );
 
             if (!availability.available) {
-              const hasAlternativeSlots = availability.availableSlots && availability.availableSlots.length > 0;
-              const conflictType = availability.conflictType === "UNAVAILABLE" ? "TEACHER_UNAVAILABLE" : "TEACHER_WRONG_TIME";
+              const hasAlternativeSlots =
+                availability.availableSlots &&
+                availability.availableSlots.length > 0;
+              const conflictType =
+                availability.conflictType === "UNAVAILABLE"
+                  ? "TEACHER_UNAVAILABLE"
+                  : "TEACHER_WRONG_TIME";
 
               let details = "";
               if (availability.conflictType === "UNAVAILABLE") {
@@ -1015,8 +1056,13 @@ export const POST = withBranchAccess(
             );
 
             if (!availability.available) {
-              const hasAlternativeSlots = availability.availableSlots && availability.availableSlots.length > 0;
-              const conflictType = availability.conflictType === "UNAVAILABLE" ? "STUDENT_UNAVAILABLE" : "STUDENT_WRONG_TIME";
+              const hasAlternativeSlots =
+                availability.availableSlots &&
+                availability.availableSlots.length > 0;
+              const conflictType =
+                availability.conflictType === "UNAVAILABLE"
+                  ? "STUDENT_UNAVAILABLE"
+                  : "STUDENT_WRONG_TIME";
 
               let details = "";
               if (availability.conflictType === "UNAVAILABLE") {
@@ -1068,40 +1114,43 @@ export const POST = withBranchAccess(
                   {
                     AND: [
                       { startTime: { lte: sessionStartTime } },
-                      { endTime: { gt: sessionStartTime } }
-                    ]
+                      { endTime: { gt: sessionStartTime } },
+                    ],
                   },
                   // Session ends during existing session
                   {
                     AND: [
                       { startTime: { lt: sessionEndTime } },
-                      { endTime: { gte: sessionEndTime } }
-                    ]
+                      { endTime: { gte: sessionEndTime } },
+                    ],
                   },
                   // Session completely contains existing session
                   {
                     AND: [
                       { startTime: { gte: sessionStartTime } },
-                      { endTime: { lte: sessionEndTime } }
-                    ]
-                  }
-                ]
+                      { endTime: { lte: sessionEndTime } },
+                    ],
+                  },
+                ],
               },
               include: {
                 teacher: {
-                  select: { name: true }
+                  select: { name: true },
                 },
                 student: {
-                  select: { name: true }
+                  select: { name: true },
                 },
                 booth: {
-                  select: { name: true }
-                }
-              }
+                  select: { name: true },
+                },
+              },
             });
 
             if (boothConflict) {
-              const conflictStartTime = format(boothConflict.startTime, "HH:mm");
+              const conflictStartTime = format(
+                boothConflict.startTime,
+                "HH:mm"
+              );
               const conflictEndTime = format(boothConflict.endTime, "HH:mm");
               const boothName = boothConflict.booth?.name || "不明なブース";
 
@@ -1116,8 +1165,8 @@ export const POST = withBranchAccess(
                     teacherName: boothConflict.teacher?.name || "不明",
                     studentName: boothConflict.student?.name || "不明",
                     startTime: conflictStartTime,
-                    endTime: conflictEndTime
-                  }
+                    endTime: conflictEndTime,
+                  },
                 });
               }
             }
@@ -1126,10 +1175,11 @@ export const POST = withBranchAccess(
           // Handle conflicts
           if (dateConflicts.length > 0) {
             allConflicts.push(...dateConflicts);
+            // Store conflicts for this date for later mapping
+            sessionConflictMap.set(formattedSessionDate, dateConflicts);
+
             if (skipConflicts) {
               skippedDates.push(sessionDate);
-            } else if (!forceCreate) {
-              validSessionDates.push(sessionDate);
             } else {
               validSessionDates.push(sessionDate);
             }
@@ -1152,7 +1202,7 @@ export const POST = withBranchAccess(
           // Create a descriptive message for recurring sessions
           const conflictDates = Object.keys(conflictsByDate).length;
           const totalSessions = sessionDates.length;
-          const conflictTypes = [...new Set(allConflicts.map(c => c.type))];
+          const conflictTypes = [...new Set(allConflicts.map((c) => c.type))];
 
           let message = `繰り返しクラスの作成中に${conflictDates}日分で競合が見つかりました（全${totalSessions}日中）。`;
 
@@ -1162,14 +1212,21 @@ export const POST = withBranchAccess(
           if (conflictTypes.includes("VACATION")) {
             message += "休暇期間と重複する日があります。";
           }
-          if (conflictTypes.includes("TEACHER_UNAVAILABLE") || conflictTypes.includes("TEACHER_WRONG_TIME")) {
+          if (
+            conflictTypes.includes("TEACHER_UNAVAILABLE") ||
+            conflictTypes.includes("TEACHER_WRONG_TIME")
+          ) {
             message += "講師の利用可能時間と合わない日があります。";
           }
-          if (conflictTypes.includes("STUDENT_UNAVAILABLE") || conflictTypes.includes("STUDENT_WRONG_TIME")) {
+          if (
+            conflictTypes.includes("STUDENT_UNAVAILABLE") ||
+            conflictTypes.includes("STUDENT_WRONG_TIME")
+          ) {
             message += "生徒の利用可能時間と合わない日があります。";
           }
 
-          message += "競合のある日をスキップするか、すべて強制作成するかを選択してください。";
+          message +=
+            "競合のある日をスキップするか、すべて強制作成するかを選択してください。";
 
           return NextResponse.json(
             {
@@ -1268,10 +1325,20 @@ export const POST = withBranchAccess(
 
         const formattedSessions = createdSessions.map(formatClassSession);
 
-        // Identify which sessions have conflicts
-        const sessionsWithConflicts = formattedSessions.filter((session) =>
-          allConflicts.some((conflict) => conflict.date === session.date)
-        );
+        // If forceCreate was used, include session data in conflicts
+        const finalConflicts =
+          allConflicts.length > 0 && forceCreate
+            ? allConflicts.map((conflict) => {
+                // Find the created session for this conflict's date
+                const sessionForDate = formattedSessions.find(
+                  (s) => s.date === conflict.date
+                );
+                return {
+                  ...conflict,
+                  session: sessionForDate, // Include the created session data
+                };
+              })
+            : allConflicts;
 
         // Create response message based on what happened
         let message = `${formattedSessions.length}件の繰り返しクラスセッションを作成しました`;
@@ -1285,11 +1352,7 @@ export const POST = withBranchAccess(
             pages: 1,
           },
           seriesId,
-          conflicts: allConflicts.length > 0 ? allConflicts : undefined,
-          sessionsWithConflicts:
-            sessionsWithConflicts.length > 0
-              ? sessionsWithConflicts
-              : undefined,
+          conflicts: finalConflicts.length > 0 ? finalConflicts : undefined,
           skipped:
             skippedDates.length > 0
               ? {
@@ -1303,7 +1366,12 @@ export const POST = withBranchAccess(
         if (skipConflicts && skippedDates.length > 0) {
           message += `（${skippedDates.length}件の競合する日付をスキップしました）`;
         } else if (forceCreate && allConflicts.length > 0) {
-          message += `（${sessionsWithConflicts.length}件のセッションに競合があります）`;
+          // Count sessions with conflicts by matching dates
+          const conflictDates = new Set(allConflicts.map((c) => c.date));
+          const conflictCount = formattedSessions.filter((s) =>
+            conflictDates.has(s.date)
+          ).length;
+          message += `（${conflictCount}件のセッションに競合があります）`;
         }
 
         responseData.message = message;

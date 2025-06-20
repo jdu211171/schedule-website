@@ -93,6 +93,7 @@ export type ConflictInfo = {
     | "TEACHER_WRONG_TIME"
     | "STUDENT_WRONG_TIME";
   details: string;
+  classId?: string; // Only for booth conflicts
   participant?: {
     id: string;
     name: string;
