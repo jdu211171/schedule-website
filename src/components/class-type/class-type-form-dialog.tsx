@@ -46,7 +46,7 @@ function isProtectedClassType(classType: ClassType): boolean {
 // Form schema for class type creation/editing
 const classTypeFormSchema = z.object({
   name: z.string().min(1, "名前は必須です").max(100),
-  parentId: z.string().min(1, "親クラスタイプは必須です"),
+  parentId: z.string().optional(),
   notes: z.string().max(255).optional().nullable(),
 });
 
@@ -71,6 +71,7 @@ export function ClassTypeFormDialog({
   // Fetch all class types for parent selection
   const { data: allClassTypes } = useAllClassTypes();
 
+  // Use single schema for all cases
   const form = useForm<z.infer<typeof classTypeFormSchema>>({
     resolver: zodResolver(classTypeFormSchema),
     defaultValues: {
@@ -97,25 +98,52 @@ export function ClassTypeFormDialog({
   }, [classType, form]);
 
   function onSubmit(values: z.infer<typeof classTypeFormSchema>) {
-    // Ensure the notes field is explicitly included, even if empty
-    const updatedValues = {
-      ...values,
-      notes: values.notes ?? "",
-      parentId: values.parentId, // parentId is now required, no need to default to null
-    };
+    // For protected class types, preserve the existing parentId and validate required fields
+    if (isProtected) {
+      // For protected types, ensure parentId is preserved from existing data
+      const updatedValues = {
+        name: values.name,
+        parentId: classType?.parentId || null,
+        notes: values.notes ?? "",
+      };
 
-    // Close the dialog immediately for better UX
-    onOpenChange(false);
-    form.reset();
+      // Close the dialog immediately for better UX
+      onOpenChange(false);
+      form.reset();
 
-    // Then trigger the mutation
-    if (isEditing && classType) {
-      updateClassTypeMutation.mutate({
-        classTypeId: classType.classTypeId,
-        ...updatedValues,
-      });
+      // Update the protected class type
+      if (classType) {
+        updateClassTypeMutation.mutate({
+          classTypeId: classType.classTypeId,
+          ...updatedValues,
+        });
+      }
     } else {
-      createClassTypeMutation.mutate(updatedValues);
+      // For non-protected types, validate parentId is required
+      if (!values.parentId) {
+        form.setError("parentId", { message: "親クラスタイプは必須です" });
+        return;
+      }
+
+      const updatedValues = {
+        name: values.name,
+        parentId: values.parentId,
+        notes: values.notes ?? "",
+      };
+
+      // Close the dialog immediately for better UX
+      onOpenChange(false);
+      form.reset();
+
+      // Then trigger the mutation
+      if (isEditing && classType) {
+        updateClassTypeMutation.mutate({
+          classTypeId: classType.classTypeId,
+          ...updatedValues,
+        });
+      } else {
+        createClassTypeMutation.mutate(updatedValues);
+      }
     }
   }
 
@@ -148,16 +176,10 @@ export function ClassTypeFormDialog({
             {isEditing ? "クラスタイプの編集" : "クラスタイプの作成"}
           </DialogTitle>
         </DialogHeader>
-        {/* Prevent editing protected class types */}
-        {isEditing && isProtected ? (
-          <div className="p-4 text-center">
-            <p className="text-muted-foreground">
-              この基本クラスタイプは編集できません。
-            </p>
-          </div>
-        ) : (
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">{/* ...existing form content... */}
+
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            {/* Name field - always visible */}
             <FormField
               control={form.control}
               name="name"
@@ -177,37 +199,40 @@ export function ClassTypeFormDialog({
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="parentId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="after:content-['*'] after:ml-1 after:text-destructive">
-                    親クラスタイプ
-                  </FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    value={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="親クラスタイプを選択してください" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {parentOptions.map((type) => (
-                        <SelectItem key={type.classTypeId} value={type.classTypeId}>
-                          {type.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {/* Parent selection - only for non-protected class types */}
+            {!isProtected && (
+              <FormField
+                control={form.control}
+                name="parentId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="after:content-['*'] after:ml-1 after:text-destructive">
+                      親クラスタイプ
+                    </FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="親クラスタイプを選択してください" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {parentOptions.map((type) => (
+                          <SelectItem key={type.classTypeId} value={type.classTypeId}>
+                            {type.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
-            {/* Notes */}
+            {/* Notes field - always visible */}
             <FormField
               control={form.control}
               name="notes"
@@ -231,7 +256,6 @@ export function ClassTypeFormDialog({
             </DialogFooter>
           </form>
         </Form>
-        )}
       </DialogContent>
     </Dialog>
   );

@@ -170,38 +170,35 @@ export function ClassTypeTable() {
   };
 
   const renderActions = (classType: ClassType) => {
-    // Type-safe check for _optimistic property
     const isOptimistic = (
       classType as ClassType & { _optimistic?: boolean }
     )._optimistic;
 
-    // Check if this is a protected class type (通常授業 or 特別授業)
     const isProtected = isProtectedClassType(classType);
 
     return (
       <div className="flex justify-end gap-2">
         <Button
-          disabled={isProtected}
           variant="ghost"
           size="icon"
           onClick={() => setClassTypeToEdit(classType)}
-          title={isProtected ? "このクラスタイプは編集できません" : "編集"}
         >
-          <Pencil className={`h-4 w-4 ${isOptimistic || isProtected ? "opacity-70" : ""}`} />
+          <Pencil className={`h-4 w-4 ${isOptimistic ? "opacity-70" : ""}`} />
         </Button>
-        <Button
-          disabled={isProtected}
-          variant="ghost"
-          size="icon"
-          onClick={() => setClassTypeToDelete(classType)}
-          title={isProtected ? "このクラスタイプは削除できません" : "削除"}
-        >
-          <Trash2
-            className={`h-4 w-4 text-destructive ${
-              isOptimistic || isProtected ? "opacity-70" : ""
-            }`}
-          />
-        </Button>
+        {/* Показываем кнопку удаления только для НЕзащищенных классов */}
+        {!isProtected && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setClassTypeToDelete(classType)}
+          >
+            <Trash2
+              className={`h-4 w-4 text-destructive ${
+                isOptimistic ? "opacity-70" : ""
+              }`}
+            />
+          </Button>
+        )}
       </div>
     );
   };
