@@ -22,7 +22,7 @@ import { signIn } from "next-auth/react";
 import { useState, useEffect } from "react";
 
 const loginSchema = z.object({
-  usernameOrEmail: z
+  identifier: z
     .string()
     .nonempty("ログインIDまたはメールアドレスを入力してください"),
   password: z.string().min(6, "パスワードは6文字以上である必要があります"),
@@ -40,7 +40,7 @@ export function LoginForm({
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      usernameOrEmail: "",
+      identifier: "",
       password: "",
     },
   });
@@ -79,7 +79,7 @@ export function LoginForm({
 
   const loginMutation = useMutation({
     mutationFn: async (values: LoginFormValues) =>
-      await loginUser(values.usernameOrEmail, values.password),
+      await loginUser(values.identifier, values.password),
     onSuccess: () => {
       toast.success("ログイン成功", {
         description: "お帰りなさい！",
@@ -193,14 +193,16 @@ export function LoginForm({
         <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-6">
           <FormField
             control={form.control}
-            name="usernameOrEmail"
+            name="identifier"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>ログインIDまたはメールアドレス</FormLabel>
+                <FormLabel>
+                  ログインID・メールアドレス・LINE ID
+                </FormLabel>
                 <FormControl>
                   <Input
                     type="text"
-                    placeholder="ログインIDまたはメールアドレス"
+                    placeholder="ログインID・メールアドレス・LINE ID"
                     {...field}
                   />
                 </FormControl>
