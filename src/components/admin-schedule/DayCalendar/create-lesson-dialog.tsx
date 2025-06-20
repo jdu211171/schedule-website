@@ -10,23 +10,28 @@ import { CalendarIcon, X, CheckCircle2, AlertTriangle, Users } from "lucide-reac
 import { cn } from "@/lib/utils";
 import { fetcher } from '@/lib/fetcher';
 import {
-  CreateClassSessionPayload,
   NewClassSessionData,
-  formatDateToString
+  formatDateToString,
+  ConflictResponse,
+  ConflictResolutionAction,
+  CreateClassSessionWithConflictsPayload,
 } from './types/class-session';
 import { SearchableSelect, SearchableSelectItem } from '../searchable-select';
 import { TimeInput } from '@/components/ui/time-input';
 import { useSmartSelection, EnhancedTeacher, EnhancedStudent, SubjectCompatibility } from '@/hooks/useSmartSelection';
 import { useAvailability } from './availability-layer';
+import { ConflictDateItem } from './conflict-date-item';
 
 function DateRangePicker({
   dateRange,
   setDateRange,
-  placeholder = "期間を選択"
+  placeholder = "期間を選択",
+  disabled = false
 }: {
   dateRange: DateRange | undefined;
   setDateRange: (dateRange: DateRange | undefined) => void;
   placeholder?: string;
+  disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [tempRange, setTempRange] = useState<DateRange | undefined>(dateRange);
@@ -36,6 +41,7 @@ function DateRangePicker({
   }, [dateRange]);
 
   const handleOpenChange = (isOpen: boolean) => {
+    if (disabled) return;
     setOpen(isOpen);
     if (!isOpen) {
       setTempRange(dateRange);
@@ -52,9 +58,11 @@ function DateRangePicker({
       <PopoverTrigger asChild>
         <Button
           variant={"outline"}
+          disabled={disabled}
           className={cn(
             "w-full justify-start text-left font-normal",
-            !dateRange && "text-muted-foreground"
+            !dateRange && "text-muted-foreground",
+            disabled && "opacity-50 cursor-not-allowed"
           )}
         >
           <CalendarIcon className="mr-2 h-4 w-4" />
@@ -135,7 +143,7 @@ type CreateLessonDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   lessonData: ExtendedNewClassSessionData;
-  onSave: (data: CreateClassSessionPayload) => Promise<void> | void;
+  onSave: (data: CreateClassSessionWithConflictsPayload) => Promise<{ success: boolean; conflicts?: ConflictResponse }>;
   booths: Booth[];
   preselectedClassTypeId?: string;
   preselectedTeacherId?: string;
@@ -168,29 +176,30 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
 }) => {
   const [isInitializing, setIsInitializing] = useState(true);
 
-  // Теперь у нас два отдельных селекта для родительского и дочернего типов
+  // Main form states
   const [selectedParentClassTypeId, setSelectedParentClassTypeId] = useState<string>('');
   const [selectedChildClassTypeId, setSelectedChildClassTypeId] = useState<string>('');
-
   const [selectedTeacherId, setSelectedTeacherId] = useState<string>('');
   const [selectedStudentId, setSelectedStudentId] = useState<string>('');
   const [isRecurring, setIsRecurring] = useState<boolean>(false);
   const [subjectId, setSubjectId] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
-
-  // Добавляем состояния для времени
   const [startTime, setStartTime] = useState<string>('');
   const [endTime, setEndTime] = useState<string>('');
-
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [selectedDays, setSelectedDays] = useState<number[]>([]);
 
+  // Class types and loading states
   const [classTypes, setClassTypes] = useState<ClassType[]>([]);
   const [isLoadingClassTypes, setIsLoadingClassTypes] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-
   const [regularClassTypeId, setRegularClassTypeId] = useState<string>('');
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
+
+  // Conflict resolution states
+  const [conflictData, setConflictData] = useState<ConflictResponse | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [currentPayload, setCurrentPayload] = useState<CreateClassSessionWithConflictsPayload | null>(null);
 
   // Use smart selection hook with enhanced data
   const {
@@ -206,12 +215,11 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
     selectedSubjectId: subjectId
   });
 
-  // Добавляем хук для доступности времени
+  // Availability hook
   const { teacherAvailability, studentAvailability } = useAvailability(
     selectedTeacherId || undefined,
     selectedStudentId || undefined,
     typeof lessonData.date === 'string' ? new Date(lessonData.date) : lessonData.date,
-    // Создаем временные слоты для TimeInput
     Array.from({ length: 57 }, (_, i) => {
       const hours = Math.floor(i / 4) + 8;
       const startMinutes = (i % 4) * 15;
@@ -235,21 +243,60 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
     })
   );
 
-  // Check if subject selection is meaningful
+  // Determine if form should be disabled (when conflicts are shown)
+  const isFormDisabled = Boolean(conflictData);
+
+  // Derived states
   const canSelectSubject = useMemo(() => {
     return Boolean(selectedTeacherId || selectedStudentId);
   }, [selectedTeacherId, selectedStudentId]);
 
-  // Фильтруем типы уроков: родительские (без parentId) и дочерние (с parentId)
   const parentClassTypes = useMemo(() => {
     return classTypes.filter(type => !type.parentId) || [];
   }, [classTypes]);
 
-  // Дочерние типы уроков, зависящие от выбранного родительского типа
   const childClassTypes = useMemo(() => {
     if (!selectedParentClassTypeId) return [];
     return classTypes.filter(type => type.parentId === selectedParentClassTypeId) || [];
   }, [classTypes, selectedParentClassTypeId]);
+
+  // Handle conflict resolution
+  const handleConflictAction = async (action: ConflictResolutionAction) => {
+    if (!currentPayload || !conflictData) return;
+
+    setIsSubmitting(true);
+    try {
+      let finalPayload: CreateClassSessionWithConflictsPayload = { ...currentPayload };
+
+      switch (action) {
+        case 'CANCEL':
+          setConflictData(null);
+          setCurrentPayload(null);
+          return;
+
+        case 'SKIP':
+          finalPayload.skipConflicts = true;
+          break;
+
+        case 'FORCE':
+          finalPayload.forceCreate = true;
+          break;
+      }
+
+      const result = await onSave(finalPayload);
+      if (result.success) {
+        // Success - close dialog
+        setConflictData(null);
+        setCurrentPayload(null);
+        onOpenChange(false);
+      }
+    } catch (error) {
+      console.error('Error handling conflict resolution:', error);
+      setError('競合解決中にエラーが発生しました');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   // Create enhanced items for SearchableSelect components
   const teacherItems: SearchableSelectItem[] = enhancedTeachers.map((teacher) => {
@@ -350,40 +397,39 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
     };
   });
 
-  // Items для родительских типов уроков
   const parentClassTypeItems: SearchableSelectItem[] = parentClassTypes.map((type) => ({
     value: type.classTypeId,
     label: type.name,
   }));
 
-  // Items для дочерних типов уроков
   const childClassTypeItems: SearchableSelectItem[] = childClassTypes.map((type) => ({
     value: type.classTypeId,
     label: type.name,
   }));
 
-  // Get compatibility info for display
   const compatibilityInfo = getCompatibilityInfo();
 
-  // Updated handlers - no more filtering, just selection
+  // Event handlers
   const handleTeacherChange = (teacherId: string) => {
+    if (isFormDisabled) return;
     setSelectedTeacherId(teacherId);
   };
 
   const handleStudentChange = (studentId: string) => {
+    if (isFormDisabled) return;
     setSelectedStudentId(studentId);
   };
 
   const handleSubjectChange = (subjectId: string) => {
+    if (isFormDisabled) return;
     setSubjectId(subjectId);
   };
 
-  // Новые обработчики для типов уроков
   const handleParentClassTypeChange = (parentTypeId: string) => {
+    if (isFormDisabled) return;
     setSelectedParentClassTypeId(parentTypeId);
-    setSelectedChildClassTypeId(''); // Сбрасываем дочерний тип при смене родительского
+    setSelectedChildClassTypeId('');
 
-    // Обновляем режим повторения в зависимости от типа
     const parentType = parentClassTypes.find(type => type.classTypeId === parentTypeId);
     if (parentType) {
       const isRegular = parentType.name === '通常授業';
@@ -392,32 +438,35 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
   };
 
   const handleChildClassTypeChange = (childTypeId: string) => {
+    if (isFormDisabled) return;
     setSelectedChildClassTypeId(childTypeId);
   };
 
   // Clear functions
   const clearTeacher = () => {
+    if (isFormDisabled) return;
     setSelectedTeacherId('');
   };
-
   const clearStudent = () => {
+    if (isFormDisabled) return;
     setSelectedStudentId('');
   };
-
   const clearSubject = () => {
+    if (isFormDisabled) return;
     setSubjectId('');
   };
-
   const clearParentClassType = () => {
+    if (isFormDisabled) return;
     setSelectedParentClassTypeId('');
     setSelectedChildClassTypeId('');
     setIsRecurring(false);
   };
-
   const clearChildClassType = () => {
+    if (isFormDisabled) return;
     setSelectedChildClassTypeId('');
   };
 
+  // Load class types effect
   useEffect(() => {
     const loadClassTypes = async () => {
       setIsLoadingClassTypes(true);
@@ -442,12 +491,12 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
     }
   }, [open]);
 
+  // Initialize dialog effect
   useEffect(() => {
     if (open && classTypes.length > 0 && regularClassTypeId) {
       const initializeDialog = () => {
         setIsInitializing(true);
 
-        // Определяем родительский тип: либо предустановленный, либо из lessonData, либо "通常授業" по умолчанию
         let correctParentClassTypeId = '';
         let correctChildClassTypeId = '';
 
@@ -455,10 +504,8 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
           const preselectedType = classTypes.find(type => type.classTypeId === preselectedClassTypeId);
           if (preselectedType) {
             if (!preselectedType.parentId) {
-              // Это родительский тип
               correctParentClassTypeId = preselectedClassTypeId;
             } else {
-              // Это дочерний тип, нужно найти родительский
               correctParentClassTypeId = preselectedType.parentId;
               correctChildClassTypeId = preselectedClassTypeId;
             }
@@ -474,7 +521,6 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
             }
           }
         } else {
-          // По умолчанию используем "通常授業"
           correctParentClassTypeId = regularClassTypeId;
         }
 
@@ -488,29 +534,28 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
         setIsRecurring(correctIsRecurring);
         setSubjectId('');
         setNotes('');
-
-        // Инициализируем время из lessonData
         setStartTime(lessonData.startTime);
         setEndTime(lessonData.endTime);
-
         setDateRange({ from: lessonDate, to: correctIsRecurring ? undefined : undefined });
 
-        // По умолчанию выбираем день недели соответствующий дате создания
         const dayOfWeek = lessonDate.getDay();
         setSelectedDays([dayOfWeek]);
 
         setError(null);
         setValidationErrors([]);
-
         setIsInitializing(false);
       };
 
       initializeDialog();
     } else if (!open) {
       setIsInitializing(true);
+      // Reset conflict states when dialog closes
+      setConflictData(null);
+      setCurrentPayload(null);
     }
   }, [open, classTypes.length, regularClassTypeId, lessonData, preselectedClassTypeId, preselectedTeacherId, preselectedStudentId]);
 
+  // Update date range for non-recurring lessons
   useEffect(() => {
     if (open && !isRecurring) {
       const lessonDate = typeof lessonData.date === 'string' ? new Date(lessonData.date) : lessonData.date;
@@ -519,6 +564,7 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
   }, [open, lessonData.date, isRecurring]);
 
   const handleDayToggle = (day: number) => {
+    if (isFormDisabled) return;
     setSelectedDays(prev => {
       if (prev.includes(day)) {
         return prev.filter(d => d !== day);
@@ -586,8 +632,6 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
                              endTime;
 
     if (!hasRequiredFields) return false;
-
-    // Проверяем корректность времени
     if (startTime >= endTime) return false;
 
     if (isRecurring) {
@@ -597,7 +641,7 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
     }
   }, [isInitializing, selectedParentClassTypeId, selectedTeacherId, selectedStudentId, subjectId, startTime, endTime, isRecurring, dateRange]);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const errors = validateForm();
     setValidationErrors(errors);
 
@@ -605,10 +649,9 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
       return;
     }
 
-    // Определяем финальный classTypeId: дочерний, если выбран, иначе родительский
     const finalClassTypeId = selectedChildClassTypeId || selectedParentClassTypeId;
 
-    const payload: CreateClassSessionPayload = {
+    const payload: CreateClassSessionWithConflictsPayload = {
       date: formatDateToString(lessonData.date),
       startTime: startTime,
       endTime: endTime,
@@ -636,13 +679,29 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
       }
     }
 
-    console.log("Payload from dialog:", JSON.stringify(payload, null, 2));
-
-    onSave(payload);
-    onOpenChange(false);
+    setIsSubmitting(true);
+    try {
+      const result = await onSave(payload);
+      
+      if (result.success) {
+        // Success - close dialog
+        onOpenChange(false);
+      } else if (result.conflicts) {
+        // Conflicts found - show conflict resolution interface
+        setCurrentPayload(payload);
+        setConflictData(result.conflicts);
+      }
+    } catch (error) {
+      console.error('Error creating lesson:', error);
+      setError('授業の作成中にエラーが発生しました');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleReset = () => {
+    if (isFormDisabled) return;
+    
     const correctParentTypeId = preselectedClassTypeId ?
       (classTypes.find(type => type.classTypeId === preselectedClassTypeId && !type.parentId)?.classTypeId || regularClassTypeId) :
       regularClassTypeId;
@@ -665,7 +724,7 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
     setValidationErrors([]);
   };
 
-  const isLoading = isLoadingClassTypes;
+  const isLoading = isLoadingClassTypes || isSubmitting;
 
   const daysOfWeek = [
     { label: '月', value: 1 },
@@ -677,13 +736,401 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
     { label: '日', value: 0 }
   ];
 
-  const selectedParentClassType = parentClassTypes.find(type => type.classTypeId === selectedParentClassTypeId);
-  const selectedChildClassType = childClassTypes.find(type => type.classTypeId === selectedChildClassTypeId);
+  // Вынесем форму в отдельный компонент для переиспользования
+  const FormContent = ({ disabled }: { disabled: boolean }) => (
+    <div className="grid gap-3 py-2">
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="text-sm font-medium text-foreground">日付</label>
+          <div className="border rounded-md p-2 mt-1 bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground border-input">
+            {format(typeof lessonData.date === 'string' ? new Date(lessonData.date) : lessonData.date, 'yyyy年MM月dd日', { locale: ja })}
+          </div>
+        </div>
+        <div>
+          <label className="text-sm font-medium text-foreground">教室</label>
+          <div className="border rounded-md p-2 mt-1 bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground border-input">
+            {booths.find(booth => booth.boothId === lessonData.boothId)?.name || lessonData.boothId}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="text-sm font-medium text-foreground">開始時間 <span className="text-destructive">*</span></label>
+          <div className="mt-1">
+            <TimeInput
+              value={startTime}
+              onChange={setStartTime}
+              placeholder="開始時間を選択"
+              disabled={disabled}
+              teacherAvailability={teacherAvailability}
+              studentAvailability={studentAvailability}
+              timeSlots={Array.from({ length: 57 }, (_, i) => {
+                const hours = Math.floor(i / 4) + 8;
+                const startMinutes = (i % 4) * 15;
+                let endHours, endMinutes;
+
+                if (startMinutes === 45) {
+                  endHours = hours + 1;
+                  endMinutes = 0;
+                } else {
+                  endHours = hours;
+                  endMinutes = startMinutes + 15;
+                }
+
+                return {
+                  index: i,
+                  start: `${hours.toString().padStart(2, '0')}:${startMinutes.toString().padStart(2, '0')}`,
+                  end: `${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`,
+                  display: `${hours}:${startMinutes === 0 ? '00' : startMinutes} - ${endHours}:${endMinutes === 0 ? '00' : endMinutes}`,
+                  shortDisplay: i % 4 === 0 ? `${hours}:00` : ''
+                };
+              })}
+            />
+          </div>
+        </div>
+        <div>
+          <label className="text-sm font-medium text-foreground">終了時間 <span className="text-destructive">*</span></label>
+          <div className="mt-1">
+            <TimeInput
+              value={endTime}
+              onChange={setEndTime}
+              placeholder="終了時間を選択"
+              disabled={disabled}
+              teacherAvailability={teacherAvailability}
+              studentAvailability={studentAvailability}
+              timeSlots={Array.from({ length: 57 }, (_, i) => {
+                const hours = Math.floor(i / 4) + 8;
+                const startMinutes = (i % 4) * 15;
+                let endHours, endMinutes;
+
+                if (startMinutes === 45) {
+                  endHours = hours + 1;
+                  endMinutes = 0;
+                } else {
+                  endHours = hours;
+                  endMinutes = startMinutes + 15;
+                }
+
+                return {
+                  index: i,
+                  start: `${hours.toString().padStart(2, '0')}:${startMinutes.toString().padStart(2, '0')}`,
+                  end: `${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`,
+                  display: `${hours}:${startMinutes === 0 ? '00' : startMinutes} - ${endHours}:${endMinutes === 0 ? '00' : endMinutes}`,
+                  shortDisplay: i % 4 === 0 ? `${hours}:00` : ''
+                };
+              })}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Class type selectors */}
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label htmlFor="parent-class-type-select" className="text-sm font-medium mb-1 block text-foreground">
+            授業タイプ（基本） <span className="text-destructive">*</span>
+          </label>
+          <div className="flex items-center gap-2">
+            <div className="flex-1">
+              <SearchableSelect
+                value={selectedParentClassTypeId}
+                onValueChange={handleParentClassTypeChange}
+                items={parentClassTypeItems}
+                placeholder="基本タイプを選択"
+                searchPlaceholder="基本タイプを検索..."
+                emptyMessage="基本タイプが見つかりません"
+                disabled={isLoadingClassTypes || disabled}
+              />
+            </div>
+            {selectedParentClassTypeId && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={clearParentClassType}
+                className="px-2"
+                disabled={disabled}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+        </div>
+
+        <div>
+          <label htmlFor="child-class-type-select" className="text-sm font-medium mb-1 block text-foreground">
+            授業タイプ（詳細）
+          </label>
+          <div className="flex items-center gap-2">
+            <div className="flex-1">
+              <SearchableSelect
+                value={selectedChildClassTypeId}
+                onValueChange={handleChildClassTypeChange}
+                items={childClassTypeItems}
+                placeholder={
+                  !selectedParentClassTypeId
+                    ? "先に基本タイプを選択"
+                    : childClassTypes.length === 0
+                    ? "詳細タイプなし"
+                    : "詳細タイプを選択（任意）"
+                }
+                searchPlaceholder="詳細タイプを検索..."
+                emptyMessage="詳細タイプが見つかりません"
+                disabled={!selectedParentClassTypeId || childClassTypes.length === 0 || disabled}
+              />
+            </div>
+            {selectedChildClassTypeId && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={clearChildClassType}
+                className="px-2"
+                disabled={disabled}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Teacher and Student selectors */}
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label htmlFor="teacher-select" className="text-sm font-medium mb-1 block text-foreground">
+            教師 <span className="text-destructive">*</span>
+            {hasStudentSelected && (
+              <span className="text-xs text-muted-foreground ml-1">
+                ({enhancedTeachers.filter((t: EnhancedTeacher) => t.compatibilityType === 'perfect').length} 完全一致)
+              </span>
+            )}
+          </label>
+          <div className="flex items-center gap-2">
+            <div className="flex-1">
+              <SearchableSelect
+                value={selectedTeacherId}
+                onValueChange={handleTeacherChange}
+                items={teacherItems}
+                placeholder="教師を選択"
+                searchPlaceholder="教師を検索..."
+                emptyMessage="教師が見つかりません"
+                showCompatibilityIcons={hasStudentSelected}
+                disabled={disabled}
+              />
+            </div>
+            {selectedTeacherId && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={clearTeacher}
+                className="px-2"
+                disabled={disabled}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+        </div>
+
+        <div>
+          <label htmlFor="student-select" className="text-sm font-medium mb-1 block text-foreground">
+            生徒 <span className="text-destructive">*</span>
+            {hasTeacherSelected && (
+              <span className="text-xs text-muted-foreground ml-1">
+                ({enhancedStudents.filter((s: EnhancedStudent) => s.compatibilityType === 'perfect').length} 完全一致)
+              </span>
+            )}
+          </label>
+          <div className="flex items-center gap-2">
+            <div className="flex-1">
+              <SearchableSelect
+                value={selectedStudentId}
+                onValueChange={handleStudentChange}
+                items={studentItems}
+                placeholder="生徒を選択"
+                searchPlaceholder="生徒を検索..."
+                emptyMessage="生徒が見つかりません"
+                showCompatibilityIcons={hasTeacherSelected}
+                disabled={disabled}
+              />
+            </div>
+            {selectedStudentId && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={clearStudent}
+                className="px-2"
+                disabled={disabled}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Compatibility indicator */}
+      {compatibilityInfo && (
+        <div className={`text-xs p-3 rounded-md border ${
+          compatibilityInfo.compatibilityType === 'perfect'
+            ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800'
+            : compatibilityInfo.compatibilityType === 'subject-only'
+            ? 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:text-orange-300 dark:border-orange-800'
+            : compatibilityInfo.compatibilityType === 'mismatch'
+            ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-800'
+            : 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800'
+        }`}>
+          <div className="flex items-center gap-2">
+            {compatibilityInfo.compatibilityType === 'perfect' && (
+              <CheckCircle2 className="h-4 w-4 text-green-600" />
+            )}
+            {compatibilityInfo.compatibilityType === 'subject-only' && (
+              <AlertTriangle className="h-4 w-4 text-orange-600" />
+            )}
+            {compatibilityInfo.compatibilityType === 'mismatch' && (
+              <AlertTriangle className="h-4 w-4 text-amber-600" />
+            )}
+            {(compatibilityInfo.compatibilityType === 'teacher-only' ||
+              compatibilityInfo.compatibilityType === 'student-only' ||
+              compatibilityInfo.compatibilityType === 'no-preferences') && (
+              <Users className="h-4 w-4 text-blue-600" />
+            )}
+            <span>{compatibilityInfo.message}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Subject selector */}
+      <div>
+        <label htmlFor="subject-select" className="text-sm font-medium mb-1 block text-foreground">
+          科目 <span className="text-destructive">*</span>
+          {!canSelectSubject && (
+            <span className="text-xs text-amber-600 dark:text-amber-500 ml-2">
+              (推奨: 教師と生徒を選択すると適合度が表示されます)
+            </span>
+          )}
+          {canSelectSubject && (
+            <span className="text-xs text-muted-foreground ml-1">
+              ({enhancedSubjects.filter((s: SubjectCompatibility) => s.compatibilityType === 'perfect').length} 完全一致, {enhancedSubjects.length} 総数)
+            </span>
+          )}
+        </label>
+        <div className="flex items-center gap-2">
+          <div className="flex-1">
+            <SearchableSelect
+              value={subjectId}
+              onValueChange={handleSubjectChange}
+              items={subjectItems}
+              placeholder="科目を選択"
+              searchPlaceholder="科目を検索..."
+              emptyMessage="科目が見つかりません"
+              showCompatibilityIcons={canSelectSubject}
+              disabled={disabled}
+            />
+          </div>
+          {subjectId && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={clearSubject}
+              className="px-2"
+              disabled={disabled}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Recurring lesson configuration */}
+      {isRecurring && (
+        <div className="space-y-3 p-3 rounded-md border border-input bg-muted/30">
+          <div>
+            <label className="text-sm font-medium mb-1 block text-foreground">期間 <span className="text-destructive">*</span></label>
+            <div className="relative">
+              <DateRangePicker
+                dateRange={dateRange}
+                setDateRange={setDateRange}
+                placeholder="期間を選択"
+                disabled={disabled}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium mb-2 block text-foreground">曜日を選択</label>
+            <div className="flex flex-wrap gap-2">
+              {daysOfWeek.map(day => (
+                <button
+                  key={day.value}
+                  type="button"
+                  onClick={() => handleDayToggle(day.value)}
+                  disabled={disabled}
+                  className={`
+                    w-8 h-8 rounded-full flex items-center justify-center text-sm
+                    transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed
+                    ${selectedDays.includes(day.value)
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted text-muted-foreground border border-input'
+                    }
+                  `}
+                >
+                  {day.label}
+                </button>
+              ))}
+            </div>
+            <div className="text-xs mt-1 text-muted-foreground">
+              {selectedDays.length === 0
+                ? `曜日が選択されていない場合、${format(typeof lessonData.date === 'string' ? new Date(lessonData.date) : lessonData.date, 'EEEE', { locale: ja })}が使用されます。`
+                : `選択された曜日: ${selectedDays.map(d => daysOfWeek.find(day => day.value === d)?.label).join(', ')}`
+              }
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Notes */}
+      <div>
+        <label htmlFor="notes" className="text-sm font-medium mb-1 block text-foreground">メモ</label>
+        <textarea
+          id="notes"
+          className="w-full min-h-[60px] p-2 border rounded-md bg-background text-foreground hover:border-accent focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors border-input disabled:opacity-50 disabled:cursor-not-allowed"
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="授業に関するメモを入力してください"
+          disabled={disabled}
+        />
+      </div>
+
+      {/* Error displays - только для активной формы */}
+      {!disabled && error && (
+        <div className="p-3 rounded bg-destructive/10 border border-destructive/20 text-destructive text-sm">
+          {error}
+        </div>
+      )}
+
+      {!disabled && validationErrors.length > 0 && (
+        <div className="p-3 rounded bg-destructive/10 border border-destructive/20 text-destructive text-sm">
+          <div className="font-medium mb-2">入力内容を確認してください:</div>
+          <ul className="list-disc list-inside space-y-1">
+            {validationErrors.map((error, index) => (
+              <li key={index}>{error}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
 
   if (isInitializing) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[800px]">
           <DialogHeader>
             <DialogTitle>授業の作成</DialogTitle>
           </DialogHeader>
@@ -697,7 +1144,12 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] max-h-[90vh] flex flex-col">
+      <DialogContent 
+        className={cn(
+          "max-h-[90vh] flex flex-col",
+          conflictData ? "sm:max-w-[1200px]" : "sm:max-w-[800px]"
+        )}
+      >
         <DialogHeader className="flex-shrink-0">
           <DialogTitle>授業の作成</DialogTitle>
           <DialogDescription>
@@ -705,411 +1157,127 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
           </DialogDescription>
         </DialogHeader>
 
-        <div
-          className="flex-1 overflow-y-auto px-1 [&::-webkit-scrollbar]:w-[6px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-thumb]:rounded-[3px] [&::-webkit-scrollbar-thumb:hover]:bg-muted-foreground"
-          style={{
-            scrollbarWidth: 'thin',
-            scrollbarColor: 'hsl(var(--border)) transparent'
-          }}
-        >
-          <div className="grid gap-3 py-2">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium text-foreground">日付</label>
-                <div className="border rounded-md p-2 mt-1 bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground border-input">
-                  {format(typeof lessonData.date === 'string' ? new Date(lessonData.date) : lessonData.date, 'yyyy年MM月dd日', { locale: ja })}
+        <div className="flex-1 overflow-hidden">
+          {conflictData ? (
+            // Two-column layout when conflicts exist
+            <div className="flex gap-6 h-full">
+              {/* Left column - Form (disabled) */}
+              <div className="flex-1 min-w-0">
+                <div
+                  className={cn(
+                    "h-full overflow-y-auto px-1 [&::-webkit-scrollbar]:w-[6px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-thumb]:rounded-[3px] [&::-webkit-scrollbar-thumb:hover]:bg-muted-foreground",
+                    "opacity-60 pointer-events-none"
+                  )}
+                  style={{
+                    scrollbarWidth: 'thin',
+                    scrollbarColor: 'hsl(var(--border)) transparent'
+                  }}
+                >
+                  <FormContent disabled={true} />
                 </div>
               </div>
-              <div>
-                <label className="text-sm font-medium text-foreground">教室</label>
-                <div className="border rounded-md p-2 mt-1 bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground border-input">
-                  {booths.find(booth => booth.boothId === lessonData.boothId)?.name || lessonData.boothId}
-                </div>
-              </div>
-            </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium text-foreground">開始時間 <span className="text-destructive">*</span></label>
-                <div className="mt-1">
-                  <TimeInput
-                    value={startTime}
-                    onChange={setStartTime}
-                    placeholder="開始時間を選択"
-                    teacherAvailability={teacherAvailability}
-                    studentAvailability={studentAvailability}
-                    timeSlots={Array.from({ length: 57 }, (_, i) => {
-                      const hours = Math.floor(i / 4) + 8;
-                      const startMinutes = (i % 4) * 15;
-                      let endHours, endMinutes;
-
-                      if (startMinutes === 45) {
-                        endHours = hours + 1;
-                        endMinutes = 0;
-                      } else {
-                        endHours = hours;
-                        endMinutes = startMinutes + 15;
-                      }
-
-                      return {
-                        index: i,
-                        start: `${hours.toString().padStart(2, '0')}:${startMinutes.toString().padStart(2, '0')}`,
-                        end: `${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`,
-                        display: `${hours}:${startMinutes === 0 ? '00' : startMinutes} - ${endHours}:${endMinutes === 0 ? '00' : endMinutes}`,
-                        shortDisplay: i % 4 === 0 ? `${hours}:00` : ''
-                      };
-                    })}
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-foreground">終了時間 <span className="text-destructive">*</span></label>
-                <div className="mt-1">
-                  <TimeInput
-                    value={endTime}
-                    onChange={setEndTime}
-                    placeholder="終了時間を選択"
-                    teacherAvailability={teacherAvailability}
-                    studentAvailability={studentAvailability}
-                    timeSlots={Array.from({ length: 57 }, (_, i) => {
-                      const hours = Math.floor(i / 4) + 8;
-                      const startMinutes = (i % 4) * 15;
-                      let endHours, endMinutes;
-
-                      if (startMinutes === 45) {
-                        endHours = hours + 1;
-                        endMinutes = 0;
-                      } else {
-                        endHours = hours;
-                        endMinutes = startMinutes + 15;
-                      }
-
-                      return {
-                        index: i,
-                        start: `${hours.toString().padStart(2, '0')}:${startMinutes.toString().padStart(2, '0')}`,
-                        end: `${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`,
-                        display: `${hours}:${startMinutes === 0 ? '00' : startMinutes} - ${endHours}:${endMinutes === 0 ? '00' : endMinutes}`,
-                        shortDisplay: i % 4 === 0 ? `${hours}:00` : ''
-                      };
-                    })}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Новая секция для типов уроков - родительский и дочерний */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="parent-class-type-select" className="text-sm font-medium mb-1 block text-foreground">
-                  授業タイプ（基本） <span className="text-destructive">*</span>
-                </label>
-                <div className="flex items-center gap-2">
-                  <div className="flex-1">
-                    <SearchableSelect
-                      value={selectedParentClassTypeId}
-                      onValueChange={handleParentClassTypeChange}
-                      items={parentClassTypeItems}
-                      placeholder="基本タイプを選択"
-                      searchPlaceholder="基本タイプを検索..."
-                      emptyMessage="基本タイプが見つかりません"
-                      disabled={isLoadingClassTypes}
-                    />
+              {/* Right column - Conflicts with separate scrolling */}
+              <div className="flex-1 min-w-0 border-l border-border pl-6">
+                <div className="h-full flex flex-col">
+                  <div className="flex-shrink-0 mb-4">
+                    <h3 className="text-lg font-semibold">
+                      競合の解決 ({conflictData.conflicts.length}件)
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      {conflictData.message}
+                    </p>
                   </div>
-                  {selectedParentClassTypeId && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={clearParentClassType}
-                      className="px-2"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-              </div>
 
-              <div>
-                <label htmlFor="child-class-type-select" className="text-sm font-medium mb-1 block text-foreground">
-                  授業タイプ（詳細）
-                </label>
-                <div className="flex items-center gap-2">
-                  <div className="flex-1">
-                    <SearchableSelect
-                      value={selectedChildClassTypeId}
-                      onValueChange={handleChildClassTypeChange}
-                      items={childClassTypeItems}
-                      placeholder={
-                        !selectedParentClassTypeId
-                          ? "先に基本タイプを選択"
-                          : childClassTypes.length === 0
-                          ? "詳細タイプなし"
-                          : "詳細タイプを選択（任意）"
-                      }
-                      searchPlaceholder="詳細タイプを検索..."
-                      emptyMessage="詳細タイプが見つかりません"
-                      disabled={!selectedParentClassTypeId || childClassTypes.length === 0}
-                    />
-                  </div>
-                  {selectedChildClassTypeId && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={clearChildClassType}
-                      className="px-2"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              {/* Enhanced Teacher Select */}
-              <div>
-                <label htmlFor="teacher-select" className="text-sm font-medium mb-1 block text-foreground">
-                  教師 <span className="text-destructive">*</span>
-                  {hasStudentSelected && (
-                    <span className="text-xs text-muted-foreground ml-1">
-                      ({enhancedTeachers.filter((t: EnhancedTeacher) => t.compatibilityType === 'perfect').length} 完全一致)
-                    </span>
-                  )}
-                </label>
-                <div className="flex items-center gap-2">
-                  <div className="flex-1">
-                    <SearchableSelect
-                      value={selectedTeacherId}
-                      onValueChange={handleTeacherChange}
-                      items={teacherItems}
-                      placeholder="教師を選択"
-                      searchPlaceholder="教師を検索..."
-                      emptyMessage="教師が見つかりません"
-                      showCompatibilityIcons={hasStudentSelected}
-                    />
-                  </div>
-                  {selectedTeacherId && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={clearTeacher}
-                      className="px-2"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-              </div>
-
-              {/* Enhanced Student Select */}
-              <div>
-                <label htmlFor="student-select" className="text-sm font-medium mb-1 block text-foreground">
-                  生徒 <span className="text-destructive">*</span>
-                  {hasTeacherSelected && (
-                    <span className="text-xs text-muted-foreground ml-1">
-                      ({enhancedStudents.filter((s: EnhancedStudent) => s.compatibilityType === 'perfect').length} 完全一致)
-                    </span>
-                  )}
-                </label>
-                <div className="flex items-center gap-2">
-                  <div className="flex-1">
-                    <SearchableSelect
-                      value={selectedStudentId}
-                      onValueChange={handleStudentChange}
-                      items={studentItems}
-                      placeholder="生徒を選択"
-                      searchPlaceholder="生徒を検索..."
-                      emptyMessage="生徒が見つかりません"
-                      showCompatibilityIcons={hasTeacherSelected}
-                    />
-                  </div>
-                  {selectedStudentId && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={clearStudent}
-                      className="px-2"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Enhanced Compatibility Indicator */}
-            {compatibilityInfo && (
-              <div className={`text-xs p-3 rounded-md border ${
-                compatibilityInfo.compatibilityType === 'perfect'
-                  ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800'
-                  : compatibilityInfo.compatibilityType === 'subject-only'
-                  ? 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:text-orange-300 dark:border-orange-800'
-                  : compatibilityInfo.compatibilityType === 'mismatch'
-                  ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-800'
-                  : 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800'
-              }`}>
-                <div className="flex items-center gap-2">
-                  {compatibilityInfo.compatibilityType === 'perfect' && (
-                    <CheckCircle2 className="h-4 w-4 text-green-600" />
-                  )}
-                  {compatibilityInfo.compatibilityType === 'subject-only' && (
-                    <AlertTriangle className="h-4 w-4 text-orange-600" />
-                  )}
-                  {compatibilityInfo.compatibilityType === 'mismatch' && (
-                    <AlertTriangle className="h-4 w-4 text-amber-600" />
-                  )}
-                  {(compatibilityInfo.compatibilityType === 'teacher-only' ||
-                    compatibilityInfo.compatibilityType === 'student-only' ||
-                    compatibilityInfo.compatibilityType === 'no-preferences') && (
-                    <Users className="h-4 w-4 text-blue-600" />
-                  )}
-                  <span>{compatibilityInfo.message}</span>
-                </div>
-              </div>
-            )}
-
-            {/* Enhanced Subject Select */}
-            <div>
-              <label htmlFor="subject-select" className="text-sm font-medium mb-1 block text-foreground">
-                科目 <span className="text-destructive">*</span>
-                {!canSelectSubject && (
-                  <span className="text-xs text-amber-600 dark:text-amber-500 ml-2">
-                    (推奨: 教師と生徒を選択すると適合度が表示されます)
-                  </span>
-                )}
-                {canSelectSubject && (
-                  <span className="text-xs text-muted-foreground ml-1">
-                    ({enhancedSubjects.filter((s: SubjectCompatibility) => s.compatibilityType === 'perfect').length} 完全一致, {enhancedSubjects.length} 総数)
-                  </span>
-                )}
-              </label>
-              <div className="flex items-center gap-2">
-                <div className="flex-1">
-                  <SearchableSelect
-                    value={subjectId}
-                    onValueChange={handleSubjectChange}
-                    items={subjectItems}
-                    placeholder="科目を選択"
-                    searchPlaceholder="科目を検索..."
-                    emptyMessage="科目が見つかりません"
-                    showCompatibilityIcons={canSelectSubject}
-                  />
-                </div>
-                {subjectId && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={clearSubject}
-                    className="px-2"
+                  <div
+                    className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:w-[6px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-thumb]:rounded-[3px] [&::-webkit-scrollbar-thumb:hover]:bg-muted-foreground"
+                    style={{
+                      scrollbarWidth: 'thin',
+                      scrollbarColor: 'hsl(var(--border)) transparent'
+                    }}
                   >
-                    <X className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
-            </div>
-
-            {isRecurring && (
-              <div className="space-y-3 p-3 rounded-md border border-input bg-muted/30">
-                <div>
-                  <label className="text-sm font-medium mb-1 block text-foreground">期間 <span className="text-destructive">*</span></label>
-                  <div className="relative">
-                    <DateRangePicker
-                      dateRange={dateRange}
-                      setDateRange={setDateRange}
-                      placeholder="期間を選択"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium mb-2 block text-foreground">曜日を選択</label>
-                  <div className="flex flex-wrap gap-2">
-                    {daysOfWeek.map(day => (
-                      <button
-                        key={day.value}
-                        type="button"
-                        onClick={() => handleDayToggle(day.value)}
-                        className={`
-                          w-8 h-8 rounded-full flex items-center justify-center text-sm
-                          transition-colors duration-200
-                          ${selectedDays.includes(day.value)
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-muted text-muted-foreground border border-input'
-                          }
-                        `}
-                      >
-                        {day.label}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="text-xs mt-1 text-muted-foreground">
-                    {selectedDays.length === 0
-                      ? `曜日が選択されていない場合、${format(typeof lessonData.date === 'string' ? new Date(lessonData.date) : lessonData.date, 'EEEE', { locale: ja })}が使用されます。`
-                      : `選択された曜日: ${selectedDays.map(d => daysOfWeek.find(day => day.value === d)?.label).join(', ')}`
-                    }
+                    <div className="space-y-3 pr-2">
+                      {conflictData.conflicts.map((conflict, index) => (
+                        <ConflictDateItem 
+                          key={`${conflict.date}-${index}`}
+                          conflict={conflict}
+                        />
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
-            )}
-
-            <div>
-              <label htmlFor="notes" className="text-sm font-medium mb-1 block text-foreground">メモ</label>
-              <textarea
-                id="notes"
-                className="w-full min-h-[60px] p-2 border rounded-md bg-background text-foreground hover:border-accent focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors border-input"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="授業に関するメモを入力してください"
-              />
             </div>
-
-            {error && (
-              <div className="p-3 rounded bg-destructive/10 border border-destructive/20 text-destructive text-sm">
-                {error}
-              </div>
-            )}
-
-            {validationErrors.length > 0 && (
-              <div className="p-3 rounded bg-destructive/10 border border-destructive/20 text-destructive text-sm">
-                <div className="font-medium mb-2">入力内容を確認してください:</div>
-                <ul className="list-disc list-inside space-y-1">
-                  {validationErrors.map((error, index) => (
-                    <li key={index}>{error}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
+          ) : (
+            // Single column layout when no conflicts - original form
+            <div
+              className="h-full overflow-y-auto px-1 [&::-webkit-scrollbar]:w-[6px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-thumb]:rounded-[3px] [&::-webkit-scrollbar-thumb:hover]:bg-muted-foreground"
+              style={{
+                scrollbarWidth: 'thin',
+                scrollbarColor: 'hsl(var(--border)) transparent'
+              }}
+            >
+              <FormContent disabled={false} />
+            </div>
+          )}
         </div>
 
         <DialogFooter className="flex-shrink-0 pt-2">
-          <div className="flex gap-2 w-full">
-            <Button
-              variant="outline"
-              className="transition-all duration-200 hover:bg-accent hover:text-accent-foreground active:scale-[0.98] focus:ring-2 focus:ring-primary/30 focus:outline-none"
-              onClick={() => onOpenChange(false)}
-            >
-              キャンセル
-            </Button>
-            <Button
-              variant="destructive"
-              className="transition-all duration-200 hover:brightness-110 active:scale-[0.98] focus:ring-2 focus:ring-destructive/30 focus:outline-none"
-              onClick={handleReset}
-            >
-              リセット
-            </Button>
-            <Button
-              className="ml-auto transition-all duration-200 hover:brightness-110 active:scale-[0.98] focus:ring-2 focus:ring-primary/30 focus:outline-none"
-              onClick={handleSubmit}
-              disabled={!canSubmit || isLoading}
-            >
-              {isLoading ? "読み込み中..." : "作成"}
-            </Button>
-          </div>
+          {conflictData ? (
+            // Conflict resolution buttons
+            <div className="flex gap-2 w-full">
+              <Button
+                variant="outline"
+                onClick={() => handleConflictAction('CANCEL')}
+                disabled={isLoading}
+                className="transition-all duration-200 hover:bg-accent hover:text-accent-foreground active:scale-[0.98] focus:ring-2 focus:ring-primary/30 focus:outline-none"
+              >
+                キャンセル
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => handleConflictAction('SKIP')}
+                disabled={isLoading}
+                className="transition-all duration-200 hover:brightness-110 active:scale-[0.98] focus:ring-2 focus:ring-secondary/30 focus:outline-none"
+              >
+                競合をスキップ
+              </Button>
+              <Button
+                onClick={() => handleConflictAction('FORCE')}
+                disabled={isLoading}
+                className="ml-auto transition-all duration-200 hover:brightness-110 active:scale-[0.98] focus:ring-2 focus:ring-primary/30 focus:outline-none"
+              >
+                {isLoading ? '処理中...' : '強制作成'}
+              </Button>
+            </div>
+          ) : (
+            // Normal form buttons
+            <div className="flex gap-2 w-full">
+              <Button
+                variant="outline"
+                className="transition-all duration-200 hover:bg-accent hover:text-accent-foreground active:scale-[0.98] focus:ring-2 focus:ring-primary/30 focus:outline-none"
+                onClick={() => onOpenChange(false)}
+                disabled={isLoading}
+              >
+                キャンセル
+              </Button>
+              <Button
+                variant="destructive"
+                className="transition-all duration-200 hover:brightness-110 active:scale-[0.98] focus:ring-2 focus:ring-destructive/30 focus:outline-none"
+                onClick={handleReset}
+                disabled={isLoading}
+              >
+                リセット
+              </Button>
+              <Button
+                className="ml-auto transition-all duration-200 hover:brightness-110 active:scale-[0.98] focus:ring-2 focus:ring-primary/30 focus:outline-none"
+                onClick={handleSubmit}
+                disabled={!canSubmit || isLoading}
+              >
+                {isLoading ? "処理中..." : "作成"}
+              </Button>
+            </div>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

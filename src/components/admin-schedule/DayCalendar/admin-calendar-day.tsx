@@ -21,9 +21,10 @@ import {
 } from '../date';
 
 import {
-  CreateClassSessionPayload,
+  CreateClassSessionWithConflictsPayload, 
   NewClassSessionData,
-  formatDateToString
+  formatDateToString,
+  ConflictResponse
 } from './types/class-session';
 
 export type SelectionPosition = {
@@ -313,11 +314,11 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
     setShowLessonDialog(true);
   }, []);
 
-  const handleSaveNewLesson = useCallback(async (lessonData: CreateClassSessionPayload) => {
+  const handleSaveNewLesson = useCallback(async (lessonData: CreateClassSessionWithConflictsPayload): Promise<{ success: boolean; conflicts?: ConflictResponse }> => {
     try {
       const dateStr = typeof lessonData.date === 'string' ?
         lessonData.date : formatDateToString(lessonData.date);
-
+  
       const requestBody: Record<string, unknown> = {
         date: dateStr,
         startTime: lessonData.startTime,
@@ -329,7 +330,7 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
         classTypeId: lessonData.classTypeId || "",
         notes: lessonData.notes || ""
       };
-
+  
       if (lessonData.isRecurring) {
         requestBody.isRecurring = true;
         requestBody.startDate = lessonData.startDate;
@@ -338,7 +339,17 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
           requestBody.daysOfWeek = lessonData.daysOfWeek;
         }
       }
-
+  
+      // ВАЖНО: Добавляем флаги конфликтов если они есть
+      if (lessonData.skipConflicts) {
+        requestBody.skipConflicts = true;
+      }
+      if (lessonData.forceCreate) {
+        requestBody.forceCreate = true;
+      }
+  
+      console.log("Final request body:", JSON.stringify(requestBody, null, 2));
+  
       const response = await fetch('/api/class-sessions', {
         method: 'POST',
         headers: {
@@ -346,34 +357,45 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
         },
         body: JSON.stringify(requestBody),
       });
-
+  
       const contentType = response.headers.get("content-type");
-
+      
       if (!response.ok) {
-        let errorData: ApiErrorResponse = {};
-
+        let errorData: any = {};
+  
         if (contentType && contentType.includes("application/json")) {
           errorData = await response.json();
         } else {
           const errorText = await response.text();
           errorData = { message: errorText || `サーバーエラー: ${response.status}` };
         }
-
+  
+        // ВАЖНО: Проверяем на наличие конфликтов
+        if (errorData.requiresConfirmation) {
+          console.log('Conflicts detected:', errorData);
+          return { 
+            success: false, 
+            conflicts: errorData as ConflictResponse 
+          };
+        }
+  
+        // Обычная ошибка - выбрасываем исключение
         let errorMessage = '授業の作成に失敗しました';
-
+  
         if (errorData.message) {
           errorMessage = errorData.message;
         } else if (errorData.error) {
           errorMessage = errorData.error;
         }
-
+  
         if (errorData.issues && Array.isArray(errorData.issues)) {
-          errorMessage += ': ' + errorData.issues.map((issue) => issue.message).join(', ');
+          errorMessage += ': ' + errorData.issues.map((issue: any) => issue.message).join(', ');
         }
-
+  
         throw new Error(errorMessage || `エラー ${response.status}: ${response.statusText}`);
       }
-
+  
+      // Успешное создание
       if (contentType && contentType.includes("application/json")) {
         try {
           await response.json();
@@ -381,17 +403,28 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
           console.warn("応答のパースエラー:", parseError);
         }
       }
-
-      setShowCreateDialog(false);
+  
+      console.log('Lesson created successfully');
+      
+      // Обновляем данные только при успехе
       refreshData();
       setNewLessonData(null);
+      
+      return { success: true };
+  
     } catch (error) {
-      let errorMessage = error instanceof Error ? error.message : '不明なエラー';
-      if (errorMessage === '{}' || !errorMessage) {
-        errorMessage = '授業の作成中にエラーが発生しました。データを確認して再度お試しください。';
+      console.error('Error creating lesson:', error);
+      
+      // Проверяем, не является ли это конфликтом (на случай если ошибка содержит данные конфликтов)
+      if (error instanceof Error && (error as any).conflicts) {
+        return { 
+          success: false, 
+          conflicts: (error as any).conflicts 
+        };
       }
-
-      alert(`授業の作成エラー: ${errorMessage}`);
+      
+      // Обычная ошибка - перебрасываем для показа alert'а
+      throw error;
     }
   }, [refreshData]);
 
