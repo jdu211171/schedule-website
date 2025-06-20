@@ -348,6 +348,11 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
         requestBody.forceCreate = true;
       }
   
+      // ВАЖНО: Добавляем sessionActions!!!
+      if (lessonData.sessionActions && lessonData.sessionActions.length > 0) {
+        requestBody.sessionActions = lessonData.sessionActions;
+      }
+  
       console.log("Final request body:", JSON.stringify(requestBody, null, 2));
   
       const response = await fetch('/api/class-sessions', {
