@@ -15,12 +15,13 @@ import {
   ConflictResponse,
   ConflictResolutionAction,
   CreateClassSessionWithConflictsPayload,
+  SessionAction,
 } from './types/class-session';
 import { SearchableSelect, SearchableSelectItem } from '../searchable-select';
 import { TimeInput } from '@/components/ui/time-input';
 import { useSmartSelection, EnhancedTeacher, EnhancedStudent, SubjectCompatibility } from '@/hooks/useSmartSelection';
 import { useAvailability } from './availability-layer';
-import { ConflictDateItem } from './conflict-date-item';
+import { ConflictResolutionTable } from './conflict-resolution-table';
 
 function DateRangePicker({
   dateRange,
@@ -260,32 +261,21 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
     return classTypes.filter(type => type.parentId === selectedParentClassTypeId) || [];
   }, [classTypes, selectedParentClassTypeId]);
 
-  // Handle conflict resolution
-  const handleConflictAction = async (action: ConflictResolutionAction) => {
-    if (!currentPayload || !conflictData) return;
+  // Handle conflict resolution with new table
+  const handleConflictResolution = async (actions: SessionAction[]) => {
+    console.log('Received actions in handleConflictResolution:', actions);
+    if (!currentPayload) return;
   
     setIsSubmitting(true);
     try {
-      let finalPayload: CreateClassSessionWithConflictsPayload;
-  
-      switch (action) {
-        case 'CANCEL':
-          setConflictData(null);
-          setCurrentPayload(null);
-          return;
-  
-        case 'SKIP':
-          finalPayload = { ...currentPayload, skipConflicts: true };
-          break;
-  
-        case 'FORCE':
-          finalPayload = { ...currentPayload, forceCreate: true };
-          break;
-  
-        default:
-          finalPayload = { ...currentPayload };
-          break;
-      }
+      // ВАЖНО: добавляем sessionActions в payload
+      const finalPayload: CreateClassSessionWithConflictsPayload = {
+        ...currentPayload,
+        sessionActions: actions  
+      };
+
+      console.log('Final payload with sessionActions:', finalPayload);
+      console.log('About to call onSave with finalPayload');
   
       const result = await onSave(finalPayload);
       if (result.success) {
@@ -293,6 +283,9 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
         setConflictData(null);
         setCurrentPayload(null);
         onOpenChange(false);
+      } else if (result.conflicts) {
+        // New conflicts appeared - update conflict data
+        setConflictData(result.conflicts);
       }
     } catch (error) {
       console.error('Error handling conflict resolution:', error);
@@ -300,6 +293,11 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleConflictCancel = () => {
+    setConflictData(null);
+    setCurrentPayload(null);
   };
 
   // Create enhanced items for SearchableSelect components
@@ -740,7 +738,7 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
     { label: '日', value: 0 }
   ];
 
-  // Вынесем форму в отдельный компонент для переиспользования
+  // Form content component
   const FormContent = ({ disabled }: { disabled: boolean }) => (
     <div className="grid gap-3 py-2">
       <div className="grid grid-cols-2 gap-4">
@@ -1150,112 +1148,52 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent 
         className={cn(
-          "max-h-[90vh] flex flex-col",
-          conflictData ? "sm:max-w-[1200px]" : "sm:max-w-[800px]"
+          "max-h-[90vh]",
+          conflictData ? "sm:max-w-[1400px]" : "sm:max-w-[800px]"
         )}
       >
-        <DialogHeader className="flex-shrink-0">
+        <DialogHeader>
           <DialogTitle>授業の作成</DialogTitle>
           <DialogDescription>
-            新しい授業の情報を入力してください
+            {conflictData ? "競合が発見されました。解決方法を選択してください。" : "新しい授業の情報を入力してください"}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-hidden">
+        <div className="overflow-y-auto">
           {conflictData ? (
             // Two-column layout when conflicts exist
-            <div className="flex gap-6 h-full">
+            <div className="flex gap-6">
               {/* Left column - Form (disabled) */}
               <div className="flex-1 min-w-0">
-                <div
-                  className={cn(
-                    "h-full overflow-y-auto px-1 [&::-webkit-scrollbar]:w-[6px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-thumb]:rounded-[3px] [&::-webkit-scrollbar-thumb:hover]:bg-muted-foreground",
-                    "opacity-60 pointer-events-none"
-                  )}
-                  style={{
-                    scrollbarWidth: 'thin',
-                    scrollbarColor: 'hsl(var(--border)) transparent'
-                  }}
-                >
+                <div className="text-sm font-medium mb-2 text-muted-foreground">
+                  入力された情報:
+                </div>
+                <div className="px-1 opacity-60 pointer-events-none">
                   <FormContent disabled={true} />
                 </div>
               </div>
 
-              {/* Right column - Conflicts with separate scrolling */}
+              {/* Right column - Conflict Resolution Table */}
               <div className="flex-1 min-w-0 border-l border-border pl-6">
-                <div className="h-full flex flex-col">
-                  <div className="flex-shrink-0 mb-4">
-                    <h3 className="text-lg font-semibold">
-                      競合の解決 ({conflictData.conflicts.length}件)
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      {conflictData.message}
-                    </p>
-                  </div>
-
-                  <div
-                    className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:w-[6px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-thumb]:rounded-[3px] [&::-webkit-scrollbar-thumb:hover]:bg-muted-foreground"
-                    style={{
-                      scrollbarWidth: 'thin',
-                      scrollbarColor: 'hsl(var(--border)) transparent'
-                    }}
-                  >
-                    <div className="space-y-3 pr-2">
-                      {conflictData.conflicts.map((conflict, index) => (
-                        <ConflictDateItem 
-                          key={`${conflict.date}-${index}`}
-                          conflict={conflict}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                </div>
+                <ConflictResolutionTable
+                  conflictData={conflictData}
+                  originalTime={{ startTime, endTime }}
+                  onSubmit={handleConflictResolution}
+                  onCancel={handleConflictCancel}
+                  isLoading={isSubmitting}
+                />
               </div>
             </div>
           ) : (
             // Single column layout when no conflicts - original form
-            <div
-              className="h-full overflow-y-auto px-1 [&::-webkit-scrollbar]:w-[6px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-thumb]:rounded-[3px] [&::-webkit-scrollbar-thumb:hover]:bg-muted-foreground"
-              style={{
-                scrollbarWidth: 'thin',
-                scrollbarColor: 'hsl(var(--border)) transparent'
-              }}
-            >
+            <div className="px-1">
               <FormContent disabled={false} />
             </div>
           )}
         </div>
 
-        <DialogFooter className="flex-shrink-0 pt-2">
-          {conflictData ? (
-            // Conflict resolution buttons
-            <div className="flex gap-2 w-full">
-              <Button
-                variant="outline"
-                onClick={() => handleConflictAction('CANCEL')}
-                disabled={isLoading}
-                className="transition-all duration-200 hover:bg-accent hover:text-accent-foreground active:scale-[0.98] focus:ring-2 focus:ring-primary/30 focus:outline-none"
-              >
-                キャンセル
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={() => handleConflictAction('SKIP')}
-                disabled={isLoading}
-                className="transition-all duration-200 hover:brightness-110 active:scale-[0.98] focus:ring-2 focus:ring-secondary/30 focus:outline-none"
-              >
-                競合をスキップ
-              </Button>
-              <Button
-                onClick={() => handleConflictAction('FORCE')}
-                disabled={isLoading}
-                className="ml-auto transition-all duration-200 hover:brightness-110 active:scale-[0.98] focus:ring-2 focus:ring-primary/30 focus:outline-none"
-              >
-                {isLoading ? '処理中...' : '強制作成'}
-              </Button>
-            </div>
-          ) : (
-            // Normal form buttons
+        {!conflictData && (
+          <DialogFooter className="pt-2">
             <div className="flex gap-2 w-full">
               <Button
                 variant="outline"
@@ -1281,8 +1219,8 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
                 {isLoading ? "処理中..." : "作成"}
               </Button>
             </div>
-          )}
-        </DialogFooter>
+          </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
   );

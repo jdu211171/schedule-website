@@ -25,6 +25,7 @@ export interface CreateClassSessionPayload extends ClassSessionBase {
 export interface CreateClassSessionWithConflictsPayload extends CreateClassSessionPayload {
   skipConflicts?: boolean;
   forceCreate?: boolean;
+  sessionActions?: SessionAction[];
 }
 
 export interface UpdateClassSessionPayload {
@@ -52,6 +53,13 @@ export interface NewClassSessionData {
   boothId: string;
 }
 
+export interface SessionAction {
+  date: string;
+  action: 'SKIP' | 'FORCE_CREATE' | 'USE_ALTERNATIVE' | 'RESET';
+  alternativeStartTime?: string;
+  alternativeEndTime?: string;
+}
+
 // Типы для обработки конфликтов
 export type ConflictType = 
   | 'STUDENT_UNAVAILABLE' 
@@ -59,7 +67,8 @@ export type ConflictType =
   | 'TEACHER_WRONG_TIME' 
   | 'STUDENT_WRONG_TIME' 
   | 'VACATION' 
-  | 'BOOTH_CONFLICT';
+  | 'BOOTH_CONFLICT'
+  | 'NO_SHARED_AVAILABILITY';
 
 export interface ConflictParticipant {
   id: string;
@@ -78,6 +87,10 @@ export interface ConflictData {
   type: ConflictType;
   details: string; // Japanese message like "佐藤 花子さんはこの日に利用可能時間が設定されていません"
   participant: ConflictParticipant;
+  sharedAvailableSlots: ConflictAvailableSlot[]; // Добавляем поле из примера JSON
+  teacherSlots: ConflictAvailableSlot[]; // Добавляем поле из примера JSON
+  studentSlots: ConflictAvailableSlot[]; // Добавляем поле из примера JSON
+  availabilityStrategy: string; // Добавляем поле из примера JSON
   availableSlots: ConflictAvailableSlot[];
 }
 
