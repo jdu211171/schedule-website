@@ -263,26 +263,30 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
   // Handle conflict resolution
   const handleConflictAction = async (action: ConflictResolutionAction) => {
     if (!currentPayload || !conflictData) return;
-
+  
     setIsSubmitting(true);
     try {
-      let finalPayload: CreateClassSessionWithConflictsPayload = { ...currentPayload };
-
+      let finalPayload: CreateClassSessionWithConflictsPayload;
+  
       switch (action) {
         case 'CANCEL':
           setConflictData(null);
           setCurrentPayload(null);
           return;
-
+  
         case 'SKIP':
-          finalPayload.skipConflicts = true;
+          finalPayload = { ...currentPayload, skipConflicts: true };
           break;
-
+  
         case 'FORCE':
-          finalPayload.forceCreate = true;
+          finalPayload = { ...currentPayload, forceCreate: true };
+          break;
+  
+        default:
+          finalPayload = { ...currentPayload };
           break;
       }
-
+  
       const result = await onSave(finalPayload);
       if (result.success) {
         // Success - close dialog
