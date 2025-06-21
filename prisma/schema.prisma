@@ -116,22 +116,22 @@ model ClassType {
 }
 
 model Student {
-  studentId               String                   @id @default(cuid()) @map("student_id")
-  userId                  String                   @unique @map("user_id")
-  name                    String                   @db.VarChar(100)
-  kanaName                String?                  @map("kana_name") @db.VarChar(100)
-  studentTypeId           String?                  @map("student_type_id") @db.VarChar(50)
-  gradeYear               Int?                     @map("grade_year")
-  lineId                  String?                  @map("line_id") @db.VarChar(50)
-  notes                   String?                  @db.VarChar(255)
-  status                  UserStatus               @default(ACTIVE)
+  studentId               String                     @id @default(cuid()) @map("student_id")
+  userId                  String                     @unique @map("user_id")
+  name                    String                     @db.VarChar(100)
+  kanaName                String?                    @map("kana_name") @db.VarChar(100)
+  studentTypeId           String?                    @map("student_type_id") @db.VarChar(50)
+  gradeYear               Int?                       @map("grade_year")
+  lineId                  String?                    @unique @map("line_id") @db.VarChar(50)
+  notes                   String?                    @db.VarChar(255)
+  status                  UserStatus                 @default(ACTIVE)
   studentClassEnrollments StudentClassEnrollment[]
   classSessions           ClassSession[]
-  teacherPreferences       StudentTeacherPreference[]
-  studentType             StudentType?             @relation(fields: [studentTypeId], references: [studentTypeId], onDelete: SetNull, onUpdate: Cascade)
-  user                    User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt               DateTime                 @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt               DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  teacherPreferences      StudentTeacherPreference[]
+  studentType             StudentType?               @relation(fields: [studentTypeId], references: [studentTypeId], onDelete: SetNull, onUpdate: Cascade)
+  user                    User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt               DateTime                   @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt               DateTime                   @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
   @@index([studentTypeId])
   @@map("students")
@@ -149,29 +149,28 @@ enum AvailabilityType {
 }
 
 model UserAvailability {
-  id          String             @id @default(cuid())
-  userId      String             @map("user_id")
-  dayOfWeek   DayOfWeek?         // Null for exceptions
-  date        DateTime?          @db.Date // Null for regular availability
-  startTime   DateTime?          @db.Time(6) // Null for full-day/unavailable
-  endTime     DateTime?          @db.Time(6) // Null for full-day/unavailable
-  fullDay     Boolean?           @default(false)
-  type        AvailabilityType
-  status      AvailabilityStatus @default(PENDING)
-  reason      String?            @db.VarChar(255)
-  notes       String?            @db.VarChar(255)
+  id        String             @id @default(cuid())
+  userId    String             @map("user_id")
+  dayOfWeek DayOfWeek? // Null for exceptions
+  date      DateTime?          @db.Date // Null for regular availability
+  startTime DateTime?          @db.Time(6) // Null for full-day/unavailable
+  endTime   DateTime?          @db.Time(6) // Null for full-day/unavailable
+  fullDay   Boolean?           @default(false)
+  type      AvailabilityType
+  status    AvailabilityStatus @default(PENDING)
+  reason    String?            @db.VarChar(255)
+  notes     String?            @db.VarChar(255)
 
-  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  createdAt   DateTime           @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt   DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
   // Prevent overlapping availability entries for same user on same day/date
   // For REGULAR availability: only one per user per dayOfWeek per time slot
   @@unique([userId, dayOfWeek, startTime, endTime], name: "unique_regular_time_slot")
   // For EXCEPTION availability: only one per user per date per time slot
   @@unique([userId, date, startTime, endTime], name: "unique_exception_time_slot")
-
   // Optimized indexes for scheduling queries
   @@index([userId, type, status], name: "idx_user_type_status")
   @@index([date, status], name: "idx_date_status") // For exception queries
@@ -183,7 +182,6 @@ model UserAvailability {
   @@index([status, type], name: "idx_status_type") // For admin approval queries
   @@index([createdAt], name: "idx_created_at") // For chronological queries
   @@index([startTime, endTime], name: "idx_time_range") // For time-based queries
-
   @@map("user_availability")
 }
 
@@ -239,32 +237,32 @@ enum DayOfWeek {
  * Central to class scheduling and assignment.
  */
 model Teacher {
-  teacherId     String         @id @default(cuid()) @map("teacher_id")
-  userId        String         @unique @map("user_id")
-  name          String         @db.VarChar(100)
-  kanaName      String?        @map("kana_name") @db.VarChar(100)
-  email         String?        @db.VarChar(100)
-  lineId        String?        @map("line_id") @db.VarChar(50)
-  notes         String?        @db.VarChar(255)
-  status        UserStatus     @default(ACTIVE)
-  classSessions ClassSession[]
-  studentPreferences       StudentTeacherPreference[]
-  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt     DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  teacherId          String                     @id @default(cuid()) @map("teacher_id")
+  userId             String                     @unique @map("user_id")
+  name               String                     @db.VarChar(100)
+  kanaName           String?                    @map("kana_name") @db.VarChar(100)
+  email              String?                    @db.VarChar(100)
+  lineId             String?                    @unique @map("line_id") @db.VarChar(50)
+  notes              String?                    @db.VarChar(255)
+  status             UserStatus                 @default(ACTIVE)
+  classSessions      ClassSession[]
+  studentPreferences StudentTeacherPreference[]
+  user               User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt          DateTime                   @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt          DateTime                   @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
   @@map("teachers")
 }
 
 model SubjectType {
-  subjectTypeId         String       @id @default(cuid()) @map("subject_type_id")
-  name                  String       @unique @db.VarChar(100)
-  notes                 String?      @db.VarChar(255)
-  order                 Int?         @map("order")
-  preferences           UserSubjectPreference[]
+  subjectTypeId             String                     @id @default(cuid()) @map("subject_type_id")
+  name                      String                     @unique @db.VarChar(100)
+  notes                     String?                    @db.VarChar(255)
+  order                     Int?                       @map("order")
+  preferences               UserSubjectPreference[]
   studentTeacherPreferences StudentTeacherPreference[]
-  createdAt             DateTime     @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt             DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  createdAt                 DateTime                   @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt                 DateTime                   @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
   @@index([order])
   @@map("subject_types")
@@ -287,19 +285,19 @@ model UserSubjectPreference {
 }
 
 model StudentTeacherPreference {
-  id            String      @id @default(cuid())
-  studentId     String      @map("student_id")
-  teacherId     String      @map("teacher_id")
-  subjectId     String      @map("subject_id")
-  subjectTypeId String      @map("subject_type_id")
+  id            String @id @default(cuid())
+  studentId     String @map("student_id")
+  teacherId     String @map("teacher_id")
+  subjectId     String @map("subject_id")
+  subjectTypeId String @map("subject_type_id")
 
-  student       Student     @relation(fields: [studentId], references: [studentId], onDelete: Cascade)
-  teacher       Teacher     @relation(fields: [teacherId], references: [teacherId], onDelete: Cascade)
-  subject       Subject     @relation(fields: [subjectId], references: [subjectId], onDelete: Cascade)
-  subjectType   SubjectType @relation(fields: [subjectTypeId], references: [subjectTypeId], onDelete: Cascade)
+  student     Student     @relation(fields: [studentId], references: [studentId], onDelete: Cascade)
+  teacher     Teacher     @relation(fields: [teacherId], references: [teacherId], onDelete: Cascade)
+  subject     Subject     @relation(fields: [subjectId], references: [subjectId], onDelete: Cascade)
+  subjectType SubjectType @relation(fields: [subjectTypeId], references: [subjectTypeId], onDelete: Cascade)
 
-  createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt     DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
   @@unique([studentId, teacherId, subjectId, subjectTypeId])
   @@index([studentId])
@@ -315,14 +313,14 @@ model StudentTeacherPreference {
  * Made global like StudentType model - not branch-specific.
  */
 model Subject {
-  subjectId             String         @id @default(cuid()) @map("subject_id")
-  name                  String         @unique @db.VarChar(100)
-  notes                 String?        @db.VarChar(255)
-  classSessions         ClassSession[]
-  preferences           UserSubjectPreference[]
+  subjectId                 String                     @id @default(cuid()) @map("subject_id")
+  name                      String                     @unique @db.VarChar(100)
+  notes                     String?                    @db.VarChar(255)
+  classSessions             ClassSession[]
+  preferences               UserSubjectPreference[]
   studentTeacherPreferences StudentTeacherPreference[]
-  createdAt             DateTime       @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt             DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  createdAt                 DateTime                   @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt                 DateTime                   @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
   @@map("subjects")
 }
@@ -386,26 +384,26 @@ enum UserRole {
 }
 
 model User {
-  id                 String       @id @default(cuid())
+  id                 String                  @id @default(cuid())
   name               String?
-  email              String?      @unique
-  emailVerified      DateTime?    @map("email_verified")
+  email              String?                 @unique
+  emailVerified      DateTime?               @map("email_verified")
   image              String?
   accounts           Account[]
   branches           UserBranch[]
   sessions           Session[]
   subjectPreferences UserSubjectPreference[]
-  username           String?      @unique
+  username           String?                 @unique
   passwordHash       String?
-  role               UserRole     @default(ADMIN)
-  order              Int?          @map("order")
-  isRestrictedAdmin  Boolean      @default(false) @map("is_restricted_admin")
+  role               UserRole                @default(ADMIN)
+  order              Int?                    @map("order")
+  isRestrictedAdmin  Boolean                 @default(false) @map("is_restricted_admin")
   student            Student?
   teacher            Teacher?
   availability       UserAvailability[]
 
-  createdAt          DateTime      @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt          DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
   @@index([order])
   @@map("users")
