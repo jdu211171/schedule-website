@@ -135,7 +135,7 @@ async function listUpcomingSessions() {
   });
 
   console.log("\n📅 Upcoming Sessions:");
-  console.log("=" * 80);
+  console.log("=".repeat(80));
   
   sessions.forEach((session, index) => {
     console.log(`\n${index + 1}. Session ID: ${session.classId}`);
@@ -147,7 +147,7 @@ async function listUpcomingSessions() {
     console.log(`   Booth: ${session.booth?.name || "N/A"}`);
   });
   
-  console.log("\n" + "=" * 80);
+  console.log("\n" + "=".repeat(80));
   return sessions;
 }
 
@@ -178,7 +178,7 @@ async function listUsersWithLineIds() {
   });
 
   console.log("\n👥 Users with LINE IDs:");
-  console.log("=" * 80);
+  console.log("=".repeat(80));
   
   console.log("\nTeachers:");
   teachers.forEach((teacher) => {
@@ -190,7 +190,7 @@ async function listUsersWithLineIds() {
     console.log(`- ${student.user?.name || student.name} (ID: ${student.userId}, LINE: ${student.lineId})`);
   });
   
-  console.log("\n" + "=" * 80);
+  console.log("\n" + "=".repeat(80));
 }
 
 /**

@@ -437,12 +437,5 @@ export async function GET(request: NextRequest) {
       sessionId: targetSessionId,
     },
     upcomingSessions: sessionsWithTiming,
-      classId: session.classId,
-      date: session.date,
-      startTime: session.startTime,
-      sessionDateTime: combineDateTime(
-        session.date,
-        session.startTime
-      ).toISOString(),
   });
 }

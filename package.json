@@ -81,6 +81,7 @@
     "@eslint/eslintrc": "^3",
     "@faker-js/faker": "^9.6.0",
     "@tailwindcss/postcss": "^4",
+    "@types/dotenv": "^8.2.3",
     "@types/node": "^22.13.13",
     "@types/react": "^19",
     "@types/react-dom": "^19",
