@@ -15,6 +15,7 @@ import { TeacherTable } from "@/components/teacher/teacher-table";
 import { SubjectTypeTable } from "@/components/subject-type/subject-type-table";
 import { AdminUserTable } from "@/components/admin-user/admin-user-table";
 import { useSession } from "next-auth/react";
+import { TestTable } from "@/components/TestTable";
 
 // Storage key for tab persistence
 const ACTIVE_TAB_KEY = "masterpage_active_tab";
@@ -64,6 +65,7 @@ export default function MasterDataPage() {
               <TabsTrigger value="staff">スタッフ</TabsTrigger>
             </>
           )}
+          <TabsTrigger value="test">TEST</TabsTrigger>
           <TabsTrigger value="students">生徒</TabsTrigger>
           <TabsTrigger value="teachers">教師</TabsTrigger>
           <TabsTrigger value="subjects">科目</TabsTrigger>
@@ -75,15 +77,19 @@ export default function MasterDataPage() {
         </TabsList>
 
         <Card className="mt-4 p-4">
+          <TabsContent value="test" className="mt-0">
+            <TestTable />
+          </TabsContent>
           <TabsContent value="branches" className="mt-0">
             <BranchTable />
           </TabsContent>
           {/* Only show admin management content for non-restricted admins */}
-          {session?.user?.role === "ADMIN" && !session?.user?.isRestrictedAdmin && (
-            <TabsContent value="admins" className="mt-0">
-              <AdminUserTable />
-            </TabsContent>
-          )}
+          {session?.user?.role === "ADMIN" &&
+            !session?.user?.isRestrictedAdmin && (
+              <TabsContent value="admins" className="mt-0">
+                <AdminUserTable />
+              </TabsContent>
+            )}
           <TabsContent value="staff" className="mt-0">
             <StaffTable />
           </TabsContent>
