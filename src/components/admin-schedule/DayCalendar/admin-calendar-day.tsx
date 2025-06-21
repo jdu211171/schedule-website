@@ -82,7 +82,7 @@ const TIME_SLOTS: TimeSlot[] = Array.from({ length: 57 }, (_el, i) => {
 
 export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayProps) {
   const today = useMemo(() => startOfDay(new Date()), []);
-  
+
   const [viewStartDate, setViewStartDate] = useState<Date>(today);
   const [selectedDays, setSelectedDays] = useState<Date[]>([today]);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -163,10 +163,10 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
 
   const { data: teacherData } = useTeacher(selectedTeacherId);
   const { data: studentData } = useStudent(selectedStudentId);
-  
+
   const teacherUserId = teacherData?.userId;
   const studentUserId = studentData?.userId;
-  
+
   const booths = useMemo(() => boothsResponse?.data || [], [boothsResponse]);
   const teachers = useMemo(() => teachersResponse?.data || [], [teachersResponse]);
   const students = useMemo(() => studentsResponse?.data || [], [studentsResponse]);
@@ -177,29 +177,29 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
   const parentClassTypes = useMemo(() => {
     return classTypes.filter(type => !type.parentId) || [];
   }, [classTypes]);
-  
+
   const selectedDatesStrings = useMemo(() => {
     return selectedDays.map(day => getDateKey(day));
   }, [selectedDays]);
 
   const enhancedDayFilters = useMemo(() => {
     const enhanced: Record<string, DayFilters> = {};
-  
+
     Object.entries(dayFilters).forEach(([dateKey, filters]) => {
       enhanced[dateKey] = { ...filters };
     });
-  
+
     selectedDatesStrings.forEach(dateStr => {
       if (!enhanced[dateStr]) {
         enhanced[dateStr] = {};
       }
     });
-  
+
     return enhanced;
   }, [dayFilters, selectedDatesStrings]);
 
   const classSessionQueries = useMultipleDaysClassSessions(
-    selectedDatesStrings, 
+    selectedDatesStrings,
     enhancedDayFilters
   );
 
@@ -292,11 +292,11 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
       const defaultType = parentClassTypes.find(type => type.name === '通常授業');
       defaultClassTypeId = defaultType?.classTypeId || '';
     }
-    
-    const lessonData = { 
-      date, 
-      startTime, 
-      endTime, 
+
+    const lessonData = {
+      date,
+      startTime,
+      endTime,
       boothId,
       classTypeId: defaultClassTypeId,
       teacherId: selectedTeacherId,
@@ -410,13 +410,13 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
   const handleGlobalAvailabilityModeChange = useCallback((checked: boolean) => {
     const newMode: AvailabilityMode = checked ? 'regular-only' : 'with-special';
     setGlobalAvailabilityMode(newMode);
-    
+
     const updatedSettings: Record<string, AvailabilityMode> = {};
     selectedDays.forEach(day => {
       updatedSettings[getDateKey(day)] = newMode;
     });
     setDayAvailabilitySettings(updatedSettings);
-    
+
     console.log('Global availability mode changed to:', newMode);
   }, [selectedDays]);
 
@@ -482,7 +482,7 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
       <div className="bg-background border rounded-lg p-4 space-y-4">
         <div className="flex items-start justify-between">
           <h3 className="text-sm font-medium text-muted-foreground">授業作成の設定</h3>
-          
+
           {(selectedTeacherId || selectedStudentId) && (
             <div className="flex-shrink-0">
               <div className="text-xs text-muted-foreground mb-1">空き時間表示:</div>
@@ -502,6 +502,18 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
               </div>
             </div>
           )}
+          {(selectedTeacherId || selectedStudentId) && (
+            <div className="flex-shrink-0 ml-4">
+              <div className="text-xs text-muted-foreground mb-1">授業表示設定:</div>
+              <div className="flex items-center gap-2 text-xs">
+                <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-muted">
+                  <span className="font-medium">
+                    {globalAvailabilityMode === 'regular-only' ? '通常のみ' : '特別優先'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center space-x-3 p-3 bg-muted/50 rounded-md">
@@ -516,13 +528,13 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
             </Label>
           </div>
           <div className="text-xs text-muted-foreground">
-            {globalAvailabilityMode === 'regular-only' 
+            {globalAvailabilityMode === 'regular-only'
               ? '特別希望を除外して通常希望のみ表示します'
               : '特別希望を優先して表示します（デフォルト）'
             }
           </div>
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="flex items-end gap-1">
             <div className="flex-1">
@@ -548,7 +560,7 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
               </Button>
             )}
           </div>
-          
+
           <div className="flex items-end gap-1">
             <div className="flex-1">
               <label className="text-sm font-medium mb-1 block">教師</label>
@@ -573,7 +585,7 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
               </Button>
             )}
           </div>
-          
+
           <div className="flex items-end gap-1">
             <div className="flex-1">
               <label className="text-sm font-medium mb-1 block">生徒</label>
@@ -610,7 +622,7 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
               '授業を作成するには、教師と生徒を選択してください。授業タイプは任意です（未選択時は「通常授業」）。'
             )}
           </div>
-          
+
           {hasActiveSelections && (
             <Button
               variant="outline"
