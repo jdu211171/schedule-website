@@ -1,6 +1,15 @@
 // src/schemas/class-session.schema.ts
 import { z } from "zod";
 
+// Schema for session-specific actions
+export const sessionActionSchema = z.object({
+  date: z.string(), // "YYYY-MM-DD"
+  action: z.enum(["SKIP", "FORCE_CREATE", "USE_ALTERNATIVE"]),
+  // For USE_ALTERNATIVE action
+  alternativeStartTime: z.string().optional(), // "HH:MM"
+  alternativeEndTime: z.string().optional(), // "HH:MM"
+});
+
 // Schema for creating a new class session
 export const classSessionCreateSchema = z.object({
   teacherId: z.string().optional().nullable(),
@@ -23,6 +32,8 @@ export const classSessionCreateSchema = z.object({
   checkAvailability: z.boolean().optional().default(true),
   skipConflicts: z.boolean().optional().default(false),
   forceCreate: z.boolean().optional().default(false),
+  // New: Session-specific actions for conflict resolution
+  sessionActions: z.array(sessionActionSchema).optional(),
 });
 
 // Schema for updating an existing class session
@@ -82,7 +93,7 @@ export const classSessionFilterSchema = z.object({
   hasBooth: z.coerce.boolean().optional(),
 });
 
-// Response types for conflict information
+// Enhanced response types for conflict information with shared availability
 export type ConflictInfo = {
   date: string;
   dayOfWeek: string;
@@ -91,19 +102,49 @@ export type ConflictInfo = {
     | "TEACHER_UNAVAILABLE"
     | "STUDENT_UNAVAILABLE"
     | "TEACHER_WRONG_TIME"
-    | "STUDENT_WRONG_TIME";
+    | "STUDENT_WRONG_TIME"
+    | "BOOTH_CONFLICT"
+    | "NO_SHARED_AVAILABILITY";
   details: string;
+  classId?: string; // Only for booth conflicts
   participant?: {
     id: string;
     name: string;
     role: "teacher" | "student";
   };
+  // Enhanced availability information
   availableSlots?: Array<{
     startTime: string;
     endTime: string;
   }>;
+  // Shared availability slots between teacher and student
+  sharedAvailableSlots?: Array<{
+    startTime: string;
+    endTime: string;
+  }>;
+  // Individual availability for better understanding
+  teacherSlots?: Array<{
+    startTime: string;
+    endTime: string;
+  }>;
+  studentSlots?: Array<{
+    startTime: string;
+    endTime: string;
+  }>;
+  // Availability strategy used (regular vs exception)
+  availabilityStrategy?: "EXCEPTION" | "REGULAR" | "MIXED" | "NONE";
+  conflictingSession?: {
+    classId: string;
+    teacherName: string;
+    studentName: string;
+    startTime: string;
+    endTime: string;
+  };
+  // For force create responses
+  session?: any; // FormattedClassSession
 };
 
+export type SessionAction = z.infer<typeof sessionActionSchema>;
 export type ClassSessionCreate = z.infer<typeof classSessionCreateSchema>;
 export type ClassSessionUpdate = z.infer<typeof classSessionUpdateSchema>;
 export type ClassSessionSeriesUpdate = z.infer<
