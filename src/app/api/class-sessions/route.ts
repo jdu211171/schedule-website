@@ -6,10 +6,14 @@ import {
   classSessionCreateSchema,
   classSessionFilterSchema,
   classSessionBulkDeleteSchema,
+  ConflictInfo,
+  SessionAction,
 } from "@/schemas/class-session.schema";
 import { ClassSession } from "@prisma/client";
 import { addDays, format, parseISO, differenceInDays, getDay } from "date-fns";
 import { v4 as uuidv4 } from "uuid";
+import { z } from "zod";
+import { getDetailedSharedAvailability } from "@/lib/enhanced-availability";
 
 type FormattedClassSession = {
   classId: string;
@@ -136,6 +140,149 @@ const checkVacationConflict = async (
   });
 
   return vacations.length > 0;
+};
+
+// Helper function to get day of week from date
+const getDayOfWeekFromDate = (date: Date): string => {
+  const days = [
+    "SUNDAY",
+    "MONDAY",
+    "TUESDAY",
+    "WEDNESDAY",
+    "THURSDAY",
+    "FRIDAY",
+    "SATURDAY",
+  ];
+  return days[date.getUTCDay()];
+};
+
+// Enhanced conflict detection using shared availability
+const checkEnhancedAvailabilityConflicts = async (
+  teacherId: string | null,
+  studentId: string | null,
+  date: Date,
+  startTime: Date,
+  endTime: Date
+): Promise<ConflictInfo | null> => {
+  // If either teacher or student is missing, we can't check shared availability
+  if (!teacherId || !studentId) {
+    return null;
+  }
+
+  // Get teacher and student user IDs and names
+  const [teacher, student] = await Promise.all([
+    prisma.teacher.findUnique({
+      where: { teacherId },
+      select: { userId: true, name: true },
+    }),
+    prisma.student.findUnique({
+      where: { studentId },
+      select: { userId: true, name: true },
+    }),
+  ]);
+
+  if (!teacher || !student) {
+    return null;
+  }
+
+  try {
+    // Use enhanced shared availability to get detailed conflict information
+    const availabilityDetails = await getDetailedSharedAvailability(
+      teacher.userId,
+      student.userId,
+      date,
+      startTime,
+      endTime
+    );
+
+    if (!availabilityDetails.available) {
+      const dateStr = format(date, "yyyy-MM-dd");
+      const dayOfWeek = getDayOfWeekFromDate(date);
+
+      // Determine conflict type based on individual user availability
+      let conflictType: ConflictInfo["type"] = "NO_SHARED_AVAILABILITY";
+      let details = "";
+      let participant: ConflictInfo["participant"] | undefined;
+
+      // Check specific reasons for unavailability
+      if (
+        !availabilityDetails.user1.available &&
+        !availabilityDetails.user2.available
+      ) {
+        // Both unavailable - choose the more specific error
+        if (availabilityDetails.user1.conflictType === "UNAVAILABLE") {
+          conflictType = "TEACHER_UNAVAILABLE";
+          details = `${teacher.name}先生はこの日に利用可能時間が設定されていません`;
+          participant = {
+            id: teacherId,
+            name: teacher.name,
+            role: "teacher",
+          };
+        } else {
+          conflictType = "STUDENT_UNAVAILABLE";
+          details = `${student.name}さんはこの日に利用可能時間が設定されていません`;
+          participant = {
+            id: studentId,
+            name: student.name,
+            role: "student",
+          };
+        }
+      } else if (!availabilityDetails.user1.available) {
+        // Teacher unavailable
+        if (availabilityDetails.user1.conflictType === "UNAVAILABLE") {
+          conflictType = "TEACHER_UNAVAILABLE";
+          details = `${teacher.name}先生はこの日に利用可能時間が設定されていません`;
+        } else {
+          conflictType = "TEACHER_WRONG_TIME";
+          details = `${teacher.name}先生は指定された時間帯に利用できません。利用可能な時間帯をご確認ください。`;
+        }
+        participant = {
+          id: teacherId,
+          name: teacher.name,
+          role: "teacher",
+        };
+      } else if (!availabilityDetails.user2.available) {
+        // Student unavailable
+        if (availabilityDetails.user2.conflictType === "UNAVAILABLE") {
+          conflictType = "STUDENT_UNAVAILABLE";
+          details = `${student.name}さんはこの日に利用可能時間が設定されていません`;
+        } else {
+          conflictType = "STUDENT_WRONG_TIME";
+          details = `${student.name}さんは指定された時間帯に利用できません。利用可能な時間帯をご確認ください。`;
+        }
+        participant = {
+          id: studentId,
+          name: student.name,
+          role: "student",
+        };
+      } else {
+        // Both are individually available but no shared slots
+        conflictType = "NO_SHARED_AVAILABILITY";
+        details =
+          "講師と生徒の利用可能時間に重複がありません。別の時間帯をご選択ください。";
+      }
+
+      return {
+        date: dateStr,
+        dayOfWeek,
+        type: conflictType,
+        details,
+        participant,
+        sharedAvailableSlots: availabilityDetails.sharedSlots,
+        teacherSlots: availabilityDetails.user1.effectiveSlots,
+        studentSlots: availabilityDetails.user2.effectiveSlots,
+        availabilityStrategy: availabilityDetails.strategy,
+        // For backward compatibility
+        availableSlots: availabilityDetails.sharedSlots,
+      };
+    }
+
+    return null; // No conflicts
+  } catch (error) {
+    console.error("Error checking enhanced availability:", error);
+    // Fallback to simpler conflict detection
+    return null;
+  }
 };
 
 // GET - List class sessions with pagination and filters
@@ -331,8 +478,14 @@ export const POST = withBranchAccess(
     try {
       const body = await request.json();
 
-      // Validate request body
-      const result = classSessionCreateSchema.safeParse(body);
+      // Validate request body - extended with new fields
+      const extendedSchema = classSessionCreateSchema.extend({
+        checkAvailability: z.boolean().optional().default(true),
+        skipConflicts: z.boolean().optional().default(false),
+        forceCreate: z.boolean().optional().default(false),
+      });
+
+      const result = extendedSchema.safeParse(body);
       if (!result.success) {
         return NextResponse.json(
           { error: "入力データが無効です" }, // "Invalid input data"
@@ -355,6 +508,10 @@ export const POST = withBranchAccess(
         startDate,
         endDate,
         daysOfWeek,
+        checkAvailability,
+        skipConflicts,
+        forceCreate,
+        sessionActions,
       } = result.data;
 
       // For admin users, allow specifying branch. For others, use current branch
@@ -400,30 +557,37 @@ export const POST = withBranchAccess(
 
       // Handle one-time or recurring sessions
       if (!isRecurring) {
-        // Check if the date conflicts with any vacations
+        // Handle single session
+        const conflicts: ConflictInfo[] = [];
+
+        // Check vacation conflict
         const hasVacationConflict = await checkVacationConflict(
           dateObj,
           sessionBranchId
         );
 
         if (hasVacationConflict) {
-          return NextResponse.json(
-            {
-              data: [],
-              message:
-                "指定された日付は休日期間中のため、クラスセッションをスキップしました",
-              pagination: {
-                total: 0,
-                page: 1,
-                limit: 0,
-                pages: 0,
-              },
-              skipped: {
-                eventConflict: [format(dateObj, "yyyy年MM月dd日")],
-              },
-            },
-            { status: 400 }
+          conflicts.push({
+            date: format(dateObj, "yyyy-MM-dd"),
+            dayOfWeek: getDayOfWeekFromDate(dateObj),
+            type: "VACATION",
+            details: "指定された日付は休日期間中です",
+          });
+        }
+
+        // Enhanced availability check
+        if (checkAvailability && teacherId && studentId) {
+          const availabilityConflict = await checkEnhancedAvailabilityConflicts(
+            teacherId,
+            studentId,
+            dateObj,
+            startDateTime,
+            endDateTime
           );
+
+          if (availabilityConflict) {
+            conflicts.push(availabilityConflict);
+          }
         }
 
         // Check for existing session with same teacher, date, and time
@@ -440,6 +604,85 @@ export const POST = withBranchAccess(
           return NextResponse.json(
             { error: "同じ講師、日付、時間のクラスセッションが既に存在します" },
             { status: 409 }
+          );
+        }
+
+        // Check for booth conflicts if booth is specified
+        if (boothId) {
+          const boothConflict = await prisma.classSession.findFirst({
+            where: {
+              boothId,
+              date: dateObj,
+              OR: [
+                // Session starts during existing session
+                {
+                  AND: [
+                    { startTime: { lte: startDateTime } },
+                    { endTime: { gt: startDateTime } },
+                  ],
+                },
+                // Session ends during existing session
+                {
+                  AND: [
+                    { startTime: { lt: endDateTime } },
+                    { endTime: { gte: endDateTime } },
+                  ],
+                },
+                // Session completely contains existing session
+                {
+                  AND: [
+                    { startTime: { gte: startDateTime } },
+                    { endTime: { lte: endDateTime } },
+                  ],
+                },
+              ],
+            },
+            include: {
+              teacher: {
+                select: { name: true },
+              },
+              student: {
+                select: { name: true },
+              },
+              booth: {
+                select: { name: true },
+              },
+            },
+          });
+
+          if (boothConflict) {
+            const conflictStartTime = format(boothConflict.startTime, "HH:mm");
+            const conflictEndTime = format(boothConflict.endTime, "HH:mm");
+            const boothName = boothConflict.booth?.name || "不明なブース";
+
+            if (!forceCreate) {
+              conflicts.push({
+                date: format(dateObj, "yyyy-MM-dd"),
+                dayOfWeek: getDayOfWeekFromDate(dateObj),
+                type: "BOOTH_CONFLICT",
+                details: `ブース「${boothName}」は${conflictStartTime}-${conflictEndTime}に既に使用されています`,
+                conflictingSession: {
+                  classId: boothConflict.classId,
+                  teacherName: boothConflict.teacher?.name || "不明",
+                  studentName: boothConflict.student?.name || "不明",
+                  startTime: conflictStartTime,
+                  endTime: conflictEndTime,
+                },
+              });
+            }
+          }
+        }
+
+        // Handle conflicts based on user preference
+        if (conflicts.length > 0 && !forceCreate) {
+          return NextResponse.json(
+            {
+              conflicts,
+              message:
+                "スケジュールの競合が見つかりました。利用可能な時間帯から選択するか、競合を無視して作成してください。",
+              requiresConfirmation: true,
+            },
+            { status: 400 }
           );
         }
 
@@ -491,7 +734,11 @@ export const POST = withBranchAccess(
         return NextResponse.json(
           {
             data: [formattedSession],
-            message: "クラスセッションを作成しました",
+            message:
+              conflicts.length > 0
+                ? "クラスセッションを作成しました（競合あり）"
+                : "クラスセッションを作成しました",
+            conflicts: conflicts.length > 0 ? conflicts : undefined,
             pagination: {
               total: 1,
               page: 1,
@@ -502,6 +749,7 @@ export const POST = withBranchAccess(
           { status: 201 }
         );
       } else {
+        // Recurring sessions logic...
         // Validate recurring session parameters
         if (!endDate) {
           return NextResponse.json(
@@ -564,56 +812,106 @@ export const POST = withBranchAccess(
           );
         }
 
-        // Filter out dates that conflict with events
+        // Create a map of session actions if provided
+        const sessionActionMap = new Map<string, SessionAction>();
+        if (sessionActions) {
+          sessionActions.forEach((action) => {
+            sessionActionMap.set(action.date, action);
+          });
+        }
+
+        // Check for conflicts on all dates
+        const allConflicts: ConflictInfo[] = [];
+        const sessionConflictMap = new Map<string, ConflictInfo[]>();
         const validSessionDates: Date[] = [];
-        const skippedEventDates: Date[] = [];
+        const skippedDates: Date[] = [];
+        const forcedDates: Date[] = [];
+        const alternativeDates: Array<{
+          date: Date;
+          newStartTime: string;
+          newEndTime: string;
+        }> = [];
 
         for (const sessionDate of sessionDates) {
+          const dateConflicts: ConflictInfo[] = [];
+          const formattedSessionDate = format(sessionDate, "yyyy-MM-dd");
+
+          // Check if user provided specific action for this date
+          const userAction = sessionActionMap.get(formattedSessionDate);
+
+          // Determine times to use (original or alternative)
+          let effectiveStartTime = startTime;
+          let effectiveEndTime = endTime;
+
+          if (
+            userAction?.action === "USE_ALTERNATIVE" &&
+            userAction.alternativeStartTime &&
+            userAction.alternativeEndTime
+          ) {
+            effectiveStartTime = userAction.alternativeStartTime;
+            effectiveEndTime = userAction.alternativeEndTime;
+            alternativeDates.push({
+              date: sessionDate,
+              newStartTime: effectiveStartTime,
+              newEndTime: effectiveEndTime,
+            });
+          }
+
+          const sessionStartTime = createDateTime(
+            formattedSessionDate,
+            effectiveStartTime
+          );
+          const sessionEndTime = createDateTime(
+            formattedSessionDate,
+            effectiveEndTime
+          );
+
+          // Handle user actions first
+          if (userAction) {
+            switch (userAction.action) {
+              case "SKIP":
+                skippedDates.push(sessionDate);
+                continue;
+              case "FORCE_CREATE":
+                forcedDates.push(sessionDate);
+                validSessionDates.push(sessionDate);
+                continue;
+              // USE_ALTERNATIVE continues to conflict checking with new times
+            }
+          }
+
+          // Check vacation conflict
           const hasVacationConflict = await checkVacationConflict(
             sessionDate,
             sessionBranchId
           );
 
           if (hasVacationConflict) {
-            skippedEventDates.push(sessionDate);
-          } else {
-            validSessionDates.push(sessionDate);
+            dateConflicts.push({
+              date: formattedSessionDate,
+              dayOfWeek: getDayOfWeekFromDate(sessionDate),
+              type: "VACATION",
+              details: "指定された日付は休日期間中です",
+            });
           }
-        }
 
-        // If all dates were filtered out due to events, return appropriate message
-        if (validSessionDates.length === 0) {
-          return NextResponse.json(
-            {
-              data: [],
-              message:
-                "すべての日付が休日期間中のため、クラスセッションをスキップしました",
-              pagination: {
-                total: 0,
-                page: 1,
-                limit: 0,
-                pages: 0,
-              },
-              skipped: {
-                eventConflict: skippedEventDates.map((date) =>
-                  format(date, "yyyy年MM月dd日")
-                ),
-              },
-            },
-            { status: 200 }
-          );
-        }
+          // Enhanced availability check
+          if (checkAvailability && teacherId && studentId) {
+            const availabilityConflict =
+              await checkEnhancedAvailabilityConflicts(
+                teacherId,
+                studentId,
+                sessionDate,
+                sessionStartTime,
+                sessionEndTime
+              );
 
-        // Check for existing sessions that would conflict
-        const conflictingSessions = [];
-        for (const sessionDate of validSessionDates) {
-          const formattedSessionDate = format(sessionDate, "yyyy-MM-dd");
-          const sessionStartTime = createDateTime(
-            formattedSessionDate,
-            startTime
-          );
-          const sessionEndTime = createDateTime(formattedSessionDate, endTime);
+            if (availabilityConflict) {
+              dateConflicts.push(availabilityConflict);
+            }
+          }
 
+          // Check for existing session conflict
           const existingSession = await prisma.classSession.findFirst({
             where: {
               teacherId,
@@ -624,36 +922,163 @@ export const POST = withBranchAccess(
           });
 
           if (existingSession) {
-            conflictingSessions.push(sessionDate);
+            skippedDates.push(sessionDate);
+            continue;
+          }
+
+          // Check for booth conflicts if booth is specified
+          if (boothId) {
+            const boothConflict = await prisma.classSession.findFirst({
+              where: {
+                boothId,
+                date: sessionDate,
+                OR: [
+                  {
+                    AND: [
+                      { startTime: { lte: sessionStartTime } },
+                      { endTime: { gt: sessionStartTime } },
+                    ],
+                  },
+                  {
+                    AND: [
+                      { startTime: { lt: sessionEndTime } },
+                      { endTime: { gte: sessionEndTime } },
+                    ],
+                  },
+                  {
+                    AND: [
+                      { startTime: { gte: sessionStartTime } },
+                      { endTime: { lte: sessionEndTime } },
+                    ],
+                  },
+                ],
+              },
+              include: {
+                teacher: {
+                  select: { name: true },
+                },
+                student: {
+                  select: { name: true },
+                },
+                booth: {
+                  select: { name: true },
+                },
+              },
+            });
+
+            if (boothConflict) {
+              const conflictStartTime = format(
+                boothConflict.startTime,
+                "HH:mm"
+              );
+              const conflictEndTime = format(boothConflict.endTime, "HH:mm");
+              const boothName = boothConflict.booth?.name || "不明なブース";
+
+              dateConflicts.push({
+                date: formattedSessionDate,
+                dayOfWeek: getDayOfWeekFromDate(sessionDate),
+                type: "BOOTH_CONFLICT",
+                details: `ブース「${boothName}」は${conflictStartTime}-${conflictEndTime}に既に使用されています`,
+                conflictingSession: {
+                  classId: boothConflict.classId,
+                  teacherName: boothConflict.teacher?.name || "不明",
+                  studentName: boothConflict.student?.name || "不明",
+                  startTime: conflictStartTime,
+                  endTime: conflictEndTime,
+                },
+              });
+            }
+          }
+
+          // Handle conflicts
+          if (dateConflicts.length > 0) {
+            allConflicts.push(...dateConflicts);
+            sessionConflictMap.set(formattedSessionDate, dateConflicts);
+
+            if (skipConflicts) {
+              skippedDates.push(sessionDate);
+            } else {
+              validSessionDates.push(sessionDate);
+            }
+          } else {
+            validSessionDates.push(sessionDate);
           }
         }
 
-        if (conflictingSessions.length > 0) {
-          const conflictDates = conflictingSessions
-            .map((date) => format(date, "yyyy年MM月dd日"))
-            .join(", ");
+        // If there are conflicts and user hasn't provided session actions, and not skipping/forcing
+        if (
+          allConflicts.length > 0 &&
+          !sessionActions &&
+          !skipConflicts &&
+          !forceCreate
+        ) {
+          // Group conflicts by date for better presentation
+          const conflictsByDate = allConflicts.reduce((acc, conflict) => {
+            if (!acc[conflict.date]) {
+              acc[conflict.date] = [];
+            }
+            acc[conflict.date].push(conflict);
+            return acc;
+          }, {} as Record<string, ConflictInfo[]>);
+
           return NextResponse.json(
             {
-              error: `次の日付で既存のクラスセッションと重複しています: ${conflictDates}`,
+              conflicts: allConflicts,
+              conflictsByDate,
+              message: `繰り返しクラスの作成中に${
+                Object.keys(conflictsByDate).length
+              }日分で競合が見つかりました。各日について対応方法を選択してください。`,
+              requiresConfirmation: true,
+              summary: {
+                totalSessions: sessionDates.length,
+                sessionsWithConflicts: Object.keys(conflictsByDate).length,
+                validSessions: validSessionDates.length,
+              },
             },
-            { status: 409 }
+            { status: 400 }
+          );
+        }
+
+        // If all dates were filtered out, return appropriate message
+        if (validSessionDates.length === 0) {
+          return NextResponse.json(
+            {
+              data: [],
+              message:
+                "すべての日付で競合が発生したため、クラスセッションを作成できませんでした",
+              conflicts: allConflicts,
+              pagination: {
+                total: 0,
+                page: 1,
+                limit: 0,
+                pages: 0,
+              },
+            },
+            { status: 200 }
           );
         }
 
         // Create class sessions for all valid dates
         const createdSessions = await prisma.$transaction(
           validSessionDates.map((sessionDate) => {
-            // Format the date to YYYY-MM-DD string
             const formattedSessionDate = format(sessionDate, "yyyy-MM-dd");
 
-            // Create start and end times for this session using UTC
+            // Find if this date has alternative times
+            const alternativeInfo = alternativeDates.find(
+              (alt) => format(alt.date, "yyyy-MM-dd") === formattedSessionDate
+            );
+
+            const effectiveStartTime =
+              alternativeInfo?.newStartTime || startTime;
+            const effectiveEndTime = alternativeInfo?.newEndTime || endTime;
+
             const sessionStartTime = createDateTime(
               formattedSessionDate,
-              startTime
+              effectiveStartTime
             );
             const sessionEndTime = createDateTime(
               formattedSessionDate,
-              endTime
+              effectiveEndTime
             );
 
             return prisma.classSession.create({
@@ -702,7 +1127,7 @@ export const POST = withBranchAccess(
 
         const formattedSessions = createdSessions.map(formatClassSession);
 
-        // Create response message based on whether any dates were skipped
+        // Create response message based on what happened
         let message = `${formattedSessions.length}件の繰り返しクラスセッションを作成しました`;
         const responseData = {
           data: formattedSessions,
@@ -714,19 +1139,51 @@ export const POST = withBranchAccess(
             pages: 1,
           },
           seriesId,
-          skipped: undefined as { eventConflict: string[] } | undefined,
+          conflicts: allConflicts.length > 0 ? allConflicts : undefined,
+          skipped:
+            skippedDates.length > 0
+              ? {
+                  count: skippedDates.length,
+                  dates: skippedDates.map((date) => format(date, "yyyy-MM-dd")),
+                }
+              : undefined,
+          forced:
+            forcedDates.length > 0
+              ? {
+                  count: forcedDates.length,
+                  dates: forcedDates.map((date) => format(date, "yyyy-MM-dd")),
+                }
+              : undefined,
+          alternatives:
+            alternativeDates.length > 0
+              ? {
+                  count: alternativeDates.length,
+                  dates: alternativeDates.map((alt) => ({
+                    date: format(alt.date, "yyyy-MM-dd"),
+                    originalTime: `${startTime}-${endTime}`,
+                    newTime: `${alt.newStartTime}-${alt.newEndTime}`,
+                  })),
+                }
+              : undefined,
         };
 
-        // Add skipped dates information if any
-        if (skippedEventDates.length > 0) {
-          message += `（${skippedEventDates.length}件の日付を休日期間中のためスキップしました）`;
-          responseData.message = message;
-          responseData.skipped = {
-            eventConflict: skippedEventDates.map((date) =>
-              format(date, "yyyy年MM月dd日")
-            ),
-          };
+        // Add appropriate message based on actions taken
+        const actionMessages = [];
+        if (skippedDates.length > 0) {
+          actionMessages.push(`${skippedDates.length}件をスキップ`);
         }
+        if (forcedDates.length > 0) {
+          actionMessages.push(`${forcedDates.length}件を強制作成`);
+        }
+        if (alternativeDates.length > 0) {
+          actionMessages.push(`${alternativeDates.length}件で代替時間を使用`);
+        }
+
+        if (actionMessages.length > 0) {
+          message += `（${actionMessages.join("、")}）`;
+        }
+
+        responseData.message = message;
 
         return NextResponse.json(responseData, { status: 201 });
       }
