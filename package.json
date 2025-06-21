@@ -9,7 +9,13 @@
     "lint": "next lint",
     "watch": "tsc --noEmit --skipLibCheck --watch",
     "postinstall": "prisma generate",
-    "check-errors": "tsc --noEmit --skipLibCheck"
+    "check-errors": "tsc --noEmit --skipLibCheck",
+    "test:notifications": "npx tsx scripts/test-notifications.ts",
+    "test:notifications:help": "npx tsx scripts/test-notifications.ts help",
+    "test:notifications:list-sessions": "npx tsx scripts/test-notifications.ts list-sessions",
+    "test:notifications:list-users": "npx tsx scripts/test-notifications.ts list-users",
+    "test:notifications:send-all": "npx tsx scripts/test-notifications.ts send-all",
+    "test:notifications:send-forced": "npx tsx scripts/test-notifications.ts send-forced"
   },
   "prisma": {
     "seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts"
@@ -46,12 +52,13 @@
     "@tanstack/react-table": "^8.21.2",
     "@vercel/analytics": "^1.5.0",
     "@vercel/speed-insights": "^1.2.0",
-    "axios": "^1.9.0",
+    "axios": "^1.10.0",
     "bcryptjs": "^3.0.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "date-fns": "^4.1.0",
+    "dotenv": "^16.4.5",
     "framer-motion": "^12.18.1",
     "lodash": "^4.17.21",
     "lucide-react": "^0.511.0",

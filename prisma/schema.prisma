@@ -83,6 +83,8 @@ model ClassSession {
   student                 Student?                 @relation(fields: [studentId], references: [studentId], onDelete: SetNull, onUpdate: Cascade)
   branch                  Branch?                  @relation(fields: [branchId], references: [branchId], onDelete: SetNull, onUpdate: Cascade)
   studentClassEnrollments StudentClassEnrollment[]
+  sentNotifications       SentNotification[]
+
   createdAt               DateTime                 @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt               DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
@@ -353,6 +355,35 @@ model Notification {
 }
 
 /**
+ * This model tracks LINE notifications sent to users to prevent duplicates.
+ * Links to ClassSession and User to track notification history.
+ */
+model SentNotification {
+  id             String       @id @default(cuid())
+  classSessionId String       @map("class_session_id")
+  userId         String       @map("user_id")
+  type           String       @db.VarChar(50) // "ONE_DAY_BEFORE" or "THIRTY_MIN_BEFORE"
+  sentAt         DateTime     @map("sent_at") @db.Timestamp(6)
+  messageContent String?      @map("message_content") @db.VarChar(500)
+  success        Boolean      @default(true)
+  errorMessage   String?      @map("error_message") @db.VarChar(255)
+
+  // Relations
+  classSession   ClassSession @relation(fields: [classSessionId], references: [classId], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt      DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  @@unique([classSessionId, userId, type])
+  @@index([classSessionId])
+  @@index([userId])
+  @@index([type])
+  @@index([sentAt])
+  @@map("sent_notifications")
+}
+
+/**
  * This model stores holidays, vacations, and other non-class days.
  * Used for scheduling and availability calculations.
  */
@@ -403,6 +434,7 @@ model User {
   student            Student?
   teacher            Teacher?
   availability       UserAvailability[]
+  sentNotifications  SentNotification[]
 
   createdAt          DateTime      @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt          DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
