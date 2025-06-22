@@ -292,7 +292,27 @@ export const GET = withBranchAccess(
   async (request: NextRequest, session, branchId) => {
     // Parse query parameters
     const url = new URL(request.url);
-    const params = Object.fromEntries(url.searchParams.entries());
+    const params: Record<string, any> = {};
+    
+    // Handle both single values and arrays
+    url.searchParams.forEach((value, key) => {
+      if (key === 'studentTypeIds') {
+        // Collect all studentTypeIds into an array
+        if (!params.studentTypeIds) {
+          params.studentTypeIds = [];
+        }
+        params.studentTypeIds.push(value);
+      } else if (params[key]) {
+        // If key already exists, convert to array
+        if (Array.isArray(params[key])) {
+          params[key].push(value);
+        } else {
+          params[key] = [params[key], value];
+        }
+      } else {
+        params[key] = value;
+      }
+    });
 
     // Validate and parse filter parameters
     const result = studentFilterSchema.safeParse(params);
@@ -303,7 +323,7 @@ export const GET = withBranchAccess(
       );
     }
 
-    const { page, limit, name, studentTypeId, gradeYear, status } = result.data;
+    const { page, limit, name, studentTypeId, studentTypeIds, gradeYear, status } = result.data;
 
     // Build filter conditions
     const where: Record<string, any> = {};
@@ -315,7 +335,10 @@ export const GET = withBranchAccess(
       ];
     }
 
-    if (studentTypeId) {
+    // Support both single studentTypeId and multiple studentTypeIds
+    if (studentTypeIds && studentTypeIds.length > 0) {
+      where.studentTypeId = { in: studentTypeIds };
+    } else if (studentTypeId) {
       where.studentTypeId = studentTypeId;
     }
 

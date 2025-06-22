@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronUp, ChevronDown, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -19,6 +20,7 @@ interface TimeInputProps {
   teacherAvailability?: boolean[];
   studentAvailability?: boolean[];
   timeSlots?: TimeSlot[];
+  usePortal?: boolean; // New prop for Portal functionality
 }
 
 const AVAILABILITY_COLORS = {
@@ -78,10 +80,20 @@ export const TimeInput: React.FC<TimeInputProps> = ({
   placeholder = '00:00',
   teacherAvailability,
   studentAvailability,
-  timeSlots = DEFAULT_TIME_SLOTS
+  timeSlots = DEFAULT_TIME_SLOTS,
+  usePortal = false
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
+  
+  // Internal state for temporary value
+  const [internalValue, setInternalValue] = useState(value);
+
+  // Sync internal state with external value
+  useEffect(() => {
+    setInternalValue(value);
+  }, [value]);
 
   const parseValue = (val: string) => {
     if (val && /^\d{2}:\d{2}$/.test(val)) {
@@ -91,7 +103,8 @@ export const TimeInput: React.FC<TimeInputProps> = ({
     return { hours: '00', minutes: '00' };
   };
 
-  const { hours, minutes } = parseValue(value);
+  // Use internal value for display
+  const { hours, minutes } = parseValue(internalValue);
 
   const availabilityType = useMemo(() => {
     if (!teacherAvailability || !studentAvailability || !timeSlots) {
@@ -114,10 +127,40 @@ export const TimeInput: React.FC<TimeInputProps> = ({
 
   const colors = AVAILABILITY_COLORS[availabilityType];
 
+  // Calculate dropdown position for Portal
+  const calculateDropdownPosition = () => {
+    if (containerRef.current && usePortal) {
+      const rect = containerRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom + 4, // Remove window.scrollY since we're using position: fixed
+        left: rect.left,
+        width: rect.width
+      });
+    }
+  };
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
+      // For Portal dropdown, check both container and portal element
+      if (usePortal) {
+        const portalElement = document.getElementById('time-input-dropdown-portal');
+        if (containerRef.current && !containerRef.current.contains(event.target as Node) &&
+            (!portalElement || !portalElement.contains(event.target as Node))) {
+          // Send final value to parent when closing dropdown
+          if (internalValue !== value) {
+            onChange(internalValue);
+          }
+          setIsOpen(false);
+        }
+      } else {
+        // Original logic for non-portal dropdown
+        if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+          // Send final value to parent when closing dropdown
+          if (internalValue !== value) {
+            onChange(internalValue);
+          }
+          setIsOpen(false);
+        }
       }
     };
 
@@ -125,12 +168,15 @@ export const TimeInput: React.FC<TimeInputProps> = ({
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
-  }, [isOpen]);
+  }, [isOpen, internalValue, value, onChange, usePortal]);
 
-  const updateTime = (newHours: string, newMinutes: string) => {
+  // Update only internal state
+  const updateInternalTime = (newHours: string, newMinutes: string) => {
     const formattedHours = newHours.padStart(2, '0');
     const formattedMinutes = newMinutes.padStart(2, '0');
-    onChange(`${formattedHours}:${formattedMinutes}`);
+    const newTime = `${formattedHours}:${formattedMinutes}`;
+    setInternalValue(newTime);
+    // Don't call onChange here!
   };
 
   const adjustHours = (delta: number) => {
@@ -140,7 +186,7 @@ export const TimeInput: React.FC<TimeInputProps> = ({
     if (newHours < 0) newHours = 23;
     if (newHours > 23) newHours = 0;
     
-    updateTime(newHours.toString(), minutes);
+    updateInternalTime(newHours.toString(), minutes);
   };
 
   const adjustMinutes = (delta: number) => {
@@ -160,27 +206,120 @@ export const TimeInput: React.FC<TimeInputProps> = ({
       if (newHours > 23) newHours = 0;
     }
     
-    updateTime(newHours.toString(), newMinutes.toString());
+    updateInternalTime(newHours.toString(), newMinutes.toString());
   };
 
-  const getTimeAvailability = (targetHours: string, targetMinutes: string) => {
-    if (!teacherAvailability || !studentAvailability || !timeSlots) {
-      return 'none';
-    }
-
-    const targetTime = `${targetHours.padStart(2, '0')}:${targetMinutes.padStart(2, '0')}`;
-    const slotIndex = timeSlots.findIndex(slot => slot.start === targetTime);
+  // Handle main click - also send changes when closing
+  const handleMainClick = () => {
+    if (disabled) return;
     
-    if (slotIndex === -1) return 'none';
-
-    const hasTeacher = teacherAvailability[slotIndex] || false;
-    const hasStudent = studentAvailability[slotIndex] || false;
-
-    if (hasTeacher && hasStudent) return 'both';
-    if (hasTeacher) return 'teacher';
-    if (hasStudent) return 'student';
-    return 'none';
+    if (isOpen) {
+      // Close and send changes
+      if (internalValue !== value) {
+        onChange(internalValue);
+      }
+      setIsOpen(false);
+    } else {
+      // Open and calculate position if using Portal
+      if (usePortal) {
+        calculateDropdownPosition();
+      }
+      setIsOpen(true);
+    }
   };
+
+  // Dropdown content component
+  const DropdownContent = () => (
+    <div 
+      id={usePortal ? "time-input-dropdown-portal" : undefined}
+      className="bg-background border border-input rounded-md shadow-lg z-50"
+      style={usePortal ? {
+        position: 'fixed', // Changed from absolute to fixed
+        top: dropdownPosition.top,
+        left: dropdownPosition.left,
+        minWidth: dropdownPosition.width,
+        zIndex: 9999,
+        pointerEvents: 'auto' // Ensure pointer events work
+      } : {}}
+      onMouseDown={(e) => e.stopPropagation()} // Prevent event bubbling
+      onClick={(e) => e.stopPropagation()} // Prevent event bubbling
+    >
+      <div className="p-3">
+        <div className="flex items-center justify-center space-x-4">
+          <div className="flex flex-col items-center">
+            <button
+              type="button"
+              className="p-2 hover:bg-accent rounded transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+                adjustHours(1);
+              }}
+            >
+              <ChevronUp className="w-4 h-4" />
+            </button>
+            <span className={`text-lg font-mono w-8 text-center py-2 font-bold ${colors.numberText}`}>{hours}</span>
+            <button
+              type="button"
+              className="p-2 hover:bg-accent rounded transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+                adjustHours(-1);
+              }}
+            >
+              <ChevronDown className="w-4 h-4" />
+            </button>
+            <span className="text-xs text-muted-foreground mt-1">時</span>
+          </div>
+          
+          <span className="text-xl font-mono text-muted-foreground">:</span>
+          
+          <div className="flex flex-col items-center">
+            <button
+              type="button"
+              className="p-2 hover:bg-accent rounded transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+                adjustMinutes(15);
+              }}
+            >
+              <ChevronUp className="w-4 h-4" />
+            </button>
+            <span className={`text-lg font-mono w-8 text-center py-2 font-bold ${colors.numberText}`}>{minutes}</span>
+            <button
+              type="button"
+              className="p-2 hover:bg-accent rounded transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+                adjustMinutes(-15);
+              }}
+            >
+              <ChevronDown className="w-4 h-4" />
+            </button>
+            <span className="text-xs text-muted-foreground mt-1">分</span>
+          </div>
+        </div>
+
+        {(teacherAvailability || studentAvailability) && (
+          <div className="mt-3 pt-3 border-t border-border">
+            <div className="text-xs text-center">
+              {availabilityType === 'both' && (
+                <span className="text-green-600 dark:text-green-400">✓ 両方利用可能</span>
+              )}
+              {availabilityType === 'teacher' && (
+                <span className="text-blue-600 dark:text-blue-400">講師のみ利用可能</span>
+              )}
+              {availabilityType === 'student' && (
+                <span className="text-yellow-600 dark:text-yellow-400">生徒のみ利用可能</span>
+              )}
+              {availabilityType === 'none' && (
+                <span className="text-gray-500 dark:text-gray-400">誰も利用できません</span>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 
   return (
     <div ref={containerRef} className={cn("relative", className)}>
@@ -194,7 +333,7 @@ export const TimeInput: React.FC<TimeInputProps> = ({
           colors.border,
           colors.text
         )}
-        onClick={() => !disabled && setIsOpen(!isOpen)}
+        onClick={handleMainClick}
       >
         <Clock className="w-4 h-4 mr-2 text-muted-foreground" />
         
@@ -206,70 +345,13 @@ export const TimeInput: React.FC<TimeInputProps> = ({
       </div>
 
       {isOpen && !disabled && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-input rounded-md shadow-lg z-50">
-          <div className="p-3">
-            <div className="flex items-center justify-center space-x-4">
-              <div className="flex flex-col items-center">
-                <button
-                  type="button"
-                  className="p-2 hover:bg-accent rounded transition-colors"
-                  onClick={() => adjustHours(1)}
-                >
-                  <ChevronUp className="w-4 h-4" />
-                </button>
-                <span className={`text-lg font-mono w-8 text-center py-2 font-bold ${colors.numberText}`}>{hours}</span>
-                <button
-                  type="button"
-                  className="p-2 hover:bg-accent rounded transition-colors"
-                  onClick={() => adjustHours(-1)}
-                >
-                  <ChevronDown className="w-4 h-4" />
-                </button>
-                <span className="text-xs text-muted-foreground mt-1">時</span>
-              </div>
-              
-              <span className="text-xl font-mono text-muted-foreground">:</span>
-              
-              <div className="flex flex-col items-center">
-                <button
-                  type="button"
-                  className="p-2 hover:bg-accent rounded transition-colors"
-                  onClick={() => adjustMinutes(15)}
-                >
-                  <ChevronUp className="w-4 h-4" />
-                </button>
-                <span className={`text-lg font-mono w-8 text-center py-2 font-bold ${colors.numberText}`}>{minutes}</span>
-                <button
-                  type="button"
-                  className="p-2 hover:bg-accent rounded transition-colors"
-                  onClick={() => adjustMinutes(-15)}
-                >
-                  <ChevronDown className="w-4 h-4" />
-                </button>
-                <span className="text-xs text-muted-foreground mt-1">分</span>
-              </div>
-            </div>
-
-            {(teacherAvailability || studentAvailability) && (
-              <div className="mt-3 pt-3 border-t border-border">
-                <div className="text-xs text-center">
-                  {availabilityType === 'both' && (
-                    <span className="text-green-600 dark:text-green-400">✓ 両方利用可能</span>
-                  )}
-                  {availabilityType === 'teacher' && (
-                    <span className="text-blue-600 dark:text-blue-400">講師のみ利用可能</span>
-                  )}
-                  {availabilityType === 'student' && (
-                    <span className="text-yellow-600 dark:text-yellow-400">生徒のみ利用可能</span>
-                  )}
-                  {availabilityType === 'none' && (
-                    <span className="text-gray-500 dark:text-gray-400">誰も利用できません</span>
-                  )}
-                </div>
-              </div>
-            )}
+        usePortal ? (
+          createPortal(<DropdownContent />, document.body)
+        ) : (
+          <div className="absolute top-full left-0 right-0 mt-1 z-50">
+            <DropdownContent />
           </div>
-        </div>
+        )
       )}
     </div>
   );

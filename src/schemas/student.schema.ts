@@ -216,6 +216,7 @@ export const studentFilterSchema = z.object({
   limit: z.coerce.number().int().positive().default(10),
   name: z.string().optional(),
   studentTypeId: z.string().optional(),
+  studentTypeIds: z.array(z.string()).optional(), // Support multiple student type IDs
   gradeYear: z.coerce.number().int().optional(),
   status: userStatusEnum.optional(),
 });

@@ -4,10 +4,11 @@
 import { useState } from "react";
 import * as React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SortableDataTable } from "@/components/ui/sortable-data-table";
 import { useSubjectTypes } from "@/hooks/useSubjectTypeQuery";
+import { useGenericExport } from "@/hooks/useGenericExport";
 import {
   useSubjectTypeUpdate,
   useSubjectTypeDelete,
@@ -43,6 +44,7 @@ export function SubjectTypeTable() {
   const updateSubjectTypeMutation = useSubjectTypeUpdate();
   const deleteSubjectTypeMutation = useSubjectTypeDelete();
   const updateOrderMutation = useSubjectTypeOrderUpdate();
+  const { exportToCSV, isExporting } = useGenericExport("/api/subject-types/export", "subject_types");
 
   // Use local state during sort mode, otherwise use server data
   const typedSubjectTypes = isSortMode
@@ -148,6 +150,14 @@ export function SubjectTypeTable() {
     );
   };
 
+  const handleExport = () => {
+    // Get visible columns (all columns except actions)
+    const visibleColumns = columns
+      .map(col => (col as any).accessorKey)
+      .filter(key => key) as string[];
+    exportToCSV({ columns: visibleColumns });
+  };
+
   return (
     <>
       <SortableDataTable
@@ -169,6 +179,8 @@ export function SubjectTypeTable() {
         totalItems={subjectTypes?.pagination.total}
         onPageChange={(newPage) => setPage(newPage + 1)}
         renderActions={renderActions}
+        onExport={handleExport}
+        isExporting={isExporting}
       />
 
       {/* Edit SubjectType Dialog */}

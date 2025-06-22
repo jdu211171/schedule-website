@@ -3,11 +3,12 @@
 import { useState } from "react";
 import * as React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, Download } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { SortableDataTable } from "@/components/ui/sortable-data-table";
 import { useDeleteAdminUser, useUpdateAdminUserOrder } from "@/hooks/useAdminUserMutation";
+import { useGenericExport } from "@/hooks/useGenericExport";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -48,6 +49,7 @@ export function AdminUserTable() {
   const totalCount = adminUsers?.pagination.total || 0;
   const deleteAdminUserMutation = useDeleteAdminUser();
   const updateOrderMutation = useUpdateAdminUserOrder();
+  const { exportToCSV, isExporting } = useGenericExport("/api/admins/export", "admins");
 
   const [adminUserToEdit, setAdminUserToEdit] = useState<AdminUser | null>(null);
   const [adminUserToDelete, setAdminUserToDelete] = useState<AdminUser | null>(null);
@@ -195,6 +197,14 @@ export function AdminUserTable() {
   // Only show sort mode to admins with order 1 (top admin)
   const canAccessSortMode = currentUserOrder === 1;
 
+  const handleExport = () => {
+    // Get visible columns (all columns except actions)
+    const visibleColumns = columns
+      .map(col => (col as any).accessorKey)
+      .filter(key => key) as string[];
+    exportToCSV({ columns: visibleColumns });
+  };
+
   return (
     <>
       <SortableDataTable
@@ -217,6 +227,8 @@ export function AdminUserTable() {
         pageSize={pageSize}
         totalItems={totalCount}
         onPageChange={handlePageChange}
+        onExport={handleExport}
+        isExporting={isExporting}
         renderActions={(user) => {
           const adminUser = user as unknown as AdminUser;
           const isSelf = adminUser.id === currentUserId;

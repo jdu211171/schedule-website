@@ -56,6 +56,7 @@ type UseStudentsParams = {
   limit?: number;
   name?: string;
   studentTypeId?: string;
+  studentTypeIds?: string[]; // Support multiple student type IDs
   gradeYear?: number;
   status?: string;
 };
@@ -76,32 +77,38 @@ export function useStudents(params: UseStudentsParams = {}) {
     limit = 10,
     name,
     studentTypeId,
+    studentTypeIds,
     gradeYear,
     status,
   } = params;
 
-  const queryParams: Record<string, string | undefined> = {
+  const queryParams: Record<string, string | string[] | undefined> = {
     page: page.toString(),
     limit: limit.toString(),
     name,
     studentTypeId,
+    studentTypeIds,
     gradeYear: gradeYear?.toString(),
     status,
   };
 
-  const searchParams = new URLSearchParams(
-    Object.entries(queryParams).reduce((acc, [key, value]) => {
-      if (value !== undefined) {
-        acc[key] = value;
+  // Build search params manually to handle arrays
+  const searchParams = new URLSearchParams();
+  Object.entries(queryParams).forEach(([key, value]) => {
+    if (value !== undefined) {
+      if (Array.isArray(value)) {
+        // For arrays, add multiple parameters with the same key
+        value.forEach(v => searchParams.append(key, v));
+      } else {
+        searchParams.append(key, value);
       }
-      return acc;
-    }, {} as Record<string, string>)
-  ).toString();
+    }
+  });
 
   return useQuery<StudentsResponse>({
-    queryKey: ["students", page, limit, name, studentTypeId, gradeYear, status],
+    queryKey: ["students", page, limit, name, studentTypeId, studentTypeIds, gradeYear, status],
     queryFn: async () =>
-      await fetcher<StudentsResponse>(`/api/students?${searchParams}`),
+      await fetcher<StudentsResponse>(`/api/students?${searchParams.toString()}`),
   });
 }
 
