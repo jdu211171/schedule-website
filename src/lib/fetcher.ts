@@ -38,3 +38,21 @@ export async function fetcher<T>(
 
   return await res.json();
 }
+
+export async function fetcherWithAuth(
+  url: string,
+  options?: RequestInit
+): Promise<Response> {
+  // Get selected branch from localStorage or other client-side storage
+  const selectedBranchId = localStorage.getItem("selectedBranchId") || "";
+
+  const res = await fetch(url, {
+    ...options,
+    headers: {
+      "X-Selected-Branch": selectedBranchId,
+      ...options?.headers,
+    },
+  });
+
+  return res;
+}

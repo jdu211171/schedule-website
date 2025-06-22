@@ -3,11 +3,12 @@
 
 import { useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, Download } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/data-table";
 import { useStaffDelete, getResolvedStaffId } from "@/hooks/useStaffMutation";
+import { useGenericExport } from "@/hooks/useGenericExport";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -44,6 +45,7 @@ export function StaffTable() {
 
   const totalCount = staffs?.pagination.total || 0;
   const deleteStaffMutation = useStaffDelete();
+  const { exportToCSV, isExporting } = useGenericExport("/api/staff/export", "staff");
 
   const [staffToEdit, setStaffToEdit] = useState<Staff | null>(null);
   const [staffToDelete, setStaffToDelete] = useState<Staff | null>(null);
@@ -143,6 +145,15 @@ export function StaffTable() {
 
   const totalPages = Math.ceil(totalCount / pageSize);
 
+  const handleExport = () => {
+    // Get visible columns (all columns except actions)
+    const visibleColumns = columns
+      .filter(col => col.id !== "actions")
+      .map(col => (col as any).accessorKey)
+      .filter(key => key) as string[];
+    exportToCSV({ columns: visibleColumns });
+  };
+
   return (
     <>
       <DataTable
@@ -159,6 +170,8 @@ export function StaffTable() {
         onPageChange={handlePageChange}
         pageSize={pageSize}
         totalItems={totalCount}
+        onExport={handleExport}
+        isExporting={isExporting}
       />
 
       {/* Edit Staff Dialog */}

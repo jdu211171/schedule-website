@@ -4,12 +4,13 @@
 import { useState } from "react";
 import * as React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, Download } from "lucide-react";
 import { format } from "date-fns";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SortableDataTable } from "@/components/ui/sortable-data-table";
+import { useGenericExport } from "@/hooks/useGenericExport";
 import {
   useVacationDelete,
   useVacationOrderUpdate,
@@ -65,6 +66,7 @@ export function VacationTable() {
 
   const deleteVacationMutation = useVacationDelete();
   const updateOrderMutation = useVacationOrderUpdate();
+  const { exportToCSV, isExporting } = useGenericExport("/api/holidays/export", "holidays");
 
   // Use local state during sort mode, otherwise use server data
   const typedVacations = isSortMode ? localVacations : vacations?.data || [];
@@ -213,6 +215,14 @@ export function VacationTable() {
     );
   };
 
+  const handleExport = () => {
+    // Get visible columns (all columns except actions)
+    const exportColumns = visibleColumns
+      .map(col => (col as any).accessorKey)
+      .filter(key => key) as string[];
+    exportToCSV({ columns: exportColumns });
+  };
+
   return (
     <>
       <SortableDataTable
@@ -234,6 +244,8 @@ export function VacationTable() {
         totalItems={vacations?.pagination.total}
         onPageChange={(newPage) => setPage(newPage + 1)}
         renderActions={renderActions}
+        onExport={handleExport}
+        isExporting={isExporting}
       />
 
       {/* Edit Vacation Dialog */}

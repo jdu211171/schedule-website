@@ -13,7 +13,7 @@ import {
   type RowSelectionState,
   useReactTable,
 } from "@tanstack/react-table";
-import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Download } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -49,6 +49,9 @@ interface DataTableProps<TData, TValue> {
   onRowSelectionChange?: (selectedRows: TData[]) => void;
   rowSelection?: RowSelectionState;
   onBatchDelete?: (selectedRows: TData[]) => void;
+  // Export functionality
+  onExport?: () => void;
+  isExporting?: boolean;
 }
 
 export function DataTable<TData, TValue>({
@@ -72,6 +75,8 @@ export function DataTable<TData, TValue>({
   rowSelection: externalRowSelection,
   onBatchDelete,
   onPageSizeChange,
+  onExport,
+  isExporting = false,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [localSearchValue, setLocalSearchValue] = useState(searchValue);
@@ -208,11 +213,23 @@ export function DataTable<TData, TValue>({
             </div>
           )}
         </div>
-        {onCreateNew && (
-          <Button onClick={onCreateNew} className="ml-auto">
-            + {createNewLabel}
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {onExport && (
+            <Button
+              variant="outline"
+              onClick={onExport}
+              disabled={isExporting}
+            >
+              <Download className="mr-2 h-4 w-4" />
+              {isExporting ? "エクスポート中..." : "CSVエクスポート"}
+            </Button>
+          )}
+          {onCreateNew && (
+            <Button onClick={onCreateNew}>
+              + {createNewLabel}
+            </Button>
+          )}
+        </div>
       </div>
       {filterComponent && <div className="pb-2">{filterComponent}</div>}
       <div className="rounded-md border">

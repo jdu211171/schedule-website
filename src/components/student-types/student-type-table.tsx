@@ -4,11 +4,12 @@
 import { useState } from "react";
 import * as React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, Download } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { SortableDataTable } from "@/components/ui/sortable-data-table";
 import { useStudentTypes } from "@/hooks/useStudentTypeQuery";
+import { useGenericExport } from "@/hooks/useGenericExport";
 import {
   useStudentTypeDelete,
   useStudentTypeOrderUpdate,
@@ -46,6 +47,7 @@ export function StudentTypeTable() {
 
   const deleteStudentTypeMutation = useStudentTypeDelete();
   const updateOrderMutation = useStudentTypeOrderUpdate();
+  const { exportToCSV, isExporting } = useGenericExport("/api/student-types/export", "student_types");
 
   // Use local state during sort mode, otherwise use server data
   const typedStudentTypes = isSortMode
@@ -160,6 +162,14 @@ export function StudentTypeTable() {
     );
   };
 
+  const handleExport = () => {
+    // Get visible columns (all columns except actions)
+    const visibleColumns = columns
+      .map(col => (col as any).accessorKey)
+      .filter(key => key) as string[];
+    exportToCSV({ columns: visibleColumns });
+  };
+
   return (
     <>
       <SortableDataTable
@@ -181,6 +191,8 @@ export function StudentTypeTable() {
         totalItems={studentTypes?.pagination.total}
         onPageChange={(newPage) => setPage(newPage + 1)}
         renderActions={renderActions}
+        onExport={handleExport}
+        isExporting={isExporting}
       />
 
       {/* Edit StudentType Dialog */}

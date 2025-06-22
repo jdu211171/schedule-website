@@ -3,8 +3,9 @@
 
 import * as React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Pencil, Eye, EyeOff, Trash2, MoreHorizontal, RotateCcw } from "lucide-react";
+import { Pencil, Eye, EyeOff, Trash2, MoreHorizontal, RotateCcw, Download } from "lucide-react";
 import { useDebounce } from "@/hooks/use-debounce";
+import { useStudentExport } from "@/hooks/useStudentExport";
 
 import { DataTableViewOptions } from "@/components/data-table/data-table-view-options";
 import { DataTableDateFilter } from "@/components/data-table/data-table-date-filter";
@@ -269,6 +270,7 @@ export function StudentTable() {
   const { data: subjects = [] } = useAllSubjects();
   const { data: subjectTypes = [] } = useAllSubjectTypes();
   const deleteStudentMutation = useStudentDelete();
+  const { exportToCSV, isExporting } = useStudentExport();
 
   // Memoize studentTypes to avoid dependency issues
   const studentTypes = React.useMemo(
@@ -787,6 +789,25 @@ export function StudentTable() {
     table.resetRowSelection();
   };
 
+  const handleExport = () => {
+    // Get visible columns
+    const visibleColumns = table
+      .getAllColumns()
+      .filter((col) => col.getIsVisible() && col.id !== "select" && col.id !== "actions")
+      .map((col) => col.id);
+
+    // Get current filters - pass all filters
+    exportToCSV({
+      name: filters.name || undefined,
+      status: filters.status || undefined,
+      studentType: filters.studentType || undefined,
+      gradeYear: filters.gradeYear || undefined,
+      branch: filters.branch || undefined,
+      subject: filters.subject || undefined,
+      columns: visibleColumns,
+    });
+  };
+
   // Handle loading state without early return
   if (!studentTypesResponse || isLoading) {
     return (
@@ -799,7 +820,17 @@ export function StudentTable() {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold tracking-tight">生徒管理</h2>
-          <Button onClick={() => setIsCreateDialogOpen(true)}>新規作成</Button>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={handleExport}
+              disabled={isExporting}
+              variant="outline"
+            >
+              <Download className="mr-2 h-4 w-4" />
+              {isExporting ? "エクスポート中..." : "CSVエクスポート"}
+            </Button>
+            <Button onClick={() => setIsCreateDialogOpen(true)}>新規作成</Button>
+          </div>
         </div>
 
         <div className="relative space-y-4">

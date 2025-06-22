@@ -4,8 +4,9 @@
 import { useState } from "react";
 import * as React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useGenericExport } from "@/hooks/useGenericExport";
 import { SortableDataTable } from "@/components/ui/sortable-data-table";
 import { useBranches } from "@/hooks/useBranchQuery";
 import {
@@ -43,6 +44,7 @@ export function BranchTable() {
   const updateBranchMutation = useBranchUpdate();
   const deleteBranchMutation = useBranchDelete();
   const updateOrderMutation = useBranchOrderUpdate();
+  const { exportToCSV, isExporting } = useGenericExport("/api/branches/export", "branches");
 
   const currentBranch = localStorage.getItem("selectedBranchId");
 
@@ -102,15 +104,6 @@ export function BranchTable() {
     setIsSortMode(enabled);
   };
 
-  const handleDeleteBranch = () => {
-    if (branchToDelete) {
-      // Close the dialog immediately for better UX
-      // Use getResolvedBranchId to resolve temp/server IDs
-      const branchId = getResolvedBranchId(branchToDelete.branchId);
-      setBranchToDelete(null);
-      deleteBranchMutation.mutate(branchId);
-    }
-  };
 
   const renderActions = (branch: Branch) => {
     // Type-safe check for _optimistic property
@@ -143,6 +136,22 @@ export function BranchTable() {
     );
   };
 
+  const handleDeleteBranch = () => {
+    if (branchToDelete) {
+      const branchId = getResolvedBranchId(branchToDelete.branchId);
+      setBranchToDelete(null);
+      deleteBranchMutation.mutate(branchId);
+    }
+  };
+
+  const handleExport = () => {
+    // Get visible columns (all columns except actions)
+    const visibleColumns = columns
+      .map(col => (col as any).accessorKey)
+      .filter(key => key) as string[];
+    exportToCSV({ columns: visibleColumns });
+  };
+
   return (
     <>
       <SortableDataTable
@@ -165,6 +174,8 @@ export function BranchTable() {
         onPageChange={(newPage) => setPage(newPage + 1)}
         renderActions={renderActions}
         isItemDisabled={(branch) => branch.branchId === currentBranch}
+        onExport={handleExport}
+        isExporting={isExporting}
       />
 
       {/* Edit Branch Dialog */}

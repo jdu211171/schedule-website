@@ -3,7 +3,7 @@
 
 import { useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, Download } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/data-table";
@@ -11,6 +11,7 @@ import {
   useSubjectDelete,
   getResolvedSubjectId,
 } from "@/hooks/useSubjectMutation";
+import { useGenericExport } from "@/hooks/useGenericExport";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,6 +43,7 @@ export function SubjectTable() {
 
   const totalCount = subjects?.pagination.total || 0;
   const deleteSubjectMutation = useSubjectDelete();
+  const { exportToCSV, isExporting } = useGenericExport("/api/subjects/export", "subjects");
 
   const [subjectToEdit, setSubjectToEdit] = useState<Subject | null>(null);
   const [subjectToDelete, setSubjectToDelete] = useState<Subject | null>(null);
@@ -117,6 +119,15 @@ export function SubjectTable() {
 
   const totalPages = Math.ceil(totalCount / pageSize);
 
+  const handleExport = () => {
+    // Get visible columns (all columns except actions)
+    const visibleColumns = columns
+      .filter(col => col.id !== "actions")
+      .map(col => (col as any).accessorKey)
+      .filter(key => key) as string[];
+    exportToCSV({ columns: visibleColumns });
+  };
+
   return (
     <>
       <DataTable
@@ -133,6 +144,8 @@ export function SubjectTable() {
         onPageChange={handlePageChange}
         pageSize={pageSize}
         totalItems={totalCount}
+        onExport={handleExport}
+        isExporting={isExporting}
       />
 
       {/* Edit Subject Dialog */}
