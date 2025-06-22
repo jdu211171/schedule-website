@@ -4,11 +4,12 @@
 import { useState } from "react";
 import * as React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, Download } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SortableDataTable } from "@/components/ui/sortable-data-table";
+import { useGenericExport } from "@/hooks/useGenericExport";
 import {
   useBoothDelete,
   useBoothOrderUpdate,
@@ -28,6 +29,9 @@ import { Booth } from "@prisma/client";
 import { BoothFormDialog } from "./booth-form-dialog";
 import { useBooths } from "@/hooks/useBoothQuery";
 import { useSession } from "next-auth/react";
+
+// Import types to ensure proper column meta support
+import "@/components/data-table/types";
 
 // Define extended booth type that includes branchName and order
 type ExtendedBooth = Booth & {
@@ -53,6 +57,7 @@ export function BoothTable() {
   const updateOrderMutation = useBoothOrderUpdate();
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "ADMIN";
+  const { exportToCSV, isExporting } = useGenericExport("/api/booths/export", "booths");
 
   // Use local state during sort mode, otherwise use server data
   const typedBooths = isSortMode ? localBooths : booths?.data || [];
@@ -114,7 +119,7 @@ export function BoothTable() {
 
   // Filter out the branch column if user is not admin
   const visibleColumns = columns.filter((col) => {
-    const meta = col.meta as any;
+    const meta = col.meta;
     return !meta?.hidden;
   });
 
@@ -179,6 +184,14 @@ export function BoothTable() {
     );
   };
 
+  const handleExport = () => {
+    // Get visible columns (all columns except actions)
+    const exportColumns = visibleColumns
+      .map(col => (col as any).accessorKey)
+      .filter(key => key) as string[];
+    exportToCSV({ columns: exportColumns });
+  };
+
   return (
     <>
       <SortableDataTable
@@ -200,6 +213,8 @@ export function BoothTable() {
         totalItems={booths?.pagination.total}
         onPageChange={(newPage) => setPage(newPage + 1)}
         renderActions={renderActions}
+        onExport={handleExport}
+        isExporting={isExporting}
       />
 
       {/* Edit Booth Dialog */}

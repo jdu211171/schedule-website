@@ -2,7 +2,7 @@
 "use client";
 
 import type { ColumnDef, ColumnMeta, CellContext } from "@tanstack/react-table";
-import { GripVertical } from "lucide-react";
+import { GripVertical, Download } from "lucide-react";
 import {
   Sortable,
   SortableContent,
@@ -67,6 +67,10 @@ interface SortableDataTableProps<TData, TValue> {
   // Custom render props
   renderActions?: (item: TData) => React.ReactNode;
   isItemDisabled?: (item: TData) => boolean;
+  
+  // Export functionality
+  onExport?: () => void;
+  isExporting?: boolean;
 }
 
 export function SortableDataTable<
@@ -93,6 +97,8 @@ export function SortableDataTable<
   onPageChange,
   renderActions,
   isItemDisabled,
+  onExport,
+  isExporting = false,
 }: SortableDataTableProps<TData, TValue>) {
   const handleSearch = (value: string) => {
     onSearchChange?.(value);
@@ -151,6 +157,16 @@ export function SortableDataTable<
             />
           </div>
           <div className="flex gap-2">
+            {onExport && (
+              <Button
+                variant="outline"
+                onClick={onExport}
+                disabled={isExporting}
+              >
+                <Download className="mr-2 h-4 w-4" />
+                {isExporting ? "エクスポート中..." : "CSVエクスポート"}
+              </Button>
+            )}
             <Button variant="outline" onClick={() => onSortModeChange(false)}>
               並び替えを終了
             </Button>
@@ -281,6 +297,8 @@ export function SortableDataTable<
       onPageChange={onPageChange}
       pageSize={pageSize}
       totalItems={totalItems}
+      onExport={onExport}
+      isExporting={isExporting}
       filterComponent={
         showSortMode && (
           <div className="flex justify-end">

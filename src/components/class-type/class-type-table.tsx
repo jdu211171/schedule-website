@@ -4,10 +4,11 @@
 import { useState } from "react";
 import * as React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, Download } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { SortableDataTable } from "@/components/ui/sortable-data-table";
+import { useGenericExport } from "@/hooks/useGenericExport";
 import {
   useClassTypeDelete,
   useClassTypeOrderUpdate,
@@ -69,6 +70,7 @@ export function ClassTypeTable() {
 
   const deleteClassTypeMutation = useClassTypeDelete();
   const updateOrderMutation = useClassTypeOrderUpdate();
+  const { exportToCSV, isExporting } = useGenericExport("/api/class-types/export", "class_types");
 
   // Use local state during sort mode, otherwise use server data
   const typedClassTypes = isSortMode
@@ -208,6 +210,14 @@ export function ClassTypeTable() {
 
   const totalPages = Math.ceil(totalCount / pageSize);
 
+  const handleExport = () => {
+    // Get visible columns (all columns except actions)
+    const visibleColumns = columns
+      .map(col => (col as any).accessorKey)
+      .filter(key => key) as string[];
+    exportToCSV({ columns: visibleColumns });
+  };
+
   return (
     <>
       <SortableDataTable
@@ -230,6 +240,8 @@ export function ClassTypeTable() {
         onPageChange={(newPage) => setPage(newPage + 1)}
         renderActions={renderActions}
         isItemDisabled={(classType) => isProtectedClassType(classType)}
+        onExport={handleExport}
+        isExporting={isExporting}
       />
 
       {/* Edit ClassType Dialog */}
