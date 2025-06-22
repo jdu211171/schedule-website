@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useSession } from "next-auth/react";
@@ -106,7 +106,7 @@ interface RegularAvailability {
   fullDay: boolean;
 }
 interface IrregularAvailability {
-  date:Date;
+  date: Date;
   timeSlots: TimeSlot[];
   fullDay: boolean;
 }
@@ -133,8 +133,10 @@ export function StudentFormDialog({
   const { data: session } = useSession();
   const [activeTab, setActiveTab] = useState("basic");
 
-  const { data: branches = [], isLoading: isBranchesLoading } = useAllBranchesOrdered();
-  const defaultBranchId = session?.user?.selectedBranchId || branches?.[0]?.branchId;
+  const { data: branches = [], isLoading: isBranchesLoading } =
+    useAllBranchesOrdered();
+  const defaultBranchId =
+    session?.user?.selectedBranchId || branches?.[0]?.branchId;
 
   const { data: studentTypesResponse, isLoading: isStudentTypesLoading } =
     useStudentTypes();
@@ -151,7 +153,7 @@ export function StudentFormDialog({
   // Keep dialog open setting - shared across student and teacher forms
   const KEEP_OPEN_STORAGE_KEY = "form-keep-open";
   const [keepDialogOpen, setKeepDialogOpen] = useState(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       const savedKeepOpen = localStorage.getItem(KEEP_OPEN_STORAGE_KEY);
       return savedKeepOpen ? JSON.parse(savedKeepOpen) : false;
     }
@@ -170,14 +172,15 @@ export function StudentFormDialog({
   const [isAllSelected, setIsAllSelected] = useState(false);
 
   // Fetch teachers based on selected subject and types
-  const { data: availableTeachers = [], isLoading: isLoadingTeachers } = useTeachersBySubjectPreference(
-    currentSubject,
-    selectedSubjectTypes
-  );
+  const { data: availableTeachers = [], isLoading: isLoadingTeachers } =
+    useTeachersBySubjectPreference(currentSubject, selectedSubjectTypes);
 
   // Fetch all teachers for name resolution when displaying selected subjects
   const { data: allTeachersResponse } = useTeachers({ limit: 1000 });
-  const allTeachers = allTeachersResponse?.data || [];
+  const allTeachers = useMemo(
+    () => allTeachersResponse?.data || [],
+    [allTeachersResponse?.data]
+  );
 
   // Enhanced regular availability state
   const [regularAvailability, setRegularAvailability] = useState<
@@ -192,10 +195,11 @@ export function StudentFormDialog({
   const STORAGE_KEY = `student-form-${student?.studentId || "new"}`;
 
   // Create dynamic schema using student types data for grade year validation
-  const studentTypes = studentTypesResponse?.data?.map(type => ({
-    studentTypeId: type.studentTypeId,
-    maxYears: type.maxYears
-  })) || [];
+  const studentTypes =
+    studentTypesResponse?.data?.map((type) => ({
+      studentTypeId: type.studentTypeId,
+      maxYears: type.maxYears,
+    })) || [];
 
   const dynamicSchema = createStudentFormSchema(studentTypes);
 
@@ -230,14 +234,18 @@ export function StudentFormDialog({
 
   // Save keep dialog open setting to localStorage
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(KEEP_OPEN_STORAGE_KEY, JSON.stringify(keepDialogOpen));
+    if (typeof window !== "undefined") {
+      localStorage.setItem(
+        KEEP_OPEN_STORAGE_KEY,
+        JSON.stringify(keepDialogOpen)
+      );
     }
   }, [keepDialogOpen]);
 
   useEffect(() => {
     if (student) {
-      const branchIds = student.branches?.map((branch) => branch.branchId) || [];
+      const branchIds =
+        student.branches?.map((branch) => branch.branchId) || [];
       // Ensure defaultBranchId is always included
       const branchIdsWithDefault =
         defaultBranchId && !branchIds.includes(defaultBranchId)
@@ -252,10 +260,8 @@ export function StudentFormDialog({
         lineId: student.lineId || "",
         notes: student.notes || "",
         status:
-          (student.status as
-            | "ACTIVE"
-            | "SICK"
-            | "PERMANENTLY_LEFT") || "ACTIVE",
+          (student.status as "ACTIVE" | "SICK" | "PERMANENTLY_LEFT") ||
+          "ACTIVE",
         username: student.username || "",
         email: student.email || "",
         password: "",
@@ -300,11 +306,12 @@ export function StudentFormDialog({
         studentWithAvailability.exceptionalAvailability.length > 0
       ) {
         // Convert date strings to Date objects
-        const irregularAvailabilityData = studentWithAvailability.exceptionalAvailability.map(ea => ({
-          date: new Date(ea.date),
-          timeSlots: ea.timeSlots,
-          fullDay: ea.fullDay
-        }));
+        const irregularAvailabilityData =
+          studentWithAvailability.exceptionalAvailability.map((ea) => ({
+            date: new Date(ea.date),
+            timeSlots: ea.timeSlots,
+            fullDay: ea.fullDay,
+          }));
         setIrregularAvailability(irregularAvailabilityData);
       } else {
         setIrregularAvailability([]);
@@ -367,7 +374,13 @@ export function StudentFormDialog({
     });
 
     return () => subscription.unsubscribe();
-  }, [form, studentSubjects, regularAvailability, irregularAvailability, STORAGE_KEY]);
+  }, [
+    form,
+    studentSubjects,
+    regularAvailability,
+    irregularAvailability,
+    STORAGE_KEY,
+  ]);
 
   // Validate availability data
   useEffect(() => {
@@ -451,36 +464,41 @@ export function StudentFormDialog({
 
     // Prepare exceptional availability data for submission
     if (irregularAvailability.length > 0) {
-      const exceptionalAvailabilityData = irregularAvailability.flatMap((item) => {
-        if (item.fullDay) {
-          // Full day availability
-          return [{
-            userId: submissionData.studentId || undefined,
-            date: item.date,
-            fullDay: true,
-            type: "EXCEPTION" as const,
-            startTime: null as string | null,
-            endTime: null as string | null,
-            reason: null as string | null,
-            notes: null as string | null,
-          }];
-        } else {
-          // Time slot based availability
-          return item.timeSlots.map((slot) => ({
-            userId: submissionData.studentId || undefined,
-            date: item.date,
-            fullDay: false,
-            type: "EXCEPTION" as const,
-            startTime: slot.startTime as string | null,
-            endTime: slot.endTime as string | null,
-            reason: null as string | null,
-            notes: null as string | null,
-          }));
+      const exceptionalAvailabilityData = irregularAvailability.flatMap(
+        (item) => {
+          if (item.fullDay) {
+            // Full day availability
+            return [
+              {
+                userId: submissionData.studentId || undefined,
+                date: item.date,
+                fullDay: true,
+                type: "EXCEPTION" as const,
+                startTime: null as string | null,
+                endTime: null as string | null,
+                reason: null as string | null,
+                notes: null as string | null,
+              },
+            ];
+          } else {
+            // Time slot based availability
+            return item.timeSlots.map((slot) => ({
+              userId: submissionData.studentId || undefined,
+              date: item.date,
+              fullDay: false,
+              type: "EXCEPTION" as const,
+              startTime: slot.startTime as string | null,
+              endTime: slot.endTime as string | null,
+              reason: null as string | null,
+              notes: null as string | null,
+            }));
+          }
         }
-      });
+      );
 
       // Add exceptional availability to submission data for backend processing
-      (submissionData as any).exceptionalAvailability = exceptionalAvailabilityData;
+      (submissionData as any).exceptionalAvailability =
+        exceptionalAvailabilityData;
     }
 
     if (isEditing && student) {
@@ -552,36 +570,41 @@ export function StudentFormDialog({
 
       // Prepare exceptional availability data for submission
       if (irregularAvailability.length > 0) {
-        const exceptionalAvailabilityData = irregularAvailability.flatMap((item) => {
-          if (item.fullDay) {
-            // Full day availability
-            return [{
-              userId: submissionData.studentId || undefined,
-              date: item.date,
-              fullDay: true,
-              type: "EXCEPTION" as const,
-              startTime: null as string | null,
-              endTime: null as string | null,
-              reason: null as string | null,
-              notes: null as string | null,
-            }];
-          } else {
-            // Time slot based availability
-            return item.timeSlots.map((slot) => ({
-              userId: submissionData.studentId || undefined,
-              date: item.date,
-              fullDay: false,
-              type: "EXCEPTION" as const,
-              startTime: slot.startTime as string | null,
-              endTime: slot.endTime as string | null,
-              reason: null as string | null,
-              notes: null as string | null,
-            }));
+        const exceptionalAvailabilityData = irregularAvailability.flatMap(
+          (item) => {
+            if (item.fullDay) {
+              // Full day availability
+              return [
+                {
+                  userId: submissionData.studentId || undefined,
+                  date: item.date,
+                  fullDay: true,
+                  type: "EXCEPTION" as const,
+                  startTime: null as string | null,
+                  endTime: null as string | null,
+                  reason: null as string | null,
+                  notes: null as string | null,
+                },
+              ];
+            } else {
+              // Time slot based availability
+              return item.timeSlots.map((slot) => ({
+                userId: submissionData.studentId || undefined,
+                date: item.date,
+                fullDay: false,
+                type: "EXCEPTION" as const,
+                startTime: slot.startTime as string | null,
+                endTime: slot.endTime as string | null,
+                reason: null as string | null,
+                notes: null as string | null,
+              }));
+            }
           }
-        });
+        );
 
         // Add exceptional availability to submission data for backend processing
-        (submissionData as any).exceptionalAvailability = exceptionalAvailabilityData;
+        (submissionData as any).exceptionalAvailability =
+          exceptionalAvailabilityData;
       }
 
       if (isEditing && student) {
@@ -611,9 +634,8 @@ export function StudentFormDialog({
   // Handle subject selection
   function handleSubjectChange(subjectId: string) {
     setCurrentSubject(subjectId);
-    setSelectedSubjectTypes([]);
-    setSelectedTeacherIds([]);
-    setIsAllSelected(false);
+    // Don't reset other selections - let user maintain their choices
+    // Filter teachers will be handled by the query hook
   }
 
   // Handle subject type selection
@@ -625,29 +647,29 @@ export function StudentFormDialog({
         return newSelection;
       } else {
         const newSelection = [...prev, typeId];
-        // Since subject types are independent, check if all types are selected
+        // Check if all available types are selected
+        const availableTypes = getFilteredSubjectTypes();
         setIsAllSelected(
-          subjectTypes.length > 0 && newSelection.length === subjectTypes.length
+          availableTypes.length > 0 &&
+            newSelection.length === availableTypes.length
         );
         return newSelection;
       }
     });
-    // Reset teacher selection when subject types change
-    setSelectedTeacherIds([]);
+    // Don't reset teacher selection - teachers will be filtered automatically
   }
 
-  // Handle "Select All" toggle
+  // Handle "Select All" toggle for subject types
   function handleSelectAllToggle() {
+    const availableTypes = getFilteredSubjectTypes();
     if (isAllSelected) {
       setSelectedSubjectTypes([]);
       setIsAllSelected(false);
     } else {
-      const allTypeIds = subjectTypes.map((type) => type.subjectTypeId);
+      const allTypeIds = availableTypes.map((type) => type.subjectTypeId);
       setSelectedSubjectTypes(allTypeIds);
       setIsAllSelected(true);
     }
-    // Reset teacher selection when subject types change
-    setSelectedTeacherIds([]);
   }
 
   // Handle teacher selection
@@ -659,6 +681,87 @@ export function StudentFormDialog({
         return [...prev, teacherId];
       }
     });
+  }
+
+  // Get filtered subject types based on current subject and teacher selections
+  function getFilteredSubjectTypes() {
+    // If no filters are applied, return all subject types
+    if (!currentSubject && selectedTeacherIds.length === 0) {
+      return subjectTypes;
+    }
+
+    let filteredTypes = subjectTypes;
+
+    // If a subject is selected, no additional filtering needed for subject types
+    // as subject types are generally independent of specific subjects
+
+    // If teachers are selected, filter subject types based on teacher preferences
+    if (selectedTeacherIds.length > 0) {
+      // This would require teacher-subject-type relationship data
+      // For now, we'll return all types as the filtering will be handled by teacher availability
+      filteredTypes = subjectTypes;
+    }
+
+    return filteredTypes;
+  }
+
+  // Get filtered subjects based on current selections
+  function getFilteredSubjects() {
+    // If no filters are applied, return all subjects
+    if (selectedSubjectTypes.length === 0 && selectedTeacherIds.length === 0) {
+      return subjects;
+    }
+
+    // For now, return all subjects as the filtering logic would depend on
+    // additional data about subject-teacher and subject-subjectType relationships
+    const filteredSubjects = subjects;
+
+    return filteredSubjects;
+  }
+
+  // Get filtered teachers based on current subject and subject type selections
+  const filteredTeachersForDisplay = useMemo(() => {
+    let filteredTeachers = [];
+
+    // If we have both subject and subject types selected, use the existing hook data
+    if (currentSubject && selectedSubjectTypes.length > 0) {
+      filteredTeachers = availableTeachers;
+    }
+    // If only subject is selected, get teachers for that subject with any type
+    else if (currentSubject && selectedSubjectTypes.length === 0) {
+      // For now, return all teachers as we'd need additional subject-teacher relationship data
+      filteredTeachers = allTeachers.filter(() => true); // Placeholder for future enhancement
+    }
+    // If only subject types are selected, return all teachers
+    // This could be enhanced to filter by subject type preferences
+    else if (!currentSubject && selectedSubjectTypes.length > 0) {
+      filteredTeachers = allTeachers;
+    }
+    // If nothing is selected, return all teachers
+    else {
+      filteredTeachers = allTeachers;
+    }
+
+    return filteredTeachers;
+  }, [currentSubject, selectedSubjectTypes, availableTeachers, allTeachers]);
+
+  // Clean up selected teachers when the filtered list changes
+  useEffect(() => {
+    const filteredTeacherIds = filteredTeachersForDisplay.map(
+      (t) => t.teacherId
+    );
+    const validSelectedTeacherIds = selectedTeacherIds.filter((id) =>
+      filteredTeacherIds.includes(id)
+    );
+
+    // Update selected teachers if any were filtered out
+    if (validSelectedTeacherIds.length !== selectedTeacherIds.length) {
+      setSelectedTeacherIds(validSelectedTeacherIds);
+    }
+  }, [filteredTeachersForDisplay, selectedTeacherIds]);
+
+  function getFilteredTeachersForDisplay() {
+    return filteredTeachersForDisplay;
   }
 
   // Add current subject and selected types
@@ -1103,11 +1206,18 @@ export function StudentFormDialog({
                           <BookOpen className="h-5 w-5" />
                           科目・科目タイプ・講師選択
                         </CardTitle>
+                        <p className="text-sm text-muted-foreground">
+                          科目、科目タイプ、希望講師を自由な順序で選択できます。どの項目も任意で、組み合わせて選択することも可能です。
+                        </p>
                       </CardHeader>
                       <CardContent className="space-y-4">
-                        <div className="space-y-4">
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                          {/* Subject Selection */}
                           <div className="space-y-2">
-                            <label className="text-sm font-medium">科目</label>
+                            <label className="text-sm font-medium flex items-center gap-2">
+                              <BookOpen className="h-4 w-4" />
+                              科目（任意）
+                            </label>
                             <Select
                               value={currentSubject}
                               onValueChange={handleSubjectChange}
@@ -1116,7 +1226,7 @@ export function StudentFormDialog({
                                 <SelectValue placeholder="科目を選択" />
                               </SelectTrigger>
                               <SelectContent>
-                                {subjects.map((subject) => (
+                                {getFilteredSubjects().map((subject) => (
                                   <SelectItem
                                     key={subject.subjectId}
                                     value={subject.subjectId}
@@ -1126,12 +1236,34 @@ export function StudentFormDialog({
                                 ))}
                               </SelectContent>
                             </Select>
+                            {currentSubject && (
+                              <div className="flex items-center justify-between">
+                                <Badge variant="secondary" className="text-xs">
+                                  {
+                                    subjects.find(
+                                      (s) => s.subjectId === currentSubject
+                                    )?.name
+                                  }
+                                </Badge>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setCurrentSubject(undefined)}
+                                  className="h-6 w-6 p-0 ml-2"
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            )}
                           </div>
 
+                          {/* Subject Type Selection */}
                           <div className="space-y-2">
                             <div className="flex justify-between items-center">
-                              <label className="text-sm font-medium">
-                                科目タイプ
+                              <label className="text-sm font-medium flex items-center gap-2">
+                                <Settings className="h-4 w-4" />
+                                科目タイプ（任意）
                               </label>
                               <Button
                                 type="button"
@@ -1139,6 +1271,9 @@ export function StudentFormDialog({
                                 size="sm"
                                 onClick={handleSelectAllToggle}
                                 className="h-7 text-xs"
+                                disabled={
+                                  getFilteredSubjectTypes().length === 0
+                                }
                               >
                                 {isAllSelected ? "全て解除" : "全て選択"}
                               </Button>
@@ -1173,7 +1308,7 @@ export function StudentFormDialog({
                                       該当する科目タイプがありません
                                     </CommandEmpty>
                                     <CommandGroup className="max-h-64 overflow-auto">
-                                      {subjectTypes.map((type) => (
+                                      {getFilteredSubjectTypes().map((type) => (
                                         <CommandItem
                                           key={type.subjectTypeId}
                                           onSelect={() =>
@@ -1197,54 +1332,103 @@ export function StudentFormDialog({
                                 </Command>
                               </PopoverContent>
                             </Popover>
+
+                            {selectedSubjectTypes.length > 0 && (
+                              <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs font-medium text-muted-foreground">
+                                    選択中の科目タイプ:
+                                  </span>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      setSelectedSubjectTypes([]);
+                                      setIsAllSelected(false);
+                                    }}
+                                    className="h-6 text-xs"
+                                  >
+                                    全てクリア
+                                  </Button>
+                                </div>
+                                <div className="flex flex-wrap gap-1">
+                                  {selectedSubjectTypes.map((typeId) => {
+                                    const type = subjectTypes.find(
+                                      (t) => t.subjectTypeId === typeId
+                                    );
+                                    return type ? (
+                                      <Badge
+                                        key={typeId}
+                                        variant="secondary"
+                                        className="text-xs flex items-center gap-1"
+                                      >
+                                        {type.name}
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() =>
+                                            handleSubjectTypeToggle(typeId)
+                                          }
+                                          className="h-3 w-3 p-0 ml-1 hover:bg-muted rounded-full"
+                                        >
+                                          <X className="h-2 w-2" />
+                                        </Button>
+                                      </Badge>
+                                    ) : null;
+                                  })}
+                                </div>
+                              </div>
+                            )}
                           </div>
 
-                          {/* Teacher selection - only show when subject and types are selected */}
-                          {currentSubject && selectedSubjectTypes.length > 0 && (
-                            <div className="space-y-2">
-                              <label className="text-sm font-medium flex items-center gap-2">
-                                <Users className="h-4 w-4" />
-                                希望講師（任意）
-                              </label>
+                          {/* Teacher Selection */}
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium flex items-center gap-2">
+                              <Users className="h-4 w-4" />
+                              希望講師（任意）
+                            </label>
 
-                              {isLoadingTeachers ? (
-                                <div className="flex items-center justify-center h-11 border rounded-lg bg-muted/50">
-                                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                  <span className="text-sm text-muted-foreground">
-                                    講師を読み込み中...
-                                  </span>
-                                </div>
-                              ) : availableTeachers.length > 0 ? (
-                                <Popover>
-                                  <PopoverTrigger asChild>
-                                    <Button
-                                      variant="outline"
-                                      className="h-11 w-full justify-between"
-                                    >
-                                      {selectedTeacherIds.length > 0
-                                        ? `${selectedTeacherIds.length}名選択中`
-                                        : "希望講師を選択（任意）"}
-                                      <Users
-                                        className={`ml-2 h-4 w-4 ${
-                                          selectedTeacherIds.length > 0
-                                            ? "opacity-100"
-                                            : "opacity-50"
-                                        }`}
-                                      />
-                                    </Button>
-                                  </PopoverTrigger>
-                                  <PopoverContent
-                                    className="w-full p-0"
-                                    align="start"
+                            {isLoadingTeachers ? (
+                              <div className="flex items-center justify-center h-11 border rounded-lg bg-muted/50">
+                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                <span className="text-sm text-muted-foreground">
+                                  講師を読み込み中...
+                                </span>
+                              </div>
+                            ) : (
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    className="h-11 w-full justify-between"
                                   >
-                                    <Command>
-                                      <CommandInput placeholder="講師を検索..." />
-                                      <CommandList>
-                                        <CommandEmpty>
-                                          該当する講師がいません
-                                        </CommandEmpty>
-                                        <CommandGroup className="max-h-64 overflow-auto">
-                                          {availableTeachers.map((teacher) => (
+                                    {selectedTeacherIds.length > 0
+                                      ? `${selectedTeacherIds.length}名選択中`
+                                      : "希望講師を選択（任意）"}
+                                    <Users
+                                      className={`ml-2 h-4 w-4 ${
+                                        selectedTeacherIds.length > 0
+                                          ? "opacity-100"
+                                          : "opacity-50"
+                                      }`}
+                                    />
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent
+                                  className="w-full p-0"
+                                  align="start"
+                                >
+                                  <Command>
+                                    <CommandInput placeholder="講師を検索..." />
+                                    <CommandList>
+                                      <CommandEmpty>
+                                        該当する講師がいません
+                                      </CommandEmpty>
+                                      <CommandGroup className="max-h-64 overflow-auto">
+                                        {getFilteredTeachersForDisplay().map(
+                                          (teacher) => (
                                             <CommandItem
                                               key={teacher.teacherId}
                                               onSelect={() =>
@@ -1271,48 +1455,87 @@ export function StudentFormDialog({
                                                 )}
                                               </div>
                                             </CommandItem>
-                                          ))}
-                                        </CommandGroup>
-                                      </CommandList>
-                                    </Command>
-                                  </PopoverContent>
-                                </Popover>
-                              ) : (
-                                <div className="text-sm text-muted-foreground p-3 border rounded-lg bg-muted/30">
-                                  選択された科目・科目タイプに対応する講師がいません
-                                </div>
-                              )}
+                                          )
+                                        )}
+                                      </CommandGroup>
+                                    </CommandList>
+                                  </Command>
+                                </PopoverContent>
+                              </Popover>
+                            )}
 
-                              {selectedTeacherIds.length > 0 && (
-                                <div className="flex flex-wrap gap-2 mt-2">
-                                  {selectedTeacherIds.map(teacherId => {
-                                    const teacher = availableTeachers.find(t => t.teacherId === teacherId);
+                            {selectedTeacherIds.length > 0 && (
+                              <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs font-medium text-muted-foreground">
+                                    選択中の講師:
+                                  </span>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setSelectedTeacherIds([])}
+                                    className="h-6 text-xs"
+                                  >
+                                    全てクリア
+                                  </Button>
+                                </div>
+                                <div className="flex flex-wrap gap-1">
+                                  {selectedTeacherIds.map((teacherId) => {
+                                    const teacher =
+                                      getFilteredTeachersForDisplay().find(
+                                        (t) => t.teacherId === teacherId
+                                      );
                                     return teacher ? (
-                                      <Badge key={teacherId} variant="secondary">
+                                      <Badge
+                                        key={teacherId}
+                                        variant="secondary"
+                                        className="text-xs flex items-center gap-1"
+                                      >
                                         {teacher.name}
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() =>
+                                            handleTeacherToggle(teacherId)
+                                          }
+                                          className="h-3 w-3 p-0 ml-1 hover:bg-muted rounded-full"
+                                        >
+                                          <X className="h-2 w-2" />
+                                        </Button>
                                       </Badge>
                                     ) : null;
                                   })}
                                 </div>
-                              )}
-                            </div>
-                          )}
+                              </div>
+                            )}
+                          </div>
                         </div>
 
-                        <div className="flex justify-end">
-                          <Button
-                            type="button"
-                            onClick={addSubjectWithTypes}
-                            disabled={
-                              !currentSubject ||
-                              selectedSubjectTypes.length === 0
-                            }
-                            size="sm"
-                            className="gap-1"
-                          >
-                            <Plus className="h-4 w-4" />
-                            科目を追加
-                          </Button>
+                        {/* Add Subject Button */}
+                        <div className="pt-4 border-t">
+                          <div className="flex flex-col items-end gap-2">
+                            <Button
+                              type="button"
+                              onClick={addSubjectWithTypes}
+                              disabled={
+                                !currentSubject ||
+                                selectedSubjectTypes.length === 0
+                              }
+                              size="sm"
+                              className="gap-1"
+                            >
+                              <Plus className="h-4 w-4" />
+                              科目を追加
+                            </Button>
+                            {(!currentSubject ||
+                              selectedSubjectTypes.length === 0) && (
+                              <p className="text-xs text-muted-foreground text-right">
+                                科目と科目タイプの両方を選択してから追加できます
+                              </p>
+                            )}
+                          </div>
                         </div>
 
                         {studentSubjects.length > 0 && (
@@ -1367,26 +1590,38 @@ export function StudentFormDialog({
                                           </Badge>
                                         ))}
                                       </div>
-                                      {studentSubject.preferredTeacherIds && studentSubject.preferredTeacherIds.length > 0 && (
-                                        <div className="pt-2 border-t">
-                                          <div className="text-xs text-muted-foreground mb-1">希望講師:</div>
-                                          <div className="flex flex-wrap gap-1">
-                                            {studentSubject.preferredTeacherIds.map((teacherId) => {
-                                              const teacher = allTeachers.find(t => t.teacherId === teacherId);
-                                              return (
-                                                <Badge
-                                                  key={teacherId}
-                                                  variant="outline"
-                                                  className="text-xs"
-                                                >
-                                                  <Users className="h-3 w-3 mr-1" />
-                                                  {teacher?.name || teacherId}
-                                                </Badge>
-                                              );
-                                            })}
+                                      {studentSubject.preferredTeacherIds &&
+                                        studentSubject.preferredTeacherIds
+                                          .length > 0 && (
+                                          <div className="pt-2 border-t">
+                                            <div className="text-xs text-muted-foreground mb-1">
+                                              希望講師:
+                                            </div>
+                                            <div className="flex flex-wrap gap-1">
+                                              {studentSubject.preferredTeacherIds.map(
+                                                (teacherId) => {
+                                                  const teacher =
+                                                    allTeachers.find(
+                                                      (t) =>
+                                                        t.teacherId ===
+                                                        teacherId
+                                                    );
+                                                  return (
+                                                    <Badge
+                                                      key={teacherId}
+                                                      variant="outline"
+                                                      className="text-xs"
+                                                    >
+                                                      <Users className="h-3 w-3 mr-1" />
+                                                      {teacher?.name ||
+                                                        teacherId}
+                                                    </Badge>
+                                                  );
+                                                }
+                                              )}
+                                            </div>
                                           </div>
-                                        </div>
-                                      )}
+                                        )}
                                     </div>
                                   </div>
                                 );
@@ -1398,7 +1633,10 @@ export function StudentFormDialog({
                     </Card>
                   </TabsContent>
 
-                  <TabsContent value="availabilityRegular" className="space-y-6 mt-0">
+                  <TabsContent
+                    value="availabilityRegular"
+                    className="space-y-6 mt-0"
+                  >
                     <Card>
                       <CardHeader>
                         <CardTitle className="text-lg flex items-center gap-2">
@@ -1447,7 +1685,10 @@ export function StudentFormDialog({
                       </CardContent>
                     </Card>
                   </TabsContent>
-                  <TabsContent value="availabilityIrregular" className="space-y-6 mt-0">
+                  <TabsContent
+                    value="availabilityIrregular"
+                    className="space-y-6 mt-0"
+                  >
                     <Card>
                       <CardHeader>
                         <CardTitle className="text-lg flex items-center gap-2">
@@ -1528,16 +1769,26 @@ export function StudentFormDialog({
                                     emptyMessage="該当する校舎が見つかりません"
                                     loading={isBranchesLoading}
                                     disabled={isBranchesLoading}
-                                    defaultValues={defaultBranchId ? [defaultBranchId] : []}
-                                    renderSelectedBadge={(item, isDefault, onRemove) => (
+                                    defaultValues={
+                                      defaultBranchId ? [defaultBranchId] : []
+                                    }
+                                    renderSelectedBadge={(
+                                      item,
+                                      isDefault,
+                                      onRemove
+                                    ) => (
                                       <Badge
                                         key={item.value}
-                                        variant={isDefault ? "default" : "secondary"}
+                                        variant={
+                                          isDefault ? "default" : "secondary"
+                                        }
                                         className="flex items-center gap-1 px-3 py-1"
                                       >
                                         <span>{item.label}</span>
                                         {isDefault && (
-                                          <span className="text-xs">(デフォルト)</span>
+                                          <span className="text-xs">
+                                            (デフォルト)
+                                          </span>
                                         )}
                                         {!isDefault && onRemove && (
                                           <Button
@@ -1581,7 +1832,9 @@ export function StudentFormDialog({
               <Checkbox
                 id="keep-dialog-open"
                 checked={keepDialogOpen}
-                onCheckedChange={(checked) => setKeepDialogOpen(checked === true)}
+                onCheckedChange={(checked) =>
+                  setKeepDialogOpen(checked === true)
+                }
               />
               <label
                 htmlFor="keep-dialog-open"
