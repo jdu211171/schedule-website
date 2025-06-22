@@ -352,17 +352,6 @@ function DataTableFilterItem<TData>({
   const [showOperatorSelector, setShowOperatorSelector] = React.useState(false);
   const [showValueSelector, setShowValueSelector] = React.useState(false);
 
-  const column = columns.find((column) => column.id === filter.id);
-  if (!column) return null;
-
-  const joinOperatorListboxId = `${filterItemId}-join-operator-listbox`;
-  const fieldListboxId = `${filterItemId}-field-listbox`;
-  const operatorListboxId = `${filterItemId}-operator-listbox`;
-  const inputId = `${filterItemId}-input`;
-
-  const columnMeta = column.columnDef.meta;
-  const filterOperators = getFilterOperators(filter.variant);
-
   const onItemKeyDown = React.useCallback(
     (event: React.KeyboardEvent<HTMLDivElement>) => {
       if (
@@ -389,6 +378,17 @@ function DataTableFilterItem<TData>({
       onFilterRemove,
     ],
   );
+
+  const column = columns.find((column) => column.id === filter.id);
+  if (!column) return null;
+
+  const joinOperatorListboxId = `${filterItemId}-join-operator-listbox`;
+  const fieldListboxId = `${filterItemId}-field-listbox`;
+  const operatorListboxId = `${filterItemId}-operator-listbox`;
+  const inputId = `${filterItemId}-input`;
+
+  const columnMeta = column.columnDef.meta;
+  const filterOperators = getFilterOperators(filter.variant);
 
   return (
     <SortableItem value={filter.filterId} asChild>
