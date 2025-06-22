@@ -13,10 +13,10 @@ export async function requireAuth() {
   return session;
 }
 
-export async function loginUser(usernameOrEmail: string, password: string) {
+export async function loginUser(identifier: string, password: string) {
   try {
     await signIn("credentials", {
-      usernameOrEmail,
+      identifier,
       password,
       redirect: false,
     });

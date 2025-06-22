@@ -21,9 +21,9 @@ export default {
     }),
     Credentials({
       credentials: {
-        usernameOrEmail: {
-          placeholder: "Username or Email",
-          name: "usernameOrEmail",
+        identifier: {
+          placeholder: "Username, Email or Line ID",
+          name: "identifier",
           type: "text",
         },
         password: {
@@ -33,14 +33,20 @@ export default {
         },
       },
       authorize: async (creds) => {
-        if (!creds?.usernameOrEmail || !creds?.password)
-          throw new Error("Missing username/email or password");
+        console.log("🔍 Credentials login attempt:", creds)
+        if (!creds?.identifier || !creds?.password)
+          throw new Error("Missing username/email/line ID or password");
 
-        const user = await prisma.user.findFirst({
+        const { identifier, password } = creds as {
+          identifier: string;
+          password: string;
+        };
+
+        let user = await prisma.user.findFirst({
           where: {
             OR: [
-              { email: creds.usernameOrEmail },
-              { username: creds.usernameOrEmail },
+              { email: identifier },
+              { username: identifier },
             ],
           },
           include: {
@@ -59,14 +65,71 @@ export default {
           },
         });
 
+        // If user not found by email or username, check for Line ID
+        if (!user) {
+          const student = await prisma.student.findUnique({
+            where: {
+              lineId: identifier
+            },
+            include: {
+              user: {
+                include: {
+                  student: true,
+                  teacher: true,
+                  branches: {
+                    include: {
+                      branch: {
+                        select: {
+                          branchId: true,
+                          name: true,
+                        },
+                      },
+                    },
+                  },
+                },
+              }
+            }
+          });
+          if (student) {
+            user = student?.user;
+          } else {
+            const teacher = await prisma.teacher.findUnique({
+              where: {
+                lineId: identifier
+              },
+              include: {
+                user: {
+                  include: {
+                    student: true,
+                    teacher: true,
+                    branches: {
+                      include: {
+                        branch: {
+                          select: {
+                            branchId: true,
+                            name: true,
+                          },
+                        },
+                      },
+                    },
+                  },
+                }
+              }
+            });
+            if (teacher) {
+              user = teacher?.user;
+            }
+          }
+        }
+
         if (!user) throw new Error("Invalid credentials");
 
         // Check password based on user role
         // ADMIN and STAFF use hashed passwords, TEACHER and STUDENT use plain text
         const ok = ["TEACHER", "STUDENT"].includes(user.role)
-          ? creds.password === user.passwordHash
+          ? password === user.passwordHash
           : await bcrypt.compare(
-            creds.password as string,
+            password as string,
             user.passwordHash as string
           );
 
