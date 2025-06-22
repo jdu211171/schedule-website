@@ -141,6 +141,8 @@ export function StudentFormDialog({
   const { data: studentTypesResponse, isLoading: isStudentTypesLoading } =
     useStudentTypes();
 
+  console.log(studentTypesResponse);
+
   // Fetch real data for subjects and subject types
   const { data: subjects = [] } = useAllSubjects();
   const { data: subjectTypes = [] } = useAllSubjectTypes();
@@ -1006,30 +1008,69 @@ export function StudentFormDialog({
                           <FormField
                             control={form.control}
                             name="gradeYear"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="text-sm font-medium">
-                                  学年
-                                </FormLabel>
-                                <FormControl>
-                                  <Input
-                                    type="number"
-                                    placeholder="1"
-                                    className="h-11"
-                                    {...field}
-                                    value={field.value || ""}
-                                    onChange={(e) => {
-                                      const value =
-                                        e.target.value === ""
-                                          ? undefined
-                                          : Number(e.target.value);
-                                      field.onChange(value);
+                            render={({ field }) => {
+                              const selectedStudentTypeId =
+                                form.watch("studentTypeId");
+                              const selectedStudentType =
+                                studentTypesResponse?.data?.find(
+                                  (type) =>
+                                    type.studentTypeId === selectedStudentTypeId
+                                );
+                              const maxYears =
+                                selectedStudentType?.maxYears || 0;
+                              const gradeOptions = Array.from(
+                                { length: maxYears },
+                                (_, i) => i + 1
+                              );
+
+                              return (
+                                <FormItem>
+                                  <FormLabel className="text-sm font-medium">
+                                    学年
+                                  </FormLabel>
+                                  <Select
+                                    onValueChange={(value) => {
+                                      field.onChange(
+                                        value ? Number(value) : undefined
+                                      );
                                     }}
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
+                                    value={
+                                      field.value
+                                        ? String(field.value)
+                                        : undefined
+                                    }
+                                    disabled={
+                                      !selectedStudentTypeId || maxYears === 0
+                                    }
+                                  >
+                                    <FormControl>
+                                      <SelectTrigger className="h-11">
+                                        <SelectValue
+                                          placeholder={
+                                            !selectedStudentTypeId
+                                              ? "まず生徒タイプを選択してください"
+                                              : maxYears === 0
+                                              ? "利用可能な学年がありません"
+                                              : "学年を選択"
+                                          }
+                                        />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      {gradeOptions.map((year) => (
+                                        <SelectItem
+                                          key={year}
+                                          value={String(year)}
+                                        >
+                                          {year}年
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                  <FormMessage />
+                                </FormItem>
+                              );
+                            }}
                           />
                         </div>
 
