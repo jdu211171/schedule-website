@@ -17,6 +17,9 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 
+// Import types to ensure proper column meta support
+import "./types";
+
 import {
   Table,
   TableBody,
@@ -50,9 +53,12 @@ export function DataTable<TData, TValue>({
   );
   const [sorting, setSorting] = React.useState<SortingState>([]);
 
+  // Memoize columns to prevent unnecessary re-renders
+  const memoizedColumns = React.useMemo(() => columns, [columns]);
+
   const table = useReactTable({
     data,
-    columns,
+    columns: memoizedColumns,
     state: {
       sorting,
       columnVisibility,
@@ -115,7 +121,7 @@ export function DataTable<TData, TValue>({
             ) : (
               <TableRow>
                 <TableCell
-                  colSpan={columns.length}
+                  colSpan={memoizedColumns.length}
                   className="h-24 text-center"
                 >
                   No results.

@@ -109,7 +109,7 @@ export function DataTableFacetedFilter<TData, TValue>({
                     variant="secondary"
                     className="rounded-sm px-1 font-normal"
                   >
-                    {selectedValues.size} selected
+                    {selectedValues.size} 件選択
                   </Badge>
                 ) : (
                   options
@@ -133,7 +133,7 @@ export function DataTableFacetedFilter<TData, TValue>({
         <Command>
           <CommandInput placeholder={title} />
           <CommandList className="max-h-full">
-            <CommandEmpty>No results found.</CommandEmpty>
+            <CommandEmpty>結果が見つかりません。</CommandEmpty>
             <CommandGroup className="max-h-[18.75rem] overflow-y-auto overflow-x-hidden">
               {options.map((option) => {
                 const isSelected = selectedValues.has(option.value);
@@ -145,9 +145,9 @@ export function DataTableFacetedFilter<TData, TValue>({
                   >
                     <div
                       className={cn(
-                        "flex size-4 items-center justify-center rounded-sm border border-primary",
+                        "flex size-4 items-center justify-center rounded border border-primary",
                         isSelected
-                          ? "bg-primary"
+                          ? "bg-primary text-primary-foreground"
                           : "opacity-50 [&_svg]:invisible",
                       )}
                     >
@@ -172,7 +172,7 @@ export function DataTableFacetedFilter<TData, TValue>({
                     onSelect={() => onReset()}
                     className="justify-center text-center"
                   >
-                    Clear filters
+                    フィルターをクリア
                   </CommandItem>
                 </CommandGroup>
               </>

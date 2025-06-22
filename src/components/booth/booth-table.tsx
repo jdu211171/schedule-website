@@ -29,6 +29,9 @@ import { BoothFormDialog } from "./booth-form-dialog";
 import { useBooths } from "@/hooks/useBoothQuery";
 import { useSession } from "next-auth/react";
 
+// Import types to ensure proper column meta support
+import "@/components/data-table/types";
+
 // Define extended booth type that includes branchName and order
 type ExtendedBooth = Booth & {
   branchName: string;
@@ -114,7 +117,7 @@ export function BoothTable() {
 
   // Filter out the branch column if user is not admin
   const visibleColumns = columns.filter((col) => {
-    const meta = col.meta as any;
+    const meta = col.meta;
     return !meta?.hidden;
   });
 

@@ -24,13 +24,8 @@ import {
 import { SubjectFormDialog } from "./subject-form-dialog";
 import { Subject, useSubjects } from "@/hooks/useSubjectQuery";
 
-// Define custom column meta type
-interface ColumnMetaType {
-  align?: "left" | "center" | "right";
-  headerClassName?: string;
-  cellClassName?: string;
-  hidden?: boolean;
-}
+// Import types to ensure proper column meta support
+import "@/components/data-table/types";
 
 export function SubjectTable() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -99,7 +94,7 @@ export function SubjectTable() {
       meta: {
         align: "right",
         headerClassName: "pr-8", // Add padding-right to ONLY the header
-      } as ColumnMetaType,
+      },
     },
   ];
 

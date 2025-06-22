@@ -45,6 +45,9 @@ import { useSession } from "next-auth/react";
 import type { ClassSession, UserStatus } from "@prisma/client";
 import { ClassSessionFilter } from "./class-session-filter";
 
+// Import types to ensure proper column meta support
+import "@/components/data-table/types";
+
 // Define type for class session with additional fields from API
 interface ExtendedClassSession extends ClassSession {
   teacherName?: string;
@@ -54,14 +57,6 @@ interface ExtendedClassSession extends ClassSession {
   boothName?: string;
   branchName?: string | null;
   _optimistic?: boolean;
-}
-
-// Define column meta type
-interface ColumnMetaType {
-  align?: "left" | "center" | "right";
-  headerClassName?: string;
-  cellClassName?: string;
-  hidden?: boolean;
 }
 
 interface ClassSessionTableProps {
@@ -248,7 +243,7 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
       // Only show for admins
       meta: {
         hidden: !isAdmin,
-      } as ColumnMetaType,
+      },
     },
     {
       accessorKey: "notes",
@@ -332,13 +327,13 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
       meta: {
         align: "right",
         headerClassName: "pr-8", // Add padding-right to ONLY the header
-      } as ColumnMetaType,
+      },
     },
   ];
 
   // Filter out hidden columns if necessary (like branch for non-admin)
   const visibleColumns = columns.filter((col) => {
-    const meta = col.meta as ColumnMetaType | undefined;
+    const meta = col.meta;
     return !meta?.hidden;
   });
 

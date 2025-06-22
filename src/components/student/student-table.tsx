@@ -3,15 +3,30 @@
 
 import * as React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Pencil, Eye, EyeOff, Trash2, MoreHorizontal } from "lucide-react";
-import { parseAsArrayOf, parseAsString, useQueryState } from "nuqs";
+import { Pencil, Eye, EyeOff, Trash2, MoreHorizontal, RotateCcw } from "lucide-react";
+import { useDebounce } from "@/hooks/use-debounce";
 
-import { DataTable } from "@/components/data-table/data-table";
-import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
+import { DataTableViewOptions } from "@/components/data-table/data-table-view-options";
+import { DataTableDateFilter } from "@/components/data-table/data-table-date-filter";
+import { DataTableFacetedFilter } from "@/components/data-table/data-table-faceted-filter";
+import { DataTableSliderFilter } from "@/components/data-table/data-table-slider-filter";
+import { DataTablePagination } from "@/components/data-table/data-table-pagination";
 import { useDataTable } from "@/hooks/use-data-table";
+import { flexRender } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
+import type { Column, Table } from "@tanstack/react-table";
+import {
+  Table as UITable,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,29 +54,202 @@ import {
 } from "@/hooks/useStudentMutation";
 import { userStatusLabels } from "@/schemas/student.schema";
 
+// Import types to ensure proper column meta support
+import "@/components/data-table/types";
+
+// Custom toolbar component without reset button
+interface StudentTableToolbarProps<TData> extends React.ComponentProps<"div"> {
+  table: Table<TData>;
+  children?: React.ReactNode;
+}
+
+function StudentTableToolbar<TData>({
+  table,
+  children,
+  className,
+  ...props
+}: StudentTableToolbarProps<TData>) {
+  const columns = React.useMemo(
+    () => table.getAllColumns().filter((column) => column.getCanFilter()),
+    [table],
+  );
+
+  const hasActiveFilters = table.getState().columnFilters.length > 0;
+
+  const handleResetFilters = () => {
+    table.resetColumnFilters();
+  };
+
+  return (
+    <div
+      role="toolbar"
+      aria-orientation="horizontal"
+      className={cn(
+        "flex w-full items-start justify-between gap-2 p-1",
+        className,
+      )}
+      {...props}
+    >
+      <div className="flex flex-1 flex-wrap items-center gap-2">
+        {columns.map((column) => (
+          <StudentTableToolbarFilter key={column.id} column={column} />
+        ))}
+      </div>
+      <div className="flex items-center gap-2">
+        {hasActiveFilters && (
+          <Button
+            variant="ghost"
+            onClick={handleResetFilters}
+            className="h-8 px-2 lg:px-3"
+          >
+            <RotateCcw className="mr-2 h-4 w-4" />
+            リセット
+          </Button>
+        )}
+        {children}
+        <DataTableViewOptions table={table} />
+      </div>
+    </div>
+  );
+}
+
+interface StudentTableToolbarFilterProps<TData> {
+  column: Column<TData>;
+}
+
+function StudentTableToolbarFilter<TData>({
+  column,
+}: StudentTableToolbarFilterProps<TData>) {
+  const columnMeta = column.columnDef.meta;
+
+  const onFilterRender = React.useCallback(() => {
+    if (!columnMeta?.variant) return null;
+
+    switch (columnMeta.variant) {
+      case "text":
+        return (
+          <Input
+            placeholder={columnMeta.placeholder ?? columnMeta.label}
+            value={(column.getFilterValue() as string) ?? ""}
+            onChange={(event) => column.setFilterValue(event.target.value)}
+            className="h-8 w-40 lg:w-56"
+          />
+        );
+
+      case "number":
+        return (
+          <div className="relative">
+            <Input
+              type="number"
+              inputMode="numeric"
+              placeholder={columnMeta.placeholder ?? columnMeta.label}
+              value={(column.getFilterValue() as string) ?? ""}
+              onChange={(event) => column.setFilterValue(event.target.value)}
+              className={cn("h-8 w-[120px]", columnMeta.unit && "pr-8")}
+            />
+            {columnMeta.unit && (
+              <span className="absolute top-0 right-0 bottom-0 flex items-center rounded-r-md bg-accent px-2 text-muted-foreground text-sm">
+                {columnMeta.unit}
+              </span>
+            )}
+          </div>
+        );
+
+      case "range":
+        return (
+          <DataTableSliderFilter
+            column={column}
+            title={columnMeta.label ?? column.id}
+          />
+        );
+
+      case "date":
+      case "dateRange":
+        return (
+          <DataTableDateFilter
+            column={column}
+            title={columnMeta.label ?? column.id}
+            multiple={columnMeta.variant === "dateRange"}
+          />
+        );
+
+      case "select":
+      case "multiSelect":
+        return (
+          <DataTableFacetedFilter
+            column={column}
+            title={columnMeta.label ?? column.id}
+            options={columnMeta.options ?? []}
+            multiple={columnMeta.variant === "multiSelect"}
+          />
+        );
+
+      default:
+        return null;
+    }
+  }, [column, columnMeta]);
+
+  return onFilterRender();
+}
+
 export function StudentTable() {
-  // All hooks must be called before any conditional returns
-  const [name] = useQueryState("name", parseAsString.withDefault(""));
-  const [status] = useQueryState(
-    "status",
-    parseAsArrayOf(parseAsString).withDefault([])
-  );
-  const [studentType] = useQueryState(
-    "studentType",
-    parseAsArrayOf(parseAsString).withDefault([])
-  );
-  const [gradeYear] = useQueryState(
-    "gradeYear",
-    parseAsArrayOf(parseAsString).withDefault([])
-  );
-  const [branch] = useQueryState(
-    "branch",
-    parseAsArrayOf(parseAsString).withDefault([])
-  );
-  const [subject] = useQueryState(
-    "subject",
-    parseAsArrayOf(parseAsString).withDefault([])
-  );
+  // Storage keys for persistence
+  const FILTERS_STORAGE_KEY = "student_filters";
+  const COLUMN_VISIBILITY_STORAGE_KEY = "student_column_visibility";
+
+  // Initialize filters with localStorage values or defaults
+  const [filters, setFilters] = React.useState<{
+    name: string;
+    status: string[];
+    studentType: string[];
+    gradeYear: string[];
+    branch: string[];
+    subject: string[];
+  }>(() => {
+    if (typeof window !== 'undefined') {
+      const savedFilters = localStorage.getItem(FILTERS_STORAGE_KEY);
+      if (savedFilters) {
+        try {
+          return JSON.parse(savedFilters);
+        } catch (error) {
+          console.error('Error parsing saved filters:', error);
+        }
+      }
+    }
+    return {
+      name: "",
+      status: [] as string[],
+      studentType: [] as string[],
+      gradeYear: [] as string[],
+      branch: [] as string[],
+      subject: [] as string[],
+    };
+  });
+
+  // Load saved column visibility from localStorage
+  const getSavedColumnVisibility = () => {
+    if (typeof window !== 'undefined') {
+      const savedVisibility = localStorage.getItem(COLUMN_VISIBILITY_STORAGE_KEY);
+      if (savedVisibility) {
+        try {
+          return JSON.parse(savedVisibility);
+        } catch (error) {
+          console.error('Error parsing saved column visibility:', error);
+        }
+      }
+    }
+    return {};
+  };
+
+  // Save filters to localStorage whenever they change
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(FILTERS_STORAGE_KEY, JSON.stringify(filters));
+    }
+  }, [filters]);
+
+
+  const debouncedName = useDebounce(filters.name, 300);
   const [page, setPage] = React.useState(1);
   const [studentToEdit, setStudentToEdit] = React.useState<Student | null>(
     null
@@ -90,70 +278,86 @@ export function StudentTable() {
 
   // Parse studentType names back to IDs for API call
   const studentTypeIds = React.useMemo(() => {
-    if (studentType.length === 0) return undefined;
+    if (filters.studentType.length === 0) return undefined;
     return studentTypes
-      .filter((type) => studentType.includes(type.name))
+      .filter((type) => filters.studentType.includes(type.name))
       .map((type) => type.studentTypeId);
-  }, [studentType, studentTypes]);
+  }, [filters.studentType, studentTypes]);
 
   const { data: students, isLoading } = useStudents({
     page,
     limit: pageSize,
-    name: name || undefined,
-    studentTypeId: studentTypeIds?.[0], // API might only support single type
-    status: status[0] || undefined, // API might only support single status
+    name: debouncedName || undefined,
+    studentTypeIds: studentTypeIds, // Use the new multi-select parameter
+    status: filters.status[0] || undefined, // API still only supports single status
   });
 
-  // Filter data client-side for multiple selections
+  // Create lookup maps for better performance
+  const subjectIdToName = React.useMemo(
+    () => new Map(subjects.map((s) => [s.subjectId, s.name])),
+    [subjects]
+  );
+
+  // Convert filter arrays to Sets for O(1) lookup
+  const statusSet = React.useMemo(() => new Set(filters.status), [filters.status]);
+  const gradeYearSet = React.useMemo(() => new Set(filters.gradeYear), [filters.gradeYear]);
+  const branchSet = React.useMemo(() => new Set(filters.branch), [filters.branch]);
+  const subjectSet = React.useMemo(() => new Set(filters.subject), [filters.subject]);
+
+  // Filter data client-side only for filters not supported by the API
   const filteredData = React.useMemo(() => {
     const data = students?.data || [];
-    return data.filter((student) => {
-      const matchesName =
-        name === "" ||
-        student.name?.toLowerCase().includes(name.toLowerCase()) ||
-        student.kanaName?.toLowerCase().includes(name.toLowerCase());
-      const matchesStatus =
-        status.length === 0 || status.includes(student.status || "ACTIVE");
-      const matchesStudentType =
-        studentType.length === 0 ||
-        (student.studentTypeName &&
-          studentType.includes(student.studentTypeName));
-      const matchesGradeYear =
-        gradeYear.length === 0 ||
-        (student.gradeYear !== null &&
-          gradeYear.includes(student.gradeYear.toString()));
-      const matchesBranch =
-        branch.length === 0 ||
-        (student.branches &&
-          student.branches.some((b) => branch.includes(b.name)));
-      const matchesSubject =
-        subject.length === 0 ||
-        (student.subjectPreferences &&
-          student.subjectPreferences.some((pref) => {
-            const subjectData = subjects.find(
-              (s) => s.subjectId === pref.subjectId
-            );
-            return subjectData && subject.includes(subjectData.name);
-          }));
 
-      return (
-        matchesName &&
-        matchesStatus &&
-        matchesStudentType &&
-        matchesGradeYear &&
-        matchesBranch &&
-        matchesSubject
-      );
+    // Early return if no client-side filters
+    if (
+      gradeYearSet.size === 0 &&
+      branchSet.size === 0 &&
+      subjectSet.size === 0 &&
+      filters.status.length <= 1 // API supports single status
+    ) {
+      return data;
+    }
+
+    return data.filter((student) => {
+      // Status filter (only if multiple statuses selected)
+      if (filters.status.length > 1 && !statusSet.has(student.status || "ACTIVE")) {
+        return false;
+      }
+
+      // Grade year filter
+      if (gradeYearSet.size > 0 && (student.gradeYear === null || !gradeYearSet.has(student.gradeYear.toString()))) {
+        return false;
+      }
+
+      // Branch filter
+      if (branchSet.size > 0) {
+        if (!student.branches || !student.branches.some((b) => branchSet.has(b.name))) {
+          return false;
+        }
+      }
+
+      // Subject filter
+      if (subjectSet.size > 0) {
+        if (!student.subjectPreferences) return false;
+
+        const hasMatchingSubject = student.subjectPreferences.some((pref) => {
+          const subjectName = subjectIdToName.get(pref.subjectId);
+          return subjectName && subjectSet.has(subjectName);
+        });
+
+        if (!hasMatchingSubject) return false;
+      }
+
+      return true;
     });
   }, [
-    name,
-    status,
-    studentType,
-    gradeYear,
-    branch,
-    subject,
+    filters.status,
+    statusSet,
+    gradeYearSet,
+    branchSet,
+    subjectSet,
     students?.data,
-    subjects,
+    subjectIdToName,
   ]);
 
   const totalCount = students?.pagination.total || 0;
@@ -476,16 +680,92 @@ export function StudentTable() {
     initialState: {
       pagination: { pageSize, pageIndex: page - 1 },
       columnPinning: { right: ["actions"] },
+      columnVisibility: getSavedColumnVisibility(),
+      columnFilters: [
+        ...(filters.name ? [{ id: 'name', value: filters.name }] : []),
+        ...(filters.status.length > 0 ? [{ id: 'status', value: filters.status }] : []),
+        ...(filters.studentType.length > 0 ? [{ id: 'studentTypeName', value: filters.studentType }] : []),
+        ...(filters.gradeYear.length > 0 ? [{ id: 'gradeYear', value: filters.gradeYear }] : []),
+        ...(filters.branch.length > 0 ? [{ id: 'branches', value: filters.branch }] : []),
+        ...(filters.subject.length > 0 ? [{ id: 'subjectPreferences', value: filters.subject }] : []),
+      ],
     },
     getRowId: (row) => row.studentId,
+    enableColumnFilters: true,
   });
 
   // Extract pagination state for dependency
   const paginationPageIndex = table.getState().pagination.pageIndex;
 
+  // Extract column filters state for proper reactivity
+  const columnFilters = table.getState().columnFilters;
+
   React.useEffect(() => {
     setPage(paginationPageIndex + 1);
   }, [paginationPageIndex]);
+
+  // Extract column visibility state for dependency
+  const columnVisibility = table.getState().columnVisibility;
+
+  // Save column visibility to localStorage whenever it changes
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(COLUMN_VISIBILITY_STORAGE_KEY, JSON.stringify(columnVisibility));
+    }
+  }, [columnVisibility]);
+
+  // Handle column filter changes
+  React.useEffect(() => {
+    // If no column filters, this is a reset
+    if (columnFilters.length === 0) {
+      const defaultFilters = {
+        name: "",
+        status: [],
+        studentType: [],
+        gradeYear: [],
+        branch: [],
+        subject: [],
+      };
+      setFilters(defaultFilters);
+      // Clear localStorage when resetting
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem(FILTERS_STORAGE_KEY);
+      }
+      setPage(1);
+      return;
+    }
+
+    // Build new filters from column filters
+    const newFilters = {
+      name: "",
+      status: [] as string[],
+      studentType: [] as string[],
+      gradeYear: [] as string[],
+      branch: [] as string[],
+      subject: [] as string[],
+    };
+
+    // Set the active filters
+    columnFilters.forEach((filter) => {
+      if (filter.id === 'name') {
+        newFilters.name = filter.value as string || "";
+      } else if (filter.id === 'status') {
+        newFilters.status = filter.value as string[] || [];
+      } else if (filter.id === 'studentTypeName') {
+        newFilters.studentType = filter.value as string[] || [];
+      } else if (filter.id === 'gradeYear') {
+        newFilters.gradeYear = filter.value as string[] || [];
+      } else if (filter.id === 'branches') {
+        newFilters.branch = filter.value as string[] || [];
+      } else if (filter.id === 'subjectPreferences') {
+        newFilters.subject = filter.value as string[] || [];
+      }
+    });
+
+    setFilters(newFilters);
+    setPage(1); // Reset to first page when filters change
+  }, [columnFilters]);
+
 
   const handleDeleteStudent = () => {
     if (studentToDelete) {
@@ -522,26 +802,75 @@ export function StudentTable() {
           <Button onClick={() => setIsCreateDialogOpen(true)}>新規作成</Button>
         </div>
 
-        <DataTable
-          columns={columns}
-          data={filteredData}
-          toolbar={
-            <DataTableToolbar table={table}>
-              {table.getFilteredSelectedRowModel().rows.length > 0 && (
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={handleBatchDelete}
-                  disabled={deleteStudentMutation.isPending}
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  選択した生徒を削除 (
-                  {table.getFilteredSelectedRowModel().rows.length})
-                </Button>
-              )}
-            </DataTableToolbar>
-          }
-        />
+        <div className="relative space-y-4">
+          <StudentTableToolbar table={table}>
+            {table.getFilteredSelectedRowModel().rows.length > 0 && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleBatchDelete}
+                disabled={deleteStudentMutation.isPending}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                選択した生徒を削除 (
+                {table.getFilteredSelectedRowModel().rows.length})
+              </Button>
+            )}
+          </StudentTableToolbar>
+          <div className="rounded-md border">
+            <UITable>
+              <TableHeader>
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <TableRow key={headerGroup.id}>
+                    {headerGroup.headers.map((header) => {
+                      return (
+                        <TableHead key={header.id} colSpan={header.colSpan}>
+                          {header.isPlaceholder
+                            ? null
+                            : flexRender(
+                                header.column.columnDef.header,
+                                header.getContext()
+                              )}
+                        </TableHead>
+                      );
+                    })}
+                  </TableRow>
+                ))}
+              </TableHeader>
+              <TableBody>
+                {table.getRowModel().rows?.length ? (
+                  table.getRowModel().rows.map((row) => (
+                    <TableRow
+                      key={row.id}
+                      data-state={row.getIsSelected() && "selected"}
+                    >
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell key={cell.id}>
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext()
+                          )}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell
+                      colSpan={columns.length}
+                      className="h-24 text-center"
+                    >
+                      データがありません。
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </UITable>
+          </div>
+          <div className="flex flex-col gap-2.5">
+            <DataTablePagination table={table} />
+          </div>
+        </div>
       </div>
 
       {/* Edit Student Dialog */}

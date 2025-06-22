@@ -29,13 +29,8 @@ import { useVacations } from "@/hooks/useVacationQuery";
 import { useSession } from "next-auth/react";
 import { VacationFormDialog } from "./vacation-form-dialog";
 
-// Define custom column meta type
-interface ColumnMetaType {
-  align?: "left" | "center" | "right";
-  headerClassName?: string;
-  cellClassName?: string;
-  hidden?: boolean;
-}
+// Import types to ensure proper column meta support
+import "@/components/data-table/types";
 
 // Vacation type matching the API response
 type Vacation = {
@@ -137,7 +132,7 @@ export function VacationTable() {
       // Only show for admins
       meta: {
         hidden: !isAdmin,
-      } as ColumnMetaType,
+      },
     },
     {
       accessorKey: "notes",
@@ -152,7 +147,7 @@ export function VacationTable() {
 
   // Filter out the branch column if user is not admin
   const visibleColumns = columns.filter((col) => {
-    const meta = col.meta as ColumnMetaType | undefined;
+    const meta = col.meta;
     return !meta?.hidden;
   });
 
@@ -245,7 +240,7 @@ export function VacationTable() {
       {vacationToEdit && (
         <VacationFormDialog
           open={!!vacationToEdit}
-          onOpenChange={(open: any) => !open && setVacationToEdit(null)}
+          onOpenChange={(open: boolean) => !open && setVacationToEdit(null)}
           vacation={vacationToEdit}
         />
       )}
