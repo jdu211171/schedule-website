@@ -8,6 +8,7 @@ import { Toaster } from "sonner";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { SessionProvider } from "next-auth/react";
+import { NuqsAdapter } from "nuqs/adapters/next/app";
 
 export function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(
@@ -31,7 +32,11 @@ export function Providers({ children }: { children: ReactNode }) {
         enableSystem
         disableTransitionOnChange
       >
-        <SessionProvider>{children}</SessionProvider>
+        <SessionProvider>
+          <NuqsAdapter>
+            {children}
+          </NuqsAdapter>
+        </SessionProvider>
       </ThemeProvider>
       <ReactQueryDevtools initialIsOpen={false} />
       <Toaster
