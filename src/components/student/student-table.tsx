@@ -522,22 +522,26 @@ export function StudentTable() {
           <Button onClick={() => setIsCreateDialogOpen(true)}>新規作成</Button>
         </div>
 
-        <DataTable table={table}>
-          <DataTableToolbar table={table}>
-            {table.getFilteredSelectedRowModel().rows.length > 0 && (
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={handleBatchDelete}
-                disabled={deleteStudentMutation.isPending}
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                選択した生徒を削除 (
-                {table.getFilteredSelectedRowModel().rows.length})
-              </Button>
-            )}
-          </DataTableToolbar>
-        </DataTable>
+        <DataTable
+          columns={columns}
+          data={filteredData}
+          toolbar={
+            <DataTableToolbar table={table}>
+              {table.getFilteredSelectedRowModel().rows.length > 0 && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleBatchDelete}
+                  disabled={deleteStudentMutation.isPending}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  選択した生徒を削除 (
+                  {table.getFilteredSelectedRowModel().rows.length})
+                </Button>
+              )}
+            </DataTableToolbar>
+          }
+        />
       </div>
 
       {/* Edit Student Dialog */}
