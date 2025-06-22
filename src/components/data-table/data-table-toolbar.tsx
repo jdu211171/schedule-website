@@ -56,7 +56,7 @@ export function DataTableToolbar<TData>({
             onClick={onReset}
           >
             <X />
-            Reset
+            リセット
           </Button>
         )}
       </div>
