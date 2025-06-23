@@ -1,4 +1,6 @@
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
 import {
   ExtendedClassSessionWithRelations,
   useMultipleWeeksClassSessions,
@@ -23,6 +25,7 @@ interface CalendarWeekProps {
   onLessonSelect?: (lesson: ExtendedClassSessionWithRelations) => void;
   onEdit?: (lesson: ExtendedClassSessionWithRelations) => void;
   onDelete?: (lessonId: string) => void;
+  onCreateLesson?: (date: Date) => void;
   filters?: DayFilters;
   onFiltersChange?: (filters: DayFilters) => void;
   selectedBranchId?: string;
@@ -33,6 +36,7 @@ export default function CalendarWeek({
   onLessonSelect,
   onEdit,
   onDelete,
+  onCreateLesson,
   filters = {},
   onFiltersChange,
   selectedBranchId,
@@ -57,6 +61,15 @@ export default function CalendarWeek({
       }
     },
     [expandedLessonId, allSessions, onLessonSelect]
+  );
+
+  const handleCreateLessonClick = useCallback(
+    (date: Date) => {
+      if (onCreateLesson) {
+        onCreateLesson(date);
+      }
+    },
+    [onCreateLesson]
   );
 
   const calculateLayout = useCallback((lessonsCount: number) => {
@@ -213,11 +226,11 @@ export default function CalendarWeek({
                     return (
                       <div
                         key={ind}
-                        className={`border-r last:border-r-0 p-2 h-full ${
+                        className={`border-r last:border-r-0 p-2 h-full flex flex-col ${
                           day.isToday ? "bg-blue-50/30 dark:bg-[#171616]" : ""
                         }`}
                       >
-                        <div className="space-y-3">
+                        <div className="flex-1 space-y-3">
                           {Object.entries(groupedLessons).map(
                             ([timeSlot, lessonsAtTime]) => {
                               const { rows, itemsPerRow } = calculateLayout(
@@ -323,6 +336,36 @@ export default function CalendarWeek({
                             </div>
                           )}
                         </div>
+
+                        {/* Create Lesson Button */}
+                        {onCreateLesson && (() => {
+                          // Get current date and target date for comparison
+                          const today = new Date();
+                          const dayDate = new Date(day.date);
+                          
+                          // Normalize to start of day for accurate comparison
+                          today.setHours(0, 0, 0, 0);
+                          dayDate.setHours(0, 0, 0, 0);
+                          
+                          // Don't render button for past dates
+                          if (dayDate < today) {
+                            return null;
+                          }
+                          
+                          return (
+                            <div className="mt-2 pt-2 border-t border-border/50">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleCreateLessonClick(day.date)}
+                                className="w-full h-8 text-xs text-muted-foreground hover:text-foreground hover:bg-accent"
+                              >
+                                <Plus className="w-3 h-3 mr-1" />
+                                授業を作成
+                              </Button>
+                            </div>
+                          );
+                        })()}
                       </div>
                     );
                   })}

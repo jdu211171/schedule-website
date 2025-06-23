@@ -4,16 +4,13 @@ import { ja } from 'date-fns/locale';
 import { DateRange } from "react-day-picker";
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, X, CheckCircle2, AlertTriangle, Users } from "lucide-react";
+import { X, CheckCircle2, AlertTriangle, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fetcher } from '@/lib/fetcher';
 import {
   NewClassSessionData,
   formatDateToString,
   ConflictResponse,
-  ConflictResolutionAction,
   CreateClassSessionWithConflictsPayload,
   SessionAction,
 } from './types/class-session';
@@ -22,109 +19,7 @@ import { TimeInput } from '@/components/ui/time-input';
 import { useSmartSelection, EnhancedTeacher, EnhancedStudent, SubjectCompatibility } from '@/hooks/useSmartSelection';
 import { useAvailability } from './availability-layer';
 import { ConflictResolutionTable } from './conflict-resolution-table';
-
-function DateRangePicker({
-  dateRange,
-  setDateRange,
-  placeholder = "期間を選択",
-  disabled = false
-}: {
-  dateRange: DateRange | undefined;
-  setDateRange: (dateRange: DateRange | undefined) => void;
-  placeholder?: string;
-  disabled?: boolean;
-}) {
-  const [open, setOpen] = useState(false);
-  const [tempRange, setTempRange] = useState<DateRange | undefined>(dateRange);
-
-  useEffect(() => {
-    setTempRange(dateRange);
-  }, [dateRange]);
-
-  const handleOpenChange = (isOpen: boolean) => {
-    if (disabled) return;
-    setOpen(isOpen);
-    if (!isOpen) {
-      setTempRange(dateRange);
-    }
-  };
-
-  const handleApply = () => {
-    setDateRange(tempRange);
-    setOpen(false);
-  };
-
-  return (
-    <Popover open={open} onOpenChange={handleOpenChange}>
-      <PopoverTrigger asChild>
-        <Button
-          variant={"outline"}
-          disabled={disabled}
-          className={cn(
-            "w-full justify-start text-left font-normal",
-            !dateRange && "text-muted-foreground",
-            disabled && "opacity-50 cursor-not-allowed"
-          )}
-        >
-          <CalendarIcon className="mr-2 h-4 w-4" />
-          {dateRange?.from ? (
-            dateRange.to ? (
-              <>
-                {format(dateRange.from, "yyyy年MM月dd日", { locale: ja })} - {format(dateRange.to, "yyyy年MM月dd日", { locale: ja })}
-              </>
-            ) : (
-              format(dateRange.from, "yyyy年MM月dd日", { locale: ja })
-            )
-          ) : (
-            <span>{placeholder}</span>
-          )}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent
-        className="w-auto p-0"
-        style={{
-          zIndex: 9999,
-          position: 'relative',
-          pointerEvents: 'auto'
-        }}
-        align="start"
-        side="bottom"
-        sideOffset={8}
-        forceMount
-      >
-        <div className="flex flex-col">
-          <Calendar
-            initialFocus
-            mode="range"
-            defaultMonth={tempRange?.from}
-            selected={tempRange}
-            onSelect={setTempRange}
-            numberOfMonths={2}
-            locale={ja}
-            showOutsideDays={false}
-            className="rounded-md border-b pointer-events-auto"
-          />
-          <div className="flex justify-end p-2 bg-background border-t">
-            <div className="text-sm mr-auto text-muted-foreground">
-              {tempRange?.from && tempRange?.to && (
-                <>
-                  {format(tempRange.from, "yyyy年MM月dd日", { locale: ja })} - {format(tempRange.to, "yyyy年MM月dd日", { locale: ja })}
-                </>
-              )}
-            </div>
-            <Button
-              size="sm"
-              onClick={handleApply}
-              disabled={!tempRange?.from || !tempRange?.to}
-            >
-              適用
-            </Button>
-          </div>
-        </div>
-      </PopoverContent>
-    </Popover>
-  );
-}
+import { CompactDateRangePicker } from '../../fix-date-range-picker/future-date-range-picker';
 
 import { Teacher } from '@/hooks/useTeacherQuery';
 import { Student } from '@/hooks/useStudentQuery';
@@ -182,6 +77,7 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
   const [selectedChildClassTypeId, setSelectedChildClassTypeId] = useState<string>('');
   const [selectedTeacherId, setSelectedTeacherId] = useState<string>('');
   const [selectedStudentId, setSelectedStudentId] = useState<string>('');
+  const [selectedBoothId, setSelectedBoothId] = useState<string>(''); // NEW: Booth selector state
   const [isRecurring, setIsRecurring] = useState<boolean>(false);
   const [subjectId, setSubjectId] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
@@ -261,6 +157,11 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
     return classTypes.filter(type => type.parentId === selectedParentClassTypeId) || [];
   }, [classTypes, selectedParentClassTypeId]);
 
+  // Handle date range update from CompactDateRangePicker
+  const handleDateRangeUpdate = (range: DateRange) => {
+    setDateRange(range);
+  };
+
   // Handle conflict resolution with new table
   const handleConflictResolution = async (actions: SessionAction[]) => {
     console.log('Received actions in handleConflictResolution:', actions);
@@ -268,7 +169,6 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
   
     setIsSubmitting(true);
     try {
-      // ВАЖНО: добавляем sessionActions в payload
       const finalPayload: CreateClassSessionWithConflictsPayload = {
         ...currentPayload,
         sessionActions: actions  
@@ -279,12 +179,10 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
   
       const result = await onSave(finalPayload);
       if (result.success) {
-        // Success - close dialog
         setConflictData(null);
         setCurrentPayload(null);
         onOpenChange(false);
       } else if (result.conflicts) {
-        // New conflicts appeared - update conflict data
         setConflictData(result.conflicts);
       }
     } catch (error) {
@@ -409,6 +307,12 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
     label: type.name,
   }));
 
+  // NEW: Booth items for selector
+  const boothItems: SearchableSelectItem[] = booths.map((booth) => ({
+    value: booth.boothId,
+    label: booth.name,
+  }));
+
   const compatibilityInfo = getCompatibilityInfo();
 
   // Event handlers
@@ -425,6 +329,11 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
   const handleSubjectChange = (subjectId: string) => {
     if (isFormDisabled) return;
     setSubjectId(subjectId);
+  };
+
+  const handleBoothChange = (boothId: string) => {
+    if (isFormDisabled) return;
+    setSelectedBoothId(boothId);
   };
 
   const handleParentClassTypeChange = (parentTypeId: string) => {
@@ -456,6 +365,10 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
   const clearSubject = () => {
     if (isFormDisabled) return;
     setSubjectId('');
+  };
+  const clearBooth = () => {
+    if (isFormDisabled) return;
+    setSelectedBoothId('');
   };
   const clearParentClassType = () => {
     if (isFormDisabled) return;
@@ -533,6 +446,7 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
         setSelectedChildClassTypeId(correctChildClassTypeId);
         setSelectedTeacherId(preselectedTeacherId || '');
         setSelectedStudentId(preselectedStudentId || '');
+        setSelectedBoothId(lessonData.boothId || ''); // NEW: Initialize booth state
         setIsRecurring(correctIsRecurring);
         setSubjectId('');
         setNotes('');
@@ -551,7 +465,6 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
       initializeDialog();
     } else if (!open) {
       setIsInitializing(true);
-      // Reset conflict states when dialog closes
       setConflictData(null);
       setCurrentPayload(null);
     }
@@ -595,6 +508,12 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
       errors.push("科目を選択してください。");
     }
 
+    // NEW: Booth validation
+    const finalBoothId = lessonData.boothId || selectedBoothId;
+    if (!finalBoothId) {
+      errors.push("教室を選択してください。");
+    }
+
     if (!startTime) {
       errors.push("開始時間を選択してください。");
     }
@@ -626,10 +545,12 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
   const canSubmit = useMemo(() => {
     if (isInitializing) return false;
 
+    const finalBoothId = lessonData.boothId || selectedBoothId;
     const hasRequiredFields = selectedParentClassTypeId &&
                              selectedTeacherId &&
                              selectedStudentId &&
                              subjectId &&
+                             finalBoothId &&
                              startTime &&
                              endTime;
 
@@ -641,7 +562,7 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
     } else {
       return dateRange?.from;
     }
-  }, [isInitializing, selectedParentClassTypeId, selectedTeacherId, selectedStudentId, subjectId, startTime, endTime, isRecurring, dateRange]);
+  }, [isInitializing, selectedParentClassTypeId, selectedTeacherId, selectedStudentId, subjectId, selectedBoothId, lessonData.boothId, startTime, endTime, isRecurring, dateRange]);
 
   const handleSubmit = async () => {
     const errors = validateForm();
@@ -652,12 +573,13 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
     }
 
     const finalClassTypeId = selectedChildClassTypeId || selectedParentClassTypeId;
+    const finalBoothId = lessonData.boothId || selectedBoothId; // NEW: Use selected booth if lesson data doesn't have one
 
     const payload: CreateClassSessionWithConflictsPayload = {
       date: formatDateToString(lessonData.date),
       startTime: startTime,
       endTime: endTime,
-      boothId: lessonData.boothId,
+      boothId: finalBoothId, // NEW: Use final booth ID
       subjectId: subjectId,
       teacherId: selectedTeacherId,
       studentId: selectedStudentId,
@@ -686,10 +608,8 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
       const result = await onSave(payload);
       
       if (result.success) {
-        // Success - close dialog
         onOpenChange(false);
       } else if (result.conflicts) {
-        // Conflicts found - show conflict resolution interface
         setCurrentPayload(payload);
         setConflictData(result.conflicts);
       }
@@ -714,6 +634,7 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
     setSelectedChildClassTypeId('');
     setSelectedTeacherId(preselectedTeacherId || '');
     setSelectedStudentId(preselectedStudentId || '');
+    setSelectedBoothId(lessonData.boothId || ''); // NEW: Reset booth state
     setIsRecurring(correctIsRecurring);
     setSubjectId('');
     setNotes('');
@@ -748,11 +669,45 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
             {format(typeof lessonData.date === 'string' ? new Date(lessonData.date) : lessonData.date, 'yyyy年MM月dd日', { locale: ja })}
           </div>
         </div>
+        
+        {/* UPDATED: Booth Field - Conditional selector or static display */}
         <div>
-          <label className="text-sm font-medium text-foreground">教室</label>
-          <div className="border rounded-md p-2 mt-1 bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground border-input">
-            {booths.find(booth => booth.boothId === lessonData.boothId)?.name || lessonData.boothId}
-          </div>
+          <label className="text-sm font-medium text-foreground">
+            教室 <span className="text-destructive">*</span>
+          </label>
+          {!lessonData.boothId ? (
+            // Show selector for weekly calendar (no pre-selected booth)
+            <div className="flex items-center gap-2 mt-1">
+              <div className="flex-1">
+                <SearchableSelect
+                  value={selectedBoothId}
+                  onValueChange={handleBoothChange}
+                  items={boothItems}
+                  placeholder="教室を選択"
+                  searchPlaceholder="教室を検索..."
+                  emptyMessage="教室が見つかりません"
+                  disabled={disabled}
+                />
+              </div>
+              {selectedBoothId && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={clearBooth}
+                  className="px-2"
+                  disabled={disabled}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          ) : (
+            // Show static field for daily calendar (pre-selected booth)
+            <div className="border rounded-md p-2 mt-1 bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground border-input">
+              {booths.find(booth => booth.boothId === lessonData.boothId)?.name || lessonData.boothId}
+            </div>
+          )}
         </div>
       </div>
 
@@ -1055,10 +1010,11 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
           <div>
             <label className="text-sm font-medium mb-1 block text-foreground">期間 <span className="text-destructive">*</span></label>
             <div className="relative">
-              <DateRangePicker
-                dateRange={dateRange}
-                setDateRange={setDateRange}
-                placeholder="期間を選択"
+              <CompactDateRangePicker
+                initialDateFrom={dateRange?.from}
+                initialDateTo={dateRange?.to}
+                onUpdate={handleDateRangeUpdate}
+                placeholder="期間を選択してください"
                 disabled={disabled}
               />
             </div>
@@ -1159,12 +1115,12 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="overflow-y-auto">
+        <div className="overflow-y-auto max-h-[70vh]">
           {conflictData ? (
             // Two-column layout when conflicts exist
             <div className="flex gap-6">
-              {/* Left column - Form (disabled) */}
-              <div className="flex-1 min-w-0">
+              {/* Left column - Form (disabled) - FIXED HEIGHT */}
+              <div className="w-[600px] flex-shrink-0">
                 <div className="text-sm font-medium mb-2 text-muted-foreground">
                   入力された情報:
                 </div>

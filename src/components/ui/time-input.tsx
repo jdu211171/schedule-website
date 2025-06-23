@@ -20,7 +20,7 @@ interface TimeInputProps {
   teacherAvailability?: boolean[];
   studentAvailability?: boolean[];
   timeSlots?: TimeSlot[];
-  usePortal?: boolean; // New prop for Portal functionality
+  usePortal?: boolean;
 }
 
 const AVAILABILITY_COLORS = {
@@ -87,10 +87,8 @@ export const TimeInput: React.FC<TimeInputProps> = ({
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
   
-  // Internal state for temporary value
   const [internalValue, setInternalValue] = useState(value);
 
-  // Sync internal state with external value
   useEffect(() => {
     setInternalValue(value);
   }, [value]);
@@ -103,7 +101,6 @@ export const TimeInput: React.FC<TimeInputProps> = ({
     return { hours: '00', minutes: '00' };
   };
 
-  // Use internal value for display
   const { hours, minutes } = parseValue(internalValue);
 
   const availabilityType = useMemo(() => {
@@ -127,12 +124,11 @@ export const TimeInput: React.FC<TimeInputProps> = ({
 
   const colors = AVAILABILITY_COLORS[availabilityType];
 
-  // Calculate dropdown position for Portal
   const calculateDropdownPosition = () => {
     if (containerRef.current && usePortal) {
       const rect = containerRef.current.getBoundingClientRect();
       setDropdownPosition({
-        top: rect.bottom + 4, // Remove window.scrollY since we're using position: fixed
+        top: rect.bottom + 4,
         left: rect.left,
         width: rect.width
       });
@@ -141,21 +137,17 @@ export const TimeInput: React.FC<TimeInputProps> = ({
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      // For Portal dropdown, check both container and portal element
       if (usePortal) {
         const portalElement = document.getElementById('time-input-dropdown-portal');
         if (containerRef.current && !containerRef.current.contains(event.target as Node) &&
             (!portalElement || !portalElement.contains(event.target as Node))) {
-          // Send final value to parent when closing dropdown
           if (internalValue !== value) {
             onChange(internalValue);
           }
           setIsOpen(false);
         }
       } else {
-        // Original logic for non-portal dropdown
         if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-          // Send final value to parent when closing dropdown
           if (internalValue !== value) {
             onChange(internalValue);
           }
@@ -170,13 +162,11 @@ export const TimeInput: React.FC<TimeInputProps> = ({
     }
   }, [isOpen, internalValue, value, onChange, usePortal]);
 
-  // Update only internal state
   const updateInternalTime = (newHours: string, newMinutes: string) => {
     const formattedHours = newHours.padStart(2, '0');
     const formattedMinutes = newMinutes.padStart(2, '0');
     const newTime = `${formattedHours}:${formattedMinutes}`;
     setInternalValue(newTime);
-    // Don't call onChange here!
   };
 
   const adjustHours = (delta: number) => {
@@ -209,18 +199,15 @@ export const TimeInput: React.FC<TimeInputProps> = ({
     updateInternalTime(newHours.toString(), newMinutes.toString());
   };
 
-  // Handle main click - also send changes when closing
   const handleMainClick = () => {
     if (disabled) return;
     
     if (isOpen) {
-      // Close and send changes
       if (internalValue !== value) {
         onChange(internalValue);
       }
       setIsOpen(false);
     } else {
-      // Open and calculate position if using Portal
       if (usePortal) {
         calculateDropdownPosition();
       }
@@ -228,21 +215,20 @@ export const TimeInput: React.FC<TimeInputProps> = ({
     }
   };
 
-  // Dropdown content component
   const DropdownContent = () => (
     <div 
       id={usePortal ? "time-input-dropdown-portal" : undefined}
       className="bg-background border border-input rounded-md shadow-lg z-50"
       style={usePortal ? {
-        position: 'fixed', // Changed from absolute to fixed
+        position: 'fixed',
         top: dropdownPosition.top,
         left: dropdownPosition.left,
         minWidth: dropdownPosition.width,
         zIndex: 9999,
-        pointerEvents: 'auto' // Ensure pointer events work
+        pointerEvents: 'auto'
       } : {}}
-      onMouseDown={(e) => e.stopPropagation()} // Prevent event bubbling
-      onClick={(e) => e.stopPropagation()} // Prevent event bubbling
+      onMouseDown={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
     >
       <div className="p-3">
         <div className="flex items-center justify-center space-x-4">
@@ -257,7 +243,7 @@ export const TimeInput: React.FC<TimeInputProps> = ({
             >
               <ChevronUp className="w-4 h-4" />
             </button>
-            <span className={`text-lg font-mono w-8 text-center py-2 font-bold ${colors.numberText}`}>{hours}</span>
+            <span className={`text-lg font-mono w-8 text-center py-2 font-medium ${colors.numberText}`}>{hours}</span>
             <button
               type="button"
               className="p-2 hover:bg-accent rounded transition-colors"
@@ -284,7 +270,7 @@ export const TimeInput: React.FC<TimeInputProps> = ({
             >
               <ChevronUp className="w-4 h-4" />
             </button>
-            <span className={`text-lg font-mono w-8 text-center py-2 font-bold ${colors.numberText}`}>{minutes}</span>
+            <span className={`text-lg font-mono w-8 text-center py-2 font-medium ${colors.numberText}`}>{minutes}</span>
             <button
               type="button"
               className="p-2 hover:bg-accent rounded transition-colors"
@@ -338,9 +324,9 @@ export const TimeInput: React.FC<TimeInputProps> = ({
         <Clock className="w-4 h-4 mr-2 text-muted-foreground" />
         
         <div className="flex items-center flex-1">
-          <span className={`text-center font-mono font-bold text-lg ${colors.numberText}`}>{hours}</span>
+          <span className={`text-center font-mono font-medium text-base ${colors.numberText}`}>{hours}</span>
           <span className="text-muted-foreground mx-1">:</span>
-          <span className={`text-center font-mono font-bold text-lg ${colors.numberText}`}>{minutes}</span>
+          <span className={`text-center font-mono font-medium text-base ${colors.numberText}`}>{minutes}</span>
         </div>
       </div>
 
