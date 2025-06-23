@@ -2,8 +2,8 @@ import { createHmac } from 'crypto';
 import axios from 'axios';
 
 const LINE_API_BASE = 'https://api.line.me/v2/bot';
-const CHANNEL_ACCESS_TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN!;
-const CHANNEL_SECRET = process.env.LINE_CHANNEL_SECRET!;
+const CHANNEL_ACCESS_TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN;
+const CHANNEL_SECRET = process.env.LINE_CHANNEL_SECRET;
 
 export interface LineMessage {
   type: 'text';
@@ -31,6 +31,11 @@ export interface LineWebhookBody {
  * Verify LINE webhook signature
  */
 export function verifySignature(body: string, signature: string): boolean {
+  if (!CHANNEL_SECRET) {
+    console.error('LINE_CHANNEL_SECRET is not set');
+    return false;
+  }
+  
   const hash = createHmac('sha256', CHANNEL_SECRET)
     .update(body)
     .digest('base64');
@@ -41,6 +46,11 @@ export function verifySignature(body: string, signature: string): boolean {
  * Send a reply message to LINE (free within 24 hours)
  */
 export async function sendLineReply(replyToken: string, message: string): Promise<void> {
+  if (!CHANNEL_ACCESS_TOKEN) {
+    console.error('LINE_CHANNEL_ACCESS_TOKEN is not set');
+    throw new Error('LINE_CHANNEL_ACCESS_TOKEN is not set');
+  }
+
   try {
     await axios.post(
       `${LINE_API_BASE}/message/reply`,
