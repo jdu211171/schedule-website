@@ -560,6 +560,11 @@ export const POST = withBranchAccess(
         // Handle single session
         const conflicts: ConflictInfo[] = [];
 
+        // Check if there's a session action for this date
+        const dateStr = format(dateObj, "yyyy-MM-dd");
+        const sessionAction = sessionActions?.find((action) => action.date === dateStr);
+        const shouldForceCreate = forceCreate || sessionAction?.action === "FORCE_CREATE";
+
         // Check vacation conflict
         const hasVacationConflict = await checkVacationConflict(
           dateObj,
@@ -655,7 +660,7 @@ export const POST = withBranchAccess(
             const conflictEndTime = format(boothConflict.endTime, "HH:mm");
             const boothName = boothConflict.booth?.name || "不明なブース";
 
-            if (!forceCreate) {
+            if (!shouldForceCreate) {
               conflicts.push({
                 date: format(dateObj, "yyyy-MM-dd"),
                 dayOfWeek: getDayOfWeekFromDate(dateObj),
@@ -674,7 +679,7 @@ export const POST = withBranchAccess(
         }
 
         // Handle conflicts based on user preference
-        if (conflicts.length > 0 && !forceCreate) {
+        if (conflicts.length > 0 && !shouldForceCreate) {
           return NextResponse.json(
             {
               conflicts,
