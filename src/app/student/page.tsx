@@ -40,7 +40,6 @@ export default function StudentPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewType, setViewType] = useState<"WEEK" | "MONTH">("WEEK");
 
-  // Calculate date ranges based on view type
   const { startDate, endDate } = useMemo(() => {
     if (viewType === "WEEK") {
       const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
@@ -52,7 +51,6 @@ export default function StudentPage() {
     } else {
       const monthStart = startOfMonth(currentDate);
       const monthEnd = endOfMonth(currentDate);
-      // For month view, get the full calendar view (including partial weeks)
       const calendarStart = startOfWeek(monthStart, { weekStartsOn: 1 });
       const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
       return {
@@ -97,25 +95,33 @@ export default function StudentPage() {
         onValueChange={(val) => setViewType(val as "WEEK" | "MONTH")}
         className="w-full"
       >
-        {/* Header Controls */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 p-4 sm:p-0">
-          {/* Navigation Controls */}
-          <div className="flex items-center gap-2 order-2 sm:order-1">
+          
+          <div className="flex items-center gap-3 order-2 sm:order-1 ml-2 sm:ml-4">
+            <StudentScheduleArrows
+              setCurrentDate={setCurrentDate}
+              viewType={viewType}
+              position="left"
+            />
+            
             <Button
               variant="outline"
               size="sm"
               onClick={() => {
                 setCurrentDate(new Date());
               }}
-              className="text-sm px-3 py-2"
+              className="text-sm px-3 py-2 rounded-md"
             >
               今日
             </Button>
+            
             <StudentScheduleArrows
               setCurrentDate={setCurrentDate}
               viewType={viewType}
+              position="right"
             />
-            <div className="hidden sm:block">
+            
+            <div className="hidden sm:block ml-2">
               <StudentScheduleCalendar
                 setCurrentDate={setCurrentDate}
                 currentDate={currentDate}
@@ -123,7 +129,6 @@ export default function StudentPage() {
             </div>
           </div>
 
-          {/* View Toggle */}
           <TabsList className="order-1 sm:order-2 w-full sm:w-auto">
             <TabsTrigger
               value="WEEK"
@@ -146,7 +151,6 @@ export default function StudentPage() {
           </TabsList>
         </div>
 
-        {/* Mobile Calendar Button */}
         <div className="sm:hidden px-4 mb-4">
           <StudentScheduleCalendar
             setCurrentDate={setCurrentDate}
@@ -154,7 +158,6 @@ export default function StudentPage() {
           />
         </div>
 
-        {/* Content */}
         <div className="px-2 sm:px-4">
           <TabsContent value="WEEK" className="mt-0">
             <StudentScheduleWeekViewer

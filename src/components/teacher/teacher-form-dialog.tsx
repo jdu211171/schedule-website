@@ -145,14 +145,16 @@ export function TeacherFormDialog({
     createTeacherMutation.isPending || updateTeacherMutation.isPending;
 
   // Keep dialog open setting - shared across student and teacher forms
-  const KEEP_OPEN_STORAGE_KEY = "form-keep-open";
-  const [keepDialogOpen, setKeepDialogOpen] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const savedKeepOpen = localStorage.getItem(KEEP_OPEN_STORAGE_KEY);
-      return savedKeepOpen ? JSON.parse(savedKeepOpen) : false;
-    }
-    return false;
-  });
+  // const KEEP_OPEN_STORAGE_KEY = "form-keep-open";
+  // const [keepDialogOpen, setKeepDialogOpen] = useState(() => {
+  //   if (typeof window !== 'undefined') {
+  //     const savedKeepOpen = localStorage.getItem(KEEP_OPEN_STORAGE_KEY);
+  //     return savedKeepOpen ? JSON.parse(savedKeepOpen) : true;
+  //   }
+  //   return true;
+  // });
+
+  const keepDialogOpen = true;
 
   // Subject selection state
   const [teacherSubjects, setTeacherSubjects] = useState<TeacherSubject[]>([]);
@@ -193,22 +195,24 @@ export function TeacherFormDialog({
   });
 
   // Load keep dialog open setting from localStorage when dialog opens
-  useEffect(() => {
-    if (open) {
-      const savedKeepOpen = localStorage.getItem(KEEP_OPEN_STORAGE_KEY);
-      if (savedKeepOpen !== null) {
-        const parsed = JSON.parse(savedKeepOpen);
-        setKeepDialogOpen(parsed);
-      }
-    }
-  }, [open]);
+  // useEffect(() => {
+  //   if (open) {
+  //     const savedKeepOpen = localStorage.getItem(KEEP_OPEN_STORAGE_KEY);
+  //     if (savedKeepOpen !== null) {
+  //       const parsed = JSON.parse(savedKeepOpen);
+  //       setKeepDialogOpen(parsed);
+  //     } else {
+  //       setKeepDialogOpen(true);
+  //     }
+  //   }
+  // }, [open]);
 
-  // Save keep dialog open setting to localStorage
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(KEEP_OPEN_STORAGE_KEY, JSON.stringify(keepDialogOpen));
-    }
-  }, [keepDialogOpen]);
+  // // Save keep dialog open setting to localStorage
+  // useEffect(() => {
+  //   if (typeof window !== 'undefined') {
+  //     localStorage.setItem(KEEP_OPEN_STORAGE_KEY, JSON.stringify(keepDialogOpen));
+  //   }
+  // }, [keepDialogOpen]);
 
   useEffect(() => {
     if (teacher) {
@@ -1322,7 +1326,7 @@ export function TeacherFormDialog({
         <DialogFooter className="flex-shrink-0 pt-4 border-t">
           <div className="flex flex-col gap-4 w-full">
             {/* Keep dialog open toggle */}
-            <div className="flex items-center space-x-2 justify-center">
+            {/* <div className="flex items-center space-x-2 justify-center">
               <Checkbox
                 id="keep-dialog-open"
                 checked={keepDialogOpen}
@@ -1334,7 +1338,7 @@ export function TeacherFormDialog({
               >
                 保存後もダイアログを開いたまま保持する
               </label>
-            </div>
+            </div> */}
 
             <div className="flex flex-col-reverse sm:flex-row gap-3 w-full sm:w-auto sm:ml-auto">
               <Button

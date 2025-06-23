@@ -30,7 +30,6 @@ export const StudentScheduleWeekViewer: React.FC<WeekViewerProps> = ({
 
   return (
     <div className="w-full">
-      {/* Mobile View - Stack days vertically */}
       <div className="md:hidden space-y-4">
         {days.map((day, dayIndex) => {
           const lessonsOnDay = lessons.filter((lesson) => {
@@ -42,19 +41,17 @@ export const StudentScheduleWeekViewer: React.FC<WeekViewerProps> = ({
 
           return (
             <div key={dayIndex} className="border rounded-lg overflow-hidden">
-              {/* Day Header */}
               <div
                 className={cn(
                   "px-4 py-3 text-center font-semibold text-sm",
                   currentDay
-                    ? "bg-blue-500 text-white dark:bg-blue-600"
+                    ? "bg-gray-500 text-white dark:bg-gray-600"
                     : "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200"
                 )}
               >
                 {daysOfWeek[dayIndex]} {format(day, "M/d")}
               </div>
 
-              {/* Lessons */}
               <div className="p-3 space-y-3 min-h-[100px]">
                 {lessonsOnDay.length === 0 ? (
                   <div className="text-center text-gray-500 text-sm py-4">
@@ -75,7 +72,6 @@ export const StudentScheduleWeekViewer: React.FC<WeekViewerProps> = ({
                           border
                         )}
                       >
-                        {/* Subject */}
                         <div className="flex items-center gap-2">
                           <BookOpen
                             className={cn(iconColor, "w-4 h-4 flex-shrink-0")}
@@ -90,7 +86,6 @@ export const StudentScheduleWeekViewer: React.FC<WeekViewerProps> = ({
                           </span>
                         </div>
 
-                        {/* Teacher and Booth - Side by side on mobile */}
                         <div className="grid grid-cols-1 gap-1 text-xs">
                           <div className="flex items-center gap-2">
                             <User2
@@ -110,7 +105,6 @@ export const StudentScheduleWeekViewer: React.FC<WeekViewerProps> = ({
                           </div>
                         </div>
 
-                        {/* Time */}
                         <div className="flex items-center justify-between pt-2 border-t border-gray-200 dark:border-gray-600">
                           <div className="flex items-center gap-2">
                             <Clock9
@@ -140,9 +134,7 @@ export const StudentScheduleWeekViewer: React.FC<WeekViewerProps> = ({
         })}
       </div>
 
-      {/* Desktop View - Grid layout */}
-      <div className="hidden md:block overflow-auto">
-        {/* Headers */}
+      <div className="hidden md:block overflow-auto rounded-lg border border-gray-200 dark:border-gray-700">
         <div className="grid grid-cols-7 text-sm font-semibold">
           {days.map((day, i) => {
             const currentDay = isToday(day);
@@ -150,9 +142,9 @@ export const StudentScheduleWeekViewer: React.FC<WeekViewerProps> = ({
               <div
                 key={i}
                 className={cn(
-                  "text-center px-2 py-3 border-b",
+                  "text-center px-2 py-3 border-b border-r border-gray-200 dark:border-gray-700 last:border-r-0",
                   currentDay
-                    ? "bg-blue-400 text-white font-bold dark:bg-blue-600"
+                    ? "bg-gray-500 text-white font-bold dark:bg-gray-600"
                     : "bg-gray-50 dark:bg-gray-800"
                 )}
               >
@@ -163,8 +155,7 @@ export const StudentScheduleWeekViewer: React.FC<WeekViewerProps> = ({
           })}
         </div>
 
-        {/* Content Grid */}
-        <div className="grid grid-cols-7 border-l border-b border-gray-200 dark:border-gray-700 min-h-[550px]">
+        <div className="grid grid-cols-7 min-h-[550px]">
           {days.map((day, dayIndex) => {
             const lessonsOnDay = lessons.filter((lesson) => {
               const lessonDate = lesson.date;
@@ -176,7 +167,7 @@ export const StudentScheduleWeekViewer: React.FC<WeekViewerProps> = ({
                 key={dayIndex}
                 className={cn(
                   "border-r border-gray-200 dark:border-gray-700 p-2 space-y-2",
-                  isToday(day) && "bg-blue-50 dark:bg-blue-950/20"
+                  isToday(day) && "bg-gray-50 dark:bg-gray-800/30"
                 )}
               >
                 {lessonsOnDay.map((lesson, i) => {
@@ -193,7 +184,6 @@ export const StudentScheduleWeekViewer: React.FC<WeekViewerProps> = ({
                         border
                       )}
                     >
-                      {/* Subject */}
                       <div className="flex items-center gap-2">
                         <BookOpen
                           className={cn(iconColor, "w-4 h-4 flex-shrink-0")}
@@ -203,7 +193,6 @@ export const StudentScheduleWeekViewer: React.FC<WeekViewerProps> = ({
                         </span>
                       </div>
 
-                      {/* Teacher */}
                       <div className="flex items-center gap-2">
                         <User2
                           className={cn(iconColor, "w-3 h-3 flex-shrink-0")}
@@ -213,7 +202,6 @@ export const StudentScheduleWeekViewer: React.FC<WeekViewerProps> = ({
                         </span>
                       </div>
 
-                      {/* Booth */}
                       <div className="flex items-center gap-2">
                         <School
                           className={cn(iconColor, "w-3 h-3 flex-shrink-0")}
@@ -223,7 +211,6 @@ export const StudentScheduleWeekViewer: React.FC<WeekViewerProps> = ({
                         </span>
                       </div>
 
-                      {/* Time */}
                       <div className="space-y-1 pt-2 border-t border-gray-200 dark:border-gray-600">
                         <div className="flex items-center gap-2">
                           <Clock9
