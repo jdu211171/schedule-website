@@ -1,9 +1,8 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { MapPin, UserCheck, GraduationCap, Edit, Trash2 } from "lucide-react";
-import React, { useState } from "react";
+import { MapPin, UserCheck, GraduationCap, Edit } from "lucide-react";
+import React from "react";
 import { ExtendedClassSessionWithRelations } from "@/hooks/useClassSessionQuery";
 import { format } from "date-fns";
-import { ConfirmDeleteDialog } from '../confirm-delete-dialog';
 
 interface WeekLessonCardProps {
   lesson: ExtendedClassSessionWithRelations;
@@ -61,89 +60,59 @@ const WeekLessonCard: React.FC<WeekLessonCardProps> = ({
   displayMode,
   onClick,
   onEdit,
-  onDelete,
 }) => {
   const colors = getStatusColor(lesson.seriesId);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const handleEdit = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent card click
+    e.stopPropagation();
     onEdit?.(lesson);
-  };
-
-  const handleDeleteClick = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent card click
-    setShowDeleteConfirm(true);
-  };
-
-  const handleDeleteConfirm = () => {
-    onDelete?.(lesson.classId);
   };
 
   if (isExpanded) {
     return (
-      <>
-        <div className="w-full cursor-pointer" onClick={() => onClick(lesson.classId)}>
-          <Card className={`p-2 space-y-2 ${colors.background} ${colors.border} ${colors.hover} border h-full transition-colors duration-100`}>
-            <CardContent className={`p-1.5 space-y-1.5 ${colors.text}`}>
-              <div className="flex justify-between items-center">
-                <h3 className="font-medium">{lesson.subjectName}</h3>
-                <div className="flex gap-1">
-                  <button
-                    onClick={handleEdit}
-                    className="p-0 hover:bg-black/10 dark:hover:bg-white/10 rounded transition-colors"
-                    title="編集"
-                  >
-                    <Edit className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={handleDeleteClick}
-                    className="p-0 hover:bg-black/10 dark:hover:bg-white/10 rounded transition-colors"
-                    title="削除"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
+      <div className="w-full cursor-pointer" onClick={() => onClick(lesson.classId)}>
+        <Card className={`p-2 space-y-2 ${colors.background} ${colors.border} ${colors.hover} border h-full transition-colors duration-100`}>
+          <CardContent className={`p-1.5 space-y-1.5 ${colors.text}`}>
+            <div className="flex justify-between items-center">
+              <h3 className="font-medium">{lesson.subjectName}</h3>
+              <div className="flex gap-1">
+                <button
+                  onClick={handleEdit}
+                  className="p-0 hover:bg-black/10 dark:hover:bg-white/10 rounded transition-colors"
+                  title="編集"
+                >
+                  <Edit className="w-4 h-4" />
+                </button>
               </div>
+            </div>
 
-              <div className="text-sm">
-                {formatTimeDisplay(lesson.startTime)} - {formatTimeDisplay(lesson.endTime)}
+            <div className="text-sm">
+              {formatTimeDisplay(lesson.startTime)} - {formatTimeDisplay(lesson.endTime)}
+            </div>
+
+            <div className="flex items-center text-sm">
+              <UserCheck className="w-3 h-3 mr-2 opacity-75" />
+              <span>{lesson.teacherName}</span>
+            </div>
+
+            <div className="flex items-center text-sm">
+              <GraduationCap className="w-3 h-3 mr-2 opacity-75" />
+              <span>{lesson.studentName}</span>
+            </div>
+
+            <div className="flex items-center text-sm">
+              <MapPin className="w-3 h-3 mr-2 opacity-75" />
+              <span>{lesson.boothName}</span>
+            </div>
+
+            {lesson.notes && (
+              <div className="text-xs opacity-90 pt-1">
+                {lesson.notes}
               </div>
-
-              <div className="flex items-center text-sm">
-                <UserCheck className="w-3 h-3 mr-2 opacity-75" />
-                <span>{lesson.teacherName}</span>
-              </div>
-
-              <div className="flex items-center text-sm">
-                <GraduationCap className="w-3 h-3 mr-2 opacity-75" />
-                <span>{lesson.studentName}</span>
-              </div>
-
-              <div className="flex items-center text-sm">
-                <MapPin className="w-3 h-3 mr-2 opacity-75" />
-                <span>{lesson.boothName}</span>
-              </div>
-
-              {lesson.notes && (
-                <div className="text-xs opacity-90 pt-1">
-                  {lesson.notes}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        <ConfirmDeleteDialog
-          open={showDeleteConfirm}
-          onOpenChange={setShowDeleteConfirm}
-          title="授業の削除"
-          description="本当にこの授業を削除しますか？"
-          confirmText="削除"
-          cancelText="キャンセル"
-          onConfirm={handleDeleteConfirm}
-        />
-      </>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     );
   } else {
     switch (displayMode) {
@@ -178,7 +147,6 @@ const WeekLessonCard: React.FC<WeekLessonCardProps> = ({
             >
               <div className="text-xs truncate font-medium">{lesson.boothName}</div>
             </div>
-            {/* Simple tooltip */}
             <div className="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 mb-2 p-2 bg-gray-900 text-white text-xs rounded-md shadow-lg invisible group-hover:visible whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none">
               <div className="font-medium">{lesson.subjectName}</div>
               <div>{lesson.teacherName} → {lesson.studentName}</div>
@@ -191,7 +159,6 @@ const WeekLessonCard: React.FC<WeekLessonCardProps> = ({
         );
 
       case "compact-3":
-        // 3-4 lessons - show shortened booth name (just letter/number)
         return (
           <div
             className="w-full cursor-pointer pr-0.5 group relative"
@@ -204,7 +171,6 @@ const WeekLessonCard: React.FC<WeekLessonCardProps> = ({
                 {lesson.boothName?.replace('Booth-', '').substring(0, 1)}
               </div>
             </div>
-            {/* Simple tooltip */}
             <div className="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 mb-2 p-2 bg-gray-900 text-white text-xs rounded-md shadow-lg invisible group-hover:visible whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none">
               <div className="font-medium">{lesson.subjectName}</div>
               <div>{lesson.teacherName} → {lesson.studentName}</div>
@@ -217,7 +183,6 @@ const WeekLessonCard: React.FC<WeekLessonCardProps> = ({
         );
 
       case "compact-5":
-        // 5-10 lessons - minimal card with just the letter
         return (
           <div
             className="w-full cursor-pointer pr-0.5 group relative"
@@ -230,7 +195,6 @@ const WeekLessonCard: React.FC<WeekLessonCardProps> = ({
                 {lesson.boothName?.replace('Booth-', '').substring(0, 1)}
               </div>
             </div>
-            {/* Simple tooltip */}
             <div className="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 mb-2 p-2 bg-gray-900 text-white text-xs rounded-md shadow-lg invisible group-hover:visible whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none">
               <div className="font-medium">{lesson.subjectName}</div>
               <div>{lesson.teacherName} → {lesson.studentName}</div>
@@ -244,7 +208,6 @@ const WeekLessonCard: React.FC<WeekLessonCardProps> = ({
 
       case "compact-many":
       default:
-        // 10+ lessons - just colored dot with tooltip
         return (
           <div
             className="w-full cursor-pointer pr-0.5 group relative"
@@ -253,7 +216,6 @@ const WeekLessonCard: React.FC<WeekLessonCardProps> = ({
             <div
               className={`${colors.compactBg} rounded-sm h-5 w-5 mx-auto mb-1 transition-colors duration-100`}
             ></div>
-            {/* Simple tooltip */}
             <div className="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 mb-2 p-2 bg-gray-900 text-white text-xs rounded-md shadow-lg invisible group-hover:visible whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none">
               <div className="font-medium">{lesson.subjectName}</div>
               <div>{lesson.teacherName} → {lesson.studentName}</div>
