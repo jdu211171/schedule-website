@@ -1,423 +1,289 @@
 'use client'
 
-import React, { type FC, useState, useEffect, useRef, JSX } from 'react'
-import { format } from 'date-fns'
-import { ja } from 'date-fns/locale'
-import { Button } from '@/components/ui/button'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Calendar } from '@/components/ui/calendar'
-import { ChevronUp, ChevronDown, CalendarIcon } from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { DateRange } from 'react-day-picker'
+import { useState, useEffect } from "react"
+import { addDays, format, startOfMonth, endOfMonth, addMonths, startOfWeek, endOfWeek, addWeeks, subMonths } from "date-fns"
+import { ja } from "date-fns/locale"
+import { CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react"
+import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import { Calendar } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { DateRange } from "react-day-picker"
 
-export interface CompactDateRangePickerProps {
-  /** Click handler for applying the updates */
-  onUpdate?: (range: DateRange) => void
-  /** Initial value for start date */
-  initialDateFrom?: Date | string
-  /** Initial value for end date */
-  initialDateTo?: Date | string
-  /** Alignment of popover */
-  align?: 'start' | 'center' | 'end'
-  /** Placeholder text */
+interface SimpleDateRangePickerProps {
+  value?: DateRange
+  onValueChange?: (range: DateRange) => void
   placeholder?: string
-  /** Disabled state */
   disabled?: boolean
-  /** Custom className */
   className?: string
+  showPresets?: boolean
+  disablePastDates?: boolean
 }
 
-const formatJapaneseDate = (date: Date): string => {
-  return format(date, 'yyyy年M月d日', { locale: ja })
-}
-
-const getDateAdjustedForTimezone = (dateInput: Date | string): Date => {
-  if (typeof dateInput === 'string') {
-    const parts = dateInput.split('-').map((part) => parseInt(part, 10))
-    const date = new Date(parts[0], parts[1] - 1, parts[2])
-    return date
-  } else {
-    return dateInput
-  }
-}
-
-interface Preset {
-  name: string
-  label: string
-}
-
-const COMPACT_PRESETS: Preset[] = [
-  { name: 'next7', label: '次の7日間' },
-  { name: 'next14', label: '次の14日間' },
-  { name: 'next30', label: '次の30日間' },
-  { name: 'nextWeek', label: '来週' },
-  { name: 'nextMonth', label: '来月' },
-  { name: 'next3Months', label: '次の3ヶ月間' }
+const presets = [
+  {
+    label: "今週",
+    getValue: () => ({
+      from: startOfWeek(new Date(), { weekStartsOn: 1 }),
+      to: endOfWeek(new Date(), { weekStartsOn: 1 }),
+    }),
+  },
+  {
+    label: "来週",
+    getValue: () => ({
+      from: startOfWeek(addWeeks(new Date(), 1), { weekStartsOn: 1 }),
+      to: endOfWeek(addWeeks(new Date(), 1), { weekStartsOn: 1 }),
+    }),
+  },
+  {
+    label: "7日",
+    getValue: () => ({
+      from: addDays(new Date(), 1),
+      to: addDays(new Date(), 7),
+    }),
+  },
+  {
+    label: "30日",
+    getValue: () => ({
+      from: addDays(new Date(), 1),
+      to: addDays(new Date(), 30),
+    }),
+  },
+  {
+    label: "来月",
+    getValue: () => ({
+      from: startOfMonth(addMonths(new Date(), 1)),
+      to: endOfMonth(addMonths(new Date(), 1)),
+    }),
+  },
 ]
 
-/** Compact DateRangePicker with visible range selection */
-export const CompactDateRangePicker: FC<CompactDateRangePickerProps> = ({
-  initialDateFrom = new Date(),
-  initialDateTo,
-  onUpdate,
-  align = 'start',
-  placeholder = '期間を選択',
+export const SimpleDateRangePicker: React.FC<SimpleDateRangePickerProps> = ({
+  value,
+  onValueChange,
+  placeholder = "期間を選択してください",
   disabled = false,
-  className
-}): JSX.Element => {
-  const [isOpen, setIsOpen] = useState(false)
+  className,
+  showPresets = true,
+  disablePastDates = true
+}) => {
+  const [open, setOpen] = useState(false)
+  const [tempRange, setTempRange] = useState<DateRange>(value || { from: undefined, to: undefined })
+  const [currentMonth, setCurrentMonth] = useState<Date>(new Date())
 
-  const [range, setRange] = useState<DateRange>({
-    from: getDateAdjustedForTimezone(initialDateFrom),
-    to: initialDateTo ? getDateAdjustedForTimezone(initialDateTo) : undefined
-  })
+  useEffect(() => {
+    setTempRange(value || { from: undefined, to: undefined })
+  }, [value])
 
-  const openedRangeRef = useRef<DateRange | undefined>(undefined)
-  const [selectedPreset, setSelectedPreset] = useState<string | undefined>(undefined)
-
-  // Get today's date for disabling past dates
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
-  const disablePastDates = (date: Date) => {
-    return date < today
-  }
+  const disablePastDatesFunc = disablePastDates ? (date: Date) => date < today : undefined
 
-  const getPresetRange = (presetName: string): DateRange => {
-    const preset = COMPACT_PRESETS.find(({ name }) => name === presetName)
-    if (!preset) throw new Error(`Unknown date range preset: ${presetName}`)
-    
-    const from = new Date()
-    const to = new Date()
-    
-    const getMonday = (date: Date) => {
-      const d = new Date(date)
-      const day = d.getDay()
-      const diff = d.getDate() - day + (day === 0 ? -6 : 1)
-      return new Date(d.setDate(diff))
+  const formatDateRange = (range: DateRange) => {
+    if (!range.from) return placeholder
+    if (!range.to) return format(range.from, "yyyy年M月d日", { locale: ja })
+    if (range.from.getTime() === range.to.getTime()) {
+      return format(range.from, "yyyy年M月d日", { locale: ja })
     }
-
-    switch (preset.name) {
-      case 'next7':
-        from.setHours(0, 0, 0, 0)
-        to.setDate(to.getDate() + 6)
-        to.setHours(23, 59, 59, 999)
-        break
-      case 'next14':
-        from.setHours(0, 0, 0, 0)
-        to.setDate(to.getDate() + 13)
-        to.setHours(23, 59, 59, 999)
-        break
-      case 'next30':
-        from.setHours(0, 0, 0, 0)
-        to.setDate(to.getDate() + 29)
-        to.setHours(23, 59, 59, 999)
-        break
-      case 'nextWeek':
-        const nextMonday = getMonday(new Date())
-        nextMonday.setDate(nextMonday.getDate() + 7)
-        from.setTime(nextMonday.getTime())
-        from.setHours(0, 0, 0, 0)
-        
-        to.setTime(nextMonday.getTime())
-        to.setDate(to.getDate() + 6)
-        to.setHours(23, 59, 59, 999)
-        break
-      case 'nextMonth':
-        from.setMonth(from.getMonth() + 1)
-        from.setDate(1)
-        from.setHours(0, 0, 0, 0)
-        
-        to.setMonth(to.getMonth() + 2)
-        to.setDate(0)
-        to.setHours(23, 59, 59, 999)
-        break
-      case 'next3Months':
-        from.setHours(0, 0, 0, 0)
-        to.setMonth(to.getMonth() + 3)
-        to.setHours(23, 59, 59, 999)
-        break
-    }
-
-    return { from, to }
+    return `${format(range.from, "yyyy年M月d日", { locale: ja })} - ${format(range.to, "yyyy年M月d日", { locale: ja })}`
   }
 
-  const setPreset = (preset: string): void => {
-    const newRange = getPresetRange(preset)
-    setRange(newRange)
-    setSelectedPreset(preset)
-  }
-
-  const checkPreset = (): void => {
-    for (const preset of COMPACT_PRESETS) {
-      const presetRange = getPresetRange(preset.name)
-
-      const normalizedRangeFrom = new Date(range.from!)
-      normalizedRangeFrom.setHours(0, 0, 0, 0)
-      const normalizedPresetFrom = new Date(presetRange.from!)
-      normalizedPresetFrom.setHours(0, 0, 0, 0)
-
-      const normalizedRangeTo = new Date(range.to ?? 0)
-      normalizedRangeTo.setHours(0, 0, 0, 0)
-      const normalizedPresetTo = new Date(presetRange.to ?? 0)
-      normalizedPresetTo.setHours(0, 0, 0, 0)
-
-      if (
-        normalizedRangeFrom.getTime() === normalizedPresetFrom.getTime() &&
-        normalizedRangeTo.getTime() === normalizedPresetTo.getTime()
-      ) {
-        setSelectedPreset(preset.name)
-        return
-      }
-    }
-
-    setSelectedPreset(undefined)
-  }
-
-  const resetValues = (): void => {
-    setRange({
-      from: getDateAdjustedForTimezone(initialDateFrom),
-      to: initialDateTo ? getDateAdjustedForTimezone(initialDateTo) : undefined
-    })
-  }
-
-  useEffect(() => {
-    checkPreset()
-  }, [range])
-
-  const PresetButton = ({
-    preset,
-    label,
-    isSelected
-  }: {
-    preset: string
-    label: string
-    isSelected: boolean
-  }): JSX.Element => (
-    <Button
-      className={cn(
-        "justify-center text-center h-8 px-3 text-xs flex-1",
-        isSelected && "bg-primary text-primary-foreground"
-      )}
-      variant={isSelected ? "default" : "outline"}
-      onClick={() => setPreset(preset)}
-      size="sm"
-    >
-      {label}
-    </Button>
-  )
-
-  const areRangesEqual = (a?: DateRange, b?: DateRange): boolean => {
-    if (!a || !b) return a === b
-    return (
-      a.from?.getTime() === b.from?.getTime() &&
-      (!a.to || !b.to || a.to.getTime() === b.to.getTime())
-    )
-  }
-
-  useEffect(() => {
-    if (isOpen) {
-      openedRangeRef.current = { ...range }
-    }
-  }, [isOpen])
-
-  const handleOpenChange = (open: boolean) => {
+  const handleOpenChange = (isOpen: boolean) => {
     if (disabled) return
-    if (!open) {
-      resetValues()
+    setOpen(isOpen)
+    if (!isOpen) {
+      setTempRange(value || { from: undefined, to: undefined })
     }
-    setIsOpen(open)
   }
 
-  const handleCalendarSelect = (selectedRange: DateRange | undefined) => {
-    if (selectedRange?.from) {
-      setRange(selectedRange)
-      // Auto-close when both dates are selected
-      if (selectedRange.from && selectedRange.to) {
+  const handlePresetClick = (preset: typeof presets[0]) => {
+    const range = preset.getValue()
+    setTempRange(range)
+  }
+
+  const handleCalendarSelect = (range: DateRange | undefined) => {
+    if (range) {
+      setTempRange(range)
+      if (range.from && range.to) {
         setTimeout(() => {
-          setIsOpen(false)
-          if (!areRangesEqual(selectedRange, openedRangeRef.current)) {
-            onUpdate?.(selectedRange)
-          }
+          setOpen(false)
+          onValueChange?.(range)
         }, 200)
       }
     }
   }
 
-  // Create modifiers for range styling
-  const modifiers = {
-    range: (date: Date) => {
-      if (!range.from || !range.to) return false
-      const time = date.getTime()
-      return time >= range.from.getTime() && time <= range.to.getTime()
-    },
-    rangeStart: (date: Date) => {
-      return range.from ? date.getTime() === range.from.getTime() : false
-    },
-    rangeEnd: (date: Date) => {
-      return range.to ? date.getTime() === range.to.getTime() : false
-    },
-    rangeMiddle: (date: Date) => {
-      if (!range.from || !range.to) return false
-      const time = date.getTime()
-      return time > range.from.getTime() && time < range.to.getTime()
-    }
+  const handleClear = () => {
+    const emptyRange = { from: undefined, to: undefined }
+    setTempRange(emptyRange)
   }
 
-  const modifiersClassNames = {
-    range: "bg-primary/20 text-foreground",
-    rangeStart: "bg-primary text-primary-foreground rounded-l-md rounded-r-none",
-    rangeEnd: "bg-primary text-primary-foreground rounded-r-md rounded-l-none", 
-    rangeMiddle: "bg-primary/20 text-foreground rounded-none"
+  const handleApply = () => {
+    setOpen(false)
+    onValueChange?.(tempRange)
+  }
+
+  const handleCancel = () => {
+    setTempRange(value || { from: undefined, to: undefined })
+    setOpen(false)
+  }
+
+  const handlePrevMonth = () => {
+    setCurrentMonth(prev => subMonths(prev, 1))
+  }
+
+  const handleNextMonth = () => {
+    setCurrentMonth(prev => addMonths(prev, 1))
   }
 
   return (
-    <Popover
-      open={isOpen}
-      onOpenChange={handleOpenChange}
-    >
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
-        <Button 
+        <Button
           variant="outline"
-          disabled={disabled}
           className={cn(
             "w-full justify-start text-left font-normal min-h-[40px]",
-            !range.from && "text-muted-foreground",
+            !value?.from && "text-muted-foreground",
             disabled && "opacity-50 cursor-not-allowed",
             className
           )}
+          disabled={disabled}
         >
-          <CalendarIcon className="mr-2 h-4 w-4 flex-shrink-0" />
-          <div className="text-left flex-1">
-            {range.from ? (
-              range.to ? (
-                `${formatJapaneseDate(range.from)} - ${formatJapaneseDate(range.to)}`
-              ) : (
-                formatJapaneseDate(range.from)
-              )
-            ) : (
-              placeholder
-            )}
-          </div>
-          <div className="pl-1 opacity-60">
-            {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-          </div>
+          <CalendarIcon className="mr-2 h-4 w-4" />
+          {formatDateRange(value || { from: undefined, to: undefined })}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align={align} className="w-auto p-0">
-        <div className="p-3">
-          {/* Presets above calendar */}
-          <div className="mb-4">
-            <div className="text-xs font-medium text-muted-foreground mb-2">
-              プリセット
+      <PopoverContent 
+        className="w-auto p-0 shadow-xl border" 
+        align="start"
+        sideOffset={4}
+      >
+        <div className="flex bg-background">
+          <div className="p-4">
+            <div className="flex items-center justify-center mb-4 gap-2">
+              <button
+                type="button"
+                onClick={handlePrevMonth}
+                className="p-1 hover:bg-accent rounded"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <span className="text-base font-semibold min-w-[220px] text-center">
+                {format(currentMonth, "M月 yyyy", { locale: ja })} - {format(addMonths(currentMonth, 1), "M月 yyyy", { locale: ja })}
+              </span>
+              <button
+                type="button"
+                onClick={handleNextMonth}
+                className="p-1 hover:bg-accent rounded"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {COMPACT_PRESETS.map((preset) => (
-                <PresetButton
-                  key={preset.name}
-                  preset={preset.name}
-                  label={preset.label}
-                  isSelected={selectedPreset === preset.name}
-                />
-              ))}
-            </div>
-          </div>
-          
-          {/* Calendar */}
-          <Calendar
-            mode="range"
-            selected={range}
-            onSelect={handleCalendarSelect}
-            numberOfMonths={2}
-            defaultMonth={range.from || today}
-            locale={ja}
-            disabled={disablePastDates}
-            showOutsideDays={false}
-            className="rounded-md"
-            modifiers={modifiers}
-            modifiersClassNames={modifiersClassNames}
-            classNames={{
-              months: "flex flex-col sm:flex-row gap-2",
-              month: "flex flex-col gap-4",
-              caption: "flex justify-center pt-1 relative items-center w-full",
-              caption_label: "text-sm font-medium",
-              nav: "flex items-center gap-1",
-              nav_button: cn(
-                "inline-flex items-center justify-center rounded-md text-sm font-medium",
-                "size-7 bg-transparent p-0 opacity-50 hover:opacity-100",
-                "hover:bg-accent hover:text-accent-foreground",
-                "disabled:pointer-events-none disabled:opacity-50"
-              ),
-              nav_button_previous: "absolute left-1",
-              nav_button_next: "absolute right-1",
-              table: "w-full border-collapse space-x-1",
-              head_row: "flex",
-              head_cell: "text-muted-foreground rounded-md w-8 font-normal text-[0.8rem]",
-              row: "flex w-full mt-2",
-              cell: "relative p-0 text-center text-sm focus-within:relative focus-within:z-20",
-              day: cn(
-                "inline-flex items-center justify-center rounded-md text-sm font-normal",
-                "size-8 p-0 font-normal aria-selected:opacity-100",
-                "hover:bg-accent hover:text-accent-foreground",
-                "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-                "disabled:pointer-events-none disabled:opacity-50"
-              ),
-              day_selected: 
-                "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
-              day_today: "bg-accent text-accent-foreground font-semibold",
-              day_outside: "text-muted-foreground opacity-50",
-              day_disabled: "text-muted-foreground opacity-30 line-through",
-              day_hidden: "invisible",
-            }}
-            formatters={{
-              formatCaption: (date) => format(date, "yyyy年M月", { locale: ja }),
-              formatWeekdayName: (date) => {
-                const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
-                return weekdays[date.getDay()];
-              }
-            }}
-          />
-        </div>
 
-        {/* Footer */}
-        <div className="flex justify-between items-center p-3 border-t bg-muted/30">
-          <div className="text-xs text-muted-foreground">
-            {range.from && range.to ? (
-              `${formatJapaneseDate(range.from)} - ${formatJapaneseDate(range.to)}`
-            ) : range.from ? (
-              formatJapaneseDate(range.from)
-            ) : (
-              "期間を選択してください"
-            )}
-          </div>
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => {
-                setIsOpen(false)
-                resetValues()
+            <Calendar
+              initialFocus
+              mode="range"
+              month={currentMonth}
+              selected={tempRange}
+              onSelect={handleCalendarSelect}
+              numberOfMonths={2}
+              locale={ja}
+              disabled={disablePastDatesFunc}
+              showOutsideDays={true}
+              className="rounded-md"
+              classNames={{
+                months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
+                month: "space-y-4",
+                caption: "hidden",
+                caption_label: "hidden",
+                nav: "hidden",
+                nav_button: "hidden",
+                nav_button_previous: "hidden",
+                nav_button_next: "hidden",
+                table: "w-full border-collapse space-y-1",
+                head_row: "flex",
+                head_cell: "text-muted-foreground rounded-md w-9 font-normal text-xs",
+                row: "flex w-full mt-2",
+                cell: "text-center text-sm p-0 relative focus-within:relative focus-within:z-20",
+                day: cn(
+                  "h-9 w-9 p-0 font-normal text-center relative z-10",
+                  "hover:bg-accent hover:text-accent-foreground rounded-md transition-colors",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                ),
+                day_selected: 
+                  "!bg-primary !text-primary-foreground hover:!bg-primary/90 hover:!text-primary-foreground focus:!bg-primary focus:!text-primary-foreground !opacity-100 rounded-md z-20",
+                day_today: "bg-accent text-accent-foreground font-medium",
+                day_outside: "text-gray-400 hover:text-gray-500 aria-selected:bg-accent/50 aria-selected:text-muted-foreground",
+                day_disabled: "text-muted-foreground opacity-30",
+                day_range_start: "!bg-primary !text-primary-foreground rounded-l-md rounded-r-none z-20",
+                day_range_end: "!bg-primary !text-primary-foreground rounded-r-md rounded-l-none z-20",
+                day_range_middle: 
+                  "!bg-muted/70 !text-foreground rounded-none hover:!bg-muted/80 z-10",
+                day_hidden: "invisible",
               }}
-            >
-              キャンセル
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => {
-                setIsOpen(false)
-                if (!areRangesEqual(range, openedRangeRef.current)) {
-                  onUpdate?.(range)
-                }
+              modifiers={{
+                range_start: tempRange.from,
+                range_end: tempRange.to,
+                range_middle: tempRange.from && tempRange.to ? (date: Date) => {
+                  if (!tempRange.from || !tempRange.to) return false
+                  return date > tempRange.from && date < tempRange.to
+                } : undefined,
               }}
-              disabled={!range.from || !range.to}
-            >
-              適用
-            </Button>
+              modifiersClassNames={{
+                range_start: "!bg-primary !text-primary-foreground rounded-l-md rounded-r-none z-20",
+                range_end: "!bg-primary !text-primary-foreground rounded-r-md rounded-l-none z-20", 
+                range_middle: "!bg-muted/99 !text-foreground rounded-none hover:!bg-muted/1 z-10",
+              }}
+            />
+
+            <div className="flex gap-2 mt-4 pt-3 border-t border-border">
+              <Button
+                variant="outline"
+                size="sm"
+                className="hover:bg-accent"
+                onClick={handleClear}
+              >
+                クリア
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm" 
+                onClick={handleCancel}
+              >
+                キャンセル
+              </Button>
+              <Button
+                size="sm"
+                className="bg-primary hover:bg-primary/90"
+                onClick={handleApply}
+                disabled={!tempRange.from}
+              >
+                適用
+              </Button>
+            </div>
           </div>
+
+          {showPresets && (
+            <div className="border-l border-border bg-muted/30">
+              <div className="flex flex-col p-2 gap-1 w-16">
+                {presets.map((preset) => (
+                  <Button
+                    key={preset.label}
+                    variant="ghost"
+                    className="h-10 w-12 p-0 text-sm hover:bg-primary hover:text-primary-foreground font-normal justify-center"
+                    onClick={() => handlePresetClick(preset)}
+                  >
+                    {preset.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </PopoverContent>
     </Popover>
   )
 }
 
-CompactDateRangePicker.displayName = 'CompactDateRangePicker'
+SimpleDateRangePicker.displayName = 'SimpleDateRangePicker'

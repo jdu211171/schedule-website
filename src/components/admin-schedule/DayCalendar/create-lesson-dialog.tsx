@@ -19,7 +19,7 @@ import { TimeInput } from '@/components/ui/time-input';
 import { useSmartSelection, EnhancedTeacher, EnhancedStudent, SubjectCompatibility } from '@/hooks/useSmartSelection';
 import { useAvailability } from './availability-layer';
 import { ConflictResolutionTable } from './conflict-resolution-table';
-import { CompactDateRangePicker } from '../../fix-date-range-picker/future-date-range-picker';
+import { SimpleDateRangePicker } from '../../fix-date-range-picker/future-date-range-picker';
 
 import { Teacher } from '@/hooks/useTeacherQuery';
 import { Student } from '@/hooks/useStudentQuery';
@@ -158,9 +158,9 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
   }, [classTypes, selectedParentClassTypeId]);
 
   // Handle date range update from CompactDateRangePicker
-  const handleDateRangeUpdate = (range: DateRange) => {
-    setDateRange(range);
-  };
+  // const handleDateRangeUpdate = (range: DateRange) => {
+  //   setDateRange(range);
+  // };
 
   // Handle conflict resolution with new table
   const handleConflictResolution = async (actions: SessionAction[]) => {
@@ -1010,13 +1010,14 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
           <div>
             <label className="text-sm font-medium mb-1 block text-foreground">期間 <span className="text-destructive">*</span></label>
             <div className="relative">
-              <CompactDateRangePicker
-                initialDateFrom={dateRange?.from}
-                initialDateTo={dateRange?.to}
-                onUpdate={handleDateRangeUpdate}
-                placeholder="期間を選択してください"
-                disabled={disabled}
-              />
+            <SimpleDateRangePicker
+  value={dateRange}
+  onValueChange={setDateRange}
+  placeholder="期間を選択してください"  
+  disabled={disabled}
+  showPresets={true}
+  disablePastDates={true}
+/>
             </div>
           </div>
 
