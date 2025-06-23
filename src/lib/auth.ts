@@ -86,7 +86,7 @@ export function withBranchAccess(
 
     if (!selectedBranchId) {
       return NextResponse.json(
-        { error: "校舎が選択されていません。先に校舎を選択してください。" },
+        { error: "No branch selected. Please select a branch first." },
         { status: 400 }
       );
     }

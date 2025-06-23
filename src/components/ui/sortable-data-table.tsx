@@ -2,7 +2,7 @@
 "use client";
 
 import type { ColumnDef, ColumnMeta, CellContext } from "@tanstack/react-table";
-import { GripVertical, Download } from "lucide-react";
+import { GripVertical, Download, Upload } from "lucide-react";
 import {
   Sortable,
   SortableContent,
@@ -71,6 +71,9 @@ interface SortableDataTableProps<TData, TValue> {
   // Export functionality
   onExport?: () => void;
   isExporting?: boolean;
+  
+  // Import functionality
+  onImport?: () => void;
 }
 
 export function SortableDataTable<
@@ -99,6 +102,7 @@ export function SortableDataTable<
   isItemDisabled,
   onExport,
   isExporting = false,
+  onImport,
 }: SortableDataTableProps<TData, TValue>) {
   const handleSearch = (value: string) => {
     onSearchChange?.(value);
@@ -157,6 +161,15 @@ export function SortableDataTable<
             />
           </div>
           <div className="flex gap-2">
+            {onImport && (
+              <Button
+                variant="outline"
+                onClick={onImport}
+              >
+                <Upload className="mr-2 h-4 w-4" />
+                CSVインポート
+              </Button>
+            )}
             {onExport && (
               <Button
                 variant="outline"
@@ -299,6 +312,7 @@ export function SortableDataTable<
       totalItems={totalItems}
       onExport={onExport}
       isExporting={isExporting}
+      onImport={onImport}
       filterComponent={
         showSortMode && (
           <div className="flex justify-end">

@@ -5,6 +5,7 @@ import { useState } from "react";
 import * as React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Pencil, Trash2, Download } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +30,7 @@ import { Booth } from "@prisma/client";
 import { BoothFormDialog } from "./booth-form-dialog";
 import { useBooths } from "@/hooks/useBoothQuery";
 import { useSession } from "next-auth/react";
+import { CSVImportDialog } from "@/components/ui/csv-import-dialog";
 
 // Import types to ensure proper column meta support
 import "@/components/data-table/types";
@@ -46,6 +48,7 @@ export function BoothTable() {
   const [isSortMode, setIsSortMode] = useState(false);
   const [localBooths, setLocalBooths] = useState<ExtendedBooth[]>([]);
   const pageSize = 10;
+  const queryClient = useQueryClient();
 
   const { data: booths, isLoading } = useBooths({
     page,
@@ -74,6 +77,7 @@ export function BoothTable() {
     null
   );
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
 
   const columns: ColumnDef<ExtendedBooth>[] = [
     {
@@ -192,6 +196,16 @@ export function BoothTable() {
     exportToCSV({ columns: exportColumns });
   };
 
+  const handleImport = () => {
+    setIsImportDialogOpen(true);
+  };
+
+  const handleImportComplete = () => {
+    // Refresh the data after successful import
+    queryClient.invalidateQueries({ queryKey: ["booths"] });
+    setPage(1); // Reset to first page
+  };
+
   return (
     <>
       <SortableDataTable
@@ -215,6 +229,7 @@ export function BoothTable() {
         renderActions={renderActions}
         onExport={handleExport}
         isExporting={isExporting}
+        onImport={handleImport}
       />
 
       {/* Edit Booth Dialog */}
@@ -256,6 +271,17 @@ export function BoothTable() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Import Dialog */}
+      <CSVImportDialog
+        open={isImportDialogOpen}
+        onOpenChange={setIsImportDialogOpen}
+        title="ブースをインポート"
+        description="CSVファイルからブースデータを一括インポートします"
+        templateUrl="/api/import/booths/template"
+        importUrl="/api/import/booths"
+        onImportComplete={handleImportComplete}
+      />
     </>
   );
 }

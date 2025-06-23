@@ -4,6 +4,7 @@ import { useState } from "react";
 import * as React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Pencil, Trash2, Download } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import { SortableDataTable } from "@/components/ui/sortable-data-table";
@@ -24,6 +25,7 @@ import { AdminUser, useAdminUsers } from "@/hooks/useAdminUserQuery";
 import { useSession } from "next-auth/react";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { CSVImportDialog } from "@/components/ui/csv-import-dialog";
 
 export function AdminUserTable() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -31,6 +33,7 @@ export function AdminUserTable() {
   const [isSortMode, setIsSortMode] = useState(false);
   const [localAdminUsers, setLocalAdminUsers] = useState<AdminUser[]>([]);
   const pageSize = 10;
+  const queryClient = useQueryClient();
   const { data: adminUsers, isLoading } = useAdminUsers({
     page,
     limit: pageSize,
@@ -54,6 +57,7 @@ export function AdminUserTable() {
   const [adminUserToEdit, setAdminUserToEdit] = useState<AdminUser | null>(null);
   const [adminUserToDelete, setAdminUserToDelete] = useState<AdminUser | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
 
   const columns: ColumnDef<AdminUser, unknown>[] = [
     {
@@ -205,6 +209,16 @@ export function AdminUserTable() {
     exportToCSV({ columns: visibleColumns });
   };
 
+  const handleImport = () => {
+    setIsImportDialogOpen(true);
+  };
+
+  const handleImportComplete = () => {
+    // Refresh the data after successful import
+    queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+    setPage(1); // Reset to first page
+  };
+
   return (
     <>
       <SortableDataTable
@@ -229,6 +243,7 @@ export function AdminUserTable() {
         onPageChange={handlePageChange}
         onExport={handleExport}
         isExporting={isExporting}
+        onImport={handleImport}
         renderActions={(user) => {
           const adminUser = user as unknown as AdminUser;
           const isSelf = adminUser.id === currentUserId;
@@ -316,6 +331,17 @@ export function AdminUserTable() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Import Dialog */}
+      <CSVImportDialog
+        open={isImportDialogOpen}
+        onOpenChange={setIsImportDialogOpen}
+        title="管理者をインポート"
+        description="CSVファイルから管理者データを一括インポートします"
+        templateUrl="/api/import/admins/template"
+        importUrl="/api/import/admins"
+        onImportComplete={handleImportComplete}
+      />
     </>
   );
 }

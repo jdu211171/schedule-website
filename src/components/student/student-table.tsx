@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Pencil, Eye, EyeOff, Trash2, MoreHorizontal, RotateCcw, Download } from "lucide-react";
+import { Pencil, Eye, EyeOff, Trash2, MoreHorizontal, RotateCcw, Download, Upload } from "lucide-react";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useStudentExport } from "@/hooks/useStudentExport";
 
@@ -48,6 +48,8 @@ import { StudentFormDialog } from "./student-form-dialog";
 import { Student, useStudents } from "@/hooks/useStudentQuery";
 import { useStudentTypes } from "@/hooks/useStudentTypeQuery";
 import { useAllSubjects } from "@/hooks/useSubjectQuery";
+import { CSVImportDialog } from "@/components/ui/csv-import-dialog";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAllSubjectTypes } from "@/hooks/useSubjectTypeQuery";
 import {
   useStudentDelete,
@@ -262,6 +264,8 @@ export function StudentTable() {
   const [passwordVisibility, setPasswordVisibility] = React.useState<
     Record<string, boolean>
   >({});
+  const queryClient = useQueryClient();
+  const [isImportDialogOpen, setIsImportDialogOpen] = React.useState(false);
 
   const pageSize = 10;
 
@@ -808,6 +812,18 @@ export function StudentTable() {
     });
   };
 
+  const handleImport = () => {
+    setIsImportDialogOpen(true);
+  };
+
+  const handleImportComplete = () => {
+    // Refresh the data after successful import
+    // Invalidate the students query to refetch data
+    queryClient.invalidateQueries({ queryKey: ["students"] });
+    // Reset page to 1 to see newly imported data
+    setPage(1);
+  };
+
   // Handle loading state without early return
   if (!studentTypesResponse || isLoading) {
     return (
@@ -821,6 +837,13 @@ export function StudentTable() {
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold tracking-tight">生徒管理</h2>
           <div className="flex items-center gap-2">
+            <Button
+              onClick={handleImport}
+              variant="outline"
+            >
+              <Upload className="mr-2 h-4 w-4" />
+              CSVインポート
+            </Button>
             <Button
               onClick={handleExport}
               disabled={isExporting}
@@ -944,6 +967,17 @@ export function StudentTable() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Import Dialog */}
+      <CSVImportDialog
+        open={isImportDialogOpen}
+        onOpenChange={setIsImportDialogOpen}
+        title="生徒をインポート"
+        description="CSVファイルから生徒データを一括インポートします"
+        templateUrl="/api/import/students/template"
+        importUrl="/api/import/students"
+        onImportComplete={handleImportComplete}
+      />
     </>
   );
 }

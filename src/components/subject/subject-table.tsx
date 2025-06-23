@@ -4,6 +4,7 @@
 import { useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Pencil, Trash2, Download } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/data-table";
@@ -24,6 +25,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { SubjectFormDialog } from "./subject-form-dialog";
 import { Subject, useSubjects } from "@/hooks/useSubjectQuery";
+import { CSVImportDialog } from "@/components/ui/csv-import-dialog";
 
 // Import types to ensure proper column meta support
 import "@/components/data-table/types";
@@ -32,6 +34,7 @@ export function SubjectTable() {
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
   const pageSize = 10;
+  const queryClient = useQueryClient();
   const { data: subjects, isLoading } = useSubjects({
     page,
     limit: pageSize,
@@ -48,6 +51,7 @@ export function SubjectTable() {
   const [subjectToEdit, setSubjectToEdit] = useState<Subject | null>(null);
   const [subjectToDelete, setSubjectToDelete] = useState<Subject | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
 
   const columns: ColumnDef<Subject, unknown>[] = [
     {
@@ -128,6 +132,16 @@ export function SubjectTable() {
     exportToCSV({ columns: visibleColumns });
   };
 
+  const handleImport = () => {
+    setIsImportDialogOpen(true);
+  };
+
+  const handleImportComplete = () => {
+    // Refresh the data after successful import
+    queryClient.invalidateQueries({ queryKey: ["subjects"] });
+    setPage(1); // Reset to first page
+  };
+
   return (
     <>
       <DataTable
@@ -146,6 +160,7 @@ export function SubjectTable() {
         totalItems={totalCount}
         onExport={handleExport}
         isExporting={isExporting}
+        onImport={handleImport}
       />
 
       {/* Edit Subject Dialog */}
@@ -187,6 +202,17 @@ export function SubjectTable() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Import Dialog */}
+      <CSVImportDialog
+        open={isImportDialogOpen}
+        onOpenChange={setIsImportDialogOpen}
+        title="科目をインポート"
+        description="CSVファイルから科目データを一括インポートします"
+        templateUrl="/api/import/subjects/template"
+        importUrl="/api/import/subjects"
+        onImportComplete={handleImportComplete}
+      />
     </>
   );
 }

@@ -4,6 +4,7 @@
 import { useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Pencil, Trash2, Download } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/data-table";
@@ -23,6 +24,7 @@ import { StaffFormDialog } from "./staff-form-dialog";
 import { Staff, useStaffs } from "@/hooks/useStaffQuery";
 import { useSession } from "next-auth/react";
 import { Badge } from "@/components/ui/badge";
+import { CSVImportDialog } from "@/components/ui/csv-import-dialog";
 
 // Import types to ensure proper column meta support
 import "@/components/data-table/types";
@@ -31,6 +33,7 @@ export function StaffTable() {
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
   const pageSize = 10;
+  const queryClient = useQueryClient();
   const { data: staffs, isLoading } = useStaffs({
     page,
     limit: pageSize,
@@ -50,6 +53,7 @@ export function StaffTable() {
   const [staffToEdit, setStaffToEdit] = useState<Staff | null>(null);
   const [staffToDelete, setStaffToDelete] = useState<Staff | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
 
   const columns: ColumnDef<Staff, unknown>[] = [
     {
@@ -154,6 +158,16 @@ export function StaffTable() {
     exportToCSV({ columns: visibleColumns });
   };
 
+  const handleImport = () => {
+    setIsImportDialogOpen(true);
+  };
+
+  const handleImportComplete = () => {
+    // Refresh the data after successful import
+    queryClient.invalidateQueries({ queryKey: ["staff-users"] });
+    setPage(1); // Reset to first page
+  };
+
   return (
     <>
       <DataTable
@@ -172,6 +186,7 @@ export function StaffTable() {
         totalItems={totalCount}
         onExport={handleExport}
         isExporting={isExporting}
+        onImport={handleImport}
       />
 
       {/* Edit Staff Dialog */}
@@ -214,6 +229,17 @@ export function StaffTable() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Import Dialog */}
+      <CSVImportDialog
+        open={isImportDialogOpen}
+        onOpenChange={setIsImportDialogOpen}
+        title="スタッフをインポート"
+        description="CSVファイルからスタッフデータを一括インポートします"
+        templateUrl="/api/import/staff/template"
+        importUrl="/api/import/staff"
+        onImportComplete={handleImportComplete}
+      />
     </>
   );
 }

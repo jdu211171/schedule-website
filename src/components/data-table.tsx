@@ -13,7 +13,7 @@ import {
   type RowSelectionState,
   useReactTable,
 } from "@tanstack/react-table";
-import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Download } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Download, Upload } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -52,6 +52,8 @@ interface DataTableProps<TData, TValue> {
   // Export functionality
   onExport?: () => void;
   isExporting?: boolean;
+  // Import functionality
+  onImport?: () => void;
 }
 
 export function DataTable<TData, TValue>({
@@ -77,6 +79,7 @@ export function DataTable<TData, TValue>({
   onPageSizeChange,
   onExport,
   isExporting = false,
+  onImport,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [localSearchValue, setLocalSearchValue] = useState(searchValue);
@@ -214,6 +217,15 @@ export function DataTable<TData, TValue>({
           )}
         </div>
         <div className="flex items-center gap-2">
+          {onImport && (
+            <Button
+              variant="outline"
+              onClick={onImport}
+            >
+              <Upload className="mr-2 h-4 w-4" />
+              CSVインポート
+            </Button>
+          )}
           {onExport && (
             <Button
               variant="outline"

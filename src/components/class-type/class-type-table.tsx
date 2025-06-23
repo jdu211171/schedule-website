@@ -5,6 +5,7 @@ import { useState } from "react";
 import * as React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Pencil, Trash2, Download } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import { SortableDataTable } from "@/components/ui/sortable-data-table";
@@ -27,6 +28,7 @@ import {
 import { ClassTypeFormDialog } from "./class-type-form-dialog";
 import { ClassType, useClassTypes } from "@/hooks/useClassTypeQuery";
 import { useSession } from "next-auth/react";
+import { CSVImportDialog } from "@/components/ui/csv-import-dialog";
 
 // Define custom column meta type
 interface ColumnMetaType {
@@ -58,6 +60,7 @@ export function ClassTypeTable() {
   const [isSortMode, setIsSortMode] = useState(false);
   const [localClassTypes, setLocalClassTypes] = useState<ClassType[]>([]);
   const pageSize = 10;
+  const queryClient = useQueryClient();
 
   const { data: classTypes, isLoading } = useClassTypes({
     page,
@@ -93,6 +96,7 @@ export function ClassTypeTable() {
     null
   );
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
 
   const columns: ColumnDef<ClassType>[] = [
     {
@@ -218,6 +222,16 @@ export function ClassTypeTable() {
     exportToCSV({ columns: visibleColumns });
   };
 
+  const handleImport = () => {
+    setIsImportDialogOpen(true);
+  };
+
+  const handleImportComplete = () => {
+    // Refresh the data after successful import
+    queryClient.invalidateQueries({ queryKey: ["class-types"] });
+    setPage(1); // Reset to first page
+  };
+
   return (
     <>
       <SortableDataTable
@@ -242,6 +256,7 @@ export function ClassTypeTable() {
         isItemDisabled={(classType) => isProtectedClassType(classType)}
         onExport={handleExport}
         isExporting={isExporting}
+        onImport={handleImport}
       />
 
       {/* Edit ClassType Dialog */}
@@ -283,6 +298,17 @@ export function ClassTypeTable() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Import Dialog */}
+      <CSVImportDialog
+        open={isImportDialogOpen}
+        onOpenChange={setIsImportDialogOpen}
+        title="授業タイプをインポート"
+        description="CSVファイルから授業タイプデータを一括インポートします"
+        templateUrl="/api/import/classTypes/template"
+        importUrl="/api/import/classTypes"
+        onImportComplete={handleImportComplete}
+      />
     </>
   );
 }

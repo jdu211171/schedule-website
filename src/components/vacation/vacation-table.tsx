@@ -6,6 +6,7 @@ import * as React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Pencil, Trash2, Download } from "lucide-react";
 import { format } from "date-fns";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +30,7 @@ import {
 import { useVacations } from "@/hooks/useVacationQuery";
 import { useSession } from "next-auth/react";
 import { VacationFormDialog } from "./vacation-form-dialog";
+import { CSVImportDialog } from "@/components/ui/csv-import-dialog";
 
 // Import types to ensure proper column meta support
 import "@/components/data-table/types";
@@ -54,6 +56,7 @@ export function VacationTable() {
   const [isSortMode, setIsSortMode] = useState(false);
   const [localVacations, setLocalVacations] = useState<Vacation[]>([]);
   const pageSize = 10;
+  const queryClient = useQueryClient();
 
   const { data: vacations, isLoading } = useVacations({
     page,
@@ -83,6 +86,7 @@ export function VacationTable() {
     null
   );
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
 
   // Format dates for display
   const formatDate = (date: string | Date) => {
@@ -223,6 +227,16 @@ export function VacationTable() {
     exportToCSV({ columns: exportColumns });
   };
 
+  const handleImport = () => {
+    setIsImportDialogOpen(true);
+  };
+
+  const handleImportComplete = () => {
+    // Refresh the data after successful import
+    queryClient.invalidateQueries({ queryKey: ["vacations"] });
+    setPage(1); // Reset to first page
+  };
+
   return (
     <>
       <SortableDataTable
@@ -246,6 +260,7 @@ export function VacationTable() {
         renderActions={renderActions}
         onExport={handleExport}
         isExporting={isExporting}
+        onImport={handleImport}
       />
 
       {/* Edit Vacation Dialog */}
@@ -287,6 +302,17 @@ export function VacationTable() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Import Dialog */}
+      <CSVImportDialog
+        open={isImportDialogOpen}
+        onOpenChange={setIsImportDialogOpen}
+        title="休日をインポート"
+        description="CSVファイルから休日データを一括インポートします"
+        templateUrl="/api/import/holidays/template"
+        importUrl="/api/import/holidays"
+        onImportComplete={handleImportComplete}
+      />
     </>
   );
 }

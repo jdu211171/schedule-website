@@ -5,6 +5,7 @@ import { useState } from "react";
 import * as React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Pencil, Trash2, Download } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import { SortableDataTable } from "@/components/ui/sortable-data-table";
@@ -28,6 +29,7 @@ import {
 import { StudentTypeFormDialog } from "./student-type-form-dialog";
 import { StudentType } from "@/hooks/useStudentTypeQuery";
 import { useSession } from "next-auth/react";
+import { CSVImportDialog } from "@/components/ui/csv-import-dialog";
 
 export function StudentTypeTable() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -35,6 +37,7 @@ export function StudentTypeTable() {
   const [isSortMode, setIsSortMode] = useState(false);
   const [localStudentTypes, setLocalStudentTypes] = useState<StudentType[]>([]);
   const pageSize = 10;
+  const queryClient = useQueryClient();
 
   const { data: studentTypes, isLoading } = useStudentTypes({
     page,
@@ -66,6 +69,7 @@ export function StudentTypeTable() {
   const [studentTypeToDelete, setStudentTypeToDelete] =
     useState<StudentType | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
 
   const columns: ColumnDef<StudentType>[] = [
     {
@@ -170,6 +174,16 @@ export function StudentTypeTable() {
     exportToCSV({ columns: visibleColumns });
   };
 
+  const handleImport = () => {
+    setIsImportDialogOpen(true);
+  };
+
+  const handleImportComplete = () => {
+    // Refresh the data after successful import
+    queryClient.invalidateQueries({ queryKey: ["student-types"] });
+    setPage(1); // Reset to first page
+  };
+
   return (
     <>
       <SortableDataTable
@@ -193,6 +207,7 @@ export function StudentTypeTable() {
         renderActions={renderActions}
         onExport={handleExport}
         isExporting={isExporting}
+        onImport={handleImport}
       />
 
       {/* Edit StudentType Dialog */}
@@ -234,6 +249,17 @@ export function StudentTypeTable() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Import Dialog */}
+      <CSVImportDialog
+        open={isImportDialogOpen}
+        onOpenChange={setIsImportDialogOpen}
+        title="生徒タイプをインポート"
+        description="CSVファイルから生徒タイプデータを一括インポートします"
+        templateUrl="/api/import/studentTypes/template"
+        importUrl="/api/import/studentTypes"
+        onImportComplete={handleImportComplete}
+      />
     </>
   );
 }

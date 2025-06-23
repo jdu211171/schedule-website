@@ -5,6 +5,7 @@ import { useState } from "react";
 import * as React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Pencil, Trash2, Download } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { SortableDataTable } from "@/components/ui/sortable-data-table";
 import { useSubjectTypes } from "@/hooks/useSubjectTypeQuery";
@@ -27,6 +28,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { SubjectType } from "@/hooks/useSubjectTypeQuery";
 import { SubjectTypeFormDialog } from "./subject-type-form-dialog";
+import { CSVImportDialog } from "@/components/ui/csv-import-dialog";
 
 export function SubjectTypeTable() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -34,6 +36,7 @@ export function SubjectTypeTable() {
   const [isSortMode, setIsSortMode] = useState(false);
   const [localSubjectTypes, setLocalSubjectTypes] = useState<SubjectType[]>([]);
   const pageSize = 10;
+  const queryClient = useQueryClient();
 
   const { data: subjectTypes, isLoading } = useSubjectTypes({
     page,
@@ -63,6 +66,7 @@ export function SubjectTypeTable() {
   const [subjectTypeToDelete, setSubjectTypeToDelete] =
     useState<SubjectType | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
 
   const columns: ColumnDef<SubjectType>[] = [
     {
@@ -158,6 +162,16 @@ export function SubjectTypeTable() {
     exportToCSV({ columns: visibleColumns });
   };
 
+  const handleImport = () => {
+    setIsImportDialogOpen(true);
+  };
+
+  const handleImportComplete = () => {
+    // Refresh the data after successful import
+    queryClient.invalidateQueries({ queryKey: ["subject-types"] });
+    setPage(1); // Reset to first page
+  };
+
   return (
     <>
       <SortableDataTable
@@ -181,6 +195,7 @@ export function SubjectTypeTable() {
         renderActions={renderActions}
         onExport={handleExport}
         isExporting={isExporting}
+        onImport={handleImport}
       />
 
       {/* Edit SubjectType Dialog */}
@@ -222,6 +237,17 @@ export function SubjectTypeTable() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Import Dialog */}
+      <CSVImportDialog
+        open={isImportDialogOpen}
+        onOpenChange={setIsImportDialogOpen}
+        title="科目タイプをインポート"
+        description="CSVファイルから科目タイプデータを一括インポートします"
+        templateUrl="/api/import/subjectTypes/template"
+        importUrl="/api/import/subjectTypes"
+        onImportComplete={handleImportComplete}
+      />
     </>
   );
 }

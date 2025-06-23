@@ -4,11 +4,12 @@
 import { useState } from "react";
 import * as React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Pencil, Trash2, Download } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useGenericExport } from "@/hooks/useGenericExport";
 import { SortableDataTable } from "@/components/ui/sortable-data-table";
 import { useBranches } from "@/hooks/useBranchQuery";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   useBranchUpdate,
   useBranchDelete,
@@ -27,6 +28,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Branch } from "@/hooks/useBranchQuery";
 import { BranchFormDialog } from "./branch-form-dialog";
+import { CSVImportDialog } from "@/components/ui/csv-import-dialog";
 
 export function BranchTable() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -34,6 +36,7 @@ export function BranchTable() {
   const [isSortMode, setIsSortMode] = useState(false);
   const [localBranches, setLocalBranches] = useState<Branch[]>([]);
   const pageSize = 10;
+  const queryClient = useQueryClient();
 
   const { data: branches, isLoading } = useBranches({
     page,
@@ -61,6 +64,7 @@ export function BranchTable() {
   const [branchToEdit, setBranchToEdit] = useState<Branch | null>(null);
   const [branchToDelete, setBranchToDelete] = useState<Branch | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
 
   const columns: ColumnDef<Branch>[] = [
     {
@@ -152,6 +156,18 @@ export function BranchTable() {
     exportToCSV({ columns: visibleColumns });
   };
 
+  const handleImport = () => {
+    setIsImportDialogOpen(true);
+  };
+
+  const handleImportComplete = () => {
+    // Refresh the data after successful import
+    // Invalidate the branches query to refetch data
+    queryClient.invalidateQueries({ queryKey: ["branches"] });
+    // Reset page to 1 to see newly imported data
+    setPage(1);
+  };
+
   return (
     <>
       <SortableDataTable
@@ -176,6 +192,7 @@ export function BranchTable() {
         isItemDisabled={(branch) => branch.branchId === currentBranch}
         onExport={handleExport}
         isExporting={isExporting}
+        onImport={handleImport}
       />
 
       {/* Edit Branch Dialog */}
@@ -217,6 +234,17 @@ export function BranchTable() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Import Dialog */}
+      <CSVImportDialog
+        open={isImportDialogOpen}
+        onOpenChange={setIsImportDialogOpen}
+        title="校舎をインポート"
+        description="CSVファイルから校舎データを一括インポートします"
+        templateUrl="/api/import/branches/template"
+        importUrl="/api/import/branches"
+        onImportComplete={handleImportComplete}
+      />
     </>
   );
 }
