@@ -92,6 +92,8 @@ import { EnhancedAvailabilityIrregularSelector } from "../student/enhanced-avail
 import { SearchableMultiSelect } from "@/components/admin-schedule/searchable-multi-select";
 import { useAllBranchesOrdered } from "@/hooks/useBranchQuery";
 import { EnhancedStateButton } from "../ui/enhanced-state-button";
+import { LineLinking } from "@/components/shared/line-linking";
+import { MessageSquare } from "lucide-react";
 
 interface TimeSlot {
   id: string;
@@ -702,7 +704,7 @@ export function TeacherFormDialog({
                 onValueChange={setActiveTab}
                 className="w-full"
               >
-                <TabsList className="grid w-full grid-cols-6 mb-6">
+                <TabsList className="grid w-full grid-cols-7 mb-6">
                   <TabsTrigger
                     value="basic"
                     className="flex items-center gap-2"
@@ -716,6 +718,13 @@ export function TeacherFormDialog({
                   >
                     <Settings className="h-4 w-4" />
                     アカウント
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="line"
+                    className="flex items-center gap-2"
+                  >
+                    <MessageSquare className="h-4 w-4" />
+                    LINE
                   </TabsTrigger>
                   <TabsTrigger
                     value="subjects"
@@ -855,26 +864,6 @@ export function TeacherFormDialog({
                             )}
                           />
 
-                          <FormField
-                            control={form.control}
-                            name="lineId"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="text-sm font-medium">
-                                  LINE ID
-                                </FormLabel>
-                                <FormControl>
-                                  <Input
-                                    placeholder="line_id_example"
-                                    className="h-11"
-                                    {...field}
-                                    value={field.value || ""}
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
                         </div>
 
                         <FormField
@@ -964,6 +953,26 @@ export function TeacherFormDialog({
                         />
                       </CardContent>
                     </Card>
+                  </TabsContent>
+
+                  <TabsContent value="line" className="space-y-6 mt-0">
+                    {teacher && (
+                      <LineLinking
+                        userId={teacher.teacherId}
+                        userType="teacher"
+                        userName={teacher.name}
+                        lineId={teacher.lineId}
+                        username={teacher.username || ""}
+                      />
+                    )}
+                    {!teacher && (
+                      <Alert>
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertDescription>
+                          LINE連携は講師を作成した後に設定できます。
+                        </AlertDescription>
+                      </Alert>
+                    )}
                   </TabsContent>
 
                   <TabsContent value="subjects" className="space-y-6 mt-0">

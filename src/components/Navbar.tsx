@@ -20,6 +20,7 @@ import {
   GraduationCap,
   Building,
   Menu,
+  MessageSquare,
 } from "lucide-react";
 import UserProfileMenu from "@/components/user-profile-menu";
 import { useSession } from "next-auth/react";
@@ -58,6 +59,11 @@ const dashboardNavItems: NavItemType[] = [
     title: "マスターデータ管理",
     href: "/dashboard/master",
     icon: LayoutDashboard,
+  },
+  {
+    title: "LINE通知",
+    href: "/dashboard/line-test",
+    icon: MessageSquare,
   },
 ];
 

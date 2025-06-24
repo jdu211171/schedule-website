@@ -682,6 +682,7 @@ async function main() {
       kanaName: "ヤマダ タロウ",
       email: teacherUser1.email!,
       lineId: "yamada_taro_line",
+      linkingCode: "T001",
       notes: "数学・理科専門",
     },
   });
@@ -695,6 +696,7 @@ async function main() {
       kanaName: "ササキ ハナコ",
       email: teacherUser2.email!,
       lineId: "sasaki_hanako_line",
+      linkingCode: "T002",
       notes: "英語・国語専門",
     },
   });
@@ -708,6 +710,7 @@ async function main() {
       kanaName: "タカハシ マコト",
       email: teacherUser3.email!,
       lineId: "takahashi_makoto_line",
+      linkingCode: "T003",
       notes: "社会・歴史専門",
     },
   });
@@ -721,6 +724,7 @@ async function main() {
       kanaName: "イトウ リエ",
       email: teacherUser4.email!,
       lineId: "ito_rie_line",
+      linkingCode: "T004",
       notes: "理科・化学専門",
     },
   });
@@ -734,6 +738,7 @@ async function main() {
       kanaName: "マツモト カズヤ",
       email: teacherUser5.email!,
       lineId: "matsumoto_kazuya_line",
+      linkingCode: "T005",
       notes: "プログラミング・IT専門",
     },
   });
@@ -749,6 +754,7 @@ async function main() {
       studentTypeId: generalStudentType.studentTypeId,
       gradeYear: 5,
       lineId: "sato_hanako_line",
+      linkingCode: "S001",
       notes: "算数が得意",
     },
   });
@@ -763,6 +769,7 @@ async function main() {
       studentTypeId: middleStudentType.studentTypeId,
       gradeYear: 2,
       lineId: "tamura_kenta_line",
+      linkingCode: "S002",
       notes: "英語の強化が必要",
     },
   });
@@ -777,6 +784,7 @@ async function main() {
       studentTypeId: highStudentType.studentTypeId,
       gradeYear: 3,
       lineId: "nakajima_manami_line",
+      linkingCode: "S003",
       notes: "大学受験準備中",
     },
   });
@@ -791,6 +799,7 @@ async function main() {
       studentTypeId: middleStudentType.studentTypeId,
       gradeYear: 1,
       lineId: "kimura_daisuke_line",
+      linkingCode: "S004",
       notes: "数学に興味あり",
     },
   });
@@ -805,6 +814,7 @@ async function main() {
       studentTypeId: adultStudentType.studentTypeId,
       gradeYear: null,
       lineId: "kobayashi_yuka_line",
+      linkingCode: "S005",
       notes: "転職のためのスキルアップ",
     },
   });
@@ -819,6 +829,7 @@ async function main() {
       studentTypeId: generalStudentType.studentTypeId,
       gradeYear: 3,
       lineId: "watanabe_shota_line",
+      linkingCode: "S006",
       notes: "読書が好き",
     },
   });
@@ -833,6 +844,7 @@ async function main() {
       studentTypeId: highStudentType.studentTypeId,
       gradeYear: 1,
       lineId: "kato_misato_line",
+      linkingCode: "S007",
       notes: "理系志望",
     },
   });
@@ -847,6 +859,7 @@ async function main() {
       studentTypeId: rouninStudentType.studentTypeId,
       gradeYear: null,
       lineId: "yoshida_takumi_line",
+      linkingCode: "S008",
       notes: "医学部志望",
     },
   });

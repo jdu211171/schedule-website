@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git checkout:*)",
+      "Bash(bun run:*)",
+      "Bash(bun add:*)",
+      "Bash(grep:*)",
+      "Bash(mkdir:*)",
+      "Bash(mv:*)",
+      "Bash(rg:*)",
+      "Bash(ls:*)",
+      "Bash(tsc:*)",
+      "Bash(bunx tsc:*)",
+      "Bash(true)",
+      "Bash(rm:*)",
+      "Bash(find:*)",
+      "Bash(bun prisma migrate dev:*)"
+    ],
+    "deny": []
+  }
+}
