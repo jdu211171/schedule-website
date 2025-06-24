@@ -30,6 +30,17 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
   Form,
   FormControl,
   FormField,
@@ -1894,66 +1905,88 @@ export function StudentFormDialog({
               </label>
             </div>
 
-            <div className="flex flex-col-reverse sm:flex-row gap-3 w-full sm:w-auto sm:ml-auto">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-                disabled={isSubmitting}
-                className="w-full sm:w-auto"
-              >
-                キャンセル
-              </Button>
-              <Button
-                type="button"
-                variant="destructive"
-                onClick={handleReset}
-                disabled={isSubmitting}
-                className="w-full sm:w-auto"
-              >
-                <RotateCcw className="h-4 w-4 mr-2" />
-                リセット
-              </Button>
+            <div className="flex flex-col-reverse sm:flex-row gap-3 w-full justify-between">
+              {/* Reset button on the left */}
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    disabled={isSubmitting}
+                    className="w-full sm:w-auto"
+                  >
+                    <RotateCcw className="h-4 w-4 mr-2" />
+                    リセット
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>フォームをリセットしますか？</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      この操作により、入力されたすべての情報が削除され、フォームが初期状態に戻ります。この操作は元に戻すことができません。
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>キャンセル</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleReset} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                      リセット
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
 
-              {keepDialogOpen ? (
-                <EnhancedStateButton
-                  {...(isEditing
-                    ? saveButtonPresets.update
-                    : saveButtonPresets.create)}
-                  onClick={handleEnhancedSubmit}
-                  disabled={
-                    isBranchesLoading ||
-                    isStudentTypesLoading ||
-                    availabilityErrors.length > 0
-                  }
-                  className="w-full sm:w-auto min-w-[120px]"
-                  autoResetDelay={1500}
-                />
-              ) : (
+              {/* Cancel and Save buttons on the right */}
+              <div className="flex flex-col-reverse sm:flex-row gap-3 w-full sm:w-auto">
                 <Button
-                  type="submit"
-                  onClick={form.handleSubmit(onSubmit)}
-                  disabled={
-                    isBranchesLoading ||
-                    isStudentTypesLoading ||
-                    isSubmitting ||
-                    availabilityErrors.length > 0
-                  }
-                  className="w-full sm:w-auto min-w-[120px]"
+                  type="button"
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                  disabled={isSubmitting}
+                  className="w-full sm:w-auto"
                 >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      {isEditing ? "保存中..." : "作成中..."}
-                    </>
-                  ) : (
-                    <>
-                      <Save className="h-4 w-4 mr-2" />
-                      {isEditing ? "変更を保存" : "生徒を作成"}
-                    </>
-                  )}
+                  キャンセル
                 </Button>
-              )}
+
+                {keepDialogOpen ? (
+                  <EnhancedStateButton
+                    {...(isEditing
+                      ? saveButtonPresets.update
+                      : saveButtonPresets.create)}
+                    onClick={handleEnhancedSubmit}
+                    disabled={
+                      isBranchesLoading ||
+                      isStudentTypesLoading ||
+                      availabilityErrors.length > 0
+                    }
+                    className="w-full sm:w-auto min-w-[120px]"
+                    autoResetDelay={1500}
+                  />
+                ) : (
+                  <Button
+                    type="submit"
+                    onClick={form.handleSubmit(onSubmit)}
+                    disabled={
+                      isBranchesLoading ||
+                      isStudentTypesLoading ||
+                      isSubmitting ||
+                      availabilityErrors.length > 0
+                    }
+                    className="w-full sm:w-auto min-w-[120px]"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        {isEditing ? "保存中..." : "作成中..."}
+                      </>
+                    ) : (
+                      <>
+                        <Save className="h-4 w-4 mr-2" />
+                        {isEditing ? "変更を保存" : "生徒を作成"}
+                      </>
+                    )}
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </DialogFooter>
