@@ -32,17 +32,29 @@ export async function GET(req: NextRequest) {
 
     // Log for debugging
     console.log('Notification check at:', format(nowJST, 'yyyy-MM-dd HH:mm:ss'));
+    console.log('24h target date:', date24h);
     console.log('24h window:', format(target24hStart, 'HH:mm:ss'), '-', format(target24hEnd, 'HH:mm:ss'));
+    console.log('30m target date:', date30m);
     console.log('30m window:', format(target30mStart, 'HH:mm:ss'), '-', format(target30mEnd, 'HH:mm:ss'));
+    console.log('LINE_CHANNEL_ACCESS_TOKEN present:', !!process.env.LINE_CHANNEL_ACCESS_TOKEN);
+    console.log('CRON_SECRET present:', !!process.env.CRON_SECRET);
 
     // Find sessions starting in ~24 hours
     const sessions24h = await prisma.classSession.findMany({
       where: {
         date: new Date(date24h),
-        startTime: {
-          gte: new Date(`1970-01-01T${format(target24hStart, 'HH:mm:ss')}.000Z`),
-          lte: new Date(`1970-01-01T${format(target24hEnd, 'HH:mm:ss')}.000Z`)
-        }
+        AND: [
+          {
+            startTime: {
+              gte: new Date(`1970-01-01T${format(target24hStart, 'HH:mm:ss')}`)
+            }
+          },
+          {
+            startTime: {
+              lte: new Date(`1970-01-01T${format(target24hEnd, 'HH:mm:ss')}`)
+            }
+          }
+        ]
       },
       include: {
         teacher: {
@@ -82,10 +94,18 @@ export async function GET(req: NextRequest) {
     const sessions30m = await prisma.classSession.findMany({
       where: {
         date: new Date(date30m),
-        startTime: {
-          gte: new Date(`1970-01-01T${format(target30mStart, 'HH:mm:ss')}.000Z`),
-          lte: new Date(`1970-01-01T${format(target30mEnd, 'HH:mm:ss')}.000Z`)
-        }
+        AND: [
+          {
+            startTime: {
+              gte: new Date(`1970-01-01T${format(target30mStart, 'HH:mm:ss')}`)
+            }
+          },
+          {
+            startTime: {
+              lte: new Date(`1970-01-01T${format(target30mEnd, 'HH:mm:ss')}`)
+            }
+          }
+        ]
       },
       include: {
         teacher: {
@@ -174,6 +194,9 @@ export async function GET(req: NextRequest) {
       } catch (error) {
         const errorMsg = `Error sending 24h notification for session ${session.classId}: ${error}`;
         console.error(errorMsg);
+        if (error instanceof Error && 'response' in error) {
+          console.error('LINE API Response:', (error as any).response?.data);
+        }
         errors.push(errorMsg);
       }
     }
@@ -228,6 +251,9 @@ export async function GET(req: NextRequest) {
       } catch (error) {
         const errorMsg = `Error sending 30m notification for session ${session.classId}: ${error}`;
         console.error(errorMsg);
+        if (error instanceof Error && 'response' in error) {
+          console.error('LINE API Response:', (error as any).response?.data);
+        }
         errors.push(errorMsg);
       }
     }
@@ -238,7 +264,13 @@ export async function GET(req: NextRequest) {
       sessions24h: sessions24h.length,
       sessions30m: sessions30m.length,
       errors: errors.length > 0 ? errors : undefined,
-      timestamp: format(nowJST, 'yyyy-MM-dd HH:mm:ss zzz')
+      timestamp: format(nowJST, 'yyyy-MM-dd HH:mm:ss zzz'),
+      debug: {
+        date24h,
+        date30m,
+        target24hWindow: `${format(target24hStart, 'HH:mm:ss')} - ${format(target24hEnd, 'HH:mm:ss')}`,
+        target30mWindow: `${format(target30mStart, 'HH:mm:ss')} - ${format(target30mEnd, 'HH:mm:ss')}`
+      }
     });
   } catch (error) {
     console.error('Error in notification service:', error);

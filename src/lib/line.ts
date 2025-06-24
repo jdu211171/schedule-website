@@ -75,6 +75,11 @@ export async function sendLineReply(replyToken: string, message: string): Promis
  * Send a push message to a single LINE user
  */
 export async function sendLinePush(to: string, message: string): Promise<void> {
+  if (!CHANNEL_ACCESS_TOKEN) {
+    console.error('LINE_CHANNEL_ACCESS_TOKEN is not set');
+    throw new Error('LINE_CHANNEL_ACCESS_TOKEN is not set');
+  }
+
   try {
     await axios.post(
       `${LINE_API_BASE}/message/push`,
@@ -91,6 +96,9 @@ export async function sendLinePush(to: string, message: string): Promise<void> {
     );
   } catch (error) {
     console.error('Error sending LINE push message:', error);
+    if (axios.isAxiosError(error) && error.response) {
+      console.error('LINE API Response:', error.response.data);
+    }
     throw error;
   }
 }
@@ -101,6 +109,11 @@ export async function sendLinePush(to: string, message: string): Promise<void> {
 export async function sendLineMulticast(to: string[], message: string): Promise<void> {
   if (to.length === 0) return;
   
+  if (!CHANNEL_ACCESS_TOKEN) {
+    console.error('LINE_CHANNEL_ACCESS_TOKEN is not set');
+    throw new Error('LINE_CHANNEL_ACCESS_TOKEN is not set');
+  }
+
   try {
     await axios.post(
       `${LINE_API_BASE}/message/multicast`,
@@ -117,6 +130,9 @@ export async function sendLineMulticast(to: string[], message: string): Promise<
     );
   } catch (error) {
     console.error('Error sending LINE multicast:', error);
+    if (axios.isAxiosError(error) && error.response) {
+      console.error('LINE API Response:', error.response.data);
+    }
     throw error;
   }
 }
