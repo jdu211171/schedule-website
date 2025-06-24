@@ -4,7 +4,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -37,18 +37,11 @@ import {
 } from "@/hooks/useClassTypeMutation";
 import { ClassType, useAllClassTypes } from "@/hooks/useClassTypeQuery";
 
-// Helper function to check if a class type is protected (root level types like 通常授業 and 特別授業)
-function isProtectedClassType(classType: ClassType): boolean {
-  // Protected class types are root level types (no parent) with specific names
+// Helper function to check if a class type is a root class type (通常授業 and 特別授業)
+function isRootClassType(classType: ClassType): boolean {
+  // Root class types are those without a parent with specific names
   return !classType.parentId && (classType.name === "通常授業" || classType.name === "特別授業");
 }
-
-// Form schema for class type creation/editing
-const classTypeFormSchema = z.object({
-  name: z.string().min(1, "名前は必須です").max(100),
-  parentId: z.string().min(1, "親クラスタイプは必須です"),
-  notes: z.string().max(255).optional().nullable(),
-});
 
 interface ClassTypeFormDialogProps {
   open: boolean;
@@ -65,14 +58,33 @@ export function ClassTypeFormDialog({
   const updateClassTypeMutation = useClassTypeUpdate();
   const isEditing = !!classType;
 
-  // Check if trying to edit a protected class type
-  const isProtected = classType ? isProtectedClassType(classType) : false;
+  // Check if editing a root class type (通常授業 or 特別授業)
+  const isRoot = classType ? isRootClassType(classType) : false;
+
+  // Create dynamic schema based on whether it's a root type
+  const dynamicSchema = useMemo(() => {
+    if (isRoot) {
+      // For root types, parentId is not required
+      return z.object({
+        name: z.string().min(1, "名前は必須です").max(100),
+        parentId: z.string().optional().nullable(),
+        notes: z.string().max(255).optional().nullable(),
+      });
+    } else {
+      // For non-root types, parentId is required
+      return z.object({
+        name: z.string().min(1, "名前は必須です").max(100),
+        parentId: z.string().min(1, "親クラスタイプは必須です"),
+        notes: z.string().max(255).optional().nullable(),
+      });
+    }
+  }, [isRoot]);
 
   // Fetch all class types for parent selection
   const { data: allClassTypes } = useAllClassTypes();
 
-  const form = useForm<z.infer<typeof classTypeFormSchema>>({
-    resolver: zodResolver(classTypeFormSchema),
+  const form = useForm<z.infer<typeof dynamicSchema>>({
+    resolver: zodResolver(dynamicSchema),
     defaultValues: {
       name: classType?.name || "",
       parentId: classType?.parentId || "",
@@ -96,25 +108,38 @@ export function ClassTypeFormDialog({
     }
   }, [classType, form]);
 
-  function onSubmit(values: z.infer<typeof classTypeFormSchema>) {
-    // Ensure the notes field is explicitly included, even if empty
-    const updatedValues = {
-      ...values,
-      notes: values.notes ?? "",
-      parentId: values.parentId, // parentId is now required, no need to default to null
-    };
-
+  function onSubmit(values: z.infer<typeof dynamicSchema>) {
     // Close the dialog immediately for better UX
     onOpenChange(false);
     form.reset();
 
     // Then trigger the mutation
     if (isEditing && classType) {
-      updateClassTypeMutation.mutate({
-        classTypeId: classType.classTypeId,
-        ...updatedValues,
-      });
+      if (isRoot) {
+        // For root class types, only send notes field
+        updateClassTypeMutation.mutate({
+          classTypeId: classType.classTypeId,
+          notes: values.notes ?? "",
+        });
+      } else {
+        // For non-root class types, send all fields
+        const updatedValues = {
+          ...values,
+          notes: values.notes ?? "",
+          parentId: values.parentId || null,
+        };
+        updateClassTypeMutation.mutate({
+          classTypeId: classType.classTypeId,
+          ...updatedValues,
+        });
+      }
     } else {
+      // For creating new class types
+      const updatedValues = {
+        ...values,
+        notes: values.notes ?? "",
+        parentId: values.parentId || null,
+      };
       createClassTypeMutation.mutate(updatedValues);
     }
   }
@@ -148,16 +173,8 @@ export function ClassTypeFormDialog({
             {isEditing ? "クラスタイプの編集" : "クラスタイプの作成"}
           </DialogTitle>
         </DialogHeader>
-        {/* Prevent editing protected class types */}
-        {isEditing && isProtected ? (
-          <div className="p-4 text-center">
-            <p className="text-muted-foreground">
-              この基本クラスタイプは編集できません。
-            </p>
-          </div>
-        ) : (
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">{/* ...existing form content... */}
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
               control={form.control}
               name="name"
@@ -169,43 +186,53 @@ export function ClassTypeFormDialog({
                   <FormControl>
                     <Input
                       placeholder="クラスタイプ名を入力してください"
+                      disabled={isRoot}
+                      className={isRoot ? "bg-muted text-muted-foreground cursor-not-allowed" : ""}
                       {...field}
                     />
                   </FormControl>
+                  {isRoot && (
+                    <p className="text-sm text-muted-foreground">
+                      基本クラスタイプの名前は変更できません
+                    </p>
+                  )}
                   <FormMessage />
                 </FormItem>
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="parentId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="after:content-['*'] after:ml-1 after:text-destructive">
-                    親クラスタイプ
-                  </FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    value={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="親クラスタイプを選択してください" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {parentOptions.map((type) => (
-                        <SelectItem key={type.classTypeId} value={type.classTypeId}>
-                          {type.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {/* Only show parent selection for non-root class types */}
+            {!isRoot && (
+              <FormField
+                control={form.control}
+                name="parentId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="after:content-['*'] after:ml-1 after:text-destructive">
+                      親クラスタイプ
+                    </FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value || ""}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="親クラスタイプを選択してください" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {parentOptions.map((type) => (
+                          <SelectItem key={type.classTypeId} value={type.classTypeId}>
+                            {type.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             {/* Notes */}
             <FormField
@@ -231,7 +258,6 @@ export function ClassTypeFormDialog({
             </DialogFooter>
           </form>
         </Form>
-        )}
       </DialogContent>
     </Dialog>
   );
