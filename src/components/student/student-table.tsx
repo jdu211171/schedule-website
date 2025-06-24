@@ -3,7 +3,8 @@
 
 import * as React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Pencil, Eye, EyeOff, Trash2, MoreHorizontal, RotateCcw, Download, Upload, MessageSquare } from "lucide-react";
+import { Pencil, Eye, EyeOff, Trash2, MoreHorizontal, RotateCcw, Download, Upload } from "lucide-react";
+import { LineIcon } from "@/components/icons/line-icon";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useStudentExport } from "@/hooks/useStudentExport";
 
@@ -208,12 +209,23 @@ export function StudentTable() {
     gradeYear: string[];
     branch: string[];
     subject: string[];
+    lineConnection: string[];
   }>(() => {
     if (typeof window !== 'undefined') {
       const savedFilters = localStorage.getItem(FILTERS_STORAGE_KEY);
       if (savedFilters) {
         try {
-          return JSON.parse(savedFilters);
+          const parsed = JSON.parse(savedFilters);
+          // Ensure all properties have default values
+          return {
+            name: parsed.name || "",
+            status: parsed.status || [],
+            studentType: parsed.studentType || [],
+            gradeYear: parsed.gradeYear || [],
+            branch: parsed.branch || [],
+            subject: parsed.subject || [],
+            lineConnection: parsed.lineConnection || [],
+          };
         } catch (error) {
           console.error('Error parsing saved filters:', error);
         }
@@ -226,6 +238,7 @@ export function StudentTable() {
       gradeYear: [] as string[],
       branch: [] as string[],
       subject: [] as string[],
+      lineConnection: [] as string[],
     };
   });
 
@@ -309,6 +322,7 @@ export function StudentTable() {
   const gradeYearSet = React.useMemo(() => new Set(filters.gradeYear), [filters.gradeYear]);
   const branchSet = React.useMemo(() => new Set(filters.branch), [filters.branch]);
   const subjectSet = React.useMemo(() => new Set(filters.subject), [filters.subject]);
+  const lineConnectionSet = React.useMemo(() => new Set(filters.lineConnection), [filters.lineConnection]);
 
   // Filter data client-side only for filters not supported by the API
   const filteredData = React.useMemo(() => {
@@ -319,6 +333,7 @@ export function StudentTable() {
       gradeYearSet.size === 0 &&
       branchSet.size === 0 &&
       subjectSet.size === 0 &&
+      lineConnectionSet.size === 0 &&
       filters.status.length <= 1 // API supports single status
     ) {
       return data;
@@ -354,6 +369,15 @@ export function StudentTable() {
         if (!hasMatchingSubject) return false;
       }
 
+      // LINE connection filter
+      if (lineConnectionSet.size > 0) {
+        const hasLine = !!student.lineId;
+        const connectionStatus = hasLine ? "connected" : "not_connected";
+        if (!lineConnectionSet.has(connectionStatus)) {
+          return false;
+        }
+      }
+
       return true;
     });
   }, [
@@ -362,6 +386,7 @@ export function StudentTable() {
     gradeYearSet,
     branchSet,
     subjectSet,
+    lineConnectionSet,
     students?.data,
     subjectIdToName,
   ]);
@@ -414,16 +439,7 @@ export function StudentTable() {
         id: "name",
         accessorKey: "name",
         header: "名前",
-        cell: ({ row }) => (
-          <div className="flex items-center gap-2">
-            {row.original.name || "-"}
-            {row.original.lineId && (
-              <span title="LINE連携済み">
-                <MessageSquare className="h-4 w-4 text-green-600" />
-              </span>
-            )}
-          </div>
-        ),
+        cell: ({ row }) => row.original.name || "-",
         meta: {
           label: "名前",
           placeholder: "名前で検索...",
@@ -561,14 +577,45 @@ export function StudentTable() {
           label: "パスワード",
         },
       },
+      // Hidden for security reasons - LINE IDs should not be exposed
+      // {
+      //   id: "lineId",
+      //   accessorKey: "lineId",
+      //   header: "LINE ID",
+      //   cell: ({ row }) => row.original.lineId || "-",
+      //   meta: {
+      //     label: "LINE ID",
+      //   },
+      // },
       {
-        id: "lineId",
+        id: "lineConnection",
         accessorKey: "lineId",
-        header: "LINE ID",
-        cell: ({ row }) => row.original.lineId || "-",
-        meta: {
-          label: "LINE ID",
+        header: "LINE連携",
+        cell: ({ row }) => {
+          const hasLine = !!row.original.lineId;
+          return (
+            <div className="flex items-center gap-2">
+              <LineIcon
+                className={cn(
+                  "h-4 w-4",
+                  hasLine ? "text-[#00B900]" : "text-gray-400"
+                )}
+              />
+              <span className="text-sm">
+                {hasLine ? "連携済み" : "未連携"}
+              </span>
+            </div>
+          );
         },
+        meta: {
+          label: "LINE連携",
+          variant: "multiSelect",
+          options: [
+            { value: "connected", label: "連携済み" },
+            { value: "not_connected", label: "未連携" }
+          ],
+        },
+        enableColumnFilter: true,
       },
       {
         id: "branches",
@@ -703,6 +750,7 @@ export function StudentTable() {
         ...(filters.gradeYear.length > 0 ? [{ id: 'gradeYear', value: filters.gradeYear }] : []),
         ...(filters.branch.length > 0 ? [{ id: 'branches', value: filters.branch }] : []),
         ...(filters.subject.length > 0 ? [{ id: 'subjectPreferences', value: filters.subject }] : []),
+        ...(filters.lineConnection.length > 0 ? [{ id: 'lineConnection', value: filters.lineConnection }] : []),
       ],
     },
     getRowId: (row) => row.studentId,
@@ -740,6 +788,7 @@ export function StudentTable() {
         gradeYear: [],
         branch: [],
         subject: [],
+        lineConnection: [],
       };
       setFilters(defaultFilters);
       // Clear localStorage when resetting
@@ -758,6 +807,7 @@ export function StudentTable() {
       gradeYear: [] as string[],
       branch: [] as string[],
       subject: [] as string[],
+      lineConnection: [] as string[],
     };
 
     // Set the active filters
@@ -774,6 +824,8 @@ export function StudentTable() {
         newFilters.branch = filter.value as string[] || [];
       } else if (filter.id === 'subjectPreferences') {
         newFilters.subject = filter.value as string[] || [];
+      } else if (filter.id === 'lineConnection') {
+        newFilters.lineConnection = filter.value as string[] || [];
       }
     });
 
