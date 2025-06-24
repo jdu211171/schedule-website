@@ -162,15 +162,51 @@ export const PATCH = withRole(
         );
       }
 
-      // Check if this is a protected class type (通常授業 or 特別授業)
-      if (isProtectedClassType(existingClassType)) {
-        return NextResponse.json(
-          { error: "この基本クラスタイプは編集できません" },
-          { status: 403 }
-        );
-      }
-
       const { name, notes, parentId, order } = result.data;
+
+      // Check if this is a protected class type (通常授業 or 特別授業)
+      const isProtected = isProtectedClassType(existingClassType);
+      
+      if (isProtected) {
+        // For protected class types, only allow updating notes
+        const allowedFields = Object.keys(body);
+        const hasDisallowedFields = allowedFields.some(field => field !== 'notes');
+        
+        if (hasDisallowedFields) {
+          return NextResponse.json(
+            { error: "基本クラスタイプはメモのみ編集可能です" },
+            { status: 403 }
+          );
+        }
+        
+        // Only update notes for protected class types
+        const updatedClassType = await prisma.classType.update({
+          where: { classTypeId },
+          data: {
+            notes: notes !== undefined ? notes : existingClassType.notes,
+          },
+          include: {
+            parent: true,
+            children: {
+              orderBy: { name: "asc" },
+            },
+          },
+        });
+
+        // Format response
+        const formattedClassType = formatClassType(updatedClassType);
+
+        return NextResponse.json({
+          data: [formattedClassType],
+          message: "クラスタイプのメモを更新しました",
+          pagination: {
+            total: 1,
+            page: 1,
+            limit: 1,
+            pages: 1,
+          },
+        });
+      }
 
       // Check name uniqueness if being updated
       if (name && name !== existingClassType.name) {
