@@ -502,7 +502,7 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
   if (!selectedBranchId) {
     return (
       <div className="flex justify-center p-8 text-muted-foreground">
-        Пожалуйста, выберите филиал для отображения расписания.
+        スケジュールを表示するには、ブランチを選択してください。
       </div>
     );
   }
@@ -663,7 +663,27 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
       </div>
 
       <div className="flex flex-col sm:flex-row justify-between items-center space-y-2 sm:space-y-0">
-        <h2 className="text-xl font-semibold text-foreground dark:text-foreground"></h2>
+        <div className="flex items-center gap-6">
+          <h2 className="text-xl font-semibold text-foreground dark:text-foreground"></h2>
+          
+          <div className="flex items-center gap-4">
+            <div className="text-xs text-muted-foreground">授業タイプ表示:</div>
+            <div className="flex items-center gap-3 text-xs">
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-3 rounded-sm bg-red-100 border border-red-300 dark:bg-red-900/70 dark:border-red-700"></div>
+                <span className="text-red-700 dark:text-red-300">特別希望</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-3 rounded-sm bg-indigo-100 border border-indigo-300 dark:bg-indigo-900/70 dark:border-indigo-700"></div>
+                <span className="text-indigo-700 dark:text-indigo-300">通常希望</span>
+              </div>
+            </div>
+            <div className="text-xs text-muted-foreground">
+              特別希望は通常希望より優先されます
+            </div>
+          </div>
+        </div>
+        
         <DaySelector
           startDate={viewStartDate}
           selectedDays={selectedDays}
