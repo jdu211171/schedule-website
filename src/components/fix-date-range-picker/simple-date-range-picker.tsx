@@ -80,13 +80,30 @@ export const SimpleDateRangePicker: React.FC<SimpleDateRangePickerProps> = ({
 
   const disablePastDatesFunc = disablePastDates ? (date: Date) => date < today : undefined
 
+  // More compact date formatting for better fit
   const formatDateRange = (range: DateRange) => {
     if (!range.from) return placeholder
-    if (!range.to) return format(range.from, "yyyy年M月d日", { locale: ja })
+    if (!range.to) return format(range.from, "M/d", { locale: ja })
     if (range.from.getTime() === range.to.getTime()) {
-      return format(range.from, "yyyy年M月d日", { locale: ja })
+      return format(range.from, "M/d", { locale: ja })
     }
-    return `${format(range.from, "yyyy年M月d日", { locale: ja })} - ${format(range.to, "yyyy年M月d日", { locale: ja })}`
+    
+    // Check if dates are in the same year and month for more compact display
+    const fromYear = range.from.getFullYear()
+    const toYear = range.to.getFullYear()
+    const fromMonth = range.from.getMonth()
+    const toMonth = range.to.getMonth()
+    
+    if (fromYear === toYear && fromMonth === toMonth) {
+      // Same month: "6/25 - 29"
+      return `${format(range.from, "M/d", { locale: ja })} - ${format(range.to, "d", { locale: ja })}`
+    } else if (fromYear === toYear) {
+      // Same year: "6/25 - 7/24"
+      return `${format(range.from, "M/d", { locale: ja })} - ${format(range.to, "M/d", { locale: ja })}`
+    } else {
+      // Different years: "6/25 - 7/24"
+      return `${format(range.from, "M/d", { locale: ja })} - ${format(range.to, "M/d", { locale: ja })}`
+    }
   }
 
   const handleOpenChange = (isOpen: boolean) => {
@@ -143,15 +160,17 @@ export const SimpleDateRangePicker: React.FC<SimpleDateRangePickerProps> = ({
         <Button
           variant="outline"
           className={cn(
-            "w-full justify-start text-left font-normal min-h-[40px]",
+            "w-full justify-start text-left font-normal min-h-[40px] text-sm",
             !value?.from && "text-muted-foreground",
             disabled && "opacity-50 cursor-not-allowed",
             className
           )}
           disabled={disabled}
         >
-          <CalendarIcon className="mr-2 h-4 w-4" />
-          {formatDateRange(value || { from: undefined, to: undefined })}
+          <CalendarIcon className="mr-2 h-4 w-4 flex-shrink-0" />
+          <span className="truncate">
+            {formatDateRange(value || { from: undefined, to: undefined })}
+          </span>
         </Button>
       </PopoverTrigger>
       <PopoverContent 

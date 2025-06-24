@@ -137,7 +137,8 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
     seriesId: string;
     sessionInfo: ExtendedClassSession;
   } | null>(null);
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  // Remove the create dialog state - no longer needed
+  // const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
   const handleFilterChange = (
     field: keyof typeof filters,
@@ -421,8 +422,9 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
         columns={visibleColumns}
         data={classSessions?.data || []}
         isLoading={isLoading}
-        onCreateNew={() => setIsCreateDialogOpen(true)}
-        createNewLabel="新規授業作成"
+        // Remove the create button functionality
+        // onCreateNew={() => setIsCreateDialogOpen(true)}
+        // createNewLabel="新規授業作成"
         pageIndex={page - 1}
         pageCount={totalPages || 1}
         onPageChange={handlePageChange}
@@ -443,12 +445,13 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
         />
       )}
 
-      {/* Create Session Dialog */}
+      {/* Remove Create Session Dialog - no longer needed
       <ClassSessionFormDialog
         open={isCreateDialogOpen}
         onOpenChange={setIsCreateDialogOpen}
         filters={filters}
       />
+      */}
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog

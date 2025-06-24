@@ -65,6 +65,8 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { TimeInput } from "@/components/ui/time-input";
+import { useAvailability } from "../admin-schedule/DayCalendar/availability-layer";
 import type { ClassSession } from "@prisma/client";
 
 interface ClassSessionFormDialogProps {
@@ -114,6 +116,29 @@ const daysOfWeekOptions = [
   { id: 5, label: "金曜日" },
   { id: 6, label: "土曜日" },
 ];
+
+// Default time slots for availability checking
+const DEFAULT_TIME_SLOTS = Array.from({ length: 57 }, (_, i) => {
+  const hours = Math.floor(i / 4) + 8;
+  const startMinutes = (i % 4) * 15;
+  let endHours, endMinutes;
+
+  if (startMinutes === 45) {
+    endHours = hours + 1;
+    endMinutes = 0;
+  } else {
+    endHours = hours;
+    endMinutes = startMinutes + 15;
+  }
+
+  return {
+    index: i,
+    start: `${hours.toString().padStart(2, '0')}:${startMinutes.toString().padStart(2, '0')}`,
+    end: `${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`,
+    display: `${hours}:${startMinutes === 0 ? '00' : startMinutes} - ${endHours}:${endMinutes === 0 ? '00' : endMinutes}`,
+    shortDisplay: i % 4 === 0 ? `${hours}:00` : ''
+  };
+});
 
 export function ClassSessionFormDialog({
   open,
@@ -202,6 +227,19 @@ export function ClassSessionFormDialog({
     resolver: zodResolver(formSchema),
     defaultValues: getDefaultValues(),
   });
+
+  // Get current form values for availability checking
+  const watchedTeacherId = form.watch("teacherId");
+  const watchedStudentId = form.watch("studentId");
+  const watchedDate = form.watch("date");
+
+  // Get availability data for the current selection
+  const { teacherAvailability, studentAvailability } = useAvailability(
+    watchedTeacherId || undefined,
+    watchedStudentId || undefined,
+    watchedDate ? new Date(watchedDate) : new Date(),
+    DEFAULT_TIME_SLOTS
+  );
 
   // Reset form when class session or filters change
   useEffect(() => {
@@ -677,7 +715,7 @@ export function ClassSessionFormDialog({
                       )}
                     />
 
-                    {/* Time fields */}
+                    {/* Time fields - using TimeInput instead of regular input */}
                     <div className="grid grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
@@ -686,7 +724,15 @@ export function ClassSessionFormDialog({
                           <FormItem>
                             <FormLabel>開始時間</FormLabel>
                             <FormControl>
-                              <Input type="time" {...field} />
+                              <TimeInput
+                                value={field.value}
+                                onChange={field.onChange}
+                                placeholder="開始時間を選択"
+                                teacherAvailability={teacherAvailability}
+                                studentAvailability={studentAvailability}
+                                timeSlots={DEFAULT_TIME_SLOTS}
+                                usePortal={true}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -700,7 +746,15 @@ export function ClassSessionFormDialog({
                           <FormItem>
                             <FormLabel>終了時間</FormLabel>
                             <FormControl>
-                              <Input type="time" {...field} />
+                              <TimeInput
+                                value={field.value}
+                                onChange={field.onChange}
+                                placeholder="終了時間を選択"
+                                teacherAvailability={teacherAvailability}
+                                studentAvailability={studentAvailability}
+                                timeSlots={DEFAULT_TIME_SLOTS}
+                                usePortal={true}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
