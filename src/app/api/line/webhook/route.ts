@@ -70,109 +70,109 @@ export async function POST(req: NextRequest) {
         continue;
       }
 
-      // Check if it's a linking code
-      const linkingCode = text.trim().toUpperCase();
+      // Check if it's a username
+      const username = text.trim();
 
-      // Try to find a student with this linking code
-      const student = await prisma.student.findFirst({
-        where: { linkingCode }
+      // Try to find a user with this username
+      const user = await prisma.user.findFirst({
+        where: { username },
+        include: {
+          student: true,
+          teacher: true
+        }
       });
 
-      if (student) {
-        // Check if this LINE ID is already linked to another account
-        const existingStudent = await prisma.student.findFirst({
-          where: { 
-            lineId,
-            NOT: { studentId: student.studentId }
-          }
-        });
+      if (user) {
+        // Check if user has a student or teacher profile
+        if (user.student) {
+          // Check if this LINE ID is already linked to another student account
+          const existingStudent = await prisma.student.findFirst({
+            where: { 
+              lineId,
+              NOT: { studentId: user.student.studentId }
+            }
+          });
 
-        if (existingStudent) {
+          if (existingStudent) {
+            try {
+              await sendLineReply(
+                replyToken,
+                'このLINEアカウントは既に別のアカウントにリンクされています。'
+              );
+            } catch (replyError) {
+              console.error('Error sending reply:', replyError);
+            }
+            continue;
+          }
+
+          // Link the LINE account to student
+          await prisma.student.update({
+            where: { studentId: user.student.studentId },
+            data: { 
+              lineId,
+              linkingCode: null // Clear any existing linking code
+            }
+          });
+
           try {
             await sendLineReply(
               replyToken,
-              'このLINEアカウントは既に別のアカウントにリンクされています。'
+              `✅ LINEアカウントが正常にリンクされました！\n生徒名: ${user.student.name}\nユーザー名: ${user.username}\n\n授業の通知をこちらのLINEアカウントにお送りします。`
             );
           } catch (replyError) {
-            console.error('Error sending reply:', replyError);
+            console.error('Error sending success reply for student:', replyError);
           }
           continue;
-        }
+        } else if (user.teacher) {
+          // Check if this LINE ID is already linked to another teacher account
+          const existingTeacher = await prisma.teacher.findFirst({
+            where: { 
+              lineId,
+              NOT: { teacherId: user.teacher.teacherId }
+            }
+          });
 
-        // Link the LINE account
-        await prisma.student.update({
-          where: { studentId: student.studentId },
-          data: { 
-            lineId,
-            linkingCode: null // Clear the linking code after use
+          if (existingTeacher) {
+            try {
+              await sendLineReply(
+                replyToken,
+                'このLINEアカウントは既に別のアカウントにリンクされています。'
+              );
+            } catch (replyError) {
+              console.error('Error sending reply:', replyError);
+            }
+            continue;
           }
-        });
 
-        try {
-          await sendLineReply(
-            replyToken,
-            `✅ LINEアカウントが正常にリンクされました！\n生徒名: ${student.name}\n\n授業の通知をこちらのLINEアカウントにお送りします。`
-          );
-        } catch (replyError) {
-          console.error('Error sending success reply for student:', replyError);
-        }
-        continue;
-      }
+          // Link the LINE account to teacher
+          await prisma.teacher.update({
+            where: { teacherId: user.teacher.teacherId },
+            data: { 
+              lineId,
+              linkingCode: null // Clear any existing linking code
+            }
+          });
 
-      // Try to find a teacher with this linking code
-      const teacher = await prisma.teacher.findFirst({
-        where: { linkingCode }
-      });
-
-      if (teacher) {
-        // Check if this LINE ID is already linked to another account
-        const existingTeacher = await prisma.teacher.findFirst({
-          where: { 
-            lineId,
-            NOT: { teacherId: teacher.teacherId }
-          }
-        });
-
-        if (existingTeacher) {
           try {
             await sendLineReply(
               replyToken,
-              'このLINEアカウントは既に別のアカウントにリンクされています。'
+              `✅ LINEアカウントが正常にリンクされました！\n講師名: ${user.teacher.name}\nユーザー名: ${user.username}\n\n授業の通知をこちらのLINEアカウントにお送りします。`
             );
           } catch (replyError) {
-            console.error('Error sending reply:', replyError);
+            console.error('Error sending success reply for teacher:', replyError);
           }
           continue;
         }
-
-        // Link the LINE account
-        await prisma.teacher.update({
-          where: { teacherId: teacher.teacherId },
-          data: { 
-            lineId,
-            linkingCode: null // Clear the linking code after use
-          }
-        });
-
-        try {
-          await sendLineReply(
-            replyToken,
-            `✅ LINEアカウントが正常にリンクされました！\n講師名: ${teacher.name}\n\n授業の通知をこちらのLINEアカウントにお送りします。`
-          );
-        } catch (replyError) {
-          console.error('Error sending success reply for teacher:', replyError);
-        }
-        continue;
       }
 
-      // Invalid linking code
+      // Invalid username or user has no student/teacher profile
       try {
         await sendLineReply(
           replyToken,
-          '❌ 無効なリンクコードです。\n\n正しいリンクコードを入力するか、システム管理者にお問い合わせください。'
+          '❌ 無効なユーザー名です。\n\n正しいユーザー名を入力するか、システム管理者にお問い合わせください。'
         );
       } catch (replyError) {
-        console.error('Error sending invalid code reply:', replyError);
+        console.error('Error sending invalid username reply:', replyError);
       }
     }
 

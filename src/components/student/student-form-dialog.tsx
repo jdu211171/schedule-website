@@ -1236,6 +1236,7 @@ export function StudentFormDialog({
                         userType="student"
                         userName={student.name}
                         lineId={student.lineId}
+                        username={student.username || ""}
                       />
                     )}
                     {!student && (

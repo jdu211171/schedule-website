@@ -144,9 +144,3 @@ export function formatClassNotification(
   }
 }
 
-/**
- * Generate a random linking code
- */
-export function generateLinkingCode(): string {
-  return Math.random().toString(36).substring(2, 8).toUpperCase();
-}

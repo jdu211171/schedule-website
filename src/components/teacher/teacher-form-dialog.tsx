@@ -951,6 +951,7 @@ export function TeacherFormDialog({
                         userType="teacher"
                         userName={teacher.name}
                         lineId={teacher.lineId}
+                        username={teacher.username || ""}
                       />
                     )}
                     {!teacher && (
