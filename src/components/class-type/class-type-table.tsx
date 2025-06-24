@@ -48,8 +48,8 @@ function getClassTypeLevel(classType: ClassType, allClassTypes: ClassType[]): nu
   return 1 + getClassTypeLevel(parent, allClassTypes);
 }
 
-// Helper function to check if a class type is protected (root level types like 通常授業 and 特別授業)
-function isProtectedClassType(classType: ClassType): boolean {
+// Helper function to check if a class type is protected from deletion (root level types like 通常授業 and 特別授業)
+function isProtectedFromDeletion(classType: ClassType): boolean {
   // Protected class types are root level types (no parent) with specific names
   return !classType.parentId && (classType.name === "通常授業" || classType.name === "特別授業");
 }
@@ -181,30 +181,29 @@ export function ClassTypeTable() {
       classType as ClassType & { _optimistic?: boolean }
     )._optimistic;
 
-    // Check if this is a protected class type (通常授業 or 特別授業)
-    const isProtected = isProtectedClassType(classType);
+    // Check if this class type is protected from deletion (通常授業 or 特別授業)
+    const isProtectedFromDel = isProtectedFromDeletion(classType);
 
     return (
       <div className="flex justify-end gap-2">
         <Button
-          disabled={isProtected}
           variant="ghost"
           size="icon"
           onClick={() => setClassTypeToEdit(classType)}
-          title={isProtected ? "このクラスタイプは編集できません" : "編集"}
+          title="編集"
         >
-          <Pencil className={`h-4 w-4 ${isOptimistic || isProtected ? "opacity-70" : ""}`} />
+          <Pencil className={`h-4 w-4 ${isOptimistic ? "opacity-70" : ""}`} />
         </Button>
         <Button
-          disabled={isProtected}
+          disabled={isProtectedFromDel}
           variant="ghost"
           size="icon"
           onClick={() => setClassTypeToDelete(classType)}
-          title={isProtected ? "このクラスタイプは削除できません" : "削除"}
+          title={isProtectedFromDel ? "このクラスタイプは削除できません" : "削除"}
         >
           <Trash2
             className={`h-4 w-4 text-destructive ${
-              isOptimistic || isProtected ? "opacity-70" : ""
+              isOptimistic || isProtectedFromDel ? "opacity-70" : ""
             }`}
           />
         </Button>
@@ -217,7 +216,7 @@ export function ClassTypeTable() {
   const handleExport = () => {
     // Get visible columns (all columns except actions)
     const visibleColumns = columns
-      .map(col => (col as any).accessorKey)
+      .map(col => (col as ColumnDef<ClassType> & { accessorKey?: string }).accessorKey)
       .filter(key => key) as string[];
     exportToCSV({ columns: visibleColumns });
   };
@@ -253,7 +252,6 @@ export function ClassTypeTable() {
         totalItems={totalCount}
         onPageChange={(newPage) => setPage(newPage + 1)}
         renderActions={renderActions}
-        isItemDisabled={(classType) => isProtectedClassType(classType)}
         onExport={handleExport}
         isExporting={isExporting}
         onImport={handleImport}
