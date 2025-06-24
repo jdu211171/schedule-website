@@ -7,13 +7,17 @@ import {
   subWeeks,
 } from "date-fns";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+
 interface Props {
   setCurrentDate: React.Dispatch<React.SetStateAction<Date>>;
   viewType: "DAY" | "WEEK" | "MONTH";
+  position: "left" | "right";
 }
+
 export const StudentScheduleArrows: React.FC<Props> = ({
   setCurrentDate,
   viewType,
+  position,
 }) => {
   const changeDate = (direction: "forward" | "back") => {
     setCurrentDate((prev) => {
@@ -33,18 +37,22 @@ export const StudentScheduleArrows: React.FC<Props> = ({
       }
     });
   };
-  return (
-    <div className="flex items-center justify-center gap-[2px]">
+
+  if (position === "left") {
+    return (
       <ChevronLeft
-        className="dark:hover:bg-[#1C1C1C] hover:bg-gray-100 rounded-full p-[3px] cursor-pointer duration-100"
+        className="dark:hover:bg-gray-700 hover:bg-gray-200 rounded-md p-[3px] cursor-pointer duration-100"
         size={25}
         onClick={() => changeDate("back")}
       />
-      <ChevronRight
-        className="dark:hover:bg-[#1C1C1C] hover:bg-gray-100 rounded-full p-[3px] cursor-pointer duration-100"
-        size={25}
-        onClick={() => changeDate("forward")}
-      />
-    </div>
+    );
+  }
+
+  return (
+    <ChevronRight
+      className="dark:hover:bg-gray-700 hover:bg-gray-200 rounded-md p-[3px] cursor-pointer duration-100"
+      size={25}
+      onClick={() => changeDate("forward")}
+    />
   );
 };

@@ -93,16 +93,17 @@ const studentNavItems: NavItemType[] = [
     icon: GraduationCap,
     exact: true,
   },
-  {
-    title: "環境設定",
-    href: "/student/preferences",
-    icon: CalendarIcon,
-  },
-  {
-    title: "設定",
-    href: "/student/settings",
-    icon: Settings,
-  },
+  // Hidden navigation items - pages still exist but not shown in navbar
+  // {
+  //   title: "環境設定",
+  //   href: "/student/preferences",
+  //   icon: CalendarIcon,
+  // },
+  // {
+  //   title: "設定",
+  //   href: "/student/settings",
+  //   icon: Settings,
+  // },
 ];
 
 // Branch selector component
@@ -113,7 +114,6 @@ function BranchSelector() {
   );
   const [isLoading, setIsLoading] = React.useState(false);
 
-  // Use user's accessible branches from secure API
   const { data: branches = [], isLoading: isBranchesLoading } = useUserBranches();
 
   const handleBranchChange = React.useCallback(
@@ -121,11 +121,9 @@ function BranchSelector() {
       try {
         setIsLoading(true);
 
-        // First update localStorage
         localStorage.setItem("selectedBranchId", value);
         setSelectedBranchId(value);
 
-        // Then update the server-side session
         const response = await fetch("/api/branch-selection", {
           method: "POST",
           headers: {
@@ -138,20 +136,17 @@ function BranchSelector() {
           throw new Error("Failed to update branch selection");
         }
 
-        // Update client-side session with the new selectedBranchId
         await update({
           user: {
             selectedBranchId: value,
           },
         });
 
-        // Small delay to ensure session update is processed before reload
         setTimeout(() => {
           window.location.reload();
         }, 100);
       } catch (error) {
         console.error("Error changing branch:", error);
-        // Restore previous selection if there was an error
         if (session?.user?.selectedBranchId) {
           localStorage.setItem(
             "selectedBranchId",
@@ -166,33 +161,28 @@ function BranchSelector() {
     [session, update]
   );
 
-  // Initialize the selected branch from session first, then localStorage
   React.useEffect(() => {
     if (
       session?.user?.selectedBranchId &&
       branches.some((b) => b.branchId === session.user!.selectedBranchId)
     ) {
       setSelectedBranchId(session.user.selectedBranchId);
-      // Sync localStorage with session
       localStorage.setItem("selectedBranchId", session.user.selectedBranchId);
       return;
     }
 
-    // Otherwise, check localStorage for a valid stored branch
     const storedBranchId = localStorage.getItem("selectedBranchId");
     const isValidStored =
       storedBranchId && branches.some((b) => b.branchId === storedBranchId);
     if (isValidStored) {
       setSelectedBranchId(storedBranchId);
     } else if (branches.length > 0) {
-      // Default to first branch if nothing is selected
       const firstBranchId = branches[0].branchId;
       setSelectedBranchId(firstBranchId);
       localStorage.setItem("selectedBranchId", firstBranchId);
     }
   }, [session, branches]);
 
-  // Separate effect to handle session sync when there's a mismatch
   React.useEffect(() => {
     if (
       selectedBranchId &&
@@ -200,7 +190,6 @@ function BranchSelector() {
       selectedBranchId !== session.user.selectedBranchId &&
       branches.some((b) => b.branchId === selectedBranchId)
     ) {
-      // Update session to match the local state without triggering a reload
       update({
         ...session,
         user: {
@@ -211,7 +200,6 @@ function BranchSelector() {
     }
   }, [selectedBranchId, session, update, branches]);
 
-  // Skip rendering if user isn't authenticated or has appropriate role
   if (
     !session ||
     !["ADMIN", "STAFF", "TEACHER", "STUDENT"].includes(
@@ -282,12 +270,10 @@ function MobileNavMenu({
         </SheetHeader>
 
         <div className="mt-6 space-y-4">
-          {/* Branch Selector */}
           <div className="px-2">
             <BranchSelector />
           </div>
 
-          {/* Navigation Items */}
           <nav className="space-y-2">
             {navItems.map((item) => (
               <Link
@@ -307,7 +293,6 @@ function MobileNavMenu({
             ))}
           </nav>
 
-          {/* User Actions */}
           <div className="border-t pt-4 space-y-4">
             <div className="px-2">
               <div className="text-sm text-muted-foreground mb-2">
@@ -356,9 +341,7 @@ export default function Navbar() {
     <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
       <div className="container mx-auto sm:px-6">
         <div className="flex h-16 items-center justify-between">
-          {/* Left section - Logo and Desktop Navigation */}
           <div className="flex items-center space-x-4 lg:space-x-8">
-            {/* Logo */}
             <div className="flex-shrink-0">
               <Link
                 href={homeLink}
@@ -368,7 +351,6 @@ export default function Navbar() {
               </Link>
             </div>
 
-            {/* Desktop Navigation */}
             <NavigationMenu className="hidden md:flex">
               <NavigationMenuList>
                 {navItems.map((item) => (
@@ -395,7 +377,6 @@ export default function Navbar() {
             </NavigationMenu>
           </div>
 
-          {/* Right section - Desktop Controls */}
           <div className="hidden md:flex items-center space-x-4">
             <BranchSelector />
             <div className="flex items-center space-x-2">
@@ -404,7 +385,6 @@ export default function Navbar() {
             </div>
           </div>
 
-          {/* Mobile menu button */}
           <MobileNavMenu
             navItems={navItems}
             homeLink={homeLink}
