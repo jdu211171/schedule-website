@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Pencil, Eye, EyeOff, Trash2, MoreHorizontal, RotateCcw, Download, Upload } from "lucide-react";
+import { Pencil, Eye, EyeOff, Trash2, MoreHorizontal, RotateCcw, Download, Upload, MessageSquare } from "lucide-react";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useStudentExport } from "@/hooks/useStudentExport";
 
@@ -414,7 +414,16 @@ export function StudentTable() {
         id: "name",
         accessorKey: "name",
         header: "名前",
-        cell: ({ row }) => row.original.name || "-",
+        cell: ({ row }) => (
+          <div className="flex items-center gap-2">
+            {row.original.name || "-"}
+            {row.original.lineId && (
+              <span title="LINE連携済み">
+                <MessageSquare className="h-4 w-4 text-green-600" />
+              </span>
+            )}
+          </div>
+        ),
         meta: {
           label: "名前",
           placeholder: "名前で検索...",

@@ -21,7 +21,7 @@ import {
   X as XIcon
 } from 'lucide-react';
 import { TimeInput } from '@/components/ui/time-input';
-import { ConflictResponse, ConflictData, SessionAction } from './types/class-session';
+import { ConflictResponse, SessionAction } from './types/class-session';
 
 interface ConflictRowState {
   selected: boolean;
@@ -325,7 +325,7 @@ export const ConflictResolutionTable: React.FC<ConflictResolutionTableProps> = (
       }
     });
   
-    console.log('Session actions being submitted:', actions); // для отладки
+    console.log('Session actions being submitted:', actions);
     await onSubmit(actions);
   };
 
@@ -340,74 +340,73 @@ export const ConflictResolutionTable: React.FC<ConflictResolutionTableProps> = (
   };
 
   return (
-    <div className="space-y-4 h-full flex flex-col">
-      {/* Header with bulk actions */}
-      <div className="flex items-center justify-between p-3 bg-muted rounded-md flex-shrink-0">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <Checkbox
-              checked={selectAll}
-              onCheckedChange={handleSelectAll}
-              disabled={isLoading}
-            />
-            <span className="text-sm font-medium">すべて選択</span>
-            <span className="text-xs text-muted-foreground">
-              ({selectedRows.length}/{conflictData.conflicts.length})
-            </span>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => handleBulkAction('SKIP')}
-              disabled={selectedRows.length === 0 || isLoading}
-            >
-              <SkipForward className="w-4 h-4 mr-1" />
-              スキップ
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => handleBulkAction('FORCE_CREATE')}
-              disabled={selectedRows.length === 0 || isLoading}
-            >
-              <Zap className="w-4 h-4 mr-1" />
-              強制作成
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleBulkReset}
-              disabled={isLoading}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <RotateCcw className="w-4 h-4 mr-1" />
-              {selectedRows.length > 0 
-                ? `選択をリセット (${selectedRows.length})` 
-                : 'すべてをリセット'
-              }
-            </Button>
+    <div className="space-y-4">
+      {/* Fixed header with bulk actions */}
+      <div className="p-3 bg-muted rounded-md">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                checked={selectAll}
+                onCheckedChange={handleSelectAll}
+                disabled={isLoading}
+              />
+              <span className="text-sm font-medium">すべて選択</span>
+              <span className="text-xs text-muted-foreground">
+                ({selectedRows.length}/{conflictData.conflicts.length})
+              </span>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => handleBulkAction('SKIP')}
+                disabled={selectedRows.length === 0 || isLoading}
+              >
+                <SkipForward className="w-4 h-4 mr-1" />
+                スキップ
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => handleBulkAction('FORCE_CREATE')}
+                disabled={selectedRows.length === 0 || isLoading}
+              >
+                <Zap className="w-4 h-4 mr-1" />
+                強制作成
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleBulkReset}
+                disabled={isLoading}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <RotateCcw className="w-4 h-4 mr-1" />
+                {selectedRows.length > 0 
+                  ? `選択をリセット (${selectedRows.length})` 
+                  : 'すべてをリセット'
+                }
+              </Button>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Conflicts table */}
-      <div className="border rounded-md flex flex-col flex-1 min-h-0">
-        <Table>
-          <TableHeader className="sticky top-0 bg-background z-10">
-            <TableRow>
-              <TableHead className="w-12"></TableHead>
-              <TableHead>日付</TableHead>
-              <TableHead>時間</TableHead>
-              <TableHead>競合タイプ</TableHead>
-              <TableHead>アクション</TableHead>
-            </TableRow>
-          </TableHeader>
-        </Table>
-        
-        <div className="flex-1 overflow-y-auto overflow-x-visible min-h-0">
+      {/* Scrollable table container with fixed height */}
+      <div className="border rounded-md h-[630px] overflow-hidden">
+        <div className="h-full overflow-y-auto">
           <Table>
+            <TableHeader className="sticky top-0 bg-background z-10 border-b">
+              <TableRow>
+                <TableHead className="w-12"></TableHead>
+                <TableHead>日付</TableHead>
+                <TableHead>時間</TableHead>
+                <TableHead>競合タイプ</TableHead>
+                <TableHead>アクション</TableHead>
+              </TableRow>
+            </TableHeader>
             <TableBody>
               {conflictData.conflicts.map((conflict, index) => {
                 const rowState = rowStates[conflict.date];
@@ -586,8 +585,8 @@ export const ConflictResolutionTable: React.FC<ConflictResolutionTableProps> = (
         </div>
       </div>
 
-      {/* Footer with main actions */}
-      <div className="flex items-center justify-between pt-4 flex-shrink-0">
+      {/* Fixed footer with main actions */}
+      <div className="flex items-center justify-between pt-4">
         <div className="text-sm text-muted-foreground">
           {hasAnyChanges ? 
             `${Object.values(rowStates).filter(s => s.action).length}件の変更があります` :

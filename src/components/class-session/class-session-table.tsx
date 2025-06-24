@@ -390,6 +390,7 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
           .map((teacher) => ({
             ...teacher,
             status: teacher.status as UserStatus,
+            linkingCode: null,
           })) || []
       }
       students={
@@ -401,6 +402,7 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
           .map((student) => ({
             ...student,
             status: student.status as UserStatus,
+            linkingCode: null,
           })) || []
       }
       subjects={subjectsData?.data || []}
