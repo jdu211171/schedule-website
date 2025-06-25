@@ -19,7 +19,7 @@ import { TimeInput } from '@/components/ui/time-input';
 import { useSmartSelection, EnhancedTeacher, EnhancedStudent, SubjectCompatibility } from '@/hooks/useSmartSelection';
 import { useAvailability } from './availability-layer';
 import { ConflictResolutionTable } from './conflict-resolution-table';
-import { SimpleDateRangePicker } from '../../fix-date-range-picker/future-date-range-picker';
+import { SimpleDateRangePicker } from '../../fix-date-range-picker/simple-date-range-picker';
 
 import { Teacher } from '@/hooks/useTeacherQuery';
 import { Student } from '@/hooks/useStudentQuery';

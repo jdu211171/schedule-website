@@ -3,10 +3,10 @@
 import React, { useState, useEffect } from "react";
 import { X, Filter, ChevronDown } from "lucide-react";
 import { DateRange } from "react-day-picker";
+import { format, parseISO } from "date-fns";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { DateRangePicker } from "@/components/date-range-picker";
 import {
   Select,
   SelectContent,
@@ -20,6 +20,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { SimpleDateRangePicker } from "../fix-date-range-picker/simple-date-range-picker";
 import type {
   Teacher,
   Student,
@@ -172,13 +173,16 @@ export function ClassSessionFilter({
       </div>
       <CollapsibleContent className="space-y-4">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6">
-          {/* Date range filter */}
+          {/* Date range filter - using SimpleDateRangePicker */}
           <div className="space-y-2 min-w-0">
-            <DateRangePicker
-              dateRange={dateRange}
-              onChange={handleDateRangeSelect}
-              label="日付範囲"
+            <label className="text-xs font-medium">日付範囲</label>
+            <SimpleDateRangePicker
+              value={dateRange}
+              onValueChange={handleDateRangeSelect}
+              placeholder="期間を選択"
               className="w-full"
+              showPresets={true}
+              disablePastDates={false}
             />
           </div>
 
