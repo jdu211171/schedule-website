@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { sendLineMulticast, formatClassNotification } from '@/lib/line';
+import { sendLineMulticast } from '@/lib/line';
+import { formatClassNotificationWithTemplate, type ClassSessionData } from '@/lib/line/format-notification';
 import { addHours, addMinutes, subMinutes, format } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
 
@@ -89,6 +90,16 @@ export async function GET(req: NextRequest) {
           select: {
             name: true
           }
+        },
+        booth: {
+          select: {
+            name: true
+          }
+        },
+        branch: {
+          select: {
+            name: true
+          }
         }
       }
     });
@@ -143,6 +154,16 @@ export async function GET(req: NextRequest) {
           select: {
             name: true
           }
+        },
+        booth: {
+          select: {
+            name: true
+          }
+        },
+        branch: {
+          select: {
+            name: true
+          }
         }
       }
     });
@@ -173,9 +194,18 @@ export async function GET(req: NextRequest) {
         }
 
         if (lineIds.length > 0) {
-          const subjectName = session.subject?.name || '授業';
-          const startTime = format(session.startTime, 'HH:mm');
-          const message = formatClassNotification('24h', subjectName, startTime, date24h);
+          const sessionData: ClassSessionData = {
+            subjectName: session.subject?.name || '授業',
+            startTime: session.startTime,
+            endTime: session.endTime,
+            teacherName: session.teacher?.name,
+            studentName: session.student?.name,
+            boothName: session.booth?.name,
+            branchName: session.branch?.name,
+            branchId: session.branchId || undefined
+          };
+
+          const message = await formatClassNotificationWithTemplate(sessionData, 1440, session.branchId || undefined);
 
           await sendLineMulticast(lineIds, message);
           notificationsSent += lineIds.length;
@@ -230,9 +260,18 @@ export async function GET(req: NextRequest) {
         }
 
         if (lineIds.length > 0) {
-          const subjectName = session.subject?.name || '授業';
-          const startTime = format(session.startTime, 'HH:mm');
-          const message = formatClassNotification('30m', subjectName, startTime);
+          const sessionData: ClassSessionData = {
+            subjectName: session.subject?.name || '授業',
+            startTime: session.startTime,
+            endTime: session.endTime,
+            teacherName: session.teacher?.name,
+            studentName: session.student?.name,
+            boothName: session.booth?.name,
+            branchName: session.branch?.name,
+            branchId: session.branchId || undefined
+          };
+
+          const message = await formatClassNotificationWithTemplate(sessionData, 30, session.branchId || undefined);
 
           await sendLineMulticast(lineIds, message);
           notificationsSent += lineIds.length;

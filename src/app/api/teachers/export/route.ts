@@ -17,11 +17,12 @@ export const GET = withBranchAccess(
     });
 
     const { name, status } = filters;
-    
+
     // Get additional filters from query params
     const statusList = searchParams.get("status")?.split(",") || [];
     const branchList = searchParams.get("branch")?.split(",") || [];
     const subjectList = searchParams.get("subject")?.split(",") || [];
+    const lineConnectionList = searchParams.get("lineConnection")?.split(",") || [];
 
     // Build where clause
     const where: any = {
@@ -73,7 +74,7 @@ export const GET = withBranchAccess(
     // Filter by multiple statuses if needed
     if (statusList.length > 1) {
       const statusSet = new Set(statusList);
-      filteredTeachers = filteredTeachers.filter(teacher => 
+      filteredTeachers = filteredTeachers.filter(teacher =>
         statusSet.has(teacher.status || "ACTIVE")
       );
     }
@@ -81,7 +82,7 @@ export const GET = withBranchAccess(
     // Filter by branches
     if (branchList.length > 0) {
       const branchSet = new Set(branchList);
-      filteredTeachers = filteredTeachers.filter(teacher => 
+      filteredTeachers = filteredTeachers.filter(teacher =>
         teacher.user?.branches?.some((b: any) => branchSet.has(b.branch.name))
       );
     }
@@ -91,10 +92,30 @@ export const GET = withBranchAccess(
       const subjectSet = new Set(subjectList);
       filteredTeachers = filteredTeachers.filter(teacher => {
         if (!teacher.user?.subjectPreferences) return false;
-        
-        return teacher.user.subjectPreferences.some((pref: any) => 
+
+        return teacher.user.subjectPreferences.some((pref: any) =>
           subjectSet.has(pref.subject.name)
         );
+      });
+    }
+
+    // Filter by LINE connection status
+    if (lineConnectionList.length > 0) {
+      const lineConnectionSet = new Set(lineConnectionList);
+      filteredTeachers = filteredTeachers.filter(teacher => {
+        const hasLine = !!teacher.lineId;
+        const notificationsEnabled = teacher.lineNotificationsEnabled ?? true;
+
+        let connectionStatus: string;
+        if (!hasLine) {
+          connectionStatus = "not_connected";
+        } else if (notificationsEnabled) {
+          connectionStatus = "connected_enabled";
+        } else {
+          connectionStatus = "connected_disabled";
+        }
+
+        return lineConnectionSet.has(connectionStatus);
       });
     }
 
@@ -105,10 +126,14 @@ export const GET = withBranchAccess(
       "status",
       "username",
       "email",
-      "lineId",
       "branches",
       "subjectPreferences",
     ];
+
+    // Filter out LINE-related fields for security/privacy
+    const allowedColumns = visibleColumns.filter(col =>
+      !["lineId", "lineConnection", "lineNotificationsEnabled"].includes(col)
+    );
 
     // Column headers mapping
     const columnHeaders: Record<string, string> = {
@@ -118,7 +143,6 @@ export const GET = withBranchAccess(
       username: "ユーザー名",
       email: "メールアドレス",
       password: "パスワード",
-      lineId: "LINE ID",
       branches: "校舎",
       subjectPreferences: "担当科目",
     };
@@ -131,13 +155,13 @@ export const GET = withBranchAccess(
     };
 
     // Build CSV header
-    const headers = visibleColumns
+    const headers = allowedColumns
       .map((col) => columnHeaders[col] || col)
       .join(",");
 
     // Build CSV rows - use filtered teachers
     const rows = filteredTeachers.map((teacher) => {
-      const row = visibleColumns.map((col) => {
+      const row = allowedColumns.map((col) => {
         switch (col) {
           case "name":
             return teacher.name || "";
@@ -152,8 +176,6 @@ export const GET = withBranchAccess(
           case "password":
             // Don't export passwords for security
             return "";
-          case "lineId":
-            return teacher.lineId || "";
           case "branches":
             return teacher.user?.branches
               ?.map((b: any) => b.branch.name)

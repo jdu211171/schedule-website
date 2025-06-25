@@ -18,13 +18,14 @@ export const GET = withBranchAccess(
     });
 
     const { name, status, studentTypeIds } = filters;
-    
+
     // Get additional filters from query params
     const statusList = searchParams.get("status")?.split(",") || [];
     const studentTypeList = searchParams.get("studentType")?.split(",") || [];
     const gradeYearList = searchParams.get("gradeYear")?.split(",") || [];
     const branchList = searchParams.get("branch")?.split(",") || [];
     const subjectList = searchParams.get("subject")?.split(",") || [];
+    const lineConnectionList = searchParams.get("lineConnection")?.split(",") || [];
 
     // Build where clause
     const where: any = {
@@ -77,7 +78,7 @@ export const GET = withBranchAccess(
     // Filter by multiple statuses if needed
     if (statusList.length > 1) {
       const statusSet = new Set(statusList);
-      filteredStudents = filteredStudents.filter(student => 
+      filteredStudents = filteredStudents.filter(student =>
         statusSet.has(student.status || "ACTIVE")
       );
     }
@@ -85,7 +86,7 @@ export const GET = withBranchAccess(
     // Filter by student types (by name, not ID)
     if (studentTypeList.length > 0) {
       const studentTypeSet = new Set(studentTypeList);
-      filteredStudents = filteredStudents.filter(student => 
+      filteredStudents = filteredStudents.filter(student =>
         student.studentType && studentTypeSet.has(student.studentType.name)
       );
     }
@@ -93,7 +94,7 @@ export const GET = withBranchAccess(
     // Filter by grade years
     if (gradeYearList.length > 0) {
       const gradeYearSet = new Set(gradeYearList);
-      filteredStudents = filteredStudents.filter(student => 
+      filteredStudents = filteredStudents.filter(student =>
         student.gradeYear !== null && gradeYearSet.has(student.gradeYear.toString())
       );
     }
@@ -101,7 +102,7 @@ export const GET = withBranchAccess(
     // Filter by branches
     if (branchList.length > 0) {
       const branchSet = new Set(branchList);
-      filteredStudents = filteredStudents.filter(student => 
+      filteredStudents = filteredStudents.filter(student =>
         student.user?.branches?.some((b: any) => branchSet.has(b.branch.name))
       );
     }
@@ -111,10 +112,30 @@ export const GET = withBranchAccess(
       const subjectSet = new Set(subjectList);
       filteredStudents = filteredStudents.filter(student => {
         if (!student.user?.subjectPreferences) return false;
-        
-        return student.user.subjectPreferences.some((pref: any) => 
+
+        return student.user.subjectPreferences.some((pref: any) =>
           subjectSet.has(pref.subject.name)
         );
+      });
+    }
+
+    // Filter by LINE connection status
+    if (lineConnectionList.length > 0) {
+      const lineConnectionSet = new Set(lineConnectionList);
+      filteredStudents = filteredStudents.filter(student => {
+        const hasLine = !!student.lineId;
+        const notificationsEnabled = student.lineNotificationsEnabled ?? true;
+
+        let connectionStatus: string;
+        if (!hasLine) {
+          connectionStatus = "not_connected";
+        } else if (notificationsEnabled) {
+          connectionStatus = "connected_enabled";
+        } else {
+          connectionStatus = "connected_disabled";
+        }
+
+        return lineConnectionSet.has(connectionStatus);
       });
     }
 
@@ -127,10 +148,14 @@ export const GET = withBranchAccess(
       "gradeYear",
       "username",
       "email",
-      "lineId",
       "branches",
       "subjectPreferences",
     ];
+
+    // Filter out LINE-related fields for security/privacy
+    const allowedColumns = visibleColumns.filter(col =>
+      !["lineId", "lineConnection", "lineNotificationsEnabled"].includes(col)
+    );
 
     // Column headers mapping
     const columnHeaders: Record<string, string> = {
@@ -142,7 +167,6 @@ export const GET = withBranchAccess(
       username: "ユーザー名",
       email: "メールアドレス",
       password: "パスワード",
-      lineId: "LINE ID",
       branches: "校舎",
       subjectPreferences: "選択科目",
     };
@@ -155,13 +179,13 @@ export const GET = withBranchAccess(
     };
 
     // Build CSV header
-    const headers = visibleColumns
+    const headers = allowedColumns
       .map((col) => columnHeaders[col] || col)
       .join(",");
 
     // Build CSV rows - use filtered students
     const rows = filteredStudents.map((student) => {
-      const row = visibleColumns.map((col) => {
+      const row = allowedColumns.map((col) => {
         switch (col) {
           case "name":
             return student.name || "";
@@ -180,8 +204,6 @@ export const GET = withBranchAccess(
           case "password":
             // Don't export passwords for security
             return "";
-          case "lineId":
-            return student.lineId || "";
           case "branches":
             return student.user?.branches
               ?.map((b: any) => b.branch.name)
