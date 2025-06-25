@@ -78,11 +78,14 @@ export async function GET(req: NextRequest) {
         console.log(`Target window: ${format(targetStart, 'HH:mm:ss')} - ${format(targetEnd, 'HH:mm:ss')} on ${targetDate}`);
 
         // Find sessions matching this template's timing
+        // IMPORTANT: The database stores time values without timezone info
+        // These times represent JST times, so we need to compare them correctly
+        // Using 1970-01-01 as the date portion ensures consistent time comparison
         const whereClause: any = {
-          date: new Date(targetDate),
+          date: new Date(targetDate + 'T00:00:00.000Z'), // Ensure UTC date
           startTime: {
-            gte: new Date(`${targetDate}T${format(targetStart, 'HH:mm:ss')}`),
-            lte: new Date(`${targetDate}T${format(targetEnd, 'HH:mm:ss')}`)
+            gte: new Date(`1970-01-01T${format(targetStart, 'HH:mm:ss')}.000Z`),
+            lte: new Date(`1970-01-01T${format(targetEnd, 'HH:mm:ss')}.000Z`)
           }
         };
 
