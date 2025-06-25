@@ -53,6 +53,7 @@ type FormattedTeacher = {
   kanaName: string | null;
   email: string | null;
   lineId: string | null;
+  lineNotificationsEnabled: boolean | null;
   notes: string | null;
   status: string;
   username: string | null;
@@ -240,6 +241,7 @@ const formatTeacher = (teacher: TeacherWithIncludes): FormattedTeacher => {
     exceptionalAvailability,
     createdAt: teacher.createdAt,
     updatedAt: teacher.updatedAt,
+    lineNotificationsEnabled: teacher.lineNotificationsEnabled,
   };
 };
 

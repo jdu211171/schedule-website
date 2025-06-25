@@ -78,6 +78,7 @@ export function useStudentCreate() {
                 maxYears: null,
                 gradeYear: newStudent.gradeYear || null,
                 lineId: newStudent.lineId || null,
+                lineNotificationsEnabled: newStudent.lineNotificationsEnabled ?? true,
                 notes: newStudent.notes || null,
                 status: newStudent.status || "ACTIVE",
                 username: newStudent.username,

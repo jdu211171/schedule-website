@@ -196,6 +196,7 @@ export function TeacherFormDialog({
       kanaName: "",
       email: "",
       lineId: "",
+      lineNotificationsEnabled: true,
       notes: "",
       status: "ACTIVE",
       username: "",
@@ -240,6 +241,7 @@ export function TeacherFormDialog({
         kanaName: teacher.kanaName || "",
         email: teacher.email || "",
         lineId: teacher.lineId || "",
+        lineNotificationsEnabled: teacher.lineNotificationsEnabled ?? true,
         notes: teacher.notes || "",
         status:
           (teacher.status as "ACTIVE" | "SICK" | "PERMANENTLY_LEFT") ||
@@ -966,7 +968,11 @@ export function TeacherFormDialog({
                         userType="teacher"
                         userName={teacher.name}
                         lineId={teacher.lineId}
+                        lineNotificationsEnabled={teacher.lineNotificationsEnabled}
                         username={teacher.username || ""}
+                        onNotificationToggle={(enabled) => {
+                          form.setValue("lineNotificationsEnabled", enabled);
+                        }}
                       />
                     )}
                     {!teacher && (

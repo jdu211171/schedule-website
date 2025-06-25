@@ -1,18 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   Copy, 
   CheckCircle, 
   AlertCircle,
   MessageSquare,
   Link,
-  Unlink
+  Unlink,
+  Bell,
+  BellOff
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 
@@ -21,7 +25,9 @@ interface LineLinkingProps {
   userType: "student" | "teacher";
   userName: string;
   lineId?: string | null;
+  lineNotificationsEnabled?: boolean | null;
   username: string;
+  onNotificationToggle?: (enabled: boolean) => void;
 }
 
 interface LineLinkingData {
@@ -29,6 +35,7 @@ interface LineLinkingData {
   name: string;
   username: string;
   isLinked: boolean;
+  lineNotificationsEnabled?: boolean;
 }
 
 export function LineLinking({ 
@@ -36,10 +43,18 @@ export function LineLinking({
   userType, 
   userName, 
   lineId: initialLineId,
-  username
+  lineNotificationsEnabled: initialNotificationsEnabled,
+  username,
+  onNotificationToggle
 }: LineLinkingProps) {
   const [isCopied, setIsCopied] = useState(false);
+  const [localNotificationsEnabled, setLocalNotificationsEnabled] = useState(initialNotificationsEnabled ?? true);
   const { toast } = useToast();
+
+  // Update local state when prop changes
+  useEffect(() => {
+    setLocalNotificationsEnabled(initialNotificationsEnabled ?? true);
+  }, [initialNotificationsEnabled]);
 
   const queryKey = [`${userType}-linking`, userId];
 
@@ -50,17 +65,18 @@ export function LineLinking({
       userId,
       name: userName,
       username,
-      isLinked: !!initialLineId
+      isLinked: !!initialLineId,
+      lineNotificationsEnabled: localNotificationsEnabled
     }),
     initialData: {
       userId,
       name: userName,
       username,
-      isLinked: !!initialLineId
+      isLinked: !!initialLineId,
+      lineNotificationsEnabled: localNotificationsEnabled
     },
     staleTime: 0
   });
-
 
   const copyToClipboard = async () => {
     if (!linkingData?.username) return;
@@ -83,6 +99,13 @@ export function LineLinking({
   };
 
   const isLinked = linkingData?.isLinked || false;
+  const notificationsEnabled = localNotificationsEnabled;
+
+  const toggleNotifications = () => {
+    const newValue = !localNotificationsEnabled;
+    setLocalNotificationsEnabled(newValue);
+    onNotificationToggle?.(newValue);
+  };
 
   return (
     <Card>
@@ -114,12 +137,39 @@ export function LineLinking({
       </CardHeader>
       <CardContent className="space-y-4">
         {isLinked ? (
-          <Alert>
-            <CheckCircle className="h-4 w-4" />
-            <AlertDescription>
-              LINEアカウントが連携されています。授業の24時間前と30分前に通知が送信されます。
-            </AlertDescription>
-          </Alert>
+          <div className="space-y-4">
+            <Alert>
+              <CheckCircle className="h-4 w-4" />
+              <AlertDescription>
+                LINEアカウントが連携されています。授業の24時間前と30分前に通知が送信されます。
+              </AlertDescription>
+            </Alert>
+            
+            {onNotificationToggle && (
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-2">
+                  {notificationsEnabled ? (
+                    <Bell className="h-4 w-4 text-blue-600" />
+                  ) : (
+                    <BellOff className="h-4 w-4 text-gray-400" />
+                  )}
+                  <div>
+                    <Label htmlFor="notifications-toggle" className="text-sm font-medium">
+                      LINE通知
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      {notificationsEnabled ? "通知が有効です" : "通知が無効です"}
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  id="notifications-toggle"
+                  checked={notificationsEnabled}
+                  onCheckedChange={toggleNotifications}
+                />
+              </div>
+            )}
+          </div>
         ) : (
           <div className="space-y-4">
             <Alert>

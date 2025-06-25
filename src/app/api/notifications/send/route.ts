@@ -16,12 +16,12 @@ export async function GET(req: NextRequest) {
 
     const now = new Date();
     const nowJST = toZonedTime(now, TIMEZONE);
-    
+
     // Calculate target times with ±5 minute windows
     const target24h = addHours(nowJST, 24);
     const target24hStart = subMinutes(target24h, 5);
     const target24hEnd = addMinutes(target24h, 5);
-    
+
     const target30m = addMinutes(nowJST, 30);
     const target30mStart = subMinutes(target30m, 5);
     const target30mEnd = addMinutes(target30m, 5);
@@ -61,14 +61,16 @@ export async function GET(req: NextRequest) {
           select: {
             teacherId: true,
             name: true,
-            lineId: true
+            lineId: true,
+            lineNotificationsEnabled: true
           }
         },
         student: {
           select: {
             studentId: true,
             name: true,
-            lineId: true
+            lineId: true,
+            lineNotificationsEnabled: true
           }
         },
         studentClassEnrollments: {
@@ -77,7 +79,8 @@ export async function GET(req: NextRequest) {
               select: {
                 studentId: true,
                 name: true,
-                lineId: true
+                lineId: true,
+                lineNotificationsEnabled: true
               }
             }
           }
@@ -112,14 +115,16 @@ export async function GET(req: NextRequest) {
           select: {
             teacherId: true,
             name: true,
-            lineId: true
+            lineId: true,
+            lineNotificationsEnabled: true
           }
         },
         student: {
           select: {
             studentId: true,
             name: true,
-            lineId: true
+            lineId: true,
+            lineNotificationsEnabled: true
           }
         },
         studentClassEnrollments: {
@@ -128,7 +133,8 @@ export async function GET(req: NextRequest) {
               select: {
                 studentId: true,
                 name: true,
-                lineId: true
+                lineId: true,
+                lineNotificationsEnabled: true
               }
             }
           }
@@ -148,20 +154,20 @@ export async function GET(req: NextRequest) {
     for (const session of sessions24h) {
       try {
         const lineIds: string[] = [];
-        
+
         // Add teacher's LINE ID
-        if (session.teacher?.lineId) {
+        if (session.teacher?.lineId && (session.teacher.lineNotificationsEnabled ?? true)) {
           lineIds.push(session.teacher.lineId);
         }
-        
+
         // Add direct student's LINE ID (for one-on-one sessions)
-        if (session.student?.lineId) {
+        if (session.student?.lineId && (session.student.lineNotificationsEnabled ?? true)) {
           lineIds.push(session.student.lineId);
         }
-        
+
         // Add enrolled students' LINE IDs (for group sessions)
         for (const enrollment of session.studentClassEnrollments) {
-          if (enrollment.student.lineId) {
+          if (enrollment.student.lineId && (enrollment.student.lineNotificationsEnabled ?? true)) {
             lineIds.push(enrollment.student.lineId);
           }
         }
@@ -170,15 +176,15 @@ export async function GET(req: NextRequest) {
           const subjectName = session.subject?.name || '授業';
           const startTime = format(session.startTime, 'HH:mm');
           const message = formatClassNotification('24h', subjectName, startTime, date24h);
-          
+
           await sendLineMulticast(lineIds, message);
           notificationsSent += lineIds.length;
-          
+
           // Log notification in database
           await prisma.notification.createMany({
             data: lineIds.map(lineId => ({
               recipientType: lineId === session.teacher?.lineId ? 'TEACHER' : 'STUDENT',
-              recipientId: lineId === session.teacher?.lineId ? session.teacher.teacherId : 
+              recipientId: lineId === session.teacher?.lineId ? session.teacher.teacherId :
                            session.student?.lineId === lineId ? session.student.studentId :
                            session.studentClassEnrollments.find(e => e.student.lineId === lineId)?.student.studentId || '',
               notificationType: 'CLASS_REMINDER_24H',
@@ -205,20 +211,20 @@ export async function GET(req: NextRequest) {
     for (const session of sessions30m) {
       try {
         const lineIds: string[] = [];
-        
+
         // Add teacher's LINE ID
-        if (session.teacher?.lineId) {
+        if (session.teacher?.lineId && (session.teacher.lineNotificationsEnabled ?? true)) {
           lineIds.push(session.teacher.lineId);
         }
-        
+
         // Add direct student's LINE ID (for one-on-one sessions)
-        if (session.student?.lineId) {
+        if (session.student?.lineId && (session.student.lineNotificationsEnabled ?? true)) {
           lineIds.push(session.student.lineId);
         }
-        
+
         // Add enrolled students' LINE IDs (for group sessions)
         for (const enrollment of session.studentClassEnrollments) {
-          if (enrollment.student.lineId) {
+          if (enrollment.student.lineId && (enrollment.student.lineNotificationsEnabled ?? true)) {
             lineIds.push(enrollment.student.lineId);
           }
         }
@@ -227,15 +233,15 @@ export async function GET(req: NextRequest) {
           const subjectName = session.subject?.name || '授業';
           const startTime = format(session.startTime, 'HH:mm');
           const message = formatClassNotification('30m', subjectName, startTime);
-          
+
           await sendLineMulticast(lineIds, message);
           notificationsSent += lineIds.length;
-          
+
           // Log notification in database
           await prisma.notification.createMany({
             data: lineIds.map(lineId => ({
               recipientType: lineId === session.teacher?.lineId ? 'TEACHER' : 'STUDENT',
-              recipientId: lineId === session.teacher?.lineId ? session.teacher.teacherId : 
+              recipientId: lineId === session.teacher?.lineId ? session.teacher.teacherId :
                            session.student?.lineId === lineId ? session.student.studentId :
                            session.studentClassEnrollments.find(e => e.student.lineId === lineId)?.student.studentId || '',
               notificationType: 'CLASS_REMINDER_30M',

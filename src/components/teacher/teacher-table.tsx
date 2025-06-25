@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Pencil, Eye, EyeOff, Trash2, MoreHorizontal, RotateCcw, Download, Upload } from "lucide-react";
+import { Pencil, Eye, EyeOff, Trash2, MoreHorizontal, RotateCcw, Download, Upload, Bell, BellOff } from "lucide-react";
 import { LineIcon } from "@/components/icons/line-icon";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useTeacherExport } from "@/hooks/useTeacherExport";
@@ -302,7 +302,17 @@ export function TeacherTable() {
       // LINE connection filter
       if (lineConnectionSet.size > 0) {
         const hasLine = !!teacher.lineId;
-        const connectionStatus = hasLine ? "connected" : "not_connected";
+        const notificationsEnabled = teacher.lineNotificationsEnabled ?? true;
+
+        let connectionStatus: string;
+        if (!hasLine) {
+          connectionStatus = "not_connected";
+        } else if (notificationsEnabled) {
+          connectionStatus = "connected_enabled";
+        } else {
+          connectionStatus = "connected_disabled";
+        }
+
         if (!lineConnectionSet.has(connectionStatus)) {
           return false;
         }
@@ -484,17 +494,33 @@ export function TeacherTable() {
         header: "LINE連携",
         cell: ({ row }) => {
           const hasLine = !!row.original.lineId;
+          const notificationsEnabled = row.original.lineNotificationsEnabled ?? true;
+
+          // Three states: not connected, connected with notifications, connected without notifications
+          let iconColor: string;
+          let bellIcon: React.ReactNode = null;
+          let statusText: string;
+
+          if (!hasLine) {
+            iconColor = "text-gray-400";
+            statusText = "未連携";
+          } else if (notificationsEnabled) {
+            iconColor = "text-[#00B900]";
+            bellIcon = <Bell className="h-3 w-3 text-blue-600" />;
+            statusText = "連携済み";
+          } else {
+            iconColor = "text-orange-500";
+            bellIcon = <BellOff className="h-3 w-3 text-gray-400" />;
+            statusText = "通知無効";
+          }
+
           return (
             <div className="flex items-center gap-2">
-              <LineIcon 
-                className={cn(
-                  "h-4 w-4",
-                  hasLine ? "text-[#00B900]" : "text-gray-400"
-                )} 
-              />
-              <span className="text-sm">
-                {hasLine ? "連携済み" : "未連携"}
-              </span>
+              <div className="flex items-center gap-1">
+                <LineIcon className={cn("h-4 w-4", iconColor)} />
+                {bellIcon}
+              </div>
+              <span className="text-sm">{statusText}</span>
             </div>
           );
         },
@@ -502,7 +528,8 @@ export function TeacherTable() {
           label: "LINE連携",
           variant: "multiSelect",
           options: [
-            { value: "connected", label: "連携済み" },
+            { value: "connected_enabled", label: "連携済み (通知有効)" },
+            { value: "connected_disabled", label: "連携済み (通知無効)" },
             { value: "not_connected", label: "未連携" }
           ],
         },
@@ -809,7 +836,7 @@ export function TeacherTable() {
             </Button>
           )}
         </TeacherTableToolbar>
-        
+
         <div className="rounded-md border">
           <UITable>
             <TableHeader>
@@ -860,7 +887,7 @@ export function TeacherTable() {
             </TableBody>
           </UITable>
         </div>
-        
+
         <DataTablePagination table={table} />
       </div>
 

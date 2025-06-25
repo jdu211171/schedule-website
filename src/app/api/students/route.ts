@@ -70,6 +70,7 @@ type FormattedStudent = {
   maxYears: number | null;
   gradeYear: number | null;
   lineId: string | null;
+  lineNotificationsEnabled: boolean | null;
   notes: string | null;
   status: string;
   username: string | null;
@@ -283,6 +284,7 @@ const formatStudent = (student: StudentWithIncludes): FormattedStudent => {
     exceptionalAvailability,
     createdAt: student.createdAt,
     updatedAt: student.updatedAt,
+    lineNotificationsEnabled: student.lineNotificationsEnabled,
   };
 };
 
@@ -293,7 +295,7 @@ export const GET = withBranchAccess(
     // Parse query parameters
     const url = new URL(request.url);
     const params: Record<string, any> = {};
-    
+
     // Handle both single values and arrays
     url.searchParams.forEach((value, key) => {
       if (key === 'studentTypeIds') {

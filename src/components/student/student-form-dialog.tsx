@@ -227,6 +227,7 @@ export function StudentFormDialog({
       studentTypeId: undefined,
       gradeYear: undefined,
       lineId: "",
+      lineNotificationsEnabled: true,
       notes: "",
       status: "ACTIVE",
       username: "",
@@ -274,6 +275,7 @@ export function StudentFormDialog({
         studentTypeId: student.studentTypeId || undefined,
         gradeYear: student.gradeYear ?? undefined,
         lineId: student.lineId || "",
+        lineNotificationsEnabled: student.lineNotificationsEnabled ?? true,
         notes: student.notes || "",
         status:
           (student.status as "ACTIVE" | "SICK" | "PERMANENTLY_LEFT") ||
@@ -1248,7 +1250,11 @@ export function StudentFormDialog({
                         userType="student"
                         userName={student.name}
                         lineId={student.lineId}
+                        lineNotificationsEnabled={student.lineNotificationsEnabled}
                         username={student.username || ""}
+                        onNotificationToggle={(enabled) => {
+                          form.setValue("lineNotificationsEnabled", enabled);
+                        }}
                       />
                     )}
                     {!student && (
