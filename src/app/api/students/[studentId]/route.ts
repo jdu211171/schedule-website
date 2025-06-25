@@ -65,6 +65,7 @@ export type FormattedStudent = {
   maxYears: number | null;
   gradeYear: number | null;
   lineId: string | null;
+  lineNotificationsEnabled: boolean | null;
   notes: string | null;
   status: string;
   username: string | null;
@@ -274,6 +275,7 @@ const formatStudent = (student: StudentWithIncludes): FormattedStudent => {
     exceptionalAvailability,
     createdAt: student.createdAt,
     updatedAt: student.updatedAt,
+    lineNotificationsEnabled: student.lineNotificationsEnabled,
   };
 };
 

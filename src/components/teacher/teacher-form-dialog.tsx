@@ -18,6 +18,7 @@ import {
   Save,
   RotateCcw,
   Check,
+  MessageSquare,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -93,7 +94,6 @@ import { SearchableMultiSelect } from "@/components/admin-schedule/searchable-mu
 import { useAllBranchesOrdered } from "@/hooks/useBranchQuery";
 import { EnhancedStateButton } from "../ui/enhanced-state-button";
 import { LineLinking } from "@/components/shared/line-linking";
-import { MessageSquare } from "lucide-react";
 
 interface TimeSlot {
   id: string;
@@ -196,6 +196,7 @@ export function TeacherFormDialog({
       kanaName: "",
       email: "",
       lineId: "",
+      lineNotificationsEnabled: true,
       notes: "",
       status: "ACTIVE",
       username: "",
@@ -240,6 +241,7 @@ export function TeacherFormDialog({
         kanaName: teacher.kanaName || "",
         email: teacher.email || "",
         lineId: teacher.lineId || "",
+        lineNotificationsEnabled: teacher.lineNotificationsEnabled ?? true,
         notes: teacher.notes || "",
         status:
           (teacher.status as "ACTIVE" | "SICK" | "PERMANENTLY_LEFT") ||
@@ -728,7 +730,7 @@ export function TeacherFormDialog({
                     className="flex items-center gap-2"
                   >
                     <MessageSquare className="h-4 w-4" />
-                    LINE
+                    メッセージ
                   </TabsTrigger>
                   <TabsTrigger
                     value="subjects"
@@ -966,14 +968,18 @@ export function TeacherFormDialog({
                         userType="teacher"
                         userName={teacher.name}
                         lineId={teacher.lineId}
+                        lineNotificationsEnabled={teacher.lineNotificationsEnabled}
                         username={teacher.username || ""}
+                        onNotificationToggle={(enabled) => {
+                          form.setValue("lineNotificationsEnabled", enabled);
+                        }}
                       />
                     )}
                     {!teacher && (
                       <Alert>
                         <AlertTriangle className="h-4 w-4" />
                         <AlertDescription>
-                          LINE連携は講師を作成した後に設定できます。
+                          メッセージ連携は講師を作成した後に設定できます。
                         </AlertDescription>
                       </Alert>
                     )}

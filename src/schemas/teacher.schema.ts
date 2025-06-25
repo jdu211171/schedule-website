@@ -111,6 +111,10 @@ const teacherBaseSchema = z.object({
     .max(50, "LINE IDは50文字以内で入力してください")
     .optional()
     .nullable(),
+  lineNotificationsEnabled: z
+    .boolean()
+    .optional()
+    .default(true),
   notes: z
     .string()
     .max(255, "備考は255文字以内で入力してください")

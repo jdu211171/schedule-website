@@ -20,8 +20,21 @@ import {
   GraduationCap,
   Building,
   Menu,
-  MessageSquare,
 } from "lucide-react";
+
+// Custom LINE icon component using text
+const LineTextIcon = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLProps<HTMLDivElement> & { className?: string }
+>(({ className, ...props }, ref) => (
+  <div ref={ref} className={cn("flex items-center justify-center h-4 w-4", className)} {...props}>
+    <span className="text-[8px] font-bold bg-[#00B900] text-white px-0.5 py-0.5 rounded leading-none">
+      LINE
+    </span>
+  </div>
+));
+LineTextIcon.displayName = "LineTextIcon";
+
 import UserProfileMenu from "@/components/user-profile-menu";
 import { useSession } from "next-auth/react";
 import {
@@ -63,7 +76,7 @@ const dashboardNavItems: NavItemType[] = [
   {
     title: "LINE通知",
     href: "/dashboard/line-test",
-    icon: MessageSquare,
+    icon: Settings, // Placeholder - will be replaced in render
   },
 ];
 
@@ -287,7 +300,13 @@ function MobileNavMenu({
                     : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                 )}
               >
-                <item.icon className="h-4 w-4" />
+                {item.href === "/dashboard/line-test" ? (
+                  <span className="text-[8px] font-bold bg-[#00B900] text-white px-1 py-0.5 rounded h-4 w-4 flex items-center justify-center">
+                    LINE
+                  </span>
+                ) : (
+                  <item.icon className="h-4 w-4" />
+                )}
                 <span>{item.title}</span>
               </Link>
             ))}

@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Loader2, Send, CheckCircle, XCircle, MessageSquare, Users, User } from "lucide-react";
+import { Loader2, Send, CheckCircle, XCircle, Users, User } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useStudents, type Student } from "@/hooks/useStudentQuery";
 import { useTeachers, type Teacher } from "@/hooks/useTeacherQuery";
@@ -37,7 +37,7 @@ export default function LineTestPage() {
   const teachersWithLine = teachersData?.data.filter(t => t.lineId) || [];
 
   // Get users based on selected type
-  const availableUsers: (Student | Teacher)[] = userType === "students" 
+  const availableUsers: (Student | Teacher)[] = userType === "students"
     ? studentsWithLine
     : userType === "teachers"
     ? teachersWithLine
@@ -71,8 +71,8 @@ export default function LineTestPage() {
   }, [messageType, reminderType, subjectName, classTime, classDate]);
 
   const handleUserToggle = (lineId: string) => {
-    setSelectedUsers(prev => 
-      prev.includes(lineId) 
+    setSelectedUsers(prev =>
+      prev.includes(lineId)
         ? prev.filter(id => id !== lineId)
         : [...prev, lineId]
     );
@@ -105,7 +105,7 @@ export default function LineTestPage() {
     try {
       // Get selected branch from localStorage
       const selectedBranchId = localStorage.getItem("selectedBranchId") || "";
-      
+
       const response = await fetch('/api/line/test-send', {
         method: 'POST',
         headers: {
@@ -151,7 +151,7 @@ export default function LineTestPage() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <MessageSquare className="h-5 w-5" />
+            <span className="text-xs font-bold bg-[#00B900] text-white px-1.5 py-0.5 rounded">LINE</span>
             LINE通知送信
           </CardTitle>
           <CardDescription>
@@ -206,10 +206,10 @@ export default function LineTestPage() {
                 availableUsers.map((user) => {
                   const lineId = user.lineId;
                   if (!lineId) return null;
-                  
+
                   const name = user.name;
                   const isStudent = 'studentId' in user;
-                  
+
                   return (
                     <div key={lineId} className="flex items-center space-x-2">
                       <Checkbox
@@ -217,8 +217,8 @@ export default function LineTestPage() {
                         checked={selectedUsers.includes(lineId)}
                         onCheckedChange={() => handleUserToggle(lineId)}
                       />
-                      <label 
-                        htmlFor={lineId} 
+                      <label
+                        htmlFor={lineId}
                         className="text-sm font-medium cursor-pointer flex items-center gap-2 flex-1"
                       >
                         {isStudent ? (
@@ -275,8 +275,8 @@ export default function LineTestPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>科目名</Label>
-                  <Input 
-                    value={subjectName} 
+                  <Input
+                    value={subjectName}
                     onChange={(e) => setSubjectName(e.target.value)}
                     placeholder="例: 数学"
                   />
@@ -285,16 +285,16 @@ export default function LineTestPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>授業日</Label>
-                  <Input 
-                    type="date" 
+                  <Input
+                    type="date"
                     value={classDate}
                     onChange={(e) => setClassDate(e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label>授業時間</Label>
-                  <Input 
-                    type="time" 
+                  <Input
+                    type="time"
                     value={classTime}
                     onChange={(e) => setClassTime(e.target.value)}
                   />
@@ -343,7 +343,7 @@ export default function LineTestPage() {
           {results && (
             <div className="space-y-4 p-4 border rounded-lg">
               <h4 className="text-sm font-medium">送信結果</h4>
-              
+
               {results.success ? (
                 <Alert>
                   <CheckCircle className="h-4 w-4" />

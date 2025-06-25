@@ -114,6 +114,7 @@ model Student {
   studentTypeId           String?                    @map("student_type_id") @db.VarChar(50)
   gradeYear               Int?                       @map("grade_year")
   lineId                  String?                    @unique @map("line_id") @db.VarChar(50)
+  lineNotificationsEnabled Boolean?                  @default(true) @map("line_notifications_enabled")
   notes                   String?                    @db.VarChar(255)
   status                  UserStatus                 @default(ACTIVE)
   createdAt               DateTime                   @default(now()) @map("created_at") @db.Timestamp(6)
@@ -199,20 +200,21 @@ model StudentClassEnrollment {
 ///  * This model stores comprehensive teacher information.
 ///  * Central to class scheduling and assignment.
 model Teacher {
-  teacherId          String                     @id @default(cuid()) @map("teacher_id")
-  userId             String                     @unique @map("user_id")
-  name               String                     @db.VarChar(100)
-  kanaName           String?                    @map("kana_name") @db.VarChar(100)
-  email              String?                    @db.VarChar(100)
-  lineId             String?                    @unique @map("line_id") @db.VarChar(50)
-  notes              String?                    @db.VarChar(255)
-  status             UserStatus                 @default(ACTIVE)
-  createdAt          DateTime                   @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt          DateTime                   @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
-  linkingCode        String?                    @unique @map("linking_code") @db.VarChar(10)
-  classSessions      ClassSession[]
-  studentPreferences StudentTeacherPreference[]
-  user               User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  teacherId                String                     @id @default(cuid()) @map("teacher_id")
+  userId                   String                     @unique @map("user_id")
+  name                     String                     @db.VarChar(100)
+  kanaName                 String?                    @map("kana_name") @db.VarChar(100)
+  email                    String?                    @db.VarChar(100)
+  lineId                   String?                    @unique @map("line_id") @db.VarChar(50)
+  lineNotificationsEnabled Boolean?                   @default(true) @map("line_notifications_enabled")
+  notes                    String?                    @db.VarChar(255)
+  status                   UserStatus                 @default(ACTIVE)
+  createdAt                DateTime                   @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt                DateTime                   @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  linkingCode              String?                    @unique @map("linking_code") @db.VarChar(10)
+  classSessions            ClassSession[]
+  studentPreferences       StudentTeacherPreference[]
+  user                     User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("teachers")
 }
