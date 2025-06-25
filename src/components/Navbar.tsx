@@ -73,10 +73,15 @@ const dashboardNavItems: NavItemType[] = [
     href: "/dashboard/master",
     icon: LayoutDashboard,
   },
+  // {
+  //   title: "LINE通知",
+  //   href: "/dashboard/line-test",
+  //   icon: Settings, // Placeholder - will be replaced in render
+  // },
   {
-    title: "LINE通知",
-    href: "/dashboard/line-test",
-    icon: Settings, // Placeholder - will be replaced in render
+    title: "設定",
+    href: "/dashboard/settings",
+    icon: Settings,
   },
 ];
 

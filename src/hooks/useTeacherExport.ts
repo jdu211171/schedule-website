@@ -8,6 +8,7 @@ interface ExportOptions {
   status?: string[];
   branch?: string[];
   subject?: string[];
+  lineConnection?: string[];
   columns: string[];
 }
 
@@ -17,7 +18,7 @@ export function useTeacherExport() {
   const exportToCSV = async (options: ExportOptions) => {
     try {
       setIsExporting(true);
-      
+
       // Build query params
       const params = new URLSearchParams();
       if (options.name) params.append("name", options.name);
@@ -30,12 +31,15 @@ export function useTeacherExport() {
       if (options.subject && options.subject.length > 0) {
         params.append("subject", options.subject.join(","));
       }
+      if (options.lineConnection && options.lineConnection.length > 0) {
+        params.append("lineConnection", options.lineConnection.join(","));
+      }
       if (options.columns.length > 0) {
         params.append("columns", options.columns.join(","));
       }
 
       const response = await fetcherWithAuth(`/api/teachers/export?${params.toString()}`);
-      
+
       // Check if response is ok
       if (!response.ok) {
         throw new Error("Export failed");
@@ -43,7 +47,7 @@ export function useTeacherExport() {
 
       // Get the blob from response
       const blob = await response.blob();
-      
+
       // Create download link
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -51,11 +55,11 @@ export function useTeacherExport() {
       link.download = `teachers_${new Date().toISOString().split("T")[0]}.csv`;
       document.body.appendChild(link);
       link.click();
-      
+
       // Cleanup
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-      
+
       toast.success("教師データをエクスポートしました");
     } catch (error) {
       console.error("Export error:", error);

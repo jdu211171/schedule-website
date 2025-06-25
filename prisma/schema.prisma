@@ -20,6 +20,7 @@ model Branch {
   notifications Notification[]
   userBranches  UserBranch[]
   vacations     Vacation[]
+  lineMessageTemplates LineMessageTemplate[]
 
   @@index([order])
   @@map("branches")
@@ -309,6 +310,28 @@ model Notification {
 
   @@index([branchId])
   @@map("notifications")
+}
+
+model LineMessageTemplate {
+  id              String   @id @default(cuid()) @map("id")
+  name            String   @db.VarChar(100)
+  description     String?  @db.VarChar(255)
+  templateType    String   @map("template_type") @db.VarChar(50) // "before_class" | "after_class" | "custom"
+  timingType      String   @map("timing_type") @db.VarChar(20) // "minutes" | "hours" | "days"
+  timingValue     Int      @map("timing_value") // Number of minutes/hours/days
+  content         String   @db.Text
+  variables       Json     // Array of variable names used in the template
+  isActive        Boolean  @default(true) @map("is_active")
+  branchId        String?  @map("branch_id")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  
+  branch          Branch?  @relation(fields: [branchId], references: [branchId], onDelete: Cascade)
+  
+  @@index([branchId])
+  @@index([templateType])
+  @@index([isActive])
+  @@map("line_message_templates")
 }
 
 /// *

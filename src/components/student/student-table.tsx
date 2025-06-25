@@ -881,10 +881,15 @@ export function StudentTable() {
   };
 
   const handleExport = () => {
-    // Get visible columns
+    // Get visible columns, excluding LINE-related fields for security/privacy
     const visibleColumns = table
       .getAllColumns()
-      .filter((col) => col.getIsVisible() && col.id !== "select" && col.id !== "actions")
+      .filter((col) =>
+        col.getIsVisible() &&
+        col.id !== "select" &&
+        col.id !== "actions" &&
+        !["lineConnection", "lineId", "lineNotificationsEnabled"].includes(col.id)
+      )
       .map((col) => col.id);
 
     // Get current filters - pass all filters
@@ -895,6 +900,7 @@ export function StudentTable() {
       gradeYear: filters.gradeYear || undefined,
       branch: filters.branch || undefined,
       subject: filters.subject || undefined,
+      lineConnection: filters.lineConnection || undefined,
       columns: visibleColumns,
     });
   };
