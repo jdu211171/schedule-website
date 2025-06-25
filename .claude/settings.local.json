@@ -16,7 +16,8 @@
       "Bash(find:*)",
       "Bash(bun prisma migrate dev:*)",
       "Bash(bun prisma generate:*)",
-      "Bash(bun prisma migrate:*)"
+      "Bash(bun prisma migrate:*)",
+      "Bash(sed:*)"
     ],
     "deny": []
   }

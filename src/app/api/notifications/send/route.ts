@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { sendLineMulticast } from '@/lib/line';
 import { formatClassNotificationWithTemplate, type ClassSessionData } from '@/lib/line/format-notification';
-import { addHours, addMinutes, subMinutes, format } from 'date-fns';
+import { addHours, addMinutes, addDays, subMinutes, format } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
 
 const TIMEZONE = 'Asia/Tokyo';
@@ -18,304 +18,218 @@ export async function GET(req: NextRequest) {
     const now = new Date();
     const nowJST = toZonedTime(now, TIMEZONE);
 
-    // Calculate target times with ±5 minute windows
-    const target24h = addHours(nowJST, 24);
-    const target24hStart = subMinutes(target24h, 5);
-    const target24hEnd = addMinutes(target24h, 5);
-
-    const target30m = addMinutes(nowJST, 30);
-    const target30mStart = subMinutes(target30m, 5);
-    const target30mEnd = addMinutes(target30m, 5);
-
-    // Format dates for querying
-    const date24h = format(target24h, 'yyyy-MM-dd');
-    const date30m = format(nowJST, 'yyyy-MM-dd');
-
     // Log for debugging
     console.log('Notification check at:', format(nowJST, 'yyyy-MM-dd HH:mm:ss'));
-    console.log('24h target date:', date24h);
-    console.log('24h window:', format(target24hStart, 'HH:mm:ss'), '-', format(target24hEnd, 'HH:mm:ss'));
-    console.log('30m target date:', date30m);
-    console.log('30m window:', format(target30mStart, 'HH:mm:ss'), '-', format(target30mEnd, 'HH:mm:ss'));
     console.log('LINE_CHANNEL_ACCESS_TOKEN present:', !!process.env.LINE_CHANNEL_ACCESS_TOKEN);
     console.log('CRON_SECRET present:', !!process.env.CRON_SECRET);
 
-    // Find sessions starting in ~24 hours
-    const sessions24h = await prisma.classSession.findMany({
+    // Get all active LINE message templates
+    const activeTemplates = await prisma.lineMessageTemplate.findMany({
       where: {
-        date: new Date(date24h),
-        AND: [
-          {
-            startTime: {
-              gte: new Date(`1970-01-01T${format(target24hStart, 'HH:mm:ss')}`)
-            }
-          },
-          {
-            startTime: {
-              lte: new Date(`1970-01-01T${format(target24hEnd, 'HH:mm:ss')}`)
-            }
-          }
-        ]
+        templateType: 'before_class',
+        isActive: true
       },
-      include: {
-        teacher: {
-          select: {
-            teacherId: true,
-            name: true,
-            lineId: true,
-            lineNotificationsEnabled: true
-          }
-        },
-        student: {
-          select: {
-            studentId: true,
-            name: true,
-            lineId: true,
-            lineNotificationsEnabled: true
-          }
-        },
-        studentClassEnrollments: {
-          include: {
-            student: {
-              select: {
-                studentId: true,
-                name: true,
-                lineId: true,
-                lineNotificationsEnabled: true
-              }
-            }
-          }
-        },
-        subject: {
-          select: {
-            name: true
-          }
-        },
-        booth: {
-          select: {
-            name: true
-          }
-        },
-        branch: {
-          select: {
-            name: true
-          }
-        }
+      select: {
+        id: true,
+        name: true,
+        timingType: true,
+        timingValue: true,
+        branchId: true
       }
     });
 
-    // Find sessions starting in ~30 minutes
-    const sessions30m = await prisma.classSession.findMany({
-      where: {
-        date: new Date(date30m),
-        AND: [
-          {
-            startTime: {
-              gte: new Date(`1970-01-01T${format(target30mStart, 'HH:mm:ss')}`)
-            }
-          },
-          {
-            startTime: {
-              lte: new Date(`1970-01-01T${format(target30mEnd, 'HH:mm:ss')}`)
-            }
-          }
-        ]
-      },
-      include: {
-        teacher: {
-          select: {
-            teacherId: true,
-            name: true,
-            lineId: true,
-            lineNotificationsEnabled: true
-          }
-        },
-        student: {
-          select: {
-            studentId: true,
-            name: true,
-            lineId: true,
-            lineNotificationsEnabled: true
-          }
-        },
-        studentClassEnrollments: {
-          include: {
-            student: {
-              select: {
-                studentId: true,
-                name: true,
-                lineId: true,
-                lineNotificationsEnabled: true
-              }
-            }
-          }
-        },
-        subject: {
-          select: {
-            name: true
-          }
-        },
-        booth: {
-          select: {
-            name: true
-          }
-        },
-        branch: {
-          select: {
-            name: true
-          }
-        }
-      }
-    });
+    console.log(`Found ${activeTemplates.length} active templates`);
 
-    let notificationsSent = 0;
+    let totalNotificationsSent = 0;
     const errors: string[] = [];
+    const processedSessions = new Set<string>(); // Prevent duplicate notifications
 
-    // Send 24-hour notifications
-    for (const session of sessions24h) {
+    // Process each template
+    for (const template of activeTemplates) {
       try {
-        const lineIds: string[] = [];
+        // Calculate target time based on template timing
+        let targetTime: Date;
+        let minutesBeforeClass: number;
 
-        // Add teacher's LINE ID
-        if (session.teacher?.lineId && (session.teacher.lineNotificationsEnabled ?? true)) {
-          lineIds.push(session.teacher.lineId);
+        switch (template.timingType) {
+          case 'minutes':
+            targetTime = addMinutes(nowJST, template.timingValue);
+            minutesBeforeClass = template.timingValue;
+            break;
+          case 'hours':
+            targetTime = addHours(nowJST, template.timingValue);
+            minutesBeforeClass = template.timingValue * 60;
+            break;
+          case 'days':
+            targetTime = addDays(nowJST, template.timingValue);
+            minutesBeforeClass = template.timingValue * 1440;
+            break;
+          default:
+            console.error(`Unknown timing type: ${template.timingType} for template ${template.name}`);
+            continue;
         }
 
-        // Add direct student's LINE ID (for one-on-one sessions)
-        if (session.student?.lineId && (session.student.lineNotificationsEnabled ?? true)) {
-          lineIds.push(session.student.lineId);
+        // Create a ±5 minute window
+        const targetStart = subMinutes(targetTime, 5);
+        const targetEnd = addMinutes(targetTime, 5);
+        const targetDate = format(targetTime, 'yyyy-MM-dd');
+
+        console.log(`\nChecking template: ${template.name} (${template.timingValue} ${template.timingType} before)`);
+        console.log(`Target window: ${format(targetStart, 'HH:mm:ss')} - ${format(targetEnd, 'HH:mm:ss')} on ${targetDate}`);
+
+        // Find sessions matching this template's timing
+        const whereClause: any = {
+          date: new Date(targetDate),
+          startTime: {
+            gte: new Date(`${targetDate}T${format(targetStart, 'HH:mm:ss')}`),
+            lte: new Date(`${targetDate}T${format(targetEnd, 'HH:mm:ss')}`)
+          }
+        };
+
+        // If template is branch-specific, filter by branch
+        if (template.branchId) {
+          whereClause.branchId = template.branchId;
         }
 
-        // Add enrolled students' LINE IDs (for group sessions)
-        for (const enrollment of session.studentClassEnrollments) {
-          if (enrollment.student.lineId && (enrollment.student.lineNotificationsEnabled ?? true)) {
-            lineIds.push(enrollment.student.lineId);
+        const sessions = await prisma.classSession.findMany({
+          where: whereClause,
+          include: {
+            teacher: {
+              select: {
+                teacherId: true,
+                name: true,
+                lineId: true,
+                lineNotificationsEnabled: true
+              }
+            },
+            student: {
+              select: {
+                studentId: true,
+                name: true,
+                lineId: true,
+                lineNotificationsEnabled: true
+              }
+            },
+            studentClassEnrollments: {
+              include: {
+                student: {
+                  select: {
+                    studentId: true,
+                    name: true,
+                    lineId: true,
+                    lineNotificationsEnabled: true
+                  }
+                }
+              }
+            },
+            subject: {
+              select: {
+                name: true
+              }
+            },
+            booth: {
+              select: {
+                name: true
+              }
+            },
+            branch: {
+              select: {
+                name: true
+              }
+            }
+          }
+        });
+
+        console.log(`Found ${sessions.length} sessions for this timing`);
+
+        // Send notifications for each session
+        for (const session of sessions) {
+          // Skip if we've already processed this session
+          const sessionKey = `${session.classId}-${minutesBeforeClass}`;
+          if (processedSessions.has(sessionKey)) {
+            continue;
+          }
+          processedSessions.add(sessionKey);
+
+          try {
+            const lineIds: string[] = [];
+
+            // Add teacher's LINE ID
+            if (session.teacher?.lineId && (session.teacher.lineNotificationsEnabled ?? true)) {
+              lineIds.push(session.teacher.lineId);
+            }
+
+            // Add direct student's LINE ID (for one-on-one sessions)
+            if (session.student?.lineId && (session.student.lineNotificationsEnabled ?? true)) {
+              lineIds.push(session.student.lineId);
+            }
+
+            // Add enrolled students' LINE IDs (for group sessions)
+            for (const enrollment of session.studentClassEnrollments) {
+              if (enrollment.student.lineId && (enrollment.student.lineNotificationsEnabled ?? true)) {
+                lineIds.push(enrollment.student.lineId);
+              }
+            }
+
+            if (lineIds.length > 0) {
+              const sessionData: ClassSessionData = {
+                subjectName: session.subject?.name || '授業',
+                startTime: session.startTime,
+                endTime: session.endTime,
+                teacherName: session.teacher?.name,
+                studentName: session.student?.name,
+                boothName: session.booth?.name,
+                branchName: session.branch?.name,
+                branchId: session.branchId || undefined
+              };
+
+              const message = await formatClassNotificationWithTemplate(sessionData, minutesBeforeClass, session.branchId || undefined);
+
+              await sendLineMulticast(lineIds, message);
+              totalNotificationsSent += lineIds.length;
+
+              // Log notification in database
+              await prisma.notification.createMany({
+                data: lineIds.map(lineId => ({
+                  recipientType: lineId === session.teacher?.lineId ? 'TEACHER' : 'STUDENT',
+                  recipientId: lineId === session.teacher?.lineId ? session.teacher.teacherId :
+                               session.student?.lineId === lineId ? session.student.studentId :
+                               session.studentClassEnrollments.find(e => e.student.lineId === lineId)?.student.studentId || '',
+                  notificationType: minutesBeforeClass >= 1440 ? 'CLASS_REMINDER_24H' : 
+                                   minutesBeforeClass >= 60 ? 'CLASS_REMINDER_1H' : 'CLASS_REMINDER_30M',
+                  message,
+                  relatedClassId: session.classId,
+                  branchId: session.branchId,
+                  sentVia: 'LINE',
+                  sentAt: now,
+                  status: 'SENT'
+                }))
+              });
+
+              console.log(`✓ Sent notifications to ${lineIds.length} recipients for session ${session.classId}`);
+            }
+          } catch (error) {
+            const errorMsg = `Error sending notification for session ${session.classId} with template ${template.name}: ${error}`;
+            console.error(errorMsg);
+            if (error instanceof Error && 'response' in error) {
+              console.error('LINE API Response:', (error as any).response?.data);
+            }
+            errors.push(errorMsg);
           }
         }
-
-        if (lineIds.length > 0) {
-          const sessionData: ClassSessionData = {
-            subjectName: session.subject?.name || '授業',
-            startTime: session.startTime,
-            endTime: session.endTime,
-            teacherName: session.teacher?.name,
-            studentName: session.student?.name,
-            boothName: session.booth?.name,
-            branchName: session.branch?.name,
-            branchId: session.branchId || undefined
-          };
-
-          const message = await formatClassNotificationWithTemplate(sessionData, 1440, session.branchId || undefined);
-
-          await sendLineMulticast(lineIds, message);
-          notificationsSent += lineIds.length;
-
-          // Log notification in database
-          await prisma.notification.createMany({
-            data: lineIds.map(lineId => ({
-              recipientType: lineId === session.teacher?.lineId ? 'TEACHER' : 'STUDENT',
-              recipientId: lineId === session.teacher?.lineId ? session.teacher.teacherId :
-                           session.student?.lineId === lineId ? session.student.studentId :
-                           session.studentClassEnrollments.find(e => e.student.lineId === lineId)?.student.studentId || '',
-              notificationType: 'CLASS_REMINDER_24H',
-              message,
-              relatedClassId: session.classId,
-              branchId: session.branchId,
-              sentVia: 'LINE',
-              sentAt: now,
-              status: 'SENT'
-            }))
-          });
-        }
       } catch (error) {
-        const errorMsg = `Error sending 24h notification for session ${session.classId}: ${error}`;
+        const errorMsg = `Error processing template ${template.name}: ${error}`;
         console.error(errorMsg);
-        if (error instanceof Error && 'response' in error) {
-          console.error('LINE API Response:', (error as any).response?.data);
-        }
-        errors.push(errorMsg);
-      }
-    }
-
-    // Send 30-minute notifications
-    for (const session of sessions30m) {
-      try {
-        const lineIds: string[] = [];
-
-        // Add teacher's LINE ID
-        if (session.teacher?.lineId && (session.teacher.lineNotificationsEnabled ?? true)) {
-          lineIds.push(session.teacher.lineId);
-        }
-
-        // Add direct student's LINE ID (for one-on-one sessions)
-        if (session.student?.lineId && (session.student.lineNotificationsEnabled ?? true)) {
-          lineIds.push(session.student.lineId);
-        }
-
-        // Add enrolled students' LINE IDs (for group sessions)
-        for (const enrollment of session.studentClassEnrollments) {
-          if (enrollment.student.lineId && (enrollment.student.lineNotificationsEnabled ?? true)) {
-            lineIds.push(enrollment.student.lineId);
-          }
-        }
-
-        if (lineIds.length > 0) {
-          const sessionData: ClassSessionData = {
-            subjectName: session.subject?.name || '授業',
-            startTime: session.startTime,
-            endTime: session.endTime,
-            teacherName: session.teacher?.name,
-            studentName: session.student?.name,
-            boothName: session.booth?.name,
-            branchName: session.branch?.name,
-            branchId: session.branchId || undefined
-          };
-
-          const message = await formatClassNotificationWithTemplate(sessionData, 30, session.branchId || undefined);
-
-          await sendLineMulticast(lineIds, message);
-          notificationsSent += lineIds.length;
-
-          // Log notification in database
-          await prisma.notification.createMany({
-            data: lineIds.map(lineId => ({
-              recipientType: lineId === session.teacher?.lineId ? 'TEACHER' : 'STUDENT',
-              recipientId: lineId === session.teacher?.lineId ? session.teacher.teacherId :
-                           session.student?.lineId === lineId ? session.student.studentId :
-                           session.studentClassEnrollments.find(e => e.student.lineId === lineId)?.student.studentId || '',
-              notificationType: 'CLASS_REMINDER_30M',
-              message,
-              relatedClassId: session.classId,
-              branchId: session.branchId,
-              sentVia: 'LINE',
-              sentAt: now,
-              status: 'SENT'
-            }))
-          });
-        }
-      } catch (error) {
-        const errorMsg = `Error sending 30m notification for session ${session.classId}: ${error}`;
-        console.error(errorMsg);
-        if (error instanceof Error && 'response' in error) {
-          console.error('LINE API Response:', (error as any).response?.data);
-        }
         errors.push(errorMsg);
       }
     }
 
     return NextResponse.json({
       success: true,
-      notificationsSent,
-      sessions24h: sessions24h.length,
-      sessions30m: sessions30m.length,
+      notificationsSent: totalNotificationsSent,
+      templatesProcessed: activeTemplates.length,
       errors: errors.length > 0 ? errors : undefined,
-      timestamp: format(nowJST, 'yyyy-MM-dd HH:mm:ss zzz'),
-      debug: {
-        date24h,
-        date30m,
-        target24hWindow: `${format(target24hStart, 'HH:mm:ss')} - ${format(target24hEnd, 'HH:mm:ss')}`,
-        target30mWindow: `${format(target30mStart, 'HH:mm:ss')} - ${format(target30mEnd, 'HH:mm:ss')}`
-      }
+      timestamp: format(nowJST, 'yyyy-MM-dd HH:mm:ss zzz')
     });
   } catch (error) {
     console.error('Error in notification service:', error);
