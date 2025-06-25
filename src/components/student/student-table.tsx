@@ -3,8 +3,7 @@
 
 import * as React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Pencil, Eye, EyeOff, Trash2, MoreHorizontal, RotateCcw, Download, Upload, Bell, BellOff } from "lucide-react";
-import { LineIcon } from "@/components/icons/line-icon";
+import { Pencil, Eye, EyeOff, Trash2, MoreHorizontal, RotateCcw, Download, Upload, Bell, BellOff, MessageSquare } from "lucide-react";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useStudentExport } from "@/hooks/useStudentExport";
 
@@ -369,7 +368,7 @@ export function StudentTable() {
         if (!hasMatchingSubject) return false;
       }
 
-      // LINE connection filter
+      // メッセージ connection filter
       if (lineConnectionSet.size > 0) {
         const hasLine = !!student.lineId;
         const notificationsEnabled = student.lineNotificationsEnabled ?? true;
@@ -587,7 +586,7 @@ export function StudentTable() {
           label: "パスワード",
         },
       },
-      // Hidden for security reasons - LINE IDs should not be exposed
+      // Hidden for security reasons - Message IDs should not be exposed
       // {
       //   id: "lineId",
       //   accessorKey: "lineId",
@@ -600,7 +599,7 @@ export function StudentTable() {
       {
         id: "lineConnection",
         accessorKey: "lineId",
-        header: "LINE連携",
+        header: "メッセージ連携",
         cell: ({ row }) => {
           const hasLine = !!row.original.lineId;
           const notificationsEnabled = row.original.lineNotificationsEnabled ?? true;
@@ -626,7 +625,7 @@ export function StudentTable() {
           return (
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1">
-                <LineIcon className={cn("h-4 w-4", iconColor)} />
+                <MessageSquare className={cn("h-4 w-4", iconColor)} />
                 {bellIcon}
               </div>
               <span className="text-sm">{statusText}</span>
@@ -634,7 +633,7 @@ export function StudentTable() {
           );
         },
         meta: {
-          label: "LINE連携",
+          label: "メッセージ連携",
           variant: "multiSelect",
           options: [
             { value: "connected_enabled", label: "連携済み (通知有効)" },

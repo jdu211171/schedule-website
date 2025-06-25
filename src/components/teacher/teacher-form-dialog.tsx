@@ -18,6 +18,7 @@ import {
   Save,
   RotateCcw,
   Check,
+  MessageSquare,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -93,7 +94,6 @@ import { SearchableMultiSelect } from "@/components/admin-schedule/searchable-mu
 import { useAllBranchesOrdered } from "@/hooks/useBranchQuery";
 import { EnhancedStateButton } from "../ui/enhanced-state-button";
 import { LineLinking } from "@/components/shared/line-linking";
-import { MessageSquare } from "lucide-react";
 
 interface TimeSlot {
   id: string;
@@ -730,7 +730,7 @@ export function TeacherFormDialog({
                     className="flex items-center gap-2"
                   >
                     <MessageSquare className="h-4 w-4" />
-                    LINE
+                    メッセージ
                   </TabsTrigger>
                   <TabsTrigger
                     value="subjects"
@@ -979,7 +979,7 @@ export function TeacherFormDialog({
                       <Alert>
                         <AlertTriangle className="h-4 w-4" />
                         <AlertDescription>
-                          LINE連携は講師を作成した後に設定できます。
+                          メッセージ連携は講師を作成した後に設定できます。
                         </AlertDescription>
                       </Alert>
                     )}

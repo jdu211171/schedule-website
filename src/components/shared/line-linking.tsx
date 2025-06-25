@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { 
-  Copy, 
-  CheckCircle, 
+import {
+  Copy,
+  CheckCircle,
   AlertCircle,
   MessageSquare,
   Link,
@@ -38,10 +38,10 @@ interface LineLinkingData {
   lineNotificationsEnabled?: boolean;
 }
 
-export function LineLinking({ 
-  userId, 
-  userType, 
-  userName, 
+export function LineLinking({
+  userId,
+  userType,
+  userName,
   lineId: initialLineId,
   lineNotificationsEnabled: initialNotificationsEnabled,
   username,
@@ -80,7 +80,7 @@ export function LineLinking({
 
   const copyToClipboard = async () => {
     if (!linkingData?.username) return;
-    
+
     try {
       await navigator.clipboard.writeText(linkingData.username);
       setIsCopied(true);
@@ -114,10 +114,10 @@ export function LineLinking({
           <div>
             <CardTitle className="flex items-center gap-2 text-lg">
               <MessageSquare className="h-5 w-5" />
-              LINE連携
+              メッセージ連携
             </CardTitle>
             <CardDescription>
-              LINEアカウントと連携して授業の通知を受け取ります
+              メッセージアカウントと連携して授業の通知を受け取ります
             </CardDescription>
           </div>
           <Badge variant={isLinked ? "default" : "secondary"}>
@@ -141,10 +141,10 @@ export function LineLinking({
             <Alert>
               <CheckCircle className="h-4 w-4" />
               <AlertDescription>
-                LINEアカウントが連携されています。授業の24時間前と30分前に通知が送信されます。
+                メッセージアカウントが連携されています。授業の24時間前と30分前に通知が送信されます。
               </AlertDescription>
             </Alert>
-            
+
             {onNotificationToggle && (
               <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                 <div className="flex items-center gap-2">
@@ -155,7 +155,7 @@ export function LineLinking({
                   )}
                   <div>
                     <Label htmlFor="notifications-toggle" className="text-sm font-medium">
-                      LINE通知
+                      メッセージ通知
                     </Label>
                     <p className="text-xs text-muted-foreground">
                       {notificationsEnabled ? "通知が有効です" : "通知が無効です"}
@@ -175,10 +175,10 @@ export function LineLinking({
             <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                以下のユーザー名をLINE公式アカウント (@992emavw) に送信してください。
+                以下のユーザー名をメッセージ公式アカウント (@992emavw) に送信してください。
               </AlertDescription>
             </Alert>
-            
+
             <div className="flex items-center gap-2">
               <div className="flex-1">
                 <div className="relative">
@@ -205,11 +205,11 @@ export function LineLinking({
             </div>
           </div>
         )}
-        
+
         <div className="pt-2 border-t">
           <h4 className="text-sm font-medium mb-2">連携手順:</h4>
           <ol className="text-sm text-muted-foreground space-y-1">
-            <li>1. LINE公式アカウント (@992emavw) を友だち追加</li>
+            <li>1. メッセージ公式アカウント (@992emavw) を友だち追加</li>
             <li>2. トーク画面であなたのユーザー名を送信</li>
             <li>3. 連携完了のメッセージが届きます</li>
           </ol>

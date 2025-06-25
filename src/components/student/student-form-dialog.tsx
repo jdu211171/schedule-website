@@ -19,6 +19,7 @@ import {
   RotateCcw,
   Check,
   Users,
+  MessageSquare,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -80,7 +81,7 @@ import {
 import { EnhancedAvailabilityRegularSelector } from "./enhanced-availability-regular-selector";
 import { EnhancedAvailabilityIrregularSelector } from "./enhanced-availability-irregular-selector";
 import { LineLinking } from "@/components/shared/line-linking";
-import { MessageSquare, AlertCircle } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 
 import {
   type StudentCreate,
@@ -170,9 +171,9 @@ export function StudentFormDialog({
 //   const [keepDialogOpen, setKeepDialogOpen] = useState(() => {
 //   if (typeof window !== "undefined") {
 //     const savedKeepOpen = localStorage.getItem(KEEP_OPEN_STORAGE_KEY);
-//     return savedKeepOpen ? JSON.parse(savedKeepOpen) : true; 
+//     return savedKeepOpen ? JSON.parse(savedKeepOpen) : true;
 //   }
-//   return true; 
+//   return true;
 // });
   const keepDialogOpen = true;
 
@@ -244,7 +245,7 @@ export function StudentFormDialog({
 //     const savedKeepOpen = localStorage.getItem(KEEP_OPEN_STORAGE_KEY);
 //     if (savedKeepOpen !== null) {
 //       const parsed = JSON.parse(savedKeepOpen);
-//       setKeepDialogOpen(parsed); 
+//       setKeepDialogOpen(parsed);
 //     }
 //   }
 // }, [open]);
@@ -909,7 +910,7 @@ export function StudentFormDialog({
                     className="flex items-center gap-2"
                   >
                     <MessageSquare className="h-4 w-4" />
-                    LINE
+                    メッセージ
                   </TabsTrigger>
                   <TabsTrigger
                     value="subjects"
@@ -1261,7 +1262,7 @@ export function StudentFormDialog({
                       <Alert>
                         <AlertCircle className="h-4 w-4" />
                         <AlertDescription>
-                          LINE連携は生徒を作成した後に設定できます。
+                          メッセージ連携は生徒を作成した後に設定できます。
                         </AlertDescription>
                       </Alert>
                     )}
