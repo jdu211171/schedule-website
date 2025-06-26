@@ -18,7 +18,9 @@
       "Bash(bun prisma generate:*)",
       "Bash(bun prisma migrate:*)",
       "Bash(sed:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(node:*)",
+      "Bash(tree:*)"
     ],
     "deny": []
   }

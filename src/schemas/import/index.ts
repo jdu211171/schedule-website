@@ -23,6 +23,10 @@ export interface ImportResult {
     message?: string;
     type?: string;
   }>;
+  created?: number;
+  updated?: number;
+  deleted?: number;
+  skipped?: number;
 }
 
 // Helper function to format validation errors

@@ -4,6 +4,7 @@ import { withBranchAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { studentFilterSchema } from "@/schemas/student.schema";
 import { STUDENT_CSV_HEADERS } from "@/schemas/import/student-import.schema";
+import { getOrderedCsvHeaders, getExportColumns, STUDENT_COLUMN_RULES } from "@/schemas/import/student-column-rules";
 import { format } from "date-fns";
 
 // Helper function to format date for CSV
@@ -34,35 +35,6 @@ function formatEnumForCSV(value: string | null, type: "schoolType" | "examCatego
 }
 
 // CSV export handler for students
-// Map table column IDs to CSV header names
-const COLUMN_ID_TO_CSV_HEADER: Record<string, string> = {
-  "name": "name",
-  "kanaName": "kanaName",
-  "studentTypeName": "studentTypeName",
-  "gradeYear": "gradeYear",
-  "birthDate": "birthDate",
-  "schoolName": "schoolName",
-  "schoolType": "schoolType",
-  "examCategory": "examCategory",
-  "examCategoryType": "examCategoryType",
-  "firstChoice": "firstChoice",
-  "secondChoice": "secondChoice",
-  "examDate": "examDate",
-  "username": "username",
-  "email": "email",
-  "parentEmail": "parentEmail",
-  "password": "password",
-  "homePhone": "homePhone",
-  "parentPhone": "parentPhone",
-  "studentPhone": "studentPhone",
-  "subjectPreferences": "subjects",
-  "notes": "notes",
-  "lineId": "lineId",
-  "branches": "branches",
-  // Note: The following columns exist in the table but not in CSV export:
-  // - status (not exported)
-  // - lineConnection (computed field, not exported)
-};
 
 export const GET = withBranchAccess(
   ["ADMIN", "STAFF"],
@@ -253,16 +225,8 @@ export const GET = withBranchAccess(
       });
     }
 
-    // Map visible column IDs to CSV headers and maintain order
-    const columnsToExport = visibleColumns.length > 0
-      ? visibleColumns
-          .map(colId => COLUMN_ID_TO_CSV_HEADER[colId])
-          .filter((header): header is typeof STUDENT_CSV_HEADERS[number] => 
-            header !== undefined && STUDENT_CSV_HEADERS.includes(header as typeof STUDENT_CSV_HEADERS[number])
-          )
-      : [...STUDENT_CSV_HEADERS];
-    
-    const headers = columnsToExport.join(",");
+    // Get ordered CSV headers based on column rules
+    const headers = getOrderedCsvHeaders().join(",");
 
     // Build CSV rows to match import schema exactly
     const rows = filteredStudents.map((student) => {
@@ -279,35 +243,88 @@ export const GET = withBranchAccess(
       const branchNames = student.user?.branches
         ?.map((b: any) => b.branch.name) || [];
 
-      // Create row data matching STUDENT_CSV_HEADERS order
-      const rowData: Record<string, string> = {
-        username: student.user?.username || "",
-        email: student.user?.email || "",
-        password: "", // Never export passwords
-        name: student.name || "",
-        kanaName: student.kanaName || "",
-        studentTypeName: student.studentType?.name || "",
-        gradeYear: student.gradeYear?.toString() || "",
-        lineId: "", // Never export lineId for security
-        subjects: subjectNames.join(","), // Comma-separated subject names
-        branches: branchNames.join(","), // Comma-separated branch names
-        schoolName: student.schoolName || "",
-        schoolType: formatEnumForCSV(student.schoolType, "schoolType"),
-        examCategory: formatEnumForCSV(student.examCategory, "examCategory"),
-        examCategoryType: formatEnumForCSV(student.examCategoryType, "examCategoryType"),
-        firstChoice: student.firstChoice || "",
-        secondChoice: student.secondChoice || "",
-        examDate: formatDateForCSV(student.examDate),
-        homePhone: student.homePhone || "",
-        parentPhone: student.parentPhone || "",
-        studentPhone: student.studentPhone || "",
-        parentEmail: student.parentEmail || "",
-        birthDate: formatDateForCSV(student.birthDate),
-        notes: student.notes || "",
-      };
+      // Create row data based on column rules
+      const rowData: Record<string, string> = {};
+      
+      // Process each column according to rules
+      for (const [key, rule] of Object.entries(STUDENT_COLUMN_RULES)) {
+        // Skip ignored columns
+        if (rule.createRule === 'ignore' && rule.updateRule === 'ignore') {
+          rowData[rule.csvHeader] = "";
+          continue;
+        }
+        
+        switch (rule.dbField) {
+          case 'name':
+            rowData[rule.csvHeader] = student.name || "";
+            break;
+          case 'kanaName':
+            rowData[rule.csvHeader] = student.kanaName || "";
+            break;
+          case 'studentTypeName':
+            rowData[rule.csvHeader] = student.studentType?.name || "";
+            break;
+          case 'gradeYear':
+            rowData[rule.csvHeader] = student.gradeYear?.toString() || "";
+            break;
+          case 'birthDate':
+            rowData[rule.csvHeader] = formatDateForCSV(student.birthDate);
+            break;
+          case 'schoolName':
+            rowData[rule.csvHeader] = student.schoolName || "";
+            break;
+          case 'schoolType':
+            rowData[rule.csvHeader] = formatEnumForCSV(student.schoolType, "schoolType");
+            break;
+          case 'examCategory':
+            rowData[rule.csvHeader] = formatEnumForCSV(student.examCategory, "examCategory");
+            break;
+          case 'examCategoryType':
+            rowData[rule.csvHeader] = formatEnumForCSV(student.examCategoryType, "examCategoryType");
+            break;
+          case 'firstChoice':
+            rowData[rule.csvHeader] = student.firstChoice || "";
+            break;
+          case 'secondChoice':
+            rowData[rule.csvHeader] = student.secondChoice || "";
+            break;
+          case 'examDate':
+            rowData[rule.csvHeader] = formatDateForCSV(student.examDate);
+            break;
+          case 'username':
+            rowData[rule.csvHeader] = student.user?.username || "";
+            break;
+          case 'email':
+            rowData[rule.csvHeader] = student.user?.email || "";
+            break;
+          case 'parentEmail':
+            rowData[rule.csvHeader] = student.parentEmail || "";
+            break;
+          case 'password':
+            rowData[rule.csvHeader] = ""; // Never export passwords
+            break;
+          case 'homePhone':
+            rowData[rule.csvHeader] = student.homePhone || "";
+            break;
+          case 'parentPhone':
+            rowData[rule.csvHeader] = student.parentPhone || "";
+            break;
+          case 'studentPhone':
+            rowData[rule.csvHeader] = student.studentPhone || "";
+            break;
+          case 'branches':
+            rowData[rule.csvHeader] = branchNames.join(";");
+            break;
+          case 'notes':
+            rowData[rule.csvHeader] = student.notes || "";
+            break;
+          default:
+            rowData[rule.csvHeader] = "";
+        }
+      }
 
-      // Build row based on visible columns
-      const row = columnsToExport.map(header => {
+      // Build row in correct order
+      const row = getOrderedCsvHeaders().map(header => {
         const value = rowData[header] || "";
         
         // Escape CSV values

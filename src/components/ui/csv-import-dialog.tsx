@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { CloudUpload, FileSpreadsheet, X } from "lucide-react";
+import { CloudUpload, FileSpreadsheet, X, Info } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { ImportMode, importModeLabels, importModeDescriptions } from "@/types/import";
 
 import {
   Dialog,
@@ -37,6 +38,13 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const formSchema = z.object({
   file: z
@@ -50,6 +58,7 @@ const formSchema = z.object({
     .refine((file) => file?.size <= 10 * 1024 * 1024, {
       message: "ファイルサイズは10MB以下にしてください",
     }),
+  importMode: z.nativeEnum(ImportMode).default(ImportMode.CREATE_ONLY),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -58,6 +67,10 @@ interface ImportResult {
   success: number;
   errors: Array<{ row: number; errors: string[] }>;
   warnings: Array<{ row: number; warnings: string[] }>;
+  created?: number;
+  updated?: number;
+  deleted?: number;
+  skipped?: number;
 }
 
 interface CSVImportDialogProps {
@@ -93,6 +106,7 @@ export function CSVImportDialog({
     try {
       const formData = new FormData();
       formData.append("file", data.file);
+      formData.append("importMode", data.importMode);
 
       const response = await fetch(importUrl, {
         method: "POST",
@@ -156,6 +170,40 @@ export function CSVImportDialog({
           {!importResult ? (
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="importMode"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>インポートモード</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="インポートモードを選択" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {Object.values(ImportMode).map((mode) => (
+                            <SelectItem key={mode} value={mode}>
+                              {importModeLabels[mode]}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormDescription className="flex items-start gap-1">
+                        <Info className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                        <span>
+                          {field.value ? importModeDescriptions[field.value] : "インポートモードを選択してください"}
+                        </span>
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
                 <FormField
                   control={form.control}
                   name="file"
@@ -277,7 +325,23 @@ export function CSVImportDialog({
                     {importResult.success > 0 && (
                       <Alert className="border-green-200 bg-green-50">
                         <AlertDescription className="text-green-800">
-                          <span className="font-semibold">{importResult.success}件</span>のデータが正常にインポートされました
+                          <span className="font-semibold">{importResult.success}件</span>のデータが処理されました
+                          {importResult.created !== undefined && importResult.created > 0 && (
+                            <span className="block mt-1">• {importResult.created}件 新規作成</span>
+                          )}
+                          {importResult.updated !== undefined && importResult.updated > 0 && (
+                            <span className="block mt-1">• {importResult.updated}件 更新</span>
+                          )}
+                          {importResult.deleted !== undefined && importResult.deleted > 0 && (
+                            <span className="block mt-1">• {importResult.deleted}件 削除</span>
+                          )}
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                    {importResult.skipped !== undefined && importResult.skipped > 0 && (
+                      <Alert className="border-blue-200 bg-blue-50">
+                        <AlertDescription className="text-blue-800">
+                          <span className="font-semibold">{importResult.skipped}件</span>のデータがスキップされました
                         </AlertDescription>
                       </Alert>
                     )}

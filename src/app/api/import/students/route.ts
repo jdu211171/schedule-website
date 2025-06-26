@@ -4,42 +4,55 @@ import { CSVParser } from "@/lib/csv-parser";
 import { prisma } from "@/lib/prisma";
 import {
   studentImportSchema,
+  studentUpdateImportSchema,
   STUDENT_CSV_HEADERS,
   REQUIRED_STUDENT_CSV_HEADERS,
   type StudentImportData,
+  type StudentUpdateImportData,
   type ImportResult,
-  formatValidationErrors
+  formatValidationErrors,
 } from "@/schemas/import";
+import { 
+  STUDENT_COLUMN_RULES, 
+  getRequiredFields, 
+  csvHeaderToDbField 
+} from "@/schemas/import/student-column-rules";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { handleImportError } from "@/lib/import-error-handler";
+import { ImportMode } from "@/types/import";
 
 async function handleImport(req: NextRequest, session: any, branchId: string) {
   try {
     // Get the form data
     const formData = await req.formData();
     const file = formData.get("file");
+    const importMode =
+      (formData.get("importMode") as ImportMode) || ImportMode.CREATE_ONLY;
 
     if (!file || typeof file === "string") {
       return NextResponse.json(
         { error: "ファイルが選択されていません" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     // Convert file to buffer
     const buffer = Buffer.from(await (file as Blob).arrayBuffer());
 
-    // Parse CSV file
-    const parseResult = await CSVParser.parseBuffer<Record<string, string>>(buffer);
+    // Parse CSV file with encoding detection
+    const parseResult =
+      await CSVParser.parseBuffer<Record<string, string>>(buffer, {
+        encoding: "utf-8", // Default to UTF-8, but the parser will auto-detect if needed
+      });
 
     if (parseResult.errors.length > 0) {
       return NextResponse.json(
         {
           error: "CSVファイルの解析に失敗しました",
-          details: parseResult.errors
+          details: parseResult.errors,
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -47,50 +60,74 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
     if (parseResult.data.length === 0) {
       return NextResponse.json(
         { error: "CSVファイルが空です" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     const actualHeaders = Object.keys(parseResult.data[0]);
-    const requiredHeaders = [...REQUIRED_STUDENT_CSV_HEADERS];
-    const missingHeaders = requiredHeaders.filter(h => !actualHeaders.includes(h));
+
+    // Get required headers based on import mode and column rules
+    const isUpdateMode = importMode === ImportMode.UPDATE_ONLY || 
+                        importMode === ImportMode.DELETE;
+    const requiredFields = getRequiredFields(isUpdateMode ? 'update' : 'create');
+    const requiredHeaders = requiredFields
+      .map(field => STUDENT_COLUMN_RULES[field]?.csvHeader)
+      .filter(Boolean) as string[];
+
+    const missingHeaders = requiredHeaders.filter(
+      (h) => !actualHeaders.includes(h),
+    );
 
     if (missingHeaders.length > 0) {
       return NextResponse.json(
         {
-          error: `必須列が不足しています: ${missingHeaders.join(", ")}`
+          error: `必須列が不足しています: ${missingHeaders.join(", ")}`,
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     // Process and validate each row
-    const validatedData: (StudentImportData & { studentTypeId: string, subjectIds?: string[] })[] = [];
+    const validatedData: ((StudentImportData | StudentUpdateImportData) & {
+      studentTypeId?: string | null;
+      branchIds?: string[];
+      existingUserId?: string;
+      fieldsInRow?: Set<string>;
+      rowNumber: number;
+    })[] = [];
     const result: ImportResult = {
       success: 0,
       errors: [],
-      warnings: []
+      warnings: [],
+      created: 0,
+      updated: 0,
+      deleted: 0,
+      skipped: 0,
     };
 
     // Pre-fetch all student types and subjects for validation
     const allStudentTypes = await prisma.studentType.findMany({
-      select: { studentTypeId: true, name: true, maxYears: true }
+      select: { studentTypeId: true, name: true, maxYears: true },
     });
-    const studentTypeMap = new Map(allStudentTypes.map(st => [st.name, st]));
+    const studentTypeMap = new Map(allStudentTypes.map((st) => [st.name, st]));
 
     const allSubjects = await prisma.subject.findMany({
-      select: { subjectId: true, name: true }
+      select: { subjectId: true, name: true },
     });
-    const subjectMap = new Map(allSubjects.map(s => [s.name, s.subjectId]));
+    const subjectMap = new Map(allSubjects.map((s) => [s.name, s.subjectId]));
 
-    // Detect extra columns and add warning if found
-    const knownHeaders = new Set(STUDENT_CSV_HEADERS);
-    const extraHeaders = actualHeaders.filter(h => !knownHeaders.has(h as any));
-    if (extraHeaders.length > 0) {
-      result.warnings.push({
-        message: `次の列は無視されます: ${extraHeaders.join(", ")}`,
-        type: "extra_columns"
-      });
+    const allBranches = await prisma.branch.findMany({
+      select: { branchId: true, name: true },
+    });
+    const branchMap = new Map(allBranches.map((b) => [b.name, b.branchId]));
+
+    // Map CSV headers to DB fields for processing
+    const headerMapping: Record<string, string> = {};
+    for (const header of actualHeaders) {
+      const dbField = csvHeaderToDbField(header);
+      if (dbField) {
+        headerMapping[header] = dbField;
+      }
     }
 
     for (let i = 0; i < parseResult.data.length; i++) {
@@ -98,88 +135,164 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
       const rowNumber = i + 2; // +1 for header, +1 for 1-based indexing
 
       try {
-        // Filter out unknown columns before validation
+        // Map CSV data to DB fields and filter ignored columns
         const filteredRow: Record<string, string> = {};
-        for (const header of STUDENT_CSV_HEADERS) {
-          if (header in row) {
-            filteredRow[header] = row[header];
-          }
+        const fieldsInRow: Set<string> = new Set();
+        
+        for (const [csvHeader, csvValue] of Object.entries(row)) {
+          const dbField = headerMapping[csvHeader];
+          if (!dbField) continue;
+          
+          const rule = Object.values(STUDENT_COLUMN_RULES).find(r => r.dbField === dbField);
+          if (!rule) continue;
+          
+          // Skip ignored columns
+          const ruleType = isUpdateMode ? rule.updateRule : rule.createRule;
+          if (ruleType === 'ignore') continue;
+          
+          // Map to internal field name for schema validation
+          filteredRow[dbField] = csvValue;
+          fieldsInRow.add(dbField);
         }
 
-        // Validate row data with filtered columns
-        const validated = studentImportSchema.parse(filteredRow);
+        // Validate row data with filtered columns using appropriate schema
+        const validated =
+          importMode === ImportMode.UPDATE_ONLY ||
+          importMode === ImportMode.DELETE
+            ? studentUpdateImportSchema.parse(filteredRow)
+            : studentImportSchema.parse(filteredRow);
+
+        // Validate student type (only if provided)
+        let studentType = null;
+        if (validated.studentTypeName) {
+          studentType = studentTypeMap.get(validated.studentTypeName);
+          if (!studentType) {
+            result.errors.push({
+              row: rowNumber,
+              errors: [
+                `学生タイプ「${validated.studentTypeName}」が見つかりません`,
+              ],
+            });
+            continue;
+          }
+
+          // Validate grade year against student type max years
+          if (
+            studentType.maxYears !== null &&
+            validated.gradeYear &&
+            validated.gradeYear > studentType.maxYears
+          ) {
+            result.errors.push({
+              row: rowNumber,
+              errors: [
+                `学年${validated.gradeYear}は学生タイプ「${validated.studentTypeName}」の最大学年${studentType.maxYears}を超えています`,
+              ],
+            });
+            continue;
+          }
+        }
 
         // Check if user with same username or email already exists
         const existingUser = await prisma.user.findFirst({
           where: {
             OR: [
               { username: validated.username },
-              { email: validated.email }
-            ]
-          }
+              ...(validated.email ? [{ email: validated.email }] : []),
+            ],
+          },
+          include: {
+            student: true,
+          },
         });
 
-        if (existingUser) {
-          if (existingUser.username === validated.username) {
+        // Validate branches
+        let branchIds: string[] = [];
+        if (validated.branches && validated.branches.length > 0) {
+          const invalidBranches = validated.branches.filter(
+            (name) => !branchMap.has(name),
+          );
+          if (invalidBranches.length > 0) {
             result.errors.push({
               row: rowNumber,
-              errors: [`ユーザー名「${validated.username}」は既に使用されています`]
-            });
-          } else {
-            result.errors.push({
-              row: rowNumber,
-              errors: [`メールアドレス「${validated.email}」は既に使用されています`]
-            });
-          }
-          continue;
-        }
-
-
-        // Validate student type
-        const studentType = studentTypeMap.get(validated.studentTypeName);
-        if (!studentType) {
-          result.errors.push({
-            row: rowNumber,
-            errors: [`学生タイプ「${validated.studentTypeName}」が見つかりません`]
-          });
-          continue;
-        }
-
-        // Validate grade year against student type max years
-        if (studentType.maxYears !== null && validated.gradeYear > studentType.maxYears) {
-          result.errors.push({
-            row: rowNumber,
-            errors: [`学年${validated.gradeYear}は学生タイプ「${validated.studentTypeName}」の最大学年${studentType.maxYears}を超えています`]
-          });
-          continue;
-        }
-
-        // Validate subjects if provided
-        let subjectIds: string[] = [];
-        if (validated.subjects && validated.subjects.length > 0) {
-          const invalidSubjects = validated.subjects.filter(name => !subjectMap.has(name));
-          if (invalidSubjects.length > 0) {
-            result.errors.push({
-              row: rowNumber,
-              errors: [`科目が見つかりません: ${invalidSubjects.join(", ")}`]
+              errors: [`校舎が見つかりません: ${invalidBranches.join(", ")}`],
             });
             continue;
           }
-          subjectIds = validated.subjects.map(name => subjectMap.get(name)!);
+          branchIds = validated.branches.map((name) => branchMap.get(name)!);
+        } else if (!isUpdateMode && !existingUser) {
+          // Branches are required for create mode
+          result.errors.push({
+            row: rowNumber,
+            errors: [`校舎は必須項目です`],
+          });
+          continue;
         }
 
-        validatedData.push({
-          ...validated,
-          studentTypeId: studentType.studentTypeId,
-          subjectIds
-        });
+        // Handle based on import mode
+        if (existingUser) {
+          if (importMode === ImportMode.CREATE_ONLY) {
+            result.skipped!++;
+            continue;
+          } else if (
+            importMode === ImportMode.UPDATE_ONLY ||
+            importMode === ImportMode.CREATE_OR_UPDATE
+          ) {
+            // For updates, user must be a student
+            if (!existingUser.student) {
+              result.errors.push({
+                row: rowNumber,
+                errors: [
+                  `ユーザー「${existingUser.username}」は学生ではありません`,
+                ],
+              });
+              continue;
+            }
+            // Mark for update
+            validatedData.push({
+              ...validated,
+              studentTypeId: studentType?.studentTypeId || null,
+              branchIds,
+              existingUserId: existingUser.id,
+              fieldsInRow,
+              rowNumber,
+            });
+          } else if (importMode === ImportMode.DELETE) {
+            // Skip deletion handling for now
+            result.errors.push({
+              row: rowNumber,
+              errors: [`削除モードは現在サポートされていません`],
+            });
+            continue;
+          }
+        } else {
+          // No existing user
+          if (
+            importMode === ImportMode.UPDATE_ONLY ||
+            importMode === ImportMode.DELETE
+          ) {
+            result.skipped!++;
+            continue;
+          }
+          // CREATE_ONLY and CREATE_OR_UPDATE will create new records
+          validatedData.push({
+            ...validated,
+            studentTypeId: studentType?.studentTypeId || null,
+            branchIds,
+            fieldsInRow,
+            rowNumber,
+          });
+        }
       } catch (error) {
         if (error instanceof z.ZodError) {
           result.errors.push(formatValidationErrors(error.errors, rowNumber));
         } else {
           result.errors.push({
             row: rowNumber,
-            errors: [error instanceof Error ? error.message : "データ検証中にエラーが発生しました"]
+            errors: [
+              error instanceof Error
+                ? error.message
+                : "データ検証中にエラーが発生しました",
+            ],
           });
         }
       }
@@ -194,67 +307,217 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
     if (validatedData.length > 0) {
       await prisma.$transaction(async (tx) => {
         for (const data of validatedData) {
-          // Handle password - use provided password or generate a default one
-          let passwordToHash: string;
-          if (data.password) {
-            passwordToHash = data.password;
+          if (data.existingUserId) {
+            // Update existing student
+            const existingStudent = await tx.student.findUnique({
+              where: { userId: data.existingUserId },
+              include: { user: true },
+            });
+
+            if (!existingStudent) {
+              continue; // Should not happen
+            }
+
+            // Update user fields if provided
+            const userUpdates: any = {};
+            const fieldsInRow = data.fieldsInRow || new Set();
+
+            if (
+              fieldsInRow.has("email") &&
+              data.email !== existingStudent.user.email
+            ) {
+              userUpdates.email = data.email;
+            }
+            if (
+              fieldsInRow.has("name") &&
+              data.name !== existingStudent.user.name
+            ) {
+              userUpdates.name = data.name;
+            }
+            // Only update password if explicitly provided in CSV with a non-empty value
+            if (
+              fieldsInRow.has("password") &&
+              data.password &&
+              data.password.trim() !== ""
+            ) {
+              const hashedPassword = await bcrypt.hash(data.password, 10);
+              userUpdates.passwordHash = hashedPassword;
+            }
+
+            if (Object.keys(userUpdates).length > 0) {
+              await tx.user.update({
+                where: { id: data.existingUserId },
+                data: userUpdates,
+              });
+            }
+
+            // Update student fields - only update fields that were present in the CSV
+            const studentUpdates: any = {};
+            const fields = data.fieldsInRow || new Set();
+
+            // Only update fields that were present in the CSV row
+            if (fields.has("name")) studentUpdates.name = data.name || null;
+            if (fields.has("kanaName"))
+              studentUpdates.kanaName = data.kanaName || null;
+            if (fields.has("studentTypeName") && data.studentTypeId)
+              studentUpdates.studentTypeId = data.studentTypeId;
+            if (fields.has("gradeYear"))
+              studentUpdates.gradeYear = data.gradeYear;
+            if (fields.has("notes")) studentUpdates.notes = data.notes || null;
+
+            // School information
+            if (fields.has("schoolName"))
+              studentUpdates.schoolName = data.schoolName || null;
+            if (fields.has("schoolType"))
+              studentUpdates.schoolType = data.schoolType || null;
+
+            // Exam information
+            if (fields.has("examCategory"))
+              studentUpdates.examCategory = data.examCategory || null;
+            if (fields.has("examCategoryType"))
+              studentUpdates.examCategoryType = data.examCategoryType || null;
+            if (fields.has("firstChoice"))
+              studentUpdates.firstChoice = data.firstChoice || null;
+            if (fields.has("secondChoice"))
+              studentUpdates.secondChoice = data.secondChoice || null;
+            if (fields.has("examDate"))
+              studentUpdates.examDate = data.examDate || null;
+
+            // Contact information
+            if (fields.has("homePhone"))
+              studentUpdates.homePhone = data.homePhone || null;
+            if (fields.has("parentPhone"))
+              studentUpdates.parentPhone = data.parentPhone || null;
+            if (fields.has("studentPhone"))
+              studentUpdates.studentPhone = data.studentPhone || null;
+            if (fields.has("parentEmail"))
+              studentUpdates.parentEmail = data.parentEmail || null;
+
+            // Personal information
+            if (fields.has("birthDate"))
+              studentUpdates.birthDate = data.birthDate || null;
+
+            // LINE ID - update if provided
+            if (fields.has("lineId"))
+              studentUpdates.lineId = data.lineId || null;
+
+            await tx.student.update({
+              where: { userId: data.existingUserId },
+              data: studentUpdates,
+            });
+
+            // Update branch assignments if provided
+            if (fields.has("branches") && data.branchIds) {
+              // Remove existing branch assignments
+              await tx.userBranch.deleteMany({
+                where: { userId: data.existingUserId },
+              });
+
+              // Add new branch assignments
+              if (data.branchIds.length > 0) {
+                for (const branchId of data.branchIds) {
+                  await tx.userBranch.create({
+                    data: {
+                      userId: data.existingUserId,
+                      branchId: branchId,
+                    },
+                  });
+                }
+              } else {
+                // If branches field was empty, assign to current branch
+                await tx.userBranch.create({
+                  data: {
+                    userId: data.existingUserId,
+                    branchId: branchId,
+                  },
+                });
+              }
+            }
+
+
+            result.updated!++;
           } else {
-            // Generate a default password: username + "123"
-            passwordToHash = `${data.username}123`;
+            // Create new student
+            // For create mode, password is optional - generate a default if not provided
+            let hashedPassword: string;
+            if (data.password && data.password.trim() !== "") {
+              hashedPassword = await bcrypt.hash(data.password, 10);
+            } else {
+              // Generate a default password if not provided
+              const defaultPassword = `${data.username}@123`;
+              hashedPassword = await bcrypt.hash(defaultPassword, 10);
+              result.warnings.push({
+                message: `行 ${data.rowNumber}: パスワードが指定されていないため、デフォルトパスワード（${defaultPassword}）を設定しました`,
+                type: "default_password",
+              });
+            }
+
+            // Create user
+            const user = await tx.user.create({
+              data: {
+                username: data.username,
+                email: data.email || null,
+                passwordHash: hashedPassword,
+                name: data.name!,
+                role: "STUDENT",
+                isRestrictedAdmin: false,
+              },
+            });
+
+            // Create student with all fields
+            await tx.student.create({
+              data: {
+                userId: user.id,
+                name: data.name!,
+                kanaName: data.kanaName || null,
+                studentTypeId: data.studentTypeId || null,
+                gradeYear: data.gradeYear || null,
+                lineId: data.lineId || null,
+                notes: data.notes || null,
+                status: "ACTIVE",
+                // School information
+                schoolName: data.schoolName || null,
+                schoolType: data.schoolType || null,
+                // Exam information
+                examCategory: data.examCategory || null,
+                examCategoryType: data.examCategoryType || null,
+                firstChoice: data.firstChoice || null,
+                secondChoice: data.secondChoice || null,
+                examDate: data.examDate || null,
+                // Contact information
+                homePhone: data.homePhone || null,
+                parentPhone: data.parentPhone || null,
+                studentPhone: data.studentPhone || null,
+                parentEmail: data.parentEmail || null,
+                // Personal information
+                birthDate: data.birthDate || null,
+              },
+            });
+
+            // Assign student to branches
+            if (data.branchIds && data.branchIds.length > 0) {
+              // Use branches from CSV
+              for (const branchId of data.branchIds) {
+                await tx.userBranch.create({
+                  data: {
+                    userId: user.id,
+                    branchId: branchId,
+                  },
+                });
+              }
+            } else {
+              // Default to current branch if no branches specified
+              await tx.userBranch.create({
+                data: {
+                  userId: user.id,
+                  branchId: branchId,
+                },
+              });
+            }
+
+
+            result.created!++;
           }
-          
-          // Hash password
-          const hashedPassword = await bcrypt.hash(passwordToHash, 10);
-
-          // Create user
-          const user = await tx.user.create({
-            data: {
-              username: data.username,
-              email: data.email,
-              passwordHash: hashedPassword,
-              name: data.name,
-              role: "STUDENT",
-              isRestrictedAdmin: false
-            }
-          });
-
-          // Create student with all fields
-          await tx.student.create({
-            data: {
-              userId: user.id,
-              name: data.name,
-              kanaName: data.kanaName || null,
-              studentTypeId: data.studentTypeId,
-              gradeYear: data.gradeYear,
-              lineId: data.lineId || null,
-              notes: data.notes || null,
-              status: "ACTIVE",
-              // School information
-              schoolName: data.schoolName || null,
-              schoolType: data.schoolType || null,
-              // Exam information
-              examCategory: data.examCategory || null,
-              examCategoryType: data.examCategoryType || null,
-              firstChoice: data.firstChoice || null,
-              secondChoice: data.secondChoice || null,
-              examDate: data.examDate || null,
-              // Contact information
-              homePhone: data.homePhone || null,
-              parentPhone: data.parentPhone || null,
-              studentPhone: data.studentPhone || null,
-              parentEmail: data.parentEmail || null,
-              // Personal information
-              birthDate: data.birthDate || null
-            }
-          });
-
-          // Assign student to branch
-          await tx.userBranch.create({
-            data: {
-              userId: user.id,
-              branchId: branchId
-            }
-          });
 
           result.success++;
         }
