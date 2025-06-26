@@ -43,7 +43,7 @@ export default function NotFound() {
                   size="lg"
                   className="w-full sm:w-auto"
                 >
-                  <Link href="/dashboard" className="flex items-center gap-2">
+                  <Link href="/dashboard/schedules" className="flex items-center gap-2">
                     <Calendar className="w-4 h-4" />
                     ダッシュボード
                   </Link>
@@ -64,7 +64,7 @@ export default function NotFound() {
                   <Link href="/teacher">教師ポータル</Link>
                 </Button>
                 <Button asChild variant="link" size="sm">
-                  <Link href="/dashboard">ダッシュボード</Link>
+                  <Link href="/dashboard/schedules">ダッシュボード</Link>
                 </Button>
               </div>
             </div>
