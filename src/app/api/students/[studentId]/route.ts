@@ -52,6 +52,13 @@ type StudentWithIncludes = Student & {
       name: string;
     };
   }[];
+  contactPhones?: {
+    id: string;
+    phoneType: string;
+    phoneNumber: string;
+    notes: string | null;
+    order: number;
+  }[];
 };
 
 // Define the return type for the formatted student
@@ -116,6 +123,14 @@ export type FormattedStudent = {
   parentEmail: string | null;
   // Personal information
   birthDate: Date | null;
+  // Contact phones
+  contactPhones: {
+    id: string;
+    phoneType: string;
+    phoneNumber: string;
+    notes: string | null;
+    order: number;
+  }[];
   createdAt: Date;
   updatedAt: Date;
 };
@@ -305,6 +320,14 @@ const formatStudent = (student: StudentWithIncludes): FormattedStudent => {
     parentEmail: student.parentEmail,
     // Personal information
     birthDate: student.birthDate,
+    // Contact phones
+    contactPhones: student.contactPhones?.map(phone => ({
+      id: phone.id,
+      phoneType: phone.phoneType,
+      phoneNumber: phone.phoneNumber,
+      notes: phone.notes,
+      order: phone.order,
+    })) || [],
     createdAt: student.createdAt,
     updatedAt: student.updatedAt,
     lineNotificationsEnabled: student.lineNotificationsEnabled,
@@ -390,6 +413,9 @@ export const GET = withBranchAccess(
             },
           },
         },
+        contactPhones: {
+          orderBy: { order: "asc" },
+        },
       },
     });
 
@@ -457,6 +483,7 @@ export const PATCH = withBranchAccess(
         subjectPreferences = [],
         regularAvailability = [],
         exceptionalAvailability = [],
+        contactPhones = [],
         ...studentData
       } = result.data;
 
@@ -779,6 +806,27 @@ export const PATCH = withBranchAccess(
           }
         }
 
+        // Update contact phones if provided
+        if (contactPhones !== undefined) {
+          // Delete existing contact phones
+          await tx.contactPhone.deleteMany({
+            where: { studentId },
+          });
+
+          // Create new contact phones
+          if (contactPhones.length > 0) {
+            await tx.contactPhone.createMany({
+              data: contactPhones.map((phone, index) => ({
+                studentId,
+                phoneType: phone.phoneType,
+                phoneNumber: phone.phoneNumber,
+                notes: phone.notes || null,
+                order: phone.order ?? index,
+              })),
+            });
+          }
+        }
+
         // Return updated student with user and branch associations
         return tx.student.findUnique({
           where: { studentId },
@@ -845,6 +893,9 @@ export const PATCH = withBranchAccess(
                   },
                 },
               },
+            },
+            contactPhones: {
+              orderBy: { order: "asc" },
             },
           },
         });

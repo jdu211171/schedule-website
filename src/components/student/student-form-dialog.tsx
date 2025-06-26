@@ -99,6 +99,7 @@ import {
   schoolTypeLabels,
   examCategoryLabels,
   examCategoryTypeLabels,
+  phoneTypeLabels,
 } from "@/schemas/student.schema";
 import { useStudentCreate, useStudentUpdate } from "@/hooks/useStudentMutation";
 import { useStudentTypes } from "@/hooks/useStudentTypeQuery";
@@ -216,9 +217,6 @@ export function StudentFormDialog({
   >([]);
   const [availabilityErrors, setAvailabilityErrors] = useState<string[]>([]);
 
-  // Local storage key
-  const STORAGE_KEY = `student-form-${student?.studentId || "new"}`;
-
   // Create dynamic schema using student types data for grade year validation
   const studentTypes =
     studentTypesResponse?.data?.map((type) => ({
@@ -254,12 +252,11 @@ export function StudentFormDialog({
       secondChoice: "",
       examDate: undefined,
       // Contact information
-      homePhone: "",
-      parentPhone: "",
-      studentPhone: "",
       parentEmail: "",
       // Personal information
       birthDate: undefined,
+      // Contact phones
+      contactPhones: [],
     },
   });
 
@@ -319,12 +316,14 @@ export function StudentFormDialog({
         secondChoice: student.secondChoice || "",
         examDate: student.examDate ? new Date(student.examDate) : undefined,
         // Contact information
-        homePhone: student.homePhone || "",
-        parentPhone: student.parentPhone || "",
-        studentPhone: student.studentPhone || "",
         parentEmail: student.parentEmail || "",
         // Personal information
         birthDate: student.birthDate ? new Date(student.birthDate) : undefined,
+        // Contact phones
+        contactPhones: student.contactPhones?.map(phone => ({
+          ...phone,
+          phoneType: phone.phoneType as "HOME" | "DAD" | "MOM" | "OTHER",
+        })) || [],
       });
 
       // Initialize subject preferences if they exist
@@ -397,49 +396,7 @@ export function StudentFormDialog({
     }
   }, [student, form, defaultBranchId]);
 
-  // Load form data from localStorage
-  useEffect(() => {
-    const savedData = localStorage.getItem(STORAGE_KEY);
-    if (savedData) {
-      try {
-        const parsedData = JSON.parse(savedData);
-        form.reset(parsedData.formValues);
-        setStudentSubjects(parsedData.studentSubjects || []);
-        setRegularAvailability(parsedData.regularAvailability || []);
-        setIrregularAvailability(
-          (parsedData.irregularAvailability || []).map((item: any) => ({
-            ...item,
-            date: new Date(item.date),
-          }))
-        );
-      } catch (error) {
-        console.error("Failed to parse saved form data:", error);
-      }
-    }
-  }, [STORAGE_KEY, form]);
 
-  // Save form data to localStorage when values change
-  useEffect(() => {
-    const subscription = form.watch((formValues) => {
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({
-          formValues,
-          studentSubjects,
-          regularAvailability,
-          irregularAvailability,
-        })
-      );
-    });
-
-    return () => subscription.unsubscribe();
-  }, [
-    form,
-    studentSubjects,
-    regularAvailability,
-    irregularAvailability,
-    STORAGE_KEY,
-  ]);
 
   // Validate availability data
   useEffect(() => {
@@ -496,8 +453,11 @@ export function StudentFormDialog({
   }
 
   function onSubmit(values: StudentFormValues) {
+    console.log("onSubmit called with values:", values);
+    
     // Check for availability errors before submitting
     if (availabilityErrors.length > 0) {
+      console.error("Availability errors:", availabilityErrors);
       return;
     }
 
@@ -564,15 +524,16 @@ export function StudentFormDialog({
       if (!submissionData.password || submissionData.password === "") {
         delete submissionData.password;
       }
-      const parsedData = studentUpdateSchema.parse({
+      // Pass the data directly without parsing through studentUpdateSchema
+      // The form schema already validates the data
+      const updateData = {
         ...submissionData,
         studentId: student.studentId,
-      });
-      updateStudentMutation.mutate(parsedData as StudentUpdate, {
+      };
+      updateStudentMutation.mutate(updateData as StudentUpdate, {
         onSuccess: () => {
           if (!keepDialogOpen) {
             onOpenChange(false);
-            localStorage.removeItem(STORAGE_KEY);
           }
           if (!keepDialogOpen) {
             form.reset();
@@ -582,13 +543,12 @@ export function StudentFormDialog({
     } else {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { studentId, ...createValues } = submissionData;
-      const parsedData = studentCreateSchema.parse(createValues);
-
-      createStudentMutation.mutate(parsedData as StudentCreate, {
+      // Pass the data directly without parsing through studentCreateSchema
+      // The form schema already validates the data
+      createStudentMutation.mutate(createValues as StudentCreate, {
         onSuccess: () => {
           if (!keepDialogOpen) {
             onOpenChange(false);
-            localStorage.removeItem(STORAGE_KEY);
           }
           if (!keepDialogOpen) {
             form.reset();
@@ -601,12 +561,34 @@ export function StudentFormDialog({
   // Enhanced state button async handler
   const handleEnhancedSubmit = async () => {
     const isValid = await form.trigger();
-    if (!isValid || availabilityErrors.length > 0) {
-      throw new Error("フォームの入力内容に問題があります");
+    
+    // Log form errors for debugging
+    if (!isValid) {
+      const errors = form.formState.errors;
+      console.error("Form validation errors:", errors);
+      
+      // Create a detailed error message
+      const errorMessages: string[] = [];
+      Object.entries(errors).forEach(([field, error]) => {
+        if (error?.message) {
+          errorMessages.push(`${field}: ${error.message}`);
+        }
+      });
+      
+      if (errorMessages.length > 0) {
+        throw new Error(`フォームの入力内容に問題があります:\n${errorMessages.join('\n')}`);
+      } else {
+        throw new Error("フォームの入力内容に問題があります");
+      }
+    }
+    
+    if (availabilityErrors.length > 0) {
+      throw new Error(`利用可能時間にエラーがあります:\n${availabilityErrors.join('\n')}`);
     }
 
     return new Promise<void>((resolve, reject) => {
       const values = form.getValues();
+      console.log("Form values before submission:", values);
       const submissionData = { ...values };
 
       if (
@@ -670,19 +652,22 @@ export function StudentFormDialog({
         if (!submissionData.password || submissionData.password === "") {
           delete submissionData.password;
         }
-        const parsedData = studentUpdateSchema.parse({
+        // Pass the data directly without parsing through studentUpdateSchema
+        // The form schema already validates the data
+        const updateData = {
           ...submissionData,
           studentId: student.studentId,
-        });
-        updateStudentMutation.mutate(parsedData as StudentUpdate, {
+        };
+        updateStudentMutation.mutate(updateData as StudentUpdate, {
           onSuccess: () => resolve(),
           onError: (error) => reject(error),
         });
       } else {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { studentId, ...createValues } = submissionData;
-        const parsedData = studentCreateSchema.parse(createValues);
-        createStudentMutation.mutate(parsedData as StudentCreate, {
+        // Pass the data directly without parsing through studentCreateSchema
+        // The form schema already validates the data
+        createStudentMutation.mutate(createValues as StudentCreate, {
           onSuccess: () => resolve(),
           onError: (error) => reject(error),
         });
@@ -892,9 +877,6 @@ export function StudentFormDialog({
       secondChoice: "",
       examDate: undefined,
       // Contact information
-      homePhone: "",
-      parentPhone: "",
-      studentPhone: "",
       parentEmail: "",
       // Personal information
       birthDate: undefined,
@@ -908,7 +890,6 @@ export function StudentFormDialog({
     setIsAllSelected(false);
     setAvailabilityErrors([]);
     setActiveTab("basic");
-    localStorage.removeItem(STORAGE_KEY);
   }
 
   // Enhanced button presets
@@ -1454,97 +1435,152 @@ export function StudentFormDialog({
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-4">
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                          <FormField
-                            control={form.control}
-                            name="homePhone"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="text-sm font-medium">
-                                  自宅電話番号
-                                </FormLabel>
-                                <FormControl>
-                                  <Input
-                                    type="tel"
-                                    placeholder="03-1234-5678"
-                                    className="h-11"
-                                    {...field}
-                                    value={field.value || ""}
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
+                        {/* Dynamic Contact Phones */}
+                        <FormField
+                          control={form.control}
+                          name="contactPhones"
+                          render={({ field }) => (
+                            <FormItem>
+                              <div className="space-y-4">
+                                {(field.value || []).map((phone, index) => (
+                                  <div key={index} className="flex gap-4 items-start">
+                                    <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-4">
+                                      <FormField
+                                        control={form.control}
+                                        name={`contactPhones.${index}.phoneType`}
+                                        render={({ field }) => (
+                                          <FormItem>
+                                            {index === 0 && (
+                                              <FormLabel className="text-sm font-medium">
+                                                種別
+                                              </FormLabel>
+                                            )}
+                                            <Select
+                                              onValueChange={field.onChange}
+                                              value={field.value}
+                                            >
+                                              <FormControl>
+                                                <SelectTrigger className="h-11">
+                                                  <SelectValue placeholder="種別を選択" />
+                                                </SelectTrigger>
+                                              </FormControl>
+                                              <SelectContent>
+                                                {Object.entries(phoneTypeLabels).map(([value, label]) => (
+                                                  <SelectItem key={value} value={value}>
+                                                    {label}
+                                                  </SelectItem>
+                                                ))}
+                                              </SelectContent>
+                                            </Select>
+                                            <FormMessage />
+                                          </FormItem>
+                                        )}
+                                      />
+                                      <FormField
+                                        control={form.control}
+                                        name={`contactPhones.${index}.phoneNumber`}
+                                        render={({ field }) => (
+                                          <FormItem>
+                                            {index === 0 && (
+                                              <FormLabel className="text-sm font-medium">
+                                                電話番号
+                                              </FormLabel>
+                                            )}
+                                            <FormControl>
+                                              <Input
+                                                type="tel"
+                                                placeholder="090-1234-5678"
+                                                className="h-11"
+                                                {...field}
+                                              />
+                                            </FormControl>
+                                            <FormMessage />
+                                          </FormItem>
+                                        )}
+                                      />
+                                      <FormField
+                                        control={form.control}
+                                        name={`contactPhones.${index}.notes`}
+                                        render={({ field }) => (
+                                          <FormItem>
+                                            {index === 0 && (
+                                              <FormLabel className="text-sm font-medium">
+                                                備考（連絡可能時間など）
+                                              </FormLabel>
+                                            )}
+                                            <FormControl>
+                                              <Input
+                                                placeholder="例: 平日18時以降"
+                                                className="h-11"
+                                                {...field}
+                                                value={field.value || ""}
+                                              />
+                                            </FormControl>
+                                            <FormMessage />
+                                          </FormItem>
+                                        )}
+                                      />
+                                    </div>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      className={index === 0 ? "mt-9" : ""}
+                                      onClick={() => {
+                                        const newPhones = (field.value || []).filter((_, i) => i !== index);
+                                        field.onChange(newPhones);
+                                      }}
+                                    >
+                                      <X className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                ))}
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    field.onChange([
+                                      ...(field.value || []),
+                                      {
+                                        phoneType: "OTHER",
+                                        phoneNumber: "",
+                                        notes: "",
+                                      },
+                                    ]);
+                                  }}
+                                >
+                                  <Plus className="h-4 w-4 mr-2" />
+                                  電話番号を追加
+                                </Button>
+                              </div>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
 
-                          <FormField
-                            control={form.control}
-                            name="parentPhone"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="text-sm font-medium">
-                                  保護者電話番号
-                                </FormLabel>
-                                <FormControl>
-                                  <Input
-                                    type="tel"
-                                    placeholder="090-1234-5678"
-                                    className="h-11"
-                                    {...field}
-                                    value={field.value || ""}
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </div>
-
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                          <FormField
-                            control={form.control}
-                            name="studentPhone"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="text-sm font-medium">
-                                  生徒電話番号
-                                </FormLabel>
-                                <FormControl>
-                                  <Input
-                                    type="tel"
-                                    placeholder="080-1234-5678"
-                                    className="h-11"
-                                    {...field}
-                                    value={field.value || ""}
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-
-                          <FormField
-                            control={form.control}
-                            name="parentEmail"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="text-sm font-medium">
-                                  保護者メールアドレス
-                                </FormLabel>
-                                <FormControl>
-                                  <Input
-                                    type="email"
-                                    placeholder="parent@example.com"
-                                    className="h-11"
-                                    {...field}
-                                    value={field.value || ""}
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </div>
+                        {/* Keep parent email */}
+                        <FormField
+                          control={form.control}
+                          name="parentEmail"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-sm font-medium">
+                                保護者メールアドレス
+                              </FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="email"
+                                  placeholder="parent@example.com"
+                                  className="h-11"
+                                  {...field}
+                                  value={field.value || ""}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
                       </CardContent>
                     </Card>
 

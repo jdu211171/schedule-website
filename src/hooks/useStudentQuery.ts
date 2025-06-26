@@ -63,6 +63,14 @@ export type Student = {
   parentEmail: string | null;
   // Personal information
   birthDate: Date | null;
+  // Contact phones
+  contactPhones: {
+    id: string;
+    phoneType: string;
+    phoneNumber: string;
+    notes: string | null;
+    order: number;
+  }[];
   createdAt: Date;
   updatedAt: Date;
   _optimistic?: boolean;

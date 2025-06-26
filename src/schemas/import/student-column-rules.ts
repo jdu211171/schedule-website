@@ -137,22 +137,22 @@ export const STUDENT_COLUMN_RULES: Record<string, ColumnRule> = {
   homePhone: {
     csvHeader: '自宅電話',
     dbField: 'homePhone',
-    createRule: 'optional',
-    updateRule: 'optional',
+    createRule: 'ignore',
+    updateRule: 'ignore',
     exportOrder: 19,
   },
   parentPhone: {
     csvHeader: '保護者電話',
     dbField: 'parentPhone',
-    createRule: 'optional',
-    updateRule: 'optional',
+    createRule: 'ignore',
+    updateRule: 'ignore',
     exportOrder: 20,
   },
   studentPhone: {
     csvHeader: '生徒電話',
     dbField: 'studentPhone',
-    createRule: 'optional',
-    updateRule: 'optional',
+    createRule: 'ignore',
+    updateRule: 'ignore',
     exportOrder: 21,
   },
   branches: {

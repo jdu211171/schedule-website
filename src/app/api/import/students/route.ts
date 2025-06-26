@@ -18,7 +18,6 @@ import {
   csvHeaderToDbField
 } from "@/schemas/import/student-column-rules";
 import { z } from "zod";
-import bcrypt from "bcryptjs";
 import { handleImportError } from "@/lib/import-error-handler";
 import { ImportMode } from "@/types/import";
 
@@ -327,8 +326,9 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
               data.password &&
               data.password.trim() !== ""
             ) {
-              const hashedPassword = await bcrypt.hash(data.password, 10);
-              userUpdates.passwordHash = hashedPassword;
+              // For students, use the password directly (no hashing)
+              // NOTE: This is a security risk - passwords should normally be hashed
+              userUpdates.passwordHash = data.password;
             }
 
             if (Object.keys(userUpdates).length > 0) {
@@ -371,12 +371,6 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
               studentUpdates.examDate = data.examDate || null;
 
             // Contact information
-            if (fields.has("homePhone"))
-              studentUpdates.homePhone = data.homePhone || null;
-            if (fields.has("parentPhone"))
-              studentUpdates.parentPhone = data.parentPhone || null;
-            if (fields.has("studentPhone"))
-              studentUpdates.studentPhone = data.studentPhone || null;
             if (fields.has("parentEmail"))
               studentUpdates.parentEmail = data.parentEmail || null;
 
@@ -428,11 +422,13 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
             // For create mode, password is optional - generate a default if not provided
             let hashedPassword: string;
             if (data.password && data.password.trim() !== "") {
-              hashedPassword = await bcrypt.hash(data.password, 10);
+              // For students, use the password directly (no hashing)
+              // NOTE: This is a security risk - passwords should normally be hashed
+              hashedPassword = data.password;
             } else {
               // Generate a default password if not provided
               const defaultPassword = `${data.username}@123`;
-              // DO NOT HASH THE DEFAULT PASSWORD HERE
+              // Use default password directly without hashing
               hashedPassword = defaultPassword;
               result.warnings.push({
                 message: `行 ${data.rowNumber}: パスワードが指定されていないため、デフォルトパスワード（${defaultPassword}）を設定しました`,
@@ -473,9 +469,6 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
                 secondChoice: data.secondChoice || null,
                 examDate: data.examDate || null,
                 // Contact information
-                homePhone: data.homePhone || null,
-                parentPhone: data.parentPhone || null,
-                studentPhone: data.studentPhone || null,
                 parentEmail: data.parentEmail || null,
                 // Personal information
                 birthDate: data.birthDate || null,

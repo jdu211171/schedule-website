@@ -16,15 +16,15 @@ function formatDateForCSV(date: Date | null): string {
 // Helper function to format enum values back to their readable form
 function formatEnumForCSV(value: string | null, type: "schoolType" | "examCategory" | "examCategoryType"): string {
   if (!value) return "";
-  
+
   switch (type) {
     case "schoolType":
     case "examCategoryType":
       return value === "PUBLIC" ? "公立" : value === "PRIVATE" ? "私立" : value;
     case "examCategory":
       const examCategoryMap: Record<string, string> = {
-        "BEGINNER": "初級",
-        "ELEMENTARY": "小学校",
+        "BEGINNER": "小学校",
+        "ELEMENTARY": "中学校",
         "HIGH_SCHOOL": "高校",
         "UNIVERSITY": "大学"
       };
@@ -64,7 +64,7 @@ export const GET = withBranchAccess(
     const birthDateTo = searchParams.get("birthDateTo") ? new Date(searchParams.get("birthDateTo")!) : undefined;
     const examDateFrom = searchParams.get("examDateFrom") ? new Date(searchParams.get("examDateFrom")!) : undefined;
     const examDateTo = searchParams.get("examDateTo") ? new Date(searchParams.get("examDateTo")!) : undefined;
-    
+
     // Get visible columns from query params
     const visibleColumns = searchParams.get("columns")?.split(",") || [];
 
@@ -238,14 +238,14 @@ export const GET = withBranchAccess(
           }
           return acc;
         }, []) || [];
-      
+
       // Get branch names (for branches column)
       const branchNames = student.user?.branches
         ?.map((b: any) => b.branch.name) || [];
 
       // Create row data based on column rules
       const rowData: Record<string, string> = {};
-      
+
       // Process each column according to rules
       for (const [key, rule] of Object.entries(STUDENT_COLUMN_RULES)) {
         // Skip ignored columns
@@ -253,7 +253,7 @@ export const GET = withBranchAccess(
           rowData[rule.csvHeader] = "";
           continue;
         }
-        
+
         switch (rule.dbField) {
           case 'name':
             rowData[rule.csvHeader] = student.name || "";
@@ -326,7 +326,7 @@ export const GET = withBranchAccess(
       // Build row in correct order
       const row = getOrderedCsvHeaders().map(header => {
         const value = rowData[header] || "";
-        
+
         // Escape CSV values
         if (value.includes(",") || value.includes("\n") || value.includes('"')) {
           // Escape quotes by doubling them

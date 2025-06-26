@@ -140,11 +140,28 @@ model Student {
   classSessions           ClassSession[]
   studentClassEnrollments StudentClassEnrollment[]
   teacherPreferences      StudentTeacherPreference[]
+  contactPhones           ContactPhone[]
   studentType             StudentType?               @relation(fields: [studentTypeId], references: [studentTypeId])
   user                    User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([studentTypeId])
   @@map("students")
+}
+
+model ContactPhone {
+  id          String    @id @default(cuid())
+  studentId   String    @map("student_id")
+  phoneType   PhoneType @map("phone_type")
+  phoneNumber String    @map("phone_number") @db.VarChar(50)
+  notes       String?   @db.VarChar(255)
+  order       Int       @default(0)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  student     Student   @relation(fields: [studentId], references: [studentId], onDelete: Cascade)
+
+  @@index([studentId])
+  @@index([order])
+  @@map("contact_phones")
 }
 
 model UserAvailability {
@@ -494,4 +511,11 @@ enum ExamCategory {
 enum ExamCategoryType {
   PUBLIC
   PRIVATE
+}
+
+enum PhoneType {
+  HOME
+  DAD
+  MOM
+  OTHER
 }

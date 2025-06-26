@@ -84,8 +84,8 @@ export const studentImportSchema = z.object({
     .string()
     .transform(val => {
       if (val === "" || !val) return null;
-      if (val.toUpperCase() === "BEGINNER" || val === "初級") return "BEGINNER";
-      if (val.toUpperCase() === "ELEMENTARY" || val === "小学校") return "ELEMENTARY";
+      if (val.toUpperCase() === "BEGINNER" || val === "小学校") return "BEGINNER";
+      if (val.toUpperCase() === "ELEMENTARY" || val === "中学校") return "ELEMENTARY";
       if (val.toUpperCase() === "HIGH_SCHOOL" || val === "高校") return "HIGH_SCHOOL";
       if (val.toUpperCase() === "UNIVERSITY" || val === "大学") return "UNIVERSITY";
       return null;
@@ -118,21 +118,6 @@ export const studentImportSchema = z.object({
     .pipe(z.coerce.date().nullable().optional())
     .optional(),
   // Contact information
-  homePhone: z
-    .string()
-    .transform(val => val === "" ? null : val)
-    .nullable()
-    .optional(),
-  parentPhone: z
-    .string()
-    .transform(val => val === "" ? null : val)
-    .nullable()
-    .optional(),
-  studentPhone: z
-    .string()
-    .transform(val => val === "" ? null : val)
-    .nullable()
-    .optional(),
   parentEmail: z
     .string()
     .transform(val => val === "" ? null : val)
@@ -234,8 +219,8 @@ export const studentUpdateImportSchema = z.object({
     .string()
     .transform(val => {
       if (val === "" || !val) return null;
-      if (val.toUpperCase() === "BEGINNER" || val === "初級") return "BEGINNER";
-      if (val.toUpperCase() === "ELEMENTARY" || val === "小学校") return "ELEMENTARY";
+      if (val.toUpperCase() === "BEGINNER" || val === "小学校") return "BEGINNER";
+      if (val.toUpperCase() === "ELEMENTARY" || val === "中学校") return "ELEMENTARY";
       if (val.toUpperCase() === "HIGH_SCHOOL" || val === "高校") return "HIGH_SCHOOL";
       if (val.toUpperCase() === "UNIVERSITY" || val === "大学") return "UNIVERSITY";
       return null;
@@ -268,21 +253,6 @@ export const studentUpdateImportSchema = z.object({
     .pipe(z.coerce.date().nullable().optional())
     .optional(),
   // Contact information
-  homePhone: z
-    .string()
-    .transform(val => val === "" ? null : val)
-    .nullable()
-    .optional(),
-  parentPhone: z
-    .string()
-    .transform(val => val === "" ? null : val)
-    .nullable()
-    .optional(),
-  studentPhone: z
-    .string()
-    .transform(val => val === "" ? null : val)
-    .nullable()
-    .optional(),
   parentEmail: z
     .string()
     .transform(val => val === "" ? null : val)

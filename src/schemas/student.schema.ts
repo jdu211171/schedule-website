@@ -1,6 +1,25 @@
 // src/schemas/student.schema.ts
 import { z } from "zod";
 
+// Phone type enum matching Prisma schema
+export const phoneTypeEnum = z.enum(["HOME", "DAD", "MOM", "OTHER"]);
+
+export const phoneTypeLabels = {
+  HOME: "自宅",
+  DAD: "父",
+  MOM: "母",
+  OTHER: "その他",
+} as const;
+
+// Contact phone schema
+export const contactPhoneSchema = z.object({
+  id: z.string().optional(),
+  phoneType: phoneTypeEnum,
+  phoneNumber: z.string().min(1, "電話番号は必須です").max(50, "電話番号は50文字以内で入力してください"),
+  notes: z.string().max(255, "備考は255文字以内で入力してください").optional().nullable(),
+  order: z.number().optional(),
+});
+
 // Subject preference schema for student registration - UPDATED
 export const subjectPreferenceSchema = z.object({
   subjectId: z.string().min(1, "科目を選択してください"),
@@ -103,8 +122,8 @@ export const schoolTypeLabels = {
 export const examCategoryEnum = z.enum(["BEGINNER", "ELEMENTARY", "HIGH_SCHOOL", "UNIVERSITY"]);
 
 export const examCategoryLabels = {
-  BEGINNER: "初級",
-  ELEMENTARY: "小学校",
+  BEGINNER: "小学校",
+  ELEMENTARY: "中学校",
   HIGH_SCHOOL: "高校",
   UNIVERSITY: "大学",
 } as const;
@@ -215,21 +234,6 @@ export const studentBaseSchema = z.object({
     .nullable(),
   examDate: z.coerce.date().optional().nullable(),
   // Contact information
-  homePhone: z
-    .string()
-    .max(50, "自宅電話番号は50文字以内で入力してください")
-    .optional()
-    .nullable(),
-  parentPhone: z
-    .string()
-    .max(50, "保護者電話番号は50文字以内で入力してください")
-    .optional()
-    .nullable(),
-  studentPhone: z
-    .string()
-    .max(50, "生徒電話番号は50文字以内で入力してください")
-    .optional()
-    .nullable(),
   parentEmail: z
     .string()
     .email("有効なメールアドレスを入力してください")
@@ -239,6 +243,8 @@ export const studentBaseSchema = z.object({
     .or(z.literal("")),
   // Personal information
   birthDate: z.coerce.date().optional().nullable(),
+  // Contact phones
+  contactPhones: z.array(contactPhoneSchema).optional().default([]),
 });
 
 // Dynamic form schema that accepts student types for validation

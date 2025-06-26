@@ -58,6 +58,13 @@ type StudentWithIncludes = Student & {
       name: string;
     };
   }[];
+  contactPhones?: {
+    id: string;
+    phoneType: string;
+    phoneNumber: string;
+    notes: string | null;
+    order: number;
+  }[];
 };
 
 type FormattedStudent = {
@@ -121,6 +128,14 @@ type FormattedStudent = {
   parentEmail: string | null;
   // Personal information
   birthDate: Date | null;
+  // Contact phones
+  contactPhones: {
+    id: string;
+    phoneType: string;
+    phoneNumber: string;
+    notes: string | null;
+    order: number;
+  }[];
   createdAt: Date;
   updatedAt: Date;
 };
@@ -314,6 +329,14 @@ const formatStudent = (student: StudentWithIncludes): FormattedStudent => {
     parentEmail: student.parentEmail,
     // Personal information
     birthDate: student.birthDate,
+    // Contact phones
+    contactPhones: student.contactPhones?.map(phone => ({
+      id: phone.id,
+      phoneType: phone.phoneType,
+      phoneNumber: phone.phoneNumber,
+      notes: phone.notes,
+      order: phone.order,
+    })) || [],
     createdAt: student.createdAt,
     updatedAt: student.updatedAt,
     lineNotificationsEnabled: student.lineNotificationsEnabled,
@@ -651,6 +674,9 @@ export const GET = withBranchAccess(
             },
           },
         },
+        contactPhones: {
+          orderBy: { order: "asc" },
+        },
       },
       skip,
       take: limit,
@@ -697,6 +723,7 @@ export const POST = withBranchAccess(
         subjectPreferences = [],
         regularAvailability = [],
         exceptionalAvailability = [],
+        contactPhones = [],
         ...studentData
       } = result.data;
 
@@ -824,6 +851,7 @@ export const POST = withBranchAccess(
       }
 
       // For students, use the password directly (no hashing)
+      // NOTE: This is a security risk - passwords should normally be hashed
       const passwordHash = password;
 
       // Create user, student and all related data in a transaction
@@ -1002,6 +1030,19 @@ export const POST = withBranchAccess(
           }
         }
 
+        // Create contact phones if provided
+        if (contactPhones.length > 0) {
+          await tx.contactPhone.createMany({
+            data: contactPhones.map((phone, index) => ({
+              studentId: student.studentId,
+              phoneType: phone.phoneType,
+              phoneNumber: phone.phoneNumber,
+              notes: phone.notes || null,
+              order: phone.order ?? index,
+            })),
+          });
+        }
+
         // Return student with all associations
         return tx.student.findUnique({
           where: { studentId: student.studentId },
@@ -1074,6 +1115,9 @@ export const POST = withBranchAccess(
                   },
                 },
               },
+            },
+            contactPhones: {
+              orderBy: { order: "asc" },
             },
           },
         });

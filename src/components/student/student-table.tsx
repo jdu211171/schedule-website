@@ -738,30 +738,35 @@ export function StudentTable() {
         enableColumnFilter: true,
       },
       {
-        id: "homePhone",
-        accessorKey: "homePhone",
-        header: "自宅電話",
-        cell: ({ row }) => row.original.homePhone || "-",
-        meta: {
-          label: "自宅電話",
+        id: "contactPhones",
+        accessorKey: "contactPhones",
+        header: "連絡先電話",
+        cell: ({ row }) => {
+          const phones = row.original.contactPhones;
+          if (!phones || phones.length === 0) return "-";
+          
+          return (
+            <div className="space-y-1">
+              {phones.map((phone: any, index: number) => (
+                <div key={index} className="text-sm">
+                  <span className="font-medium">
+                    {phone.phoneType === "HOME" ? "自宅" :
+                     phone.phoneType === "DAD" ? "父" :
+                     phone.phoneType === "MOM" ? "母" : "その他"}:
+                  </span>{" "}
+                  {phone.phoneNumber}
+                  {phone.notes && (
+                    <span className="text-muted-foreground ml-1">
+                      ({phone.notes})
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          );
         },
-      },
-      {
-        id: "parentPhone",
-        accessorKey: "parentPhone",
-        header: "保護者電話",
-        cell: ({ row }) => row.original.parentPhone || "-",
         meta: {
-          label: "保護者電話",
-        },
-      },
-      {
-        id: "studentPhone",
-        accessorKey: "studentPhone",
-        header: "生徒電話",
-        cell: ({ row }) => row.original.studentPhone || "-",
-        meta: {
-          label: "生徒電話",
+          label: "連絡先電話",
         },
       },
       {
