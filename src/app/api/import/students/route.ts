@@ -83,13 +83,31 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
     });
     const subjectMap = new Map(allSubjects.map(s => [s.name, s.subjectId]));
 
+    // Detect extra columns and add warning if found
+    const knownHeaders = new Set(STUDENT_CSV_HEADERS);
+    const extraHeaders = actualHeaders.filter(h => !knownHeaders.has(h as any));
+    if (extraHeaders.length > 0) {
+      result.warnings.push({
+        message: `次の列は無視されます: ${extraHeaders.join(", ")}`,
+        type: "extra_columns"
+      });
+    }
+
     for (let i = 0; i < parseResult.data.length; i++) {
       const row = parseResult.data[i];
       const rowNumber = i + 2; // +1 for header, +1 for 1-based indexing
 
       try {
-        // Validate row data
-        const validated = studentImportSchema.parse(row);
+        // Filter out unknown columns before validation
+        const filteredRow: Record<string, string> = {};
+        for (const header of STUDENT_CSV_HEADERS) {
+          if (header in row) {
+            filteredRow[header] = row[header];
+          }
+        }
+
+        // Validate row data with filtered columns
+        const validated = studentImportSchema.parse(filteredRow);
 
         // Check if user with same username or email already exists
         const existingUser = await prisma.user.findFirst({
@@ -176,8 +194,17 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
     if (validatedData.length > 0) {
       await prisma.$transaction(async (tx) => {
         for (const data of validatedData) {
+          // Handle password - use provided password or generate a default one
+          let passwordToHash: string;
+          if (data.password) {
+            passwordToHash = data.password;
+          } else {
+            // Generate a default password: username + "123"
+            passwordToHash = `${data.username}123`;
+          }
+          
           // Hash password
-          const hashedPassword = await bcrypt.hash(data.password, 10);
+          const hashedPassword = await bcrypt.hash(passwordToHash, 10);
 
           // Create user
           const user = await tx.user.create({
@@ -191,7 +218,7 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
             }
           });
 
-          // Create student
+          // Create student with all fields
           await tx.student.create({
             data: {
               userId: user.id,
@@ -201,7 +228,23 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
               gradeYear: data.gradeYear,
               lineId: data.lineId || null,
               notes: data.notes || null,
-              status: "ACTIVE"
+              status: "ACTIVE",
+              // School information
+              schoolName: data.schoolName || null,
+              schoolType: data.schoolType || null,
+              // Exam information
+              examCategory: data.examCategory || null,
+              examCategoryType: data.examCategoryType || null,
+              firstChoice: data.firstChoice || null,
+              secondChoice: data.secondChoice || null,
+              examDate: data.examDate || null,
+              // Contact information
+              homePhone: data.homePhone || null,
+              parentPhone: data.parentPhone || null,
+              studentPhone: data.studentPhone || null,
+              parentEmail: data.parentEmail || null,
+              // Personal information
+              birthDate: data.birthDate || null
             }
           });
 

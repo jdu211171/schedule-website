@@ -100,6 +100,22 @@ export type FormattedStudent = {
     reason?: string | null;
     notes?: string | null;
   }[];
+  // School information
+  schoolName: string | null;
+  schoolType: string | null;
+  // Exam information
+  examCategory: string | null;
+  examCategoryType: string | null;
+  firstChoice: string | null;
+  secondChoice: string | null;
+  examDate: Date | null;
+  // Contact information
+  homePhone: string | null;
+  parentPhone: string | null;
+  studentPhone: string | null;
+  parentEmail: string | null;
+  // Personal information
+  birthDate: Date | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -273,6 +289,22 @@ const formatStudent = (student: StudentWithIncludes): FormattedStudent => {
     subjectPreferences,
     regularAvailability,
     exceptionalAvailability,
+    // School information
+    schoolName: student.schoolName,
+    schoolType: student.schoolType,
+    // Exam information
+    examCategory: student.examCategory,
+    examCategoryType: student.examCategoryType,
+    firstChoice: student.firstChoice,
+    secondChoice: student.secondChoice,
+    examDate: student.examDate,
+    // Contact information
+    homePhone: student.homePhone,
+    parentPhone: student.parentPhone,
+    studentPhone: student.studentPhone,
+    parentEmail: student.parentEmail,
+    // Personal information
+    birthDate: student.birthDate,
     createdAt: student.createdAt,
     updatedAt: student.updatedAt,
     lineNotificationsEnabled: student.lineNotificationsEnabled,

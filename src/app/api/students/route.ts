@@ -105,6 +105,22 @@ type FormattedStudent = {
     reason?: string | null;
     notes?: string | null;
   }[];
+  // School information
+  schoolName: string | null;
+  schoolType: string | null;
+  // Exam information
+  examCategory: string | null;
+  examCategoryType: string | null;
+  firstChoice: string | null;
+  secondChoice: string | null;
+  examDate: Date | null;
+  // Contact information
+  homePhone: string | null;
+  parentPhone: string | null;
+  studentPhone: string | null;
+  parentEmail: string | null;
+  // Personal information
+  birthDate: Date | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -282,6 +298,22 @@ const formatStudent = (student: StudentWithIncludes): FormattedStudent => {
     subjectPreferences,
     regularAvailability,
     exceptionalAvailability,
+    // School information
+    schoolName: student.schoolName,
+    schoolType: student.schoolType,
+    // Exam information
+    examCategory: student.examCategory,
+    examCategoryType: student.examCategoryType,
+    firstChoice: student.firstChoice,
+    secondChoice: student.secondChoice,
+    examDate: student.examDate,
+    // Contact information
+    homePhone: student.homePhone,
+    parentPhone: student.parentPhone,
+    studentPhone: student.studentPhone,
+    parentEmail: student.parentEmail,
+    // Personal information
+    birthDate: student.birthDate,
     createdAt: student.createdAt,
     updatedAt: student.updatedAt,
     lineNotificationsEnabled: student.lineNotificationsEnabled,
@@ -297,13 +329,15 @@ export const GET = withBranchAccess(
     const params: Record<string, any> = {};
 
     // Handle both single values and arrays
+    const arrayParams = ['studentTypeIds', 'gradeYears', 'statuses', 'branchIds', 'subjectIds', 'lineConnection', 'schoolTypes', 'examCategories', 'examCategoryTypes'];
+    
     url.searchParams.forEach((value, key) => {
-      if (key === 'studentTypeIds') {
-        // Collect all studentTypeIds into an array
-        if (!params.studentTypeIds) {
-          params.studentTypeIds = [];
+      if (arrayParams.includes(key)) {
+        // Collect array parameters
+        if (!params[key]) {
+          params[key] = [];
         }
-        params.studentTypeIds.push(value);
+        params[key].push(value);
       } else if (params[key]) {
         // If key already exists, convert to array
         if (Array.isArray(params[key])) {
@@ -325,7 +359,30 @@ export const GET = withBranchAccess(
       );
     }
 
-    const { page, limit, name, studentTypeId, studentTypeIds, gradeYear, status } = result.data;
+    const { 
+      page, 
+      limit, 
+      name, 
+      studentTypeId, 
+      studentTypeIds, 
+      gradeYear,
+      gradeYears, 
+      status,
+      statuses,
+      branchIds,
+      subjectIds,
+      lineConnection,
+      schoolType,
+      schoolTypes,
+      examCategory,
+      examCategories,
+      examCategoryType,
+      examCategoryTypes,
+      birthDateFrom,
+      birthDateTo,
+      examDateFrom,
+      examDateTo
+    } = result.data;
 
     // Build filter conditions
     const where: Record<string, any> = {};
@@ -344,30 +401,161 @@ export const GET = withBranchAccess(
       where.studentTypeId = studentTypeId;
     }
 
-    if (gradeYear !== undefined) {
+    // Support both single gradeYear and multiple gradeYears
+    if (gradeYears && gradeYears.length > 0) {
+      where.gradeYear = { in: gradeYears };
+    } else if (gradeYear !== undefined) {
       where.gradeYear = gradeYear;
     }
 
-    if (status) {
+    // Support both single status and multiple statuses
+    if (statuses && statuses.length > 0) {
+      where.status = { in: statuses };
+    } else if (status) {
       where.status = status;
+    }
+
+    // Filter by school type
+    if (schoolTypes && schoolTypes.length > 0) {
+      where.schoolType = { in: schoolTypes };
+    } else if (schoolType) {
+      where.schoolType = schoolType;
+    }
+
+    // Filter by exam category
+    if (examCategories && examCategories.length > 0) {
+      where.examCategory = { in: examCategories };
+    } else if (examCategory) {
+      where.examCategory = examCategory;
+    }
+
+    // Filter by exam category type
+    if (examCategoryTypes && examCategoryTypes.length > 0) {
+      where.examCategoryType = { in: examCategoryTypes };
+    } else if (examCategoryType) {
+      where.examCategoryType = examCategoryType;
+    }
+
+    // Filter by birth date range
+    if (birthDateFrom || birthDateTo) {
+      where.birthDate = {};
+      if (birthDateFrom) {
+        where.birthDate.gte = birthDateFrom;
+      }
+      if (birthDateTo) {
+        where.birthDate.lte = birthDateTo;
+      }
+    }
+
+    // Filter by exam date range
+    if (examDateFrom || examDateTo) {
+      where.examDate = {};
+      if (examDateFrom) {
+        where.examDate.gte = examDateFrom;
+      }
+      if (examDateTo) {
+        where.examDate.lte = examDateTo;
+      }
+    }
+
+    // Filter by branches - need to filter through user.branches relationship
+    // Note: branchIds might contain branch names, so we need to handle both cases
+    if (branchIds && branchIds.length > 0) {
+      if (!where.user) where.user = {};
+      // Check if branchIds contain UUIDs or names
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const hasUUIDs = branchIds.some(id => isUUID.test(id));
+      
+      if (hasUUIDs) {
+        where.user.branches = {
+          some: {
+            branchId: { in: branchIds }
+          }
+        };
+      } else {
+        // If they're names, filter by branch name
+        where.user.branches = {
+          some: {
+            branch: {
+              name: { in: branchIds }
+            }
+          }
+        };
+      }
+    }
+
+    // Filter by subjects - need to filter through user.subjectPreferences relationship
+    if (subjectIds && subjectIds.length > 0) {
+      if (!where.user) where.user = {};
+      where.user.subjectPreferences = {
+        some: {
+          subjectId: { in: subjectIds }
+        }
+      };
+    }
+
+    // Filter by LINE connection status
+    if (lineConnection && lineConnection.length > 0) {
+      const orConditions = [];
+      
+      if (lineConnection.includes("not_connected")) {
+        orConditions.push({ lineId: null });
+      }
+      
+      if (lineConnection.includes("connected_enabled")) {
+        orConditions.push({ 
+          AND: [
+            { lineId: { not: null } },
+            { lineNotificationsEnabled: true }
+          ]
+        });
+      }
+      
+      if (lineConnection.includes("connected_disabled")) {
+        orConditions.push({ 
+          AND: [
+            { lineId: { not: null } },
+            { lineNotificationsEnabled: false }
+          ]
+        });
+      }
+      
+      if (orConditions.length > 0) {
+        if (where.OR) {
+          // If we already have OR conditions (from name search), wrap them
+          where.AND = [
+            { OR: where.OR },
+            { OR: orConditions }
+          ];
+          delete where.OR;
+        } else {
+          where.OR = orConditions;
+        }
+      }
     }
 
     // Filter students by branch for non-admin users
     if (session.user?.role !== "ADMIN") {
-      where.user = {
-        branches: {
+      if (!where.user) where.user = {};
+      if (!where.user.branches) {
+        where.user.branches = {
           some: {
             branchId,
           },
-        },
-      };
-    } else if (branchId) {
+        };
+      } else {
+        // Merge with existing branch filter
+        where.user.branches.some = {
+          ...where.user.branches.some,
+          branchId,
+        };
+      }
+    } else if (branchId && (!branchIds || branchIds.length === 0)) {
       // If admin has selected a specific branch, filter by that branch
-      where.user = {
-        branches: {
-          some: {
-            branchId,
-          },
+      if (!where.user) where.user = {};
+      where.user.branches = {
+        some: {
+          branchId,
         },
       };
     }

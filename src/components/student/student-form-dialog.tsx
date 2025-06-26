@@ -20,6 +20,11 @@ import {
   Check,
   Users,
   MessageSquare,
+  School,
+  GraduationCap,
+  Phone,
+  Mail,
+  Cake,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -91,6 +96,9 @@ import {
   type StudentFormValues,
   createStudentFormSchema,
   userStatusLabels,
+  schoolTypeLabels,
+  examCategoryLabels,
+  examCategoryTypeLabels,
 } from "@/schemas/student.schema";
 import { useStudentCreate, useStudentUpdate } from "@/hooks/useStudentMutation";
 import { useStudentTypes } from "@/hooks/useStudentTypeQuery";
@@ -236,6 +244,22 @@ export function StudentFormDialog({
       email: "",
       branchIds: [],
       studentId: undefined,
+      // School information
+      schoolName: "",
+      schoolType: undefined,
+      // Exam information
+      examCategory: undefined,
+      examCategoryType: undefined,
+      firstChoice: "",
+      secondChoice: "",
+      examDate: undefined,
+      // Contact information
+      homePhone: "",
+      parentPhone: "",
+      studentPhone: "",
+      parentEmail: "",
+      // Personal information
+      birthDate: undefined,
     },
   });
 
@@ -285,6 +309,22 @@ export function StudentFormDialog({
         email: student.email || "",
         password: "",
         branchIds: branchIdsWithDefault,
+        // School information
+        schoolName: student.schoolName || "",
+        schoolType: student.schoolType as any || undefined,
+        // Exam information
+        examCategory: student.examCategory as any || undefined,
+        examCategoryType: student.examCategoryType as any || undefined,
+        firstChoice: student.firstChoice || "",
+        secondChoice: student.secondChoice || "",
+        examDate: student.examDate ? new Date(student.examDate) : undefined,
+        // Contact information
+        homePhone: student.homePhone || "",
+        parentPhone: student.parentPhone || "",
+        studentPhone: student.studentPhone || "",
+        parentEmail: student.parentEmail || "",
+        // Personal information
+        birthDate: student.birthDate ? new Date(student.birthDate) : undefined,
       });
 
       // Initialize subject preferences if they exist
@@ -842,6 +882,22 @@ export function StudentFormDialog({
       email: "",
       branchIds: defaultBranchId ? [defaultBranchId] : [],
       studentId: undefined,
+      // School information
+      schoolName: "",
+      schoolType: undefined,
+      // Exam information
+      examCategory: undefined,
+      examCategoryType: undefined,
+      firstChoice: "",
+      secondChoice: "",
+      examDate: undefined,
+      // Contact information
+      homePhone: "",
+      parentPhone: "",
+      studentPhone: "",
+      parentEmail: "",
+      // Personal information
+      birthDate: undefined,
     });
     setStudentSubjects([]);
     setRegularAvailability([]);
@@ -1169,6 +1225,355 @@ export function StudentFormDialog({
                                   className="min-h-[80px] resize-none"
                                   {...field}
                                   value={field.value || ""}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </CardContent>
+                    </Card>
+
+                    {/* School Information */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg flex items-center gap-2">
+                          <School className="h-5 w-5" />
+                          学校情報
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                          <FormField
+                            control={form.control}
+                            name="schoolName"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-sm font-medium">
+                                  学校名
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    placeholder="〇〇小学校"
+                                    className="h-11"
+                                    {...field}
+                                    value={field.value || ""}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name="schoolType"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-sm font-medium">
+                                  学校種別
+                                </FormLabel>
+                                <Select
+                                  onValueChange={field.onChange}
+                                  value={field.value || undefined}
+                                >
+                                  <FormControl>
+                                    <SelectTrigger className="h-11">
+                                      <SelectValue placeholder="学校種別を選択" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    {Object.entries(schoolTypeLabels).map(
+                                      ([value, label]) => (
+                                        <SelectItem key={value} value={value}>
+                                          {label}
+                                        </SelectItem>
+                                      )
+                                    )}
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Exam Information */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg flex items-center gap-2">
+                          <GraduationCap className="h-5 w-5" />
+                          受験情報
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                          <FormField
+                            control={form.control}
+                            name="examCategory"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-sm font-medium">
+                                  受験カテゴリー
+                                </FormLabel>
+                                <Select
+                                  onValueChange={field.onChange}
+                                  value={field.value || undefined}
+                                >
+                                  <FormControl>
+                                    <SelectTrigger className="h-11">
+                                      <SelectValue placeholder="受験カテゴリーを選択" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    {Object.entries(examCategoryLabels).map(
+                                      ([value, label]) => (
+                                        <SelectItem key={value} value={value}>
+                                          {label}
+                                        </SelectItem>
+                                      )
+                                    )}
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name="examCategoryType"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-sm font-medium">
+                                  受験カテゴリー種別
+                                </FormLabel>
+                                <Select
+                                  onValueChange={field.onChange}
+                                  value={field.value || undefined}
+                                >
+                                  <FormControl>
+                                    <SelectTrigger className="h-11">
+                                      <SelectValue placeholder="受験カテゴリー種別を選択" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    {Object.entries(examCategoryTypeLabels).map(
+                                      ([value, label]) => (
+                                        <SelectItem key={value} value={value}>
+                                          {label}
+                                        </SelectItem>
+                                      )
+                                    )}
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                          <FormField
+                            control={form.control}
+                            name="firstChoice"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-sm font-medium">
+                                  第一志望校
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    placeholder="〇〇高等学校"
+                                    className="h-11"
+                                    {...field}
+                                    value={field.value || ""}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name="secondChoice"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-sm font-medium">
+                                  第二志望校
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    placeholder="〇〇高等学校"
+                                    className="h-11"
+                                    {...field}
+                                    value={field.value || ""}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+
+                        <FormField
+                          control={form.control}
+                          name="examDate"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-sm font-medium">
+                                試験日
+                              </FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="date"
+                                  className="h-11"
+                                  {...field}
+                                  value={field.value ? new Date(field.value).toISOString().split('T')[0] : ""}
+                                  onChange={(e) => {
+                                    field.onChange(e.target.value ? new Date(e.target.value) : undefined);
+                                  }}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </CardContent>
+                    </Card>
+
+                    {/* Contact Information */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg flex items-center gap-2">
+                          <Phone className="h-5 w-5" />
+                          連絡先情報
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                          <FormField
+                            control={form.control}
+                            name="homePhone"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-sm font-medium">
+                                  自宅電話番号
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="tel"
+                                    placeholder="03-1234-5678"
+                                    className="h-11"
+                                    {...field}
+                                    value={field.value || ""}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name="parentPhone"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-sm font-medium">
+                                  保護者電話番号
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="tel"
+                                    placeholder="090-1234-5678"
+                                    className="h-11"
+                                    {...field}
+                                    value={field.value || ""}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                          <FormField
+                            control={form.control}
+                            name="studentPhone"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-sm font-medium">
+                                  生徒電話番号
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="tel"
+                                    placeholder="080-1234-5678"
+                                    className="h-11"
+                                    {...field}
+                                    value={field.value || ""}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name="parentEmail"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-sm font-medium">
+                                  保護者メールアドレス
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="email"
+                                    placeholder="parent@example.com"
+                                    className="h-11"
+                                    {...field}
+                                    value={field.value || ""}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Personal Information */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg flex items-center gap-2">
+                          <Cake className="h-5 w-5" />
+                          個人情報
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <FormField
+                          control={form.control}
+                          name="birthDate"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-sm font-medium">
+                                生年月日
+                              </FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="date"
+                                  className="h-11"
+                                  {...field}
+                                  value={field.value ? new Date(field.value).toISOString().split('T')[0] : ""}
+                                  onChange={(e) => {
+                                    field.onChange(e.target.value ? new Date(e.target.value) : undefined);
+                                  }}
                                 />
                               </FormControl>
                               <FormMessage />

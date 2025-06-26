@@ -91,6 +91,32 @@ export const userStatusLabels = {
   PERMANENTLY_LEFT: "退会",
 } as const;
 
+// School type enum
+export const schoolTypeEnum = z.enum(["PUBLIC", "PRIVATE"]);
+
+export const schoolTypeLabels = {
+  PUBLIC: "公立",
+  PRIVATE: "私立",
+} as const;
+
+// Exam category enum
+export const examCategoryEnum = z.enum(["BEGINNER", "ELEMENTARY", "HIGH_SCHOOL", "UNIVERSITY"]);
+
+export const examCategoryLabels = {
+  BEGINNER: "初級",
+  ELEMENTARY: "小学校",
+  HIGH_SCHOOL: "高校",
+  UNIVERSITY: "大学",
+} as const;
+
+// Exam category type enum
+export const examCategoryTypeEnum = z.enum(["PUBLIC", "PRIVATE"]);
+
+export const examCategoryTypeLabels = {
+  PUBLIC: "公立",
+  PRIVATE: "私立",
+} as const;
+
 export const studentBaseSchema = z.object({
   name: z
     .string()
@@ -167,6 +193,52 @@ export const studentBaseSchema = z.object({
     )
     .optional()
     .default([]),
+  // School information
+  schoolName: z
+    .string()
+    .max(255, "学校名は255文字以内で入力してください")
+    .optional()
+    .nullable(),
+  schoolType: schoolTypeEnum.optional().nullable(),
+  // Exam information
+  examCategory: examCategoryEnum.optional().nullable(),
+  examCategoryType: examCategoryTypeEnum.optional().nullable(),
+  firstChoice: z
+    .string()
+    .max(255, "第一志望校は255文字以内で入力してください")
+    .optional()
+    .nullable(),
+  secondChoice: z
+    .string()
+    .max(255, "第二志望校は255文字以内で入力してください")
+    .optional()
+    .nullable(),
+  examDate: z.coerce.date().optional().nullable(),
+  // Contact information
+  homePhone: z
+    .string()
+    .max(50, "自宅電話番号は50文字以内で入力してください")
+    .optional()
+    .nullable(),
+  parentPhone: z
+    .string()
+    .max(50, "保護者電話番号は50文字以内で入力してください")
+    .optional()
+    .nullable(),
+  studentPhone: z
+    .string()
+    .max(50, "生徒電話番号は50文字以内で入力してください")
+    .optional()
+    .nullable(),
+  parentEmail: z
+    .string()
+    .email("有効なメールアドレスを入力してください")
+    .max(100, "保護者メールアドレスは100文字以内で入力してください")
+    .optional()
+    .nullable()
+    .or(z.literal("")),
+  // Personal information
+  birthDate: z.coerce.date().optional().nullable(),
 });
 
 // Dynamic form schema that accepts student types for validation
@@ -222,7 +294,22 @@ export const studentFilterSchema = z.object({
   studentTypeId: z.string().optional(),
   studentTypeIds: z.array(z.string()).optional(), // Support multiple student type IDs
   gradeYear: z.coerce.number().int().optional(),
+  gradeYears: z.array(z.coerce.number().int()).optional(), // Support multiple grade years
   status: userStatusEnum.optional(),
+  statuses: z.array(userStatusEnum).optional(), // Support multiple statuses
+  branchIds: z.array(z.string()).optional(), // Filter by branches
+  subjectIds: z.array(z.string()).optional(), // Filter by subject preferences
+  lineConnection: z.array(z.enum(["connected_enabled", "connected_disabled", "not_connected"])).optional(), // Filter by message connection status
+  schoolType: schoolTypeEnum.optional(), // Single school type
+  schoolTypes: z.array(schoolTypeEnum).optional(), // Multiple school types
+  examCategory: examCategoryEnum.optional(), // Single exam category
+  examCategories: z.array(examCategoryEnum).optional(), // Multiple exam categories
+  examCategoryType: examCategoryTypeEnum.optional(), // Single exam category type
+  examCategoryTypes: z.array(examCategoryTypeEnum).optional(), // Multiple exam category types
+  birthDateFrom: z.coerce.date().optional(),
+  birthDateTo: z.coerce.date().optional(),
+  examDateFrom: z.coerce.date().optional(),
+  examDateTo: z.coerce.date().optional(),
 });
 
 export type StudentCreate = z.infer<typeof studentCreateSchema>;

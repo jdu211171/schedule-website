@@ -55,7 +55,7 @@ import {
   useStudentDelete,
   getResolvedStudentId,
 } from "@/hooks/useStudentMutation";
-import { userStatusLabels } from "@/schemas/student.schema";
+import { userStatusLabels, schoolTypeLabels, examCategoryLabels, examCategoryTypeLabels } from "@/schemas/student.schema";
 
 // Import types to ensure proper column meta support
 import "@/components/data-table/types";
@@ -209,6 +209,11 @@ export function StudentTable() {
     branch: string[];
     subject: string[];
     lineConnection: string[];
+    schoolType: string[];
+    examCategory: string[];
+    examCategoryType: string[];
+    birthDateRange?: { from?: Date; to?: Date };
+    examDateRange?: { from?: Date; to?: Date };
   }>(() => {
     if (typeof window !== 'undefined') {
       const savedFilters = localStorage.getItem(FILTERS_STORAGE_KEY);
@@ -224,6 +229,17 @@ export function StudentTable() {
             branch: parsed.branch || [],
             subject: parsed.subject || [],
             lineConnection: parsed.lineConnection || [],
+            schoolType: parsed.schoolType || [],
+            examCategory: parsed.examCategory || [],
+            examCategoryType: parsed.examCategoryType || [],
+            birthDateRange: parsed.birthDateRange ? {
+              from: parsed.birthDateRange.from ? new Date(parsed.birthDateRange.from) : undefined,
+              to: parsed.birthDateRange.to ? new Date(parsed.birthDateRange.to) : undefined
+            } : undefined,
+            examDateRange: parsed.examDateRange ? {
+              from: parsed.examDateRange.from ? new Date(parsed.examDateRange.from) : undefined,
+              to: parsed.examDateRange.to ? new Date(parsed.examDateRange.to) : undefined
+            } : undefined,
           };
         } catch (error) {
           console.error('Error parsing saved filters:', error);
@@ -238,6 +254,11 @@ export function StudentTable() {
       branch: [] as string[],
       subject: [] as string[],
       lineConnection: [] as string[],
+      schoolType: [] as string[],
+      examCategory: [] as string[],
+      examCategoryType: [] as string[],
+      birthDateRange: undefined,
+      examDateRange: undefined,
     };
   });
 
@@ -294,7 +315,7 @@ export function StudentTable() {
     [studentTypesResponse?.data]
   );
 
-  // Parse studentType names back to IDs for API call
+  // Parse filter values for API call
   const studentTypeIds = React.useMemo(() => {
     if (filters.studentType.length === 0) return undefined;
     return studentTypes
@@ -302,106 +323,40 @@ export function StudentTable() {
       .map((type) => type.studentTypeId);
   }, [filters.studentType, studentTypes]);
 
+  // Parse branch names back to IDs
+  const branchIds = React.useMemo(() => {
+    if (filters.branch.length === 0) return undefined;
+    // For now, we'll need to fetch branch data separately or pass branch names to API
+    // This is a temporary solution until we have a better way to map branch names to IDs
+    return filters.branch;
+  }, [filters.branch]);
+
+  // Parse subject names to IDs
+  const subjectIds = React.useMemo(() => {
+    if (filters.subject.length === 0) return undefined;
+    return subjects
+      .filter((subject) => filters.subject.includes(subject.name))
+      .map((subject) => subject.subjectId);
+  }, [filters.subject, subjects]);
+
   const { data: students, isLoading } = useStudents({
     page,
     limit: pageSize,
     name: debouncedName || undefined,
-    studentTypeIds: studentTypeIds, // Use the new multi-select parameter
-    status: filters.status[0] || undefined, // API still only supports single status
+    studentTypeIds: studentTypeIds,
+    gradeYears: filters.gradeYear.map(Number).filter(n => !isNaN(n)),
+    statuses: filters.status.length > 0 ? filters.status : undefined,
+    branchIds: branchIds,
+    subjectIds: subjectIds,
+    lineConnection: filters.lineConnection.length > 0 ? filters.lineConnection : undefined,
+    schoolTypes: filters.schoolType.length > 0 ? filters.schoolType : undefined,
+    examCategories: filters.examCategory.length > 0 ? filters.examCategory : undefined,
+    examCategoryTypes: filters.examCategoryType.length > 0 ? filters.examCategoryType : undefined,
+    birthDateFrom: filters.birthDateRange?.from,
+    birthDateTo: filters.birthDateRange?.to,
+    examDateFrom: filters.examDateRange?.from,
+    examDateTo: filters.examDateRange?.to,
   });
-
-  // Create lookup maps for better performance
-  const subjectIdToName = React.useMemo(
-    () => new Map(subjects.map((s) => [s.subjectId, s.name])),
-    [subjects]
-  );
-
-  // Convert filter arrays to Sets for O(1) lookup
-  const statusSet = React.useMemo(() => new Set(filters.status), [filters.status]);
-  const gradeYearSet = React.useMemo(() => new Set(filters.gradeYear), [filters.gradeYear]);
-  const branchSet = React.useMemo(() => new Set(filters.branch), [filters.branch]);
-  const subjectSet = React.useMemo(() => new Set(filters.subject), [filters.subject]);
-  const lineConnectionSet = React.useMemo(() => new Set(filters.lineConnection), [filters.lineConnection]);
-
-  // Filter data client-side only for filters not supported by the API
-  const filteredData = React.useMemo(() => {
-    const data = students?.data || [];
-
-    // Early return if no client-side filters
-    if (
-      gradeYearSet.size === 0 &&
-      branchSet.size === 0 &&
-      subjectSet.size === 0 &&
-      lineConnectionSet.size === 0 &&
-      filters.status.length <= 1 // API supports single status
-    ) {
-      return data;
-    }
-
-    return data.filter((student) => {
-      // Status filter (only if multiple statuses selected)
-      if (filters.status.length > 1 && !statusSet.has(student.status || "ACTIVE")) {
-        return false;
-      }
-
-      // Grade year filter
-      if (gradeYearSet.size > 0 && (student.gradeYear === null || !gradeYearSet.has(student.gradeYear.toString()))) {
-        return false;
-      }
-
-      // Branch filter
-      if (branchSet.size > 0) {
-        if (!student.branches || !student.branches.some((b) => branchSet.has(b.name))) {
-          return false;
-        }
-      }
-
-      // Subject filter
-      if (subjectSet.size > 0) {
-        if (!student.subjectPreferences) return false;
-
-        const hasMatchingSubject = student.subjectPreferences.some((pref) => {
-          const subjectName = subjectIdToName.get(pref.subjectId);
-          return subjectName && subjectSet.has(subjectName);
-        });
-
-        if (!hasMatchingSubject) return false;
-      }
-
-      // メッセージ connection filter
-      if (lineConnectionSet.size > 0) {
-        const hasLine = !!student.lineId;
-        const notificationsEnabled = student.lineNotificationsEnabled ?? true;
-
-        let connectionStatus: string;
-        if (!hasLine) {
-          connectionStatus = "not_connected";
-        } else if (notificationsEnabled) {
-          connectionStatus = "connected_enabled";
-        } else {
-          connectionStatus = "connected_disabled";
-        }
-
-        if (!lineConnectionSet.has(connectionStatus)) {
-          return false;
-        }
-      }
-
-      return true;
-    });
-  }, [
-    filters.status,
-    statusSet,
-    gradeYearSet,
-    branchSet,
-    subjectSet,
-    lineConnectionSet,
-    students?.data,
-    subjectIdToName,
-  ]);
-
-  const totalCount = students?.pagination.total || 0;
-  const totalPages = Math.ceil(totalCount / pageSize);
 
   // Extract unique branches from current data
   const uniqueBranches = React.useMemo(() => {
@@ -416,6 +371,12 @@ export function StudentTable() {
       label: name,
     }));
   }, [students?.data]);
+
+  // No client-side filtering needed - all filtering is done server-side
+  const filteredData = students?.data || [];
+
+  const totalCount = students?.pagination.total || 0;
+  const totalPages = Math.ceil(totalCount / pageSize);
 
   const columns = React.useMemo<ColumnDef<Student>[]>(
     () => [
@@ -525,6 +486,130 @@ export function StudentTable() {
         enableColumnFilter: true,
       },
       {
+        id: "birthDate",
+        accessorKey: "birthDate",
+        header: "生年月日",
+        cell: ({ row }) => {
+          const birthDate = row.original.birthDate;
+          if (!birthDate) return "-";
+          return new Date(birthDate).toLocaleDateString('ja-JP', { 
+            year: 'numeric', 
+            month: '2-digit', 
+            day: '2-digit' 
+          });
+        },
+        meta: {
+          label: "生年月日",
+          variant: "dateRange",
+          placeholder: "生年月日で検索",
+        },
+        enableColumnFilter: true,
+      },
+      {
+        id: "schoolName",
+        accessorKey: "schoolName",
+        header: "学校名",
+        cell: ({ row }) => row.original.schoolName || "-",
+        meta: {
+          label: "学校名",
+        },
+      },
+      {
+        id: "schoolType",
+        accessorKey: "schoolType",
+        header: "学校種別",
+        cell: ({ row }) => {
+          const schoolType = row.original.schoolType;
+          if (!schoolType) return "-";
+          return <Badge variant="outline">{schoolTypeLabels[schoolType as keyof typeof schoolTypeLabels]}</Badge>;
+        },
+        meta: {
+          label: "学校種別",
+          variant: "multiSelect",
+          options: Object.entries(schoolTypeLabels).map(([value, label]) => ({
+            value,
+            label,
+          })),
+        },
+        enableColumnFilter: true,
+      },
+      {
+        id: "examCategory",
+        accessorKey: "examCategory",
+        header: "受験区分",
+        cell: ({ row }) => {
+          const examCategory = row.original.examCategory;
+          if (!examCategory) return "-";
+          return <Badge variant="secondary">{examCategoryLabels[examCategory as keyof typeof examCategoryLabels]}</Badge>;
+        },
+        meta: {
+          label: "受験区分",
+          variant: "multiSelect",
+          options: Object.entries(examCategoryLabels).map(([value, label]) => ({
+            value,
+            label,
+          })),
+        },
+        enableColumnFilter: true,
+      },
+      {
+        id: "examCategoryType",
+        accessorKey: "examCategoryType",
+        header: "受験区分種別",
+        cell: ({ row }) => {
+          const examCategoryType = row.original.examCategoryType;
+          if (!examCategoryType) return "-";
+          return <Badge variant="outline">{examCategoryTypeLabels[examCategoryType as keyof typeof examCategoryTypeLabels]}</Badge>;
+        },
+        meta: {
+          label: "受験区分種別",
+          variant: "multiSelect",
+          options: Object.entries(examCategoryTypeLabels).map(([value, label]) => ({
+            value,
+            label,
+          })),
+        },
+        enableColumnFilter: true,
+      },
+      {
+        id: "firstChoice",
+        accessorKey: "firstChoice",
+        header: "第一志望校",
+        cell: ({ row }) => row.original.firstChoice || "-",
+        meta: {
+          label: "第一志望校",
+        },
+      },
+      {
+        id: "secondChoice",
+        accessorKey: "secondChoice",
+        header: "第二志望校",
+        cell: ({ row }) => row.original.secondChoice || "-",
+        meta: {
+          label: "第二志望校",
+        },
+      },
+      {
+        id: "examDate",
+        accessorKey: "examDate",
+        header: "試験日",
+        cell: ({ row }) => {
+          const examDate = row.original.examDate;
+          if (!examDate) return "-";
+          return new Date(examDate).toLocaleDateString('ja-JP', { 
+            year: 'numeric', 
+            month: '2-digit', 
+            day: '2-digit' 
+          });
+        },
+        meta: {
+          label: "試験日",
+          variant: "dateRange",
+          placeholder: "試験日で検索",
+        },
+        enableColumnFilter: true,
+      },
+      {
         id: "username",
         accessorKey: "username",
         header: "ユーザー名",
@@ -540,6 +625,15 @@ export function StudentTable() {
         cell: ({ row }) => row.original.email || "-",
         meta: {
           label: "メールアドレス",
+        },
+      },
+      {
+        id: "parentEmail",
+        accessorKey: "parentEmail",
+        header: "保護者メール",
+        cell: ({ row }) => row.original.parentEmail || "-",
+        meta: {
+          label: "保護者メール",
         },
       },
       {
@@ -644,6 +738,33 @@ export function StudentTable() {
         enableColumnFilter: true,
       },
       {
+        id: "homePhone",
+        accessorKey: "homePhone",
+        header: "自宅電話",
+        cell: ({ row }) => row.original.homePhone || "-",
+        meta: {
+          label: "自宅電話",
+        },
+      },
+      {
+        id: "parentPhone",
+        accessorKey: "parentPhone",
+        header: "保護者電話",
+        cell: ({ row }) => row.original.parentPhone || "-",
+        meta: {
+          label: "保護者電話",
+        },
+      },
+      {
+        id: "studentPhone",
+        accessorKey: "studentPhone",
+        header: "生徒電話",
+        cell: ({ row }) => row.original.studentPhone || "-",
+        meta: {
+          label: "生徒電話",
+        },
+      },
+      {
         id: "branches",
         accessorKey: "branches",
         header: "校舎",
@@ -720,6 +841,30 @@ export function StudentTable() {
         enableColumnFilter: true,
       },
       {
+        id: "notes",
+        accessorKey: "notes",
+        header: "備考",
+        cell: ({ row }) => {
+          const notes = row.original.notes;
+          if (!notes) return "-";
+          
+          // Truncate long notes and add tooltip
+          const maxLength = 50;
+          const displayText = notes.length > maxLength 
+            ? `${notes.substring(0, maxLength)}...` 
+            : notes;
+          
+          return (
+            <span title={notes} className="cursor-help">
+              {displayText}
+            </span>
+          );
+        },
+        meta: {
+          label: "備考",
+        },
+      },
+      {
         id: "actions",
         cell: ({ row }) => {
           // Type-safe check for _optimistic property
@@ -777,6 +922,11 @@ export function StudentTable() {
         ...(filters.branch.length > 0 ? [{ id: 'branches', value: filters.branch }] : []),
         ...(filters.subject.length > 0 ? [{ id: 'subjectPreferences', value: filters.subject }] : []),
         ...(filters.lineConnection.length > 0 ? [{ id: 'lineConnection', value: filters.lineConnection }] : []),
+        ...(filters.schoolType.length > 0 ? [{ id: 'schoolType', value: filters.schoolType }] : []),
+        ...(filters.examCategory.length > 0 ? [{ id: 'examCategory', value: filters.examCategory }] : []),
+        ...(filters.examCategoryType.length > 0 ? [{ id: 'examCategoryType', value: filters.examCategoryType }] : []),
+        ...(filters.birthDateRange ? [{ id: 'birthDate', value: filters.birthDateRange }] : []),
+        ...(filters.examDateRange ? [{ id: 'examDate', value: filters.examDateRange }] : []),
       ],
     },
     getRowId: (row) => row.studentId,
@@ -815,6 +965,11 @@ export function StudentTable() {
         branch: [],
         subject: [],
         lineConnection: [],
+        schoolType: [],
+        examCategory: [],
+        examCategoryType: [],
+        birthDateRange: undefined,
+        examDateRange: undefined,
       };
       setFilters(defaultFilters);
       // Clear localStorage when resetting
@@ -834,6 +989,11 @@ export function StudentTable() {
       branch: [] as string[],
       subject: [] as string[],
       lineConnection: [] as string[],
+      schoolType: [] as string[],
+      examCategory: [] as string[],
+      examCategoryType: [] as string[],
+      birthDateRange: undefined as { from?: Date; to?: Date } | undefined,
+      examDateRange: undefined as { from?: Date; to?: Date } | undefined,
     };
 
     // Set the active filters
@@ -852,6 +1012,16 @@ export function StudentTable() {
         newFilters.subject = filter.value as string[] || [];
       } else if (filter.id === 'lineConnection') {
         newFilters.lineConnection = filter.value as string[] || [];
+      } else if (filter.id === 'schoolType') {
+        newFilters.schoolType = filter.value as string[] || [];
+      } else if (filter.id === 'examCategory') {
+        newFilters.examCategory = filter.value as string[] || [];
+      } else if (filter.id === 'examCategoryType') {
+        newFilters.examCategoryType = filter.value as string[] || [];
+      } else if (filter.id === 'birthDate') {
+        newFilters.birthDateRange = filter.value as { from?: Date; to?: Date } | undefined;
+      } else if (filter.id === 'examDate') {
+        newFilters.examDateRange = filter.value as { from?: Date; to?: Date } | undefined;
       }
     });
 
@@ -901,6 +1071,11 @@ export function StudentTable() {
       branch: filters.branch || undefined,
       subject: filters.subject || undefined,
       lineConnection: filters.lineConnection || undefined,
+      schoolType: filters.schoolType || undefined,
+      examCategory: filters.examCategory || undefined,
+      examCategoryType: filters.examCategoryType || undefined,
+      birthDateRange: filters.birthDateRange || undefined,
+      examDateRange: filters.examDateRange || undefined,
       columns: visibleColumns,
     });
   };

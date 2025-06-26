@@ -3,8 +3,67 @@ import { NextRequest, NextResponse } from "next/server";
 import { withBranchAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { studentFilterSchema } from "@/schemas/student.schema";
+import { STUDENT_CSV_HEADERS } from "@/schemas/import/student-import.schema";
+import { format } from "date-fns";
+
+// Helper function to format date for CSV
+function formatDateForCSV(date: Date | null): string {
+  if (!date) return "";
+  return format(new Date(date), "yyyy-MM-dd");
+}
+
+// Helper function to format enum values back to their readable form
+function formatEnumForCSV(value: string | null, type: "schoolType" | "examCategory" | "examCategoryType"): string {
+  if (!value) return "";
+  
+  switch (type) {
+    case "schoolType":
+    case "examCategoryType":
+      return value === "PUBLIC" ? "公立" : value === "PRIVATE" ? "私立" : value;
+    case "examCategory":
+      const examCategoryMap: Record<string, string> = {
+        "BEGINNER": "初級",
+        "ELEMENTARY": "小学校",
+        "HIGH_SCHOOL": "高校",
+        "UNIVERSITY": "大学"
+      };
+      return examCategoryMap[value] || value;
+    default:
+      return value;
+  }
+}
 
 // CSV export handler for students
+// Map table column IDs to CSV header names
+const COLUMN_ID_TO_CSV_HEADER: Record<string, string> = {
+  "name": "name",
+  "kanaName": "kanaName",
+  "studentTypeName": "studentTypeName",
+  "gradeYear": "gradeYear",
+  "birthDate": "birthDate",
+  "schoolName": "schoolName",
+  "schoolType": "schoolType",
+  "examCategory": "examCategory",
+  "examCategoryType": "examCategoryType",
+  "firstChoice": "firstChoice",
+  "secondChoice": "secondChoice",
+  "examDate": "examDate",
+  "username": "username",
+  "email": "email",
+  "parentEmail": "parentEmail",
+  "password": "password",
+  "homePhone": "homePhone",
+  "parentPhone": "parentPhone",
+  "studentPhone": "studentPhone",
+  "subjectPreferences": "subjects",
+  "notes": "notes",
+  "lineId": "lineId",
+  "branches": "branches",
+  // Note: The following columns exist in the table but not in CSV export:
+  // - status (not exported)
+  // - lineConnection (computed field, not exported)
+};
+
 export const GET = withBranchAccess(
   ["ADMIN", "STAFF"],
   async (request: NextRequest, session, selectedBranchId) => {
@@ -13,11 +72,11 @@ export const GET = withBranchAccess(
       page: searchParams.get("page") || 1,
       limit: searchParams.get("limit") || 10000, // Large limit for export
       name: searchParams.get("name") || undefined,
-      status: searchParams.get("status")?.split(",")[0] || undefined, // Take first status for API
+      status: searchParams.get("status")?.split(",")[0] || undefined,
       studentTypeIds: searchParams.get("studentType")?.split(",") || undefined,
     });
 
-    const { name, status, studentTypeIds } = filters;
+    const { name, status } = filters;
 
     // Get additional filters from query params
     const statusList = searchParams.get("status")?.split(",") || [];
@@ -26,6 +85,16 @@ export const GET = withBranchAccess(
     const branchList = searchParams.get("branch")?.split(",") || [];
     const subjectList = searchParams.get("subject")?.split(",") || [];
     const lineConnectionList = searchParams.get("lineConnection")?.split(",") || [];
+    const schoolTypeList = searchParams.get("schoolType")?.split(",") || [];
+    const examCategoryList = searchParams.get("examCategory")?.split(",") || [];
+    const examCategoryTypeList = searchParams.get("examCategoryType")?.split(",") || [];
+    const birthDateFrom = searchParams.get("birthDateFrom") ? new Date(searchParams.get("birthDateFrom")!) : undefined;
+    const birthDateTo = searchParams.get("birthDateTo") ? new Date(searchParams.get("birthDateTo")!) : undefined;
+    const examDateFrom = searchParams.get("examDateFrom") ? new Date(searchParams.get("examDateFrom")!) : undefined;
+    const examDateTo = searchParams.get("examDateTo") ? new Date(searchParams.get("examDateTo")!) : undefined;
+    
+    // Get visible columns from query params
+    const visibleColumns = searchParams.get("columns")?.split(",") || [];
 
     // Build where clause
     const where: any = {
@@ -72,7 +141,7 @@ export const GET = withBranchAccess(
       orderBy: { name: "asc" },
     });
 
-    // Apply client-side filters (same logic as in the table component)
+    // Apply client-side filters
     let filteredStudents = students;
 
     // Filter by multiple statuses if needed
@@ -112,7 +181,6 @@ export const GET = withBranchAccess(
       const subjectSet = new Set(subjectList);
       filteredStudents = filteredStudents.filter(student => {
         if (!student.user?.subjectPreferences) return false;
-
         return student.user.subjectPreferences.some((pref: any) =>
           subjectSet.has(pref.subject.name)
         );
@@ -139,93 +207,118 @@ export const GET = withBranchAccess(
       });
     }
 
-    // Get visible columns from query params
-    const visibleColumns = searchParams.get("columns")?.split(",") || [
-      "name",
-      "kanaName",
-      "status",
-      "studentTypeName",
-      "gradeYear",
-      "username",
-      "email",
-      "branches",
-      "subjectPreferences",
-    ];
+    // Filter by school type
+    if (schoolTypeList.length > 0) {
+      const schoolTypeSet = new Set(schoolTypeList);
+      filteredStudents = filteredStudents.filter(student =>
+        student.schoolType && schoolTypeSet.has(student.schoolType)
+      );
+    }
 
-    // Filter out LINE-related fields for security/privacy
-    const allowedColumns = visibleColumns.filter(col =>
-      !["lineId", "lineConnection", "lineNotificationsEnabled"].includes(col)
-    );
+    // Filter by exam category
+    if (examCategoryList.length > 0) {
+      const examCategorySet = new Set(examCategoryList);
+      filteredStudents = filteredStudents.filter(student =>
+        student.examCategory && examCategorySet.has(student.examCategory)
+      );
+    }
 
-    // Column headers mapping
-    const columnHeaders: Record<string, string> = {
-      name: "名前",
-      kanaName: "カナ",
-      status: "ステータス",
-      studentTypeName: "生徒タイプ",
-      gradeYear: "学年",
-      username: "ユーザー名",
-      email: "メールアドレス",
-      password: "パスワード",
-      branches: "校舎",
-      subjectPreferences: "選択科目",
-    };
+    // Filter by exam category type
+    if (examCategoryTypeList.length > 0) {
+      const examCategoryTypeSet = new Set(examCategoryTypeList);
+      filteredStudents = filteredStudents.filter(student =>
+        student.examCategoryType && examCategoryTypeSet.has(student.examCategoryType)
+      );
+    }
 
-    // Status labels
-    const statusLabels: Record<string, string> = {
-      ACTIVE: "在籍",
-      SICK: "休会",
-      PERMANENTLY_LEFT: "退会",
-    };
-
-    // Build CSV header
-    const headers = allowedColumns
-      .map((col) => columnHeaders[col] || col)
-      .join(",");
-
-    // Build CSV rows - use filtered students
-    const rows = filteredStudents.map((student) => {
-      const row = allowedColumns.map((col) => {
-        switch (col) {
-          case "name":
-            return student.name || "";
-          case "kanaName":
-            return student.kanaName || "";
-          case "status":
-            return statusLabels[student.status || "ACTIVE"] || student.status || "";
-          case "studentTypeName":
-            return student.studentType?.name || "";
-          case "gradeYear":
-            return student.gradeYear !== null ? `${student.gradeYear}年生` : "";
-          case "username":
-            return student.user?.username || "";
-          case "email":
-            return student.user?.email || "";
-          case "password":
-            // Don't export passwords for security
-            return "";
-          case "branches":
-            return student.user?.branches
-              ?.map((b: any) => b.branch.name)
-              .join("; ") || "";
-          case "subjectPreferences":
-            return student.user?.subjectPreferences
-              ?.map((sp: any) => `${sp.subject.name} - ${sp.subjectType.name}`)
-              .join("; ") || "";
-          default:
-            return "";
-        }
+    // Filter by birth date range
+    if (birthDateFrom || birthDateTo) {
+      filteredStudents = filteredStudents.filter(student => {
+        if (!student.birthDate) return false;
+        const birthDate = new Date(student.birthDate);
+        if (birthDateFrom && birthDate < birthDateFrom) return false;
+        if (birthDateTo && birthDate > birthDateTo) return false;
+        return true;
       });
+    }
 
-      // Escape CSV values
-      return row.map((value) => {
-        // If value contains comma, newline, or quotes, wrap in quotes
+    // Filter by exam date range
+    if (examDateFrom || examDateTo) {
+      filteredStudents = filteredStudents.filter(student => {
+        if (!student.examDate) return false;
+        const examDate = new Date(student.examDate);
+        if (examDateFrom && examDate < examDateFrom) return false;
+        if (examDateTo && examDate > examDateTo) return false;
+        return true;
+      });
+    }
+
+    // Map visible column IDs to CSV headers and maintain order
+    const columnsToExport = visibleColumns.length > 0
+      ? visibleColumns
+          .map(colId => COLUMN_ID_TO_CSV_HEADER[colId])
+          .filter((header): header is typeof STUDENT_CSV_HEADERS[number] => 
+            header !== undefined && STUDENT_CSV_HEADERS.includes(header as typeof STUDENT_CSV_HEADERS[number])
+          )
+      : [...STUDENT_CSV_HEADERS];
+    
+    const headers = columnsToExport.join(",");
+
+    // Build CSV rows to match import schema exactly
+    const rows = filteredStudents.map((student) => {
+      // Get unique subject names (for subjects column)
+      const subjectNames = student.user?.subjectPreferences
+        ?.reduce((acc: string[], pref: any) => {
+          if (!acc.includes(pref.subject.name)) {
+            acc.push(pref.subject.name);
+          }
+          return acc;
+        }, []) || [];
+      
+      // Get branch names (for branches column)
+      const branchNames = student.user?.branches
+        ?.map((b: any) => b.branch.name) || [];
+
+      // Create row data matching STUDENT_CSV_HEADERS order
+      const rowData: Record<string, string> = {
+        username: student.user?.username || "",
+        email: student.user?.email || "",
+        password: "", // Never export passwords
+        name: student.name || "",
+        kanaName: student.kanaName || "",
+        studentTypeName: student.studentType?.name || "",
+        gradeYear: student.gradeYear?.toString() || "",
+        lineId: "", // Never export lineId for security
+        subjects: subjectNames.join(","), // Comma-separated subject names
+        branches: branchNames.join(","), // Comma-separated branch names
+        schoolName: student.schoolName || "",
+        schoolType: formatEnumForCSV(student.schoolType, "schoolType"),
+        examCategory: formatEnumForCSV(student.examCategory, "examCategory"),
+        examCategoryType: formatEnumForCSV(student.examCategoryType, "examCategoryType"),
+        firstChoice: student.firstChoice || "",
+        secondChoice: student.secondChoice || "",
+        examDate: formatDateForCSV(student.examDate),
+        homePhone: student.homePhone || "",
+        parentPhone: student.parentPhone || "",
+        studentPhone: student.studentPhone || "",
+        parentEmail: student.parentEmail || "",
+        birthDate: formatDateForCSV(student.birthDate),
+        notes: student.notes || "",
+      };
+
+      // Build row based on visible columns
+      const row = columnsToExport.map(header => {
+        const value = rowData[header] || "";
+        
+        // Escape CSV values
         if (value.includes(",") || value.includes("\n") || value.includes('"')) {
           // Escape quotes by doubling them
           return `"${value.replace(/"/g, '""')}"`;
         }
         return value;
-      }).join(",");
+      });
+
+      return row.join(",");
     });
 
     // Combine header and rows

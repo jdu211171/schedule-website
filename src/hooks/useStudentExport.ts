@@ -11,6 +11,11 @@ interface ExportOptions {
   branch?: string[];
   subject?: string[];
   lineConnection?: string[];
+  schoolType?: string[];
+  examCategory?: string[];
+  examCategoryType?: string[];
+  birthDateRange?: { from?: Date; to?: Date };
+  examDateRange?: { from?: Date; to?: Date };
   columns: string[];
 }
 
@@ -41,6 +46,31 @@ export function useStudentExport() {
       }
       if (options.lineConnection && options.lineConnection.length > 0) {
         params.append("lineConnection", options.lineConnection.join(","));
+      }
+      if (options.schoolType && options.schoolType.length > 0) {
+        params.append("schoolType", options.schoolType.join(","));
+      }
+      if (options.examCategory && options.examCategory.length > 0) {
+        params.append("examCategory", options.examCategory.join(","));
+      }
+      if (options.examCategoryType && options.examCategoryType.length > 0) {
+        params.append("examCategoryType", options.examCategoryType.join(","));
+      }
+      if (options.birthDateRange) {
+        if (options.birthDateRange.from) {
+          params.append("birthDateFrom", options.birthDateRange.from.toISOString());
+        }
+        if (options.birthDateRange.to) {
+          params.append("birthDateTo", options.birthDateRange.to.toISOString());
+        }
+      }
+      if (options.examDateRange) {
+        if (options.examDateRange.from) {
+          params.append("examDateFrom", options.examDateRange.from.toISOString());
+        }
+        if (options.examDateRange.to) {
+          params.append("examDateTo", options.examDateRange.to.toISOString());
+        }
       }
       if (options.columns.length > 0) {
         params.append("columns", options.columns.join(","));

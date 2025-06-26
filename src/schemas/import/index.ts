@@ -18,8 +18,10 @@ export interface ImportResult {
     errors: string[];
   }>;
   warnings: Array<{
-    row: number;
-    warnings: string[];
+    row?: number;
+    warnings?: string[];
+    message?: string;
+    type?: string;
   }>;
 }
 

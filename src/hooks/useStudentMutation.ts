@@ -109,6 +109,22 @@ export function useStudentCreate() {
                     notes: ea.notes || null
                   };
                 }),
+                // School information
+                schoolName: newStudent.schoolName || null,
+                schoolType: newStudent.schoolType || null,
+                // Exam information
+                examCategory: newStudent.examCategory || null,
+                examCategoryType: newStudent.examCategoryType || null,
+                firstChoice: newStudent.firstChoice || null,
+                secondChoice: newStudent.secondChoice || null,
+                examDate: newStudent.examDate || null,
+                // Contact information
+                homePhone: newStudent.homePhone || null,
+                parentPhone: newStudent.parentPhone || null,
+                studentPhone: newStudent.studentPhone || null,
+                parentEmail: newStudent.parentEmail || null,
+                // Personal information
+                birthDate: newStudent.birthDate || null,
                 createdAt: new Date(),
                 updatedAt: new Date(),
                 _optimistic: true,
