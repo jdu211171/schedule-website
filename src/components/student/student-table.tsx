@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Pencil, Eye, EyeOff, Trash2, MoreHorizontal, RotateCcw, Download, Upload, Bell, BellOff, MessageSquare } from "lucide-react";
+import { Pencil, Eye, EyeOff, Trash2, MoreHorizontal, Download, Upload, Bell, BellOff, MessageSquare } from "lucide-react";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useStudentExport } from "@/hooks/useStudentExport";
 
@@ -77,12 +77,6 @@ function StudentTableToolbar<TData>({
     [table],
   );
 
-  const hasActiveFilters = table.getState().columnFilters.length > 0;
-
-  const handleResetFilters = () => {
-    table.resetColumnFilters();
-  };
-
   return (
     <div
       role="toolbar"
@@ -99,16 +93,6 @@ function StudentTableToolbar<TData>({
         ))}
       </div>
       <div className="flex items-center gap-2">
-        {hasActiveFilters && (
-          <Button
-            variant="ghost"
-            onClick={handleResetFilters}
-            className="h-8 px-2 lg:px-3"
-          >
-            <RotateCcw className="mr-2 h-4 w-4" />
-            リセット
-          </Button>
-        )}
         {children}
         <DataTableViewOptions table={table} />
       </div>

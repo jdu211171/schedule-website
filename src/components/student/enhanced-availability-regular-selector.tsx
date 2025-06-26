@@ -211,6 +211,27 @@ export function EnhancedAvailabilityRegularSelector({
     onChange([]);
   }
 
+  function setWeekdaysFullDay() {
+    const weekdays = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"] as const;
+    const updatedAvailability = [...availability];
+
+    // Remove existing weekday entries
+    const filteredAvailability = updatedAvailability.filter(
+      item => !weekdays.includes(item.dayOfWeek as any)
+    );
+
+    // Add full day availability for all weekdays
+    weekdays.forEach(day => {
+      filteredAvailability.push({
+        dayOfWeek: day,
+        timeSlots: [],
+        fullDay: true,
+      });
+    });
+
+    onChange(filteredAvailability);
+  }
+
   return (
     <div className="space-y-6">
       <Card>
@@ -287,16 +308,26 @@ export function EnhancedAvailabilityRegularSelector({
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <Label className="text-sm font-medium">現在の利用可能時間</Label>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={clearAll}
-            disabled={availability.length === 0}
-          >
-            <RotateCcw className="h-4 w-4 mr-2" />
-            すべてクリア
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={setWeekdaysFullDay}
+            >
+              平日終日設定
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={clearAll}
+              disabled={availability.length === 0}
+            >
+              <RotateCcw className="h-4 w-4 mr-2" />
+              すべてクリア
+            </Button>
+          </div>
         </div>
 
         {DAYS_OF_WEEK.map((day) => {

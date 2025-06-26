@@ -11,10 +11,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { 
-  Edit3, 
-  SkipForward, 
-  Zap, 
+import {
+  Edit3,
+  SkipForward,
+  Zap,
   RotateCcw,
   AlertTriangle,
   Check,
@@ -100,21 +100,21 @@ export const ConflictResolutionTable: React.FC<ConflictResolutionTableProps> = (
   // Convert availability slots to boolean array
   const convertSlotsToAvailability = (slots: { startTime: string; endTime: string }[]): boolean[] => {
     const availability = new Array(57).fill(false);
-    
+
     slots.forEach(slot => {
       const startHour = parseInt(slot.startTime.split(':')[0]);
       const startMinute = parseInt(slot.startTime.split(':')[1]);
       const endHour = parseInt(slot.endTime.split(':')[0]);
       const endMinute = parseInt(slot.endTime.split(':')[1]);
-      
+
       const startIndex = (startHour - 8) * 4 + Math.floor(startMinute / 15);
       const endIndex = (endHour - 8) * 4 + Math.floor(endMinute / 15);
-      
+
       for (let i = Math.max(0, startIndex); i < Math.min(57, endIndex); i++) {
         availability[i] = true;
       }
     });
-    
+
     return availability;
   };
 
@@ -176,15 +176,15 @@ export const ConflictResolutionTable: React.FC<ConflictResolutionTableProps> = (
       ...rowStates,
       [date]: { ...rowStates[date], selected: checked }
     }).filter(state => state.selected).length;
-    
+
     setSelectAll(newSelectedCount === conflictData.conflicts.length);
   };
 
   const handleIndividualAction = (date: string, action: SessionAction['action']) => {
     setRowStates(prev => ({
       ...prev,
-      [date]: { 
-        ...prev[date], 
+      [date]: {
+        ...prev[date],
         action,
         isEditing: action === 'USE_ALTERNATIVE',
         tempStartTime: action === 'USE_ALTERNATIVE' ? originalTime.startTime : undefined,
@@ -308,23 +308,23 @@ export const ConflictResolutionTable: React.FC<ConflictResolutionTableProps> = (
 
   const handleSubmit = async () => {
     const actions: SessionAction[] = [];
-    
+
     Object.entries(rowStates).forEach(([date, state]) => {
       if (state.action && state.action !== 'RESET') {
         const action: SessionAction = {
           date,
           action: state.action as 'SKIP' | 'FORCE_CREATE' | 'USE_ALTERNATIVE'
         };
-  
+
         if (state.action === 'USE_ALTERNATIVE' && state.editedTime) {
           action.alternativeStartTime = state.editedTime.startTime;
           action.alternativeEndTime = state.editedTime.endTime;
         }
-  
+
         actions.push(action);
       }
     });
-  
+
     console.log('Session actions being submitted:', actions);
     await onSubmit(actions);
   };
@@ -356,7 +356,7 @@ export const ConflictResolutionTable: React.FC<ConflictResolutionTableProps> = (
                 ({selectedRows.length}/{conflictData.conflicts.length})
               </span>
             </div>
-            
+
             <div className="flex items-center gap-2">
               <Button
                 size="sm"
@@ -384,8 +384,8 @@ export const ConflictResolutionTable: React.FC<ConflictResolutionTableProps> = (
                 className="text-muted-foreground hover:text-foreground"
               >
                 <RotateCcw className="w-4 h-4 mr-1" />
-                {selectedRows.length > 0 
-                  ? `選択をリセット (${selectedRows.length})` 
+                {selectedRows.length > 0
+                  ? `選択をリセット (${selectedRows.length})`
                   : 'すべてをリセット'
                 }
               </Button>
@@ -410,7 +410,7 @@ export const ConflictResolutionTable: React.FC<ConflictResolutionTableProps> = (
             <TableBody>
               {conflictData.conflicts.map((conflict, index) => {
                 const rowState = rowStates[conflict.date];
-                const displayTime = rowState.editedTime 
+                const displayTime = rowState.editedTime
                   ? `${rowState.editedTime.startTime}-${rowState.editedTime.endTime}`
                   : `${originalTime.startTime}-${originalTime.endTime}`;
 
@@ -428,7 +428,7 @@ export const ConflictResolutionTable: React.FC<ConflictResolutionTableProps> = (
                         </div>
                       </TableCell>
                     </TableRow>
-                    
+
                     {/* Main row */}
                     <TableRow className={`hover:bg-muted/50 ${getRowStateStyles(rowState)}`}>
                       <TableCell className="w-12">
@@ -449,7 +449,7 @@ export const ConflictResolutionTable: React.FC<ConflictResolutionTableProps> = (
                                 const startTime = rowState.tempStartTime || originalTime.startTime;
                                 const endTime = rowState.tempEndTime || originalTime.endTime;
                                 const isInvalidTime = startTime >= endTime;
-                                
+
                                 return (
                                   <>
                                     <div className={`${isInvalidTime ? 'ring-2 ring-red-500 rounded-md' : ''}`}>
@@ -505,7 +505,7 @@ export const ConflictResolutionTable: React.FC<ConflictResolutionTableProps> = (
                           </div>
                         ) : (
                           <div className="flex items-center gap-2">
-                            <span 
+                            <span
                               className={`cursor-pointer hover:bg-muted/50 px-2 py-1 rounded ${
                                 rowState.editedTime ? 'font-semibold text-green-600' : ''
                               }`}
@@ -532,8 +532,8 @@ export const ConflictResolutionTable: React.FC<ConflictResolutionTableProps> = (
                             onClick={() => handleIndividualAction(conflict.date, 'USE_ALTERNATIVE')}
                             disabled={isLoading}
                             className={`hover:bg-accent/50 ${
-                              rowState.action === 'USE_ALTERNATIVE' 
-                                ? 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900 dark:text-green-200 dark:hover:bg-green-800' 
+                              rowState.action === 'USE_ALTERNATIVE'
+                                ? 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900 dark:text-green-200 dark:hover:bg-green-800'
                                 : ''
                             }`}
                           >
@@ -545,8 +545,8 @@ export const ConflictResolutionTable: React.FC<ConflictResolutionTableProps> = (
                             onClick={() => handleIndividualAction(conflict.date, 'SKIP')}
                             disabled={isLoading}
                             className={`hover:bg-accent/50 ${
-                              rowState.action === 'SKIP' 
-                                ? 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900 dark:text-red-200 dark:hover:bg-red-800 border border-red-300 dark:border-red-700' 
+                              rowState.action === 'SKIP'
+                                ? 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900 dark:text-red-200 dark:hover:bg-red-800 border border-red-300 dark:border-red-700'
                                 : ''
                             }`}
                           >
@@ -558,8 +558,8 @@ export const ConflictResolutionTable: React.FC<ConflictResolutionTableProps> = (
                             onClick={() => handleIndividualAction(conflict.date, 'FORCE_CREATE')}
                             disabled={isLoading}
                             className={`hover:bg-accent/50 ${
-                              rowState.action === 'FORCE_CREATE' 
-                                ? 'bg-orange-100 text-orange-700 hover:bg-orange-200 dark:bg-orange-900 dark:text-orange-200 dark:hover:bg-orange-800' 
+                              rowState.action === 'FORCE_CREATE'
+                                ? 'bg-orange-100 text-orange-700 hover:bg-orange-200 dark:bg-orange-900 dark:text-orange-200 dark:hover:bg-orange-800'
                                 : ''
                             }`}
                           >
@@ -588,7 +588,7 @@ export const ConflictResolutionTable: React.FC<ConflictResolutionTableProps> = (
       {/* Fixed footer with main actions */}
       <div className="flex items-center justify-between pt-4">
         <div className="text-sm text-muted-foreground">
-          {hasAnyChanges ? 
+          {hasAnyChanges ?
             `${Object.values(rowStates).filter(s => s.action).length}件の変更があります` :
             '変更はありません'
           }
@@ -605,7 +605,7 @@ export const ConflictResolutionTable: React.FC<ConflictResolutionTableProps> = (
             onClick={handleSubmit}
             disabled={!hasAnyChanges || isLoading}
           >
-            {isLoading ? '処理中...' : 'Changes を送信'}
+            {isLoading ? '処理中...' : '変更を送信'}
           </Button>
         </div>
       </div>
