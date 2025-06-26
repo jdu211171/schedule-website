@@ -67,8 +67,7 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
     const actualHeaders = Object.keys(parseResult.data[0]);
 
     // Get required headers based on import mode and column rules
-    const isUpdateMode = importMode === ImportMode.UPDATE_ONLY ||
-                        importMode === ImportMode.DELETE;
+    const isUpdateMode = importMode === ImportMode.UPDATE_ONLY;
     const requiredFields = getRequiredFields(isUpdateMode ? 'update' : 'create');
     const requiredHeaders = requiredFields
       .map(field => STUDENT_COLUMN_RULES[field]?.csvHeader)
@@ -157,8 +156,7 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
 
         // Validate row data with filtered columns using appropriate schema
         const validated =
-          importMode === ImportMode.UPDATE_ONLY ||
-          importMode === ImportMode.DELETE
+          importMode === ImportMode.UPDATE_ONLY
             ? studentUpdateImportSchema.parse(filteredRow)
             : studentImportSchema.parse(filteredRow);
 
@@ -234,8 +232,7 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
             result.skipped!++;
             continue;
           } else if (
-            importMode === ImportMode.UPDATE_ONLY ||
-            importMode === ImportMode.CREATE_OR_UPDATE
+            importMode === ImportMode.UPDATE_ONLY
           ) {
             // For updates, user must be a student
             if (!existingUser.student) {
@@ -256,24 +253,14 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
               fieldsInRow,
               rowNumber,
             });
-          } else if (importMode === ImportMode.DELETE) {
-            // Skip deletion handling for now
-            result.errors.push({
-              row: rowNumber,
-              errors: [`削除モードは現在サポートされていません`],
-            });
-            continue;
           }
         } else {
           // No existing user
-          if (
-            importMode === ImportMode.UPDATE_ONLY ||
-            importMode === ImportMode.DELETE
-          ) {
+          if (importMode === ImportMode.UPDATE_ONLY) {
             result.skipped!++;
             continue;
           }
-          // CREATE_ONLY and CREATE_OR_UPDATE will create new records
+          // CREATE_ONLY will create new records
           validatedData.push({
             ...validated,
             studentTypeId: studentType?.studentTypeId || null,
