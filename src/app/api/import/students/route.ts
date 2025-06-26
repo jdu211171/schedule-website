@@ -12,10 +12,10 @@ import {
   type ImportResult,
   formatValidationErrors,
 } from "@/schemas/import";
-import { 
-  STUDENT_COLUMN_RULES, 
-  getRequiredFields, 
-  csvHeaderToDbField 
+import {
+  STUDENT_COLUMN_RULES,
+  getRequiredFields,
+  csvHeaderToDbField
 } from "@/schemas/import/student-column-rules";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
@@ -67,7 +67,7 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
     const actualHeaders = Object.keys(parseResult.data[0]);
 
     // Get required headers based on import mode and column rules
-    const isUpdateMode = importMode === ImportMode.UPDATE_ONLY || 
+    const isUpdateMode = importMode === ImportMode.UPDATE_ONLY ||
                         importMode === ImportMode.DELETE;
     const requiredFields = getRequiredFields(isUpdateMode ? 'update' : 'create');
     const requiredHeaders = requiredFields
@@ -138,18 +138,18 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
         // Map CSV data to DB fields and filter ignored columns
         const filteredRow: Record<string, string> = {};
         const fieldsInRow: Set<string> = new Set();
-        
+
         for (const [csvHeader, csvValue] of Object.entries(row)) {
           const dbField = headerMapping[csvHeader];
           if (!dbField) continue;
-          
+
           const rule = Object.values(STUDENT_COLUMN_RULES).find(r => r.dbField === dbField);
           if (!rule) continue;
-          
+
           // Skip ignored columns
           const ruleType = isUpdateMode ? rule.updateRule : rule.createRule;
           if (ruleType === 'ignore') continue;
-          
+
           // Map to internal field name for schema validation
           filteredRow[dbField] = csvValue;
           fieldsInRow.add(dbField);
@@ -445,7 +445,8 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
             } else {
               // Generate a default password if not provided
               const defaultPassword = `${data.username}@123`;
-              hashedPassword = await bcrypt.hash(defaultPassword, 10);
+              // DO NOT HASH THE DEFAULT PASSWORD HERE
+              hashedPassword = defaultPassword;
               result.warnings.push({
                 message: `行 ${data.rowNumber}: パスワードが指定されていないため、デフォルトパスワード（${defaultPassword}）を設定しました`,
                 type: "default_password",

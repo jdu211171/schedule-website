@@ -45,6 +45,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import type { ImportResult } from "@/schemas/import";
 
 const formSchema = z.object({
   file: z
@@ -62,16 +63,6 @@ const formSchema = z.object({
 });
 
 type FormValues = z.infer<typeof formSchema>;
-
-interface ImportResult {
-  success: number;
-  errors: Array<{ row: number; errors: string[] }>;
-  warnings: Array<{ row: number; warnings: string[] }>;
-  created?: number;
-  updated?: number;
-  deleted?: number;
-  skipped?: number;
-}
 
 interface CSVImportDialogProps {
   open: boolean;
@@ -394,15 +385,21 @@ export function CSVImportDialog({
                           key={index}
                           className="rounded-lg border border-yellow-200 bg-yellow-50 p-3"
                         >
-                          <div className="flex items-center gap-2 mb-1">
-                            <Badge className="bg-yellow-600 text-xs">
-                              行 {warning.row}
-                            </Badge>
-                          </div>
+                          {warning.row && (
+                            <div className="flex items-center gap-2 mb-1">
+                              <Badge className="bg-yellow-600 text-xs">
+                                行 {warning.row}
+                              </Badge>
+                            </div>
+                          )}
                           <ul className="list-inside list-disc text-sm text-yellow-700 space-y-1">
-                            {warning.warnings.map((msg, i) => (
-                              <li key={i}>{msg}</li>
-                            ))}
+                            {warning.warnings && Array.isArray(warning.warnings) ? (
+                              warning.warnings.map((msg, i) => (
+                                <li key={i}>{msg}</li>
+                              ))
+                            ) : warning.message ? (
+                              <li>{warning.message}</li>
+                            ) : null}
                           </ul>
                         </div>
                       ))}

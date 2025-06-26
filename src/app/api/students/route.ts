@@ -458,7 +458,25 @@ export const GET = withBranchAccess(
       }
     }
 
-    // Filter by branches - need to filter through user.branches relationship
+    // Filter students by branch for non-admin users (same as teachers route)
+    if (session.user?.role !== "ADMIN") {
+      if (!where.user) where.user = {};
+      where.user.branches = {
+        some: {
+          branchId,
+        },
+      };
+    } else if (branchId) {
+      // If admin has selected a specific branch, filter by that branch
+      if (!where.user) where.user = {};
+      where.user.branches = {
+        some: {
+          branchId,
+        },
+      };
+    }
+
+    // Additional branch filter from query params (for explicit filtering)
     // Note: branchIds might contain branch names, so we need to handle both cases
     if (branchIds && branchIds.length > 0) {
       if (!where.user) where.user = {};
@@ -550,15 +568,9 @@ export const GET = withBranchAccess(
           branchId,
         };
       }
-    } else if (branchId && (!branchIds || branchIds.length === 0)) {
-      // If admin has selected a specific branch, filter by that branch
-      if (!where.user) where.user = {};
-      where.user.branches = {
-        some: {
-          branchId,
-        },
-      };
     }
+    // For admins, only apply branch filter if explicitly requested via branchIds parameter
+    // Do not filter by the selected branch header to show all students
 
     // Calculate pagination
     const skip = (page - 1) * limit;
@@ -663,7 +675,7 @@ export const GET = withBranchAccess(
 // POST - Create a new student
 export const POST = withBranchAccess(
   ["ADMIN", "STAFF"],
-  async (request: NextRequest) => {
+  async (request: NextRequest, session, branchId) => {
     try {
       const body = await request.json();
 
@@ -719,13 +731,41 @@ export const POST = withBranchAccess(
         }
       }
 
-      // Verify that all branchIds exist if provided
-      if (branchIds.length > 0) {
+      // For non-admin users, ensure the student is associated with the selected branch
+      const finalBranchIds = [...branchIds];
+      if (!finalBranchIds.includes(branchId)) {
+        finalBranchIds.push(branchId);
+      }
+
+      // Admins can assign students to any branch, but staff must include their selected branch
+      if (session.user?.role !== "ADMIN") {
+        // Staff can only assign students to branches they have access to
+        const userBranches =
+          session.user?.branches?.map((b: any) => b.branchId) || [];
+
+        // Verify staff has access to all requested branches
+        const unauthorizedBranches = finalBranchIds.filter(
+          (id) => !userBranches.includes(id)
+        );
+
+        if (unauthorizedBranches.length > 0) {
+          return NextResponse.json(
+            {
+              error:
+                "You don't have access to assign students to some of these branches",
+            },
+            { status: 403 }
+          );
+        }
+      }
+
+      // Verify that all branchIds exist
+      if (finalBranchIds.length > 0) {
         const branchCount = await prisma.branch.count({
-          where: { branchId: { in: branchIds } },
+          where: { branchId: { in: finalBranchIds } },
         });
 
-        if (branchCount !== branchIds.length) {
+        if (branchCount !== finalBranchIds.length) {
           return NextResponse.json(
             { error: "一部の校舎IDが存在しません" }, // "Some branch IDs do not exist"
             { status: 400 }
@@ -807,10 +847,10 @@ export const POST = withBranchAccess(
           },
         });
 
-        // Create branch associations if provided
-        if (branchIds.length > 0) {
+        // Create branch associations
+        if (finalBranchIds.length > 0) {
           await tx.userBranch.createMany({
-            data: branchIds.map((branchId) => ({
+            data: finalBranchIds.map((branchId) => ({
               userId: user.id,
               branchId,
             })),
