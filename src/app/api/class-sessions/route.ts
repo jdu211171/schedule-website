@@ -565,6 +565,23 @@ export const POST = withBranchAccess(
         const sessionAction = sessionActions?.find((action) => action.date === dateStr);
         const shouldForceCreate = forceCreate || sessionAction?.action === "FORCE_CREATE";
 
+        // Determine times to use (original or alternative)
+        let effectiveStartTime = startTime;
+        let effectiveEndTime = endTime;
+        let effectiveStartDateTime = startDateTime;
+        let effectiveEndDateTime = endDateTime;
+
+        if (
+          sessionAction?.action === "USE_ALTERNATIVE" &&
+          sessionAction.alternativeStartTime &&
+          sessionAction.alternativeEndTime
+        ) {
+          effectiveStartTime = sessionAction.alternativeStartTime;
+          effectiveEndTime = sessionAction.alternativeEndTime;
+          effectiveStartDateTime = createDateTime(date, effectiveStartTime);
+          effectiveEndDateTime = createDateTime(date, effectiveEndTime);
+        }
+
         // Check vacation conflict
         const hasVacationConflict = await checkVacationConflict(
           dateObj,
@@ -580,14 +597,14 @@ export const POST = withBranchAccess(
           });
         }
 
-        // Enhanced availability check
+        // Enhanced availability check with effective times
         if (checkAvailability && teacherId && studentId) {
           const availabilityConflict = await checkEnhancedAvailabilityConflicts(
             teacherId,
             studentId,
             dateObj,
-            startDateTime,
-            endDateTime
+            effectiveStartDateTime,
+            effectiveEndDateTime
           );
 
           if (availabilityConflict) {
@@ -600,8 +617,8 @@ export const POST = withBranchAccess(
           where: {
             teacherId,
             date: dateObj,
-            startTime: startDateTime,
-            endTime: endDateTime,
+            startTime: effectiveStartDateTime,
+            endTime: effectiveEndDateTime,
           },
         });
 
@@ -622,22 +639,22 @@ export const POST = withBranchAccess(
                 // Session starts during existing session
                 {
                   AND: [
-                    { startTime: { lte: startDateTime } },
-                    { endTime: { gt: startDateTime } },
+                    { startTime: { lte: effectiveStartDateTime } },
+                    { endTime: { gt: effectiveStartDateTime } },
                   ],
                 },
                 // Session ends during existing session
                 {
                   AND: [
-                    { startTime: { lt: endDateTime } },
-                    { endTime: { gte: endDateTime } },
+                    { startTime: { lt: effectiveEndDateTime } },
+                    { endTime: { gte: effectiveEndDateTime } },
                   ],
                 },
                 // Session completely contains existing session
                 {
                   AND: [
-                    { startTime: { gte: startDateTime } },
-                    { endTime: { lte: endDateTime } },
+                    { startTime: { gte: effectiveStartDateTime } },
+                    { endTime: { lte: effectiveEndDateTime } },
                   ],
                 },
               ],
@@ -691,14 +708,22 @@ export const POST = withBranchAccess(
           );
         }
 
+        // Recalculate duration if using alternative times
+        const effectiveDuration = sessionAction?.action === "USE_ALTERNATIVE"
+          ? Math.round(
+              (effectiveEndDateTime.getTime() - effectiveStartDateTime.getTime()) / (1000 * 60)
+            )
+          : calculatedDuration;
+
         // Create a single class session
         const newClassSession = await prisma.classSession.create({
           data: {
             ...sessionData,
             seriesId: null,
             date: dateObj,
-            startTime: startDateTime,
-            endTime: endDateTime,
+            startTime: effectiveStartDateTime,
+            endTime: effectiveEndDateTime,
+            duration: effectiveDuration,
           },
           include: {
             teacher: {
