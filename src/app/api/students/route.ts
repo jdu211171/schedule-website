@@ -353,7 +353,7 @@ export const GET = withBranchAccess(
 
     // Handle both single values and arrays
     const arrayParams = ['studentTypeIds', 'gradeYears', 'statuses', 'branchIds', 'subjectIds', 'lineConnection', 'schoolTypes', 'examCategories', 'examCategoryTypes'];
-    
+
     url.searchParams.forEach((value, key) => {
       if (arrayParams.includes(key)) {
         // Collect array parameters
@@ -382,14 +382,14 @@ export const GET = withBranchAccess(
       );
     }
 
-    const { 
-      page, 
-      limit, 
-      name, 
-      studentTypeId, 
-      studentTypeIds, 
+    const {
+      page,
+      limit,
+      name,
+      studentTypeId,
+      studentTypeIds,
       gradeYear,
-      gradeYears, 
+      gradeYears,
       status,
       statuses,
       branchIds,
@@ -506,7 +506,7 @@ export const GET = withBranchAccess(
       // Check if branchIds contain UUIDs or names
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       const hasUUIDs = branchIds.some(id => isUUID.test(id));
-      
+
       if (hasUUIDs) {
         where.user.branches = {
           some: {
@@ -538,29 +538,29 @@ export const GET = withBranchAccess(
     // Filter by LINE connection status
     if (lineConnection && lineConnection.length > 0) {
       const orConditions = [];
-      
+
       if (lineConnection.includes("not_connected")) {
         orConditions.push({ lineId: null });
       }
-      
+
       if (lineConnection.includes("connected_enabled")) {
-        orConditions.push({ 
+        orConditions.push({
           AND: [
             { lineId: { not: null } },
             { lineNotificationsEnabled: true }
           ]
         });
       }
-      
+
       if (lineConnection.includes("connected_disabled")) {
-        orConditions.push({ 
+        orConditions.push({
           AND: [
             { lineId: { not: null } },
             { lineNotificationsEnabled: false }
           ]
         });
       }
-      
+
       if (orConditions.length > 0) {
         if (where.OR) {
           // If we already have OR conditions (from name search), wrap them
@@ -920,7 +920,7 @@ export const POST = withBranchAccess(
         }
 
         // Create regular availability records if provided
-        if (regularAvailability.length > 0) {
+        if (regularAvailability !== undefined && regularAvailability.length > 0) {
           const availabilityRecords = [];
 
           for (const dayAvailability of regularAvailability) {

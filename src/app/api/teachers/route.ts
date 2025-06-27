@@ -606,7 +606,7 @@ export const POST = withBranchAccess(
         }
 
         // Create regular availability records if provided
-        if (regularAvailability.length > 0) {
+        if (regularAvailability !== undefined && regularAvailability.length > 0) {
           const availabilityRecords = [];
 
           for (const dayAvailability of regularAvailability) {

@@ -666,9 +666,9 @@ export const PATCH = withBranchAccess(
           }
         }
 
-        // Update regular availability if provided
-        if (regularAvailability.length > 0) {
-          // Delete existing regular availability records for this user
+        // Update regular availability if provided (including empty array to clear all)
+        if (regularAvailability !== undefined) {
+          // Always delete existing regular availability records when regularAvailability is provided
           await tx.userAvailability.deleteMany({
             where: {
               userId: existingStudent.userId,
@@ -676,60 +676,63 @@ export const PATCH = withBranchAccess(
             },
           });
 
-          const availabilityRecords = [];
+          // Only create new records if there are any
+          if (regularAvailability.length > 0) {
+            const availabilityRecords = [];
 
-          for (const dayAvailability of regularAvailability) {
-            const { dayOfWeek, timeSlots, fullDay } = dayAvailability;
+            for (const dayAvailability of regularAvailability) {
+              const { dayOfWeek, timeSlots, fullDay } = dayAvailability;
 
-            if (fullDay) {
-              // Create a full-day availability record
-              availabilityRecords.push({
-                userId: existingStudent.userId,
-                dayOfWeek: dayOfWeek as DayOfWeek,
-                type: "REGULAR" as const,
-                status: "APPROVED" as const,
-                fullDay: true,
-                startTime: null,
-                endTime: null,
-                date: null,
-                reason: null,
-                notes: null,
-              });
-            } else if (timeSlots && timeSlots.length > 0) {
-              // Create availability records for each time slot
-              for (const slot of timeSlots) {
-                // Create time from string using epoch date for consistency
-                const [startHours, startMinutes] = slot.startTime
-                  .split(":")
-                  .map(Number);
-                const [endHours, endMinutes] = slot.endTime
-                  .split(":")
-                  .map(Number);
-
+              if (fullDay) {
+                // Create a full-day availability record
                 availabilityRecords.push({
                   userId: existingStudent.userId,
                   dayOfWeek: dayOfWeek as DayOfWeek,
                   type: "REGULAR" as const,
                   status: "APPROVED" as const,
-                  fullDay: false,
-                  startTime: new Date(
-                    Date.UTC(2000, 0, 1, startHours, startMinutes, 0, 0)
-                  ),
-                  endTime: new Date(
-                    Date.UTC(2000, 0, 1, endHours, endMinutes, 0, 0)
-                  ),
+                  fullDay: true,
+                  startTime: null,
+                  endTime: null,
                   date: null,
                   reason: null,
                   notes: null,
                 });
+              } else if (timeSlots && timeSlots.length > 0) {
+                // Create availability records for each time slot
+                for (const slot of timeSlots) {
+                  // Create time from string using epoch date for consistency
+                  const [startHours, startMinutes] = slot.startTime
+                    .split(":")
+                    .map(Number);
+                  const [endHours, endMinutes] = slot.endTime
+                    .split(":")
+                    .map(Number);
+
+                  availabilityRecords.push({
+                    userId: existingStudent.userId,
+                    dayOfWeek: dayOfWeek as DayOfWeek,
+                    type: "REGULAR" as const,
+                    status: "APPROVED" as const,
+                    fullDay: false,
+                    startTime: new Date(
+                      Date.UTC(2000, 0, 1, startHours, startMinutes, 0, 0)
+                    ),
+                    endTime: new Date(
+                      Date.UTC(2000, 0, 1, endHours, endMinutes, 0, 0)
+                    ),
+                    date: null,
+                    reason: null,
+                    notes: null,
+                  });
+                }
               }
             }
-          }
 
-          if (availabilityRecords.length > 0) {
-            await tx.userAvailability.createMany({
-              data: availabilityRecords,
-            });
+            if (availabilityRecords.length > 0) {
+              await tx.userAvailability.createMany({
+                data: availabilityRecords,
+              });
+            }
           }
         }
 
