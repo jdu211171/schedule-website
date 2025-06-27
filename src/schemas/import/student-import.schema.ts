@@ -4,8 +4,7 @@ export const studentImportSchema = z.object({
   username: z
     .string()
     .min(3, "ユーザー名は3文字以上で入力してください")
-    .max(50, "ユーザー名は50文字以下で入力してください")
-    .regex(/^[a-zA-Z0-9_-]+$/, "ユーザー名は英数字、ハイフン、アンダースコアのみ使用できます"),
+    .max(50, "ユーザー名は50文字以下で入力してください"),
   email: z
     .string()
     .transform(val => val === "" ? null : val)
@@ -138,8 +137,7 @@ export const studentUpdateImportSchema = z.object({
   username: z
     .string()
     .min(3, "ユーザー名は3文字以上で入力してください")
-    .max(50, "ユーザー名は50文字以下で入力してください")
-    .regex(/^[a-zA-Z0-9_-]+$/, "ユーザー名は英数字、ハイフン、アンダースコアのみ使用できます"),
+    .max(50, "ユーザー名は50文字以下で入力してください"),
   email: z
     .string()
     .transform(val => val === "" ? null : val)
