@@ -854,6 +854,21 @@ export const POST = withBranchAccess(
       // NOTE: This is a security risk - passwords should normally be hashed
       const passwordHash = password;
 
+      // Clean up optional fields - convert empty strings to null
+      const cleanedStudentData = {
+        ...studentData,
+        lineUserId: studentData.lineUserId || null,
+        kanaName: studentData.kanaName || null,
+        notes: studentData.notes || null,
+        schoolName: studentData.schoolName || null,
+        firstChoice: studentData.firstChoice || null,
+        secondChoice: studentData.secondChoice || null,
+        parentEmail: studentData.parentEmail || null,
+        homePhone: studentData.homePhone || null,
+        parentPhone: studentData.parentPhone || null,
+        studentPhone: studentData.studentPhone || null,
+      };
+
       // Create user, student and all related data in a transaction
       const newStudent = await prisma.$transaction(async (tx) => {
         // Create user first
@@ -861,7 +876,7 @@ export const POST = withBranchAccess(
           data: {
             username,
             passwordHash,
-            email,
+            email: email || null,
             role: "STUDENT",
           },
         });
@@ -869,8 +884,8 @@ export const POST = withBranchAccess(
         // Create student record
         const student = await tx.student.create({
           data: {
-            ...studentData,
-            studentTypeId,
+            ...cleanedStudentData,
+            studentTypeId: studentTypeId || null,
             userId: user.id,
           },
         });

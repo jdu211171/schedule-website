@@ -49,6 +49,7 @@ import {
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -233,7 +234,7 @@ export function StudentFormDialog({
       kanaName: "",
       studentTypeId: undefined,
       gradeYear: undefined,
-      lineId: "",
+      lineUserId: "",
       lineNotificationsEnabled: true,
       notes: "",
       status: "ACTIVE",
@@ -296,7 +297,7 @@ export function StudentFormDialog({
         kanaName: student.kanaName || "",
         studentTypeId: student.studentTypeId || undefined,
         gradeYear: student.gradeYear ?? undefined,
-        lineId: student.lineId || "",
+        lineUserId: student.lineUserId || "",
         lineNotificationsEnabled: student.lineNotificationsEnabled ?? true,
         notes: student.notes || "",
         status:
@@ -381,7 +382,7 @@ export function StudentFormDialog({
         kanaName: "",
         studentTypeId: undefined,
         gradeYear: undefined,
-        lineId: "",
+        lineUserId: "",
         notes: "",
         status: "ACTIVE",
         username: "",
@@ -859,7 +860,7 @@ export function StudentFormDialog({
       kanaName: "",
       studentTypeId: undefined,
       gradeYear: undefined,
-      lineId: "",
+      lineUserId: "",
       notes: "",
       status: "ACTIVE",
       username: "",
@@ -1185,6 +1186,30 @@ export function StudentFormDialog({
                                     value={field.value || ""}
                                   />
                                 </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name="lineUserId"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-sm font-medium">
+                                  LINEユーザーID（任意）
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    placeholder="LINEユーザーIDを入力"
+                                    className="h-11"
+                                    {...field}
+                                    value={field.value || ""}
+                                  />
+                                </FormControl>
+                                <FormDescription className="text-xs">
+                                  LINEアカウントでログインや連携に使用されます
+                                </FormDescription>
                                 <FormMessage />
                               </FormItem>
                             )}
@@ -1692,6 +1717,7 @@ export function StudentFormDialog({
                         userType="student"
                         userName={student.name}
                         lineId={student.lineId}
+                        lineUserId={student.lineUserId}
                         lineNotificationsEnabled={student.lineNotificationsEnabled}
                         username={student.username || ""}
                         onNotificationToggle={(enabled) => {

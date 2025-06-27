@@ -21,7 +21,8 @@
       "Bash(curl:*)",
       "Bash(node:*)",
       "Bash(tree:*)",
-      "Bash(pkill:*)"
+      "Bash(pkill:*)",
+      "Bash(bun prisma db seed:*)"
     ],
     "deny": []
   }

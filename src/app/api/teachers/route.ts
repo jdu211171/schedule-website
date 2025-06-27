@@ -545,6 +545,16 @@ export const POST = withBranchAccess(
       // For teachers, use the password directly (no hashing)
       const passwordHash = password;
 
+      // Clean up optional fields - convert empty strings to null
+      const cleanedTeacherData = {
+        ...teacherData,
+        lineUserId: teacherData.lineUserId || null,
+        kanaName: teacherData.kanaName || null,
+        notes: teacherData.notes || null,
+        phoneNumber: teacherData.phoneNumber || null,
+        phoneNotes: teacherData.phoneNotes || null,
+      };
+
       // Create user, teacher and all related data in a transaction
       const newTeacher = await prisma.$transaction(async (tx) => {
         // Create user first
@@ -552,7 +562,7 @@ export const POST = withBranchAccess(
           data: {
             username,
             passwordHash,
-            email,
+            email: email || null,
             role: "TEACHER",
           },
         });
@@ -560,8 +570,8 @@ export const POST = withBranchAccess(
         // Create teacher record
         const teacher = await tx.teacher.create({
           data: {
-            ...teacherData,
-            email,
+            ...cleanedTeacherData,
+            email: email || null,
             userId: user.id,
           },
         });

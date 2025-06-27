@@ -25,6 +25,7 @@ interface LineLinkingProps {
   userType: "student" | "teacher";
   userName: string;
   lineId?: string | null;
+  lineUserId?: string | null;
   lineNotificationsEnabled?: boolean | null;
   username: string;
   onNotificationToggle?: (enabled: boolean) => void;
@@ -34,6 +35,7 @@ interface LineLinkingData {
   userId: string;
   name: string;
   username: string;
+  lineUserId?: string | null;
   isLinked: boolean;
   lineNotificationsEnabled?: boolean;
 }
@@ -43,6 +45,7 @@ export function LineLinking({
   userType,
   userName,
   lineId: initialLineId,
+  lineUserId,
   lineNotificationsEnabled: initialNotificationsEnabled,
   username,
   onNotificationToggle
@@ -65,6 +68,7 @@ export function LineLinking({
       userId,
       name: userName,
       username,
+      lineUserId,
       isLinked: !!initialLineId,
       lineNotificationsEnabled: localNotificationsEnabled
     }),
@@ -72,6 +76,7 @@ export function LineLinking({
       userId,
       name: userName,
       username,
+      lineUserId,
       isLinked: !!initialLineId,
       lineNotificationsEnabled: localNotificationsEnabled
     },
@@ -79,14 +84,15 @@ export function LineLinking({
   });
 
   const copyToClipboard = async () => {
-    if (!linkingData?.username) return;
+    const textToCopy = linkingData?.lineUserId || linkingData?.username;
+    if (!textToCopy) return;
 
     try {
-      await navigator.clipboard.writeText(linkingData.username);
+      await navigator.clipboard.writeText(textToCopy);
       setIsCopied(true);
       toast({
         title: "コピーしました",
-        description: "ユーザー名をクリップボードにコピーしました。",
+        description: linkingData?.lineUserId ? "LINEユーザーIDをクリップボードにコピーしました。" : "ユーザー名をクリップボードにコピーしました。",
       });
       setTimeout(() => setIsCopied(false), 2000);
     } catch {
@@ -175,7 +181,7 @@ export function LineLinking({
             <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-              以下のユーザー名をメッセージ公式アカウント (@992emavw) に送信してください。
+              以下の{linkingData?.lineUserId ? "LINEユーザーID" : "ユーザー名"}をメッセージ公式アカウント (@992emavw) に送信してください。
               </AlertDescription>
             </Alert>
 
@@ -184,7 +190,7 @@ export function LineLinking({
               <div className="relative">
                 <input
                 type="text"
-                value={linkingData?.username || ""}
+                value={linkingData?.lineUserId || linkingData?.username || ""}
                 readOnly
                 className="w-full px-4 py-2 pr-20 text-lg font-mono text-center bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md text-gray-900 dark:text-gray-100"
                 />
@@ -210,7 +216,7 @@ export function LineLinking({
           <h4 className="text-sm font-medium mb-2">連携手順:</h4>
           <ol className="text-sm text-muted-foreground space-y-1">
             <li>1. メッセージ公式アカウント (@992emavw) を友だち追加</li>
-            <li>2. トーク画面であなたのユーザー名を送信</li>
+            <li>2. トーク画面であなたの{linkingData?.lineUserId ? "LINEユーザーID" : "ユーザー名"}を送信</li>
             <li>3. 連携完了のメッセージが届きます</li>
           </ol>
         </div>

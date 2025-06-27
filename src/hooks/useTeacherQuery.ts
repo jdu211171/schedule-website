@@ -10,6 +10,7 @@ export type Teacher = {
   kanaName: string | null;
   email: string | null;
   lineId: string | null;
+  lineUserId: string | null;
   lineNotificationsEnabled: boolean | null;
   notes: string | null;
   status?: string;

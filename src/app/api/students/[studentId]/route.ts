@@ -583,21 +583,34 @@ export const PATCH = withBranchAccess(
       // Update user, student and branch associations in a transaction
       const updatedStudent = await prisma.$transaction(async (tx) => {
         // Update user first if needed
-        if (username || password || email) {
+        if (username || password || email !== undefined) {
           await tx.user.update({
             where: { id: existingStudent.userId },
             data: {
               username,
               passwordHash: password || undefined,
-              email,
+              email: email || null,
             },
           });
+        }
+
+        // Clean up optional fields - convert empty strings to null
+        const cleanedStudentData: any = {};
+        for (const [key, value] of Object.entries(studentData)) {
+          if (key === 'lineUserId' || key === 'kanaName' || key === 'notes' || 
+              key === 'schoolName' || key === 'firstChoice' || key === 'secondChoice' || 
+              key === 'parentEmail' || key === 'homePhone' || key === 'parentPhone' || 
+              key === 'studentPhone') {
+            cleanedStudentData[key] = value || null;
+          } else {
+            cleanedStudentData[key] = value;
+          }
         }
 
         // Update student record
         await tx.student.update({
           where: { studentId },
-          data: studentData,
+          data: cleanedStudentData,
         });
 
         // Update branch associations if provided

@@ -395,6 +395,7 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
             createdAt: new Date(teacher.createdAt),
             updatedAt: new Date(teacher.updatedAt),
             linkingCode: null,
+            lineUserId: teacher.lineUserId || null,
           })) || []
       }
       students={
@@ -411,6 +412,7 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
             studentTypeId: student.studentTypeId,
             gradeYear: student.gradeYear,
             lineId: student.lineId,
+            lineUserId: student.lineUserId,
             lineNotificationsEnabled: student.lineNotificationsEnabled,
             notes: student.notes,
             status: student.status as UserStatus,

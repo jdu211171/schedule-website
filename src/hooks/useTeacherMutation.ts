@@ -110,6 +110,7 @@ export function useTeacherCreate() {
             kanaName: newTeacher.kanaName || null,
             email: newTeacher.email || null,
             lineId: newTeacher.lineId || null,
+            lineUserId: newTeacher.lineUserId || null,
             lineNotificationsEnabled: newTeacher.lineNotificationsEnabled ?? true,
             notes: newTeacher.notes || null,
             birthDate: newTeacher.birthDate ? new Date(newTeacher.birthDate).toISOString() : null,

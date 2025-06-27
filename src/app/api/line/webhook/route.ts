@@ -70,17 +70,52 @@ export async function POST(req: NextRequest) {
         continue;
       }
 
-      // Check if it's a username
-      const username = text.trim();
+      // Check if it's a username or LINE User ID
+      const identifier = text.trim();
 
-      // Try to find a user with this username
-      const user = await prisma.user.findFirst({
-        where: { username },
+      // First try to find a user with this username
+      let user = await prisma.user.findFirst({
+        where: { username: identifier },
         include: {
           student: true,
           teacher: true
         }
       });
+
+      // If not found by username, try to find by LINE User ID
+      if (!user) {
+        const student = await prisma.student.findFirst({
+          where: { lineUserId: identifier },
+          include: {
+            user: {
+              include: {
+                student: true,
+                teacher: true
+              }
+            }
+          }
+        });
+        
+        if (student) {
+          user = student.user;
+        } else {
+          const teacher = await prisma.teacher.findFirst({
+            where: { lineUserId: identifier },
+            include: {
+              user: {
+                include: {
+                  student: true,
+                  teacher: true
+                }
+              }
+            }
+          });
+          
+          if (teacher) {
+            user = teacher.user;
+          }
+        }
+      }
 
       if (user) {
         // Check if user has a student or teacher profile
@@ -165,11 +200,11 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // Invalid username or user has no student/teacher profile
+      // Invalid username/LINE User ID or user has no student/teacher profile
       try {
         await sendLineReply(
           replyToken,
-          '❌ 無効なユーザー名です。\n\n正しいユーザー名を入力するか、システム管理者にお問い合わせください。'
+          '❌ 無効なユーザー名またはLINEユーザーIDです。\n\n正しいユーザー名またはLINEユーザーIDを入力するか、システム管理者にお問い合わせください。'
         );
       } catch (replyError) {
         console.error('Error sending invalid username reply:', replyError);

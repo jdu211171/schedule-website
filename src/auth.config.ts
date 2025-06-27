@@ -22,7 +22,7 @@ export default {
     Credentials({
       credentials: {
         identifier: {
-          placeholder: "Username, Email or Line ID",
+          placeholder: "Username, Email or LINE User ID",
           name: "identifier",
           type: "text",
         },
@@ -35,7 +35,7 @@ export default {
       authorize: async (creds) => {
         console.log("🔍 Credentials login attempt:", creds)
         if (!creds?.identifier || !creds?.password)
-          throw new Error("Missing username/email/line ID or password");
+          throw new Error("Missing username/email/LINE user ID or password");
 
         const { identifier, password } = creds as {
           identifier: string;
@@ -96,6 +96,63 @@ export default {
             const teacher = await prisma.teacher.findUnique({
               where: {
                 lineId: identifier
+              },
+              include: {
+                user: {
+                  include: {
+                    student: true,
+                    teacher: true,
+                    branches: {
+                      include: {
+                        branch: {
+                          select: {
+                            branchId: true,
+                            name: true,
+                          },
+                        },
+                      },
+                    },
+                  },
+                }
+              }
+            });
+            if (teacher) {
+              user = teacher?.user;
+            }
+          }
+        }
+
+        // If still no user found, check for Line User ID
+        if (!user) {
+          const student = await prisma.student.findUnique({
+            where: {
+              lineUserId: identifier
+            },
+            include: {
+              user: {
+                include: {
+                  student: true,
+                  teacher: true,
+                  branches: {
+                    include: {
+                      branch: {
+                        select: {
+                          branchId: true,
+                          name: true,
+                        },
+                      },
+                    },
+                  },
+                },
+              }
+            }
+          });
+          if (student) {
+            user = student?.user;
+          } else {
+            const teacher = await prisma.teacher.findUnique({
+              where: {
+                lineUserId: identifier
               },
               include: {
                 user: {

@@ -45,6 +45,7 @@ import {
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -184,7 +185,7 @@ export function TeacherFormDialog({
       name: "",
       kanaName: "",
       email: "",
-      lineId: "",
+      lineUserId: "",
       lineNotificationsEnabled: true,
       notes: "",
       birthDate: undefined,
@@ -212,7 +213,7 @@ export function TeacherFormDialog({
         name: teacher.name || "",
         kanaName: teacher.kanaName || "",
         email: teacher.email || "",
-        lineId: teacher.lineId || "",
+        lineUserId: teacher.lineUserId || "",
         lineNotificationsEnabled: teacher.lineNotificationsEnabled ?? true,
         notes: teacher.notes || "",
         status:
@@ -281,7 +282,7 @@ export function TeacherFormDialog({
         name: "",
         kanaName: "",
         email: "",
-        lineId: "",
+        lineUserId: "",
         notes: "",
         status: "ACTIVE",
         username: "",
@@ -594,7 +595,7 @@ export function TeacherFormDialog({
       name: "",
       kanaName: "",
       email: "",
-      lineId: "",
+      lineUserId: "",
       notes: "",
       status: "ACTIVE",
       username: "",
@@ -809,6 +810,30 @@ export function TeacherFormDialog({
                             )}
                           />
 
+                          <FormField
+                            control={form.control}
+                            name="lineUserId"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-sm font-medium">
+                                  LINEユーザーID（任意）
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    placeholder="LINEユーザーIDを入力"
+                                    className="h-11"
+                                    {...field}
+                                    value={field.value || ""}
+                                  />
+                                </FormControl>
+                                <FormDescription className="text-xs">
+                                  LINEアカウントでログインや連携に使用されます
+                                </FormDescription>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
                         </div>
 
                         {/* Personal Information */}
@@ -990,6 +1015,7 @@ export function TeacherFormDialog({
                         userType="teacher"
                         userName={teacher.name}
                         lineId={teacher.lineId}
+                        lineUserId={teacher.lineUserId}
                         lineNotificationsEnabled={teacher.lineNotificationsEnabled}
                         username={teacher.username || ""}
                         onNotificationToggle={(enabled) => {
