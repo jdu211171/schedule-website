@@ -291,6 +291,7 @@ const formatStudent = (student: StudentWithIncludes): FormattedStudent => {
     maxYears: student.studentType?.maxYears || null,
     gradeYear: student.gradeYear,
     lineId: student.lineId,
+    lineUserId: student.lineUserId,
     notes: student.notes,
     status: student.status,
     username: student.user.username,

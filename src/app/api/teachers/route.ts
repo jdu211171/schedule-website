@@ -244,6 +244,7 @@ const formatTeacher = (teacher: TeacherWithIncludes): FormattedTeacher => {
     kanaName: teacher.kanaName,
     email: teacher.email,
     lineId: teacher.lineId,
+    lineUserId: teacher.lineUserId,
     notes: teacher.notes,
     status: teacher.status,
     birthDate: teacher.birthDate,

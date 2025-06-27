@@ -185,7 +185,8 @@ export function StudentFormDialog({
 //   }
 //   return true;
 // });
-  const keepDialogOpen = true;
+  // Keep dialog open only when editing, close on create
+  const keepDialogOpen = isEditing;
 
   // Subject selection state
   const [studentSubjects, setStudentSubjects] = useState<StudentSubject[]>([]);

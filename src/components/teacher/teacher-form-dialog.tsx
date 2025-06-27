@@ -158,7 +158,8 @@ export function TeacherFormDialog({
   const isSubmitting =
     createTeacherMutation.isPending || updateTeacherMutation.isPending;
 
-  const keepDialogOpen = true;
+  // Keep dialog open only when editing, close on create
+  const keepDialogOpen = isEditing;
 
   // Subject selection state
   const [teacherSubjects, setTeacherSubjects] = useState<TeacherSubject[]>([]);
