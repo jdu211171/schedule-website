@@ -42,7 +42,7 @@ export function DatePicker({ value, onChange }: DatePickerProps) {
           )}
         >
           <CalendarIcon className="mr-2 h-4 w-4" />
-          {internalDate ? format(internalDate, "PPP") : <span>Pick a date</span>}
+          {internalDate ? format(internalDate, "PPP") : <span>日付を選択</span>}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0">

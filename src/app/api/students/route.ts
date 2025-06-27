@@ -58,6 +58,13 @@ type StudentWithIncludes = Student & {
       name: string;
     };
   }[];
+  contactPhones?: {
+    id: string;
+    phoneType: string;
+    phoneNumber: string;
+    notes: string | null;
+    order: number;
+  }[];
 };
 
 type FormattedStudent = {
@@ -104,6 +111,30 @@ type FormattedStudent = {
     fullDay: boolean;
     reason?: string | null;
     notes?: string | null;
+  }[];
+  // School information
+  schoolName: string | null;
+  schoolType: string | null;
+  // Exam information
+  examCategory: string | null;
+  examCategoryType: string | null;
+  firstChoice: string | null;
+  secondChoice: string | null;
+  examDate: Date | null;
+  // Contact information
+  homePhone: string | null;
+  parentPhone: string | null;
+  studentPhone: string | null;
+  parentEmail: string | null;
+  // Personal information
+  birthDate: Date | null;
+  // Contact phones
+  contactPhones: {
+    id: string;
+    phoneType: string;
+    phoneNumber: string;
+    notes: string | null;
+    order: number;
   }[];
   createdAt: Date;
   updatedAt: Date;
@@ -282,6 +313,30 @@ const formatStudent = (student: StudentWithIncludes): FormattedStudent => {
     subjectPreferences,
     regularAvailability,
     exceptionalAvailability,
+    // School information
+    schoolName: student.schoolName,
+    schoolType: student.schoolType,
+    // Exam information
+    examCategory: student.examCategory,
+    examCategoryType: student.examCategoryType,
+    firstChoice: student.firstChoice,
+    secondChoice: student.secondChoice,
+    examDate: student.examDate,
+    // Contact information
+    homePhone: student.homePhone,
+    parentPhone: student.parentPhone,
+    studentPhone: student.studentPhone,
+    parentEmail: student.parentEmail,
+    // Personal information
+    birthDate: student.birthDate,
+    // Contact phones
+    contactPhones: student.contactPhones?.map(phone => ({
+      id: phone.id,
+      phoneType: phone.phoneType,
+      phoneNumber: phone.phoneNumber,
+      notes: phone.notes,
+      order: phone.order,
+    })) || [],
     createdAt: student.createdAt,
     updatedAt: student.updatedAt,
     lineNotificationsEnabled: student.lineNotificationsEnabled,
@@ -297,13 +352,15 @@ export const GET = withBranchAccess(
     const params: Record<string, any> = {};
 
     // Handle both single values and arrays
+    const arrayParams = ['studentTypeIds', 'gradeYears', 'statuses', 'branchIds', 'subjectIds', 'lineConnection', 'schoolTypes', 'examCategories', 'examCategoryTypes'];
+    
     url.searchParams.forEach((value, key) => {
-      if (key === 'studentTypeIds') {
-        // Collect all studentTypeIds into an array
-        if (!params.studentTypeIds) {
-          params.studentTypeIds = [];
+      if (arrayParams.includes(key)) {
+        // Collect array parameters
+        if (!params[key]) {
+          params[key] = [];
         }
-        params.studentTypeIds.push(value);
+        params[key].push(value);
       } else if (params[key]) {
         // If key already exists, convert to array
         if (Array.isArray(params[key])) {
@@ -325,7 +382,30 @@ export const GET = withBranchAccess(
       );
     }
 
-    const { page, limit, name, studentTypeId, studentTypeIds, gradeYear, status } = result.data;
+    const { 
+      page, 
+      limit, 
+      name, 
+      studentTypeId, 
+      studentTypeIds, 
+      gradeYear,
+      gradeYears, 
+      status,
+      statuses,
+      branchIds,
+      subjectIds,
+      lineConnection,
+      schoolType,
+      schoolTypes,
+      examCategory,
+      examCategories,
+      examCategoryType,
+      examCategoryTypes,
+      birthDateFrom,
+      birthDateTo,
+      examDateFrom,
+      examDateTo
+    } = result.data;
 
     // Build filter conditions
     const where: Record<string, any> = {};
@@ -344,33 +424,176 @@ export const GET = withBranchAccess(
       where.studentTypeId = studentTypeId;
     }
 
-    if (gradeYear !== undefined) {
+    // Support both single gradeYear and multiple gradeYears
+    if (gradeYears && gradeYears.length > 0) {
+      where.gradeYear = { in: gradeYears };
+    } else if (gradeYear !== undefined) {
       where.gradeYear = gradeYear;
     }
 
-    if (status) {
+    // Support both single status and multiple statuses
+    if (statuses && statuses.length > 0) {
+      where.status = { in: statuses };
+    } else if (status) {
       where.status = status;
     }
 
-    // Filter students by branch for non-admin users
+    // Filter by school type
+    if (schoolTypes && schoolTypes.length > 0) {
+      where.schoolType = { in: schoolTypes };
+    } else if (schoolType) {
+      where.schoolType = schoolType;
+    }
+
+    // Filter by exam category
+    if (examCategories && examCategories.length > 0) {
+      where.examCategory = { in: examCategories };
+    } else if (examCategory) {
+      where.examCategory = examCategory;
+    }
+
+    // Filter by exam category type
+    if (examCategoryTypes && examCategoryTypes.length > 0) {
+      where.examCategoryType = { in: examCategoryTypes };
+    } else if (examCategoryType) {
+      where.examCategoryType = examCategoryType;
+    }
+
+    // Filter by birth date range
+    if (birthDateFrom || birthDateTo) {
+      where.birthDate = {};
+      if (birthDateFrom) {
+        where.birthDate.gte = birthDateFrom;
+      }
+      if (birthDateTo) {
+        where.birthDate.lte = birthDateTo;
+      }
+    }
+
+    // Filter by exam date range
+    if (examDateFrom || examDateTo) {
+      where.examDate = {};
+      if (examDateFrom) {
+        where.examDate.gte = examDateFrom;
+      }
+      if (examDateTo) {
+        where.examDate.lte = examDateTo;
+      }
+    }
+
+    // Filter students by branch for non-admin users (same as teachers route)
     if (session.user?.role !== "ADMIN") {
-      where.user = {
-        branches: {
-          some: {
-            branchId,
-          },
+      if (!where.user) where.user = {};
+      where.user.branches = {
+        some: {
+          branchId,
         },
       };
     } else if (branchId) {
       // If admin has selected a specific branch, filter by that branch
-      where.user = {
-        branches: {
-          some: {
-            branchId,
-          },
+      if (!where.user) where.user = {};
+      where.user.branches = {
+        some: {
+          branchId,
         },
       };
     }
+
+    // Additional branch filter from query params (for explicit filtering)
+    // Note: branchIds might contain branch names, so we need to handle both cases
+    if (branchIds && branchIds.length > 0) {
+      if (!where.user) where.user = {};
+      // Check if branchIds contain UUIDs or names
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const hasUUIDs = branchIds.some(id => isUUID.test(id));
+      
+      if (hasUUIDs) {
+        where.user.branches = {
+          some: {
+            branchId: { in: branchIds }
+          }
+        };
+      } else {
+        // If they're names, filter by branch name
+        where.user.branches = {
+          some: {
+            branch: {
+              name: { in: branchIds }
+            }
+          }
+        };
+      }
+    }
+
+    // Filter by subjects - need to filter through user.subjectPreferences relationship
+    if (subjectIds && subjectIds.length > 0) {
+      if (!where.user) where.user = {};
+      where.user.subjectPreferences = {
+        some: {
+          subjectId: { in: subjectIds }
+        }
+      };
+    }
+
+    // Filter by LINE connection status
+    if (lineConnection && lineConnection.length > 0) {
+      const orConditions = [];
+      
+      if (lineConnection.includes("not_connected")) {
+        orConditions.push({ lineId: null });
+      }
+      
+      if (lineConnection.includes("connected_enabled")) {
+        orConditions.push({ 
+          AND: [
+            { lineId: { not: null } },
+            { lineNotificationsEnabled: true }
+          ]
+        });
+      }
+      
+      if (lineConnection.includes("connected_disabled")) {
+        orConditions.push({ 
+          AND: [
+            { lineId: { not: null } },
+            { lineNotificationsEnabled: false }
+          ]
+        });
+      }
+      
+      if (orConditions.length > 0) {
+        if (where.OR) {
+          // If we already have OR conditions (from name search), wrap them
+          where.AND = [
+            { OR: where.OR },
+            { OR: orConditions }
+          ];
+          delete where.OR;
+        } else {
+          where.OR = orConditions;
+        }
+      }
+    }
+
+    // Filter students by branch for non-admin users
+    if (session.user?.role !== "ADMIN") {
+      if (!where.user) where.user = {};
+      if (!where.user.branches) {
+        where.user.branches = {
+          some: {
+            branchId,
+          },
+        };
+      } else {
+        // Merge with existing branch filter
+        where.user.branches.some = {
+          ...where.user.branches.some,
+          branchId,
+        };
+      }
+    }
+    // For admins, only apply branch filter if explicitly requested via branchIds parameter
+    // Do not filter by the selected branch header to show all students
 
     // Calculate pagination
     const skip = (page - 1) * limit;
@@ -451,6 +674,9 @@ export const GET = withBranchAccess(
             },
           },
         },
+        contactPhones: {
+          orderBy: { order: "asc" },
+        },
       },
       skip,
       take: limit,
@@ -475,7 +701,7 @@ export const GET = withBranchAccess(
 // POST - Create a new student
 export const POST = withBranchAccess(
   ["ADMIN", "STAFF"],
-  async (request: NextRequest) => {
+  async (request: NextRequest, session, branchId) => {
     try {
       const body = await request.json();
 
@@ -497,6 +723,7 @@ export const POST = withBranchAccess(
         subjectPreferences = [],
         regularAvailability = [],
         exceptionalAvailability = [],
+        contactPhones = [],
         ...studentData
       } = result.data;
 
@@ -531,13 +758,41 @@ export const POST = withBranchAccess(
         }
       }
 
-      // Verify that all branchIds exist if provided
-      if (branchIds.length > 0) {
+      // For non-admin users, ensure the student is associated with the selected branch
+      const finalBranchIds = [...branchIds];
+      if (!finalBranchIds.includes(branchId)) {
+        finalBranchIds.push(branchId);
+      }
+
+      // Admins can assign students to any branch, but staff must include their selected branch
+      if (session.user?.role !== "ADMIN") {
+        // Staff can only assign students to branches they have access to
+        const userBranches =
+          session.user?.branches?.map((b: any) => b.branchId) || [];
+
+        // Verify staff has access to all requested branches
+        const unauthorizedBranches = finalBranchIds.filter(
+          (id) => !userBranches.includes(id)
+        );
+
+        if (unauthorizedBranches.length > 0) {
+          return NextResponse.json(
+            {
+              error:
+                "You don't have access to assign students to some of these branches",
+            },
+            { status: 403 }
+          );
+        }
+      }
+
+      // Verify that all branchIds exist
+      if (finalBranchIds.length > 0) {
         const branchCount = await prisma.branch.count({
-          where: { branchId: { in: branchIds } },
+          where: { branchId: { in: finalBranchIds } },
         });
 
-        if (branchCount !== branchIds.length) {
+        if (branchCount !== finalBranchIds.length) {
           return NextResponse.json(
             { error: "一部の校舎IDが存在しません" }, // "Some branch IDs do not exist"
             { status: 400 }
@@ -596,6 +851,7 @@ export const POST = withBranchAccess(
       }
 
       // For students, use the password directly (no hashing)
+      // NOTE: This is a security risk - passwords should normally be hashed
       const passwordHash = password;
 
       // Create user, student and all related data in a transaction
@@ -619,10 +875,10 @@ export const POST = withBranchAccess(
           },
         });
 
-        // Create branch associations if provided
-        if (branchIds.length > 0) {
+        // Create branch associations
+        if (finalBranchIds.length > 0) {
           await tx.userBranch.createMany({
-            data: branchIds.map((branchId) => ({
+            data: finalBranchIds.map((branchId) => ({
               userId: user.id,
               branchId,
             })),
@@ -774,6 +1030,19 @@ export const POST = withBranchAccess(
           }
         }
 
+        // Create contact phones if provided
+        if (contactPhones.length > 0) {
+          await tx.contactPhone.createMany({
+            data: contactPhones.map((phone, index) => ({
+              studentId: student.studentId,
+              phoneType: phone.phoneType,
+              phoneNumber: phone.phoneNumber,
+              notes: phone.notes || null,
+              order: phone.order ?? index,
+            })),
+          });
+        }
+
         // Return student with all associations
         return tx.student.findUnique({
           where: { studentId: student.studentId },
@@ -846,6 +1115,9 @@ export const POST = withBranchAccess(
                   },
                 },
               },
+            },
+            contactPhones: {
+              orderBy: { order: "asc" },
             },
           },
         });

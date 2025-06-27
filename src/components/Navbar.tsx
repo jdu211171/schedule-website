@@ -347,7 +347,7 @@ export default function Navbar() {
     navItems = studentNavItems;
   }
 
-  let homeLink = "/dashboard";
+  let homeLink = "/dashboard/schedules";
   if (isTeacherRoute) {
     homeLink = "/teacher";
   } else if (isStudentRoute) {

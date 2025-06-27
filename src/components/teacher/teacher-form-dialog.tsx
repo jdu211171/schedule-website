@@ -19,6 +19,8 @@ import {
   RotateCcw,
   Check,
   MessageSquare,
+  Cake,
+  Phone,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -155,16 +157,6 @@ export function TeacherFormDialog({
   const isSubmitting =
     createTeacherMutation.isPending || updateTeacherMutation.isPending;
 
-  // Keep dialog open setting - shared across student and teacher forms
-  // const KEEP_OPEN_STORAGE_KEY = "form-keep-open";
-  // const [keepDialogOpen, setKeepDialogOpen] = useState(() => {
-  //   if (typeof window !== 'undefined') {
-  //     const savedKeepOpen = localStorage.getItem(KEEP_OPEN_STORAGE_KEY);
-  //     return savedKeepOpen ? JSON.parse(savedKeepOpen) : true;
-  //   }
-  //   return true;
-  // });
-
   const keepDialogOpen = true;
 
   // Subject selection state
@@ -186,9 +178,6 @@ export function TeacherFormDialog({
   >([]);
   const [availabilityErrors, setAvailabilityErrors] = useState<string[]>([]);
 
-  // Local storage key
-  const STORAGE_KEY = `teacher-form-${teacher?.teacherId || "new"}`;
-
   const form = useForm<TeacherFormValues>({
     resolver: zodResolver(teacherFormSchema),
     defaultValues: {
@@ -198,6 +187,9 @@ export function TeacherFormDialog({
       lineId: "",
       lineNotificationsEnabled: true,
       notes: "",
+      birthDate: undefined,
+      phoneNumber: "",
+      phoneNotes: "",
       status: "ACTIVE",
       username: "",
       password: "",
@@ -205,26 +197,6 @@ export function TeacherFormDialog({
       teacherId: undefined,
     },
   });
-
-  // Load keep dialog open setting from localStorage when dialog opens
-  // useEffect(() => {
-  //   if (open) {
-  //     const savedKeepOpen = localStorage.getItem(KEEP_OPEN_STORAGE_KEY);
-  //     if (savedKeepOpen !== null) {
-  //       const parsed = JSON.parse(savedKeepOpen);
-  //       setKeepDialogOpen(parsed);
-  //     } else {
-  //       setKeepDialogOpen(true);
-  //     }
-  //   }
-  // }, [open]);
-
-  // // Save keep dialog open setting to localStorage
-  // useEffect(() => {
-  //   if (typeof window !== 'undefined') {
-  //     localStorage.setItem(KEEP_OPEN_STORAGE_KEY, JSON.stringify(keepDialogOpen));
-  //   }
-  // }, [keepDialogOpen]);
 
   useEffect(() => {
     if (teacher) {
@@ -249,6 +221,9 @@ export function TeacherFormDialog({
         username: teacher.username || "",
         password: "",
         branchIds: branchIdsWithDefault,
+        birthDate: teacher.birthDate ? new Date(teacher.birthDate) : undefined,
+        phoneNumber: teacher.phoneNumber || "",
+        phoneNotes: teacher.phoneNotes || "",
       });
 
       // Initialize subject preferences if they exist
@@ -313,51 +288,15 @@ export function TeacherFormDialog({
         password: "",
         branchIds: defaultBranchId ? [defaultBranchId] : [],
         teacherId: undefined,
+        birthDate: undefined,
+        phoneNumber: "",
+        phoneNotes: "",
       });
       setTeacherSubjects([]);
       setRegularAvailability([]);
       setIrregularAvailability([]);
     }
   }, [teacher, form, defaultBranchId]);
-
-  // Load form data from localStorage
-  useEffect(() => {
-    const savedData = localStorage.getItem(STORAGE_KEY);
-    if (savedData) {
-      try {
-        const parsedData = JSON.parse(savedData);
-        form.reset(parsedData.formValues);
-        setTeacherSubjects(parsedData.teacherSubjects || []);
-        setRegularAvailability(parsedData.regularAvailability || []);
-        setIrregularAvailability(parsedData.irregularAvailability || []);
-      } catch (error) {
-        console.error("Failed to parse saved form data:", error);
-      }
-    }
-  }, [STORAGE_KEY, form]);
-
-  // Save form data to localStorage when values change
-  useEffect(() => {
-    const subscription = form.watch((formValues) => {
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({
-          formValues,
-          teacherSubjects,
-          regularAvailability,
-          irregularAvailability,
-        })
-      );
-    });
-
-    return () => subscription.unsubscribe();
-  }, [
-    form,
-    teacherSubjects,
-    regularAvailability,
-    irregularAvailability,
-    STORAGE_KEY,
-  ]);
 
   // Validate availability data
   useEffect(() => {
@@ -475,7 +414,6 @@ export function TeacherFormDialog({
         onSuccess: () => {
           if (!keepDialogOpen) {
             onOpenChange(false);
-            localStorage.removeItem(STORAGE_KEY);
           }
           if (!keepDialogOpen) {
             form.reset();
@@ -490,7 +428,6 @@ export function TeacherFormDialog({
         onSuccess: () => {
           if (!keepDialogOpen) {
             onOpenChange(false);
-            localStorage.removeItem(STORAGE_KEY);
           }
           if (!keepDialogOpen) {
             form.reset();
@@ -664,6 +601,9 @@ export function TeacherFormDialog({
       password: "",
       branchIds: defaultBranchId ? [defaultBranchId] : [],
       teacherId: undefined,
+      birthDate: undefined,
+      phoneNumber: "",
+      phoneNotes: "",
     });
     setTeacherSubjects([]);
     setRegularAvailability([]);
@@ -673,7 +613,6 @@ export function TeacherFormDialog({
     setIsAllSelected(false);
     setAvailabilityErrors([]);
     setActiveTab("basic");
-    localStorage.removeItem(STORAGE_KEY);
   }
 
   // Enhanced button presets
@@ -870,6 +809,89 @@ export function TeacherFormDialog({
                             )}
                           />
 
+                        </div>
+
+                        {/* Personal Information */}
+                        <div className="space-y-4">
+                          <h3 className="text-sm font-medium flex items-center gap-2">
+                            <Cake className="h-4 w-4" />
+                            個人情報
+                          </h3>
+                          <FormField
+                            control={form.control}
+                            name="birthDate"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-sm font-medium">
+                                  生年月日
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="date"
+                                    className="h-11"
+                                    {...field}
+                                    value={field.value ? new Date(field.value).toISOString().split('T')[0] : ""}
+                                    onChange={(e) => {
+                                      field.onChange(e.target.value ? new Date(e.target.value) : undefined);
+                                    }}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+
+                        {/* Contact Information */}
+                        <div className="space-y-4">
+                          <h3 className="text-sm font-medium flex items-center gap-2">
+                            <Phone className="h-4 w-4" />
+                            連絡先情報
+                          </h3>
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                            <FormField
+                              control={form.control}
+                              name="phoneNumber"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="text-sm font-medium">
+                                    携帯番号
+                                  </FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      type="tel"
+                                      placeholder="090-1234-5678"
+                                      className="h-11"
+                                      {...field}
+                                      value={field.value || ""}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField
+                              control={form.control}
+                              name="phoneNotes"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="text-sm font-medium">
+                                    備考（連絡可能時間など）
+                                  </FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      placeholder="例: 平日18時以降"
+                                      className="h-11"
+                                      {...field}
+                                      value={field.value || ""}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
                         </div>
 
                         <FormField

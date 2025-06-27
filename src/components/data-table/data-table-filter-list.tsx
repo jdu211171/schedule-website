@@ -753,7 +753,7 @@ function onFilterInputRender<TData>({
             )}`
           : dateValue[0]
             ? formatDate(new Date(Number(dateValue[0])))
-            : "Pick a date";
+            : "日付を選択";
 
       return (
         <Popover open={showValueSelector} onOpenChange={setShowValueSelector}>

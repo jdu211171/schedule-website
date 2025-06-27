@@ -387,13 +387,13 @@ function homeFor(role?: UserRole) {
 
   switch (role) {
     case "ADMIN":
-      return "/dashboard";
+      return "/dashboard/schedules";
     case "TEACHER":
       return "/teacher";
     case "STUDENT":
       return "/student";
     case "STAFF":
-      return "/dashboard";
+      return "/dashboard/schedules";
     default:
       // This should never be reached due to the validation above, but keeping for safety
       console.warn(`Unhandled user role: ${role}. Redirecting to root.`);

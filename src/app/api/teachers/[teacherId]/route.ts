@@ -7,6 +7,13 @@ import { Teacher, DayOfWeek } from "@prisma/client";
 
 // Define a type for the teacher with includes
 type TeacherWithIncludes = Teacher & {
+  contactPhones?: {
+    id: string;
+    phoneType: string;
+    phoneNumber: string;
+    notes: string | null;
+    order: number;
+  }[];
   user: {
     username: string | null;
     email: string | null;
@@ -55,8 +62,18 @@ type FormattedTeacher = {
   lineNotificationsEnabled: boolean | null;
   notes: string | null;
   status: string;
+  birthDate: Date | null;
+  phoneNumber: string | null;
+  phoneNotes: string | null;
   username: string | null;
   password: string | null;
+  contactPhones?: {
+    id: string;
+    phoneType: string;
+    phoneNumber: string;
+    notes: string | null;
+    order: number;
+  }[];
   branches: {
     branchId: string;
     name: string;
@@ -224,6 +241,9 @@ const formatTeacher = (teacher: TeacherWithIncludes): FormattedTeacher => {
     lineId: teacher.lineId,
     notes: teacher.notes,
     status: teacher.status,
+    birthDate: teacher.birthDate,
+    phoneNumber: teacher.phoneNumber,
+    phoneNotes: teacher.phoneNotes,
     username: teacher.user.username,
     password: teacher.user.passwordHash,
     branches:
@@ -237,6 +257,7 @@ const formatTeacher = (teacher: TeacherWithIncludes): FormattedTeacher => {
     createdAt: teacher.createdAt,
     updatedAt: teacher.updatedAt,
     lineNotificationsEnabled: teacher.lineNotificationsEnabled,
+    contactPhones: teacher.contactPhones?.sort((a, b) => a.order - b.order) || [],
   };
 };
 
@@ -256,6 +277,18 @@ export const GET = withBranchAccess(
     const teacher = await prisma.teacher.findUnique({
       where: { teacherId },
       include: {
+        contactPhones: {
+          select: {
+            id: true,
+            phoneType: true,
+            phoneNumber: true,
+            notes: true,
+            order: true,
+          },
+          orderBy: {
+            order: 'asc',
+          },
+        },
         user: {
           select: {
             username: true,
@@ -372,6 +405,7 @@ export const PATCH = withBranchAccess(
         subjectPreferences,
         regularAvailability = [],
         exceptionalAvailability = [],
+        contactPhones,
         ...teacherData
       } = result.data;
 
@@ -471,6 +505,27 @@ export const PATCH = withBranchAccess(
             ...(email && { email }), // Only add email field if it's provided
           },
         });
+
+        // Update contact phones if provided
+        if (contactPhones !== undefined) {
+          // Delete existing contact phones
+          await tx.teacherContactPhone.deleteMany({
+            where: { teacherId },
+          });
+
+          // Create new contact phones
+          if (contactPhones.length > 0) {
+            await tx.teacherContactPhone.createMany({
+              data: contactPhones.map((phone, index) => ({
+                teacherId,
+                phoneType: phone.phoneType,
+                phoneNumber: phone.phoneNumber,
+                notes: phone.notes || null,
+                order: phone.order ?? index,
+              })),
+            });
+          }
+        }
 
         // Update branch associations if provided
         if (branchIds !== undefined) {
@@ -658,6 +713,18 @@ export const PATCH = withBranchAccess(
         return tx.teacher.findUnique({
           where: { teacherId },
           include: {
+            contactPhones: {
+              select: {
+                id: true,
+                phoneType: true,
+                phoneNumber: true,
+                notes: true,
+                order: true,
+              },
+              orderBy: {
+                order: 'asc',
+              },
+            },
             user: {
               select: {
                 username: true,

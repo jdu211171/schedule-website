@@ -47,6 +47,30 @@ export type Student = {
     reason?: string | null;
     notes?: string | null;
   }[];
+  // School information
+  schoolName: string | null;
+  schoolType: string | null;
+  // Exam information
+  examCategory: string | null;
+  examCategoryType: string | null;
+  firstChoice: string | null;
+  secondChoice: string | null;
+  examDate: Date | null;
+  // Contact information
+  homePhone: string | null;
+  parentPhone: string | null;
+  studentPhone: string | null;
+  parentEmail: string | null;
+  // Personal information
+  birthDate: Date | null;
+  // Contact phones
+  contactPhones: {
+    id: string;
+    phoneType: string;
+    phoneNumber: string;
+    notes: string | null;
+    order: number;
+  }[];
   createdAt: Date;
   updatedAt: Date;
   _optimistic?: boolean;
@@ -59,7 +83,22 @@ type UseStudentsParams = {
   studentTypeId?: string;
   studentTypeIds?: string[]; // Support multiple student type IDs
   gradeYear?: number;
+  gradeYears?: number[]; // Support multiple grade years
   status?: string;
+  statuses?: string[]; // Support multiple statuses
+  branchIds?: string[]; // Filter by branches
+  subjectIds?: string[]; // Filter by subject preferences
+  lineConnection?: string[]; // Filter by message connection status
+  schoolType?: string; // Filter by school type
+  schoolTypes?: string[]; // Support multiple school types
+  examCategory?: string; // Filter by exam category
+  examCategories?: string[]; // Support multiple exam categories
+  examCategoryType?: string; // Filter by exam category type
+  examCategoryTypes?: string[]; // Support multiple exam category types
+  birthDateFrom?: Date; // Filter by birth date range
+  birthDateTo?: Date;
+  examDateFrom?: Date; // Filter by exam date range
+  examDateTo?: Date;
 };
 
 type StudentsResponse = {
@@ -80,7 +119,22 @@ export function useStudents(params: UseStudentsParams = {}) {
     studentTypeId,
     studentTypeIds,
     gradeYear,
+    gradeYears,
     status,
+    statuses,
+    branchIds,
+    subjectIds,
+    lineConnection,
+    schoolType,
+    schoolTypes,
+    examCategory,
+    examCategories,
+    examCategoryType,
+    examCategoryTypes,
+    birthDateFrom,
+    birthDateTo,
+    examDateFrom,
+    examDateTo,
   } = params;
 
   const queryParams: Record<string, string | string[] | undefined> = {
@@ -90,7 +144,22 @@ export function useStudents(params: UseStudentsParams = {}) {
     studentTypeId,
     studentTypeIds,
     gradeYear: gradeYear?.toString(),
+    gradeYears: gradeYears?.map(y => y.toString()),
     status,
+    statuses,
+    branchIds,
+    subjectIds,
+    lineConnection,
+    schoolType,
+    schoolTypes,
+    examCategory,
+    examCategories,
+    examCategoryType,
+    examCategoryTypes,
+    birthDateFrom: birthDateFrom?.toISOString(),
+    birthDateTo: birthDateTo?.toISOString(),
+    examDateFrom: examDateFrom?.toISOString(),
+    examDateTo: examDateTo?.toISOString(),
   };
 
   // Build search params manually to handle arrays
@@ -107,7 +176,7 @@ export function useStudents(params: UseStudentsParams = {}) {
   });
 
   return useQuery<StudentsResponse>({
-    queryKey: ["students", page, limit, name, studentTypeId, studentTypeIds, gradeYear, status],
+    queryKey: ["students", page, limit, name, studentTypeId, studentTypeIds, gradeYear, gradeYears, status, statuses, branchIds, subjectIds, lineConnection, schoolType, schoolTypes, examCategory, examCategories, examCategoryType, examCategoryTypes, birthDateFrom, birthDateTo, examDateFrom, examDateTo],
     queryFn: async () =>
       await fetcher<StudentsResponse>(`/api/students?${searchParams.toString()}`),
   });

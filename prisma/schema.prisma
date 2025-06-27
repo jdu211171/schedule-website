@@ -121,14 +121,47 @@ model Student {
   createdAt               DateTime                   @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt               DateTime                   @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
   linkingCode             String?                    @unique @map("linking_code") @db.VarChar(10)
+  // School information
+  schoolName              String?                    @map("school_name") @db.VarChar(255)
+  schoolType              SchoolType?                @map("school_type")
+  // Exam information
+  examCategory            ExamCategory?              @map("exam_category")
+  examCategoryType        ExamCategoryType?          @map("exam_category_type")
+  firstChoice             String?                    @map("first_choice") @db.VarChar(255)
+  secondChoice            String?                    @map("second_choice") @db.VarChar(255)
+  examDate                DateTime?                  @map("exam_date") @db.Date
+  // Contact information
+  homePhone               String?                    @map("home_phone") @db.VarChar(50)
+  parentPhone             String?                    @map("parent_phone") @db.VarChar(50)
+  studentPhone            String?                    @map("student_phone") @db.VarChar(50)
+  parentEmail             String?                    @map("parent_email") @db.VarChar(100)
+  // Personal information
+  birthDate               DateTime?                  @map("birth_date") @db.Date
   classSessions           ClassSession[]
   studentClassEnrollments StudentClassEnrollment[]
   teacherPreferences      StudentTeacherPreference[]
+  contactPhones           ContactPhone[]
   studentType             StudentType?               @relation(fields: [studentTypeId], references: [studentTypeId])
   user                    User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([studentTypeId])
   @@map("students")
+}
+
+model ContactPhone {
+  id          String    @id @default(cuid())
+  studentId   String    @map("student_id")
+  phoneType   PhoneType @map("phone_type")
+  phoneNumber String    @map("phone_number") @db.VarChar(50)
+  notes       String?   @db.VarChar(255)
+  order       Int       @default(0)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  student     Student   @relation(fields: [studentId], references: [studentId], onDelete: Cascade)
+
+  @@index([studentId])
+  @@index([order])
+  @@map("contact_phones")
 }
 
 model UserAvailability {
@@ -210,14 +243,34 @@ model Teacher {
   lineNotificationsEnabled Boolean?                   @default(true) @map("line_notifications_enabled")
   notes                    String?                    @db.VarChar(255)
   status                   UserStatus                 @default(ACTIVE)
+  birthDate                DateTime?                  @map("birth_date") @db.Date
+  phoneNumber              String?                    @map("phone_number") @db.VarChar(50)
+  phoneNotes               String?                    @map("phone_notes") @db.VarChar(255)
   createdAt                DateTime                   @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt                DateTime                   @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
   linkingCode              String?                    @unique @map("linking_code") @db.VarChar(10)
   classSessions            ClassSession[]
   studentPreferences       StudentTeacherPreference[]
+  contactPhones            TeacherContactPhone[]
   user                     User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("teachers")
+}
+
+model TeacherContactPhone {
+  id          String    @id @default(cuid())
+  teacherId   String    @map("teacher_id")
+  phoneType   PhoneType @map("phone_type")
+  phoneNumber String    @map("phone_number") @db.VarChar(50)
+  notes       String?   @db.VarChar(255)
+  order       Int       @default(0)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  teacher     Teacher   @relation(fields: [teacherId], references: [teacherId], onDelete: Cascade)
+
+  @@index([teacherId])
+  @@index([order])
+  @@map("teacher_contact_phones")
 }
 
 model SubjectType {
@@ -325,9 +378,9 @@ model LineMessageTemplate {
   branchId        String?  @map("branch_id")
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
-  
+
   branch          Branch?  @relation(fields: [branchId], references: [branchId], onDelete: Cascade)
-  
+
   @@index([branchId])
   @@index([templateType])
   @@index([isActive])
@@ -461,4 +514,28 @@ enum UserRole {
   STAFF
   TEACHER
   STUDENT
+}
+
+enum SchoolType {
+  PUBLIC
+  PRIVATE
+}
+
+enum ExamCategory {
+  BEGINNER
+  ELEMENTARY
+  HIGH_SCHOOL
+  UNIVERSITY
+}
+
+enum ExamCategoryType {
+  PUBLIC
+  PRIVATE
+}
+
+enum PhoneType {
+  HOME
+  DAD
+  MOM
+  OTHER
 }

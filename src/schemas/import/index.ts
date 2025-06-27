@@ -18,9 +18,15 @@ export interface ImportResult {
     errors: string[];
   }>;
   warnings: Array<{
-    row: number;
-    warnings: string[];
+    row?: number;
+    warnings?: string[];
+    message?: string;
+    type?: string;
   }>;
+  created?: number;
+  updated?: number;
+  deleted?: number;
+  skipped?: number;
 }
 
 // Helper function to format validation errors

@@ -391,6 +391,9 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
           .map((teacher) => ({
             ...teacher,
             status: teacher.status as UserStatus,
+            birthDate: teacher.birthDate ? new Date(teacher.birthDate) : null,
+            createdAt: new Date(teacher.createdAt),
+            updatedAt: new Date(teacher.updatedAt),
             linkingCode: null,
           })) || []
       }
@@ -401,9 +404,32 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
               student.status !== undefined
           )
           .map((student) => ({
-            ...student,
+            studentId: student.studentId,
+            userId: student.userId,
+            name: student.name,
+            kanaName: student.kanaName,
+            studentTypeId: student.studentTypeId,
+            gradeYear: student.gradeYear,
+            lineId: student.lineId,
+            lineNotificationsEnabled: student.lineNotificationsEnabled,
+            notes: student.notes,
             status: student.status as UserStatus,
+            createdAt: new Date(student.createdAt),
+            updatedAt: new Date(student.updatedAt),
             linkingCode: null,
+            // New fields
+            schoolName: student.schoolName,
+            schoolType: student.schoolType as any,
+            examCategory: student.examCategory as any,
+            examCategoryType: student.examCategoryType as any,
+            firstChoice: student.firstChoice,
+            secondChoice: student.secondChoice,
+            examDate: student.examDate ? new Date(student.examDate) : null,
+            homePhone: student.homePhone,
+            parentPhone: student.parentPhone,
+            studentPhone: student.studentPhone,
+            parentEmail: student.parentEmail,
+            birthDate: student.birthDate ? new Date(student.birthDate) : null,
           })) || []
       }
       subjects={subjectsData?.data || []}

@@ -13,8 +13,18 @@ export type Teacher = {
   lineNotificationsEnabled: boolean | null;
   notes: string | null;
   status?: string;
+  birthDate: string | null;
+  phoneNumber: string | null;
+  phoneNotes: string | null;
   username: string | null;
   password: string | null;
+  contactPhones?: {
+    id: string;
+    phoneType: string;
+    phoneNumber: string;
+    notes: string | null;
+    order: number;
+  }[];
   branches: {
     branchId: string;
     name: string;
@@ -53,6 +63,8 @@ type UseTeachersParams = {
   limit?: number;
   name?: string;
   status?: string;
+  birthDateFrom?: Date;
+  birthDateTo?: Date;
 };
 
 type TeachersResponse = {
@@ -66,13 +78,15 @@ type TeachersResponse = {
 };
 
 export function useTeachers(params: UseTeachersParams = {}) {
-  const { page = 1, limit = 10, name, status } = params;
+  const { page = 1, limit = 10, name, status, birthDateFrom, birthDateTo } = params;
 
   const queryParams: Record<string, string | undefined> = {
     page: page.toString(),
     limit: limit.toString(),
     name,
     status,
+    birthDateFrom: birthDateFrom?.toISOString(),
+    birthDateTo: birthDateTo?.toISOString(),
   };
 
   const searchParams = new URLSearchParams(
@@ -85,7 +99,7 @@ export function useTeachers(params: UseTeachersParams = {}) {
   ).toString();
 
   return useQuery<TeachersResponse>({
-    queryKey: ["teachers", page, limit, name, status],
+    queryKey: ["teachers", page, limit, name, status, birthDateFrom, birthDateTo],
     queryFn: async () =>
       await fetcher<TeachersResponse>(`/api/teachers?${searchParams}`),
   });

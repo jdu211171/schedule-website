@@ -109,6 +109,30 @@ export function useStudentCreate() {
                     notes: ea.notes || null
                   };
                 }),
+                // School information
+                schoolName: newStudent.schoolName || null,
+                schoolType: newStudent.schoolType || null,
+                // Exam information
+                examCategory: newStudent.examCategory || null,
+                examCategoryType: newStudent.examCategoryType || null,
+                firstChoice: newStudent.firstChoice || null,
+                secondChoice: newStudent.secondChoice || null,
+                examDate: newStudent.examDate || null,
+                // Contact information
+                homePhone: null,
+                parentPhone: null,
+                studentPhone: null,
+                parentEmail: newStudent.parentEmail || null,
+                // Personal information
+                birthDate: newStudent.birthDate || null,
+                // Contact phones
+                contactPhones: (newStudent.contactPhones || []).map((phone, index) => ({
+                  id: phone.id || crypto.randomUUID(),
+                  phoneType: phone.phoneType,
+                  phoneNumber: phone.phoneNumber,
+                  notes: phone.notes || null,
+                  order: phone.order ?? index,
+                })),
                 createdAt: new Date(),
                 updatedAt: new Date(),
                 _optimistic: true,
@@ -259,6 +283,15 @@ export function useStudentUpdate() {
                               };
                             })
                           : student.exceptionalAvailability,
+                        contactPhones: updatedStudent.contactPhones 
+                          ? updatedStudent.contactPhones.map((phone, index) => ({
+                              id: phone.id || crypto.randomUUID(),
+                              phoneType: phone.phoneType,
+                              phoneNumber: phone.phoneNumber,
+                              notes: phone.notes || null,
+                              order: phone.order ?? index,
+                            }))
+                          : student.contactPhones || [],
                         updatedAt: new Date(),
                       }
                     : student
@@ -298,6 +331,15 @@ export function useStudentUpdate() {
                     };
                   })
                 : previousStudent.exceptionalAvailability,
+              contactPhones: updatedStudent.contactPhones 
+                ? updatedStudent.contactPhones.map((phone, index) => ({
+                    id: phone.id || crypto.randomUUID(),
+                    phoneType: phone.phoneType,
+                    phoneNumber: phone.phoneNumber,
+                    notes: phone.notes || null,
+                    order: phone.order ?? index,
+                  }))
+                : previousStudent.contactPhones || [],
               updatedAt: new Date(),
             };
             queryClient.setQueryData<Student>(["student", resolvedId], updatedData);

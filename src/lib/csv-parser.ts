@@ -55,9 +55,13 @@ export class CSVParser {
     } = options;
 
     try {
-      // Detect encoding if needed
-      const detectedEncoding = this.detectEncoding(new Uint8Array(buffer));
-      const finalEncoding = detectedEncoding || encoding;
+      // Skip detection if encoding is explicitly provided as utf-8
+      let finalEncoding = encoding;
+      if (encoding !== "utf-8") {
+        // Only detect encoding if not explicitly set to utf-8
+        const detectedEncoding = this.detectEncoding(new Uint8Array(buffer));
+        finalEncoding = detectedEncoding || encoding;
+      }
       
       // Convert to string with proper encoding
       let csvContent: string;

@@ -3,8 +3,39 @@ import { NextRequest, NextResponse } from "next/server";
 import { withBranchAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { studentFilterSchema } from "@/schemas/student.schema";
+import { STUDENT_CSV_HEADERS } from "@/schemas/import/student-import.schema";
+import { getOrderedCsvHeaders, getExportColumns, STUDENT_COLUMN_RULES } from "@/schemas/import/student-column-rules";
+import { format } from "date-fns";
+
+// Helper function to format date for CSV
+function formatDateForCSV(date: Date | null): string {
+  if (!date) return "";
+  return format(new Date(date), "yyyy-MM-dd");
+}
+
+// Helper function to format enum values back to their readable form
+function formatEnumForCSV(value: string | null, type: "schoolType" | "examCategory" | "examCategoryType"): string {
+  if (!value) return "";
+
+  switch (type) {
+    case "schoolType":
+    case "examCategoryType":
+      return value === "PUBLIC" ? "公立" : value === "PRIVATE" ? "私立" : value;
+    case "examCategory":
+      const examCategoryMap: Record<string, string> = {
+        "BEGINNER": "小学校",
+        "ELEMENTARY": "中学校",
+        "HIGH_SCHOOL": "高校",
+        "UNIVERSITY": "大学"
+      };
+      return examCategoryMap[value] || value;
+    default:
+      return value;
+  }
+}
 
 // CSV export handler for students
+
 export const GET = withBranchAccess(
   ["ADMIN", "STAFF"],
   async (request: NextRequest, session, selectedBranchId) => {
@@ -13,11 +44,11 @@ export const GET = withBranchAccess(
       page: searchParams.get("page") || 1,
       limit: searchParams.get("limit") || 10000, // Large limit for export
       name: searchParams.get("name") || undefined,
-      status: searchParams.get("status")?.split(",")[0] || undefined, // Take first status for API
+      status: searchParams.get("status")?.split(",")[0] || undefined,
       studentTypeIds: searchParams.get("studentType")?.split(",") || undefined,
     });
 
-    const { name, status, studentTypeIds } = filters;
+    const { name, status } = filters;
 
     // Get additional filters from query params
     const statusList = searchParams.get("status")?.split(",") || [];
@@ -26,6 +57,40 @@ export const GET = withBranchAccess(
     const branchList = searchParams.get("branch")?.split(",") || [];
     const subjectList = searchParams.get("subject")?.split(",") || [];
     const lineConnectionList = searchParams.get("lineConnection")?.split(",") || [];
+    const schoolTypeList = searchParams.get("schoolType")?.split(",") || [];
+    const examCategoryList = searchParams.get("examCategory")?.split(",") || [];
+    const examCategoryTypeList = searchParams.get("examCategoryType")?.split(",") || [];
+    const birthDateFrom = searchParams.get("birthDateFrom") ? new Date(searchParams.get("birthDateFrom")!) : undefined;
+    const birthDateTo = searchParams.get("birthDateTo") ? new Date(searchParams.get("birthDateTo")!) : undefined;
+    const examDateFrom = searchParams.get("examDateFrom") ? new Date(searchParams.get("examDateFrom")!) : undefined;
+    const examDateTo = searchParams.get("examDateTo") ? new Date(searchParams.get("examDateTo")!) : undefined;
+
+    // Get visible columns from query params
+    const visibleColumns = searchParams.get("columns")?.split(",") || [
+      "name",
+      "kanaName",
+      "status",
+      "studentTypeName",
+      "gradeYear",
+      "birthDate",
+      "schoolName",
+      "schoolType",
+      "examCategory",
+      "examCategoryType",
+      "firstChoice",
+      "secondChoice",
+      "examDate",
+      "username",
+      "email",
+      "parentEmail",
+      "branches",
+      "notes",
+    ];
+
+    // Filter out LINE-related fields, phone fields, and contactPhones for security/privacy
+    const allowedColumns = visibleColumns.filter(col =>
+      !["lineId", "lineConnection", "lineNotificationsEnabled", "homePhone", "parentPhone", "studentPhone", "contactPhones"].includes(col)
+    );
 
     // Build where clause
     const where: any = {
@@ -72,7 +137,7 @@ export const GET = withBranchAccess(
       orderBy: { name: "asc" },
     });
 
-    // Apply client-side filters (same logic as in the table component)
+    // Apply client-side filters
     let filteredStudents = students;
 
     // Filter by multiple statuses if needed
@@ -112,7 +177,6 @@ export const GET = withBranchAccess(
       const subjectSet = new Set(subjectList);
       filteredStudents = filteredStudents.filter(student => {
         if (!student.user?.subjectPreferences) return false;
-
         return student.user.subjectPreferences.some((pref: any) =>
           subjectSet.has(pref.subject.name)
         );
@@ -139,93 +203,182 @@ export const GET = withBranchAccess(
       });
     }
 
-    // Get visible columns from query params
-    const visibleColumns = searchParams.get("columns")?.split(",") || [
-      "name",
-      "kanaName",
-      "status",
-      "studentTypeName",
-      "gradeYear",
-      "username",
-      "email",
-      "branches",
-      "subjectPreferences",
-    ];
+    // Filter by school type
+    if (schoolTypeList.length > 0) {
+      const schoolTypeSet = new Set(schoolTypeList);
+      filteredStudents = filteredStudents.filter(student =>
+        student.schoolType && schoolTypeSet.has(student.schoolType)
+      );
+    }
 
-    // Filter out LINE-related fields for security/privacy
-    const allowedColumns = visibleColumns.filter(col =>
-      !["lineId", "lineConnection", "lineNotificationsEnabled"].includes(col)
-    );
+    // Filter by exam category
+    if (examCategoryList.length > 0) {
+      const examCategorySet = new Set(examCategoryList);
+      filteredStudents = filteredStudents.filter(student =>
+        student.examCategory && examCategorySet.has(student.examCategory)
+      );
+    }
 
-    // Column headers mapping
-    const columnHeaders: Record<string, string> = {
-      name: "名前",
-      kanaName: "カナ",
-      status: "ステータス",
-      studentTypeName: "生徒タイプ",
-      gradeYear: "学年",
-      username: "ユーザー名",
-      email: "メールアドレス",
-      password: "パスワード",
-      branches: "校舎",
-      subjectPreferences: "選択科目",
-    };
+    // Filter by exam category type
+    if (examCategoryTypeList.length > 0) {
+      const examCategoryTypeSet = new Set(examCategoryTypeList);
+      filteredStudents = filteredStudents.filter(student =>
+        student.examCategoryType && examCategoryTypeSet.has(student.examCategoryType)
+      );
+    }
 
-    // Status labels
-    const statusLabels: Record<string, string> = {
-      ACTIVE: "在籍",
-      SICK: "休会",
-      PERMANENTLY_LEFT: "退会",
-    };
+    // Filter by birth date range
+    if (birthDateFrom || birthDateTo) {
+      filteredStudents = filteredStudents.filter(student => {
+        if (!student.birthDate) return false;
+        const birthDate = new Date(student.birthDate);
+        if (birthDateFrom && birthDate < birthDateFrom) return false;
+        if (birthDateTo && birthDate > birthDateTo) return false;
+        return true;
+      });
+    }
 
-    // Build CSV header
+    // Filter by exam date range
+    if (examDateFrom || examDateTo) {
+      filteredStudents = filteredStudents.filter(student => {
+        if (!student.examDate) return false;
+        const examDate = new Date(student.examDate);
+        if (examDateFrom && examDate < examDateFrom) return false;
+        if (examDateTo && examDate > examDateTo) return false;
+        return true;
+      });
+    }
+
+    // Column ID to CSV header mapping based on column rules
+    const columnIdToHeader: Record<string, string> = {};
+    const headerToColumnId: Record<string, string> = {};
+    
+    // Build mappings from column rules
+    for (const [key, rule] of Object.entries(STUDENT_COLUMN_RULES)) {
+      // Map common column IDs to CSV headers
+      switch (key) {
+        case 'studentTypeName':
+          columnIdToHeader['studentTypeName'] = rule.csvHeader;
+          headerToColumnId[rule.csvHeader] = 'studentTypeName';
+          break;
+        case 'name':
+        case 'kanaName':
+        case 'status':
+        case 'gradeYear':
+        case 'birthDate':
+        case 'schoolName':
+        case 'schoolType':
+        case 'examCategory':
+        case 'examCategoryType':
+        case 'firstChoice':
+        case 'secondChoice':
+        case 'examDate':
+        case 'username':
+        case 'email':
+        case 'parentEmail':
+        case 'password':
+        case 'branches':
+        case 'notes':
+          columnIdToHeader[key] = rule.csvHeader;
+          headerToColumnId[rule.csvHeader] = key;
+          break;
+      }
+    }
+
+    // Build CSV header from allowed columns
     const headers = allowedColumns
-      .map((col) => columnHeaders[col] || col)
+      .map((col) => columnIdToHeader[col] || col)
       .join(",");
 
-    // Build CSV rows - use filtered students
+    // Build CSV rows based on visible columns
     const rows = filteredStudents.map((student) => {
       const row = allowedColumns.map((col) => {
+        let value = "";
+        
         switch (col) {
           case "name":
-            return student.name || "";
+            value = student.name || "";
+            break;
           case "kanaName":
-            return student.kanaName || "";
+            value = student.kanaName || "";
+            break;
           case "status":
-            return statusLabels[student.status || "ACTIVE"] || student.status || "";
+            const statusLabels: Record<string, string> = {
+              ACTIVE: "在籍",
+              SICK: "休会",
+              PERMANENTLY_LEFT: "退会",
+            };
+            value = statusLabels[student.status || "ACTIVE"] || student.status || "";
+            break;
           case "studentTypeName":
-            return student.studentType?.name || "";
+            value = student.studentType?.name || "";
+            break;
           case "gradeYear":
-            return student.gradeYear !== null ? `${student.gradeYear}年生` : "";
+            value = student.gradeYear?.toString() || "";
+            break;
+          case "birthDate":
+            value = formatDateForCSV(student.birthDate);
+            break;
+          case "schoolName":
+            value = student.schoolName || "";
+            break;
+          case "schoolType":
+            value = formatEnumForCSV(student.schoolType, "schoolType");
+            break;
+          case "examCategory":
+            value = formatEnumForCSV(student.examCategory, "examCategory");
+            break;
+          case "examCategoryType":
+            value = formatEnumForCSV(student.examCategoryType, "examCategoryType");
+            break;
+          case "firstChoice":
+            value = student.firstChoice || "";
+            break;
+          case "secondChoice":
+            value = student.secondChoice || "";
+            break;
+          case "examDate":
+            value = formatDateForCSV(student.examDate);
+            break;
           case "username":
-            return student.user?.username || "";
+            value = student.user?.username || "";
+            break;
           case "email":
-            return student.user?.email || "";
+            value = student.user?.email || "";
+            break;
+          case "parentEmail":
+            value = student.parentEmail || "";
+            break;
           case "password":
             // Don't export passwords for security
-            return "";
+            value = "";
+            break;
           case "branches":
-            return student.user?.branches
+            value = student.user?.branches
               ?.map((b: any) => b.branch.name)
               .join("; ") || "";
+            break;
           case "subjectPreferences":
-            return student.user?.subjectPreferences
+            value = student.user?.subjectPreferences
               ?.map((sp: any) => `${sp.subject.name} - ${sp.subjectType.name}`)
               .join("; ") || "";
+            break;
+          case "notes":
+            value = student.notes || "";
+            break;
           default:
-            return "";
+            value = "";
         }
-      });
 
-      // Escape CSV values
-      return row.map((value) => {
-        // If value contains comma, newline, or quotes, wrap in quotes
+        // Escape CSV values
         if (value.includes(",") || value.includes("\n") || value.includes('"')) {
           // Escape quotes by doubling them
           return `"${value.replace(/"/g, '""')}"`;
         }
         return value;
-      }).join(",");
+      });
+
+      return row.join(",");
     });
 
     // Combine header and rows

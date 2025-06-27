@@ -9,6 +9,7 @@ interface ExportOptions {
   branch?: string[];
   subject?: string[];
   lineConnection?: string[];
+  birthDateRange?: { from?: Date; to?: Date };
   columns: string[];
 }
 
@@ -33,6 +34,14 @@ export function useTeacherExport() {
       }
       if (options.lineConnection && options.lineConnection.length > 0) {
         params.append("lineConnection", options.lineConnection.join(","));
+      }
+      if (options.birthDateRange) {
+        if (options.birthDateRange.from) {
+          params.append("birthDateFrom", options.birthDateRange.from.toISOString());
+        }
+        if (options.birthDateRange.to) {
+          params.append("birthDateTo", options.birthDateRange.to.toISOString());
+        }
       }
       if (options.columns.length > 0) {
         params.append("columns", options.columns.join(","));
