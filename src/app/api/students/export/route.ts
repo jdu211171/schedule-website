@@ -66,7 +66,31 @@ export const GET = withBranchAccess(
     const examDateTo = searchParams.get("examDateTo") ? new Date(searchParams.get("examDateTo")!) : undefined;
 
     // Get visible columns from query params
-    const visibleColumns = searchParams.get("columns")?.split(",") || [];
+    const visibleColumns = searchParams.get("columns")?.split(",") || [
+      "name",
+      "kanaName",
+      "status",
+      "studentTypeName",
+      "gradeYear",
+      "birthDate",
+      "schoolName",
+      "schoolType",
+      "examCategory",
+      "examCategoryType",
+      "firstChoice",
+      "secondChoice",
+      "examDate",
+      "username",
+      "email",
+      "parentEmail",
+      "branches",
+      "notes",
+    ];
+
+    // Filter out LINE-related fields, phone fields, and contactPhones for security/privacy
+    const allowedColumns = visibleColumns.filter(col =>
+      !["lineId", "lineConnection", "lineNotificationsEnabled", "homePhone", "parentPhone", "studentPhone", "contactPhones"].includes(col)
+    );
 
     // Build where clause
     const where: any = {
@@ -225,107 +249,126 @@ export const GET = withBranchAccess(
       });
     }
 
-    // Get ordered CSV headers based on column rules
-    const headers = getOrderedCsvHeaders().join(",");
+    // Column ID to CSV header mapping based on column rules
+    const columnIdToHeader: Record<string, string> = {};
+    const headerToColumnId: Record<string, string> = {};
+    
+    // Build mappings from column rules
+    for (const [key, rule] of Object.entries(STUDENT_COLUMN_RULES)) {
+      // Map common column IDs to CSV headers
+      switch (key) {
+        case 'studentTypeName':
+          columnIdToHeader['studentTypeName'] = rule.csvHeader;
+          headerToColumnId[rule.csvHeader] = 'studentTypeName';
+          break;
+        case 'name':
+        case 'kanaName':
+        case 'status':
+        case 'gradeYear':
+        case 'birthDate':
+        case 'schoolName':
+        case 'schoolType':
+        case 'examCategory':
+        case 'examCategoryType':
+        case 'firstChoice':
+        case 'secondChoice':
+        case 'examDate':
+        case 'username':
+        case 'email':
+        case 'parentEmail':
+        case 'password':
+        case 'branches':
+        case 'notes':
+          columnIdToHeader[key] = rule.csvHeader;
+          headerToColumnId[rule.csvHeader] = key;
+          break;
+      }
+    }
 
-    // Build CSV rows to match import schema exactly
+    // Build CSV header from allowed columns
+    const headers = allowedColumns
+      .map((col) => columnIdToHeader[col] || col)
+      .join(",");
+
+    // Build CSV rows based on visible columns
     const rows = filteredStudents.map((student) => {
-      // Get unique subject names (for subjects column)
-      const subjectNames = student.user?.subjectPreferences
-        ?.reduce((acc: string[], pref: any) => {
-          if (!acc.includes(pref.subject.name)) {
-            acc.push(pref.subject.name);
-          }
-          return acc;
-        }, []) || [];
-
-      // Get branch names (for branches column)
-      const branchNames = student.user?.branches
-        ?.map((b: any) => b.branch.name) || [];
-
-      // Create row data based on column rules
-      const rowData: Record<string, string> = {};
-
-      // Process each column according to rules
-      for (const [key, rule] of Object.entries(STUDENT_COLUMN_RULES)) {
-        // Skip ignored columns
-        if (rule.createRule === 'ignore' && rule.updateRule === 'ignore') {
-          rowData[rule.csvHeader] = "";
-          continue;
-        }
-
-        switch (rule.dbField) {
-          case 'name':
-            rowData[rule.csvHeader] = student.name || "";
+      const row = allowedColumns.map((col) => {
+        let value = "";
+        
+        switch (col) {
+          case "name":
+            value = student.name || "";
             break;
-          case 'kanaName':
-            rowData[rule.csvHeader] = student.kanaName || "";
+          case "kanaName":
+            value = student.kanaName || "";
             break;
-          case 'studentTypeName':
-            rowData[rule.csvHeader] = student.studentType?.name || "";
+          case "status":
+            const statusLabels: Record<string, string> = {
+              ACTIVE: "在籍",
+              SICK: "休会",
+              PERMANENTLY_LEFT: "退会",
+            };
+            value = statusLabels[student.status || "ACTIVE"] || student.status || "";
             break;
-          case 'gradeYear':
-            rowData[rule.csvHeader] = student.gradeYear?.toString() || "";
+          case "studentTypeName":
+            value = student.studentType?.name || "";
             break;
-          case 'birthDate':
-            rowData[rule.csvHeader] = formatDateForCSV(student.birthDate);
+          case "gradeYear":
+            value = student.gradeYear?.toString() || "";
             break;
-          case 'schoolName':
-            rowData[rule.csvHeader] = student.schoolName || "";
+          case "birthDate":
+            value = formatDateForCSV(student.birthDate);
             break;
-          case 'schoolType':
-            rowData[rule.csvHeader] = formatEnumForCSV(student.schoolType, "schoolType");
+          case "schoolName":
+            value = student.schoolName || "";
             break;
-          case 'examCategory':
-            rowData[rule.csvHeader] = formatEnumForCSV(student.examCategory, "examCategory");
+          case "schoolType":
+            value = formatEnumForCSV(student.schoolType, "schoolType");
             break;
-          case 'examCategoryType':
-            rowData[rule.csvHeader] = formatEnumForCSV(student.examCategoryType, "examCategoryType");
+          case "examCategory":
+            value = formatEnumForCSV(student.examCategory, "examCategory");
             break;
-          case 'firstChoice':
-            rowData[rule.csvHeader] = student.firstChoice || "";
+          case "examCategoryType":
+            value = formatEnumForCSV(student.examCategoryType, "examCategoryType");
             break;
-          case 'secondChoice':
-            rowData[rule.csvHeader] = student.secondChoice || "";
+          case "firstChoice":
+            value = student.firstChoice || "";
             break;
-          case 'examDate':
-            rowData[rule.csvHeader] = formatDateForCSV(student.examDate);
+          case "secondChoice":
+            value = student.secondChoice || "";
             break;
-          case 'username':
-            rowData[rule.csvHeader] = student.user?.username || "";
+          case "examDate":
+            value = formatDateForCSV(student.examDate);
             break;
-          case 'email':
-            rowData[rule.csvHeader] = student.user?.email || "";
+          case "username":
+            value = student.user?.username || "";
             break;
-          case 'parentEmail':
-            rowData[rule.csvHeader] = student.parentEmail || "";
+          case "email":
+            value = student.user?.email || "";
             break;
-          case 'password':
-            rowData[rule.csvHeader] = ""; // Never export passwords
+          case "parentEmail":
+            value = student.parentEmail || "";
             break;
-          case 'homePhone':
-            rowData[rule.csvHeader] = student.homePhone || "";
+          case "password":
+            // Don't export passwords for security
+            value = "";
             break;
-          case 'parentPhone':
-            rowData[rule.csvHeader] = student.parentPhone || "";
+          case "branches":
+            value = student.user?.branches
+              ?.map((b: any) => b.branch.name)
+              .join("; ") || "";
             break;
-          case 'studentPhone':
-            rowData[rule.csvHeader] = student.studentPhone || "";
+          case "subjectPreferences":
+            value = student.user?.subjectPreferences
+              ?.map((sp: any) => `${sp.subject.name} - ${sp.subjectType.name}`)
+              .join("; ") || "";
             break;
-          case 'branches':
-            rowData[rule.csvHeader] = branchNames.join(";");
-            break;
-          case 'notes':
-            rowData[rule.csvHeader] = student.notes || "";
+          case "notes":
+            value = student.notes || "";
             break;
           default:
-            rowData[rule.csvHeader] = "";
+            value = "";
         }
-      }
-
-      // Build row in correct order
-      const row = getOrderedCsvHeaders().map(header => {
-        const value = rowData[header] || "";
 
         // Escape CSV values
         if (value.includes(",") || value.includes("\n") || value.includes('"')) {
