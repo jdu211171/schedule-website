@@ -130,9 +130,9 @@ export const GET = withBranchAccess(
       "subjectPreferences",
     ];
 
-    // Filter out LINE-related fields for security/privacy
+    // Filter out LINE-related fields, phone fields, and contactPhones for security/privacy
     const allowedColumns = visibleColumns.filter(col =>
-      !["lineId", "lineConnection", "lineNotificationsEnabled"].includes(col)
+      !["lineId", "lineConnection", "lineNotificationsEnabled", "phoneNumber", "phoneNotes", "contactPhones"].includes(col)
     );
 
     // Column headers mapping
@@ -140,11 +140,15 @@ export const GET = withBranchAccess(
       name: "名前",
       kanaName: "カナ",
       status: "ステータス",
+      birthDate: "生年月日",
       username: "ユーザー名",
       email: "メールアドレス",
       password: "パスワード",
+      phoneNumber: "携帯番号",
+      phoneNotes: "電話番号備考",
       branches: "校舎",
       subjectPreferences: "担当科目",
+      notes: "備考",
     };
 
     // Status labels
@@ -169,6 +173,9 @@ export const GET = withBranchAccess(
             return teacher.kanaName || "";
           case "status":
             return statusLabels[teacher.status || "ACTIVE"] || teacher.status || "";
+          case "birthDate":
+            if (!teacher.birthDate) return "";
+            return new Date(teacher.birthDate).toISOString().split('T')[0];
           case "username":
             return teacher.user?.username || "";
           case "email":
@@ -184,6 +191,8 @@ export const GET = withBranchAccess(
             return teacher.user?.subjectPreferences
               ?.map((sp: any) => `${sp.subject.name} - ${sp.subjectType.name}`)
               .join("; ") || "";
+          case "notes":
+            return teacher.notes || "";
           default:
             return "";
         }

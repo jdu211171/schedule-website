@@ -9,6 +9,13 @@ import {
 import { Teacher, DayOfWeek } from "@prisma/client";
 
 type TeacherWithIncludes = Teacher & {
+  contactPhones?: {
+    id: string;
+    phoneType: string;
+    phoneNumber: string;
+    notes: string | null;
+    order: number;
+  }[];
   user: {
     username: string | null;
     email: string | null;
@@ -56,8 +63,18 @@ type FormattedTeacher = {
   lineNotificationsEnabled: boolean | null;
   notes: string | null;
   status: string;
+  birthDate: Date | null;
+  phoneNumber: string | null;
+  phoneNotes: string | null;
   username: string | null;
   password: string | null;
+  contactPhones?: {
+    id: string;
+    phoneType: string;
+    phoneNumber: string;
+    notes: string | null;
+    order: number;
+  }[];
   branches: {
     branchId: string;
     name: string;
@@ -229,6 +246,9 @@ const formatTeacher = (teacher: TeacherWithIncludes): FormattedTeacher => {
     lineId: teacher.lineId,
     notes: teacher.notes,
     status: teacher.status,
+    birthDate: teacher.birthDate,
+    phoneNumber: teacher.phoneNumber,
+    phoneNotes: teacher.phoneNotes,
     username: teacher.user.username,
     password: teacher.user.passwordHash || null,
     branches:
@@ -242,6 +262,7 @@ const formatTeacher = (teacher: TeacherWithIncludes): FormattedTeacher => {
     createdAt: teacher.createdAt,
     updatedAt: teacher.updatedAt,
     lineNotificationsEnabled: teacher.lineNotificationsEnabled,
+    contactPhones: teacher.contactPhones?.sort((a, b) => a.order - b.order) || [],
   };
 };
 
@@ -262,7 +283,7 @@ export const GET = withBranchAccess(
       );
     }
 
-    const { page, limit, name, status } = result.data;
+    const { page, limit, name, status, birthDateFrom, birthDateTo } = result.data;
 
     // Build filter conditions
     const where: Record<string, unknown> = {};
@@ -276,6 +297,18 @@ export const GET = withBranchAccess(
 
     if (status) {
       where.status = status;
+    }
+
+    // Add birthDate filter
+    if (birthDateFrom || birthDateTo) {
+      const dateFilter: any = {};
+      if (birthDateFrom) {
+        dateFilter.gte = new Date(birthDateFrom);
+      }
+      if (birthDateTo) {
+        dateFilter.lte = new Date(birthDateTo);
+      }
+      where.birthDate = dateFilter;
     }
 
     // Filter teachers by branch for non-admin users
@@ -308,6 +341,18 @@ export const GET = withBranchAccess(
     const teachers = await prisma.teacher.findMany({
       where,
       include: {
+        contactPhones: {
+          select: {
+            id: true,
+            phoneType: true,
+            phoneNumber: true,
+            notes: true,
+            order: true,
+          },
+          orderBy: {
+            order: 'asc',
+          },
+        },
         user: {
           select: {
             username: true,
@@ -402,6 +447,7 @@ export const POST = withBranchAccess(
         subjectPreferences = [],
         regularAvailability = [],
         exceptionalAvailability = [],
+        contactPhones = [],
         ...teacherData
       } = result.data;
 
@@ -519,6 +565,19 @@ export const POST = withBranchAccess(
             userId: user.id,
           },
         });
+
+        // Create contact phones if provided
+        if (contactPhones.length > 0) {
+          await tx.teacherContactPhone.createMany({
+            data: contactPhones.map((phone, index) => ({
+              teacherId: teacher.teacherId,
+              phoneType: phone.phoneType,
+              phoneNumber: phone.phoneNumber,
+              notes: phone.notes || null,
+              order: phone.order ?? index,
+            })),
+          });
+        }
 
         // Create branch associations
         if (finalBranchIds.length > 0) {
@@ -661,6 +720,18 @@ export const POST = withBranchAccess(
         return tx.teacher.findUnique({
           where: { teacherId: teacher.teacherId },
           include: {
+            contactPhones: {
+              select: {
+                id: true,
+                phoneType: true,
+                phoneNumber: true,
+                notes: true,
+                order: true,
+              },
+              orderBy: {
+                order: 'asc',
+              },
+            },
             user: {
               select: {
                 username: true,

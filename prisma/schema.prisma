@@ -243,14 +243,34 @@ model Teacher {
   lineNotificationsEnabled Boolean?                   @default(true) @map("line_notifications_enabled")
   notes                    String?                    @db.VarChar(255)
   status                   UserStatus                 @default(ACTIVE)
+  birthDate                DateTime?                  @map("birth_date") @db.Date
+  phoneNumber              String?                    @map("phone_number") @db.VarChar(50)
+  phoneNotes               String?                    @map("phone_notes") @db.VarChar(255)
   createdAt                DateTime                   @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt                DateTime                   @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
   linkingCode              String?                    @unique @map("linking_code") @db.VarChar(10)
   classSessions            ClassSession[]
   studentPreferences       StudentTeacherPreference[]
+  contactPhones            TeacherContactPhone[]
   user                     User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("teachers")
+}
+
+model TeacherContactPhone {
+  id          String    @id @default(cuid())
+  teacherId   String    @map("teacher_id")
+  phoneType   PhoneType @map("phone_type")
+  phoneNumber String    @map("phone_number") @db.VarChar(50)
+  notes       String?   @db.VarChar(255)
+  order       Int       @default(0)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  teacher     Teacher   @relation(fields: [teacherId], references: [teacherId], onDelete: Cascade)
+
+  @@index([teacherId])
+  @@index([order])
+  @@map("teacher_contact_phones")
 }
 
 model SubjectType {

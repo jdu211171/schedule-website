@@ -112,8 +112,18 @@ export function useTeacherCreate() {
             lineId: newTeacher.lineId || null,
             lineNotificationsEnabled: newTeacher.lineNotificationsEnabled ?? true,
             notes: newTeacher.notes || null,
+            birthDate: newTeacher.birthDate ? new Date(newTeacher.birthDate).toISOString() : null,
+            phoneNumber: newTeacher.phoneNumber || null,
+            phoneNotes: newTeacher.phoneNotes || null,
             username: newTeacher.username,
             password: newTeacher.password || null,
+            contactPhones: (newTeacher.contactPhones || []).map(phone => ({
+              id: phone.id || `temp-${Date.now()}-${Math.random()}`,
+              phoneType: phone.phoneType,
+              phoneNumber: phone.phoneNumber,
+              notes: phone.notes || null,
+              order: phone.order ?? 0,
+            })),
             branches: [],
             subjectPreferences: newTeacher.subjectPreferences || [],
             regularAvailability: newTeacher.regularAvailability || [],
@@ -238,6 +248,18 @@ export function useTeacherUpdate() {
                     ...teacher,
                     ...updatedTeacher,
                     name: updatedTeacher.name || teacher.name,
+                    birthDate: updatedTeacher.birthDate !== undefined 
+                      ? (updatedTeacher.birthDate ? new Date(updatedTeacher.birthDate).toISOString() : null)
+                      : teacher.birthDate,
+                    contactPhones: updatedTeacher.contactPhones !== undefined
+                      ? (updatedTeacher.contactPhones || []).map(phone => ({
+                          id: phone.id || `temp-${Date.now()}-${Math.random()}`,
+                          phoneType: phone.phoneType,
+                          phoneNumber: phone.phoneNumber,
+                          notes: phone.notes || null,
+                          order: phone.order ?? 0,
+                        }))
+                      : teacher.contactPhones,
                     subjectPreferences:
                       updatedTeacher.subjectPreferences !== undefined
                         ? updatedTeacher.subjectPreferences
@@ -262,6 +284,18 @@ export function useTeacherUpdate() {
           ...previousTeacher,
           ...updatedTeacher,
           name: updatedTeacher.name || previousTeacher.name,
+          birthDate: updatedTeacher.birthDate !== undefined 
+            ? (updatedTeacher.birthDate ? new Date(updatedTeacher.birthDate).toISOString() : null)
+            : previousTeacher.birthDate,
+          contactPhones: updatedTeacher.contactPhones !== undefined
+            ? (updatedTeacher.contactPhones || []).map(phone => ({
+                id: phone.id || `temp-${Date.now()}-${Math.random()}`,
+                phoneType: phone.phoneType,
+                phoneNumber: phone.phoneNumber,
+                notes: phone.notes || null,
+                order: phone.order ?? 0,
+              }))
+            : previousTeacher.contactPhones,
           subjectPreferences:
             updatedTeacher.subjectPreferences !== undefined
               ? updatedTeacher.subjectPreferences

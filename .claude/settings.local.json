@@ -20,7 +20,8 @@
       "Bash(sed:*)",
       "Bash(curl:*)",
       "Bash(node:*)",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(pkill:*)"
     ],
     "deny": []
   }

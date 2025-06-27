@@ -8,6 +8,7 @@ import { useDebounce } from "@/hooks/use-debounce";
 import { useTeacherExport } from "@/hooks/useTeacherExport";
 
 import { DataTableViewOptions } from "@/components/data-table/data-table-view-options";
+import { DataTableDateFilter } from "@/components/data-table/data-table-date-filter";
 import { DataTableFacetedFilter } from "@/components/data-table/data-table-faceted-filter";
 import { useDataTable } from "@/hooks/use-data-table";
 import { Button } from "@/components/ui/button";
@@ -136,6 +137,16 @@ function TeacherTableToolbarFilter<TData>({
           />
         );
 
+      case "date":
+      case "dateRange":
+        return (
+          <DataTableDateFilter
+            column={column}
+            title={columnMeta.label ?? column.id}
+            multiple={columnMeta.variant === "dateRange"}
+          />
+        );
+
       case "select":
       case "multiSelect":
         return (
@@ -167,6 +178,7 @@ export function TeacherTable() {
     branch: string[];
     subject: string[];
     lineConnection: string[];
+    birthDateRange?: { from?: Date; to?: Date };
   }>(() => {
     if (typeof window !== 'undefined') {
       const savedFilters = localStorage.getItem(FILTERS_STORAGE_KEY);
@@ -180,6 +192,10 @@ export function TeacherTable() {
             branch: parsed.branch || [],
             subject: parsed.subject || [],
             lineConnection: parsed.lineConnection || [],
+            birthDateRange: parsed.birthDateRange ? {
+              from: parsed.birthDateRange.from ? new Date(parsed.birthDateRange.from) : undefined,
+              to: parsed.birthDateRange.to ? new Date(parsed.birthDateRange.to) : undefined
+            } : undefined,
           };
         } catch (error) {
           console.error('Error parsing saved filters:', error);
@@ -192,6 +208,7 @@ export function TeacherTable() {
       branch: [] as string[],
       subject: [] as string[],
       lineConnection: [] as string[],
+      birthDateRange: undefined,
     };
   });
 
@@ -245,6 +262,8 @@ export function TeacherTable() {
     limit: pageSize,
     name: debouncedName || undefined,
     status: filters.status[0] || undefined, // API only supports single status
+    birthDateFrom: filters.birthDateRange?.from,
+    birthDateTo: filters.birthDateRange?.to,
   });
 
   // Create lookup maps for better performance
@@ -434,6 +453,75 @@ export function TeacherTable() {
         },
       },
       {
+        id: "birthDate",
+        accessorKey: "birthDate",
+        header: "生年月日",
+        cell: ({ row }) => {
+          const birthDate = row.original.birthDate;
+          if (!birthDate) return "-";
+          return new Date(birthDate).toLocaleDateString('ja-JP', { 
+            year: 'numeric', 
+            month: '2-digit', 
+            day: '2-digit' 
+          });
+        },
+        meta: {
+          label: "生年月日",
+          variant: "dateRange",
+          placeholder: "生年月日で検索",
+        },
+        enableColumnFilter: true,
+      },
+      {
+        id: "contactPhones",
+        accessorKey: "contactPhones",
+        header: "連絡先電話",
+        cell: ({ row }) => {
+          const phones = row.original.contactPhones;
+          if (!phones || phones.length === 0) {
+            // Fallback to legacy phoneNumber field with notes
+            const phoneNumber = row.original.phoneNumber;
+            const phoneNotes = row.original.phoneNotes;
+            if (phoneNumber) {
+              return (
+                <div className="text-sm">
+                  {phoneNumber}
+                  {phoneNotes && (
+                    <span className="text-muted-foreground ml-1">
+                      ({phoneNotes})
+                    </span>
+                  )}
+                </div>
+              );
+            }
+            return "-";
+          }
+          
+          return (
+            <div className="space-y-1">
+              {phones.map((phone: any, index: number) => (
+                <div key={index} className="text-sm">
+                  <span className="font-medium">
+                    {phone.phoneType === "HOME" ? "自宅" :
+                     phone.phoneType === "DAD" ? "父" :
+                     phone.phoneType === "MOM" ? "母" : "その他"}:
+                  </span>{" "}
+                  {phone.phoneNumber}
+                  {phone.notes && (
+                    <span className="text-muted-foreground ml-1">
+                      ({phone.notes})
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          );
+        },
+        meta: {
+          label: "連絡先電話",
+        },
+      },
+      {
         id: "password",
         accessorKey: "password",
         header: "パスワード",
@@ -611,6 +699,30 @@ export function TeacherTable() {
         enableColumnFilter: true,
       },
       {
+        id: "notes",
+        accessorKey: "notes",
+        header: "備考",
+        cell: ({ row }) => {
+          const notes = row.original.notes;
+          if (!notes) return "-";
+          
+          // Truncate long notes and add tooltip
+          const maxLength = 50;
+          const displayText = notes.length > maxLength 
+            ? `${notes.substring(0, maxLength)}...` 
+            : notes;
+          
+          return (
+            <span title={notes} className="cursor-help">
+              {displayText}
+            </span>
+          );
+        },
+        meta: {
+          label: "備考",
+        },
+      },
+      {
         id: "actions",
         cell: ({ row }) => {
           // Type-safe check for _optimistic property
@@ -666,6 +778,7 @@ export function TeacherTable() {
         ...(filters.branch.length > 0 ? [{ id: 'branches', value: filters.branch }] : []),
         ...(filters.subject.length > 0 ? [{ id: 'subjectPreferences', value: filters.subject }] : []),
         ...(filters.lineConnection.length > 0 ? [{ id: 'lineConnection', value: filters.lineConnection }] : []),
+        ...(filters.birthDateRange ? [{ id: 'birthDate', value: filters.birthDateRange }] : []),
       ],
     },
     getRowId: (row) => row.teacherId,
@@ -702,6 +815,7 @@ export function TeacherTable() {
         branch: [],
         subject: [],
         lineConnection: [],
+        birthDateRange: undefined,
       };
       setFilters(defaultFilters);
       // Clear localStorage when resetting
@@ -719,6 +833,7 @@ export function TeacherTable() {
       branch: [] as string[],
       subject: [] as string[],
       lineConnection: [] as string[],
+      birthDateRange: undefined as { from?: Date; to?: Date } | undefined,
     };
 
     // Set the active filters
@@ -733,6 +848,8 @@ export function TeacherTable() {
         newFilters.subject = filter.value as string[] || [];
       } else if (filter.id === 'lineConnection') {
         newFilters.lineConnection = filter.value as string[] || [];
+      } else if (filter.id === 'birthDate') {
+        newFilters.birthDateRange = filter.value as { from?: Date; to?: Date } | undefined;
       }
     });
 
@@ -779,6 +896,7 @@ export function TeacherTable() {
       branch: filters.branch || undefined,
       subject: filters.subject || undefined,
       lineConnection: filters.lineConnection || undefined,
+      birthDateRange: filters.birthDateRange || undefined,
       columns: visibleColumns,
     });
   };

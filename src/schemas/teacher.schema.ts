@@ -1,6 +1,25 @@
 // src/schemas/teacher.schema.ts
 import { z } from "zod";
 
+// Phone type enum
+export const phoneTypeEnum = z.enum(["HOME", "DAD", "MOM", "OTHER"]);
+
+// Contact phone schema for teacher
+export const contactPhoneSchema = z.object({
+  id: z.string().optional(),
+  phoneType: phoneTypeEnum,
+  phoneNumber: z
+    .string()
+    .min(1, "電話番号は必須です")
+    .max(50, "電話番号は50文字以内で入力してください"),
+  notes: z
+    .string()
+    .max(255, "備考は255文字以内で入力してください")
+    .optional()
+    .nullable(),
+  order: z.number().optional().default(0),
+});
+
 // Subject preference schema for teacher registration
 export const subjectPreferenceSchema = z.object({
   subjectId: z.string().min(1, "科目を選択してください"),
@@ -121,6 +140,24 @@ const teacherBaseSchema = z.object({
     .optional()
     .nullable(),
   status: userStatusEnum.optional().default("ACTIVE"),
+  birthDate: z
+    .coerce
+    .date()
+    .optional()
+    .nullable(),
+  // Legacy phone fields (for backward compatibility)
+  phoneNumber: z
+    .string()
+    .max(50, "携帯番号は50文字以内で入力してください")
+    .optional()
+    .nullable(),
+  phoneNotes: z
+    .string()
+    .max(255, "電話番号備考は255文字以内で入力してください")
+    .optional()
+    .nullable(),
+  // New contact phones array
+  contactPhones: z.array(contactPhoneSchema).optional().default([]),
   username: z.string().min(3, "ユーザー名は3文字以上で入力してください"),
   // パスワードはフォーム上は任意、作成時は必須
   password: z
@@ -182,6 +219,8 @@ export const teacherFilterSchema = z.object({
   limit: z.coerce.number().int().positive().default(10),
   name: z.string().optional(),
   status: userStatusEnum.optional(),
+  birthDateFrom: z.string().optional(),
+  birthDateTo: z.string().optional(),
 });
 
 export type TeacherCreate = z.infer<typeof teacherCreateSchema>;

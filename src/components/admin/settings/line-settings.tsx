@@ -2,16 +2,15 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Bell, BellOff, Info } from "lucide-react";
+import { Loader2, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { fetcher } from "@/lib/fetcher";
 import { MessageTemplateEditor } from "./message-template-editor";
 import { MessageTemplate, getDefaultTemplates } from "@/lib/line/message-templates";
+import { BulkNotificationSettings } from "./bulk-notification-settings";
 
 interface LineStats {
   totalStudents: number;
@@ -183,105 +182,10 @@ export function LineSettings() {
       </Card>
 
       {/* Bulk Operations */}
-      <Card>
-        <CardHeader>
-          <CardTitle>一括通知設定</CardTitle>
-          <CardDescription>LINE連携済みユーザーの通知設定を一括管理</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="p-4 border rounded-lg space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <Label>生徒の通知</Label>
-                <p className="text-sm text-muted-foreground">
-                  LINE連携済みの全生徒の通知設定
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleBulkUpdate("students", true)}
-                  disabled={isUpdating}
-                >
-                  <Bell className="h-4 w-4 mr-1" />
-                  有効化
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleBulkUpdate("students", false)}
-                  disabled={isUpdating}
-                >
-                  <BellOff className="h-4 w-4 mr-1" />
-                  無効化
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          <div className="p-4 border rounded-lg space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <Label>講師の通知</Label>
-                <p className="text-sm text-muted-foreground">
-                  LINE連携済みの全講師の通知設定
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleBulkUpdate("teachers", true)}
-                  disabled={isUpdating}
-                >
-                  <Bell className="h-4 w-4 mr-1" />
-                  有効化
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleBulkUpdate("teachers", false)}
-                  disabled={isUpdating}
-                >
-                  <BellOff className="h-4 w-4 mr-1" />
-                  無効化
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          <div className="p-4 border rounded-lg bg-muted/50 space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <Label>全ユーザーの通知</Label>
-                <p className="text-sm text-muted-foreground">
-                  LINE連携済みの全ユーザーの通知設定
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  onClick={() => handleBulkUpdate("all", true)}
-                  disabled={isUpdating}
-                >
-                  <Bell className="h-4 w-4 mr-1" />
-                  全て有効化
-                </Button>
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  onClick={() => handleBulkUpdate("all", false)}
-                  disabled={isUpdating}
-                >
-                  <BellOff className="h-4 w-4 mr-1" />
-                  全て無効化
-                </Button>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <BulkNotificationSettings
+        onBulkUpdate={handleBulkUpdate}
+        isUpdating={isUpdating}
+      />
 
       {/* Message Templates */}
       <Card>
@@ -307,7 +211,7 @@ export function LineSettings() {
                   title: "テンプレートを保存しました",
                   description: "メッセージテンプレートが正常に更新されました。",
                 });
-              } catch (error) {
+              } catch {
                 toast({
                   title: "エラー",
                   description: "テンプレートの保存に失敗しました。",

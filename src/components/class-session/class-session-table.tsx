@@ -391,6 +391,9 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
           .map((teacher) => ({
             ...teacher,
             status: teacher.status as UserStatus,
+            birthDate: teacher.birthDate ? new Date(teacher.birthDate) : null,
+            createdAt: new Date(teacher.createdAt),
+            updatedAt: new Date(teacher.updatedAt),
             linkingCode: null,
           })) || []
       }
