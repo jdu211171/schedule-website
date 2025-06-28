@@ -4,7 +4,7 @@
 export interface DataTableColumnMeta {
   label?: string;
   placeholder?: string;
-  variant?: "text" | "number" | "range" | "date" | "dateRange" | "select" | "multiSelect" | "boolean";
+  variant?: "text" | "number" | "range" | "date" | "dateRange" | "yearRange" | "select" | "multiSelect" | "boolean";
   options?: { value: string; label: string; icon?: React.FC<React.SVGProps<SVGSVGElement>>; count?: number }[];
   unit?: string;
   align?: "left" | "center" | "right";
@@ -19,7 +19,7 @@ declare module "@tanstack/react-table" {
   interface ColumnMeta<TData, TValue> {
     label?: string;
     placeholder?: string;
-    variant?: "text" | "number" | "range" | "date" | "dateRange" | "select" | "multiSelect" | "boolean";
+    variant?: "text" | "number" | "range" | "date" | "dateRange" | "yearRange" | "select" | "multiSelect" | "boolean";
     options?: { value: string; label: string; icon?: React.FC<React.SVGProps<SVGSVGElement>>; count?: number }[];
     unit?: string;
     align?: "left" | "center" | "right";

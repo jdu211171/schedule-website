@@ -48,6 +48,7 @@ export function getFilterOperators(filterVariant: FilterVariant) {
     range: dataTableConfig.numericOperators,
     date: dataTableConfig.dateOperators,
     dateRange: dataTableConfig.dateOperators,
+    yearRange: dataTableConfig.dateOperators,
     boolean: dataTableConfig.booleanOperators,
     select: dataTableConfig.selectOperators,
     multiSelect: dataTableConfig.multiSelectOperators,

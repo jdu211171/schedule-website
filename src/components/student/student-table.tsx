@@ -9,6 +9,7 @@ import { useStudentExport } from "@/hooks/useStudentExport";
 
 import { DataTableViewOptions } from "@/components/data-table/data-table-view-options";
 import { DataTableDateFilter } from "@/components/data-table/data-table-date-filter";
+import { DataTableYearFilter } from "@/components/data-table/data-table-year-filter";
 import { DataTableFacetedFilter } from "@/components/data-table/data-table-faceted-filter";
 import { DataTableSliderFilter } from "@/components/data-table/data-table-slider-filter";
 import { DataTablePagination } from "@/components/data-table/data-table-pagination";
@@ -158,6 +159,14 @@ function StudentTableToolbarFilter<TData>({
             column={column}
             title={columnMeta.label ?? column.id}
             multiple={columnMeta.variant === "dateRange"}
+          />
+        );
+
+      case "yearRange":
+        return (
+          <DataTableYearFilter
+            column={column}
+            title={columnMeta.label ?? column.id}
           />
         );
 
@@ -485,7 +494,7 @@ export function StudentTable() {
         },
         meta: {
           label: "生年月日",
-          variant: "dateRange",
+          variant: "yearRange",
           placeholder: "生年月日で検索",
         },
         enableColumnFilter: true,

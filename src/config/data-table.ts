@@ -58,6 +58,7 @@ export const dataTableConfig = {
     "range",
     "date",
     "dateRange",
+    "yearRange",
     "boolean",
     "select",
     "multiSelect",
