@@ -11,6 +11,7 @@ import { DataTableViewOptions } from "@/components/data-table/data-table-view-op
 import { DataTableDateFilter } from "@/components/data-table/data-table-date-filter";
 import { DataTableFacetedFilter } from "@/components/data-table/data-table-faceted-filter";
 import { useDataTable } from "@/hooks/use-data-table";
+import { SubjectPreferencesCell } from "@/components/ui/subject-preferences-cell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -651,43 +652,13 @@ export function TeacherTable() {
         id: "subjectPreferences",
         accessorKey: "subjectPreferences",
         header: "担当科目",
-        cell: ({ row }) => {
-          const subjectPreferences = row.original.subjectPreferences || [];
-          if (subjectPreferences.length === 0) return "-";
-
-          return (
-            <div className="space-y-1">
-              {subjectPreferences.map((preference) => {
-                const subject = subjects.find(
-                  (s) => s.subjectId === preference.subjectId
-                );
-                const types = subjectTypes.filter((t) =>
-                  preference.subjectTypeIds.includes(t.subjectTypeId)
-                );
-
-                return (
-                  <div
-                    key={preference.subjectId}
-                    className="flex flex-wrap gap-1"
-                  >
-                    <Badge variant="secondary" className="text-xs">
-                      {subject?.name || preference.subjectId}
-                    </Badge>
-                    {types.map((type) => (
-                      <Badge
-                        key={type.subjectTypeId}
-                        variant="outline"
-                        className="text-xs"
-                      >
-                        {type.name}
-                      </Badge>
-                    ))}
-                  </div>
-                );
-              })}
-            </div>
-          );
-        },
+        cell: ({ row }) => (
+          <SubjectPreferencesCell
+            subjectPreferences={row.original.subjectPreferences || []}
+            subjects={subjects}
+            subjectTypes={subjectTypes}
+          />
+        ),
         meta: {
           label: "担当科目",
           variant: "multiSelect",

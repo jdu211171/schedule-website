@@ -77,6 +77,7 @@ type FormattedStudent = {
   maxYears: number | null;
   gradeYear: number | null;
   lineId: string | null;
+  lineUserId: string | null;
   lineNotificationsEnabled: boolean | null;
   notes: string | null;
   status: string;
@@ -301,6 +302,7 @@ const formatStudent = (student: StudentWithIncludes): FormattedStudent => {
     gradeYear: student.gradeYear,
     lineId: student.lineId,
     lineUserId: student.lineUserId,
+    lineNotificationsEnabled: student.lineNotificationsEnabled,
     notes: student.notes,
     status: student.status,
     username: student.user.username,
@@ -340,7 +342,6 @@ const formatStudent = (student: StudentWithIncludes): FormattedStudent => {
     })) || [],
     createdAt: student.createdAt,
     updatedAt: student.updatedAt,
-    lineNotificationsEnabled: student.lineNotificationsEnabled,
   };
 };
 
@@ -865,9 +866,6 @@ export const POST = withBranchAccess(
         firstChoice: studentData.firstChoice || null,
         secondChoice: studentData.secondChoice || null,
         parentEmail: studentData.parentEmail || null,
-        homePhone: studentData.homePhone || null,
-        parentPhone: studentData.parentPhone || null,
-        studentPhone: studentData.studentPhone || null,
       };
 
       // Create user, student and all related data in a transaction

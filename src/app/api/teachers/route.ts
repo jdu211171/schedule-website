@@ -60,6 +60,7 @@ type FormattedTeacher = {
   kanaName: string | null;
   email: string | null;
   lineId: string | null;
+  lineUserId: string | null;
   lineNotificationsEnabled: boolean | null;
   notes: string | null;
   status: string;
@@ -245,6 +246,7 @@ const formatTeacher = (teacher: TeacherWithIncludes): FormattedTeacher => {
     email: teacher.email,
     lineId: teacher.lineId,
     lineUserId: teacher.lineUserId,
+    lineNotificationsEnabled: teacher.lineNotificationsEnabled,
     notes: teacher.notes,
     status: teacher.status,
     birthDate: teacher.birthDate,
@@ -262,7 +264,6 @@ const formatTeacher = (teacher: TeacherWithIncludes): FormattedTeacher => {
     exceptionalAvailability,
     createdAt: teacher.createdAt,
     updatedAt: teacher.updatedAt,
-    lineNotificationsEnabled: teacher.lineNotificationsEnabled,
     contactPhones: teacher.contactPhones?.sort((a, b) => a.order - b.order) || [],
   };
 };
