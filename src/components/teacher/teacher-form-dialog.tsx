@@ -794,8 +794,8 @@ export function TeacherFormDialog({
                             name="email"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel className="text-sm font-medium after:content-['*'] after:ml-1 after:text-destructive">
-                                  メールアドレス
+                                <FormLabel className="text-sm font-medium">
+                                  メールアドレス（任意）
                                 </FormLabel>
                                 <FormControl>
                                   <Input

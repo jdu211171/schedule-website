@@ -122,9 +122,11 @@ const teacherBaseSchema = z.object({
     .nullable(),
   email: z
     .string()
-    .email("有効なメールアドレス形式で入力してください")
     .optional()
-    .nullable(),
+    .nullable()
+    .refine((val) => !val || z.string().email().safeParse(val).success, {
+      message: "有効なメールアドレス形式で入力してください",
+    }),
   lineId: z
     .string()
     .max(50, "LINE IDは50文字以内で入力してください")
