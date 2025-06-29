@@ -26,12 +26,12 @@ export function TablePagination({ table }: TablePaginationProps) {
   return (
     <div className="flex items-center justify-between px-4">
       <div className="hidden flex-1 text-sm text-muted-foreground lg:flex">
-        {table.getFilteredSelectedRowModel().rows.length} of {table.getFilteredRowModel().rows.length} row(s) selected.
+        {table.getFilteredSelectedRowModel().rows.length} 件 / {table.getFilteredRowModel().rows.length} 件中を選択
       </div>
       <div className="flex w-full items-center gap-8 lg:w-fit">
         <div className="hidden items-center gap-2 lg:flex">
           <Label htmlFor="rows-per-page" className="text-sm font-medium">
-            Rows per page
+            1ページあたりの行数
           </Label>
           <Select
             value={`${table.getState().pagination.pageSize}`}
@@ -52,7 +52,7 @@ export function TablePagination({ table }: TablePaginationProps) {
           </Select>
         </div>
         <div className="flex w-fit items-center justify-center text-sm font-medium">
-          Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
+          ページ {table.getState().pagination.pageIndex + 1} / {table.getPageCount()}
         </div>
         <div className="ml-auto flex items-center gap-2 lg:ml-0">
           <Button

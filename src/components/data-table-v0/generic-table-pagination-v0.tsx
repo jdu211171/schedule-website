@@ -15,7 +15,7 @@ export function GenericTablePagination<TData>({ table }: GenericTablePaginationP
   return (
     <div className="flex items-center justify-between px-4 py-2">
       <div className="hidden flex-1 text-sm text-muted-foreground lg:flex">
-        {table.getFilteredSelectedRowModel().rows.length} of {table.getFilteredRowModel().rows.length} row(s) selected.
+        {table.getFilteredSelectedRowModel().rows.length} 件 / {table.getFilteredRowModel().rows.length} 件中を選択
       </div>
       <div className="flex w-full items-center gap-8 lg:w-fit">
         <div className="hidden items-center gap-2 lg:flex">
@@ -41,7 +41,7 @@ export function GenericTablePagination<TData>({ table }: GenericTablePaginationP
           </Select>
         </div>
         <div className="hidden text-sm font-medium lg:flex">
-          Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
+          ページ {table.getState().pagination.pageIndex + 1} / {table.getPageCount()}
         </div>
         <div className="flex items-center gap-2">
           <Button

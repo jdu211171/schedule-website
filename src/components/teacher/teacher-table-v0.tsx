@@ -143,6 +143,9 @@ export function TeacherTableV0() {
         id: "name",
         accessorKey: "name",
         header: "名前",
+        meta: {
+          label: "名前",
+        },
         cell: ({ row }) => (
           <GenericInlineEditableCell
             value={row.original.name}
@@ -155,6 +158,9 @@ export function TeacherTableV0() {
         id: "kanaName",
         accessorKey: "kanaName",
         header: "カナ",
+        meta: {
+          label: "カナ",
+        },
         cell: ({ row }) => (
           <GenericInlineEditableCell
             value={row.original.kanaName}
@@ -167,6 +173,9 @@ export function TeacherTableV0() {
         id: "status",
         accessorKey: "status",
         header: "ステータス",
+        meta: {
+          label: "ステータス",
+        },
         cell: ({ row }) => {
           const status = row.original.status || "ACTIVE";
           return (
@@ -182,6 +191,9 @@ export function TeacherTableV0() {
         id: "username",
         accessorKey: "username",
         header: "ユーザー名",
+        meta: {
+          label: "ユーザー名",
+        },
         cell: ({ row }) => (
           <GenericInlineEditableCell
             value={row.original.username}
@@ -194,6 +206,9 @@ export function TeacherTableV0() {
         id: "email",
         accessorKey: "email",
         header: "メールアドレス",
+        meta: {
+          label: "メールアドレス",
+        },
         cell: ({ row }) => (
           <GenericInlineEditableCell
             value={row.original.email}
@@ -206,6 +221,9 @@ export function TeacherTableV0() {
         id: "birthDate",
         accessorKey: "birthDate",
         header: "生年月日",
+        meta: {
+          label: "生年月日",
+        },
         cell: ({ row }) => {
           const birthDate = row.original.birthDate;
           if (!birthDate) return "-";
@@ -220,6 +238,9 @@ export function TeacherTableV0() {
         id: "contactPhones",
         accessorKey: "contactPhones",
         header: "連絡先電話",
+        meta: {
+          label: "連絡先電話",
+        },
         cell: ({ row }) => {
           const phoneNumber = row.original.phoneNumber;
           // For now, use legacy phoneNumber field for editing
@@ -236,6 +257,9 @@ export function TeacherTableV0() {
         id: "password",
         accessorKey: "password",
         header: "パスワード",
+        meta: {
+          label: "パスワード",
+        },
         cell: ({ row }) => (
           <GenericPasswordEditableCell
             value={row.original.password}
@@ -248,6 +272,9 @@ export function TeacherTableV0() {
         id: "lineConnection",
         accessorKey: "lineId",
         header: "メッセージ連携",
+        meta: {
+          label: "メッセージ連携",
+        },
         cell: ({ row }) => (
           <GenericInlineEditableCell
             value={row.original.lineId}
@@ -260,17 +287,21 @@ export function TeacherTableV0() {
         id: "branches",
         accessorKey: "branches",
         header: "校舎",
+        meta: {
+          label: "校舎",
+        },
         cell: ({ row }) => {
           const branches = row.original.branches || [];
-          const firstBranch = branches[0];
-          // For now, handle single branch selection
+          if (branches.length === 0) return "-";
+
           return (
-            <GenericSelectEditableCell
-              value={firstBranch?.branchId}
-              options={uniqueBranches.map(b => ({ value: b.value, label: b.label }))}
-              onSubmit={(value) => handleCellUpdate(row.original.teacherId, "branchIds", value)}
-              placeholder="校舎を選択"
-            />
+            <div className="flex flex-wrap gap-1">
+              {branches.map((branch) => (
+                <Badge key={branch.branchId} variant="outline">
+                  {branch.name}
+                </Badge>
+              ))}
+            </div>
           );
         },
       },
@@ -278,6 +309,9 @@ export function TeacherTableV0() {
         id: "subjectPreferences",
         accessorKey: "subjectPreferences",
         header: "担当科目",
+        meta: {
+          label: "担当科目",
+        },
         cell: ({ row }) => (
           <SubjectPreferencesCell
             subjectPreferences={row.original.subjectPreferences || []}
@@ -290,6 +324,9 @@ export function TeacherTableV0() {
         id: "notes",
         accessorKey: "notes",
         header: "備考",
+        meta: {
+          label: "備考",
+        },
         cell: ({ row }) => (
           <GenericInlineEditableCell
             value={row.original.notes}
