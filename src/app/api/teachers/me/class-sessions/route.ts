@@ -38,6 +38,8 @@ const formatClassSession = (classSession: any) => {
     teacherName: classSession.teacher?.name || null,
     studentId: classSession.studentId,
     studentName: classSession.student?.name || null,
+    studentGradeYear: classSession.student?.gradeYear || null,
+    studentTypeName: classSession.student?.studentType?.name || null,
     subjectId: classSession.subjectId,
     subjectName: classSession.subject?.name || null,
     classTypeId: classSession.classTypeId,
@@ -163,6 +165,12 @@ export const GET = withRole(
           student: {
             select: {
               name: true,
+              gradeYear: true,
+              studentType: {
+                select: {
+                  name: true,
+                },
+              },
             },
           },
           subject: {

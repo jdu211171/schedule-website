@@ -362,6 +362,12 @@ export const PATCH = withBranchAccess(
           student: {
             select: {
               name: true,
+              gradeYear: true,
+              studentType: {
+                select: {
+                  name: true,
+                },
+              },
             },
           },
           subject: {

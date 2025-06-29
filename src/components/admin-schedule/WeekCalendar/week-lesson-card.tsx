@@ -69,16 +69,16 @@ const WeekLessonCard: React.FC<WeekLessonCardProps> = ({
   };
 
   // Get student type and grade
-  const studentType = lesson.student?.studentType?.name || '';
-  const gradeYear = lesson.student?.gradeYear || '';
+  const studentType = lesson.studentTypeName || lesson.student?.studentType?.name || '';
+  const gradeYear = lesson.studentGradeYear || lesson.student?.gradeYear || '';
   const studentTypeLabel = studentType && gradeYear ? `${studentType.charAt(0)}${gradeYear}` : '';
 
   if (isExpanded) {
     return (
       <div className="w-full cursor-pointer" onClick={() => onClick(lesson.classId)}>
         <Card className={`p-2 space-y-2 ${colors.background} ${colors.border} ${colors.hover} border h-full transition-colors duration-100`}>
-          <CardContent className={`p-1.5 space-y-2 ${colors.text}`}>
-            {/* Edit button in top right corner */}
+          <CardContent className={`p-1.5 space-y-2 ${colors.text} relative`}>
+            {/* Edit button */}
             <div className="flex justify-end">
               <button
                 onClick={handleEdit}
@@ -91,27 +91,28 @@ const WeekLessonCard: React.FC<WeekLessonCardProps> = ({
 
             {/* Top row */}
             <div className="flex justify-between items-start text-sm">
-              <span className="truncate font-medium" style={{ maxWidth: '33%' }}>
-                {lesson.studentName}
-              </span>
-              <span className="font-semibold px-1">
-                {studentTypeLabel}
-              </span>
-              <span className="truncate text-right" style={{ maxWidth: '33%' }}>
+              <div className="flex items-center gap-1">
+                <span className="truncate font-medium">
+                  {lesson.studentName}
+                </span>
+                {studentTypeLabel && (
+                  <span className="text-[8px] px-1 bg-gray-600 dark:bg-gray-400 text-white dark:text-gray-900 rounded flex-shrink-0">
+                    {studentTypeLabel}
+                  </span>
+                )}
+              </div>
+              <span className="truncate text-right ml-2">
                 {lesson.teacherName}
               </span>
             </div>
 
             {/* Bottom row */}
             <div className="flex justify-between items-end text-sm">
-              <span className="truncate" style={{ maxWidth: '33%' }}>
+              <span className="truncate">
                 {lesson.boothName}
               </span>
-              <span className="truncate text-center font-medium px-1" style={{ maxWidth: '34%' }}>
+              <span className="truncate text-right font-medium">
                 {lesson.subjectName}
-              </span>
-              <span className="text-right font-semibold" style={{ maxWidth: '33%' }}>
-                {formatTimeDisplay(lesson.startTime)}-{formatTimeDisplay(lesson.endTime)}
               </span>
             </div>
 

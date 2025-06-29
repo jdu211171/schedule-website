@@ -26,6 +26,8 @@ export type ClassSessionWithRelations = Prisma.ClassSessionGetPayload<{
 export interface ApiClassSessionFields {
   teacherName?: string;
   studentName?: string;
+  studentGradeYear?: number | null;
+  studentTypeName?: string | null;
   subjectName?: string;
   classTypeName?: string;
   boothName?: string;

@@ -46,9 +46,9 @@ type DayCalendarProps = {
   onAvailabilityModeChange?: (mode: AvailabilityMode) => void;
 };
 
-const CELL_WIDTH = 40; 
+const CELL_WIDTH = 50; 
 const BOOTH_LABEL_WIDTH = 100;
-const TIME_SLOT_HEIGHT = 40;
+const TIME_SLOT_HEIGHT = 50;
 
 interface SelectionState {
   isSelecting: boolean;

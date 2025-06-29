@@ -218,7 +218,7 @@ export default function CalendarWeek({
                     </div>
                   ))}
                 </div>
-                <div className="grid grid-cols-7 min-h-[500px]">
+                <div className="grid grid-cols-7 min-h-[600px]">
                   {weekDays.map((day, ind) => {
                     const dayLessons = getLessonsForDay(day.date);
                     const groupedLessons = groupLessonsByTime(dayLessons);
@@ -230,7 +230,7 @@ export default function CalendarWeek({
                           day.isToday ? "bg-blue-50/30 dark:bg-[#171616]" : ""
                         }`}
                       >
-                        <div className="flex-1 space-y-3">
+                        <div className="flex-1 space-y-4">
                           {Object.entries(groupedLessons).map(
                             ([timeSlot, lessonsAtTime]) => {
                               const { rows, itemsPerRow } = calculateLayout(
@@ -238,7 +238,7 @@ export default function CalendarWeek({
                               );
 
                               return (
-                                <div key={timeSlot} className="mb-2">
+                                <div key={timeSlot} className="mb-3">
                                   <div className="text-xs font-medium mb-1 pl-1">
                                     {timeSlot}
                                   </div>

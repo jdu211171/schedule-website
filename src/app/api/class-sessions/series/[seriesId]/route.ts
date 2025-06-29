@@ -13,6 +13,8 @@ type FormattedClassSession = {
   teacherName: string | null;
   studentId: string | null;
   studentName: string | null;
+  studentGradeYear: number | null;
+  studentTypeName: string | null;
   subjectId: string | null;
   subjectName: string | null;
   classTypeId: string | null;
@@ -34,7 +36,7 @@ type FormattedClassSession = {
 const formatClassSession = (
   classSession: ClassSession & {
     teacher?: { name: string } | null;
-    student?: { name: string } | null;
+    student?: { name: string; gradeYear: number | null; studentType?: { name: string } | null } | null;
     subject?: { name: string } | null;
     classType?: { name: string } | null;
     booth?: { name: string } | null;
@@ -67,6 +69,8 @@ const formatClassSession = (
     teacherName: classSession.teacher?.name || null,
     studentId: classSession.studentId,
     studentName: classSession.student?.name || null,
+    studentGradeYear: classSession.student?.gradeYear || null,
+    studentTypeName: classSession.student?.studentType?.name || null,
     subjectId: classSession.subjectId,
     subjectName: classSession.subject?.name || null,
     classTypeId: classSession.classTypeId,
@@ -153,6 +157,12 @@ export const GET = withBranchAccess(
         student: {
           select: {
             name: true,
+            gradeYear: true,
+            studentType: {
+              select: {
+                name: true,
+              },
+            },
           },
         },
         subject: {
@@ -354,6 +364,12 @@ export const PATCH = withBranchAccess(
               student: {
                 select: {
                   name: true,
+                  gradeYear: true,
+                  studentType: {
+                    select: {
+                      name: true,
+                    },
+                  },
                 },
               },
               subject: {

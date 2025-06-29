@@ -52,6 +52,8 @@ import "@/components/data-table/types";
 interface ExtendedClassSession extends ClassSession {
   teacherName?: string;
   studentName?: string;
+  studentGradeYear?: number | null;
+  studentTypeName?: string | null;
   subjectName?: string;
   classTypeName?: string;
   boothName?: string;
@@ -200,12 +202,31 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
     {
       accessorKey: "studentName",
       header: "生徒",
-      cell: ({ row }) =>
-        (row.original as ExtendedClassSession).studentName ? (
-          <Badge variant="outline">{(row.original as ExtendedClassSession).studentName}</Badge>
-        ) : (
-          "-"
-        ),
+      cell: ({ row }) => {
+        const session = row.original as ExtendedClassSession;
+        if (!session.studentName) return "-";
+        
+        const parts = [session.studentName];
+        if (session.studentGradeYear) {
+          parts.push(`${session.studentGradeYear}年`);
+        }
+        if (session.studentTypeName) {
+          parts.push(session.studentTypeName);
+        }
+        
+        return (
+          <div className="flex flex-col">
+            <Badge variant="outline">{session.studentName}</Badge>
+            {(session.studentGradeYear || session.studentTypeName) && (
+              <span className="text-xs text-muted-foreground mt-1">
+                {[session.studentGradeYear && `${session.studentGradeYear}年`, session.studentTypeName]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </span>
+            )}
+          </div>
+        );
+      },
     },
     {
       accessorKey: "subjectName",

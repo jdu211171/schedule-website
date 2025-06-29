@@ -191,9 +191,9 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
   
   const style = useMemo(() => ({
     position: 'absolute',
-    left: `${effectiveStartIndex * 40 + 100}px`,
+    left: `${effectiveStartIndex * 50 + 100}px`,
     top: `${boothIndex * timeSlotHeight}px`, 
-    width: `${effectiveDuration * 40}px`,
+    width: `${effectiveDuration * 50}px`,
     height: `${timeSlotHeight - 2}px`,
     zIndex: maxZIndex - 1
   } as React.CSSProperties), [effectiveStartIndex, effectiveDuration, boothIndex, timeSlotHeight, maxZIndex]);
@@ -211,8 +211,8 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
   const boothName = lesson.booth?.name || lesson.boothName || 'Бут не указан';
   
   // Get student type and grade
-  const studentType = lesson.student?.studentType?.name || '';
-  const gradeYear = lesson.student?.gradeYear || '';
+  const studentType = lesson.studentTypeName || lesson.student?.studentType?.name || '';
+  const gradeYear = lesson.studentGradeYear || lesson.student?.gradeYear || '';
   const studentTypeLabel = studentType && gradeYear ? `${studentType.charAt(0)}${gradeYear}` : '';
 
   return (
@@ -227,16 +227,20 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
       style={style}
       onClick={() => onClick(lesson)}
     >
-      <div className="text-[11px] p-1 flex flex-col h-full justify-between">
+      <div className="text-[11px] p-1 flex flex-col h-full justify-between relative">
         {/* Top row */}
         <div className="flex justify-between items-start">
-          <span className="truncate font-medium" style={{ maxWidth: '33%' }}>
-            {studentName}
-          </span>
-          <span className="font-semibold px-1">
-            {studentTypeLabel}
-          </span>
-          <span className="truncate text-right" style={{ maxWidth: '33%' }}>
+          <div className="flex items-center gap-1">
+            <span className="truncate font-medium">
+              {studentName}
+            </span>
+            {studentTypeLabel && (
+              <span className="text-[8px] px-1 bg-gray-600 dark:bg-gray-400 text-white dark:text-gray-900 rounded flex-shrink-0">
+                {studentTypeLabel}
+              </span>
+            )}
+          </div>
+          <span className="truncate text-right ml-2">
             {teacherName}
           </span>
         </div>
@@ -244,14 +248,11 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
         {/* Bottom row */}
         {!isNarrow && (
           <div className="flex justify-between items-end mt-auto">
-            <span className="truncate" style={{ maxWidth: '33%' }}>
+            <span className="truncate">
               {boothName}
             </span>
-            <span className="truncate text-center font-medium px-1" style={{ maxWidth: '34%' }}>
+            <span className="truncate text-right font-medium">
               {subjectName}
-            </span>
-            <span className="text-right font-semibold" style={{ maxWidth: '33%' }}>
-              {startTime}-{endTime}
             </span>
           </div>
         )}
