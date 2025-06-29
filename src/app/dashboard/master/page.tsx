@@ -10,8 +10,8 @@ import { ClassTypeTable } from "@/components/class-type/class-type-table";
 import { SubjectTable } from "@/components/subject/subject-table";
 import { StaffTable } from "@/components/staff/staff-table";
 import { BranchTable } from "@/components/branch/branch-table";
-import { StudentTable } from "@/components/student/student-table";
-import { TeacherTable } from "@/components/teacher/teacher-table";
+import { StudentTableV0 } from "@/components/student/student-table-v0";
+import { TeacherTableV0 } from "@/components/teacher/teacher-table-v0";
 import { SubjectTypeTable } from "@/components/subject-type/subject-type-table";
 import { AdminUserTable } from "@/components/admin-user/admin-user-table";
 import { useSession } from "next-auth/react";
@@ -88,10 +88,10 @@ export default function MasterDataPage() {
             <StaffTable />
           </TabsContent>
           <TabsContent value="students" className="mt-0">
-            <StudentTable />
+            <StudentTableV0 />
           </TabsContent>
           <TabsContent value="teachers" className="mt-0">
-            <TeacherTable />
+            <TeacherTableV0 />
           </TabsContent>
           <TabsContent value="subjects" className="mt-0">
             <SubjectTable />
