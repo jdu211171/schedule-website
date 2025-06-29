@@ -68,45 +68,55 @@ const WeekLessonCard: React.FC<WeekLessonCardProps> = ({
     onEdit?.(lesson);
   };
 
+  // Get student type and grade
+  const studentType = lesson.student?.studentType?.name || '';
+  const gradeYear = lesson.student?.gradeYear || '';
+  const studentTypeLabel = studentType && gradeYear ? `${studentType.charAt(0)}${gradeYear}` : '';
+
   if (isExpanded) {
     return (
       <div className="w-full cursor-pointer" onClick={() => onClick(lesson.classId)}>
         <Card className={`p-2 space-y-2 ${colors.background} ${colors.border} ${colors.hover} border h-full transition-colors duration-100`}>
-          <CardContent className={`p-1.5 space-y-1.5 ${colors.text}`}>
-            <div className="flex justify-between items-center">
-              <h3 className="font-medium">{lesson.subjectName}</h3>
-              <div className="flex gap-1">
-                <button
-                  onClick={handleEdit}
-                  className="p-0 hover:bg-black/10 dark:hover:bg-white/10 rounded transition-colors"
-                  title="編集"
-                >
-                  <Edit className="w-4 h-4" />
-                </button>
-              </div>
+          <CardContent className={`p-1.5 space-y-2 ${colors.text}`}>
+            {/* Edit button in top right corner */}
+            <div className="flex justify-end">
+              <button
+                onClick={handleEdit}
+                className="p-0 hover:bg-black/10 dark:hover:bg-white/10 rounded transition-colors"
+                title="編集"
+              >
+                <Edit className="w-4 h-4" />
+              </button>
             </div>
 
-            <div className="text-sm">
-              {formatTimeDisplay(lesson.startTime)} - {formatTimeDisplay(lesson.endTime)}
+            {/* Top row */}
+            <div className="flex justify-between items-start text-sm">
+              <span className="truncate font-medium" style={{ maxWidth: '33%' }}>
+                {lesson.studentName}
+              </span>
+              <span className="font-semibold px-1">
+                {studentTypeLabel}
+              </span>
+              <span className="truncate text-right" style={{ maxWidth: '33%' }}>
+                {lesson.teacherName}
+              </span>
             </div>
 
-            <div className="flex items-center text-sm">
-              <UserCheck className="w-3 h-3 mr-2 opacity-75" />
-              <span>{lesson.teacherName}</span>
-            </div>
-
-            <div className="flex items-center text-sm">
-              <GraduationCap className="w-3 h-3 mr-2 opacity-75" />
-              <span>{lesson.studentName}</span>
-            </div>
-
-            <div className="flex items-center text-sm">
-              <MapPin className="w-3 h-3 mr-2 opacity-75" />
-              <span>{lesson.boothName}</span>
+            {/* Bottom row */}
+            <div className="flex justify-between items-end text-sm">
+              <span className="truncate" style={{ maxWidth: '33%' }}>
+                {lesson.boothName}
+              </span>
+              <span className="truncate text-center font-medium px-1" style={{ maxWidth: '34%' }}>
+                {lesson.subjectName}
+              </span>
+              <span className="text-right font-semibold" style={{ maxWidth: '33%' }}>
+                {formatTimeDisplay(lesson.startTime)}-{formatTimeDisplay(lesson.endTime)}
+              </span>
             </div>
 
             {lesson.notes && (
-              <div className="text-xs opacity-90 pt-1">
+              <div className="text-xs opacity-90 pt-1 border-t">
                 {lesson.notes}
               </div>
             )}

@@ -208,6 +208,12 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
   const subjectName = lesson.subject?.name || lesson.subjectName || 'Предмет не указан';
   const teacherName = lesson.teacher?.name || lesson.teacherName || 'Преподаватель не указан';
   const studentName = lesson.student?.name || lesson.studentName || 'Студент не указан';
+  const boothName = lesson.booth?.name || lesson.boothName || 'Бут не указан';
+  
+  // Get student type and grade
+  const studentType = lesson.student?.studentType?.name || '';
+  const gradeYear = lesson.student?.gradeYear || '';
+  const studentTypeLabel = studentType && gradeYear ? `${studentType.charAt(0)}${gradeYear}` : '';
 
   return (
     <div
@@ -222,27 +228,31 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
       onClick={() => onClick(lesson)}
     >
       <div className="text-[11px] p-1 flex flex-col h-full justify-between">
-        <div className="font-medium truncate flex justify-between items-center">
-          <span className="truncate">
-            {subjectName}
+        {/* Top row */}
+        <div className="flex justify-between items-start">
+          <span className="truncate font-medium" style={{ maxWidth: '33%' }}>
+            {studentName}
           </span>
-          <span className="flex-shrink-0 ml-1 font-semibold">
-            {startTime}-{endTime}
+          <span className="font-semibold px-1">
+            {studentTypeLabel}
+          </span>
+          <span className="truncate text-right" style={{ maxWidth: '33%' }}>
+            {teacherName}
           </span>
         </div>
+        
+        {/* Bottom row */}
         {!isNarrow && (
-          <div className="text-[11px] absolute bottom-0.5 left-1 right-1">
-            <div className="truncate flex justify-between items-center">
-              <span className="truncate flex items-center">
-                <UserCheck className="w-3 h-3 inline mr-1" />
-                {teacherName}
-              </span>
-              <span className="mx-0.5">-</span>
-              <span className="truncate flex items-center">
-                <GraduationCap className="w-3 h-3 inline mr-1" />
-                {studentName}
-              </span>
-            </div>
+          <div className="flex justify-between items-end mt-auto">
+            <span className="truncate" style={{ maxWidth: '33%' }}>
+              {boothName}
+            </span>
+            <span className="truncate text-center font-medium px-1" style={{ maxWidth: '34%' }}>
+              {subjectName}
+            </span>
+            <span className="text-right font-semibold" style={{ maxWidth: '33%' }}>
+              {startTime}-{endTime}
+            </span>
           </div>
         )}
       </div>

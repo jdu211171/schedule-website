@@ -33,9 +33,6 @@ import { useDebouncedCallback } from "@/hooks/use-debounced-callback";
 import { getSortingStateParser } from "@/lib/parsers";
 import type { ExtendedColumnSort } from "@/types/data-table";
 
-const PAGE_KEY = "page";
-const PER_PAGE_KEY = "perPage";
-const SORT_KEY = "sort";
 const ARRAY_SEPARATOR = ",";
 const DEBOUNCE_MS = 300;
 const THROTTLE_MS = 50;
@@ -62,6 +59,7 @@ interface UseDataTableProps<TData>
   scroll?: boolean;
   shallow?: boolean;
   startTransition?: React.TransitionStartFunction;
+  keyPrefix?: string;
 }
 
 export function useDataTable<TData>(props: UseDataTableProps<TData>) {
@@ -77,8 +75,14 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
     scroll = false,
     shallow = true,
     startTransition,
+    keyPrefix = "",
     ...tableProps
   } = props;
+
+  // Create prefixed keys
+  const PAGE_KEY = `${keyPrefix}page`;
+  const PER_PAGE_KEY = `${keyPrefix}perPage`;
+  const SORT_KEY = `${keyPrefix}sort`;
 
   const queryStateOptions = React.useMemo<
     Omit<UseQueryStateOptions<string>, "parse">
@@ -178,17 +182,18 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
     return filterableColumns.reduce<
       Record<string, Parser<string> | Parser<string[]>>
     >((acc, column) => {
+      const columnKey = `${keyPrefix}${column.id ?? ""}`;
       if (column.meta?.options) {
-        acc[column.id ?? ""] = parseAsArrayOf(
+        acc[columnKey] = parseAsArrayOf(
           parseAsString,
           ARRAY_SEPARATOR,
         ).withOptions(queryStateOptions);
       } else {
-        acc[column.id ?? ""] = parseAsString.withOptions(queryStateOptions);
+        acc[columnKey] = parseAsString.withOptions(queryStateOptions);
       }
       return acc;
     }, {});
-  }, [filterableColumns, queryStateOptions, enableAdvancedFilter]);
+  }, [filterableColumns, queryStateOptions, enableAdvancedFilter, keyPrefix]);
 
   const [filterValues, setFilterValues] = useQueryStates(filterParsers);
 
@@ -212,8 +217,11 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
               ? value.split(/[^a-zA-Z0-9]+/).filter(Boolean)
               : [value];
 
+          // Remove the prefix to get the original column ID
+          const columnId = keyPrefix ? key.replace(keyPrefix, "") : key;
+          
           filters.push({
-            id: key,
+            id: columnId,
             value: processedValue,
           });
         }
@@ -221,7 +229,7 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
       },
       [],
     );
-  }, [filterValues, enableAdvancedFilter]);
+  }, [filterValues, enableAdvancedFilter, keyPrefix]);
 
   const [columnFilters, setColumnFilters] =
     React.useState<ColumnFiltersState>(initialColumnFilters);
@@ -240,14 +248,18 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
           Record<string, string | string[] | null>
         >((acc, filter) => {
           if (filterableColumns.find((column) => column.id === filter.id)) {
-            acc[filter.id] = filter.value as string | string[];
+            // Add the prefix when updating URL state
+            const columnKey = `${keyPrefix}${filter.id}`;
+            acc[columnKey] = filter.value as string | string[];
           }
           return acc;
         }, {});
 
         for (const prevFilter of prev) {
           if (!next.some((filter) => filter.id === prevFilter.id)) {
-            filterUpdates[prevFilter.id] = null;
+            // Add the prefix when removing from URL state
+            const columnKey = `${keyPrefix}${prevFilter.id}`;
+            filterUpdates[columnKey] = null;
           }
         }
 
@@ -255,7 +267,7 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
         return next;
       });
     },
-    [debouncedSetFilterValues, filterableColumns, enableAdvancedFilter],
+    [debouncedSetFilterValues, filterableColumns, enableAdvancedFilter, keyPrefix],
   );
 
   const table = useReactTable({

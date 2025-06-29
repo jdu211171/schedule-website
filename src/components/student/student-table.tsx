@@ -879,6 +879,7 @@ export function StudentTable() {
     data: filteredData,
     columns,
     pageCount: totalPages,
+    keyPrefix: "student_",
     initialState: {
       pagination: { pageSize, pageIndex: page - 1 },
       columnPinning: { right: ["actions"] },

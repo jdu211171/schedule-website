@@ -11,7 +11,11 @@ export const classSessionWithRelationsInclude = {
   classType: true,
   subject: true,
   teacher: true,
-  student: true,
+  student: {
+    include: {
+      studentType: true,
+    },
+  },
   branch: true,
 } as const;
 

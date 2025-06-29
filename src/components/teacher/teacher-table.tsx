@@ -748,6 +748,7 @@ export function TeacherTable() {
     data: filteredData,
     columns,
     pageCount: totalPages,
+    keyPrefix: "teacher_",
     initialState: {
       pagination: { pageSize, pageIndex: page - 1 },
       columnPinning: { right: ["actions"] },
