@@ -11,7 +11,6 @@ import { DataTableViewOptions } from "@/components/data-table/data-table-view-op
 import { DataTableDateFilter } from "@/components/data-table/data-table-date-filter";
 import { DataTableYearFilter } from "@/components/data-table/data-table-year-filter";
 import { DataTableFacetedFilter } from "@/components/data-table/data-table-faceted-filter";
-import { useDataTable } from "@/hooks/use-data-table";
 import { SubjectPreferencesCell } from "@/components/ui/subject-preferences-cell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -59,6 +58,7 @@ import { userStatusLabels } from "@/schemas/teacher.schema";
 
 // Import types to ensure proper column meta support
 import "@/components/data-table/types";
+import { useStateDataTable } from "@/hooks/use-state-data-table";
 
 // Custom toolbar component
 interface TeacherTableToolbarProps<TData> extends React.ComponentProps<"div"> {
@@ -469,10 +469,10 @@ export function TeacherTable() {
         cell: ({ row }) => {
           const birthDate = row.original.birthDate;
           if (!birthDate) return "-";
-          return new Date(birthDate).toLocaleDateString('ja-JP', { 
-            year: 'numeric', 
-            month: '2-digit', 
-            day: '2-digit' 
+          return new Date(birthDate).toLocaleDateString('ja-JP', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
           });
         },
         meta: {
@@ -506,7 +506,7 @@ export function TeacherTable() {
             }
             return "-";
           }
-          
+
           return (
             <div className="space-y-1">
               {phones.map((phone: any, index: number) => (
@@ -685,13 +685,13 @@ export function TeacherTable() {
         cell: ({ row }) => {
           const notes = row.original.notes;
           if (!notes) return "-";
-          
+
           // Truncate long notes and add tooltip
           const maxLength = 50;
-          const displayText = notes.length > maxLength 
-            ? `${notes.substring(0, maxLength)}...` 
+          const displayText = notes.length > maxLength
+            ? `${notes.substring(0, maxLength)}...`
             : notes;
-          
+
           return (
             <span title={notes} className="cursor-help">
               {displayText}
@@ -744,11 +744,10 @@ export function TeacherTable() {
     [subjects, subjectTypes, passwordVisibility, uniqueBranches]
   );
 
-  const { table } = useDataTable({
+  const { table } = useStateDataTable({
     data: filteredData,
     columns,
     pageCount: totalPages,
-    keyPrefix: "teacher_",
     initialState: {
       pagination: { pageSize, pageIndex: page - 1 },
       columnPinning: { right: ["actions"] },
