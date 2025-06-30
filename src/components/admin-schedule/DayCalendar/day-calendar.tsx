@@ -173,12 +173,12 @@ const BoothRow = React.memo(({
       style={{ height: `${TIME_SLOT_HEIGHT}px` }}
     >
       <div
-        className="flex items-center justify-center bg-background dark:bg-background border-r border-b text-sm font-medium text-foreground dark:text-foreground px-2 border-border dark:border-border"
+        className="flex items-center justify-center bg-background dark:bg-background border-r border-b text-sm font-medium text-foreground dark:text-foreground px-2 border-border dark:border-border sticky left-0"
         style={{ 
           width: `${BOOTH_LABEL_WIDTH}px`,
           minWidth: `${BOOTH_LABEL_WIDTH}px`,
           height: `${TIME_SLOT_HEIGHT}px`,
-          zIndex: 5
+          zIndex: 10
         }}
       >
         <span className="truncate">{booth.name}</span>
@@ -231,12 +231,12 @@ const TimeHeader = React.memo(({
       style={{ height: `${TIME_SLOT_HEIGHT}px` }}
     >
       <div 
-        className="flex items-center justify-center font-semibold border-r text-sm text-foreground dark:text-foreground bg-background dark:bg-background border-border dark:border-border"
+        className="flex items-center justify-center font-semibold border-r text-sm text-foreground dark:text-foreground bg-background dark:bg-background border-border dark:border-border sticky left-0"
         style={{ 
           width: `${BOOTH_LABEL_WIDTH}px`,
           minWidth: `${BOOTH_LABEL_WIDTH}px`,
           height: `${TIME_SLOT_HEIGHT}px`,
-          zIndex: 5
+          zIndex: 30
         }}
       >
         教室
