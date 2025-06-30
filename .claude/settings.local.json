@@ -22,7 +22,8 @@
       "Bash(node:*)",
       "Bash(tree:*)",
       "Bash(pkill:*)",
-      "Bash(bun prisma db seed:*)"
+      "Bash(bun prisma db seed:*)",
+      "Bash(cp:*)"
     ],
     "deny": []
   }

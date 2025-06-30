@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Pencil, Eye, EyeOff, Trash2, MoreHorizontal, Download, Upload, Bell, BellOff, MessageSquare } from "lucide-react";
+import { Pencil, Eye, EyeOff, Trash2, MoreHorizontal, Download, Upload, Plus, Bell, BellOff, MessageSquare } from "lucide-react";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useStudentExport } from "@/hooks/useStudentExport";
 
@@ -14,7 +14,12 @@ import { DataTableFacetedFilter } from "@/components/data-table/data-table-facet
 import { DataTableSliderFilter } from "@/components/data-table/data-table-slider-filter";
 import { DataTablePagination } from "@/components/data-table/data-table-pagination";
 import { useDataTable } from "@/hooks/use-data-table";
+import { GenericDraggableTable } from "@/components/data-table-v0/generic-draggable-table-v0";
+import { GenericInlineEditableCell } from "@/components/data-table-v0/generic-inline-editable-cell-v0";
+import { GenericSelectEditableCell } from "@/components/data-table-v0/generic-select-editable-cell-v0";
+import { GenericPasswordEditableCell } from "@/components/data-table-v0/generic-password-editable-cell-v0";
 import { SubjectPreferencesCell } from "@/components/ui/subject-preferences-cell";
+import { TypeBadge } from "@/components/data-table-v0/type-badge-v0";
 import { flexRender } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,14 +27,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import type { Column, Table } from "@tanstack/react-table";
-import {
-  Table as UITable,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -55,6 +52,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAllSubjectTypes } from "@/hooks/useSubjectTypeQuery";
 import {
   useStudentDelete,
+  useStudentUpdate,
   getResolvedStudentId,
 } from "@/hooks/useStudentMutation";
 import { userStatusLabels, schoolTypeLabels, examCategoryLabels, examCategoryTypeLabels } from "@/schemas/student.schema";
@@ -189,6 +187,7 @@ function StudentTableToolbarFilter<TData>({
   return onFilterRender();
 }
 
+
 export function StudentTable() {
   // Storage keys for persistence
   const FILTERS_STORAGE_KEY = "student_filters";
@@ -301,6 +300,7 @@ export function StudentTable() {
   const { data: subjects = [] } = useAllSubjects();
   const { data: subjectTypes = [] } = useAllSubjectTypes();
   const deleteStudentMutation = useStudentDelete();
+  const updateStudentMutation = useStudentUpdate();
   const { exportToCSV, isExporting } = useStudentExport();
 
   // Memoize studentTypes to avoid dependency issues
@@ -366,11 +366,16 @@ export function StudentTable() {
     }));
   }, [students?.data]);
 
-  // No client-side filtering needed - all filtering is done server-side
-  const filteredData = students?.data || [];
-
-  const totalCount = students?.pagination.total || 0;
-  const totalPages = Math.ceil(totalCount / pageSize);
+  // Handle inline cell updates
+  const handleCellUpdate = React.useCallback(
+    (studentId: string, field: string, value: string) => {
+      updateStudentMutation.mutate({
+        studentId,
+        [field]: value,
+      });
+    },
+    [updateStudentMutation]
+  );
 
   const columns = React.useMemo<ColumnDef<Student>[]>(
     () => [
@@ -403,7 +408,14 @@ export function StudentTable() {
         id: "name",
         accessorKey: "name",
         header: "名前",
-        cell: ({ row }) => row.original.name || "-",
+        cell: ({ row }) => (
+          <GenericInlineEditableCell
+            value={row.original.name}
+            onSubmit={(value) => handleCellUpdate(row.original.studentId, "name", value)}
+            placeholder="-"
+            readOnly={true}
+          />
+        ),
         meta: {
           label: "名前",
           placeholder: "名前で検索...",
@@ -415,10 +427,16 @@ export function StudentTable() {
         id: "kanaName",
         accessorKey: "kanaName",
         header: "カナ",
-        cell: ({ row }) => row.original.kanaName || "-",
         meta: {
           label: "カナ",
         },
+        cell: ({ row }) => (
+          <GenericInlineEditableCell
+            value={row.original.kanaName}
+            onSubmit={(value) => handleCellUpdate(row.original.studentId, "kanaName", value)}
+            placeholder="カナを入力"
+          />
+        ),
       },
       {
         id: "status",
@@ -426,10 +444,13 @@ export function StudentTable() {
         header: "ステータス",
         cell: ({ row }) => {
           const status = row.original.status || "ACTIVE";
-          const label =
-            userStatusLabels[status as keyof typeof userStatusLabels] || status;
-          const variant = status === "ACTIVE" ? "default" : "destructive";
-          return <Badge variant={variant}>{label}</Badge>;
+          return (
+            <GenericSelectEditableCell
+              value={status}
+              options={Object.entries(userStatusLabels).map(([value, label]) => ({ value, label }))}
+              onSubmit={(value) => handleCellUpdate(row.original.studentId, "status", value)}
+            />
+          );
         },
         meta: {
           label: "ステータス",
@@ -445,12 +466,11 @@ export function StudentTable() {
         id: "studentTypeName",
         accessorKey: "studentTypeName",
         header: "生徒タイプ",
-        cell: ({ row }) =>
-          row.original.studentTypeName ? (
-            <Badge variant="outline">{row.original.studentTypeName}</Badge>
-          ) : (
-            "-"
-          ),
+        cell: ({ row }) => {
+          const typeName = row.original.studentTypeName;
+          if (!typeName) return "-";
+          return <TypeBadge type={typeName} />;
+        },
         meta: {
           label: "生徒タイプ",
           variant: "multiSelect",
@@ -465,10 +485,11 @@ export function StudentTable() {
         id: "gradeYear",
         accessorKey: "gradeYear",
         header: "学年",
-        cell: ({ row }) =>
-          row.original.gradeYear !== null
-            ? `${row.original.gradeYear}年生`
-            : "-",
+        cell: ({ row }) => {
+          const gradeYear = row.original.gradeYear;
+          if (!gradeYear) return "-";
+          return `${gradeYear}年生`;
+        },
         meta: {
           label: "学年",
           variant: "multiSelect",
@@ -509,25 +530,6 @@ export function StudentTable() {
         },
       },
       {
-        id: "schoolType",
-        accessorKey: "schoolType",
-        header: "学校種別",
-        cell: ({ row }) => {
-          const schoolType = row.original.schoolType;
-          if (!schoolType) return "-";
-          return <Badge variant="outline">{schoolTypeLabels[schoolType as keyof typeof schoolTypeLabels]}</Badge>;
-        },
-        meta: {
-          label: "学校種別",
-          variant: "multiSelect",
-          options: Object.entries(schoolTypeLabels).map(([value, label]) => ({
-            value,
-            label,
-          })),
-        },
-        enableColumnFilter: true,
-      },
-      {
         id: "examCategory",
         accessorKey: "examCategory",
         header: "受験区分",
@@ -547,25 +549,6 @@ export function StudentTable() {
         enableColumnFilter: true,
       },
       {
-        id: "examCategoryType",
-        accessorKey: "examCategoryType",
-        header: "受験区分種別",
-        cell: ({ row }) => {
-          const examCategoryType = row.original.examCategoryType;
-          if (!examCategoryType) return "-";
-          return <Badge variant="outline">{examCategoryTypeLabels[examCategoryType as keyof typeof examCategoryTypeLabels]}</Badge>;
-        },
-        meta: {
-          label: "受験区分種別",
-          variant: "multiSelect",
-          options: Object.entries(examCategoryTypeLabels).map(([value, label]) => ({
-            value,
-            label,
-          })),
-        },
-        enableColumnFilter: true,
-      },
-      {
         id: "firstChoice",
         accessorKey: "firstChoice",
         header: "第一志望校",
@@ -575,104 +558,67 @@ export function StudentTable() {
         },
       },
       {
-        id: "secondChoice",
-        accessorKey: "secondChoice",
-        header: "第二志望校",
-        cell: ({ row }) => row.original.secondChoice || "-",
-        meta: {
-          label: "第二志望校",
-        },
-      },
-      {
-        id: "examDate",
-        accessorKey: "examDate",
-        header: "試験日",
-        cell: ({ row }) => {
-          const examDate = row.original.examDate;
-          if (!examDate) return "-";
-          return new Date(examDate).toLocaleDateString('ja-JP', { 
-            year: 'numeric', 
-            month: '2-digit', 
-            day: '2-digit' 
-          });
-        },
-        meta: {
-          label: "試験日",
-          variant: "dateRange",
-          placeholder: "試験日で検索",
-        },
-        enableColumnFilter: true,
-      },
-      {
         id: "username",
         accessorKey: "username",
         header: "ユーザー名",
-        cell: ({ row }) => row.original.username || "-",
         meta: {
           label: "ユーザー名",
         },
+        cell: ({ row }) => (
+          <GenericInlineEditableCell
+            value={row.original.username}
+            onSubmit={(value) => handleCellUpdate(row.original.studentId, "username", value)}
+            placeholder="-"
+            readOnly={true}
+          />
+        ),
       },
       {
         id: "email",
         accessorKey: "email",
         header: "メールアドレス",
-        cell: ({ row }) => row.original.email || "-",
         meta: {
           label: "メールアドレス",
         },
+        cell: ({ row }) => (
+          <GenericInlineEditableCell
+            value={row.original.email}
+            onSubmit={(value) => handleCellUpdate(row.original.studentId, "email", value)}
+            placeholder="-"
+            readOnly={true}
+          />
+        ),
       },
       {
         id: "parentEmail",
         accessorKey: "parentEmail",
         header: "保護者メール",
-        cell: ({ row }) => row.original.parentEmail || "-",
         meta: {
           label: "保護者メール",
         },
+        cell: ({ row }) => (
+          <GenericInlineEditableCell
+            value={row.original.parentEmail}
+            onSubmit={(value) => handleCellUpdate(row.original.studentId, "parentEmail", value)}
+            placeholder="-"
+            readOnly={true}
+          />
+        ),
       },
       {
         id: "password",
         accessorKey: "password",
         header: "パスワード",
-        cell: ({ row }) => {
-          const studentId = row.original.studentId;
-          const password = row.original.password;
-          const isVisible = passwordVisibility[studentId] || false;
-
-          if (!password) return "-";
-
-          const toggleVisibility = () => {
-            setPasswordVisibility((prev) => ({
-              ...prev,
-              [studentId]: !prev[studentId],
-            }));
-          };
-
-          return (
-            <div className="flex items-center gap-2">
-              <span className="font-mono text-sm">
-                {isVisible
-                  ? password
-                  : "•".repeat(Math.min(password.length, 8))}
-              </span>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6"
-                onClick={toggleVisibility}
-              >
-                {isVisible ? (
-                  <EyeOff className="h-3 w-3" />
-                ) : (
-                  <Eye className="h-3 w-3" />
-                )}
-              </Button>
-            </div>
-          );
-        },
         meta: {
           label: "パスワード",
         },
+        cell: ({ row }) => (
+          <GenericPasswordEditableCell
+            value={row.original.password}
+            onSubmit={(value) => handleCellUpdate(row.original.studentId, "password", value)}
+            editable={false}
+          />
+        ),
       },
       // Hidden for security reasons - Message IDs should not be exposed
       // {
@@ -813,25 +759,16 @@ export function StudentTable() {
         id: "notes",
         accessorKey: "notes",
         header: "備考",
-        cell: ({ row }) => {
-          const notes = row.original.notes;
-          if (!notes) return "-";
-          
-          // Truncate long notes and add tooltip
-          const maxLength = 50;
-          const displayText = notes.length > maxLength 
-            ? `${notes.substring(0, maxLength)}...` 
-            : notes;
-          
-          return (
-            <span title={notes} className="cursor-help">
-              {displayText}
-            </span>
-          );
-        },
         meta: {
           label: "備考",
         },
+        cell: ({ row }) => (
+          <GenericInlineEditableCell
+            value={row.original.notes}
+            onSubmit={(value) => handleCellUpdate(row.original.studentId, "notes", value)}
+            placeholder="備考を入力"
+          />
+        ),
       },
       {
         id: "actions",
@@ -872,8 +809,14 @@ export function StudentTable() {
         size: 32,
       },
     ],
-    [subjects, subjectTypes, studentTypes, passwordVisibility, uniqueBranches]
+    [subjects, subjectTypes, studentTypes, passwordVisibility, uniqueBranches, handleCellUpdate]
   );
+
+  // No client-side filtering needed - all filtering is done server-side
+  const filteredData = students?.data || [];
+
+  const totalCount = students?.pagination.total || 0;
+  const totalPages = Math.ceil(totalCount / pageSize);
 
   const { table } = useDataTable({
     data: filteredData,
@@ -903,54 +846,17 @@ export function StudentTable() {
     enableColumnFilters: true,
   });
 
-  // Extract pagination state for dependency
-  const paginationPageIndex = table.getState().pagination.pageIndex;
-
-  // Extract column filters state for proper reactivity
-  const columnFilters = table.getState().columnFilters;
-
-  React.useEffect(() => {
-    setPage(paginationPageIndex + 1);
-  }, [paginationPageIndex]);
-
-  // Extract column visibility state for dependency
-  const columnVisibility = table.getState().columnVisibility;
-
   // Save column visibility to localStorage whenever it changes
   React.useEffect(() => {
-    if (typeof window !== 'undefined') {
+    const columnVisibility = table.getState().columnVisibility;
+    if (typeof window !== 'undefined' && columnVisibility) {
       localStorage.setItem(COLUMN_VISIBILITY_STORAGE_KEY, JSON.stringify(columnVisibility));
     }
-  }, [columnVisibility]);
+  }, [table.getState().columnVisibility]);
 
-  // Handle column filter changes
+  // Sync table column filters with local filters state
   React.useEffect(() => {
-    // If no column filters, this is a reset
-    if (columnFilters.length === 0) {
-      const defaultFilters = {
-        name: "",
-        status: [],
-        studentType: [],
-        gradeYear: [],
-        branch: [],
-        subject: [],
-        lineConnection: [],
-        schoolType: [],
-        examCategory: [],
-        examCategoryType: [],
-        birthDateRange: undefined,
-        examDateRange: undefined,
-      };
-      setFilters(defaultFilters);
-      // Clear localStorage when resetting
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem(FILTERS_STORAGE_KEY);
-      }
-      setPage(1);
-      return;
-    }
-
-    // Build new filters from column filters
+    const columnFilters = table.getState().columnFilters;
     const newFilters = {
       name: "",
       status: [] as string[],
@@ -966,39 +872,56 @@ export function StudentTable() {
       examDateRange: undefined as { from?: Date; to?: Date } | undefined,
     };
 
-    // Set the active filters
     columnFilters.forEach((filter) => {
-      if (filter.id === 'name') {
-        newFilters.name = filter.value as string || "";
-      } else if (filter.id === 'status') {
-        newFilters.status = filter.value as string[] || [];
-      } else if (filter.id === 'studentTypeName') {
-        newFilters.studentType = filter.value as string[] || [];
-      } else if (filter.id === 'gradeYear') {
-        newFilters.gradeYear = filter.value as string[] || [];
-      } else if (filter.id === 'branches') {
-        newFilters.branch = filter.value as string[] || [];
-      } else if (filter.id === 'subjectPreferences') {
-        newFilters.subject = filter.value as string[] || [];
-      } else if (filter.id === 'lineConnection') {
-        newFilters.lineConnection = filter.value as string[] || [];
-      } else if (filter.id === 'schoolType') {
-        newFilters.schoolType = filter.value as string[] || [];
-      } else if (filter.id === 'examCategory') {
-        newFilters.examCategory = filter.value as string[] || [];
-      } else if (filter.id === 'examCategoryType') {
-        newFilters.examCategoryType = filter.value as string[] || [];
-      } else if (filter.id === 'birthDate') {
-        newFilters.birthDateRange = filter.value as { from?: Date; to?: Date } | undefined;
-      } else if (filter.id === 'examDate') {
-        newFilters.examDateRange = filter.value as { from?: Date; to?: Date } | undefined;
+      switch (filter.id) {
+        case 'name':
+          newFilters.name = filter.value as string;
+          break;
+        case 'status':
+          newFilters.status = filter.value as string[];
+          break;
+        case 'studentTypeName':
+          newFilters.studentType = filter.value as string[];
+          break;
+        case 'gradeYear':
+          newFilters.gradeYear = filter.value as string[];
+          break;
+        case 'branches':
+          newFilters.branch = filter.value as string[];
+          break;
+        case 'subjectPreferences':
+          newFilters.subject = filter.value as string[];
+          break;
+        case 'lineConnection':
+          newFilters.lineConnection = filter.value as string[];
+          break;
+        case 'schoolType':
+          newFilters.schoolType = filter.value as string[];
+          break;
+        case 'examCategory':
+          newFilters.examCategory = filter.value as string[];
+          break;
+        case 'examCategoryType':
+          newFilters.examCategoryType = filter.value as string[];
+          break;
+        case 'birthDate':
+          newFilters.birthDateRange = filter.value as { from?: Date; to?: Date };
+          break;
+        case 'examDate':
+          newFilters.examDateRange = filter.value as { from?: Date; to?: Date };
+          break;
       }
     });
 
     setFilters(newFilters);
-    setPage(1); // Reset to first page when filters change
-  }, [columnFilters]);
+  }, [table.getState().columnFilters]);
 
+  // Reset page when filters change
+  React.useEffect(() => {
+    setPage(1);
+  }, [debouncedName, filters.status, filters.studentType, filters.gradeYear, filters.branch, 
+      filters.subject, filters.lineConnection, filters.schoolType, filters.examCategory, 
+      filters.examCategoryType, filters.birthDateRange, filters.examDateRange]);
 
   const handleDeleteStudent = () => {
     if (studentToDelete) {
@@ -1021,7 +944,6 @@ export function StudentTable() {
   };
 
   const handleExport = () => {
-    // Get visible columns, excluding LINE-related fields for security/privacy
     const visibleColumns = table
       .getAllColumns()
       .filter((col) =>
@@ -1032,20 +954,8 @@ export function StudentTable() {
       )
       .map((col) => col.id);
 
-    // Get current filters - pass all filters
     exportToCSV({
-      name: filters.name || undefined,
-      status: filters.status || undefined,
-      studentType: filters.studentType || undefined,
-      gradeYear: filters.gradeYear || undefined,
-      branch: filters.branch || undefined,
-      subject: filters.subject || undefined,
-      lineConnection: filters.lineConnection || undefined,
-      schoolType: filters.schoolType || undefined,
-      examCategory: filters.examCategory || undefined,
-      examCategoryType: filters.examCategoryType || undefined,
-      birthDateRange: filters.birthDateRange || undefined,
-      examDateRange: filters.examDateRange || undefined,
+      name: debouncedName || undefined,
       columns: visibleColumns,
     });
   };
@@ -1055,15 +965,12 @@ export function StudentTable() {
   };
 
   const handleImportComplete = () => {
-    // Refresh the data after successful import
-    // Invalidate the students query to refetch data
     queryClient.invalidateQueries({ queryKey: ["students"] });
-    // Reset page to 1 to see newly imported data
     setPage(1);
   };
 
-  // Handle loading state without early return
-  if (!studentTypesResponse || isLoading) {
+
+  if (isLoading && !students) {
     return (
       <div className="flex items-center justify-center p-8">読み込み中...</div>
     );
@@ -1090,79 +997,39 @@ export function StudentTable() {
               <Download className="mr-2 h-4 w-4" />
               {isExporting ? "エクスポート中..." : "CSVエクスポート"}
             </Button>
-            <Button onClick={() => setIsCreateDialogOpen(true)}>新規作成</Button>
+            <Button onClick={() => setIsCreateDialogOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              新規作成
+            </Button>
           </div>
         </div>
 
-        <div className="relative space-y-4">
-          <StudentTableToolbar table={table}>
-            {table.getFilteredSelectedRowModel().rows.length > 0 && (
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={handleBatchDelete}
-                disabled={deleteStudentMutation.isPending}
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                選択した生徒を削除 (
-                {table.getFilteredSelectedRowModel().rows.length})
-              </Button>
-            )}
-          </StudentTableToolbar>
-          <div className="rounded-md border">
-            <UITable>
-              <TableHeader>
-                {table.getHeaderGroups().map((headerGroup) => (
-                  <TableRow key={headerGroup.id}>
-                    {headerGroup.headers.map((header) => {
-                      return (
-                        <TableHead key={header.id} colSpan={header.colSpan}>
-                          {header.isPlaceholder
-                            ? null
-                            : flexRender(
-                                header.column.columnDef.header,
-                                header.getContext()
-                              )}
-                        </TableHead>
-                      );
-                    })}
-                  </TableRow>
-                ))}
-              </TableHeader>
-              <TableBody>
-                {table.getRowModel().rows?.length ? (
-                  table.getRowModel().rows.map((row) => (
-                    <TableRow
-                      key={row.id}
-                      data-state={row.getIsSelected() && "selected"}
-                    >
-                      {row.getVisibleCells().map((cell) => (
-                        <TableCell key={cell.id}>
-                          {flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext()
-                          )}
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell
-                      colSpan={columns.length}
-                      className="h-24 text-center"
-                    >
-                      データがありません。
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </UITable>
+        <StudentTableToolbar table={table} />
+
+        {table.getFilteredSelectedRowModel().rows.length > 0 && (
+          <div className="flex items-center gap-2">
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleBatchDelete}
+              disabled={deleteStudentMutation.isPending}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              選択した生徒を削除 ({table.getFilteredSelectedRowModel().rows.length})
+            </Button>
           </div>
-          <div className="flex flex-col gap-2.5">
-            <DataTablePagination table={table} />
-          </div>
+        )}
+
+        <div className="rounded-md border">
+          <GenericDraggableTable 
+            table={table} 
+            dataIds={students?.data.map(s => s.studentId) || []} 
+            onDragEnd={() => {}} 
+            columnsLength={columns.length} 
+          />
         </div>
+
+        <DataTablePagination table={table} />
       </div>
 
       {/* Edit Student Dialog */}
