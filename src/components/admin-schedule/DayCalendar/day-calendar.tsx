@@ -551,8 +551,7 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
       </div>
 
       <div
-        className="relative overflow-auto"
-        style={{ maxHeight: '500px' }}
+        className="relative overflow-x-auto overflow-y-visible"
         ref={containerRef}
       >
         <div
