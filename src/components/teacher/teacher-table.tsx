@@ -10,7 +10,6 @@ import { useTeacherExport } from "@/hooks/useTeacherExport";
 import { DataTableViewOptions } from "@/components/data-table/data-table-view-options";
 import { DataTableFacetedFilter } from "@/components/data-table/data-table-faceted-filter";
 import { DataTablePagination } from "@/components/data-table/data-table-pagination";
-import { useDataTable } from "@/hooks/use-data-table";
 import { GenericDraggableTable } from "@/components/data-table-v0/generic-draggable-table-v0";
 import { GenericInlineEditableCell } from "@/components/data-table-v0/generic-inline-editable-cell-v0";
 import { GenericSelectEditableCell } from "@/components/data-table-v0/generic-select-editable-cell-v0";
@@ -54,6 +53,7 @@ import { userStatusLabels } from "@/schemas/teacher.schema";
 
 // Import types to ensure proper column meta support
 import "@/components/data-table/types";
+import { useStateDataTable } from "@/hooks/use-state-data-table";
 
 // Custom toolbar component without reset button
 interface TeacherTableToolbarProps<TData> extends React.ComponentProps<"div"> {
@@ -386,10 +386,10 @@ export function TeacherTable() {
         cell: ({ row }) => {
           const birthDate = row.original.birthDate;
           if (!birthDate) return "-";
-          return new Date(birthDate).toLocaleDateString('ja-JP', { 
-            year: 'numeric', 
-            month: '2-digit', 
-            day: '2-digit' 
+          return new Date(birthDate).toLocaleDateString('ja-JP', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
           });
         },
       },
@@ -578,11 +578,10 @@ export function TeacherTable() {
   const totalCount = teachers?.pagination.total || 0;
   const totalPages = Math.ceil(totalCount / pageSize);
 
-  const { table } = useDataTable({
+  const { table } = useStateDataTable({
     data: filteredData,
     columns,
     pageCount: totalPages,
-    keyPrefix: "teacher_",
     initialState: {
       pagination: { pageSize, pageIndex: page - 1 },
       columnPinning: { right: ["actions"] },

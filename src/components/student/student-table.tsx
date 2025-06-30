@@ -13,7 +13,6 @@ import { DataTableYearFilter } from "@/components/data-table/data-table-year-fil
 import { DataTableFacetedFilter } from "@/components/data-table/data-table-faceted-filter";
 import { DataTableSliderFilter } from "@/components/data-table/data-table-slider-filter";
 import { DataTablePagination } from "@/components/data-table/data-table-pagination";
-import { useDataTable } from "@/hooks/use-data-table";
 import { GenericDraggableTable } from "@/components/data-table-v0/generic-draggable-table-v0";
 import { GenericInlineEditableCell } from "@/components/data-table-v0/generic-inline-editable-cell-v0";
 import { GenericSelectEditableCell } from "@/components/data-table-v0/generic-select-editable-cell-v0";
@@ -55,10 +54,16 @@ import {
   useStudentUpdate,
   getResolvedStudentId,
 } from "@/hooks/useStudentMutation";
-import { userStatusLabels, schoolTypeLabels, examCategoryLabels, examCategoryTypeLabels } from "@/schemas/student.schema";
+import {
+  userStatusLabels,
+  schoolTypeLabels,
+  examCategoryLabels,
+  examCategoryTypeLabels,
+} from "@/schemas/student.schema";
 
 // Import types to ensure proper column meta support
 import "@/components/data-table/types";
+import { useStateDataTable } from "@/hooks/use-state-data-table";
 
 // Custom toolbar component without reset button
 interface StudentTableToolbarProps<TData> extends React.ComponentProps<"div"> {
@@ -74,7 +79,7 @@ function StudentTableToolbar<TData>({
 }: StudentTableToolbarProps<TData>) {
   const columns = React.useMemo(
     () => table.getAllColumns().filter((column) => column.getCanFilter()),
-    [table],
+    [table]
   );
 
   return (
@@ -83,7 +88,7 @@ function StudentTableToolbar<TData>({
       aria-orientation="horizontal"
       className={cn(
         "flex w-full items-start justify-between gap-2 p-1",
-        className,
+        className
       )}
       {...props}
     >
@@ -208,7 +213,7 @@ export function StudentTable() {
     birthDateRange?: { from?: Date; to?: Date };
     examDateRange?: { from?: Date; to?: Date };
   }>(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       const savedFilters = localStorage.getItem(FILTERS_STORAGE_KEY);
       if (savedFilters) {
         try {
@@ -225,17 +230,29 @@ export function StudentTable() {
             schoolType: parsed.schoolType || [],
             examCategory: parsed.examCategory || [],
             examCategoryType: parsed.examCategoryType || [],
-            birthDateRange: parsed.birthDateRange ? {
-              from: parsed.birthDateRange.from ? new Date(parsed.birthDateRange.from) : undefined,
-              to: parsed.birthDateRange.to ? new Date(parsed.birthDateRange.to) : undefined
-            } : undefined,
-            examDateRange: parsed.examDateRange ? {
-              from: parsed.examDateRange.from ? new Date(parsed.examDateRange.from) : undefined,
-              to: parsed.examDateRange.to ? new Date(parsed.examDateRange.to) : undefined
-            } : undefined,
+            birthDateRange: parsed.birthDateRange
+              ? {
+                  from: parsed.birthDateRange.from
+                    ? new Date(parsed.birthDateRange.from)
+                    : undefined,
+                  to: parsed.birthDateRange.to
+                    ? new Date(parsed.birthDateRange.to)
+                    : undefined,
+                }
+              : undefined,
+            examDateRange: parsed.examDateRange
+              ? {
+                  from: parsed.examDateRange.from
+                    ? new Date(parsed.examDateRange.from)
+                    : undefined,
+                  to: parsed.examDateRange.to
+                    ? new Date(parsed.examDateRange.to)
+                    : undefined,
+                }
+              : undefined,
           };
         } catch (error) {
-          console.error('Error parsing saved filters:', error);
+          console.error("Error parsing saved filters:", error);
         }
       }
     }
@@ -257,13 +274,15 @@ export function StudentTable() {
 
   // Load saved column visibility from localStorage
   const getSavedColumnVisibility = () => {
-    if (typeof window !== 'undefined') {
-      const savedVisibility = localStorage.getItem(COLUMN_VISIBILITY_STORAGE_KEY);
+    if (typeof window !== "undefined") {
+      const savedVisibility = localStorage.getItem(
+        COLUMN_VISIBILITY_STORAGE_KEY
+      );
       if (savedVisibility) {
         try {
           return JSON.parse(savedVisibility);
         } catch (error) {
-          console.error('Error parsing saved column visibility:', error);
+          console.error("Error parsing saved column visibility:", error);
         }
       }
     }
@@ -272,11 +291,10 @@ export function StudentTable() {
 
   // Save filters to localStorage whenever they change
   React.useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       localStorage.setItem(FILTERS_STORAGE_KEY, JSON.stringify(filters));
     }
   }, [filters]);
-
 
   const debouncedName = useDebounce(filters.name, 300);
   const [page, setPage] = React.useState(1);
@@ -338,14 +356,19 @@ export function StudentTable() {
     limit: pageSize,
     name: debouncedName || undefined,
     studentTypeIds: studentTypeIds,
-    gradeYears: filters.gradeYear.map(Number).filter(n => !isNaN(n)),
+    gradeYears: filters.gradeYear.map(Number).filter((n) => !isNaN(n)),
     statuses: filters.status.length > 0 ? filters.status : undefined,
     branchIds: branchIds,
     subjectIds: subjectIds,
-    lineConnection: filters.lineConnection.length > 0 ? filters.lineConnection : undefined,
+    lineConnection:
+      filters.lineConnection.length > 0 ? filters.lineConnection : undefined,
     schoolTypes: filters.schoolType.length > 0 ? filters.schoolType : undefined,
-    examCategories: filters.examCategory.length > 0 ? filters.examCategory : undefined,
-    examCategoryTypes: filters.examCategoryType.length > 0 ? filters.examCategoryType : undefined,
+    examCategories:
+      filters.examCategory.length > 0 ? filters.examCategory : undefined,
+    examCategoryTypes:
+      filters.examCategoryType.length > 0
+        ? filters.examCategoryType
+        : undefined,
     birthDateFrom: filters.birthDateRange?.from,
     birthDateTo: filters.birthDateRange?.to,
     examDateFrom: filters.examDateRange?.from,
@@ -507,10 +530,10 @@ export function StudentTable() {
         cell: ({ row }) => {
           const birthDate = row.original.birthDate;
           if (!birthDate) return "-";
-          return new Date(birthDate).toLocaleDateString('ja-JP', { 
-            year: 'numeric', 
-            month: '2-digit', 
-            day: '2-digit' 
+          return new Date(birthDate).toLocaleDateString("ja-JP", {
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
           });
         },
         meta: {
@@ -530,13 +553,44 @@ export function StudentTable() {
         },
       },
       {
+        id: "schoolType",
+        accessorKey: "schoolType",
+        header: "学校種別",
+        cell: ({ row }) => {
+          const schoolType = row.original.schoolType;
+          if (!schoolType) return "-";
+          return (
+            <Badge variant="outline">
+              {schoolTypeLabels[schoolType as keyof typeof schoolTypeLabels]}
+            </Badge>
+          );
+        },
+        meta: {
+          label: "学校種別",
+          variant: "multiSelect",
+          options: Object.entries(schoolTypeLabels).map(([value, label]) => ({
+            value,
+            label,
+          })),
+        },
+        enableColumnFilter: true,
+      },
+      {
         id: "examCategory",
         accessorKey: "examCategory",
         header: "受験区分",
         cell: ({ row }) => {
           const examCategory = row.original.examCategory;
           if (!examCategory) return "-";
-          return <Badge variant="secondary">{examCategoryLabels[examCategory as keyof typeof examCategoryLabels]}</Badge>;
+          return (
+            <Badge variant="secondary">
+              {
+                examCategoryLabels[
+                  examCategory as keyof typeof examCategoryLabels
+                ]
+              }
+            </Badge>
+          );
         },
         meta: {
           label: "受験区分",
@@ -549,6 +603,35 @@ export function StudentTable() {
         enableColumnFilter: true,
       },
       {
+        id: "examCategoryType",
+        accessorKey: "examCategoryType",
+        header: "受験区分種別",
+        cell: ({ row }) => {
+          const examCategoryType = row.original.examCategoryType;
+          if (!examCategoryType) return "-";
+          return (
+            <Badge variant="outline">
+              {
+                examCategoryTypeLabels[
+                  examCategoryType as keyof typeof examCategoryTypeLabels
+                ]
+              }
+            </Badge>
+          );
+        },
+        meta: {
+          label: "受験区分種別",
+          variant: "multiSelect",
+          options: Object.entries(examCategoryTypeLabels).map(
+            ([value, label]) => ({
+              value,
+              label,
+            })
+          ),
+        },
+        enableColumnFilter: true,
+      },
+      {
         id: "firstChoice",
         accessorKey: "firstChoice",
         header: "第一志望校",
@@ -556,6 +639,35 @@ export function StudentTable() {
         meta: {
           label: "第一志望校",
         },
+      },
+      {
+        id: "secondChoice",
+        accessorKey: "secondChoice",
+        header: "第二志望校",
+        cell: ({ row }) => row.original.secondChoice || "-",
+        meta: {
+          label: "第二志望校",
+        },
+      },
+      {
+        id: "examDate",
+        accessorKey: "examDate",
+        header: "試験日",
+        cell: ({ row }) => {
+          const examDate = row.original.examDate;
+          if (!examDate) return "-";
+          return new Date(examDate).toLocaleDateString("ja-JP", {
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+          });
+        },
+        meta: {
+          label: "試験日",
+          variant: "dateRange",
+          placeholder: "試験日で検索",
+        },
+        enableColumnFilter: true,
       },
       {
         id: "username",
@@ -636,7 +748,8 @@ export function StudentTable() {
         header: "メッセージ連携",
         cell: ({ row }) => {
           const hasLine = !!row.original.lineId;
-          const notificationsEnabled = row.original.lineNotificationsEnabled ?? true;
+          const notificationsEnabled =
+            row.original.lineNotificationsEnabled ?? true;
 
           // Three states: not connected, connected with notifications, connected without notifications
           let iconColor: string;
@@ -672,7 +785,7 @@ export function StudentTable() {
           options: [
             { value: "connected_enabled", label: "連携済み (通知有効)" },
             { value: "connected_disabled", label: "連携済み (通知無効)" },
-            { value: "not_connected", label: "未連携" }
+            { value: "not_connected", label: "未連携" },
           ],
         },
         enableColumnFilter: true,
@@ -684,15 +797,20 @@ export function StudentTable() {
         cell: ({ row }) => {
           const phones = row.original.contactPhones;
           if (!phones || phones.length === 0) return "-";
-          
+
           return (
             <div className="space-y-1">
               {phones.map((phone: any, index: number) => (
                 <div key={index} className="text-sm">
                   <span className="font-medium">
-                    {phone.phoneType === "HOME" ? "自宅" :
-                     phone.phoneType === "DAD" ? "父" :
-                     phone.phoneType === "MOM" ? "母" : "その他"}:
+                    {phone.phoneType === "HOME"
+                      ? "自宅"
+                      : phone.phoneType === "DAD"
+                      ? "父"
+                      : phone.phoneType === "MOM"
+                      ? "母"
+                      : "その他"}
+                    :
                   </span>{" "}
                   {phone.phoneNumber}
                   {phone.notes && (
@@ -818,28 +936,49 @@ export function StudentTable() {
   const totalCount = students?.pagination.total || 0;
   const totalPages = Math.ceil(totalCount / pageSize);
 
-  const { table } = useDataTable({
+  const { table } = useStateDataTable({
     data: filteredData,
     columns,
     pageCount: totalPages,
-    keyPrefix: "student_",
     initialState: {
       pagination: { pageSize, pageIndex: page - 1 },
       columnPinning: { right: ["actions"] },
       columnVisibility: getSavedColumnVisibility(),
       columnFilters: [
-        ...(filters.name ? [{ id: 'name', value: filters.name }] : []),
-        ...(filters.status.length > 0 ? [{ id: 'status', value: filters.status }] : []),
-        ...(filters.studentType.length > 0 ? [{ id: 'studentTypeName', value: filters.studentType }] : []),
-        ...(filters.gradeYear.length > 0 ? [{ id: 'gradeYear', value: filters.gradeYear }] : []),
-        ...(filters.branch.length > 0 ? [{ id: 'branches', value: filters.branch }] : []),
-        ...(filters.subject.length > 0 ? [{ id: 'subjectPreferences', value: filters.subject }] : []),
-        ...(filters.lineConnection.length > 0 ? [{ id: 'lineConnection', value: filters.lineConnection }] : []),
-        ...(filters.schoolType.length > 0 ? [{ id: 'schoolType', value: filters.schoolType }] : []),
-        ...(filters.examCategory.length > 0 ? [{ id: 'examCategory', value: filters.examCategory }] : []),
-        ...(filters.examCategoryType.length > 0 ? [{ id: 'examCategoryType', value: filters.examCategoryType }] : []),
-        ...(filters.birthDateRange ? [{ id: 'birthDate', value: filters.birthDateRange }] : []),
-        ...(filters.examDateRange ? [{ id: 'examDate', value: filters.examDateRange }] : []),
+        ...(filters.name ? [{ id: "name", value: filters.name }] : []),
+        ...(filters.status.length > 0
+          ? [{ id: "status", value: filters.status }]
+          : []),
+        ...(filters.studentType.length > 0
+          ? [{ id: "studentTypeName", value: filters.studentType }]
+          : []),
+        ...(filters.gradeYear.length > 0
+          ? [{ id: "gradeYear", value: filters.gradeYear }]
+          : []),
+        ...(filters.branch.length > 0
+          ? [{ id: "branches", value: filters.branch }]
+          : []),
+        ...(filters.subject.length > 0
+          ? [{ id: "subjectPreferences", value: filters.subject }]
+          : []),
+        ...(filters.lineConnection.length > 0
+          ? [{ id: "lineConnection", value: filters.lineConnection }]
+          : []),
+        ...(filters.schoolType.length > 0
+          ? [{ id: "schoolType", value: filters.schoolType }]
+          : []),
+        ...(filters.examCategory.length > 0
+          ? [{ id: "examCategory", value: filters.examCategory }]
+          : []),
+        ...(filters.examCategoryType.length > 0
+          ? [{ id: "examCategoryType", value: filters.examCategoryType }]
+          : []),
+        ...(filters.birthDateRange
+          ? [{ id: "birthDate", value: filters.birthDateRange }]
+          : []),
+        ...(filters.examDateRange
+          ? [{ id: "examDate", value: filters.examDateRange }]
+          : []),
       ],
     },
     getRowId: (row) => row.studentId,
@@ -857,6 +996,33 @@ export function StudentTable() {
   // Sync table column filters with local filters state
   React.useEffect(() => {
     const columnFilters = table.getState().columnFilters;
+    
+    // If no column filters, this is a reset
+    if (columnFilters.length === 0) {
+      const defaultFilters = {
+        name: "",
+        status: [],
+        studentType: [],
+        gradeYear: [],
+        branch: [],
+        subject: [],
+        lineConnection: [],
+        schoolType: [],
+        examCategory: [],
+        examCategoryType: [],
+        birthDateRange: undefined,
+        examDateRange: undefined,
+      };
+      setFilters(defaultFilters);
+      // Clear localStorage when resetting
+      if (typeof window !== "undefined") {
+        localStorage.removeItem(FILTERS_STORAGE_KEY);
+      }
+      setPage(1);
+      return;
+    }
+
+    // Build new filters from column filters
     const newFilters = {
       name: "",
       status: [] as string[],
@@ -946,11 +1112,14 @@ export function StudentTable() {
   const handleExport = () => {
     const visibleColumns = table
       .getAllColumns()
-      .filter((col) =>
-        col.getIsVisible() &&
-        col.id !== "select" &&
-        col.id !== "actions" &&
-        !["lineConnection", "lineId", "lineNotificationsEnabled"].includes(col.id)
+      .filter(
+        (col) =>
+          col.getIsVisible() &&
+          col.id !== "select" &&
+          col.id !== "actions" &&
+          !["lineConnection", "lineId", "lineNotificationsEnabled"].includes(
+            col.id
+          )
       )
       .map((col) => col.id);
 
@@ -982,10 +1151,7 @@ export function StudentTable() {
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold tracking-tight">生徒管理</h2>
           <div className="flex items-center gap-2">
-            <Button
-              onClick={handleImport}
-              variant="outline"
-            >
+            <Button onClick={handleImport} variant="outline">
               <Upload className="mr-2 h-4 w-4" />
               CSVインポート
             </Button>
