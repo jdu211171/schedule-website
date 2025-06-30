@@ -454,7 +454,7 @@ function DataTableFilterItem<TData>({
             className="w-40 origin-[var(--radix-popover-content-transform-origin)] p-0"
           >
             <Command>
-              <CommandInput placeholder="Search fields..." />
+              <CommandInput placeholder="フィールドを検索..." />
               <CommandList>
                 <CommandEmpty>No fields found.</CommandEmpty>
                 <CommandGroup>
@@ -715,7 +715,7 @@ function onFilterInputRender<TData>({
           >
             <FacetedInput
               aria-label={`Search ${columnMeta?.label} options`}
-              placeholder={columnMeta?.placeholder ?? "Search options..."}
+              placeholder={columnMeta?.placeholder ?? "オプションを検索..."}
             />
             <FacetedList>
               <FacetedEmpty>No options found.</FacetedEmpty>

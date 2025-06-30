@@ -243,13 +243,21 @@ export function TeacherTableV0() {
         },
         cell: ({ row }) => {
           const phoneNumber = row.original.phoneNumber;
+          const phoneNotes = row.original.phoneNotes;
           // For now, use legacy phoneNumber field for editing
           return (
-            <GenericInlineEditableCell
-              value={phoneNumber}
-              onSubmit={(value) => handleCellUpdate(row.original.teacherId, "phoneNumber", value)}
-              placeholder="電話番号を入力"
-            />
+            <div className="space-y-1">
+              <GenericInlineEditableCell
+                value={phoneNumber}
+                onSubmit={(value) => handleCellUpdate(row.original.teacherId, "phoneNumber", value)}
+                placeholder="電話番号を入力"
+              />
+              {phoneNotes && (
+                <div className="text-xs text-muted-foreground">
+                  {phoneNotes}
+                </div>
+              )}
+            </div>
           );
         },
       },
@@ -379,25 +387,29 @@ export function TeacherTableV0() {
     {
       column: "status",
       title: "ステータス",
-      options: Object.keys(userStatusLabels),
+      options: Object.entries(userStatusLabels).map(([value, label]) => ({ value, label })),
       selectedValues: columnFilters.find(f => f.id === "status")?.value as string[] || [],
     },
     {
       column: "branches",
       title: "校舎",
-      options: uniqueBranches.map(b => b.value),
+      options: uniqueBranches.map(b => ({ value: b.value, label: b.label })),
       selectedValues: columnFilters.find(f => f.id === "branches")?.value as string[] || [],
     },
     {
       column: "subjectPreferences",
       title: "担当科目",
-      options: subjects.map((subject) => subject.name),
+      options: subjects.map((subject) => ({ value: subject.name, label: subject.name })),
       selectedValues: columnFilters.find(f => f.id === "subjectPreferences")?.value as string[] || [],
     },
     {
       column: "lineConnection",
       title: "メッセージ連携",
-      options: ["connected_enabled", "connected_disabled", "not_connected"],
+      options: [
+        { value: "connected_enabled", label: "連携済み (通知有効)" },
+        { value: "connected_disabled", label: "連携済み (通知無効)" },
+        { value: "not_connected", label: "未連携" },
+      ],
       selectedValues: columnFilters.find(f => f.id === "lineConnection")?.value as string[] || [],
     },
   ], [uniqueBranches, subjects, columnFilters]);

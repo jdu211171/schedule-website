@@ -321,6 +321,11 @@ export const studentFilterSchema = z.object({
   birthDateTo: z.coerce.date().optional(),
   examDateFrom: z.coerce.date().optional(),
   examDateTo: z.coerce.date().optional(),
+  phoneNumber: z.string().optional(),
+  email: z.string().optional(),
+  schoolName: z.string().optional(),
+  sortBy: z.string().optional(), // Column to sort by
+  sortOrder: z.enum(["asc", "desc"]).optional().default("asc"), // Sort direction
 });
 
 export type StudentCreate = z.infer<typeof studentCreateSchema>;

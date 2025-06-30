@@ -406,7 +406,12 @@ export const GET = withBranchAccess(
       birthDateFrom,
       birthDateTo,
       examDateFrom,
-      examDateTo
+      examDateTo,
+      phoneNumber,
+      email,
+      schoolName,
+      sortBy,
+      sortOrder
     } = result.data;
 
     // Build filter conditions
@@ -435,6 +440,8 @@ export const GET = withBranchAccess(
 
     // Support both single status and multiple statuses
     if (statuses && statuses.length > 0) {
+      // Log to verify the statuses are correct enum values
+      console.log("[DEBUG] Setting multiple statuses filter:", statuses);
       where.status = { in: statuses };
     } else if (status) {
       where.status = status;
@@ -480,6 +487,80 @@ export const GET = withBranchAccess(
       }
       if (examDateTo) {
         where.examDate.lte = examDateTo;
+      }
+    }
+
+    // Add phone number filter
+    if (phoneNumber) {
+      const phoneConditions = [
+        // Search in new contact phones system
+        {
+          contactPhones: {
+            some: {
+              phoneNumber: { contains: phoneNumber, mode: "insensitive" }
+            }
+          }
+        },
+        // Search in legacy phone fields
+        { homePhone: { contains: phoneNumber, mode: "insensitive" } },
+        { parentPhone: { contains: phoneNumber, mode: "insensitive" } },
+        { studentPhone: { contains: phoneNumber, mode: "insensitive" } }
+      ];
+
+      // If there's already an OR condition (from name search), combine them
+      if (where.OR) {
+        where.AND = [
+          { OR: where.OR },
+          { OR: phoneConditions }
+        ];
+        delete where.OR;
+      } else {
+        where.OR = phoneConditions;
+      }
+    }
+
+    // Add email filter
+    if (email) {
+      const emailConditions = [
+        // Search in user email
+        { user: { email: { contains: email, mode: "insensitive" } } },
+        // Search in parent email
+        { parentEmail: { contains: email, mode: "insensitive" } }
+      ];
+
+      // Handle existing OR/AND conditions
+      if (where.OR && !where.AND) {
+        where.AND = [
+          { OR: where.OR },
+          { OR: emailConditions }
+        ];
+        delete where.OR;
+      } else if (where.AND) {
+        where.AND.push({ OR: emailConditions });
+      } else {
+        where.OR = emailConditions;
+      }
+    }
+
+    // Add school name filter
+    if (schoolName) {
+      const schoolConditions = [
+        { schoolName: { contains: schoolName, mode: "insensitive" } },
+        { firstChoice: { contains: schoolName, mode: "insensitive" } },
+        { secondChoice: { contains: schoolName, mode: "insensitive" } }
+      ];
+
+      // Handle existing OR/AND conditions
+      if (where.OR && !where.AND) {
+        where.AND = [
+          { OR: where.OR },
+          { OR: schoolConditions }
+        ];
+        delete where.OR;
+      } else if (where.AND) {
+        where.AND.push({ OR: schoolConditions });
+      } else {
+        where.OR = schoolConditions;
       }
     }
 
@@ -602,6 +683,33 @@ export const GET = withBranchAccess(
 
     // Fetch total count
     const total = await prisma.student.count({ where });
+    console.log("[DEBUG] Total students matching filter:", total);
+
+    // Build dynamic orderBy clause
+    let orderBy: any = { name: "asc" }; // Default sorting
+
+    if (sortBy) {
+      // Map frontend column names to database fields
+      const sortFieldMap: Record<string, any> = {
+        name: { name: sortOrder || "asc" },
+        kanaName: { kanaName: sortOrder || "asc" },
+        gradeYear: { gradeYear: sortOrder || "asc" },
+        status: { status: sortOrder || "asc" },
+        schoolName: { schoolName: sortOrder || "asc" },
+        examDate: { examDate: sortOrder || "asc" },
+        birthDate: { birthDate: sortOrder || "asc" },
+        createdAt: { createdAt: sortOrder || "asc" },
+        updatedAt: { updatedAt: sortOrder || "asc" },
+        // Handle nested fields
+        username: { user: { username: sortOrder || "asc" } },
+        email: { user: { email: sortOrder || "asc" } },
+        studentType: { studentType: { name: sortOrder || "asc" } },
+      };
+
+      if (sortFieldMap[sortBy]) {
+        orderBy = sortFieldMap[sortBy];
+      }
+    }
 
     // Fetch students with branch associations
     const students = await prisma.student.findMany({
@@ -682,7 +790,7 @@ export const GET = withBranchAccess(
       },
       skip,
       take: limit,
-      orderBy: { name: "asc" },
+      orderBy,
     });
 
     // Format students using the helper function

@@ -59,28 +59,425 @@ import { userStatusLabels } from "@/schemas/teacher.schema";
 
 // Import types to ensure proper column meta support
 import "@/components/data-table/types";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandSeparator,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Separator } from "@/components/ui/separator";
+import { Check, PlusCircle, XCircle, Calendar } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+// Multi-select filter component for teacher table
+interface TeacherTableFilterMultiSelectProps {
+  value: string[];
+  onValueChange: (value: string[]) => void;
+  title: string;
+  options: { value: string; label: string }[];
+}
+
+function TeacherTableFilterMultiSelect({
+  value,
+  onValueChange,
+  title,
+  options,
+}: TeacherTableFilterMultiSelectProps) {
+  const [open, setOpen] = React.useState(false);
+  const selectedValues = new Set(value);
+
+  const handleSelect = (optionValue: string) => {
+    const newSelectedValues = new Set(selectedValues);
+    if (newSelectedValues.has(optionValue)) {
+      newSelectedValues.delete(optionValue);
+    } else {
+      newSelectedValues.add(optionValue);
+    }
+    onValueChange(Array.from(newSelectedValues));
+  };
+
+  const handleClear = () => {
+    onValueChange([]);
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8 border-dashed"
+        >
+          <PlusCircle className="mr-2 h-4 w-4" />
+          {title}
+          {selectedValues.size > 0 && (
+            <>
+              <Separator orientation="vertical" className="mx-2 h-4" />
+              <Badge
+                variant="secondary"
+                className="rounded-sm px-1 font-normal lg:hidden"
+              >
+                {selectedValues.size}
+              </Badge>
+              <div className="hidden space-x-1 lg:flex">
+                {selectedValues.size > 2 ? (
+                  <Badge
+                    variant="secondary"
+                    className="rounded-sm px-1 font-normal"
+                  >
+                    {selectedValues.size} selected
+                  </Badge>
+                ) : (
+                  options
+                    .filter((option) => selectedValues.has(option.value))
+                    .map((option) => (
+                      <Badge
+                        variant="secondary"
+                        key={option.value}
+                        className="rounded-sm px-1 font-normal"
+                      >
+                        {option.label}
+                      </Badge>
+                    ))
+                )}
+              </div>
+            </>
+          )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[200px] p-0" align="start">
+        <Command>
+          <CommandInput placeholder={`${title}を検索...`} />
+          <CommandList>
+            <CommandEmpty>結果がありません。</CommandEmpty>
+            <CommandGroup>
+              {options.map((option) => {
+                const isSelected = selectedValues.has(option.value);
+                return (
+                  <CommandItem
+                    key={option.value}
+                    onSelect={() => handleSelect(option.value)}
+                  >
+                    <div
+                      className={cn(
+                        "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
+                        isSelected
+                          ? "bg-primary text-primary-foreground"
+                          : "opacity-50 [&_svg]:invisible"
+                      )}
+                    >
+                      <Check className={cn("h-4 w-4")} />
+                    </div>
+                    <span>{option.label}</span>
+                  </CommandItem>
+                );
+              })}
+            </CommandGroup>
+            {selectedValues.size > 0 && (
+              <>
+                <CommandSeparator />
+                <CommandGroup>
+                  <CommandItem
+                    onSelect={handleClear}
+                    className="justify-center text-center"
+                  >
+                    <XCircle className="mr-2 h-4 w-4" />
+                    クリア
+                  </CommandItem>
+                </CommandGroup>
+              </>
+            )}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+// Year filter component for teacher table
+interface TeacherTableYearFilterProps {
+  value?: { from?: Date; to?: Date };
+  onValueChange: (value?: { from?: Date; to?: Date }) => void;
+  title: string;
+}
+
+function TeacherTableYearFilter({
+  value,
+  onValueChange,
+  title,
+}: TeacherTableYearFilterProps) {
+  const [open, setOpen] = React.useState(false);
+  const [mode, setMode] = React.useState<"single" | "range" | "from" | "before">("single");
+  const [year, setYear] = React.useState<string>("");
+  const [startYear, setStartYear] = React.useState<string>("");
+  const [endYear, setEndYear] = React.useState<string>("");
+
+  // Initialize from value
+  React.useEffect(() => {
+    if (value?.from && value?.to) {
+      const fromYear = value.from.getFullYear();
+      const toYear = value.to.getFullYear();
+      if (fromYear === toYear) {
+        setMode("single");
+        setYear(fromYear.toString());
+      } else {
+        setMode("range");
+        setStartYear(fromYear.toString());
+        setEndYear(toYear.toString());
+      }
+    } else if (value?.from) {
+      setMode("from");
+      setYear(value.from.getFullYear().toString());
+    } else if (value?.to) {
+      setMode("before");
+      setYear(value.to.getFullYear().toString());
+    }
+  }, [value]);
+
+  const handleApply = () => {
+    let newValue: { from?: Date; to?: Date } | undefined;
+
+    switch (mode) {
+      case "single":
+        if (year) {
+          const y = parseInt(year);
+          newValue = {
+            from: new Date(y, 0, 1),
+            to: new Date(y, 11, 31, 23, 59, 59),
+          };
+        }
+        break;
+      case "range":
+        if (startYear && endYear) {
+          newValue = {
+            from: new Date(parseInt(startYear), 0, 1),
+            to: new Date(parseInt(endYear), 11, 31, 23, 59, 59),
+          };
+        }
+        break;
+      case "from":
+        if (year) {
+          newValue = {
+            from: new Date(parseInt(year), 0, 1),
+          };
+        }
+        break;
+      case "before":
+        if (year) {
+          newValue = {
+            to: new Date(parseInt(year), 11, 31, 23, 59, 59),
+          };
+        }
+        break;
+    }
+
+    onValueChange(newValue);
+    setOpen(false);
+  };
+
+  const handleClear = () => {
+    setYear("");
+    setStartYear("");
+    setEndYear("");
+    onValueChange(undefined);
+    setOpen(false);
+  };
+
+  const currentYear = new Date().getFullYear();
+  const hasValue = !!value;
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8 border-dashed"
+        >
+          <Calendar className="mr-2 h-4 w-4" />
+          {title}
+          {hasValue && (
+            <>
+              <Separator orientation="vertical" className="mx-2 h-4" />
+              <Badge
+                variant="secondary"
+                className="rounded-sm px-1 font-normal"
+              >
+                {mode === "single" && year}
+                {mode === "range" && `${startYear}-${endYear}`}
+                {mode === "from" && `${year}年以降`}
+                {mode === "before" && `${year}年以前`}
+              </Badge>
+            </>
+          )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-80" align="start">
+        <div className="space-y-4 p-2">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">フィルターモード</label>
+            <Select value={mode} onValueChange={(v: any) => setMode(v)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="single">特定の年</SelectItem>
+                <SelectItem value="range">年の範囲</SelectItem>
+                <SelectItem value="from">指定年以降</SelectItem>
+                <SelectItem value="before">指定年以前</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {mode === "single" && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium">年</label>
+              <Input
+                type="number"
+                min="1900"
+                max={currentYear}
+                value={year}
+                onChange={(e) => setYear(e.target.value)}
+                placeholder="例: 2000"
+              />
+            </div>
+          )}
+
+          {mode === "range" && (
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">開始年</label>
+                <Input
+                  type="number"
+                  min="1900"
+                  max={currentYear}
+                  value={startYear}
+                  onChange={(e) => setStartYear(e.target.value)}
+                  placeholder="例: 1990"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">終了年</label>
+                <Input
+                  type="number"
+                  min="1900"
+                  max={currentYear}
+                  value={endYear}
+                  onChange={(e) => setEndYear(e.target.value)}
+                  placeholder="例: 2000"
+                />
+              </div>
+            </div>
+          )}
+
+          {(mode === "from" || mode === "before") && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium">年</label>
+              <Input
+                type="number"
+                min="1900"
+                max={currentYear}
+                value={year}
+                onChange={(e) => setYear(e.target.value)}
+                placeholder="例: 2000"
+              />
+            </div>
+          )}
+
+          <Separator />
+
+          <div className="flex justify-between">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleClear}
+              disabled={!hasValue}
+            >
+              <XCircle className="mr-2 h-4 w-4" />
+              クリア
+            </Button>
+            <Button size="sm" onClick={handleApply}>
+              適用
+            </Button>
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 // Custom toolbar component
-interface TeacherTableToolbarProps<TData> extends React.ComponentProps<"div"> {
-  table: Table<TData>;
+interface TeacherTableToolbarProps extends React.ComponentProps<"div"> {
+  table: Table<Teacher>;
+  filters: {
+    name: string;
+    status: string[];
+    branch: string[];
+    subject: string[];
+    lineConnection: string[];
+    birthDateRange?: { from?: Date; to?: Date };
+    phoneNumber: string;
+  };
+  setFilters: React.Dispatch<React.SetStateAction<{
+    name: string;
+    status: string[];
+    branch: string[];
+    subject: string[];
+    lineConnection: string[];
+    birthDateRange?: { from?: Date; to?: Date };
+    phoneNumber: string;
+  }>>;
+  subjects: any[];
+  uniqueBranches: { value: string; label: string }[];
   children?: React.ReactNode;
 }
 
-function TeacherTableToolbar<TData>({
+function TeacherTableToolbar({
   table,
+  filters,
+  setFilters,
+  subjects,
+  uniqueBranches,
   children,
   className,
   ...props
-}: TeacherTableToolbarProps<TData>) {
-  const columns = React.useMemo(
-    () => table.getAllColumns().filter((column) => column.getCanFilter()),
-    [table],
-  );
-
-  const hasActiveFilters = table.getState().columnFilters.length > 0;
+}: TeacherTableToolbarProps) {
+  const hasActiveFilters = React.useMemo(() => {
+    return !!(
+      filters.name ||
+      filters.status.length > 0 ||
+      filters.branch.length > 0 ||
+      filters.subject.length > 0 ||
+      filters.lineConnection.length > 0 ||
+      filters.birthDateRange ||
+      filters.phoneNumber
+    );
+  }, [filters]);
 
   const handleResetFilters = () => {
-    table.resetColumnFilters();
+    setFilters({
+      name: "",
+      status: [],
+      branch: [],
+      subject: [],
+      lineConnection: [],
+      birthDateRange: undefined,
+      phoneNumber: "",
+    });
   };
 
   return (
@@ -94,9 +491,57 @@ function TeacherTableToolbar<TData>({
       {...props}
     >
       <div className="flex flex-1 flex-wrap items-center gap-2">
-        {columns.map((column) => (
-          <TeacherTableToolbarFilter key={column.id} column={column} />
-        ))}
+        <Input
+          placeholder="名前で検索..."
+          value={filters.name}
+          onChange={(event) => setFilters(prev => ({ ...prev, name: event.target.value }))}
+          className="h-8 w-40 lg:w-56"
+        />
+        <TeacherTableFilterMultiSelect
+          value={filters.status}
+          onValueChange={(value) => setFilters(prev => ({ ...prev, status: value }))}
+          title="ステータス"
+          options={Object.entries(userStatusLabels).map(([value, label]) => ({
+            value,
+            label,
+          }))}
+        />
+        <TeacherTableYearFilter
+          value={filters.birthDateRange}
+          onValueChange={(value) => setFilters(prev => ({ ...prev, birthDateRange: value }))}
+          title="生年月日"
+        />
+        <Input
+          placeholder="電話番号で検索..."
+          value={filters.phoneNumber}
+          onChange={(event) => setFilters(prev => ({ ...prev, phoneNumber: event.target.value }))}
+          className="h-8 w-40 lg:w-56"
+        />
+        <TeacherTableFilterMultiSelect
+          value={filters.branch}
+          onValueChange={(value) => setFilters(prev => ({ ...prev, branch: value }))}
+          title="校舎"
+          options={uniqueBranches}
+        />
+        <TeacherTableFilterMultiSelect
+          value={filters.subject}
+          onValueChange={(value) => setFilters(prev => ({ ...prev, subject: value }))}
+          title="担当科目"
+          options={subjects.map((subject) => ({
+            value: subject.name,
+            label: subject.name,
+          }))}
+        />
+        <TeacherTableFilterMultiSelect
+          value={filters.lineConnection}
+          onValueChange={(value) => setFilters(prev => ({ ...prev, lineConnection: value }))}
+          title="メッセージ連携"
+          options={[
+            { value: "connected_enabled", label: "連携済み (通知有効)" },
+            { value: "connected_disabled", label: "連携済み (通知無効)" },
+            { value: "not_connected", label: "未連携" }
+          ]}
+        />
       </div>
       <div className="flex items-center gap-2">
         {hasActiveFilters && (
@@ -116,66 +561,6 @@ function TeacherTableToolbar<TData>({
   );
 }
 
-interface TeacherTableToolbarFilterProps<TData> {
-  column: Column<TData>;
-}
-
-function TeacherTableToolbarFilter<TData>({
-  column,
-}: TeacherTableToolbarFilterProps<TData>) {
-  const columnMeta = column.columnDef.meta;
-
-  const onFilterRender = React.useCallback(() => {
-    if (!columnMeta?.variant) return null;
-
-    switch (columnMeta.variant) {
-      case "text":
-        return (
-          <Input
-            placeholder={columnMeta.placeholder ?? columnMeta.label}
-            value={(column.getFilterValue() as string) ?? ""}
-            onChange={(event) => column.setFilterValue(event.target.value)}
-            className="h-8 w-40 lg:w-56"
-          />
-        );
-
-      case "date":
-      case "dateRange":
-        return (
-          <DataTableDateFilter
-            column={column}
-            title={columnMeta.label ?? column.id}
-            multiple={columnMeta.variant === "dateRange"}
-          />
-        );
-
-      case "yearRange":
-        return (
-          <DataTableYearFilter
-            column={column}
-            title={columnMeta.label ?? column.id}
-          />
-        );
-
-      case "select":
-      case "multiSelect":
-        return (
-          <DataTableFacetedFilter
-            column={column}
-            title={columnMeta.label ?? column.id}
-            options={columnMeta.options ?? []}
-            multiple={columnMeta.variant === "multiSelect"}
-          />
-        );
-
-      default:
-        return null;
-    }
-  }, [column, columnMeta]);
-
-  return onFilterRender();
-}
-
 export function TeacherTable() {
   // Storage keys for persistence
   const FILTERS_STORAGE_KEY = "teacher_filters";
@@ -189,6 +574,7 @@ export function TeacherTable() {
     subject: string[];
     lineConnection: string[];
     birthDateRange?: { from?: Date; to?: Date };
+    phoneNumber: string;
   }>(() => {
     if (typeof window !== 'undefined') {
       const savedFilters = localStorage.getItem(FILTERS_STORAGE_KEY);
@@ -206,6 +592,7 @@ export function TeacherTable() {
               from: parsed.birthDateRange.from ? new Date(parsed.birthDateRange.from) : undefined,
               to: parsed.birthDateRange.to ? new Date(parsed.birthDateRange.to) : undefined
             } : undefined,
+            phoneNumber: parsed.phoneNumber || "",
           };
         } catch (error) {
           console.error('Error parsing saved filters:', error);
@@ -219,6 +606,7 @@ export function TeacherTable() {
       subject: [] as string[],
       lineConnection: [] as string[],
       birthDateRange: undefined,
+      phoneNumber: "",
     };
   });
 
@@ -239,12 +627,20 @@ export function TeacherTable() {
 
   // Save filters to localStorage whenever they change
   React.useEffect(() => {
+    console.log("[TeacherTable] Filters changed:", filters);
     if (typeof window !== 'undefined') {
       localStorage.setItem(FILTERS_STORAGE_KEY, JSON.stringify(filters));
     }
   }, [filters]);
 
+  // Reset to first page when filters change
+  React.useEffect(() => {
+    console.log("[TeacherTable] Resetting page to 1 due to filter change");
+    setPage(1);
+  }, [filters]);
+
   const debouncedName = useDebounce(filters.name, 300);
+  const debouncedPhoneNumber = useDebounce(filters.phoneNumber, 300);
   const [page, setPage] = React.useState(1);
   const [teacherToEdit, setTeacherToEdit] = React.useState<Teacher | null>(
     null
@@ -267,96 +663,51 @@ export function TeacherTable() {
   const deleteTeacherMutation = useTeacherDelete();
   const { exportToCSV, isExporting } = useTeacherExport();
 
-  const { data: teachers, isLoading } = useTeachers({
+  // Parse branch names back to IDs (temporary solution)
+  const branchIds = React.useMemo(() => {
+    if (filters.branch.length === 0) return undefined;
+    // For now, we'll pass branch names as IDs since we don't have a branch lookup
+    // The API will need to handle this appropriately
+    return filters.branch;
+  }, [filters.branch]);
+
+  // Parse subject names to IDs
+  const subjectIds = React.useMemo(() => {
+    if (filters.subject.length === 0) return undefined;
+    return subjects
+      .filter((subject) => filters.subject.includes(subject.name))
+      .map((subject) => subject.subjectId);
+  }, [filters.subject, subjects]);
+
+  // Extract sorting state from URL (will be managed by useDataTable)
+  const [sortingState, setSortingState] = React.useState<{ id: string; desc: boolean }[]>([]);
+
+  // Build query parameters for useTeachers
+  const queryParams = React.useMemo(() => ({
     page,
     limit: pageSize,
     name: debouncedName || undefined,
-    status: filters.status[0] || undefined, // API only supports single status
+    statuses: filters.status.length > 0 ? filters.status : undefined,
     birthDateFrom: filters.birthDateRange?.from,
     birthDateTo: filters.birthDateRange?.to,
-  });
+    phoneNumber: debouncedPhoneNumber || undefined,
+    branchIds: branchIds,
+    subjectIds: subjectIds,
+    lineConnection: filters.lineConnection.length > 0 ? filters.lineConnection : undefined,
+    sortBy: sortingState[0]?.id,
+    sortOrder: sortingState[0]?.desc ? "desc" : "asc",
+  }), [page, pageSize, debouncedName, filters.status, filters.birthDateRange, debouncedPhoneNumber, branchIds, subjectIds, filters.lineConnection, sortingState]);
 
-  // Create lookup maps for better performance
-  const subjectIdToName = React.useMemo(
-    () => new Map(subjects.map((s) => [s.subjectId, s.name])),
-    [subjects]
-  );
+  // Debug logging for query params
+  React.useEffect(() => {
+    console.log("[TeacherTable] Query params being sent to useTeachers:", queryParams);
+  }, [queryParams]);
 
-  // Convert filter arrays to Sets for O(1) lookup
-  const statusSet = React.useMemo(() => new Set(filters.status), [filters.status]);
-  const branchSet = React.useMemo(() => new Set(filters.branch), [filters.branch]);
-  const subjectSet = React.useMemo(() => new Set(filters.subject), [filters.subject]);
-  const lineConnectionSet = React.useMemo(() => new Set(filters.lineConnection), [filters.lineConnection]);
+  const { data: teachers, isLoading } = useTeachers(queryParams);
 
-  // Filter data client-side only for filters not supported by the API
-  const filteredData = React.useMemo(() => {
-    const data = teachers?.data || [];
 
-    // Early return if no client-side filters
-    if (
-      branchSet.size === 0 &&
-      subjectSet.size === 0 &&
-      lineConnectionSet.size === 0 &&
-      filters.status.length <= 1 // API supports single status
-    ) {
-      return data;
-    }
-
-    return data.filter((teacher) => {
-      // Status filter (only if multiple statuses selected)
-      if (filters.status.length > 1 && !statusSet.has(teacher.status || "ACTIVE")) {
-        return false;
-      }
-
-      // Branch filter
-      if (branchSet.size > 0) {
-        if (!teacher.branches || !teacher.branches.some((b) => branchSet.has(b.name))) {
-          return false;
-        }
-      }
-
-      // Subject filter
-      if (subjectSet.size > 0) {
-        if (!teacher.subjectPreferences) return false;
-
-        const hasMatchingSubject = teacher.subjectPreferences.some((pref) => {
-          const subjectName = subjectIdToName.get(pref.subjectId);
-          return subjectName && subjectSet.has(subjectName);
-        });
-
-        if (!hasMatchingSubject) return false;
-      }
-
-      // LINE connection filter
-      if (lineConnectionSet.size > 0) {
-        const hasLine = !!teacher.lineId;
-        const notificationsEnabled = teacher.lineNotificationsEnabled ?? true;
-
-        let connectionStatus: string;
-        if (!hasLine) {
-          connectionStatus = "not_connected";
-        } else if (notificationsEnabled) {
-          connectionStatus = "connected_enabled";
-        } else {
-          connectionStatus = "connected_disabled";
-        }
-
-        if (!lineConnectionSet.has(connectionStatus)) {
-          return false;
-        }
-      }
-
-      return true;
-    });
-  }, [
-    filters.status,
-    statusSet,
-    branchSet,
-    subjectSet,
-    lineConnectionSet,
-    teachers?.data,
-    subjectIdToName,
-  ]);
+  // No client-side filtering needed - all filtering is done server-side
+  const filteredData = teachers?.data || [];
 
   const totalCount = teachers?.pagination.total || 0;
   const totalPages = Math.ceil(totalCount / pageSize);
@@ -407,21 +758,12 @@ export function TeacherTable() {
         accessorKey: "name",
         header: "名前",
         cell: ({ row }) => row.original.name || "-",
-        meta: {
-          label: "名前",
-          placeholder: "名前で検索...",
-          variant: "text",
-        },
-        enableColumnFilter: true,
       },
       {
         id: "kanaName",
         accessorKey: "kanaName",
         header: "カナ",
         cell: ({ row }) => row.original.kanaName || "-",
-        meta: {
-          label: "カナ",
-        },
       },
       {
         id: "status",
@@ -434,33 +776,18 @@ export function TeacherTable() {
           const variant = status === "ACTIVE" ? "default" : "destructive";
           return <Badge variant={variant}>{label}</Badge>;
         },
-        meta: {
-          label: "ステータス",
-          variant: "multiSelect",
-          options: Object.entries(userStatusLabels).map(([value, label]) => ({
-            value,
-            label,
-          })),
-        },
-        enableColumnFilter: true,
       },
       {
         id: "username",
         accessorKey: "username",
         header: "ユーザー名",
         cell: ({ row }) => row.original.username || "-",
-        meta: {
-          label: "ユーザー名",
-        },
       },
       {
         id: "email",
         accessorKey: "email",
         header: "メールアドレス",
         cell: ({ row }) => row.original.email || "-",
-        meta: {
-          label: "メールアドレス",
-        },
       },
       {
         id: "birthDate",
@@ -475,12 +802,6 @@ export function TeacherTable() {
             day: '2-digit' 
           });
         },
-        meta: {
-          label: "生年月日",
-          variant: "yearRange",
-          placeholder: "生年月日で検索",
-        },
-        enableColumnFilter: true,
       },
       {
         id: "contactPhones",
@@ -527,9 +848,6 @@ export function TeacherTable() {
             </div>
           );
         },
-        meta: {
-          label: "連絡先電話",
-        },
       },
       {
         id: "password",
@@ -570,9 +888,6 @@ export function TeacherTable() {
               </Button>
             </div>
           );
-        },
-        meta: {
-          label: "パスワード",
         },
       },
       // Hidden for security reasons - LINE IDs should not be exposed
@@ -621,16 +936,6 @@ export function TeacherTable() {
             </div>
           );
         },
-        meta: {
-          label: "メッセージ連携",
-          variant: "multiSelect",
-          options: [
-            { value: "connected_enabled", label: "連携済み (通知有効)" },
-            { value: "connected_disabled", label: "連携済み (通知無効)" },
-            { value: "not_connected", label: "未連携" }
-          ],
-        },
-        enableColumnFilter: true,
       },
       {
         id: "branches",
@@ -650,12 +955,6 @@ export function TeacherTable() {
             </div>
           );
         },
-        meta: {
-          label: "校舎",
-          variant: "multiSelect",
-          options: uniqueBranches,
-        },
-        enableColumnFilter: true,
       },
       {
         id: "subjectPreferences",
@@ -668,15 +967,6 @@ export function TeacherTable() {
             subjectTypes={subjectTypes}
           />
         ),
-        meta: {
-          label: "担当科目",
-          variant: "multiSelect",
-          options: subjects.map((subject) => ({
-            value: subject.name,
-            label: subject.name,
-          })),
-        },
-        enableColumnFilter: true,
       },
       {
         id: "notes",
@@ -697,9 +987,6 @@ export function TeacherTable() {
               {displayText}
             </span>
           );
-        },
-        meta: {
-          label: "備考",
         },
       },
       {
@@ -753,28 +1040,36 @@ export function TeacherTable() {
       pagination: { pageSize, pageIndex: page - 1 },
       columnPinning: { right: ["actions"] },
       columnVisibility: getSavedColumnVisibility(),
-      columnFilters: [
-        ...(filters.name ? [{ id: 'name', value: filters.name }] : []),
-        ...(filters.status.length > 0 ? [{ id: 'status', value: filters.status }] : []),
-        ...(filters.branch.length > 0 ? [{ id: 'branches', value: filters.branch }] : []),
-        ...(filters.subject.length > 0 ? [{ id: 'subjectPreferences', value: filters.subject }] : []),
-        ...(filters.lineConnection.length > 0 ? [{ id: 'lineConnection', value: filters.lineConnection }] : []),
-        ...(filters.birthDateRange ? [{ id: 'birthDate', value: filters.birthDateRange }] : []),
-      ],
     },
     getRowId: (row) => row.teacherId,
-    enableColumnFilters: true,
   });
 
   // Extract pagination state for dependency
   const paginationPageIndex = table.getState().pagination.pageIndex;
-
-  // Extract column filters state for proper reactivity
-  const columnFilters = table.getState().columnFilters;
-
+  
+  // Extract sorting state from table and sync to local state
+  const tableSorting = table.getState().sorting;
   React.useEffect(() => {
-    setPage(paginationPageIndex + 1);
+    setSortingState(tableSorting);
+  }, [tableSorting]);
+
+  // Sync pagination state from table to local state
+  React.useEffect(() => {
+    // Only update page if it's different to avoid infinite loops
+    const newPage = paginationPageIndex + 1;
+    if (page !== newPage) {
+      setPage(newPage);
+    }
   }, [paginationPageIndex]);
+
+  // Force table pagination to match page state when page is reset
+  React.useEffect(() => {
+    const currentTablePage = table.getState().pagination.pageIndex;
+    const expectedTablePage = page - 1;
+    if (currentTablePage !== expectedTablePage) {
+      table.setPageIndex(expectedTablePage);
+    }
+  }, [page, table]);
 
   // Extract column visibility state for dependency
   const columnVisibility = table.getState().columnVisibility;
@@ -785,58 +1080,6 @@ export function TeacherTable() {
       localStorage.setItem(COLUMN_VISIBILITY_STORAGE_KEY, JSON.stringify(columnVisibility));
     }
   }, [columnVisibility]);
-
-  // Handle column filter changes
-  React.useEffect(() => {
-    // If no column filters, this is a reset
-    if (columnFilters.length === 0) {
-      const defaultFilters = {
-        name: "",
-        status: [],
-        branch: [],
-        subject: [],
-        lineConnection: [],
-        birthDateRange: undefined,
-      };
-      setFilters(defaultFilters);
-      // Clear localStorage when resetting
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem(FILTERS_STORAGE_KEY);
-      }
-      setPage(1);
-      return;
-    }
-
-    // Build new filters from column filters
-    const newFilters = {
-      name: "",
-      status: [] as string[],
-      branch: [] as string[],
-      subject: [] as string[],
-      lineConnection: [] as string[],
-      birthDateRange: undefined as { from?: Date; to?: Date } | undefined,
-    };
-
-    // Set the active filters
-    columnFilters.forEach((filter) => {
-      if (filter.id === 'name') {
-        newFilters.name = filter.value as string || "";
-      } else if (filter.id === 'status') {
-        newFilters.status = filter.value as string[] || [];
-      } else if (filter.id === 'branches') {
-        newFilters.branch = filter.value as string[] || [];
-      } else if (filter.id === 'subjectPreferences') {
-        newFilters.subject = filter.value as string[] || [];
-      } else if (filter.id === 'lineConnection') {
-        newFilters.lineConnection = filter.value as string[] || [];
-      } else if (filter.id === 'birthDate') {
-        newFilters.birthDateRange = filter.value as { from?: Date; to?: Date } | undefined;
-      }
-    });
-
-    setFilters(newFilters);
-    setPage(1); // Reset to first page when filters change
-  }, [columnFilters]);
 
   const handleDeleteTeacher = () => {
     if (teacherToDelete) {
@@ -926,7 +1169,13 @@ export function TeacherTable() {
           </div>
         </div>
 
-        <TeacherTableToolbar table={table}>
+        <TeacherTableToolbar 
+          table={table}
+          filters={filters}
+          setFilters={setFilters}
+          subjects={subjects}
+          uniqueBranches={uniqueBranches}
+        >
           {table.getFilteredSelectedRowModel().rows.length > 0 && (
             <Button
               variant="destructive"

@@ -17,7 +17,7 @@ interface TableSearchProps {
 export function TableSearch({
   value,
   onChange,
-  placeholder = "Search...",
+  placeholder = "検索...",
   searchableColumns,
   onSearch,
 }: TableSearchProps) {

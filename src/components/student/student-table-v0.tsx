@@ -329,14 +329,37 @@ export function StudentTableV0() {
           label: "連絡先電話",
         },
         cell: ({ row }) => {
-          const homePhone = row.original.homePhone;
-          // Use legacy homePhone field for editing
+          const phones = row.original.contactPhones;
+          if (!phones || phones.length === 0) {
+            // Fallback to legacy homePhone field
+            const homePhone = row.original.homePhone;
+            return (
+              <GenericInlineEditableCell
+                value={homePhone}
+                onSubmit={(value) => handleCellUpdate(row.original.studentId, "homePhone", value)}
+                placeholder="電話番号を入力"
+              />
+            );
+          }
+          
           return (
-            <GenericInlineEditableCell
-              value={homePhone}
-              onSubmit={(value) => handleCellUpdate(row.original.studentId, "homePhone", value)}
-              placeholder="電話番号を入力"
-            />
+            <div className="space-y-1">
+              {phones.map((phone: any, index: number) => (
+                <div key={index} className="text-sm">
+                  <span className="font-medium">
+                    {phone.phoneType === "HOME" ? "自宅" :
+                     phone.phoneType === "DAD" ? "父" :
+                     phone.phoneType === "MOM" ? "母" : "その他"}:
+                  </span>{" "}
+                  {phone.phoneNumber}
+                  {phone.notes && (
+                    <span className="text-muted-foreground ml-1">
+                      ({phone.notes})
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
           );
         },
       },
@@ -466,49 +489,53 @@ export function StudentTableV0() {
     {
       column: "status",
       title: "ステータス",
-      options: Object.keys(userStatusLabels),
+      options: Object.entries(userStatusLabels).map(([value, label]) => ({ value, label })),
       selectedValues: columnFilters.find(f => f.id === "status")?.value as string[] || [],
     },
     {
       column: "studentType",
       title: "生徒タイプ",
-      options: Array.isArray(studentTypes) ? studentTypes.map((type) => type.name) : [],
+      options: Array.isArray(studentTypes) ? studentTypes.map((type) => ({ value: type.name, label: type.name })) : [],
       selectedValues: columnFilters.find(f => f.id === "studentType")?.value as string[] || [],
     },
     {
       column: "gradeYear",
       title: "学年",
-      options: [1, 2, 3, 4, 5, 6].map(year => year.toString()),
+      options: [1, 2, 3, 4, 5, 6].map(year => ({ value: year.toString(), label: `${year}年生` })),
       selectedValues: columnFilters.find(f => f.id === "gradeYear")?.value as string[] || [],
     },
     {
       column: "branches",
       title: "校舎",
-      options: uniqueBranches.map(b => b.value),
+      options: uniqueBranches.map(b => ({ value: b.value, label: b.label })),
       selectedValues: columnFilters.find(f => f.id === "branches")?.value as string[] || [],
     },
     {
       column: "subjectPreferences",
       title: "受講科目",
-      options: subjects.map((subject) => subject.name),
+      options: subjects.map((subject) => ({ value: subject.name, label: subject.name })),
       selectedValues: columnFilters.find(f => f.id === "subjectPreferences")?.value as string[] || [],
     },
     {
       column: "lineConnection",
       title: "メッセージ連携",
-      options: ["connected_enabled", "connected_disabled", "not_connected"],
+      options: [
+        { value: "connected_enabled", label: "連携済み (通知有効)" },
+        { value: "connected_disabled", label: "連携済み (通知無効)" },
+        { value: "not_connected", label: "未連携" },
+      ],
       selectedValues: columnFilters.find(f => f.id === "lineConnection")?.value as string[] || [],
     },
     {
       column: "schoolType",
       title: "学校種別",
-      options: Object.keys(schoolTypeLabels),
+      options: Object.entries(schoolTypeLabels).map(([value, label]) => ({ value, label })),
       selectedValues: columnFilters.find(f => f.id === "schoolType")?.value as string[] || [],
     },
     {
       column: "examCategory",
       title: "受験区分",
-      options: Object.keys(examCategoryLabels),
+      options: Object.entries(examCategoryLabels).map(([value, label]) => ({ value, label })),
       selectedValues: columnFilters.find(f => f.id === "examCategory")?.value as string[] || [],
     },
   ], [userStatusLabels, studentTypes, uniqueBranches, subjects, columnFilters]);

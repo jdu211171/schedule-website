@@ -416,7 +416,7 @@ function DataTableFilterItem<TData>({
             className="w-48 origin-[var(--radix-popover-content-transform-origin)] p-0"
           >
             <Command loop>
-              <CommandInput placeholder="Search fields..." />
+              <CommandInput placeholder="フィールドを検索..." />
               <CommandList>
                 <CommandEmpty>No fields found.</CommandEmpty>
                 <CommandGroup>
@@ -753,7 +753,7 @@ function onFilterInputRender<TData>({
             className="w-48 origin-[var(--radix-popover-content-transform-origin)] p-0"
           >
             <Command>
-              <CommandInput placeholder="Search options..." />
+              <CommandInput placeholder="オプションを検索..." />
               <CommandList>
                 <CommandEmpty>No options found.</CommandEmpty>
                 <CommandGroup>

@@ -13,10 +13,12 @@ import {
 
 import { TableFilters } from "./table-filters-v0"
 
+type FilterOption = string | { value: string; label: string };
+
 interface FilterConfig {
   column: string
   title: string
-  options: string[]
+  options: FilterOption[]
   selectedValues: string[]
 }
 
@@ -79,7 +81,7 @@ export function GenericTableToolbar<TData>({
                       checked={column.getIsVisible()}
                       onCheckedChange={(value) => column.toggleVisibility(!!value)}
                     >
-                      {column.id}
+                      {column.columnDef.meta?.label || column.id}
                     </DropdownMenuCheckboxItem>
                   )
                 })}

@@ -14,9 +14,10 @@ export const GET = withBranchAccess(
       limit: searchParams.get("limit") || 10000, // Large limit for export
       name: searchParams.get("name") || undefined,
       status: searchParams.get("status")?.split(",")[0] || undefined, // Take first status for API
+      phoneNumber: searchParams.get("phoneNumber") || undefined,
     });
 
-    const { name, status } = filters;
+    const { name, status, phoneNumber } = filters;
 
     // Get additional filters from query params
     const statusList = searchParams.get("status")?.split(",") || [];
@@ -40,6 +41,33 @@ export const GET = withBranchAccess(
       ];
     }
 
+    // Add phone number filter
+    if (phoneNumber) {
+      const phoneConditions = [
+        // Search in new contact phones system
+        { 
+          contactPhones: {
+            some: {
+              phoneNumber: { contains: phoneNumber, mode: "insensitive" }
+            }
+          }
+        },
+        // Search in legacy phone field
+        { phoneNumber: { contains: phoneNumber, mode: "insensitive" } }
+      ];
+
+      // If there's already an OR condition (from name search), combine them
+      if (where.OR) {
+        where.AND = [
+          { OR: where.OR },
+          { OR: phoneConditions }
+        ];
+        delete where.OR;
+      } else {
+        where.OR = phoneConditions;
+      }
+    }
+
     // Only apply single status filter to DB query if exactly one status is selected
     if (status && statusList.length === 1) {
       where.status = status;
@@ -49,6 +77,11 @@ export const GET = withBranchAccess(
     const teachers = await prisma.teacher.findMany({
       where,
       include: {
+        contactPhones: {
+          orderBy: {
+            order: 'asc',
+          },
+        },
         user: {
           include: {
             branches: {

@@ -226,8 +226,15 @@ export const teacherFilterSchema = z.object({
   limit: z.coerce.number().int().positive().default(10),
   name: z.string().optional(),
   status: userStatusEnum.optional(),
+  statuses: z.array(userStatusEnum).optional(), // Support multiple statuses
   birthDateFrom: z.string().optional(),
   birthDateTo: z.string().optional(),
+  phoneNumber: z.string().optional(),
+  branchIds: z.array(z.string()).optional(), // Support multiple branches
+  subjectIds: z.array(z.string()).optional(), // Support multiple subjects
+  lineConnection: z.array(z.string()).optional(), // Support multiple LINE connection states
+  sortBy: z.string().optional(), // Column to sort by
+  sortOrder: z.enum(["asc", "desc"]).optional().default("asc"), // Sort direction
 });
 
 export type TeacherCreate = z.infer<typeof teacherCreateSchema>;

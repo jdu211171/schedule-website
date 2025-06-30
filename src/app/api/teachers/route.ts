@@ -274,7 +274,29 @@ export const GET = withBranchAccess(
   async (request: NextRequest, session, branchId) => {
     // Parse query parameters
     const url = new URL(request.url);
-    const params = Object.fromEntries(url.searchParams.entries());
+    const params: Record<string, any> = {};
+
+    // Handle both single values and arrays
+    const arrayParams = ['statuses', 'branchIds', 'subjectIds', 'lineConnection'];
+
+    url.searchParams.forEach((value, key) => {
+      if (arrayParams.includes(key)) {
+        // Collect array parameters
+        if (!params[key]) {
+          params[key] = [];
+        }
+        params[key].push(value);
+      } else if (params[key]) {
+        // If key already exists, convert to array
+        if (Array.isArray(params[key])) {
+          params[key].push(value);
+        } else {
+          params[key] = [params[key], value];
+        }
+      } else {
+        params[key] = value;
+      }
+    });
 
     // Validate and parse filter parameters
     const result = teacherFilterSchema.safeParse(params);
@@ -285,10 +307,10 @@ export const GET = withBranchAccess(
       );
     }
 
-    const { page, limit, name, status, birthDateFrom, birthDateTo } = result.data;
+    const { page, limit, name, status, statuses, birthDateFrom, birthDateTo, phoneNumber, branchIds, subjectIds, lineConnection, sortBy, sortOrder } = result.data;
 
     // Build filter conditions
-    const where: Record<string, unknown> = {};
+    const where: Record<string, any> = {};
 
     if (name) {
       where.OR = [
@@ -297,7 +319,10 @@ export const GET = withBranchAccess(
       ];
     }
 
-    if (status) {
+    // Support both single status and multiple statuses
+    if (statuses && statuses.length > 0) {
+      where.status = { in: statuses };
+    } else if (status) {
       where.status = status;
     }
 
@@ -311,6 +336,95 @@ export const GET = withBranchAccess(
         dateFilter.lte = new Date(birthDateTo);
       }
       where.birthDate = dateFilter;
+    }
+
+    // Add phone number filter
+    if (phoneNumber) {
+      const phoneConditions = [
+        // Search in new contact phones system
+        { 
+          contactPhones: {
+            some: {
+              phoneNumber: { contains: phoneNumber, mode: "insensitive" }
+            }
+          }
+        },
+        // Search in legacy phone field
+        { phoneNumber: { contains: phoneNumber, mode: "insensitive" } }
+      ];
+
+      // If there's already an OR condition (from name search), combine them
+      if (where.OR) {
+        where.AND = [
+          { OR: where.OR },
+          { OR: phoneConditions }
+        ];
+        delete where.OR;
+      } else {
+        where.OR = phoneConditions;
+      }
+    }
+
+    // Filter by branches (user-selected filter)
+    if (branchIds && branchIds.length > 0) {
+      if (!where.user) where.user = {};
+      where.user.branches = {
+        some: {
+          branch: {
+            name: { in: branchIds } // Filter by branch names since that's what the UI provides
+          }
+        }
+      };
+    }
+
+    // Filter by subjects
+    if (subjectIds && subjectIds.length > 0) {
+      if (!where.user) where.user = {};
+      where.user.subjectPreferences = {
+        some: {
+          subjectId: { in: subjectIds }
+        }
+      };
+    }
+
+    // Filter by LINE connection status
+    if (lineConnection && lineConnection.length > 0) {
+      const lineConditions: any[] = [];
+      
+      lineConnection.forEach((conn) => {
+        if (conn === "connected_enabled") {
+          lineConditions.push({
+            AND: [
+              { lineId: { not: null } },
+              { lineNotificationsEnabled: true }
+            ]
+          });
+        } else if (conn === "connected_disabled") {
+          lineConditions.push({
+            AND: [
+              { lineId: { not: null } },
+              { lineNotificationsEnabled: false }
+            ]
+          });
+        } else if (conn === "not_connected") {
+          lineConditions.push({ lineId: null });
+        }
+      });
+
+      if (lineConditions.length > 0) {
+        // If there's already an OR/AND condition, we need to combine carefully
+        if (where.OR && !where.AND) {
+          where.AND = [
+            { OR: where.OR },
+            { OR: lineConditions }
+          ];
+          delete where.OR;
+        } else if (where.AND && Array.isArray(where.AND)) {
+          where.AND.push({ OR: lineConditions });
+        } else {
+          where.OR = lineConditions;
+        }
+      }
     }
 
     // Filter teachers by branch for non-admin users
@@ -338,6 +452,29 @@ export const GET = withBranchAccess(
 
     // Fetch total count
     const total = await prisma.teacher.count({ where });
+
+    // Build dynamic orderBy clause
+    let orderBy: any = { name: "asc" }; // Default sorting
+    
+    if (sortBy) {
+      // Map frontend column names to database fields
+      const sortFieldMap: Record<string, any> = {
+        name: { name: sortOrder || "asc" },
+        kanaName: { kanaName: sortOrder || "asc" },
+        email: { email: sortOrder || "asc" },
+        phoneNumber: { phoneNumber: sortOrder || "asc" },
+        status: { status: sortOrder || "asc" },
+        birthDate: { birthDate: sortOrder || "asc" },
+        createdAt: { createdAt: sortOrder || "asc" },
+        updatedAt: { updatedAt: sortOrder || "asc" },
+        // Handle nested fields
+        username: { user: { username: sortOrder || "asc" } },
+      };
+
+      if (sortFieldMap[sortBy]) {
+        orderBy = sortFieldMap[sortBy];
+      }
+    }
 
     // Fetch teachers with branch associations
     const teachers = await prisma.teacher.findMany({
@@ -407,7 +544,7 @@ export const GET = withBranchAccess(
       },
       skip,
       take: limit,
-      orderBy: { name: "asc" },
+      orderBy,
     });
 
     // Format teachers using the helper function

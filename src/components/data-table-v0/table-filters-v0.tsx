@@ -3,10 +3,12 @@
 import { ColumnFilter } from "./column-filter-v0"
 import { TableSearch } from "./table-search-v0"
 
+type FilterOption = string | { value: string; label: string };
+
 interface FilterConfig {
   column: string
   title: string
-  options: string[]
+  options: FilterOption[]
   selectedValues: string[]
 }
 
@@ -39,7 +41,7 @@ export function TableFilters({
           onChange={onSearchChange}
           searchableColumns={searchableColumns}
           onSearch={onSearch}
-          placeholder="Search records..."
+          placeholder="レコードを検索..."
         />
       </div>
 

@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Pencil, Eye, EyeOff, Trash2, MoreHorizontal, Download, Upload, Bell, BellOff, MessageSquare } from "lucide-react";
+import { Pencil, Eye, EyeOff, Trash2, MoreHorizontal, Download, Upload, Bell, BellOff, MessageSquare, RotateCcw } from "lucide-react";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useStudentExport } from "@/hooks/useStudentExport";
 
@@ -61,23 +61,503 @@ import { userStatusLabels, schoolTypeLabels, examCategoryLabels, examCategoryTyp
 
 // Import types to ensure proper column meta support
 import "@/components/data-table/types";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandSeparator,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Separator } from "@/components/ui/separator";
+import { Check, PlusCircle, XCircle, Calendar } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+// Multi-select filter component for student table
+interface StudentTableFilterMultiSelectProps {
+  value: string[];
+  onValueChange: (value: string[]) => void;
+  title: string;
+  options: { value: string; label: string }[];
+}
+
+function StudentTableFilterMultiSelect({
+  value,
+  onValueChange,
+  title,
+  options,
+}: StudentTableFilterMultiSelectProps) {
+  const [open, setOpen] = React.useState(false);
+  const selectedValues = new Set(value);
+
+  const handleSelect = (optionValue: string) => {
+    const newSelectedValues = new Set(selectedValues);
+    if (newSelectedValues.has(optionValue)) {
+      newSelectedValues.delete(optionValue);
+    } else {
+      newSelectedValues.add(optionValue);
+    }
+    onValueChange(Array.from(newSelectedValues));
+  };
+
+  const handleClear = () => {
+    onValueChange([]);
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8 border-dashed"
+        >
+          <PlusCircle className="mr-2 h-4 w-4" />
+          {title}
+          {selectedValues.size > 0 && (
+            <>
+              <Separator orientation="vertical" className="mx-2 h-4" />
+              <Badge
+                variant="secondary"
+                className="rounded-sm px-1 font-normal lg:hidden"
+              >
+                {selectedValues.size}
+              </Badge>
+              <div className="hidden space-x-1 lg:flex">
+                {selectedValues.size > 2 ? (
+                  <Badge
+                    variant="secondary"
+                    className="rounded-sm px-1 font-normal"
+                  >
+                    {selectedValues.size} selected
+                  </Badge>
+                ) : (
+                  options
+                    .filter((option) => selectedValues.has(option.value))
+                    .map((option) => (
+                      <Badge
+                        variant="secondary"
+                        key={option.value}
+                        className="rounded-sm px-1 font-normal"
+                      >
+                        {option.label}
+                      </Badge>
+                    ))
+                )}
+              </div>
+            </>
+          )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[200px] p-0" align="start">
+        <Command>
+          <CommandInput placeholder={`${title}を検索...`} />
+          <CommandList>
+            <CommandEmpty>結果がありません。</CommandEmpty>
+            <CommandGroup>
+              {options.map((option) => {
+                const isSelected = selectedValues.has(option.value);
+                return (
+                  <CommandItem
+                    key={option.value}
+                    onSelect={() => handleSelect(option.value)}
+                  >
+                    <div
+                      className={cn(
+                        "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
+                        isSelected
+                          ? "bg-primary text-primary-foreground"
+                          : "opacity-50 [&_svg]:invisible"
+                      )}
+                    >
+                      <Check className={cn("h-4 w-4")} />
+                    </div>
+                    <span>{option.label}</span>
+                  </CommandItem>
+                );
+              })}
+            </CommandGroup>
+            {selectedValues.size > 0 && (
+              <>
+                <CommandSeparator />
+                <CommandGroup>
+                  <CommandItem
+                    onSelect={handleClear}
+                    className="justify-center text-center"
+                  >
+                    <XCircle className="mr-2 h-4 w-4" />
+                    クリア
+                  </CommandItem>
+                </CommandGroup>
+              </>
+            )}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+// Date filter component for student table
+interface StudentTableDateFilterProps {
+  value?: { from?: Date; to?: Date };
+  onValueChange: (value?: { from?: Date; to?: Date }) => void;
+  title: string;
+}
+
+function StudentTableDateFilter({
+  value,
+  onValueChange,
+  title,
+}: StudentTableDateFilterProps) {
+  // Create a mock column that works with DataTableDateFilter
+  const mockColumn = {
+    getFilterValue: () => {
+      if (!value) return undefined;
+      if (value.from && value.to) {
+        return [value.from.getTime(), value.to.getTime()];
+      } else if (value.from) {
+        return [value.from.getTime(), undefined];
+      } else if (value.to) {
+        return [undefined, value.to.getTime()];
+      }
+      return undefined;
+    },
+    setFilterValue: (newValue: any) => {
+      if (!newValue) {
+        onValueChange(undefined);
+      } else if (Array.isArray(newValue)) {
+        const [from, to] = newValue;
+        onValueChange({
+          from: from ? new Date(from) : undefined,
+          to: to ? new Date(to) : undefined,
+        });
+      }
+    },
+  } as any;
+
+  return (
+    <DataTableDateFilter
+      column={mockColumn}
+      title={title}
+      multiple={true}
+    />
+  );
+}
+
+// Year filter component for student table
+interface StudentTableYearFilterProps {
+  value?: { from?: Date; to?: Date };
+  onValueChange: (value?: { from?: Date; to?: Date }) => void;
+  title: string;
+}
+
+function StudentTableYearFilter({
+  value,
+  onValueChange,
+  title,
+}: StudentTableYearFilterProps) {
+  const [open, setOpen] = React.useState(false);
+  const [mode, setMode] = React.useState<"single" | "range" | "from" | "before">("single");
+  const [year, setYear] = React.useState<string>("");
+  const [startYear, setStartYear] = React.useState<string>("");
+  const [endYear, setEndYear] = React.useState<string>("");
+
+  // Initialize from value
+  React.useEffect(() => {
+    if (value?.from && value?.to) {
+      const fromYear = value.from.getFullYear();
+      const toYear = value.to.getFullYear();
+      if (fromYear === toYear) {
+        setMode("single");
+        setYear(fromYear.toString());
+      } else {
+        setMode("range");
+        setStartYear(fromYear.toString());
+        setEndYear(toYear.toString());
+      }
+    } else if (value?.from) {
+      setMode("from");
+      setYear(value.from.getFullYear().toString());
+    } else if (value?.to) {
+      setMode("before");
+      setYear(value.to.getFullYear().toString());
+    }
+  }, [value]);
+
+  const handleApply = () => {
+    let newValue: { from?: Date; to?: Date } | undefined;
+
+    switch (mode) {
+      case "single":
+        if (year) {
+          const y = parseInt(year);
+          newValue = {
+            from: new Date(y, 0, 1),
+            to: new Date(y, 11, 31, 23, 59, 59),
+          };
+        }
+        break;
+      case "range":
+        if (startYear && endYear) {
+          newValue = {
+            from: new Date(parseInt(startYear), 0, 1),
+            to: new Date(parseInt(endYear), 11, 31, 23, 59, 59),
+          };
+        }
+        break;
+      case "from":
+        if (year) {
+          newValue = {
+            from: new Date(parseInt(year), 0, 1),
+          };
+        }
+        break;
+      case "before":
+        if (year) {
+          newValue = {
+            to: new Date(parseInt(year), 11, 31, 23, 59, 59),
+          };
+        }
+        break;
+    }
+
+    onValueChange(newValue);
+    setOpen(false);
+  };
+
+  const handleClear = () => {
+    setYear("");
+    setStartYear("");
+    setEndYear("");
+    onValueChange(undefined);
+    setOpen(false);
+  };
+
+  const currentYear = new Date().getFullYear();
+  const hasValue = !!value;
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8 border-dashed"
+        >
+          <Calendar className="mr-2 h-4 w-4" />
+          {title}
+          {hasValue && (
+            <>
+              <Separator orientation="vertical" className="mx-2 h-4" />
+              <Badge
+                variant="secondary"
+                className="rounded-sm px-1 font-normal"
+              >
+                {mode === "single" && year}
+                {mode === "range" && `${startYear}-${endYear}`}
+                {mode === "from" && `${year}年以降`}
+                {mode === "before" && `${year}年以前`}
+              </Badge>
+            </>
+          )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-80" align="start">
+        <div className="space-y-4 p-2">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">フィルターモード</label>
+            <Select value={mode} onValueChange={(v: any) => setMode(v)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="single">特定の年</SelectItem>
+                <SelectItem value="range">年の範囲</SelectItem>
+                <SelectItem value="from">指定年以降</SelectItem>
+                <SelectItem value="before">指定年以前</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {mode === "single" && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium">年</label>
+              <Input
+                type="number"
+                min="1900"
+                max={currentYear}
+                value={year}
+                onChange={(e) => setYear(e.target.value)}
+                placeholder="例: 2000"
+              />
+            </div>
+          )}
+
+          {mode === "range" && (
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">開始年</label>
+                <Input
+                  type="number"
+                  min="1900"
+                  max={currentYear}
+                  value={startYear}
+                  onChange={(e) => setStartYear(e.target.value)}
+                  placeholder="例: 1990"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">終了年</label>
+                <Input
+                  type="number"
+                  min="1900"
+                  max={currentYear}
+                  value={endYear}
+                  onChange={(e) => setEndYear(e.target.value)}
+                  placeholder="例: 2000"
+                />
+              </div>
+            </div>
+          )}
+
+          {(mode === "from" || mode === "before") && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium">年</label>
+              <Input
+                type="number"
+                min="1900"
+                max={currentYear}
+                value={year}
+                onChange={(e) => setYear(e.target.value)}
+                placeholder="例: 2000"
+              />
+            </div>
+          )}
+
+          <Separator />
+
+          <div className="flex justify-between">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleClear}
+              disabled={!hasValue}
+            >
+              <XCircle className="mr-2 h-4 w-4" />
+              クリア
+            </Button>
+            <Button size="sm" onClick={handleApply}>
+              適用
+            </Button>
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+// Filter type
+interface StudentFilters {
+  name: string;
+  status: string[];
+  studentType: string[];
+  gradeYear: string[];
+  branch: string[];
+  subject: string[];
+  lineConnection: string[];
+  schoolType: string[];
+  examCategory: string[];
+  examCategoryType: string[];
+  birthDateRange?: { from?: Date; to?: Date };
+  examDateRange?: { from?: Date; to?: Date };
+  phoneNumber: string;
+  email: string;
+  schoolName: string;
+}
 
 // Custom toolbar component without reset button
-interface StudentTableToolbarProps<TData> extends React.ComponentProps<"div"> {
-  table: Table<TData>;
+interface StudentTableToolbarProps extends React.ComponentProps<"div"> {
+  table: Table<Student>;
+  filters: StudentFilters;
+  setFilters: React.Dispatch<React.SetStateAction<StudentFilters>>;
+  studentTypes: any[];
+  subjects: any[];
+  uniqueBranches: { value: string; label: string }[];
   children?: React.ReactNode;
 }
 
-function StudentTableToolbar<TData>({
+function StudentTableToolbar({
   table,
+  filters,
+  setFilters,
+  studentTypes,
+  subjects,
+  uniqueBranches,
   children,
   className,
   ...props
-}: StudentTableToolbarProps<TData>) {
-  const columns = React.useMemo(
-    () => table.getAllColumns().filter((column) => column.getCanFilter()),
-    [table],
-  );
+}: StudentTableToolbarProps) {
+  const hasActiveFilters = React.useMemo(() => {
+    return !!(
+      filters.name ||
+      filters.status.length > 0 ||
+      filters.studentType.length > 0 ||
+      filters.gradeYear.length > 0 ||
+      filters.branch.length > 0 ||
+      filters.subject.length > 0 ||
+      filters.lineConnection.length > 0 ||
+      filters.schoolType.length > 0 ||
+      filters.examCategory.length > 0 ||
+      filters.examCategoryType.length > 0 ||
+      filters.birthDateRange ||
+      filters.examDateRange ||
+      filters.phoneNumber ||
+      filters.email ||
+      filters.schoolName
+    );
+  }, [filters]);
+
+  const handleResetFilters = () => {
+    setFilters({
+      name: "",
+      status: [],
+      studentType: [],
+      gradeYear: [],
+      branch: [],
+      subject: [],
+      lineConnection: [],
+      schoolType: [],
+      examCategory: [],
+      examCategoryType: [],
+      birthDateRange: undefined,
+      examDateRange: undefined,
+      phoneNumber: "",
+      email: "",
+      schoolName: "",
+    });
+  };
+
+  // Generate grade year options
+  const gradeYearOptions = React.useMemo(() => {
+    const options = [];
+    for (let i = 1; i <= 6; i++) {
+      options.push({ value: i.toString(), label: `${i}年生` });
+    }
+    return options;
+  }, []);
 
   return (
     <div
@@ -90,103 +570,140 @@ function StudentTableToolbar<TData>({
       {...props}
     >
       <div className="flex flex-1 flex-wrap items-center gap-2">
-        {columns.map((column) => (
-          <StudentTableToolbarFilter key={column.id} column={column} />
-        ))}
+        <Input
+          placeholder="名前で検索..."
+          value={filters.name}
+          onChange={(event) => setFilters(prev => ({ ...prev, name: event.target.value }))}
+          className="h-8 w-40 lg:w-56"
+        />
+        <StudentTableFilterMultiSelect
+          value={filters.status}
+          onValueChange={(value) => setFilters(prev => ({ ...prev, status: value }))}
+          title="ステータス"
+          options={Object.entries(userStatusLabels).map(([value, label]) => ({
+            value,
+            label,
+          }))}
+        />
+        <StudentTableFilterMultiSelect
+          value={filters.studentType}
+          onValueChange={(value) => setFilters(prev => ({ ...prev, studentType: value }))}
+          title="生徒タイプ"
+          options={studentTypes.map((type) => ({
+            value: type.name,
+            label: type.name,
+          }))}
+        />
+        <StudentTableFilterMultiSelect
+          value={filters.gradeYear}
+          onValueChange={(value) => setFilters(prev => ({ ...prev, gradeYear: value }))}
+          title="学年"
+          options={gradeYearOptions}
+        />
+        <StudentTableYearFilter
+          value={filters.birthDateRange}
+          onValueChange={(value) => setFilters(prev => ({ ...prev, birthDateRange: value }))}
+          title="生年月日"
+        />
+        <StudentTableDateFilter
+          value={filters.examDateRange}
+          onValueChange={(value) => setFilters(prev => ({ ...prev, examDateRange: value }))}
+          title="受験日"
+        />
+        <Input
+          placeholder="電話番号で検索..."
+          value={filters.phoneNumber}
+          onChange={(event) => setFilters(prev => ({ ...prev, phoneNumber: event.target.value }))}
+          className="h-8 w-40 lg:w-56"
+        />
+        <Input
+          placeholder="メールアドレスで検索..."
+          value={filters.email}
+          onChange={(event) => setFilters(prev => ({ ...prev, email: event.target.value }))}
+          className="h-8 w-40 lg:w-56"
+        />
+        <Input
+          placeholder="学校名で検索..."
+          value={filters.schoolName}
+          onChange={(event) => setFilters(prev => ({ ...prev, schoolName: event.target.value }))}
+          className="h-8 w-40 lg:w-56"
+        />
+        <StudentTableFilterMultiSelect
+          value={filters.branch}
+          onValueChange={(value) => setFilters(prev => ({ ...prev, branch: value }))}
+          title="校舎"
+          options={uniqueBranches}
+        />
+        <StudentTableFilterMultiSelect
+          value={filters.subject}
+          onValueChange={(value) => setFilters(prev => ({ ...prev, subject: value }))}
+          title="受講科目"
+          options={subjects.map((subject) => ({
+            value: subject.name,
+            label: subject.name,
+          }))}
+        />
+        <StudentTableFilterMultiSelect
+          value={filters.lineConnection}
+          onValueChange={(value) => setFilters(prev => ({ ...prev, lineConnection: value }))}
+          title="メッセージ連携"
+          options={[
+            { value: "connected_enabled", label: "連携済み (通知有効)" },
+            { value: "connected_disabled", label: "連携済み (通知無効)" },
+            { value: "not_connected", label: "未連携" }
+          ]}
+        />
+        <StudentTableFilterMultiSelect
+          value={filters.schoolType}
+          onValueChange={(value) => setFilters(prev => ({ ...prev, schoolType: value }))}
+          title="学校区分"
+          options={[
+            { value: "PUBLIC", label: "公立" },
+            { value: "PRIVATE", label: "私立" },
+            { value: "NATIONAL", label: "国立" },
+            { value: "OTHER", label: "その他" }
+          ]}
+        />
+        <StudentTableFilterMultiSelect
+          value={filters.examCategory}
+          onValueChange={(value) => setFilters(prev => ({ ...prev, examCategory: value }))}
+          title="受験カテゴリー"
+          options={[
+            { value: "JUNIOR_HIGH", label: "中学受験" },
+            { value: "HIGH_SCHOOL", label: "高校受験" },
+            { value: "UNIVERSITY", label: "大学受験" },
+            { value: "OTHER", label: "その他" }
+          ]}
+        />
+        <StudentTableFilterMultiSelect
+          value={filters.examCategoryType}
+          onValueChange={(value) => setFilters(prev => ({ ...prev, examCategoryType: value }))}
+          title="受験タイプ"
+          options={[
+            { value: "GENERAL", label: "一般" },
+            { value: "RECOMMENDATION", label: "推薦" },
+            { value: "AO", label: "AO" },
+            { value: "INTERNAL", label: "内部進学" },
+            { value: "OTHER", label: "その他" }
+          ]}
+        />
       </div>
       <div className="flex items-center gap-2">
+        {hasActiveFilters && (
+          <Button
+            variant="ghost"
+            onClick={handleResetFilters}
+            className="h-8 px-2 lg:px-3"
+          >
+            <RotateCcw className="mr-2 h-4 w-4" />
+            リセット
+          </Button>
+        )}
         {children}
         <DataTableViewOptions table={table} />
       </div>
     </div>
   );
-}
-
-interface StudentTableToolbarFilterProps<TData> {
-  column: Column<TData>;
-}
-
-function StudentTableToolbarFilter<TData>({
-  column,
-}: StudentTableToolbarFilterProps<TData>) {
-  const columnMeta = column.columnDef.meta;
-
-  const onFilterRender = React.useCallback(() => {
-    if (!columnMeta?.variant) return null;
-
-    switch (columnMeta.variant) {
-      case "text":
-        return (
-          <Input
-            placeholder={columnMeta.placeholder ?? columnMeta.label}
-            value={(column.getFilterValue() as string) ?? ""}
-            onChange={(event) => column.setFilterValue(event.target.value)}
-            className="h-8 w-40 lg:w-56"
-          />
-        );
-
-      case "number":
-        return (
-          <div className="relative">
-            <Input
-              type="number"
-              inputMode="numeric"
-              placeholder={columnMeta.placeholder ?? columnMeta.label}
-              value={(column.getFilterValue() as string) ?? ""}
-              onChange={(event) => column.setFilterValue(event.target.value)}
-              className={cn("h-8 w-[120px]", columnMeta.unit && "pr-8")}
-            />
-            {columnMeta.unit && (
-              <span className="absolute top-0 right-0 bottom-0 flex items-center rounded-r-md bg-accent px-2 text-muted-foreground text-sm">
-                {columnMeta.unit}
-              </span>
-            )}
-          </div>
-        );
-
-      case "range":
-        return (
-          <DataTableSliderFilter
-            column={column}
-            title={columnMeta.label ?? column.id}
-          />
-        );
-
-      case "date":
-      case "dateRange":
-        return (
-          <DataTableDateFilter
-            column={column}
-            title={columnMeta.label ?? column.id}
-            multiple={columnMeta.variant === "dateRange"}
-          />
-        );
-
-      case "yearRange":
-        return (
-          <DataTableYearFilter
-            column={column}
-            title={columnMeta.label ?? column.id}
-          />
-        );
-
-      case "select":
-      case "multiSelect":
-        return (
-          <DataTableFacetedFilter
-            column={column}
-            title={columnMeta.label ?? column.id}
-            options={columnMeta.options ?? []}
-            multiple={columnMeta.variant === "multiSelect"}
-          />
-        );
-
-      default:
-        return null;
-    }
-  }, [column, columnMeta]);
-
-  return onFilterRender();
 }
 
 export function StudentTable() {
@@ -195,20 +712,7 @@ export function StudentTable() {
   const COLUMN_VISIBILITY_STORAGE_KEY = "student_column_visibility";
 
   // Initialize filters with localStorage values or defaults
-  const [filters, setFilters] = React.useState<{
-    name: string;
-    status: string[];
-    studentType: string[];
-    gradeYear: string[];
-    branch: string[];
-    subject: string[];
-    lineConnection: string[];
-    schoolType: string[];
-    examCategory: string[];
-    examCategoryType: string[];
-    birthDateRange?: { from?: Date; to?: Date };
-    examDateRange?: { from?: Date; to?: Date };
-  }>(() => {
+  const [filters, setFilters] = React.useState<StudentFilters>(() => {
     if (typeof window !== 'undefined') {
       const savedFilters = localStorage.getItem(FILTERS_STORAGE_KEY);
       if (savedFilters) {
@@ -234,6 +738,9 @@ export function StudentTable() {
               from: parsed.examDateRange.from ? new Date(parsed.examDateRange.from) : undefined,
               to: parsed.examDateRange.to ? new Date(parsed.examDateRange.to) : undefined
             } : undefined,
+            phoneNumber: parsed.phoneNumber || "",
+            email: parsed.email || "",
+            schoolName: parsed.schoolName || "",
           };
         } catch (error) {
           console.error('Error parsing saved filters:', error);
@@ -253,6 +760,9 @@ export function StudentTable() {
       examCategoryType: [] as string[],
       birthDateRange: undefined,
       examDateRange: undefined,
+      phoneNumber: "",
+      email: "",
+      schoolName: "",
     };
   });
 
@@ -273,13 +783,23 @@ export function StudentTable() {
 
   // Save filters to localStorage whenever they change
   React.useEffect(() => {
+    console.log("[StudentTable] Filters changed:", filters);
     if (typeof window !== 'undefined') {
       localStorage.setItem(FILTERS_STORAGE_KEY, JSON.stringify(filters));
     }
   }, [filters]);
 
+  // Reset to first page when filters change
+  React.useEffect(() => {
+    console.log("[StudentTable] Resetting page to 1 due to filter change");
+    setPage(1);
+  }, [filters]);
+
 
   const debouncedName = useDebounce(filters.name, 300);
+  const debouncedPhoneNumber = useDebounce(filters.phoneNumber, 300);
+  const debouncedEmail = useDebounce(filters.email, 300);
+  const debouncedSchoolName = useDebounce(filters.schoolName, 300);
   const [page, setPage] = React.useState(1);
   const [studentToEdit, setStudentToEdit] = React.useState<Student | null>(
     null
@@ -333,7 +853,11 @@ export function StudentTable() {
       .map((subject) => subject.subjectId);
   }, [filters.subject, subjects]);
 
-  const { data: students, isLoading } = useStudents({
+  // Extract sorting state from URL (will be managed by useDataTable)
+  const [sortingState, setSortingState] = React.useState<{ id: string; desc: boolean }[]>([]);
+
+  // Build query parameters for useStudents
+  const queryParams = React.useMemo(() => ({
     page,
     limit: pageSize,
     name: debouncedName || undefined,
@@ -350,7 +874,19 @@ export function StudentTable() {
     birthDateTo: filters.birthDateRange?.to,
     examDateFrom: filters.examDateRange?.from,
     examDateTo: filters.examDateRange?.to,
-  });
+    phoneNumber: debouncedPhoneNumber || undefined,
+    email: debouncedEmail || undefined,
+    schoolName: debouncedSchoolName || undefined,
+    sortBy: sortingState[0]?.id,
+    sortOrder: sortingState[0]?.desc ? "desc" : "asc",
+  }), [page, pageSize, debouncedName, studentTypeIds, filters.gradeYear, filters.status, branchIds, subjectIds, filters.lineConnection, filters.schoolType, filters.examCategory, filters.examCategoryType, filters.birthDateRange, filters.examDateRange, debouncedPhoneNumber, debouncedEmail, debouncedSchoolName, sortingState]);
+
+  // Debug logging for query params
+  React.useEffect(() => {
+    console.log("[StudentTable] Query params being sent to useStudents:", queryParams);
+  }, [queryParams]);
+
+  const { data: students, isLoading } = useStudents(queryParams);
 
   // Extract unique branches from current data
   const uniqueBranches = React.useMemo(() => {
@@ -404,21 +940,12 @@ export function StudentTable() {
         accessorKey: "name",
         header: "名前",
         cell: ({ row }) => row.original.name || "-",
-        meta: {
-          label: "名前",
-          placeholder: "名前で検索...",
-          variant: "text",
-        },
-        enableColumnFilter: true,
       },
       {
         id: "kanaName",
         accessorKey: "kanaName",
         header: "カナ",
         cell: ({ row }) => row.original.kanaName || "-",
-        meta: {
-          label: "カナ",
-        },
       },
       {
         id: "status",
@@ -431,15 +958,6 @@ export function StudentTable() {
           const variant = status === "ACTIVE" ? "default" : "destructive";
           return <Badge variant={variant}>{label}</Badge>;
         },
-        meta: {
-          label: "ステータス",
-          variant: "multiSelect",
-          options: Object.entries(userStatusLabels).map(([value, label]) => ({
-            value,
-            label,
-          })),
-        },
-        enableColumnFilter: true,
       },
       {
         id: "studentTypeName",
@@ -451,15 +969,6 @@ export function StudentTable() {
           ) : (
             "-"
           ),
-        meta: {
-          label: "生徒タイプ",
-          variant: "multiSelect",
-          options: studentTypes.map((type) => ({
-            value: type.name,
-            label: type.name,
-          })),
-        },
-        enableColumnFilter: true,
       },
       {
         id: "gradeYear",
@@ -469,15 +978,6 @@ export function StudentTable() {
           row.original.gradeYear !== null
             ? `${row.original.gradeYear}年生`
             : "-",
-        meta: {
-          label: "学年",
-          variant: "multiSelect",
-          options: [1, 2, 3, 4, 5, 6].map((year) => ({
-            value: year.toString(),
-            label: `${year}年生`,
-          })),
-        },
-        enableColumnFilter: true,
       },
       {
         id: "birthDate",
@@ -492,21 +992,12 @@ export function StudentTable() {
             day: '2-digit' 
           });
         },
-        meta: {
-          label: "生年月日",
-          variant: "yearRange",
-          placeholder: "生年月日で検索",
-        },
-        enableColumnFilter: true,
       },
       {
         id: "schoolName",
         accessorKey: "schoolName",
         header: "学校名",
         cell: ({ row }) => row.original.schoolName || "-",
-        meta: {
-          label: "学校名",
-        },
       },
       {
         id: "schoolType",
@@ -517,15 +1008,6 @@ export function StudentTable() {
           if (!schoolType) return "-";
           return <Badge variant="outline">{schoolTypeLabels[schoolType as keyof typeof schoolTypeLabels]}</Badge>;
         },
-        meta: {
-          label: "学校種別",
-          variant: "multiSelect",
-          options: Object.entries(schoolTypeLabels).map(([value, label]) => ({
-            value,
-            label,
-          })),
-        },
-        enableColumnFilter: true,
       },
       {
         id: "examCategory",
@@ -536,15 +1018,6 @@ export function StudentTable() {
           if (!examCategory) return "-";
           return <Badge variant="secondary">{examCategoryLabels[examCategory as keyof typeof examCategoryLabels]}</Badge>;
         },
-        meta: {
-          label: "受験区分",
-          variant: "multiSelect",
-          options: Object.entries(examCategoryLabels).map(([value, label]) => ({
-            value,
-            label,
-          })),
-        },
-        enableColumnFilter: true,
       },
       {
         id: "examCategoryType",
@@ -555,33 +1028,18 @@ export function StudentTable() {
           if (!examCategoryType) return "-";
           return <Badge variant="outline">{examCategoryTypeLabels[examCategoryType as keyof typeof examCategoryTypeLabels]}</Badge>;
         },
-        meta: {
-          label: "受験区分種別",
-          variant: "multiSelect",
-          options: Object.entries(examCategoryTypeLabels).map(([value, label]) => ({
-            value,
-            label,
-          })),
-        },
-        enableColumnFilter: true,
       },
       {
         id: "firstChoice",
         accessorKey: "firstChoice",
         header: "第一志望校",
         cell: ({ row }) => row.original.firstChoice || "-",
-        meta: {
-          label: "第一志望校",
-        },
       },
       {
         id: "secondChoice",
         accessorKey: "secondChoice",
         header: "第二志望校",
         cell: ({ row }) => row.original.secondChoice || "-",
-        meta: {
-          label: "第二志望校",
-        },
       },
       {
         id: "examDate",
@@ -596,39 +1054,24 @@ export function StudentTable() {
             day: '2-digit' 
           });
         },
-        meta: {
-          label: "試験日",
-          variant: "dateRange",
-          placeholder: "試験日で検索",
-        },
-        enableColumnFilter: true,
       },
       {
         id: "username",
         accessorKey: "username",
         header: "ユーザー名",
         cell: ({ row }) => row.original.username || "-",
-        meta: {
-          label: "ユーザー名",
-        },
       },
       {
         id: "email",
         accessorKey: "email",
         header: "メールアドレス",
         cell: ({ row }) => row.original.email || "-",
-        meta: {
-          label: "メールアドレス",
-        },
       },
       {
         id: "parentEmail",
         accessorKey: "parentEmail",
         header: "保護者メール",
         cell: ({ row }) => row.original.parentEmail || "-",
-        meta: {
-          label: "保護者メール",
-        },
       },
       {
         id: "password",
@@ -669,9 +1112,6 @@ export function StudentTable() {
               </Button>
             </div>
           );
-        },
-        meta: {
-          label: "パスワード",
         },
       },
       // Hidden for security reasons - Message IDs should not be exposed
@@ -720,16 +1160,6 @@ export function StudentTable() {
             </div>
           );
         },
-        meta: {
-          label: "メッセージ連携",
-          variant: "multiSelect",
-          options: [
-            { value: "connected_enabled", label: "連携済み (通知有効)" },
-            { value: "connected_disabled", label: "連携済み (通知無効)" },
-            { value: "not_connected", label: "未連携" }
-          ],
-        },
-        enableColumnFilter: true,
       },
       {
         id: "contactPhones",
@@ -759,9 +1189,6 @@ export function StudentTable() {
             </div>
           );
         },
-        meta: {
-          label: "連絡先電話",
-        },
       },
       {
         id: "branches",
@@ -781,12 +1208,6 @@ export function StudentTable() {
             </div>
           );
         },
-        meta: {
-          label: "校舎",
-          variant: "multiSelect",
-          options: uniqueBranches,
-        },
-        enableColumnFilter: true,
       },
       {
         id: "subjectPreferences",
@@ -799,15 +1220,6 @@ export function StudentTable() {
             subjectTypes={subjectTypes}
           />
         ),
-        meta: {
-          label: "選択科目",
-          variant: "multiSelect",
-          options: subjects.map((subject) => ({
-            value: subject.name,
-            label: subject.name,
-          })),
-        },
-        enableColumnFilter: true,
       },
       {
         id: "notes",
@@ -828,9 +1240,6 @@ export function StudentTable() {
               {displayText}
             </span>
           );
-        },
-        meta: {
-          label: "備考",
         },
       },
       {
@@ -884,34 +1293,36 @@ export function StudentTable() {
       pagination: { pageSize, pageIndex: page - 1 },
       columnPinning: { right: ["actions"] },
       columnVisibility: getSavedColumnVisibility(),
-      columnFilters: [
-        ...(filters.name ? [{ id: 'name', value: filters.name }] : []),
-        ...(filters.status.length > 0 ? [{ id: 'status', value: filters.status }] : []),
-        ...(filters.studentType.length > 0 ? [{ id: 'studentTypeName', value: filters.studentType }] : []),
-        ...(filters.gradeYear.length > 0 ? [{ id: 'gradeYear', value: filters.gradeYear }] : []),
-        ...(filters.branch.length > 0 ? [{ id: 'branches', value: filters.branch }] : []),
-        ...(filters.subject.length > 0 ? [{ id: 'subjectPreferences', value: filters.subject }] : []),
-        ...(filters.lineConnection.length > 0 ? [{ id: 'lineConnection', value: filters.lineConnection }] : []),
-        ...(filters.schoolType.length > 0 ? [{ id: 'schoolType', value: filters.schoolType }] : []),
-        ...(filters.examCategory.length > 0 ? [{ id: 'examCategory', value: filters.examCategory }] : []),
-        ...(filters.examCategoryType.length > 0 ? [{ id: 'examCategoryType', value: filters.examCategoryType }] : []),
-        ...(filters.birthDateRange ? [{ id: 'birthDate', value: filters.birthDateRange }] : []),
-        ...(filters.examDateRange ? [{ id: 'examDate', value: filters.examDateRange }] : []),
-      ],
     },
     getRowId: (row) => row.studentId,
-    enableColumnFilters: true,
   });
 
   // Extract pagination state for dependency
   const paginationPageIndex = table.getState().pagination.pageIndex;
-
-  // Extract column filters state for proper reactivity
-  const columnFilters = table.getState().columnFilters;
-
+  
+  // Extract sorting state from table and sync to local state
+  const tableSorting = table.getState().sorting;
   React.useEffect(() => {
-    setPage(paginationPageIndex + 1);
+    setSortingState(tableSorting);
+  }, [tableSorting]);
+
+  // Sync pagination state from table to local state
+  React.useEffect(() => {
+    // Only update page if it's different to avoid infinite loops
+    const newPage = paginationPageIndex + 1;
+    if (page !== newPage) {
+      setPage(newPage);
+    }
   }, [paginationPageIndex]);
+
+  // Force table pagination to match page state when page is reset
+  React.useEffect(() => {
+    const currentTablePage = table.getState().pagination.pageIndex;
+    const expectedTablePage = page - 1;
+    if (currentTablePage !== expectedTablePage) {
+      table.setPageIndex(expectedTablePage);
+    }
+  }, [page, table]);
 
   // Extract column visibility state for dependency
   const columnVisibility = table.getState().columnVisibility;
@@ -922,82 +1333,6 @@ export function StudentTable() {
       localStorage.setItem(COLUMN_VISIBILITY_STORAGE_KEY, JSON.stringify(columnVisibility));
     }
   }, [columnVisibility]);
-
-  // Handle column filter changes
-  React.useEffect(() => {
-    // If no column filters, this is a reset
-    if (columnFilters.length === 0) {
-      const defaultFilters = {
-        name: "",
-        status: [],
-        studentType: [],
-        gradeYear: [],
-        branch: [],
-        subject: [],
-        lineConnection: [],
-        schoolType: [],
-        examCategory: [],
-        examCategoryType: [],
-        birthDateRange: undefined,
-        examDateRange: undefined,
-      };
-      setFilters(defaultFilters);
-      // Clear localStorage when resetting
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem(FILTERS_STORAGE_KEY);
-      }
-      setPage(1);
-      return;
-    }
-
-    // Build new filters from column filters
-    const newFilters = {
-      name: "",
-      status: [] as string[],
-      studentType: [] as string[],
-      gradeYear: [] as string[],
-      branch: [] as string[],
-      subject: [] as string[],
-      lineConnection: [] as string[],
-      schoolType: [] as string[],
-      examCategory: [] as string[],
-      examCategoryType: [] as string[],
-      birthDateRange: undefined as { from?: Date; to?: Date } | undefined,
-      examDateRange: undefined as { from?: Date; to?: Date } | undefined,
-    };
-
-    // Set the active filters
-    columnFilters.forEach((filter) => {
-      if (filter.id === 'name') {
-        newFilters.name = filter.value as string || "";
-      } else if (filter.id === 'status') {
-        newFilters.status = filter.value as string[] || [];
-      } else if (filter.id === 'studentTypeName') {
-        newFilters.studentType = filter.value as string[] || [];
-      } else if (filter.id === 'gradeYear') {
-        newFilters.gradeYear = filter.value as string[] || [];
-      } else if (filter.id === 'branches') {
-        newFilters.branch = filter.value as string[] || [];
-      } else if (filter.id === 'subjectPreferences') {
-        newFilters.subject = filter.value as string[] || [];
-      } else if (filter.id === 'lineConnection') {
-        newFilters.lineConnection = filter.value as string[] || [];
-      } else if (filter.id === 'schoolType') {
-        newFilters.schoolType = filter.value as string[] || [];
-      } else if (filter.id === 'examCategory') {
-        newFilters.examCategory = filter.value as string[] || [];
-      } else if (filter.id === 'examCategoryType') {
-        newFilters.examCategoryType = filter.value as string[] || [];
-      } else if (filter.id === 'birthDate') {
-        newFilters.birthDateRange = filter.value as { from?: Date; to?: Date } | undefined;
-      } else if (filter.id === 'examDate') {
-        newFilters.examDateRange = filter.value as { from?: Date; to?: Date } | undefined;
-      }
-    });
-
-    setFilters(newFilters);
-    setPage(1); // Reset to first page when filters change
-  }, [columnFilters]);
 
 
   const handleDeleteStudent = () => {
@@ -1095,7 +1430,14 @@ export function StudentTable() {
         </div>
 
         <div className="relative space-y-4">
-          <StudentTableToolbar table={table}>
+          <StudentTableToolbar 
+            table={table}
+            filters={filters}
+            setFilters={setFilters}
+            studentTypes={studentTypes}
+            subjects={subjects}
+            uniqueBranches={uniqueBranches}
+          >
             {table.getFilteredSelectedRowModel().rows.length > 0 && (
               <Button
                 variant="destructive"

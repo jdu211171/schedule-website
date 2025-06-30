@@ -100,6 +100,11 @@ type UseStudentsParams = {
   birthDateTo?: Date;
   examDateFrom?: Date; // Filter by exam date range
   examDateTo?: Date;
+  phoneNumber?: string;
+  email?: string;
+  schoolName?: string;
+  sortBy?: string; // Column to sort by
+  sortOrder?: "asc" | "desc"; // Sort direction
 };
 
 type StudentsResponse = {
@@ -136,6 +141,11 @@ export function useStudents(params: UseStudentsParams = {}) {
     birthDateTo,
     examDateFrom,
     examDateTo,
+    phoneNumber,
+    email,
+    schoolName,
+    sortBy,
+    sortOrder,
   } = params;
 
   const queryParams: Record<string, string | string[] | undefined> = {
@@ -161,25 +171,42 @@ export function useStudents(params: UseStudentsParams = {}) {
     birthDateTo: birthDateTo?.toISOString(),
     examDateFrom: examDateFrom?.toISOString(),
     examDateTo: examDateTo?.toISOString(),
+    phoneNumber,
+    email,
+    schoolName,
+    sortBy,
+    sortOrder,
   };
 
-  // Build search params manually to handle arrays
-  const searchParams = new URLSearchParams();
+  // Filter out undefined values and empty arrays
+  const filteredParams: Record<string, string | string[]> = {};
   Object.entries(queryParams).forEach(([key, value]) => {
-    if (value !== undefined) {
-      if (Array.isArray(value)) {
-        // For arrays, add multiple parameters with the same key
-        value.forEach(v => searchParams.append(key, v));
-      } else {
-        searchParams.append(key, value);
-      }
+    if (value !== undefined && (!Array.isArray(value) || value.length > 0)) {
+      filteredParams[key] = value;
     }
   });
 
+  // Build search params manually to handle arrays
+  const searchParams = new URLSearchParams();
+  Object.entries(filteredParams).forEach(([key, value]) => {
+    if (Array.isArray(value)) {
+      // For arrays, add multiple parameters with the same key
+      value.forEach(v => searchParams.append(key, v));
+    } else {
+      searchParams.append(key, value);
+    }
+  });
+
+  // Debug logging
+  console.log("[useStudents] Query params:", filteredParams);
+  console.log("[useStudents] Search params:", searchParams.toString());
+
   return useQuery<StudentsResponse>({
-    queryKey: ["students", page, limit, name, studentTypeId, studentTypeIds, gradeYear, gradeYears, status, statuses, branchIds, subjectIds, lineConnection, schoolType, schoolTypes, examCategory, examCategories, examCategoryType, examCategoryTypes, birthDateFrom, birthDateTo, examDateFrom, examDateTo],
-    queryFn: async () =>
-      await fetcher<StudentsResponse>(`/api/students?${searchParams.toString()}`),
+    queryKey: ["students", filteredParams], // Use filteredParams instead of params to avoid undefined values
+    queryFn: async () => {
+      console.log("[useStudents] Fetching students with URL:", `/api/students?${searchParams.toString()}`);
+      return await fetcher<StudentsResponse>(`/api/students?${searchParams.toString()}`);
+    },
   });
 }
 
