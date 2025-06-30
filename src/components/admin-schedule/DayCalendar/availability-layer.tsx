@@ -69,7 +69,7 @@ export const AvailabilityLayer: React.FC<AvailabilityLayerProps> = ({
       }
 
       const key = `availability-header-${slotIndex}`;
-      const left = slotIndex * 40;
+      const left = slotIndex * 50;
       const top = 0;
       
       blocks.push(
@@ -79,7 +79,7 @@ export const AvailabilityLayer: React.FC<AvailabilityLayerProps> = ({
           style={{
             left: `${left}px`,
             top: `${top}px`,
-            width: '40px',
+            width: '50px',
             height: `${timeSlotHeight}px`,
             backgroundColor,
             zIndex: 1,
