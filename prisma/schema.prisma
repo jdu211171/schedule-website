@@ -9,18 +9,18 @@ datasource db {
 }
 
 model Branch {
-  branchId      String         @id @default(cuid()) @map("branch_id")
-  name          String         @db.VarChar(100)
-  notes         String?        @db.VarChar(255)
-  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt     DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
-  order         Int?           @map("order")
-  booths        Booth[]
-  classSessions ClassSession[]
-  notifications Notification[]
-  userBranches  UserBranch[]
-  vacations     Vacation[]
+  branchId             String                @id @default(cuid()) @map("branch_id")
+  name                 String                @db.VarChar(100)
+  notes                String?               @db.VarChar(255)
+  createdAt            DateTime              @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt            DateTime              @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  order                Int?                  @map("order")
+  booths               Booth[]
+  classSessions        ClassSession[]
   lineMessageTemplates LineMessageTemplate[]
+  notifications        Notification[]
+  userBranches         UserBranch[]
+  vacations            Vacation[]
 
   @@index([order])
   @@map("branches")
@@ -53,8 +53,8 @@ model Booth {
 }
 
 /// *
-///  * This model represents individual class sessions, particularly special classes.
-///  * It captures date, time, teacher, subject, and booth information for each class.
+/// * This model represents individual class sessions, particularly special classes.
+/// * It captures date, time, teacher, subject, and booth information for each class.
 model ClassSession {
   classId                 String                   @id @default(cuid()) @map("class_id")
   seriesId                String?                  @map("series_id")
@@ -88,8 +88,8 @@ model ClassSession {
 }
 
 /// *
-///  * This model defines different types of classes offered by the school.
-///  * Now supports hierarchical structure where class types can have parent-child relationships.
+/// * This model defines different types of classes offered by the school.
+/// * Now supports hierarchical structure where class types can have parent-child relationships.
 model ClassType {
   classTypeId   String         @id @default(cuid()) @map("class_type_id")
   name          String         @db.VarChar(100)
@@ -102,48 +102,45 @@ model ClassType {
   parent        ClassType?     @relation("ClassTypeHierarchy", fields: [parentId], references: [classTypeId])
   children      ClassType[]    @relation("ClassTypeHierarchy")
 
+  @@unique([name, parentId])
   @@index([parentId])
   @@index([order])
   @@map("class_types")
 }
 
 model Student {
-  studentId               String                     @id @default(cuid()) @map("student_id")
-  userId                  String                     @unique @map("user_id")
-  name                    String                     @db.VarChar(100)
-  kanaName                String?                    @map("kana_name") @db.VarChar(100)
-  studentTypeId           String?                    @map("student_type_id") @db.VarChar(50)
-  gradeYear               Int?                       @map("grade_year")
-  lineId                  String?                    @unique @map("line_id") @db.VarChar(50)
-  lineUserId              String?                    @unique @map("line_user_id") @db.VarChar(50)
-  lineNotificationsEnabled Boolean?                  @default(true) @map("line_notifications_enabled")
-  notes                   String?                    @db.VarChar(255)
-  status                  UserStatus                 @default(ACTIVE)
-  createdAt               DateTime                   @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt               DateTime                   @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
-  linkingCode             String?                    @unique @map("linking_code") @db.VarChar(10)
-  // School information
-  schoolName              String?                    @map("school_name") @db.VarChar(255)
-  schoolType              SchoolType?                @map("school_type")
-  // Exam information
-  examCategory            ExamCategory?              @map("exam_category")
-  examCategoryType        ExamCategoryType?          @map("exam_category_type")
-  firstChoice             String?                    @map("first_choice") @db.VarChar(255)
-  secondChoice            String?                    @map("second_choice") @db.VarChar(255)
-  examDate                DateTime?                  @map("exam_date") @db.Date
-  // Contact information
-  homePhone               String?                    @map("home_phone") @db.VarChar(50)
-  parentPhone             String?                    @map("parent_phone") @db.VarChar(50)
-  studentPhone            String?                    @map("student_phone") @db.VarChar(50)
-  parentEmail             String?                    @map("parent_email") @db.VarChar(100)
-  // Personal information
-  birthDate               DateTime?                  @map("birth_date") @db.Date
-  classSessions           ClassSession[]
-  studentClassEnrollments StudentClassEnrollment[]
-  teacherPreferences      StudentTeacherPreference[]
-  contactPhones           ContactPhone[]
-  studentType             StudentType?               @relation(fields: [studentTypeId], references: [studentTypeId])
-  user                    User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  studentId                String                     @id @default(cuid()) @map("student_id")
+  userId                   String                     @unique @map("user_id")
+  name                     String                     @db.VarChar(100)
+  kanaName                 String?                    @map("kana_name") @db.VarChar(100)
+  studentTypeId            String?                    @map("student_type_id") @db.VarChar(50)
+  gradeYear                Int?                       @map("grade_year")
+  lineId                   String?                    @unique @map("line_id") @db.VarChar(50)
+  notes                    String?                    @db.VarChar(255)
+  status                   UserStatus                 @default(ACTIVE)
+  createdAt                DateTime                   @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt                DateTime                   @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  linkingCode              String?                    @unique @map("linking_code") @db.VarChar(10)
+  lineNotificationsEnabled Boolean?                   @default(true) @map("line_notifications_enabled")
+  birthDate                DateTime?                  @map("birth_date") @db.Date
+  examCategory             ExamCategory?              @map("exam_category")
+  examCategoryType         ExamCategoryType?          @map("exam_category_type")
+  examDate                 DateTime?                  @map("exam_date") @db.Date
+  firstChoice              String?                    @map("first_choice") @db.VarChar(255)
+  homePhone                String?                    @map("home_phone") @db.VarChar(50)
+  parentEmail              String?                    @map("parent_email") @db.VarChar(100)
+  parentPhone              String?                    @map("parent_phone") @db.VarChar(50)
+  schoolName               String?                    @map("school_name") @db.VarChar(255)
+  schoolType               SchoolType?                @map("school_type")
+  secondChoice             String?                    @map("second_choice") @db.VarChar(255)
+  studentPhone             String?                    @map("student_phone") @db.VarChar(50)
+  lineUserId               String?                    @unique @map("line_user_id") @db.VarChar(50)
+  classSessions            ClassSession[]
+  contactPhones            ContactPhone[]
+  studentClassEnrollments  StudentClassEnrollment[]
+  teacherPreferences       StudentTeacherPreference[]
+  studentType              StudentType?               @relation(fields: [studentTypeId], references: [studentTypeId])
+  user                     User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([studentTypeId])
   @@map("students")
@@ -197,8 +194,8 @@ model UserAvailability {
 }
 
 /// *
-///  * This model defines categories of students, such as elementary, middle, or high school.
-///  * Used to group students and relates to the Grade model.
+/// * This model defines categories of students, such as elementary, middle, or high school.
+/// * Used to group students and relates to the Grade model.
 model StudentType {
   studentTypeId String    @id @default(cuid()) @map("student_type_id")
   name          String    @db.VarChar(100)
@@ -214,8 +211,8 @@ model StudentType {
 }
 
 /// *
-///  * This model tracks which students are enrolled in which class sessions.
-///  * It's a junction table connecting students to class sessions with additional metadata.
+/// * This model tracks which students are enrolled in which class sessions.
+/// * It's a junction table connecting students to class sessions with additional metadata.
 model StudentClassEnrollment {
   enrollmentId String       @id @default(cuid()) @map("enrollment_id")
   classId      String       @map("class_id")
@@ -232,8 +229,8 @@ model StudentClassEnrollment {
 }
 
 /// *
-///  * This model stores comprehensive teacher information.
-///  * Central to class scheduling and assignment.
+/// * This model stores comprehensive teacher information.
+/// * Central to class scheduling and assignment.
 model Teacher {
   teacherId                String                     @id @default(cuid()) @map("teacher_id")
   userId                   String                     @unique @map("user_id")
@@ -241,16 +238,16 @@ model Teacher {
   kanaName                 String?                    @map("kana_name") @db.VarChar(100)
   email                    String?                    @db.VarChar(100)
   lineId                   String?                    @unique @map("line_id") @db.VarChar(50)
-  lineUserId               String?                    @unique @map("line_user_id") @db.VarChar(50)
-  lineNotificationsEnabled Boolean?                   @default(true) @map("line_notifications_enabled")
   notes                    String?                    @db.VarChar(255)
   status                   UserStatus                 @default(ACTIVE)
-  birthDate                DateTime?                  @map("birth_date") @db.Date
-  phoneNumber              String?                    @map("phone_number") @db.VarChar(50)
-  phoneNotes               String?                    @map("phone_notes") @db.VarChar(255)
   createdAt                DateTime                   @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt                DateTime                   @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
   linkingCode              String?                    @unique @map("linking_code") @db.VarChar(10)
+  lineNotificationsEnabled Boolean?                   @default(true) @map("line_notifications_enabled")
+  birthDate                DateTime?                  @map("birth_date") @db.Date
+  phoneNotes               String?                    @map("phone_notes") @db.VarChar(255)
+  phoneNumber              String?                    @map("phone_number") @db.VarChar(50)
+  lineUserId               String?                    @unique @map("line_user_id") @db.VarChar(50)
   classSessions            ClassSession[]
   studentPreferences       StudentTeacherPreference[]
   contactPhones            TeacherContactPhone[]
@@ -327,9 +324,9 @@ model StudentTeacherPreference {
 }
 
 /// *
-///  * This model defines the subjects taught at the school.
-///  * This is the core subject entity in the three-tier subject management system.
-///  * Made global like StudentType model - not branch-specific.
+/// * This model defines the subjects taught at the school.
+/// * This is the core subject entity in the three-tier subject management system.
+/// * Made global like StudentType model - not branch-specific.
 model Subject {
   subjectId                 String                     @id @default(cuid()) @map("subject_id")
   name                      String                     @unique @db.VarChar(100)
@@ -344,8 +341,8 @@ model Subject {
 }
 
 /// *
-///  * This model stores notification records for system communications.
-///  * Handles message delivery to students and teachers.
+/// * This model stores notification records for system communications.
+/// * Handles message delivery to students and teachers.
 model Notification {
   notificationId   String    @id @default(cuid()) @map("notification_id")
   recipientType    String?   @map("recipient_type") @db.VarChar(20)
@@ -368,20 +365,19 @@ model Notification {
 }
 
 model LineMessageTemplate {
-  id              String   @id @default(cuid()) @map("id")
-  name            String   @db.VarChar(100)
-  description     String?  @db.VarChar(255)
-  templateType    String   @map("template_type") @db.VarChar(50) // "before_class" | "after_class" | "custom"
-  timingType      String   @map("timing_type") @db.VarChar(20) // "minutes" | "hours" | "days"
-  timingValue     Int      @map("timing_value") // Number of minutes/hours/days
-  content         String   @db.Text
-  variables       Json     // Array of variable names used in the template
-  isActive        Boolean  @default(true) @map("is_active")
-  branchId        String?  @map("branch_id")
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
-
-  branch          Branch?  @relation(fields: [branchId], references: [branchId], onDelete: Cascade)
+  id           String   @id @default(cuid()) @map("id")
+  name         String   @db.VarChar(100)
+  description  String?  @db.VarChar(255)
+  templateType String   @map("template_type") @db.VarChar(50)
+  timingType   String   @map("timing_type") @db.VarChar(20)
+  timingValue  Int      @map("timing_value")
+  content      String
+  variables    Json
+  isActive     Boolean  @default(true) @map("is_active")
+  branchId     String?  @map("branch_id")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  branch       Branch?  @relation(fields: [branchId], references: [branchId], onDelete: Cascade)
 
   @@index([branchId])
   @@index([templateType])
@@ -390,8 +386,8 @@ model LineMessageTemplate {
 }
 
 /// *
-///  * This model stores holidays, vacations, and other non-class days.
-///  * Used for scheduling and availability calculations.
+/// * This model stores holidays, vacations, and other non-class days.
+/// * Used for scheduling and availability calculations.
 model Vacation {
   id          String   @id @default(cuid())
   name        String   @db.VarChar(100)
@@ -436,7 +432,7 @@ model User {
 }
 
 /// *
-///  * Authentication-related model for external provider connections.
+/// * Authentication-related model for external provider connections.
 model Account {
   id                String  @id @default(cuid())
   userId            String  @map("user_id")
@@ -457,8 +453,8 @@ model Account {
 }
 
 /// *
-///  * Authentication session management model.
-///  * Part of the authentication system.
+/// * Authentication session management model.
+/// * Part of the authentication system.
 model Session {
   id           String   @id @default(cuid())
   sessionToken String   @unique @map("session_token")
@@ -470,8 +466,8 @@ model Session {
 }
 
 /// *
-///  * Email verification token model for authentication.
-///  * Part of the authentication system.
+/// * Email verification token model for authentication.
+/// * Part of the authentication system.
 model VerificationToken {
   identifier String
   token      String
@@ -509,8 +505,8 @@ enum DayOfWeek {
 }
 
 /// *
-///  * This model handles user authentication and access control.
-///  * Links to both Student and Teacher models for role-based access.
+/// * This model handles user authentication and access control.
+/// * Links to both Student and Teacher models for role-based access.
 enum UserRole {
   ADMIN
   STAFF

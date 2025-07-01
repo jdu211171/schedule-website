@@ -171,16 +171,20 @@ export const POST = withRole(
 
       const { name, notes, parentId, order } = result.data;
 
-      // Check if class type name already exists globally
+      // Check if class type name already exists within the same parent context
       const existingClassType = await prisma.classType.findFirst({
         where: {
           name: { equals: name, mode: "insensitive" },
+          parentId: parentId || null, // Check within same parent (null for root level)
         },
       });
 
       if (existingClassType) {
+        const errorMessage = parentId
+          ? "この親クラスタイプ内で、同じ名前のクラスタイプが既に存在します" // "A class type with this name already exists under this parent"
+          : "同じ名前のルートクラスタイプが既に存在します"; // "A root class type with this name already exists"
         return NextResponse.json(
-          { error: "クラスタイプ名は既に使用されています" }, // "Class type name already in use"
+          { error: errorMessage },
           { status: 409 }
         );
       }

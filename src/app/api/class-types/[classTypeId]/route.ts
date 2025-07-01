@@ -208,18 +208,25 @@ export const PATCH = withRole(
         });
       }
 
-      // Check name uniqueness if being updated
+      // Check name uniqueness within the same parent context if being updated
       if (name && name !== existingClassType.name) {
+        // Determine the parent context (use existing parentId if parentId is not being updated)
+        const targetParentId = parentId !== undefined ? parentId : existingClassType.parentId;
+        
         const nameExists = await prisma.classType.findFirst({
           where: {
             name: { equals: name, mode: "insensitive" },
+            parentId: targetParentId || null, // Check within same parent context
             classTypeId: { not: classTypeId },
           },
         });
 
         if (nameExists) {
+          const errorMessage = targetParentId
+            ? "この親クラスタイプ内で、同じ名前のクラスタイプが既に存在します"
+            : "同じ名前のルートクラスタイプが既に存在します";
           return NextResponse.json(
-            { error: "このクラスタイプ名はすでに使用されています" },
+            { error: errorMessage },
             { status: 409 }
           );
         }

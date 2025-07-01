@@ -24,7 +24,8 @@
       "Bash(pkill:*)",
       "Bash(bun prisma db seed:*)",
       "Bash(cp:*)",
-      "Bash(git pull:*)"
+      "Bash(git pull:*)",
+      "Bash(bun prisma db pull:*)"
     ],
     "deny": []
   }
