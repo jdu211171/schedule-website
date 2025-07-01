@@ -1756,7 +1756,7 @@ export function StudentFormDialog({
                               科目（任意）
                             </label>
                             <Select
-                              value={currentSubject}
+                              value={currentSubject || ""}
                               onValueChange={handleSubjectChange}
                             >
                               <SelectTrigger className="h-11">
@@ -1824,7 +1824,7 @@ export function StudentFormDialog({
                                 >
                                   {selectedSubjectTypes.length > 0
                                     ? `${selectedSubjectTypes.length}件選択中`
-                                    : "科目タイプを選択"}
+                                    : <span className="text-muted-foreground">科目タイプを選択</span>}
                                   <Check
                                     className={`ml-2 h-4 w-4 ${
                                       selectedSubjectTypes.length > 0
@@ -1943,7 +1943,7 @@ export function StudentFormDialog({
                                   >
                                     {selectedTeacherIds.length > 0
                                       ? `${selectedTeacherIds.length}名選択中`
-                                      : "希望講師を選択（任意）"}
+                                      : <span className="text-muted-foreground">希望講師を選択（任意）</span>}
                                     <Users
                                       className={`ml-2 h-4 w-4 ${
                                         selectedTeacherIds.length > 0

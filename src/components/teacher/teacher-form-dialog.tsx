@@ -1047,7 +1047,7 @@ export function TeacherFormDialog({
                           <div className="space-y-2">
                             <label className="text-sm font-medium">科目</label>
                             <Select
-                              value={currentSubject}
+                              value={currentSubject || ""}
                               onValueChange={handleSubjectChange}
                             >
                               <SelectTrigger className="h-11">
@@ -1090,7 +1090,7 @@ export function TeacherFormDialog({
                                 >
                                   {selectedSubjectTypes.length > 0
                                     ? `${selectedSubjectTypes.length}件選択中`
-                                    : "科目タイプを選択"}
+                                    : <span className="text-muted-foreground">科目タイプを選択</span>}
                                   <Check
                                     className={`ml-2 h-4 w-4 ${
                                       selectedSubjectTypes.length > 0
