@@ -11,13 +11,17 @@ import {
   useSensor,
   useSensors,
   UniqueIdentifier,
+  DropAnimation,
+  defaultDropAnimationSideEffects,
 } from '@dnd-kit/core';
 import {
   sortableKeyboardCoordinates,
 } from '@dnd-kit/sortable';
+import { snapCenterToCursor } from '@dnd-kit/modifiers';
 import { ExtendedClassSessionWithRelations } from '@/hooks/useClassSessionQuery';
 import { useClassSessionUpdate } from '@/hooks/useClassSessionMutation';
 import { toast } from 'sonner';
+import { LessonCard } from '@/components/admin-schedule/DayCalendar/lesson-card';
 
 export interface TimeSlot {
   index: number;
@@ -65,7 +69,7 @@ export function useLessonDragDrop({
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8,
+        distance: 0, // Immediate activation on click
       },
     }),
     useSensor(KeyboardSensor, {
@@ -171,31 +175,44 @@ export function useLessonDragDrop({
         collisionDetection={closestCenter}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
+        modifiers={[snapCenterToCursor]} // This ensures cursor stays at drag point
       >
         {children}
       </DndContext>
     );
   };
 
+  // Custom drop animation for better alignment
+  const dropAnimationConfig: DropAnimation = {
+    sideEffects: defaultDropAnimationSideEffects({
+      styles: {
+        active: {
+          opacity: "0.8",
+        },
+      },
+    }),
+  };
+
   const DragOverlayWrapper: React.FC = () => {
     if (!draggedLesson) return null;
 
+    // Create minimal props for overlay card
+    const overlayProps = {
+      lesson: draggedLesson,
+      booths: booths,
+      onClick: () => {}, // No-op for overlay
+      timeSlotHeight: 48, // Standard height for overlay
+      timeSlots: timeSlots,
+      maxZIndex: 999,
+      isOverlay: true // Prevent nested draggable
+    };
+
     return (
-      <DragOverlay>
-        <div
-          className="rounded border shadow-lg cursor-move bg-indigo-100 dark:bg-indigo-900/70 border-indigo-300 dark:border-indigo-700 text-indigo-800 dark:text-indigo-100 opacity-80"
-          style={{
-            width: '200px',
-            padding: '8px',
-          }}
-        >
-          <div className="text-xs font-medium">
-            {draggedLesson.student?.name || draggedLesson.studentName || ''}
-          </div>
-          <div className="text-xs">
-            {draggedLesson.subject?.name || draggedLesson.subjectName || ''}
-          </div>
-        </div>
+      <DragOverlay 
+        dropAnimation={dropAnimationConfig}
+        adjustScale={false} // Prevent scale adjustments
+      >
+        <LessonCard {...overlayProps} />
       </DragOverlay>
     );
   };

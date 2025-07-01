@@ -17,6 +17,7 @@ interface LessonCardProps {
   timeSlotHeight: number;
   timeSlots: TimeSlot[];
   maxZIndex?: number;
+  isOverlay?: boolean; // New prop to disable draggable in overlay
 }
 
 const extractTime = (timeValue: string | Date | undefined): string => {
@@ -48,7 +49,8 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
   onClick, 
   timeSlotHeight, 
   timeSlots,
-  maxZIndex = 10 
+  maxZIndex = 10,
+  isOverlay = false 
 }) => {
   const startTime = useMemo(() => extractTime(lesson.startTime), [lesson.startTime]);
   const endTime = useMemo(() => extractTime(lesson.endTime), [lesson.endTime]);
@@ -62,7 +64,8 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
     isDragging,
   } = useDraggable({
     id: lesson.classId,
-    data: { lesson }
+    data: { lesson },
+    disabled: isOverlay // Disable if used as overlay
   });
   
   const startSlotIndex = useMemo(() => {
@@ -203,16 +206,29 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
     }
   }, [lesson.seriesId, lesson.subject?.name, lesson.subjectName]);
   
-  const style = useMemo(() => ({
-    position: 'absolute',
-    left: `${effectiveStartIndex * 50 + 100}px`,
-    top: `${boothIndex * timeSlotHeight}px`, 
-    width: `${effectiveDuration * 50}px`,
-    height: `${timeSlotHeight - 2}px`,
-    zIndex: isDragging ? maxZIndex + 10 : maxZIndex - 1,
-    transform: CSS.Translate.toString(transform),
-    opacity: isDragging ? 0.5 : 1,
-  } as React.CSSProperties), [effectiveStartIndex, effectiveDuration, boothIndex, timeSlotHeight, maxZIndex, isDragging, transform]);
+  const style = useMemo(() => {
+    // Don't apply positioning for overlay cards
+    if (isOverlay) {
+      return {
+        width: `${effectiveDuration * 50}px`,
+        height: `${timeSlotHeight - 2}px`,
+        position: 'relative' as const,
+      } as React.CSSProperties;
+    }
+    
+    // Original positioning for non-overlay cards
+    return {
+      position: 'absolute' as const,
+      left: `${effectiveStartIndex * 50 + 100}px`,
+      top: `${boothIndex * timeSlotHeight}px`, 
+      width: `${effectiveDuration * 50}px`,
+      height: `${timeSlotHeight - 2}px`,
+      zIndex: isDragging ? maxZIndex + 10 : maxZIndex - 1,
+      transform: CSS.Translate.toString(transform),
+      opacity: isDragging ? 0 : 1, // Hide completely when dragging
+      visibility: isDragging ? 'hidden' : 'visible', // Also use visibility for better hiding
+    } as React.CSSProperties;
+  }, [effectiveStartIndex, effectiveDuration, boothIndex, timeSlotHeight, maxZIndex, isDragging, transform, isOverlay]);
   
   const isNarrow = effectiveDuration <= 1;
   
@@ -233,19 +249,26 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
 
   return (
     <div
-      ref={setNodeRef}
+      ref={!isOverlay ? setNodeRef : undefined}
       className={`
-        absolute rounded border shadow-sm cursor-move
-        transition-colors duration-100 ease-in-out transform
-        ${colors.background} ${colors.border} ${colors.text} ${colors.hover}
-        active:scale-[0.98] hover:shadow-md 
+        absolute rounded border shadow-sm
+        transition-all duration-100 ease-in-out transform
+        ${colors.background} ${colors.border} ${colors.text}
+        ${!isOverlay && !isDragging ? colors.hover : ''}
+        ${!isOverlay && !isDragging ? 'hover:scale-[1.02] hover:shadow-lg' : ''}
+        ${!isOverlay && !isDragging ? 'active:scale-[0.98]' : ''}
         overflow-hidden truncate pointer-events-auto
-        ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}
+        ${!isOverlay && !isDragging ? 'cursor-grab hover:ring-2 hover:ring-blue-400/50 dark:hover:ring-blue-500/50' : ''}
       `}
       style={style}
-      onClick={() => onClick(lesson)}
-      {...listeners}
-      {...attributes}
+      onClick={(e) => {
+        // Only trigger onClick if not dragging and not overlay
+        if (!isDragging && !isOverlay) {
+          onClick(lesson);
+        }
+      }}
+      {...(!isOverlay ? listeners : {})}
+      {...(!isOverlay ? attributes : {})}
     >
       <div className="text-[11px] p-1 flex flex-col h-full justify-between relative">
         {/* Top row */}
