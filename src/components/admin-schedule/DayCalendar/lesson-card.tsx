@@ -2,6 +2,8 @@ import React, { useMemo } from 'react';
 import { ExtendedClassSessionWithRelations } from '@/hooks/useClassSessionQuery';
 import { TimeSlot } from './admin-calendar-day';
 import { UserCheck, GraduationCap } from "lucide-react"
+import { useDraggable } from '@dnd-kit/core';
+import { CSS } from '@dnd-kit/utilities';
 
 interface Booth {
   boothId: string;
@@ -50,6 +52,18 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
 }) => {
   const startTime = useMemo(() => extractTime(lesson.startTime), [lesson.startTime]);
   const endTime = useMemo(() => extractTime(lesson.endTime), [lesson.endTime]);
+  
+  // Initialize draggable functionality
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    isDragging,
+  } = useDraggable({
+    id: lesson.classId,
+    data: { lesson }
+  });
   
   const startSlotIndex = useMemo(() => {
     const exactMatch = timeSlots.findIndex(slot => slot.start === startTime);
@@ -195,8 +209,10 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
     top: `${boothIndex * timeSlotHeight}px`, 
     width: `${effectiveDuration * 50}px`,
     height: `${timeSlotHeight - 2}px`,
-    zIndex: maxZIndex - 1
-  } as React.CSSProperties), [effectiveStartIndex, effectiveDuration, boothIndex, timeSlotHeight, maxZIndex]);
+    zIndex: isDragging ? maxZIndex + 10 : maxZIndex - 1,
+    transform: CSS.Translate.toString(transform),
+    opacity: isDragging ? 0.5 : 1,
+  } as React.CSSProperties), [effectiveStartIndex, effectiveDuration, boothIndex, timeSlotHeight, maxZIndex, isDragging, transform]);
   
   const isNarrow = effectiveDuration <= 1;
   
@@ -217,15 +233,19 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
 
   return (
     <div
+      ref={setNodeRef}
       className={`
-        absolute rounded border shadow-sm cursor-pointer
+        absolute rounded border shadow-sm cursor-move
         transition-colors duration-100 ease-in-out transform
         ${colors.background} ${colors.border} ${colors.text} ${colors.hover}
         active:scale-[0.98] hover:shadow-md 
         overflow-hidden truncate pointer-events-auto
+        ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}
       `}
       style={style}
       onClick={() => onClick(lesson)}
+      {...listeners}
+      {...attributes}
     >
       <div className="text-[11px] p-1 flex flex-col h-full justify-between relative">
         {/* Top row */}
