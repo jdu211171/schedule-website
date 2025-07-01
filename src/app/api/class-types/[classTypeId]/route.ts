@@ -4,6 +4,7 @@ import { withRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { classTypeUpdateSchema } from "@/schemas/class-type.schema";
 import { ClassType } from "@prisma/client";
+import { handlePrismaError } from "@/lib/prisma-error-handler";
 
 type ClassTypeWithRelations = ClassType & {
   parent?: ClassType | null;
@@ -314,10 +315,6 @@ export const DELETE = withRole(
       // Check if class type exists
       const classType = await prisma.classType.findUnique({
         where: { classTypeId },
-        include: {
-          classSessions: { take: 1 }, // Check if there are any associated class sessions
-          children: { take: 1 }, // Check if there are any child class types
-        },
       });
 
       if (!classType) {
@@ -335,29 +332,7 @@ export const DELETE = withRole(
         );
       }
 
-      // Prevent deletion if class type has associated class sessions
-      if (classType.classSessions.length > 0) {
-        return NextResponse.json(
-          {
-            error:
-              "関連するクラスセッションがあるため、このクラスタイプを削除できません",
-          },
-          { status: 400 }
-        );
-      }
-
-      // Prevent deletion if class type has children
-      if (classType.children.length > 0) {
-        return NextResponse.json(
-          {
-            error:
-              "サブクラスタイプが存在するため、このクラスタイプを削除できません。先にサブクラスタイプを削除してください。",
-          },
-          { status: 400 }
-        );
-      }
-
-      // Delete the class type
+      // Delete the class type - let Prisma handle foreign key constraints
       await prisma.classType.delete({
         where: { classTypeId },
       });
@@ -376,10 +351,10 @@ export const DELETE = withRole(
         { status: 200 }
       );
     } catch (error) {
-      console.error("Error deleting class type:", error);
+      const errorResponse = handlePrismaError(error, { entity: 'classtype', operation: 'delete' });
       return NextResponse.json(
-        { error: "クラスタイプの削除に失敗しました" },
-        { status: 500 }
+        { error: errorResponse.error },
+        { status: errorResponse.status }
       );
     }
   }

@@ -4,6 +4,7 @@ import { withBranchAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { branchUpdateSchema } from "@/schemas/branch.schema";
 import { Branch, UserBranch } from "@prisma/client";
+import { handlePrismaError } from "@/lib/prisma-error-handler";
 
 type BranchWithUsers = Branch & {
   userBranches: (UserBranch & {
@@ -240,15 +241,9 @@ export const DELETE = withBranchAccess(
     }
 
     try {
-      // Check if branch exists and has associated records
+      // Check if branch exists
       const branch = await prisma.branch.findUnique({
         where: { branchId },
-        include: {
-          booths: { take: 1 },
-          classSessions: { take: 1 },
-          vacations: { take: 1 },
-          notifications: { take: 1 },
-        },
       });
 
       if (!branch) {
@@ -265,7 +260,7 @@ export const DELETE = withBranchAccess(
           where: { branchId },
         });
 
-        // Delete the branch
+        // Delete the branch (Prisma will handle foreign key constraints)
         await tx.branch.delete({
           where: { branchId },
         });
@@ -285,9 +280,10 @@ export const DELETE = withBranchAccess(
       );
     } catch (error) {
       console.error("Error deleting branch:", error);
+      const errorResponse = handlePrismaError(error, { entity: 'branch', operation: 'delete' });
       return NextResponse.json(
-        { error: "教室の削除に失敗しました" },
-        { status: 500 }
+        { error: errorResponse.error },
+        { status: errorResponse.status }
       );
     }
   }

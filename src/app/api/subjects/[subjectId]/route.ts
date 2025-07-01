@@ -4,6 +4,7 @@ import { withBranchAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { subjectUpdateSchema } from "@/schemas/subject.schema";
 import { Subject } from "@prisma/client";
+import { handlePrismaError } from "@/lib/prisma-error-handler";
 
 type FormattedSubject = {
   subjectId: string;
@@ -156,33 +157,7 @@ export const DELETE = withBranchAccess(
     }
 
     try {
-      // Check if subject exists
-      const subject = await prisma.subject.findUnique({
-        where: { subjectId },
-        include: {
-          classSessions: { take: 1 }, // Check if there are any associated class sessions
-        },
-      });
-
-      if (!subject) {
-        return NextResponse.json(
-          { error: "科目が見つかりません" },
-          { status: 404 }
-        );
-      }
-
-      // Prevent deletion if subject has associated class sessions
-      if (subject.classSessions.length > 0) {
-        return NextResponse.json(
-          {
-            error:
-              "関連するクラスセッションがあるため、この科目を削除できません",
-          },
-          { status: 400 }
-        );
-      }
-
-      // Delete the subject
+      // Delete the subject - let Prisma handle foreign key constraints
       await prisma.subject.delete({
         where: { subjectId },
       });
@@ -201,10 +176,10 @@ export const DELETE = withBranchAccess(
         { status: 200 }
       );
     } catch (error) {
-      console.error("Error deleting subject:", error);
+      const errorResponse = handlePrismaError(error, { entity: 'subject', operation: 'delete' });
       return NextResponse.json(
-        { error: "科目の削除に失敗しました" },
-        { status: 500 }
+        { error: errorResponse.error },
+        { status: errorResponse.status }
       );
     }
   }
