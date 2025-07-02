@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
-import { ExtendedClassSessionWithRelations, DayFilters } from '@/hooks/useClassSessionQuery'; 
+import { ExtendedClassSessionWithRelations, DayFilters } from '@/hooks/useClassSessionQuery';
 import { getDateKey } from '../date';
 import { LessonCard } from './lesson-card';
 import { DayCalendarFilters } from './day-calendar-filters';
@@ -46,7 +46,7 @@ type DayCalendarProps = {
   onAvailabilityModeChange?: (mode: AvailabilityMode) => void;
 };
 
-const CELL_WIDTH = 50; 
+const CELL_WIDTH = 50;
 const BOOTH_LABEL_WIDTH = 100;
 const TIME_SLOT_HEIGHT = 50;
 
@@ -64,32 +64,32 @@ const initialSelectionState: SelectionState = {
 
 const isCellInSelection = (
   boothIndex: number,
-  timeIndex: number, 
-  selectionStart: SelectionPosition | null, 
+  timeIndex: number,
+  selectionStart: SelectionPosition | null,
   selectionEnd: SelectionPosition | null
 ): boolean => {
   if (!selectionStart || !selectionEnd) return false;
-  
+
   if (boothIndex !== selectionStart.row) return false;
-  
+
   const minCol = Math.min(selectionStart.col, selectionEnd.col);
   const maxCol = Math.max(selectionStart.col, selectionEnd.col);
-  
+
   return timeIndex >= minCol && timeIndex <= maxCol;
 };
 
-const CalendarCell = React.memo(({ 
+const CalendarCell = React.memo(({
   boothIndex,
-  timeSlot, 
+  timeSlot,
   isSelected,
   isSelecting,
   canDrag,
   onMouseDown,
   onMouseEnter,
-  onMouseUp 
-}: { 
+  onMouseUp
+}: {
   boothIndex: number,
-  timeSlot: TimeSlot, 
+  timeSlot: TimeSlot,
   isSelected: boolean,
   isSelecting: boolean,
   canDrag: boolean,
@@ -98,7 +98,7 @@ const CalendarCell = React.memo(({
   onMouseUp: (e: React.MouseEvent) => void
 }) => {
   const cellKey = `cell-${boothIndex}-${timeSlot.index}`;
-  
+
   return (
     <div
       key={cellKey}
@@ -109,23 +109,23 @@ const CalendarCell = React.memo(({
       data-selected={isSelected ? "true" : "false"}
       className={`
   border-r border-b relative select-none
-  ${timeSlot.index % 4 === 0 
-    ? "bg-muted dark:bg-muted" 
+  ${timeSlot.index % 4 === 0
+    ? "bg-muted dark:bg-muted"
     : "bg-background dark:bg-background"
   }
-  ${isSelecting 
-    ? "cursor-move" 
+  ${isSelecting
+    ? "cursor-move"
     : "hover:bg-accent dark:hover:bg-accent cursor-pointer"
   }
-  ${isSelected 
-    ? "!bg-blue-200 dark:!bg-blue-900 !opacity-100 shadow-inner" 
+  ${isSelected
+    ? "!bg-blue-200 dark:!bg-blue-900 !opacity-100 shadow-inner"
     : ""
   }
   border-border dark:border-border
   ${!isSelecting ? "transition-none" : ""}
 `}
-      style={{ 
-        width: `${CELL_WIDTH}px`, 
+      style={{
+        width: `${CELL_WIDTH}px`,
         minWidth: `${CELL_WIDTH}px`,
         height: `${TIME_SLOT_HEIGHT}px`,
       }}
@@ -144,7 +144,7 @@ const CalendarCell = React.memo(({
 
 CalendarCell.displayName = 'CalendarCell';
 
-const BoothRow = React.memo(({ 
+const BoothRow = React.memo(({
   booth,
   boothIndex,
   timeSlots,
@@ -155,7 +155,7 @@ const BoothRow = React.memo(({
   onStartSelection,
   onCellHover,
   onEndSelection
-}: { 
+}: {
   booth: Booth,
   boothIndex: number,
   timeSlots: TimeSlot[],
@@ -174,11 +174,11 @@ const BoothRow = React.memo(({
     >
       <div
         className="flex items-center justify-center bg-background dark:bg-background border-r border-b text-sm font-medium text-foreground dark:text-foreground px-2 border-border dark:border-border sticky left-0"
-        style={{ 
+        style={{
           width: `${BOOTH_LABEL_WIDTH}px`,
           minWidth: `${BOOTH_LABEL_WIDTH}px`,
           height: `${TIME_SLOT_HEIGHT}px`,
-          zIndex: 10
+          zIndex: 20
         }}
       >
         <span className="truncate">{booth.name}</span>
@@ -186,7 +186,7 @@ const BoothRow = React.memo(({
 
       {timeSlots.map((timeSlot) => {
         const isSelected = isCellInSelection(boothIndex, timeSlot.index, selectionStart, selectionEnd);
-        
+
         return (
           <CalendarCell
             key={`cell-${boothIndex}-${timeSlot.index}`}
@@ -214,25 +214,25 @@ const BoothRow = React.memo(({
 
 BoothRow.displayName = 'BoothRow';
 
-const TimeHeader = React.memo(({ 
+const TimeHeader = React.memo(({
   timeSlots,
   teacherAvailability,
   studentAvailability,
   availabilityMode
-}: { 
+}: {
   timeSlots: TimeSlot[],
   teacherAvailability?: boolean[],
   studentAvailability?: boolean[],
   availabilityMode?: AvailabilityMode
 }) => {
   return (
-    <div 
+    <div
       className="flex bg-background dark:bg-background shadow-sm border-b border-border dark:border-border sticky top-0 z-20"
       style={{ height: `${TIME_SLOT_HEIGHT}px` }}
     >
-      <div 
+      <div
         className="flex items-center justify-center font-semibold border-r text-sm text-foreground dark:text-foreground bg-background dark:bg-background border-border dark:border-border sticky left-0"
-        style={{ 
+        style={{
           width: `${BOOTH_LABEL_WIDTH}px`,
           minWidth: `${BOOTH_LABEL_WIDTH}px`,
           height: `${TIME_SLOT_HEIGHT}px`,
@@ -241,20 +241,20 @@ const TimeHeader = React.memo(({
       >
         教室
       </div>
-      
+
       <div className="flex relative" style={{ height: `${TIME_SLOT_HEIGHT}px` }}>
         {timeSlots.map((timeSlot) => (
           <div
             key={`time-${timeSlot.index}`}
             data-time-index={timeSlot.index}
             className={`flex items-center justify-center font-semibold border-r text-xs border-border dark:border-border relative
-              ${timeSlot.index % 4 === 0 
-                ? "bg-muted dark:bg-muted" 
+              ${timeSlot.index % 4 === 0
+                ? "bg-muted dark:bg-muted"
                 : "bg-background dark:bg-background"
               }`}
-            style={{ 
-              width: `${CELL_WIDTH}px`, 
-              minWidth: `${CELL_WIDTH}px`, 
+            style={{
+              width: `${CELL_WIDTH}px`,
+              minWidth: `${CELL_WIDTH}px`,
               height: `${TIME_SLOT_HEIGHT}px`
             }}
           >
@@ -265,7 +265,7 @@ const TimeHeader = React.memo(({
             ) : null}
           </div>
         ))}
-        
+
         {/* Availability overlay for sticky header */}
         {(teacherAvailability || studentAvailability) && (
           <AvailabilityLayer
@@ -309,10 +309,10 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
   onAvailabilityModeChange
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [containerWidth, setContainerWidth] = useState(1200); 
-  
+  const [containerWidth, setContainerWidth] = useState(1200);
+
   const [selection, setSelection] = useState<SelectionState>(initialSelectionState);
-  
+
   const createLessonCalledRef = useRef(false);
   const lastResizeTime = useRef(0);
 
@@ -332,33 +332,33 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
   // FIXED: Better date filtering using normalized dates
   const filteredSessions = useMemo(() => {
     const targetDateStr = normalizeDate(date);
-    
+
     const filtered = classSessions.filter(session => {
       const sessionDateStr = normalizeDate(session.date);
       const matches = sessionDateStr === targetDateStr;
-      
+
       if (!matches) {
         console.log(`Session ${session.classId} date mismatch: ${sessionDateStr} !== ${targetDateStr}`);
       }
-      
+
       return matches;
     });
-    
+
     return filtered;
   }, [classSessions, date]);
-  
+
   const totalGridWidth = useMemo(() => {
     return timeSlots.length * CELL_WIDTH;
   }, [timeSlots.length]);
-  
+
   const formattedDate = useMemo(() => {
     return format(date, 'MM月dd日 (eee)', { locale: ja });
   }, [date]);
-  
+
   const canDrag = useMemo(() => {
     return true; // Always allow dragging
   }, []);
-  
+
   const cancelSelection = useCallback(() => {
     setSelection(initialSelectionState);
     document.body.classList.remove('cursor-move');
@@ -373,10 +373,10 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
 
   const handleStartSelection = useCallback((boothIndex: number, timeIndex: number, e: React.MouseEvent) => {
     e.preventDefault();
-    
+
     // Always allow selection - no canDrag check
     const start = { row: boothIndex, col: timeIndex };
-    
+
     setSelection({
       isSelecting: true,
       start: start,
@@ -389,7 +389,7 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
   const handleCellHover = useCallback((boothIndex: number, timeIndex: number, e: React.MouseEvent) => {
     if (!selection.isSelecting || !selection.start) return;
     e.preventDefault();
-    
+
     if (boothIndex === selection.start.row) {
       setSelection(prev => ({
         ...prev,
@@ -401,29 +401,29 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
   const handleEndSelection = useCallback((e: React.MouseEvent) => {
     if (selection.isSelecting && selection.start && selection.end && !createLessonCalledRef.current) {
       e.preventDefault();
-      
+
       const startCol = Math.min(selection.start.col, selection.end.col);
       const endCol = Math.max(selection.start.col, selection.end.col);
       const boothIndex = selection.start.row;
-      
-      const isValidSelection = endCol > startCol; 
+
+      const isValidSelection = endCol > startCol;
       if (isValidSelection) {
         if (startCol >= 0 && startCol < timeSlots.length &&
             endCol >= 0 && endCol < timeSlots.length &&
             boothIndex >= 0 && boothIndex < booths.length) {
 
           const startTime = timeSlots[startCol].start;
-          const endTime = timeSlots[endCol].end; 
+          const endTime = timeSlots[endCol].end;
           const selectedBoothId = booths[boothIndex].boothId;
 
           createLessonCalledRef.current = true;
-          
+
           onCreateLesson(date, startTime, endTime, selectedBoothId);
-          
+
           return;
         }
       }
-      
+
       cancelSelection();
     }
   }, [selection, timeSlots, booths, onCreateLesson, date, cancelSelection]);
@@ -436,7 +436,7 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
 
   useEffect(() => {
     updateContainerWidth();
-    
+
     const resizeObserver = new ResizeObserver(() => {
       const now = Date.now();
       if (now - lastResizeTime.current > 100) {
@@ -444,11 +444,11 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
         updateContainerWidth();
       }
     });
-    
+
     if (containerRef.current) {
       resizeObserver.observe(containerRef.current);
     }
-    
+
     return () => {
       resizeObserver.disconnect();
     };
@@ -464,14 +464,14 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
         }
       }
     };
-    
+
     const handleGlobalRightClick = (e: MouseEvent) => {
       if (selection.isSelecting) {
         e.preventDefault();
         cancelSelection();
       }
     };
-    
+
     const handleEscapeKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && selection.isSelecting) {
         cancelSelection();
@@ -481,7 +481,7 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
     document.addEventListener('mouseup', handleGlobalMouseUp);
     document.addEventListener('contextmenu', handleGlobalRightClick);
     document.addEventListener('keydown', handleEscapeKey);
-    
+
     return () => {
       document.removeEventListener('mouseup', handleGlobalMouseUp);
       document.removeEventListener('contextmenu', handleGlobalRightClick);
@@ -518,7 +518,7 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
               </div>
             )}
           </div>
-          
+
           <div className="flex items-center gap-4">
             {/* Индивидуальный switch для каждой таблицы дня - показываем всегда если есть колбэк */}
             {onAvailabilityModeChange && (
@@ -536,7 +536,7 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
                 </span>
               </div>
             )}
-            
+
             {onFiltersChange && (
               <div className="flex-1 pt-0.5 flex justify-end">
                 <DayCalendarFilters
@@ -562,7 +562,7 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
             height: `${(booths.length + 1) * TIME_SLOT_HEIGHT}px`
           }}
         >
-          <TimeHeader 
+          <TimeHeader
             timeSlots={timeSlots}
             teacherAvailability={teacherAvailability}
             studentAvailability={studentAvailability}
@@ -571,7 +571,7 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
 
           <div className="relative">
             {booths.map((booth, boothIndex) => (
-              <BoothRow 
+              <BoothRow
                 key={`booth-${booth.boothId || boothIndex}`}
                 booth={booth}
                 boothIndex={boothIndex}
@@ -587,9 +587,9 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
             ))}
           </div>
 
-          <div 
+          <div
             className="absolute pointer-events-none"
-            style={{ 
+            style={{
               zIndex: 10,
               top: `${TIME_SLOT_HEIGHT}px`, // Start after the sticky header
               left: `0px`,
