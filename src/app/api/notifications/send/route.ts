@@ -34,6 +34,7 @@ export async function GET(req: NextRequest) {
         name: true,
         timingType: true,
         timingValue: true,
+        timingHour: true,
         branchId: true
       }
     });
@@ -63,6 +64,11 @@ export async function GET(req: NextRequest) {
           case 'days':
             targetTime = addDays(nowJST, template.timingValue);
             minutesBeforeClass = template.timingValue * 1440;
+            
+            // If timingHour is specified, set the exact hour
+            if (template.timingHour !== null && template.timingHour !== undefined) {
+              targetTime.setHours(template.timingHour, 0, 0, 0);
+            }
             break;
           default:
             console.error(`Unknown timing type: ${template.timingType} for template ${template.name}`);

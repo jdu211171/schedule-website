@@ -11,6 +11,7 @@ const templateSchema = z.object({
   templateType: z.enum(["before_class", "after_class", "custom"]),
   timingType: z.enum(["minutes", "hours", "days"]),
   timingValue: z.number().min(1).max(999),
+  timingHour: z.number().min(0).max(23).optional().nullable(), // Hour for day-based notifications
   content: z.string().min(1),
   variables: z.array(z.string()),
   isActive: z.boolean(),

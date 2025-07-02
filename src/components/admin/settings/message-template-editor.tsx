@@ -29,7 +29,15 @@ interface MessageTemplateEditorProps {
 const formatTiming = (template: MessageTemplate) => {
   const unit = template.timingType === 'minutes' ? '分' : template.timingType === 'hours' ? '時間' : '日';
   const position = template.templateType === 'before_class' ? '前' : template.templateType === 'after_class' ? '後' : '';
-  return `${template.timingValue}${unit}${position}`;
+  const timing = `${template.timingValue}${unit}${position}`;
+  
+  // Add time display for day-based templates
+  if (template.timingType === 'days' && template.timingHour !== null && template.timingHour !== undefined) {
+    const hour = String(template.timingHour).padStart(2, '0');
+    return `${timing} ${hour}:00`;
+  }
+  
+  return timing;
 };
 
 export function MessageTemplateEditor({ templates, onSave, isLoading }: MessageTemplateEditorProps) {
@@ -59,11 +67,17 @@ export function MessageTemplateEditor({ templates, onSave, isLoading }: MessageT
       templateType: 'before_class',
       timingType: 'hours',
       timingValue: 24,
-      content: '',
-      variables: [],
+      timingHour: null,
+      content: `授業のお知らせ
+
+科目: {{subjectName}}
+時間: {{startTime}} - {{endTime}}
+講師: {{teacherName}}
+場所: {{boothName}}`,
+      variables: ['subjectName', 'startTime', 'endTime', 'teacherName', 'boothName'],
       isActive: true,
     };
-    setLocalTemplates([...localTemplates, newTemplate]);
+    setLocalTemplates([newTemplate, ...localTemplates]);
     setEditingId(newTemplate.id!);
   };
 
@@ -84,10 +98,26 @@ export function MessageTemplateEditor({ templates, onSave, isLoading }: MessageT
   };
 
   const handleSave = async () => {
+    // Filter out templates with empty content
+    const validTemplates = localTemplates.filter(template => template.content.trim().length > 0);
+    
+    if (validTemplates.length === 0) {
+      // If no valid templates, show error
+      return;
+    }
+    
+    if (validTemplates.length < localTemplates.length) {
+      // Some templates have empty content - we'll just save the valid ones
+      const emptyCount = localTemplates.length - validTemplates.length;
+      console.warn(`${emptyCount} template(s) with empty content will not be saved`);
+    }
+    
     setIsSaving(true);
     try {
-      await onSave(localTemplates);
+      await onSave(validTemplates);
       setEditingId(null);
+      // Update local state to remove empty templates
+      setLocalTemplates(validTemplates);
     } finally {
       setIsSaving(false);
     }
@@ -199,15 +229,13 @@ export function MessageTemplateEditor({ templates, onSave, isLoading }: MessageT
                       <Button size="sm" variant="ghost" onClick={() => setEditingId(template.id!)}>
                         <Edit2 className="h-4 w-4" />
                       </Button>
-                      {template.templateType === 'custom' && (
-                        <Button 
-                          size="sm" 
-                          variant="ghost" 
-                          onClick={() => handleDeleteTemplate(template.id!)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
+                      <Button 
+                        size="sm" 
+                        variant="ghost" 
+                        onClick={() => handleDeleteTemplate(template.id!)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </>
                   )}
                 </div>
@@ -263,6 +291,30 @@ export function MessageTemplateEditor({ templates, onSave, isLoading }: MessageT
                         </SelectContent>
                       </Select>
                     </div>
+                    
+                    {/* Time picker for day-based templates */}
+                    {template.timingType === 'days' && (
+                      <div className="flex items-center gap-2">
+                        <Label className="text-sm">送信時刻:</Label>
+                        <Select
+                          value={String(template.timingHour ?? 9)}
+                          onValueChange={(value) => handleUpdateTemplate(template.id!, { 
+                            timingHour: parseInt(value) 
+                          })}
+                        >
+                          <SelectTrigger className="w-24">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Array.from({ length: 24 }, (_, i) => (
+                              <SelectItem key={i} value={String(i)}>
+                                {String(i).padStart(2, '0')}:00
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

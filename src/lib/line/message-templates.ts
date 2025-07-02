@@ -89,6 +89,7 @@ export interface MessageTemplate {
   templateType: 'before_class' | 'after_class' | 'custom';
   timingType: 'minutes' | 'hours' | 'days';
   timingValue: number;
+  timingHour?: number | null; // Hour (0-23) for day-based notifications
   content: string;
   variables: string[];
   isActive: boolean;
@@ -98,12 +99,13 @@ export interface MessageTemplate {
 // Function to get default templates with unique IDs
 export const getDefaultTemplates = (): MessageTemplate[] => [
   {
-    id: `default-24h-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-    name: '24時間前リマインダー',
-    description: '授業の24時間前に送信される通知',
+    id: `default-1d-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    name: '1日前リマインダー',
+    description: '授業の1日前の9時に送信される通知',
     templateType: 'before_class',
-    timingType: 'hours',
-    timingValue: 24,
+    timingType: 'days',
+    timingValue: 1,
+    timingHour: 9,
     content: `📚 明日の授業のお知らせ
 
 科目: {{subjectName}}
@@ -123,6 +125,7 @@ export const getDefaultTemplates = (): MessageTemplate[] => [
     templateType: 'before_class',
     timingType: 'minutes',
     timingValue: 30,
+    timingHour: null,
     content: `⏰ まもなく授業が始まります！
 
 科目: {{subjectName}}

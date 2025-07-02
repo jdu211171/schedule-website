@@ -90,6 +90,58 @@ export function LineSettings() {
 
   return (
     <div className="space-y-6">
+      {/* Message Templates */}
+      <Card>
+        <CardHeader>
+          <CardTitle>メッセージテンプレート</CardTitle>
+          <CardDescription>
+            LINE通知で使用するメッセージテンプレートを管理
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <MessageTemplateEditor
+            templates={templatesData?.data || getDefaultTemplates()}
+            onSave={async (templates) => {
+              try {
+                await fetcher("/api/settings/line/templates", {
+                  method: "POST",
+                  body: JSON.stringify({ templates }),
+                });
+
+                queryClient.invalidateQueries({ queryKey: ["line-templates"] });
+
+                toast({
+                  title: "テンプレートを保存しました",
+                  description: "メッセージテンプレートが正常に更新されました。",
+                });
+              } catch (error: any) {
+                // Extract error details from CustomError
+                let errorMessage = "テンプレートの保存に失敗しました。";
+                
+                if (error?.info?.details && Array.isArray(error.info.details)) {
+                  // Handle validation errors
+                  const validationErrors = error.info.details.map((detail: any) => {
+                    if (detail.path && detail.path.includes('content')) {
+                      return "メッセージ内容は必須です。";
+                    }
+                    return detail.message || "入力内容を確認してください。";
+                  });
+                  errorMessage = validationErrors.join(" ");
+                } else if (error?.info?.error) {
+                  errorMessage = error.info.error;
+                }
+                
+                toast({
+                  title: "エラー",
+                  description: errorMessage,
+                  variant: "destructive",
+                });
+              }
+            }}
+          />
+        </CardContent>
+      </Card>
+
       {/* Statistics Overview */}
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
@@ -186,42 +238,6 @@ export function LineSettings() {
         onBulkUpdate={handleBulkUpdate}
         isUpdating={isUpdating}
       />
-
-      {/* Message Templates */}
-      <Card>
-        <CardHeader>
-          <CardTitle>メッセージテンプレート</CardTitle>
-          <CardDescription>
-            LINE通知で使用するメッセージテンプレートを管理
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <MessageTemplateEditor
-            templates={templatesData?.data || getDefaultTemplates()}
-            onSave={async (templates) => {
-              try {
-                await fetcher("/api/settings/line/templates", {
-                  method: "POST",
-                  body: JSON.stringify({ templates }),
-                });
-
-                queryClient.invalidateQueries({ queryKey: ["line-templates"] });
-
-                toast({
-                  title: "テンプレートを保存しました",
-                  description: "メッセージテンプレートが正常に更新されました。",
-                });
-              } catch {
-                toast({
-                  title: "エラー",
-                  description: "テンプレートの保存に失敗しました。",
-                  variant: "destructive",
-                });
-              }
-            }}
-          />
-        </CardContent>
-      </Card>
     </div>
   );
 }

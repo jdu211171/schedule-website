@@ -371,6 +371,7 @@ model LineMessageTemplate {
   templateType String   @map("template_type") @db.VarChar(50)
   timingType   String   @map("timing_type") @db.VarChar(20)
   timingValue  Int      @map("timing_value")
+  timingHour   Int?     @map("timing_hour") // Hour (0-23) for day-based notifications
   content      String
   variables    Json
   isActive     Boolean  @default(true) @map("is_active")
