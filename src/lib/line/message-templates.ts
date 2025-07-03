@@ -86,10 +86,10 @@ export interface MessageTemplate {
   id?: string;
   name: string;
   description?: string;
-  templateType: 'before_class' | 'after_class' | 'custom';
-  timingType: 'minutes' | 'hours' | 'days';
-  timingValue: number;
-  timingHour?: number | null; // Hour (0-23) for day-based notifications
+  templateType: 'before_class';
+  timingType: 'days'; // Now only supports days-based timing
+  timingValue: number; // Number of days before class
+  timingHour: number; // Hour (0-23) when notification should be sent (now required)
   content: string;
   variables: string[];
   isActive: boolean;
@@ -101,7 +101,7 @@ export const getDefaultTemplates = (): MessageTemplate[] => [
   {
     id: `default-1d-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     name: '1日前リマインダー',
-    description: '授業の1日前の9時に送信される通知',
+    description: '授業の1日前の朝9時に送信される通知',
     templateType: 'before_class',
     timingType: 'days',
     timingValue: 1,
@@ -119,23 +119,44 @@ export const getDefaultTemplates = (): MessageTemplate[] => [
     isActive: true
   },
   {
-    id: `default-30m-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-    name: '30分前リマインダー',
-    description: '授業の30分前に送信される通知',
+    id: `default-sameday-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    name: '当日リマインダー',
+    description: '授業当日の朝8時に送信される通知',
     templateType: 'before_class',
-    timingType: 'minutes',
-    timingValue: 30,
-    timingHour: null,
-    content: `⏰ まもなく授業が始まります！
+    timingType: 'days',
+    timingValue: 0,
+    timingHour: 8,
+    content: `⏰ 本日の授業のお知らせ
 
 科目: {{subjectName}}
-時間: {{startTime}} ({{timeUntilClass}})
+時間: {{startTime}} - {{endTime}}
 講師: {{teacherName}}
 場所: {{boothName}}
 
-準備をお願いします。`,
-    variables: ['subjectName', 'startTime', 'timeUntilClass', 'teacherName', 'boothName'],
+本日もよろしくお願いします。`,
+    variables: ['subjectName', 'startTime', 'endTime', 'teacherName', 'boothName'],
     isActive: true
+  },
+  {
+    id: `default-3d-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    name: '3日前リマインダー',
+    description: '授業の3日前の朝9時に送信される通知',
+    templateType: 'before_class',
+    timingType: 'days',
+    timingValue: 3,
+    timingHour: 9,
+    content: `📅 授業予定のお知らせ
+
+{{classDate}}に以下の授業があります。
+
+科目: {{subjectName}}
+時間: {{startTime}} - {{endTime}}
+講師: {{teacherName}}
+場所: {{boothName}}
+
+ご確認をお願いします。`,
+    variables: ['classDate', 'subjectName', 'startTime', 'endTime', 'teacherName', 'boothName'],
+    isActive: false
   }
 ];
 

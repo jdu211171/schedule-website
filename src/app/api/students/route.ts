@@ -682,7 +682,14 @@ export const GET = withBranchAccess(
       },
       skip,
       take: limit,
-      orderBy: { name: "asc" },
+      orderBy: [
+        { 
+          studentType: { 
+            order: { sort: "asc", nulls: "last" } 
+          } 
+        },
+        { name: "asc" }
+      ],
     });
 
     // Format students using the helper function

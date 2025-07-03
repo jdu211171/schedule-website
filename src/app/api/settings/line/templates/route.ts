@@ -8,10 +8,10 @@ const templateSchema = z.object({
   id: z.string().optional(), // Allow optional id for frontend tracking
   name: z.string().min(1).max(100),
   description: z.string().optional().nullable(),
-  templateType: z.enum(["before_class", "after_class", "custom"]),
-  timingType: z.enum(["minutes", "hours", "days"]),
-  timingValue: z.number().min(1).max(999),
-  timingHour: z.number().min(0).max(23).optional().nullable(), // Hour for day-based notifications
+  templateType: z.enum(["before_class"]),
+  timingType: z.literal("days"), // Only allow days-based timing
+  timingValue: z.number().min(0).max(999), // Allow 0 for same-day notifications
+  timingHour: z.number().min(0).max(23), // Required hour for notification time
   content: z.string().min(1),
   variables: z.array(z.string()),
   isActive: z.boolean(),

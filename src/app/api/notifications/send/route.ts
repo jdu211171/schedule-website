@@ -48,32 +48,10 @@ export async function GET(req: NextRequest) {
     // Process each template
     for (const template of activeTemplates) {
       try {
-        // Calculate target time based on template timing
-        let targetTime: Date;
-        let minutesBeforeClass: number;
-
-        switch (template.timingType) {
-          case 'minutes':
-            targetTime = addMinutes(nowJST, template.timingValue);
-            minutesBeforeClass = template.timingValue;
-            break;
-          case 'hours':
-            targetTime = addHours(nowJST, template.timingValue);
-            minutesBeforeClass = template.timingValue * 60;
-            break;
-          case 'days':
-            targetTime = addDays(nowJST, template.timingValue);
-            minutesBeforeClass = template.timingValue * 1440;
-            
-            // If timingHour is specified, set the exact hour
-            if (template.timingHour !== null && template.timingHour !== undefined) {
-              targetTime.setHours(template.timingHour, 0, 0, 0);
-            }
-            break;
-          default:
-            console.error(`Unknown timing type: ${template.timingType} for template ${template.name}`);
-            continue;
-        }
+        // Calculate target time for day-based notifications
+        const targetTime = addDays(nowJST, template.timingValue);
+        targetTime.setHours(template.timingHour ?? 9, 0, 0, 0); // Default to 9 AM if null
+        const minutesBeforeClass = template.timingValue * 1440;
 
         // Create a ±5 minute window
         const targetStart = subMinutes(targetTime, 5);
@@ -204,8 +182,9 @@ export async function GET(req: NextRequest) {
                   recipientId: lineId === session.teacher?.lineId ? session.teacher.teacherId :
                                session.student?.lineId === lineId ? session.student.studentId :
                                session.studentClassEnrollments.find(e => e.student.lineId === lineId)?.student.studentId || '',
-                  notificationType: minutesBeforeClass >= 1440 ? 'CLASS_REMINDER_24H' : 
-                                   minutesBeforeClass >= 60 ? 'CLASS_REMINDER_1H' : 'CLASS_REMINDER_30M',
+                  notificationType: template.timingValue === 0 ? 'CLASS_REMINDER_SAMEDAY' :
+                                   template.timingValue === 1 ? 'CLASS_REMINDER_24H' : 
+                                   `CLASS_REMINDER_${template.timingValue}D`,
                   message,
                   relatedClassId: session.classId,
                   branchId: session.branchId,

@@ -27,17 +27,9 @@ interface MessageTemplateEditorProps {
 }
 
 const formatTiming = (template: MessageTemplate) => {
-  const unit = template.timingType === 'minutes' ? '分' : template.timingType === 'hours' ? '時間' : '日';
-  const position = template.templateType === 'before_class' ? '前' : template.templateType === 'after_class' ? '後' : '';
-  const timing = `${template.timingValue}${unit}${position}`;
-  
-  // Add time display for day-based templates
-  if (template.timingType === 'days' && template.timingHour !== null && template.timingHour !== undefined) {
-    const hour = String(template.timingHour).padStart(2, '0');
-    return `${timing} ${hour}:00`;
-  }
-  
-  return timing;
+  const timing = template.timingValue === 0 ? '当日' : `${template.timingValue}日前`;
+  const hour = String(template.timingHour).padStart(2, '0');
+  return `${timing} ${hour}:00`;
 };
 
 export function MessageTemplateEditor({ templates, onSave, isLoading }: MessageTemplateEditorProps) {
@@ -65,9 +57,9 @@ export function MessageTemplateEditor({ templates, onSave, isLoading }: MessageT
       id: `new-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       name: '新しいテンプレート',
       templateType: 'before_class',
-      timingType: 'hours',
-      timingValue: 24,
-      timingHour: null,
+      timingType: 'days',
+      timingValue: 1,
+      timingHour: 9,
       content: `授業のお知らせ
 
 科目: {{subjectName}}
@@ -177,8 +169,12 @@ export function MessageTemplateEditor({ templates, onSave, isLoading }: MessageT
       <Alert>
         <Info className="h-4 w-4" />
         <AlertDescription>
-          メッセージに変数を挿入することで、送信時に実際の値に自動的に置き換えられます。
-          変数をクリックしてテンプレートに挿入してください。
+          <div className="space-y-2">
+            <p>メッセージに変数を挿入することで、送信時に実際の値に自動的に置き換えられます。
+            変数をクリックしてテンプレートに挿入してください。</p>
+            <p className="text-sm">通知は指定した日数前の設定時刻に送信されます。
+            例: 「1日前 09:00」は授業の前日の朝9時に通知されます。</p>
+          </div>
         </AlertDescription>
       </Alert>
 
@@ -248,73 +244,42 @@ export function MessageTemplateEditor({ templates, onSave, isLoading }: MessageT
                     onChange={(e) => handleUpdateTemplate(template.id!, { description: e.target.value })}
                   />
                   <div className="flex gap-2">
-                    <Select
-                      value={template.templateType}
-                      onValueChange={(value) => handleUpdateTemplate(template.id!, { 
-                        templateType: value as MessageTemplate['templateType'] 
-                      })}
-                    >
-                      <SelectTrigger className="w-48">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="before_class">授業前</SelectItem>
-                        <SelectItem value="after_class">授業後</SelectItem>
-                        <SelectItem value="custom">カスタム</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    
                     <div className="flex items-center gap-2">
+                      <Label className="text-sm text-muted-foreground">通知タイミング:</Label>
                       <Input
                         type="number"
-                        min="1"
+                        min="0"
                         max="999"
                         value={template.timingValue}
                         onChange={(e) => handleUpdateTemplate(template.id!, { 
-                          timingValue: parseInt(e.target.value) || 1 
+                          timingValue: parseInt(e.target.value) || 0 
                         })}
                         className="w-20"
                       />
+                      <span className="text-sm font-medium">日前</span>
+                    </div>
+                    
+                    {/* Time picker (always shown) */}
+                    <div className="flex items-center gap-2">
+                      <Label className="text-sm">送信時刻:</Label>
                       <Select
-                        value={template.timingType}
+                        value={String(template.timingHour)}
                         onValueChange={(value) => handleUpdateTemplate(template.id!, { 
-                          timingType: value as MessageTemplate['timingType'] 
+                          timingHour: parseInt(value) 
                         })}
                       >
-                        <SelectTrigger className="w-28">
+                        <SelectTrigger className="w-24">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="minutes">分</SelectItem>
-                          <SelectItem value="hours">時間</SelectItem>
-                          <SelectItem value="days">日</SelectItem>
+                          {Array.from({ length: 24 }, (_, i) => (
+                            <SelectItem key={i} value={String(i)}>
+                              {String(i).padStart(2, '0')}:00
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
-                    
-                    {/* Time picker for day-based templates */}
-                    {template.timingType === 'days' && (
-                      <div className="flex items-center gap-2">
-                        <Label className="text-sm">送信時刻:</Label>
-                        <Select
-                          value={String(template.timingHour ?? 9)}
-                          onValueChange={(value) => handleUpdateTemplate(template.id!, { 
-                            timingHour: parseInt(value) 
-                          })}
-                        >
-                          <SelectTrigger className="w-24">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {Array.from({ length: 24 }, (_, i) => (
-                              <SelectItem key={i} value={String(i)}>
-                                {String(i).padStart(2, '0')}:00
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
                   </div>
                 </div>
               )}

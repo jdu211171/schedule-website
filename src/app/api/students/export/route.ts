@@ -134,7 +134,14 @@ export const GET = withBranchAccess(
           },
         },
       },
-      orderBy: { name: "asc" },
+      orderBy: [
+        { 
+          studentType: { 
+            order: { sort: "asc", nulls: "last" } 
+          } 
+        },
+        { name: "asc" }
+      ],
     });
 
     // Apply client-side filters
