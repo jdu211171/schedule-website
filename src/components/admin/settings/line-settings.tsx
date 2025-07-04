@@ -114,21 +114,23 @@ export function LineSettings() {
                   title: "テンプレートを保存しました",
                   description: "メッセージテンプレートが正常に更新されました。",
                 });
-              } catch (error: any) {
+              } catch (error) {
                 // Extract error details from CustomError
                 let errorMessage = "テンプレートの保存に失敗しました。";
                 
-                if (error?.info?.details && Array.isArray(error.info.details)) {
+                const err = error as { info?: { details?: unknown[]; error?: string } };
+                if (err?.info?.details && Array.isArray(err.info.details)) {
                   // Handle validation errors
-                  const validationErrors = error.info.details.map((detail: any) => {
-                    if (detail.path && detail.path.includes('content')) {
+                  const validationErrors = err.info.details.map((detail: unknown) => {
+                    const d = detail as { path?: string[]; message?: string };
+                    if (d.path && d.path.includes('content')) {
                       return "メッセージ内容は必須です。";
                     }
-                    return detail.message || "入力内容を確認してください。";
+                    return d.message || "入力内容を確認してください。";
                   });
                   errorMessage = validationErrors.join(" ");
-                } else if (error?.info?.error) {
-                  errorMessage = error.info.error;
+                } else if (err?.info?.error) {
+                  errorMessage = err.info.error;
                 }
                 
                 toast({
@@ -227,7 +229,8 @@ export function LineSettings() {
           <Alert>
             <Info className="h-4 w-4" />
             <AlertDescription>
-              通知は授業の24時間前と30分前に自動送信されます。送信時刻はシステムにより管理されています。
+              毎日、設定した時刻にその日の全授業をまとめた通知が送信されます。
+              通知は5分ごとにチェックされ、設定時刻から10分以内に送信されます。
             </AlertDescription>
           </Alert>
         </CardContent>

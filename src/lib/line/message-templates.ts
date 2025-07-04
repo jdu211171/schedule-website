@@ -1,70 +1,40 @@
 export const MESSAGE_VARIABLES = {
-  // Student/Teacher variables
-  STUDENT_NAME: {
-    key: '{{studentName}}',
-    label: '生徒名',
-    description: '生徒の名前',
-    example: '田中太郎'
-  },
-  TEACHER_NAME: {
-    key: '{{teacherName}}',
-    label: '講師名',
-    description: '講師の名前',
-    example: '山田先生'
+  // Daily summary variables
+  DAILY_CLASS_LIST: {
+    key: '{{dailyClassList}}',
+    label: '授業リスト（詳細）',
+    description: 'その日の全授業の詳細リスト',
+    example: `【1】数学
+時間: 10:00 - 11:30
+講師: 田中先生
+場所: ブース A
+
+【2】英語
+時間: 14:00 - 15:30
+講師: 山田先生
+場所: ブース B`
   },
   
-  // Class variables
-  SUBJECT_NAME: {
-    key: '{{subjectName}}',
-    label: '科目名',
-    description: '授業の科目名',
-    example: '数学'
+  // Recipient variables
+  RECIPIENT_NAME: {
+    key: '{{recipientName}}',
+    label: '受信者名',
+    description: '通知を受け取る人の名前',
+    example: '田中太郎'
   },
+  RECIPIENT_TYPE: {
+    key: '{{recipientType}}',
+    label: '受信者種別',
+    description: '講師または生徒',
+    example: '生徒'
+  },
+  
+  // Date variables  
   CLASS_DATE: {
     key: '{{classDate}}',
     label: '授業日',
     description: '授業の日付',
     example: '2024年1月15日'
-  },
-  CLASS_START_TIME: {
-    key: '{{startTime}}',
-    label: '開始時間',
-    description: '授業の開始時間',
-    example: '14:00'
-  },
-  CLASS_END_TIME: {
-    key: '{{endTime}}',
-    label: '終了時間',
-    description: '授業の終了時間',
-    example: '15:30'
-  },
-  CLASS_DURATION: {
-    key: '{{duration}}',
-    label: '授業時間',
-    description: '授業の長さ（分）',
-    example: '90分'
-  },
-  
-  // Location variables
-  BOOTH_NAME: {
-    key: '{{boothName}}',
-    label: 'ブース名',
-    description: '授業を行うブース',
-    example: 'ブース A'
-  },
-  BRANCH_NAME: {
-    key: '{{branchName}}',
-    label: '校舎名',
-    description: '校舎の名前',
-    example: '東京校'
-  },
-  
-  // Time-related variables
-  TIME_UNTIL_CLASS: {
-    key: '{{timeUntilClass}}',
-    label: '授業までの時間',
-    description: '授業開始までの時間',
-    example: '30分後'
   },
   CURRENT_DATE: {
     key: '{{currentDate}}',
@@ -72,11 +42,53 @@ export const MESSAGE_VARIABLES = {
     description: '今日の日付',
     example: '2024年1月14日'
   },
-  CURRENT_TIME: {
-    key: '{{currentTime}}',
-    label: '現在時刻',
-    description: '現在の時刻',
-    example: '13:30'
+  
+  // Class summary variables
+  CLASS_COUNT: {
+    key: '{{classCount}}',
+    label: '授業数',
+    description: 'その日の授業の総数',
+    example: '3'
+  },
+  FIRST_CLASS_TIME: {
+    key: '{{firstClassTime}}',
+    label: '最初の授業時間',
+    description: '最初の授業の開始時間',
+    example: '10:00'
+  },
+  LAST_CLASS_TIME: {
+    key: '{{lastClassTime}}',
+    label: '最後の授業時間',
+    description: '最後の授業の終了時間',
+    example: '18:30'
+  },
+  TOTAL_DURATION: {
+    key: '{{totalDuration}}',
+    label: '総授業時間',
+    description: '全授業の合計時間',
+    example: '4.5時間'
+  },
+  
+  // Lists
+  TEACHER_NAMES: {
+    key: '{{teacherNames}}',
+    label: '講師名一覧',
+    description: '全講師の名前（カンマ区切り）',
+    example: '田中先生、山田先生'
+  },
+  SUBJECT_NAMES: {
+    key: '{{subjectNames}}',
+    label: '科目名一覧',
+    description: '全科目の名前（カンマ区切り）',
+    example: '数学、英語、物理'
+  },
+  
+  // Branch info
+  BRANCH_NAME: {
+    key: '{{branchName}}',
+    label: '校舎名',
+    description: '校舎の名前',
+    example: '東京校'
   }
 } as const;
 
@@ -96,67 +108,69 @@ export interface MessageTemplate {
   branchId?: string;
 }
 
-// Function to get default templates with unique IDs
+// Template examples for users to choose from
+export const TEMPLATE_EXAMPLES = {
+  DETAILED: {
+    name: '詳細版',
+    content: `{{recipientName}}様
+
+{{classDate}}の授業予定をお知らせします。
+
+{{dailyClassList}}
+
+本日の授業: {{classCount}}件
+開始時間: {{firstClassTime}}
+終了時間: {{lastClassTime}}
+総授業時間: {{totalDuration}}
+
+よろしくお願いいたします。
+
+{{branchName}}`
+  },
+  SIMPLE: {
+    name: 'シンプル版',
+    content: `{{classDate}}の授業
+
+{{dailyClassList}}
+
+よろしくお願いします。`
+  },
+  COMPACT: {
+    name: 'コンパクト版',
+    content: `【{{classDate}}の授業】
+科目: {{subjectNames}}
+時間: {{firstClassTime}}〜{{lastClassTime}} (計{{classCount}}件)
+講師: {{teacherNames}}
+
+詳細は以下の通りです：
+{{dailyClassList}}`
+  },
+  PERSONALIZED: {
+    name: 'パーソナル版',
+    content: `{{recipientName}}{{recipientType}}へ
+
+明日（{{classDate}}）の授業は{{classCount}}件です。
+最初の授業は{{firstClassTime}}から始まります。
+
+{{dailyClassList}}
+
+{{branchName}}でお待ちしております。`
+  }
+};
+
+// Function to get default template (single notification)
 export const getDefaultTemplates = (): MessageTemplate[] => [
   {
-    id: `default-1d-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-    name: '1日前リマインダー',
-    description: '授業の1日前の朝9時に送信される通知',
+    id: `default-daily-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    name: '毎日の授業通知',
+    description: '指定した日数前に送信される授業リマインダー',
     templateType: 'before_class',
     timingType: 'days',
     timingValue: 1,
     timingHour: 9,
-    content: `📚 明日の授業のお知らせ
-
-科目: {{subjectName}}
-日付: {{classDate}}
-時間: {{startTime}} - {{endTime}}
-講師: {{teacherName}}
-場所: {{boothName}}
-
-よろしくお願いします！`,
-    variables: ['subjectName', 'classDate', 'startTime', 'endTime', 'teacherName', 'boothName'],
+    content: TEMPLATE_EXAMPLES.DETAILED.content,
+    variables: extractTemplateVariables(TEMPLATE_EXAMPLES.DETAILED.content),
     isActive: true
-  },
-  {
-    id: `default-sameday-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-    name: '当日リマインダー',
-    description: '授業当日の朝8時に送信される通知',
-    templateType: 'before_class',
-    timingType: 'days',
-    timingValue: 0,
-    timingHour: 8,
-    content: `⏰ 本日の授業のお知らせ
-
-科目: {{subjectName}}
-時間: {{startTime}} - {{endTime}}
-講師: {{teacherName}}
-場所: {{boothName}}
-
-本日もよろしくお願いします。`,
-    variables: ['subjectName', 'startTime', 'endTime', 'teacherName', 'boothName'],
-    isActive: true
-  },
-  {
-    id: `default-3d-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-    name: '3日前リマインダー',
-    description: '授業の3日前の朝9時に送信される通知',
-    templateType: 'before_class',
-    timingType: 'days',
-    timingValue: 3,
-    timingHour: 9,
-    content: `📅 授業予定のお知らせ
-
-{{classDate}}に以下の授業があります。
-
-科目: {{subjectName}}
-時間: {{startTime}} - {{endTime}}
-講師: {{teacherName}}
-場所: {{boothName}}
-
-ご確認をお願いします。`,
-    variables: ['classDate', 'subjectName', 'startTime', 'endTime', 'teacherName', 'boothName'],
-    isActive: false
   }
 ];
 

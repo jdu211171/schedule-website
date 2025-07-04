@@ -22,34 +22,49 @@ export const GET = withRole(["ADMIN"], async (req: NextRequest) => {
   try {
     const branchId = req.headers.get("X-Selected-Branch");
     
-    // Get templates for the branch or global templates
-    const templates = await prisma.lineMessageTemplate.findMany({
+    // Get the SINGLE active template for the branch
+    const template = await prisma.lineMessageTemplate.findFirst({
       where: {
-        OR: [
-          { branchId: null }, // Global templates
-          ...(branchId ? [{ branchId }] : []) // Branch-specific templates
-        ]
+        branchId: branchId || null,
+        isActive: true
       },
-      orderBy: [
-        { templateType: 'asc' },
-        { createdAt: 'asc' }
-      ]
+      orderBy: {
+        createdAt: 'desc'
+      }
     });
 
-    // If no templates exist, return default templates
-    if (templates.length === 0) {
+    // If no template exists, return a single default template
+    if (!template) {
       const defaultTemplates = getDefaultTemplates();
+      // Return only the first default template to enforce single template
+      const singleDefault = defaultTemplates[0] || {
+        id: 'default-1',
+        name: '授業通知',
+        description: '授業の通知を送信します',
+        templateType: 'before_class' as const,
+        timingType: 'days' as const,
+        timingValue: 1,
+        timingHour: 9,
+        content: `明日の授業予定
+
+{{dailyClassList}}
+
+よろしくお願いいたします。`,
+        variables: ['dailyClassList'],
+        isActive: true,
+      };
+      
       return NextResponse.json({
-        data: defaultTemplates.map((template) => ({
-          ...template,
+        data: [{
+          ...singleDefault,
           branchId: null,
           createdAt: new Date(),
           updatedAt: new Date()
-        }))
+        }]
       });
     }
 
-    return NextResponse.json({ data: templates });
+    return NextResponse.json({ data: [template] });
   } catch (error) {
     console.error("Error fetching LINE templates:", error);
     return NextResponse.json(
@@ -66,39 +81,42 @@ export const POST = withRole(["ADMIN"], async (req: NextRequest) => {
     const templates = z.array(templateSchema).parse(body.templates);
     const branchId = req.headers.get("X-Selected-Branch");
     
+    // SINGLE NOTIFICATION ENFORCEMENT: Only allow one active template
+    if (templates.length > 1) {
+      return NextResponse.json(
+        { error: "Only one notification template is allowed per branch" },
+        { status: 400 }
+      );
+    }
+    
     // Use a transaction to ensure data consistency
     const result = await prisma.$transaction(async (tx) => {
-      // Delete existing templates for this branch
+      // Delete ALL existing templates for this branch (enforcing single template)
       await tx.lineMessageTemplate.deleteMany({
         where: {
           branchId: branchId || null
         }
       });
       
-      // Create new templates (remove id field if it exists)
-      const createdTemplates = await tx.lineMessageTemplate.createMany({
-        data: templates.map(template => {
-          const { id, ...templateData } = template as any;
-          return {
+      // Create the single template
+      if (templates.length === 1) {
+        const template = templates[0];
+        const { id, ...templateData } = template;
+        
+        const createdTemplate = await tx.lineMessageTemplate.create({
+          data: {
             ...templateData,
             branchId: branchId || null,
-            variables: template.variables || []
-          };
-        })
-      });
+            variables: template.variables || [],
+            // Ensure it's always active since it's the only one
+            isActive: true
+          }
+        });
+        
+        return { newTemplates: [createdTemplate], createdCount: 1 };
+      }
       
-      // Fetch and return the created templates
-      const newTemplates = await tx.lineMessageTemplate.findMany({
-        where: {
-          branchId: branchId || null
-        },
-        orderBy: [
-          { templateType: 'asc' },
-          { createdAt: 'asc' }
-        ]
-      });
-      
-      return { newTemplates, createdCount: createdTemplates.count };
+      return { newTemplates: [], createdCount: 0 };
     });
     
     return NextResponse.json({ 
