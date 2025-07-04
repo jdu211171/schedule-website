@@ -25,7 +25,8 @@
       "Bash(bun prisma db seed:*)",
       "Bash(cp:*)",
       "Bash(git pull:*)",
-      "Bash(bun prisma db pull:*)"
+      "Bash(bun prisma db pull:*)",
+      "Bash(git stash show:*)"
     ],
     "deny": []
   }

@@ -3,7 +3,7 @@ import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { ExtendedClassSessionWithRelations, DayFilters } from '@/hooks/useClassSessionQuery';
 import { getDateKey } from '../date';
-import { LessonCard } from './lesson-card';
+import { LessonCard, extractTime } from './lesson-card';
 import { DayCalendarFilters } from './day-calendar-filters';
 import { AvailabilityLayer, useAvailability } from './availability-layer';
 import { Switch } from '@/components/ui/switch';
@@ -347,6 +347,23 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
     return filtered;
   }, [classSessions, date]);
 
+  const earliestLesson = useMemo(() => {
+    if (filteredSessions.length === 0) return null;
+    
+    return filteredSessions.reduce((earliest, current) => {
+      const earliestTime = extractTime(earliest.startTime);
+      const currentTime = extractTime(current.startTime);
+      
+      const [earliestHour, earliestMin] = earliestTime.split(':').map(Number);
+      const [currentHour, currentMin] = currentTime.split(':').map(Number);
+      
+      const earliestMinutes = earliestHour * 60 + earliestMin;
+      const currentMinutes = currentHour * 60 + currentMin;
+      
+      return currentMinutes < earliestMinutes ? current : earliest;
+    });
+  }, [filteredSessions]);
+
   const totalGridWidth = useMemo(() => {
     return timeSlots.length * CELL_WIDTH;
   }, [timeSlots.length]);
@@ -370,6 +387,28 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
       cancelSelection();
     }
   }, [resetSelectionKey, cancelSelection]);
+
+  // Auto-scroll to earliest lesson
+  useEffect(() => {
+    if (!earliestLesson || !containerRef.current) return;
+    
+    const startTime = extractTime(earliestLesson.startTime);
+    const [hour, minute] = startTime.split(':').map(Number);
+    
+    // Find the time slot index
+    const timeSlotIndex = timeSlots.findIndex(slot => {
+      const [slotHour, slotMinute] = slot.start.split(':').map(Number);
+      return slotHour === hour && slotMinute === minute;
+    });
+    
+    if (timeSlotIndex !== -1) {
+      // Calculate scroll position (with some padding)
+      const scrollPosition = (timeSlotIndex * CELL_WIDTH) - 100;
+      
+      // Scroll horizontally to show the earliest lesson
+      containerRef.current.scrollLeft = Math.max(0, scrollPosition);
+    }
+  }, [earliestLesson, timeSlots, date]);
 
   const handleStartSelection = useCallback((boothIndex: number, timeIndex: number, e: React.MouseEvent) => {
     e.preventDefault();
