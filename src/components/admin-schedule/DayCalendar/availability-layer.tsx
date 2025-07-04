@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useMemo } from 'react';
-import { TimeSlot } from './admin-calendar-day';
+import { TimeSlot } from './day-calendar';
 import { useStudent } from '@/hooks/useStudentQuery';
 import { useTeacher } from '@/hooks/useTeacherQuery';
 

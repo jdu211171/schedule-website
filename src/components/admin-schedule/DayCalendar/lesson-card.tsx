@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { ExtendedClassSessionWithRelations } from '@/hooks/useClassSessionQuery';
-import { TimeSlot } from './admin-calendar-day';
+import { TimeSlot } from './day-calendar';
 import { UserCheck, GraduationCap } from "lucide-react"
 
 interface Booth {
@@ -17,7 +17,7 @@ interface LessonCardProps {
   maxZIndex?: number;
 }
 
-const extractTime = (timeValue: string | Date | undefined): string => {
+export const extractTime = (timeValue: string | Date | undefined): string => {
   if (!timeValue) return '';
   
   try {
