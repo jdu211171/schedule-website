@@ -71,16 +71,6 @@ export function MessageTemplateEditor({ templates, onSave }: MessageTemplateEdit
       values[key] = variable.example;
     });
     
-    // Add backwards compatibility for old variables with realistic dummy data
-    // These were used in the old individual notification system
-    values.subjectName = '数学';
-    values.startTime = '14:00';
-    values.endTime = '15:30';
-    values.teacherName = '田中先生';
-    values.boothName = 'ブース A';
-    values.duration = '90分';
-    values.timeUntilClass = '24時間後';
-    
     setPreviewValues(values);
   }, []);
 

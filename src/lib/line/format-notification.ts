@@ -47,17 +47,9 @@ export async function formatClassNotificationWithTemplate(
     }
 
     // Prepare variables for replacement
+    // Note: This function is kept for backward compatibility but should not be used.
+    // The new notification system uses daily summaries with different variables.
     const variables: Record<string, string> = {
-      studentName: session.studentName || '',
-      teacherName: session.teacherName || '',
-      subjectName: session.subjectName,
-      classDate: format(session.startTime, 'yyyy年M月d日', { locale: ja }),
-      startTime: format(session.startTime, 'HH:mm', { locale: ja }),
-      endTime: format(session.endTime, 'HH:mm', { locale: ja }),
-      duration: `${Math.round((session.endTime.getTime() - session.startTime.getTime()) / 60000)}分`,
-      boothName: session.boothName || '',
-      branchName: session.branchName || '',
-      timeUntilClass: daysBeforeClass === 0 ? '今日' : `${daysBeforeClass}日後`,
       currentDate: format(new Date(), 'yyyy年M月d日', { locale: ja }),
       currentTime: format(new Date(), 'HH:mm', { locale: ja })
     };

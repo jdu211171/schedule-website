@@ -137,26 +137,4 @@ export async function sendLineMulticast(to: string[], message: string): Promise<
   }
 }
 
-/**
- * Format a class session notification message
- */
-export function formatClassNotification(
-  type: '24h' | '30m',
-  subjectName: string,
-  startTime: string,
-  date?: string
-): string {
-  if (type === '24h') {
-    return `📚 明日の授業のお知らせ\n\n` +
-      `科目: ${subjectName}\n` +
-      `日付: ${date}\n` +
-      `時間: ${startTime}\n\n` +
-      `よろしくお願いします！`;
-  } else {
-    return `⏰ まもなく授業が始まります！\n\n` +
-      `科目: ${subjectName}\n` +
-      `時間: ${startTime} (30分後)\n\n` +
-      `準備をお願いします。`;
-  }
-}
 
