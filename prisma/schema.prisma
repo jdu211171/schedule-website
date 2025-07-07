@@ -432,6 +432,26 @@ model User {
   @@map("users")
 }
 
+model Archive {
+  archiveId        String   @id @default(cuid()) @map("archive_id")
+  classId          String   @unique @map("class_id")
+  teacherName      String?  @map("teacher_name") @db.VarChar(100)
+  studentName      String?  @map("student_name") @db.VarChar(100)
+  subjectName      String?  @map("subject_name") @db.VarChar(100)
+  boothName        String?  @map("booth_name") @db.VarChar(100)
+  branchName       String?  @map("branch_name") @db.VarChar(100)
+  classTypeName    String?  @map("class_type_name") @db.VarChar(100)
+  enrolledStudents Json?    @map("enrolled_students")
+  date             DateTime @db.Date
+  startTime        DateTime @map("start_time") @db.Time(6)
+  endTime          DateTime @map("end_time") @db.Time(6)
+  duration         Int?
+  notes            String?  @db.VarChar(255)
+  archivedAt       DateTime @default(now()) @map("archived_at") @db.Timestamp(6)
+
+  @@map("archives")
+}
+
 /// *
 /// * Authentication-related model for external provider connections.
 model Account {

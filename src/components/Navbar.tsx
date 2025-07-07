@@ -20,6 +20,7 @@ import {
   GraduationCap,
   Building,
   Menu,
+  Archive,
 } from "lucide-react";
 
 // Custom LINE icon component using text
@@ -72,6 +73,11 @@ const dashboardNavItems: NavItemType[] = [
     title: "マスターデータ管理",
     href: "/dashboard/master",
     icon: LayoutDashboard,
+  },
+  {
+    title: "アーカイブ",
+    href: "/dashboard/archives",
+    icon: Archive,
   },
   // {
   //   title: "LINE通知",
