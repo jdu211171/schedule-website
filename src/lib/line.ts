@@ -1,5 +1,6 @@
 import { createHmac } from 'crypto';
 import axios from 'axios';
+import { getChannelCredentials as getMultiChannelCredentials } from './line-multi-channel';
 
 const LINE_API_BASE = 'https://api.line.me/v2/bot';
 const CHANNEL_ACCESS_TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN;
@@ -73,8 +74,19 @@ export async function sendLineReply(replyToken: string, message: string): Promis
 
 /**
  * Send a push message to a single LINE user
+ * Backward compatible version that uses multi-channel support
  */
-export async function sendLinePush(to: string, message: string): Promise<void> {
+export async function sendLinePush(to: string, message: string, branchId?: string): Promise<void> {
+  // Try to get credentials from multi-channel system first
+  const credentials = await getMultiChannelCredentials(branchId);
+  
+  if (credentials) {
+    // Use multi-channel system
+    const { sendLinePush: sendMultiChannelPush } = await import('./line-multi-channel');
+    return sendMultiChannelPush(to, message, credentials);
+  }
+  
+  // Fall back to environment variables
   if (!CHANNEL_ACCESS_TOKEN) {
     console.error('LINE_CHANNEL_ACCESS_TOKEN is not set');
     throw new Error('LINE_CHANNEL_ACCESS_TOKEN is not set');
@@ -105,10 +117,21 @@ export async function sendLinePush(to: string, message: string): Promise<void> {
 
 /**
  * Send a multicast message to multiple LINE users (more efficient for bulk messages)
+ * Backward compatible version that uses multi-channel support
  */
-export async function sendLineMulticast(to: string[], message: string): Promise<void> {
+export async function sendLineMulticast(to: string[], message: string, branchId?: string): Promise<void> {
   if (to.length === 0) return;
   
+  // Try to get credentials from multi-channel system first
+  const credentials = await getMultiChannelCredentials(branchId);
+  
+  if (credentials) {
+    // Use multi-channel system
+    const { sendLineMulticast: sendMultiChannelMulticast } = await import('./line-multi-channel');
+    return sendMultiChannelMulticast(to, message, credentials);
+  }
+  
+  // Fall back to environment variables
   if (!CHANNEL_ACCESS_TOKEN) {
     console.error('LINE_CHANNEL_ACCESS_TOKEN is not set');
     throw new Error('LINE_CHANNEL_ACCESS_TOKEN is not set');

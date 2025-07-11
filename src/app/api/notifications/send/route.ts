@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { sendLineMulticast } from '@/lib/line';
+import { sendLineMulticast, getChannelCredentials } from '@/lib/line-multi-channel';
 import { addDays, format } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
 import { replaceTemplateVariables } from '@/lib/line/message-templates';
@@ -20,7 +20,6 @@ export async function GET(req: NextRequest) {
 
     // Log for debugging
     console.log('Notification check at:', format(nowJST, 'yyyy-MM-dd HH:mm:ss'));
-    console.log('LINE_CHANNEL_ACCESS_TOKEN present:', !!process.env.LINE_CHANNEL_ACCESS_TOKEN);
     console.log('CRON_SECRET present:', !!process.env.CRON_SECRET);
 
     // Get all active LINE message templates
@@ -270,7 +269,14 @@ export async function GET(req: NextRequest) {
             // Replace variables in template content
             const message = replaceTemplateVariables(template.content, templateVariables);
 
-            await sendLineMulticast([recipient.lineId], message);
+            // Get channel credentials for the branch
+            const credentials = await getChannelCredentials(template.branchId || undefined);
+            
+            if (!credentials) {
+              throw new Error('No LINE channel configured for this branch');
+            }
+
+            await sendLineMulticast([recipient.lineId], message, credentials);
             totalNotificationsSent++;
 
             // Log notification in database
