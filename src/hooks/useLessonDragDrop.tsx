@@ -22,6 +22,12 @@ import { ExtendedClassSessionWithRelations } from '@/hooks/useClassSessionQuery'
 import { useClassSessionUpdate } from '@/hooks/useClassSessionMutation';
 import { toast } from 'sonner';
 import { LessonCard } from '@/components/admin-schedule/DayCalendar/lesson-card';
+import { calculateNewLessonTimes, calculateDurationInSlots, extractTime, checkLessonOverlap } from '@/utils/lesson-positioning';
+
+// Constants
+const DEFAULT_TIME_SLOT_HEIGHT = 48;
+const DRAG_ACTIVATION_DISTANCE = 0; // Immediate activation
+const MAX_DRAG_OVERLAY_Z_INDEX = 999;
 
 export interface TimeSlot {
   index: number;
@@ -36,7 +42,7 @@ interface Booth {
   name: string;
 }
 
-interface DropData {
+export interface DropData {
   boothIndex: number;
   timeIndex: number;
   boothId: string;
@@ -55,6 +61,7 @@ interface UseLessonDragDropReturn {
   isDragging: boolean;
   DndContextWrapper: React.FC<{ children: React.ReactNode }>;
   DragOverlayWrapper: React.FC;
+  activeId: UniqueIdentifier | null;
 }
 
 export function useLessonDragDrop({
@@ -69,7 +76,7 @@ export function useLessonDragDrop({
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 0, // Immediate activation on click
+        distance: DRAG_ACTIVATION_DISTANCE,
       },
     }),
     useSensor(KeyboardSensor, {
@@ -83,31 +90,11 @@ export function useLessonDragDrop({
   }, [activeId, classSessions]);
 
   const calculateNewTimes = useCallback((dropData: DropData, lesson: ExtendedClassSessionWithRelations) => {
-    // Calculate lesson duration in minutes
-    const startTime = typeof lesson.startTime === 'string' ? lesson.startTime : '';
-    const endTime = typeof lesson.endTime === 'string' ? lesson.endTime : '';
+    const startTime = extractTime(lesson.startTime);
+    const endTime = extractTime(lesson.endTime);
+    const lessonDurationSlots = calculateDurationInSlots(startTime, endTime, 15);
     
-    const [startHour, startMin] = startTime.split(':').map(Number);
-    const [endHour, endMin] = endTime.split(':').map(Number);
-    
-    const durationMinutes = ((endHour - startHour) * 60) + (endMin - startMin);
-    const slotCount = Math.ceil(durationMinutes / 15); // 15-minute slots
-    
-    // Get new start time from drop position
-    const newStartSlot = timeSlots[dropData.timeIndex];
-    if (!newStartSlot) return null;
-    
-    // Calculate new end time
-    const endSlotIndex = dropData.timeIndex + slotCount - 1;
-    const newEndSlot = timeSlots[endSlotIndex];
-    
-    // If we don't have enough slots, use the last available slot
-    const actualEndSlot = newEndSlot || timeSlots[timeSlots.length - 1];
-    
-    return {
-      startTime: newStartSlot.start,
-      endTime: actualEndSlot.end,
-    };
+    return calculateNewLessonTimes(dropData.timeIndex, lessonDurationSlots, timeSlots);
   }, [timeSlots]);
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
@@ -123,17 +110,16 @@ export function useLessonDragDrop({
     }
 
     const dropData = over.data.current as DropData | undefined;
-    
     if (!dropData || dropData.boothIndex === undefined || dropData.timeIndex === undefined) {
       setActiveId(null);
+      toast.error('Invalid drop location');
       return;
     }
 
     // Calculate new times
     const newTimes = calculateNewTimes(dropData, draggedLesson);
-    
     if (!newTimes) {
-      toast.error('無効なドロップ位置です');
+      toast.error('Invalid time slot');
       setActiveId(null);
       return;
     }
@@ -141,12 +127,27 @@ export function useLessonDragDrop({
     // Get the booth from the drop position
     const newBooth = booths[dropData.boothIndex];
     if (!newBooth) {
-      toast.error('無効な教室です');
+      toast.error('Invalid booth');
       setActiveId(null);
       return;
     }
 
-    // Update the class session
+    // Check for overlapping lessons
+    const hasOverlap = checkLessonOverlap(
+      draggedLesson.classId,
+      newBooth.boothId,
+      newTimes.startTime,
+      newTimes.endTime,
+      classSessions
+    );
+
+    if (hasOverlap) {
+      toast.error('Cannot place lesson here - it would overlap with another lesson');
+      setActiveId(null);
+      return;
+    }
+
+    // Prepare update payload
     const updates = {
       classId: draggedLesson.classId,
       startTime: newTimes.startTime,
@@ -160,30 +161,34 @@ export function useLessonDragDrop({
       updateClassSession.mutate(updates, {
         onError: (error) => {
           console.error('Failed to update lesson:', error);
+          toast.error('Failed to update lesson');
+        },
+        onSuccess: () => {
+          toast.success('Lesson updated successfully');
         },
       });
     }
 
     setActiveId(null);
-  }, [draggedLesson, booths, calculateNewTimes, onLessonUpdate, updateClassSession]);
+  }, [draggedLesson, booths, calculateNewTimes, onLessonUpdate, updateClassSession, classSessions]);
 
   // Define components as functions that return JSX
-  const DndContextWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const DndContextWrapper = useCallback<React.FC<{ children: React.ReactNode }>>(({ children }) => {
     return (
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
-        modifiers={[snapCenterToCursor]} // This ensures cursor stays at drag point
+        modifiers={[snapCenterToCursor]}
       >
         {children}
       </DndContext>
     );
-  };
+  }, [sensors, handleDragStart, handleDragEnd]);
 
-  // Custom drop animation for better alignment
-  const dropAnimationConfig: DropAnimation = {
+  // Custom drop animation configuration
+  const dropAnimationConfig: DropAnimation = useMemo(() => ({
     sideEffects: defaultDropAnimationSideEffects({
       styles: {
         active: {
@@ -191,36 +196,36 @@ export function useLessonDragDrop({
         },
       },
     }),
-  };
+  }), []);
 
-  const DragOverlayWrapper: React.FC = () => {
+  const DragOverlayWrapper = useCallback<React.FC>(() => {
     if (!draggedLesson) return null;
 
-    // Create minimal props for overlay card
     const overlayProps = {
       lesson: draggedLesson,
       booths: booths,
-      onClick: () => {}, // No-op for overlay
-      timeSlotHeight: 48, // Standard height for overlay
+      onClick: () => {},
+      timeSlotHeight: DEFAULT_TIME_SLOT_HEIGHT,
       timeSlots: timeSlots,
-      maxZIndex: 999,
-      isOverlay: true // Prevent nested draggable
+      maxZIndex: MAX_DRAG_OVERLAY_Z_INDEX,
+      isOverlay: true
     };
 
     return (
       <DragOverlay 
         dropAnimation={dropAnimationConfig}
-        adjustScale={false} // Prevent scale adjustments
+        adjustScale={false}
       >
         <LessonCard {...overlayProps} />
       </DragOverlay>
     );
-  };
+  }, [draggedLesson, booths, timeSlots, dropAnimationConfig]);
 
   return {
     draggedLesson,
     isDragging: !!activeId,
     DndContextWrapper,
     DragOverlayWrapper,
+    activeId,
   };
 }

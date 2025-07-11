@@ -3,7 +3,8 @@ import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { ExtendedClassSessionWithRelations, DayFilters } from '@/hooks/useClassSessionQuery';
 import { getDateKey } from '../date';
-import { LessonCard, extractTime } from './lesson-card';
+import { LessonCard } from './lesson-card';
+import { extractTime } from '@/utils/lesson-positioning';
 import { DayCalendarFilters } from './day-calendar-filters';
 import { AvailabilityLayer, useAvailability } from './availability-layer';
 import { Switch } from '@/components/ui/switch';
@@ -235,6 +236,7 @@ const BoothRow = React.memo(({
   selectionEnd,
   isSelecting,
   canDrag,
+  isDragging,
   onStartSelection,
   onCellHover,
   onEndSelection
@@ -246,6 +248,7 @@ const BoothRow = React.memo(({
   selectionEnd: SelectionPosition | null,
   isSelecting: boolean,
   canDrag: boolean,
+  isDragging?: boolean,
   onStartSelection: (boothIndex: number, timeIndex: number, e: React.MouseEvent) => void,
   onCellHover: (boothIndex: number, timeIndex: number, e: React.MouseEvent) => void,
   onEndSelection: (e: React.MouseEvent) => void
@@ -292,8 +295,10 @@ const BoothRow = React.memo(({
          prevProps.booth.boothId === nextProps.booth.boothId &&
          prevProps.isSelecting === nextProps.isSelecting &&
          prevProps.canDrag === nextProps.canDrag &&
+         prevProps.isDragging === nextProps.isDragging &&
          prevProps.selectionStart === nextProps.selectionStart &&
-         prevProps.selectionEnd === nextProps.selectionEnd;
+         prevProps.selectionEnd === nextProps.selectionEnd &&
+         prevProps.timeSlots.length === nextProps.timeSlots.length;
 });
 
 BoothRow.displayName = 'BoothRow';
@@ -556,7 +561,7 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
 
       cancelSelection();
     }
-  }, [selection, timeSlots, booths, onCreateLesson, date, cancelSelection]);
+  }, [selection, timeSlots, booths, onCreateLesson, date, cancelSelection, isDragging]);
 
   const updateContainerWidth = useCallback(() => {
     if (containerRef.current) {
