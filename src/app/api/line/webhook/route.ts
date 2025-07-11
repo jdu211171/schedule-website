@@ -70,8 +70,18 @@ export async function POST(req: NextRequest) {
         continue;
       }
 
-      // Check if it's a username or LINE User ID
-      const identifier = text.trim();
+      // Check if message starts with "> " or "/cmd "
+      const trimmedText = text.trim();
+      if (!trimmedText.startsWith('> ') && !trimmedText.startsWith('/cmd ')) {
+        // Ignore regular chat messages - no error response
+        console.log(`Ignoring regular chat message: ${trimmedText.substring(0, 50)}...`);
+        continue;
+      }
+
+      // Remove the prefix and get the actual identifier
+      const identifier = trimmedText.startsWith('> ') 
+        ? trimmedText.substring(2).trim() 
+        : trimmedText.substring(5).trim(); // Remove "/cmd "
 
       // First try to find a user with this username
       let user = await prisma.user.findFirst({
@@ -204,7 +214,7 @@ export async function POST(req: NextRequest) {
       try {
         await sendLineReply(
           replyToken,
-          '❌ 無効なユーザー名またはLINEユーザーIDです。\n\n正しいユーザー名またはLINEユーザーIDを入力するか、システム管理者にお問い合わせください。'
+          '❌ 無効なユーザー名またはLINEユーザーIDです。\n\n正しいユーザー名またはLINEユーザーIDを入力するか、システム管理者にお問い合わせください。\n\n💡 ヒント: コマンドは "> " または "/cmd " で始めてください。'
         );
       } catch (replyError) {
         console.error('Error sending invalid username reply:', replyError);

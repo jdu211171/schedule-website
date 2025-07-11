@@ -21,6 +21,7 @@ model Branch {
   notifications        Notification[]
   userBranches         UserBranch[]
   vacations            Vacation[]
+  branchLineChannels   BranchLineChannel[]
 
   @@index([order])
   @@map("branches")
@@ -369,8 +370,9 @@ model LineMessageTemplate {
   name         String   @db.VarChar(100)
   description  String?  @db.VarChar(255)
   templateType String   @map("template_type") @db.VarChar(50)
-  timingType   String   @map("timing_type") @db.VarChar(20)
+  timingType   String   @map("timing_type") @db.VarChar(20) @default("days")
   timingValue  Int      @map("timing_value")
+  timingHour   Int      @default(9) @map("timing_hour") // Hour (0-23) when notification should be sent
   content      String
   variables    Json
   isActive     Boolean  @default(true) @map("is_active")
@@ -429,6 +431,26 @@ model User {
 
   @@index([order])
   @@map("users")
+}
+
+model Archive {
+  archiveId        String   @id @default(cuid()) @map("archive_id")
+  classId          String   @unique @map("class_id")
+  teacherName      String?  @map("teacher_name") @db.VarChar(100)
+  studentName      String?  @map("student_name") @db.VarChar(100)
+  subjectName      String?  @map("subject_name") @db.VarChar(100)
+  boothName        String?  @map("booth_name") @db.VarChar(100)
+  branchName       String?  @map("branch_name") @db.VarChar(100)
+  classTypeName    String?  @map("class_type_name") @db.VarChar(100)
+  enrolledStudents Json?    @map("enrolled_students")
+  date             DateTime @db.Date
+  startTime        DateTime @map("start_time") @db.Time(6)
+  endTime          DateTime @map("end_time") @db.Time(6)
+  duration         Int?
+  notes            String?  @db.VarChar(255)
+  archivedAt       DateTime @default(now()) @map("archived_at") @db.Timestamp(6)
+
+  @@map("archives")
 }
 
 /// *
@@ -536,4 +558,44 @@ enum PhoneType {
   DAD
   MOM
   OTHER
+}
+
+/// *
+/// * LINE Channel configuration for multi-channel support
+/// * Stores encrypted LINE channel credentials
+model LineChannel {
+  channelId            String              @id @default(cuid()) @map("channel_id")
+  name                 String              @db.VarChar(100)
+  description          String?             @db.VarChar(255)
+  channelAccessToken   String              @db.Text // Encrypted
+  channelSecret        String              @db.Text // Encrypted
+  webhookUrl           String?             @map("webhook_url") @db.VarChar(255)
+  isActive             Boolean             @default(true) @map("is_active")
+  isDefault            Boolean             @default(false) @map("is_default")
+  createdAt            DateTime            @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt            DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  lastRotatedAt        DateTime?           @map("last_rotated_at") @db.Timestamp(6)
+  branchLineChannels   BranchLineChannel[]
+
+  @@index([isActive])
+  @@index([isDefault])
+  @@map("line_channels")
+}
+
+/// *
+/// * Junction table linking branches to LINE channels
+/// * Supports many-to-many relationship for flexible channel assignment
+model BranchLineChannel {
+  id           String      @id @default(cuid())
+  branchId     String      @map("branch_id")
+  channelId    String      @map("channel_id")
+  isPrimary    Boolean     @default(true) @map("is_primary")
+  createdAt    DateTime    @default(now()) @map("created_at") @db.Timestamp(6)
+  branch       Branch      @relation(fields: [branchId], references: [branchId], onDelete: Cascade)
+  lineChannel  LineChannel @relation(fields: [channelId], references: [channelId], onDelete: Cascade)
+
+  @@unique([branchId, channelId])
+  @@index([branchId])
+  @@index([channelId])
+  @@map("branch_line_channels")
 }

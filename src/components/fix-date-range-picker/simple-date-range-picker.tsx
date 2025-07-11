@@ -32,38 +32,59 @@ interface SimpleDateRangePickerProps {
 // Preset configurations
 const presets = [
   {
-    label: "今週",
-    getValue: () => ({
-      from: startOfWeek(new Date(), { weekStartsOn: 1 }),
-      to: endOfWeek(new Date(), { weekStartsOn: 1 }),
+    label: "1週間",
+    getValue: (startDate: Date) => ({
+      from: startDate,
+      to: addDays(startDate, 7),
     }),
   },
   {
-    label: "来週",
-    getValue: () => ({
-      from: startOfWeek(addWeeks(new Date(), 1), { weekStartsOn: 1 }),
-      to: endOfWeek(addWeeks(new Date(), 1), { weekStartsOn: 1 }),
+    label: "1ヶ月",
+    getValue: (startDate: Date) => ({
+      from: startDate,
+      to: addMonths(startDate, 1),
     }),
   },
   {
-    label: "7日",
-    getValue: () => ({
-      from: addDays(new Date(), 1),
-      to: addDays(new Date(), 7),
+    label: "3ヶ月",
+    getValue: (startDate: Date) => ({
+      from: startDate,
+      to: addMonths(startDate, 3),
     }),
   },
   {
-    label: "30日",
-    getValue: () => ({
-      from: addDays(new Date(), 1),
-      to: addDays(new Date(), 30),
+    label: "6ヶ月",
+    getValue: (startDate: Date) => ({
+      from: startDate,
+      to: addMonths(startDate, 6),
     }),
   },
   {
-    label: "来月",
-    getValue: () => ({
-      from: startOfMonth(addMonths(new Date(), 1)),
-      to: endOfMonth(addMonths(new Date(), 1)),
+    label: "1年",
+    getValue: (startDate: Date) => ({
+      from: startDate,
+      to: addMonths(startDate, 12),
+    }),
+  },
+  {
+    label: "2年",
+    getValue: (startDate: Date) => ({
+      from: startDate,
+      to: addMonths(startDate, 24),
+    }),
+  },
+  {
+    label: "3年",
+    getValue: (startDate: Date) => ({
+      from: startDate,
+      to: addMonths(startDate, 36),
+    }),
+  },
+  {
+    label: "5年",
+    getValue: (startDate: Date) => ({
+      from: startDate,
+      to: addMonths(startDate, 60),
     }),
   },
 ]
@@ -104,7 +125,7 @@ export const SimpleDateRangePicker: React.FC<SimpleDateRangePickerProps> = ({
     } else if (fromYear === toYear) {
       return `${format(range.from, "M/d", { locale: ja })} - ${format(range.to, "M/d", { locale: ja })}`
     } else {
-      return `${format(range.from, "M/d", { locale: ja })} - ${format(range.to, "M/d", { locale: ja })}`
+      return `${format(range.from, "yyyy/M/d", { locale: ja })} - ${format(range.to, "yyyy/M/d", { locale: ja })}`
     }
   }
 
@@ -115,7 +136,9 @@ export const SimpleDateRangePicker: React.FC<SimpleDateRangePickerProps> = ({
 
   // Handle preset selection - work with temp range
   const handlePresetClick = (preset: typeof presets[0]) => {
-    const range = preset.getValue()
+    if (!tempRange?.from) return // Require start date first
+    
+    const range = preset.getValue(tempRange.from)
     setTempRange(range)
   }
 
@@ -206,13 +229,22 @@ export const SimpleDateRangePicker: React.FC<SimpleDateRangePickerProps> = ({
 
           {showPresets && (
             <div className="border-l border-border bg-muted/30">
-              <div className="flex flex-col p-2 gap-1 w-16">
+              <div className="flex flex-col p-2 gap-1 w-20">
+                <div className="text-xs text-muted-foreground px-2 py-1 text-center">
+                  {!tempRange?.from ? "開始日を選択" : "期間選択"}
+                </div>
                 {presets.map((preset) => (
                   <Button
                     key={preset.label}
                     variant="ghost"
-                    className="h-10 w-12 p-0 text-sm hover:bg-primary hover:text-primary-foreground font-normal justify-center"
+                    className={cn(
+                      "h-10 w-16 p-0 text-sm font-normal justify-center",
+                      tempRange?.from 
+                        ? "hover:bg-primary hover:text-primary-foreground" 
+                        : "opacity-50 cursor-not-allowed"
+                    )}
                     onClick={() => handlePresetClick(preset)}
+                    disabled={!tempRange?.from}
                   >
                     {preset.label}
                   </Button>

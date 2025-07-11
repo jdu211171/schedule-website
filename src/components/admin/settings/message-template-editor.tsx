@@ -4,21 +4,27 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Info, Plus, Save, Trash2, Copy, Edit2, X, Check } from "lucide-react";
-import { MESSAGE_VARIABLES, MessageTemplate, extractTemplateVariables, replaceTemplateVariables } from "@/lib/line/message-templates";
+import { Info, Edit2, X, Check, FileText } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { MESSAGE_VARIABLES, MessageTemplate, extractTemplateVariables, replaceTemplateVariables, TEMPLATE_EXAMPLES } from "@/lib/line/message-templates";
 
 interface MessageTemplateEditorProps {
   templates: MessageTemplate[];
@@ -27,19 +33,34 @@ interface MessageTemplateEditorProps {
 }
 
 const formatTiming = (template: MessageTemplate) => {
-  const unit = template.timingType === 'minutes' ? '分' : template.timingType === 'hours' ? '時間' : '日';
-  const position = template.templateType === 'before_class' ? '前' : template.templateType === 'after_class' ? '後' : '';
-  return `${template.timingValue}${unit}${position}`;
+  const timing = template.timingValue === 0 ? '当日' : `${template.timingValue}日前`;
+  const hour = String(template.timingHour).padStart(2, '0');
+  return `${timing} ${hour}:00`;
 };
 
-export function MessageTemplateEditor({ templates, onSave, isLoading }: MessageTemplateEditorProps) {
-  const [localTemplates, setLocalTemplates] = useState<MessageTemplate[]>(templates);
-  const [editingId, setEditingId] = useState<string | null>(null);
+export function MessageTemplateEditor({ templates, onSave }: MessageTemplateEditorProps) {
+  // SINGLE NOTIFICATION: Always work with exactly one template
+  const [localTemplate, setLocalTemplate] = useState<MessageTemplate>(
+    templates[0] || {
+      id: 'single-notification',
+      name: '毎日の授業通知',
+      templateType: 'before_class',
+      timingType: 'days',
+      timingValue: 1,
+      timingHour: 9,
+      content: `明日の授業予定\n\n{{dailyClassList}}\n\nよろしくお願いいたします。`,
+      variables: ['dailyClassList'],
+      isActive: true,
+    }
+  );
+  const [isEditing, setIsEditing] = useState(false);
   const [previewValues, setPreviewValues] = useState<Record<string, string>>({});
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    setLocalTemplates(templates);
+    if (templates.length > 0) {
+      setLocalTemplate(templates[0]);
+    }
   }, [templates]);
 
   // Initialize preview values with examples
@@ -49,244 +70,227 @@ export function MessageTemplateEditor({ templates, onSave, isLoading }: MessageT
       const key = variable.key.replace(/[{}]/g, '');
       values[key] = variable.example;
     });
+    
     setPreviewValues(values);
   }, []);
 
-  const handleAddTemplate = () => {
-    const newTemplate: MessageTemplate = {
-      id: `new-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      name: '新しいテンプレート',
-      templateType: 'before_class',
-      timingType: 'hours',
-      timingValue: 24,
-      content: '',
-      variables: [],
-      isActive: true,
-    };
-    setLocalTemplates([...localTemplates, newTemplate]);
-    setEditingId(newTemplate.id!);
+  // Remove handleAddTemplate - we only allow one template
+
+  const handleUpdateTemplate = (updates: Partial<MessageTemplate>) => {
+    setLocalTemplate(prev => ({ 
+      ...prev, 
+      ...updates,
+      variables: updates.content ? extractTemplateVariables(updates.content) : prev.variables
+    }));
   };
 
-  const handleUpdateTemplate = (id: string, updates: Partial<MessageTemplate>) => {
-    setLocalTemplates(prevTemplates => prevTemplates.map(template => 
-      template.id === id 
-        ? { 
-            ...template, 
-            ...updates,
-            variables: updates.content ? extractTemplateVariables(updates.content) : template.variables
-          } 
-        : template
-    ));
-  };
-
-  const handleDeleteTemplate = (id: string) => {
-    setLocalTemplates(localTemplates.filter(template => template.id !== id));
-  };
+  // Remove handleDeleteTemplate - we can't delete the single template
 
   const handleSave = async () => {
+    if (!localTemplate.content.trim()) {
+      return;
+    }
+    
     setIsSaving(true);
     try {
-      await onSave(localTemplates);
-      setEditingId(null);
+      await onSave([localTemplate]);
+      setIsEditing(false);
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleToggleActive = async (templateId: string, isActive: boolean) => {
-    // Store previous state for rollback
-    const previousTemplates = [...localTemplates];
+  const handleToggleActive = async (isActive: boolean) => {
+    const previousTemplate = { ...localTemplate };
+    const updatedTemplate = { ...localTemplate, isActive };
     
-    // Create updated templates
-    const updatedTemplates = previousTemplates.map(template => 
-      template.id === templateId 
-        ? { ...template, isActive, variables: template.variables || extractTemplateVariables(template.content) }
-        : { ...template, variables: template.variables || extractTemplateVariables(template.content) }
-    );
+    setLocalTemplate(updatedTemplate);
     
-    // Update local state immediately for responsive UI
-    setLocalTemplates(updatedTemplates);
-    
-    // Save to database
     try {
-      await onSave(updatedTemplates);
+      await onSave([updatedTemplate]);
     } catch (error) {
-      // Revert on error
-      setLocalTemplates(previousTemplates);
+      setLocalTemplate(previousTemplate);
       console.error('Failed to update template active state:', error);
     }
   };
 
-  const getPreviewContent = (template: MessageTemplate) => {
-    return replaceTemplateVariables(template.content, previewValues);
+  const getPreviewContent = () => {
+    return replaceTemplateVariables(localTemplate.content, previewValues);
   };
 
-  const insertVariable = (templateId: string, variableKey: string) => {
-    const template = localTemplates.find(t => t.id === templateId);
-    if (!template) return;
-
-    const textarea = document.querySelector(`textarea[data-template-id="${templateId}"]`) as HTMLTextAreaElement;
+  const insertVariable = (variableKey: string) => {
+    const textarea = document.querySelector('textarea[data-template-id="single"]') as HTMLTextAreaElement;
     if (!textarea) return;
 
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
-    const text = template.content;
+    const text = localTemplate.content;
     const newText = text.substring(0, start) + variableKey + text.substring(end);
     
-    handleUpdateTemplate(templateId, { content: newText });
+    handleUpdateTemplate({ content: newText });
     
-    // Restore cursor position
     setTimeout(() => {
       textarea.focus();
       textarea.setSelectionRange(start + variableKey.length, start + variableKey.length);
     }, 0);
   };
 
+
   return (
     <div className="space-y-6">
       <Alert>
         <Info className="h-4 w-4" />
         <AlertDescription>
-          メッセージに変数を挿入することで、送信時に実際の値に自動的に置き換えられます。
-          変数をクリックしてテンプレートに挿入してください。
+          <div className="space-y-2">
+            <p>毎日、設定した時刻にその日の全ての授業をまとめた通知が送信されます。</p>
+            <p className="text-sm">例: 「1日前 09:00」に設定すると、毎日朝9時に翌日の全授業予定が通知されます。</p>
+            <p className="text-sm font-medium">テンプレートを選んでメッセージをカスタマイズできます。</p>
+          </div>
         </AlertDescription>
       </Alert>
 
-      <Button onClick={handleAddTemplate} className="w-full">
-        <Plus className="h-4 w-4 mr-1" />
-        新しいテンプレートを作成
-      </Button>
-
-      <div className="space-y-4">
-        {localTemplates.map((template) => (
-          <Card key={template.id} className={editingId === template.id ? "border-primary" : ""}>
-            <CardHeader>
-              <div className="flex items-center justify-between">
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-base">毎日の授業通知</CardTitle>
+              <Badge variant={localTemplate.isActive ? "default" : "secondary"}>
+                {localTemplate.isActive ? "有効" : "無効"}
+              </Badge>
+              <Badge variant="outline">
+                {formatTiming(localTemplate)}
+              </Badge>
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch
+                id="notification-switch"
+                checked={localTemplate.isActive}
+                onCheckedChange={(checked) => handleToggleActive(checked)}
+              />
+              {isEditing ? (
+                <>
+                  <Button size="sm" variant="ghost" onClick={() => setIsEditing(false)}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                  <Button size="sm" onClick={handleSave} disabled={isSaving}>
+                    <Check className="h-4 w-4" />
+                  </Button>
+                </>
+              ) : (
+                <Button size="sm" variant="ghost" onClick={() => setIsEditing(true)}>
+                  <Edit2 className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          </div>
+          {isEditing && (
+            <div className="mt-4 space-y-4">
+              <div className="flex gap-4">
                 <div className="flex items-center gap-2">
-                  {editingId === template.id ? (
-                    <Input
-                      value={template.name}
-                      onChange={(e) => handleUpdateTemplate(template.id!, { name: e.target.value })}
-                      className="h-8 w-64"
-                    />
-                  ) : (
-                    <CardTitle className="text-base">{template.name}</CardTitle>
-                  )}
-                  <Badge variant={template.isActive ? "default" : "secondary"}>
-                    {template.isActive ? "有効" : "無効"}
-                  </Badge>
-                  <Badge variant="outline">
-                    {formatTiming(template)}
-                  </Badge>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Switch
-                    id={`switch-${template.id}`}
-                    checked={template.isActive}
-                    onCheckedChange={(checked) => handleToggleActive(template.id!, checked)}
+                  <Label className="text-sm text-muted-foreground">通知タイミング:</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    max="7"
+                    value={localTemplate.timingValue}
+                    onChange={(e) => handleUpdateTemplate({ 
+                      timingValue: parseInt(e.target.value) || 0 
+                    })}
+                    className="w-20"
                   />
-                  {editingId === template.id ? (
-                    <>
-                      <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>
-                        <X className="h-4 w-4" />
-                      </Button>
-                      <Button size="sm" onClick={handleSave} disabled={isSaving}>
-                        <Check className="h-4 w-4" />
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      <Button size="sm" variant="ghost" onClick={() => setEditingId(template.id!)}>
-                        <Edit2 className="h-4 w-4" />
-                      </Button>
-                      {template.templateType === 'custom' && (
-                        <Button 
-                          size="sm" 
-                          variant="ghost" 
-                          onClick={() => handleDeleteTemplate(template.id!)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </>
-                  )}
+                  <span className="text-sm font-medium">日前</span>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm">送信時刻:</Label>
+                  <Select
+                    value={String(localTemplate.timingHour)}
+                    onValueChange={(value) => handleUpdateTemplate({ 
+                      timingHour: parseInt(value) 
+                    })}
+                  >
+                    <SelectTrigger className="w-24">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: 24 }, (_, i) => (
+                        <SelectItem key={i} value={String(i)}>
+                          {String(i).padStart(2, '0')}:00
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
-              {editingId === template.id && (
-                <div className="mt-2 space-y-2">
-                  <Input
-                    placeholder="説明（オプション）"
-                    value={template.description || ''}
-                    onChange={(e) => handleUpdateTemplate(template.id!, { description: e.target.value })}
-                  />
-                  <div className="flex gap-2">
-                    <Select
-                      value={template.templateType}
-                      onValueChange={(value) => handleUpdateTemplate(template.id!, { 
-                        templateType: value as MessageTemplate['templateType'] 
-                      })}
-                    >
-                      <SelectTrigger className="w-48">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="before_class">授業前</SelectItem>
-                        <SelectItem value="after_class">授業後</SelectItem>
-                        <SelectItem value="custom">カスタム</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        min="1"
-                        max="999"
-                        value={template.timingValue}
-                        onChange={(e) => handleUpdateTemplate(template.id!, { 
-                          timingValue: parseInt(e.target.value) || 1 
-                        })}
-                        className="w-20"
-                      />
-                      <Select
-                        value={template.timingType}
-                        onValueChange={(value) => handleUpdateTemplate(template.id!, { 
-                          timingType: value as MessageTemplate['timingType'] 
-                        })}
-                      >
-                        <SelectTrigger className="w-28">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="minutes">分</SelectItem>
-                          <SelectItem value="hours">時間</SelectItem>
-                          <SelectItem value="days">日</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </CardHeader>
-            <CardContent>
-              <Tabs defaultValue="preview" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="edit">編集</TabsTrigger>
-                  <TabsTrigger value="preview">プレビュー</TabsTrigger>
-                </TabsList>
-                
-                <TabsContent value="edit" className="space-y-4">
-                  {editingId === template.id && (
+            </div>
+          )}
+        </CardHeader>
+        <CardContent>
+          <Tabs defaultValue="preview" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="edit">編集</TabsTrigger>
+              <TabsTrigger value="preview">プレビュー</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="edit" className="space-y-4">
+              {isEditing && (
+                <>
+                  <Alert>
+                    <Info className="h-4 w-4" />
+                    <AlertDescription>
+                      変数をクリックしてメッセージに挿入できます。プレビューで実際の表示を確認してください。
+                    </AlertDescription>
+                  </Alert>
+                  
+                  {/* Check if template contains old variables */}
+                  {(localTemplate.content.includes('{{subjectName}}') || 
+                    localTemplate.content.includes('{{startTime}}') || 
+                    localTemplate.content.includes('{{endTime}}') || 
+                    localTemplate.content.includes('{{teacherName}}') || 
+                    localTemplate.content.includes('{{boothName}}')) && (
+                    <Alert className="border-orange-200 bg-orange-50">
+                      <Info className="h-4 w-4 text-orange-600" />
+                      <AlertDescription className="text-orange-800">
+                        このテンプレートには古い変数が含まれています。新しいシステムでは、全ての授業情報は
+                        <span className="font-medium"> {`{{dailyClassList}}`} </span>
+                        に含まれます。テンプレート例から新しい形式を選択することをお勧めします。
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                  
+                  <div className="space-y-4">
+                    {/* Daily Summary Variables */}
                     <div>
-                      <Label className="text-sm font-medium mb-2">利用可能な変数</Label>
-                      <div className="flex flex-wrap gap-2 mb-4">
-                        {Object.entries(MESSAGE_VARIABLES).map(([key, variable]) => (
-                          <TooltipProvider key={key}>
+                      <Label className="text-sm font-medium mb-2">授業情報</Label>
+                      <div className="flex flex-wrap gap-2">
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Badge
+                                variant="secondary"
+                                className="cursor-pointer hover:bg-secondary/80"
+                                onClick={() => insertVariable(MESSAGE_VARIABLES.DAILY_CLASS_LIST.key)}
+                              >
+                                {MESSAGE_VARIABLES.DAILY_CLASS_LIST.label}
+                              </Badge>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="font-medium">{MESSAGE_VARIABLES.DAILY_CLASS_LIST.key}</p>
+                              <p className="text-xs">{MESSAGE_VARIABLES.DAILY_CLASS_LIST.description}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                        
+                        {[MESSAGE_VARIABLES.CLASS_COUNT, MESSAGE_VARIABLES.FIRST_CLASS_TIME, 
+                          MESSAGE_VARIABLES.LAST_CLASS_TIME, MESSAGE_VARIABLES.TOTAL_DURATION,
+                          MESSAGE_VARIABLES.TEACHER_NAMES, MESSAGE_VARIABLES.SUBJECT_NAMES].map((variable) => (
+                          <TooltipProvider key={variable.key}>
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <Badge
-                                  variant="secondary"
+                                  variant="outline"
                                   className="cursor-pointer hover:bg-secondary/80"
-                                  onClick={() => insertVariable(template.id!, variable.key)}
+                                  onClick={() => insertVariable(variable.key)}
                                 >
                                   {variable.label}
                                 </Badge>
@@ -301,34 +305,123 @@ export function MessageTemplateEditor({ templates, onSave, isLoading }: MessageT
                         ))}
                       </div>
                     </div>
-                  )}
-                  
-                  <Textarea
-                    value={template.content}
-                    onChange={(e) => handleUpdateTemplate(template.id!, { content: e.target.value })}
-                    placeholder="メッセージ内容を入力..."
-                    rows={8}
-                    disabled={editingId !== template.id}
-                    data-template-id={template.id}
-                  />
-                  
-                  {template.variables.length > 0 && (
-                    <div className="text-sm text-muted-foreground">
-                      使用中の変数: {template.variables.map(v => `{{${v}}}`).join(', ')}
+                    
+                    {/* Recipient Variables */}
+                    <div>
+                      <Label className="text-sm font-medium mb-2">受信者情報</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {[MESSAGE_VARIABLES.RECIPIENT_NAME, MESSAGE_VARIABLES.RECIPIENT_TYPE].map((variable) => (
+                          <TooltipProvider key={variable.key}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Badge
+                                  variant="outline"
+                                  className="cursor-pointer hover:bg-secondary/80"
+                                  onClick={() => insertVariable(variable.key)}
+                                >
+                                  {variable.label}
+                                </Badge>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p className="font-medium">{variable.key}</p>
+                                <p className="text-xs">{variable.description}</p>
+                                <p className="text-xs text-muted-foreground">例: {variable.example}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        ))}
+                      </div>
                     </div>
-                  )}
-                </TabsContent>
-                
-                <TabsContent value="preview">
-                  <div className="bg-muted p-4 rounded-lg whitespace-pre-wrap">
-                    {getPreviewContent(template)}
+                    
+                    {/* Date and Other Variables */}
+                    <div>
+                      <Label className="text-sm font-medium mb-2">日付・その他</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {[MESSAGE_VARIABLES.CLASS_DATE, MESSAGE_VARIABLES.CURRENT_DATE, 
+                          MESSAGE_VARIABLES.BRANCH_NAME].map((variable) => (
+                          <TooltipProvider key={variable.key}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Badge
+                                  variant="outline"
+                                  className="cursor-pointer hover:bg-secondary/80"
+                                  onClick={() => insertVariable(variable.key)}
+                                >
+                                  {variable.label}
+                                </Badge>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p className="font-medium">{variable.key}</p>
+                                <p className="text-xs">{variable.description}</p>
+                                <p className="text-xs text-muted-foreground">例: {variable.example}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    {/* Template Examples */}
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <Label className="text-sm font-medium">テンプレート例</Label>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="sm">
+                              <FileText className="h-4 w-4 mr-2" />
+                              テンプレートを選択
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48">
+                            {Object.entries(TEMPLATE_EXAMPLES).map(([key, template]) => (
+                              <DropdownMenuItem
+                                key={key}
+                                onClick={() => handleUpdateTemplate({ content: template.content })}
+                              >
+                                {template.name}
+                              </DropdownMenuItem>
+                            ))}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </div>
                   </div>
-                </TabsContent>
-              </Tabs>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+                </>
+              )}
+              
+              <Textarea
+                value={localTemplate.content}
+                onChange={(e) => handleUpdateTemplate({ content: e.target.value })}
+                placeholder="メッセージ内容を入力..."
+                rows={8}
+                disabled={!isEditing}
+                data-template-id="single"
+              />
+            </TabsContent>
+            
+            <TabsContent value="preview">
+              {/* Show note if template contains old variables */}
+              {(localTemplate.content.includes('{{subjectName}}') || 
+                localTemplate.content.includes('{{startTime}}') || 
+                localTemplate.content.includes('{{endTime}}') || 
+                localTemplate.content.includes('{{teacherName}}') || 
+                localTemplate.content.includes('{{boothName}}')) && (
+                <Alert className="mb-4 border-blue-200 bg-blue-50">
+                  <Info className="h-4 w-4 text-blue-600" />
+                  <AlertDescription className="text-blue-800 text-sm">
+                    注: このプレビューでは古い変数にサンプルデータを表示していますが、
+                    実際の通知では全ての授業情報が{`{{dailyClassList}}`}に統合されます。
+                  </AlertDescription>
+                </Alert>
+              )}
+              
+              <div className="bg-muted p-4 rounded-lg whitespace-pre-wrap">
+                {getPreviewContent()}
+              </div>
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
 
     </div>
   );

@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { ExtendedClassSessionWithRelations } from '@/hooks/useClassSessionQuery';
-import { TimeSlot } from './admin-calendar-day';
+import { TimeSlot } from './day-calendar';
 import { UserCheck, GraduationCap } from "lucide-react"
 import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
@@ -20,7 +20,7 @@ interface LessonCardProps {
   isOverlay?: boolean; // New prop to disable draggable in overlay
 }
 
-const extractTime = (timeValue: string | Date | undefined): string => {
+export const extractTime = (timeValue: string | Date | undefined): string => {
   if (!timeValue) return '';
   
   try {

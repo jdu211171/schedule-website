@@ -29,6 +29,51 @@ import {
 import { Branch } from "@/hooks/useBranchQuery";
 import { BranchFormDialog } from "./branch-form-dialog";
 import { CSVImportDialog } from "@/components/ui/csv-import-dialog";
+import { useBranchLineChannels } from "@/hooks/useLineChannelQuery";
+import { Badge } from "@/components/ui/badge";
+import { MessageSquare } from "lucide-react";
+
+// Component to display LINE channels for a branch
+function BranchLineChannels({ branchId }: { branchId: string }) {
+  const { data: channels = [], isLoading } = useBranchLineChannels(branchId);
+
+  if (isLoading) {
+    return <span className="text-muted-foreground">読み込み中...</span>;
+  }
+
+  if (channels.length === 0) {
+    return <span className="text-muted-foreground">-</span>;
+  }
+
+  const primaryChannel = channels.find(ch => 
+    ch.branches.some(b => b.branchId === branchId && b.isPrimary)
+  );
+
+  return (
+    <div className="flex flex-wrap gap-1">
+      {primaryChannel && (
+        <Badge variant="default" className="text-xs">
+          <MessageSquare className="mr-1 h-3 w-3" />
+          {primaryChannel.name} (主)
+        </Badge>
+      )}
+      {channels
+        .filter(ch => ch.id !== primaryChannel?.id)
+        .slice(0, 2)
+        .map((channel) => (
+          <Badge key={channel.id} variant="outline" className="text-xs">
+            <MessageSquare className="mr-1 h-3 w-3" />
+            {channel.name}
+          </Badge>
+        ))}
+      {channels.length > 3 && (
+        <Badge variant="outline" className="text-xs">
+          +{channels.length - 3}
+        </Badge>
+      )}
+    </div>
+  );
+}
 
 export function BranchTable() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -82,6 +127,11 @@ export function BranchTable() {
           {row.original.notes || "-"}
         </span>
       ),
+    },
+    {
+      accessorKey: "lineChannels",
+      header: "LINEチャンネル",
+      cell: ({ row }) => <BranchLineChannels branchId={row.original.branchId} />,
     },
   ];
 
