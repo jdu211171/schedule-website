@@ -4,6 +4,7 @@ import { withBranchAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { boothUpdateSchema } from "@/schemas/booth.schema";
 import { Booth } from "@prisma/client";
+import { handlePrismaError } from "@/lib/prisma-error-handler";
 
 type FormattedBooth = {
   boothId: string;
@@ -218,9 +219,6 @@ export const DELETE = withBranchAccess(
       // Check if booth exists
       const booth = await prisma.booth.findUnique({
         where: { boothId },
-        include: {
-          classSessions: { take: 1 }, // Check if there are any associated class sessions
-        },
       });
 
       if (!booth) {
@@ -238,7 +236,7 @@ export const DELETE = withBranchAccess(
         );
       }
 
-      // Delete the booth (ClassSession.boothId will be set to null automatically)
+      // Delete the booth (Prisma will handle foreign key constraints)
       await prisma.booth.delete({
         where: { boothId },
       });
@@ -257,9 +255,10 @@ export const DELETE = withBranchAccess(
       );
     } catch (error) {
       console.error("Error deleting booth:", error);
+      const errorResponse = handlePrismaError(error, { entity: 'booth', operation: 'delete' });
       return NextResponse.json(
-        { error: "ブースの削除に失敗しました" },
-        { status: 500 }
+        { error: errorResponse.error },
+        { status: errorResponse.status }
       );
     }
   }
