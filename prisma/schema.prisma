@@ -345,28 +345,32 @@ model Subject {
 /// * This model stores notification records for system communications.
 /// * Handles message delivery to students and teachers.
 model Notification {
-  notificationId   String    @id @default(cuid()) @map("notification_id")
-  recipientType    String?   @map("recipient_type") @db.VarChar(20)
-  recipientId      String?   @map("recipient_id") @db.VarChar(50)
-  notificationType String?   @map("notification_type") @db.VarChar(50)
-  message          String?   @db.VarChar(255)
-  relatedClassId   String?   @map("related_class_id") @db.VarChar(50)
-  branchId         String?   @map("branch_id")
-  sentVia          String?   @map("sent_via") @db.VarChar(20)
-  sentAt           DateTime? @map("sent_at") @db.Timestamp(6)
-  readAt           DateTime? @map("read_at") @db.Timestamp(6)
-  status           String?   @db.VarChar(20)
-  notes            String?   @db.VarChar(255)
-  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt        DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
-  branch           Branch?   @relation(fields: [branchId], references: [branchId])
+  notificationId     String             @id @default(cuid()) @map("notification_id")
+  recipientType      String?            @map("recipient_type") @db.VarChar(20)
+  recipientId        String?            @map("recipient_id") @db.VarChar(50)
+  notificationType   String?            @map("notification_type") @db.VarChar(50)
+  message            String?            @db.VarChar(255)
+  relatedClassId     String?            @map("related_class_id") @db.VarChar(50)
+  branchId           String?            @map("branch_id")
+  sentVia            String?            @map("sent_via") @db.VarChar(20)
+  sentAt             DateTime?          @map("sent_at") @db.Timestamp(6)
+  readAt             DateTime?          @map("read_at") @db.Timestamp(6)
+  status             NotificationStatus @default(PENDING)
+  notes              String?            @db.VarChar(255)
+  createdAt          DateTime           @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt          DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  scheduledAt        DateTime           @default(now()) @map("scheduled_at")
+  processingAttempts Int                @default(0) @map("processing_attempts")
+  logs               Json?
+  branch             Branch?            @relation(fields: [branchId], references: [branchId])
 
   @@index([branchId])
+  @@index([status, scheduledAt])
   @@map("notifications")
 }
 
 model LineMessageTemplate {
-  id           String   @id @default(cuid()) @map("id")
+  id                 String   @id @default(cuid()) @map("id")
   name         String   @db.VarChar(100)
   description  String?  @db.VarChar(255)
   templateType String   @map("template_type") @db.VarChar(50)
@@ -558,6 +562,13 @@ enum PhoneType {
   DAD
   MOM
   OTHER
+}
+
+enum NotificationStatus {
+  PENDING
+  PROCESSING
+  SENT
+  FAILED
 }
 
 /// *

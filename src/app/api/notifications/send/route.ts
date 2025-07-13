@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { sendLineMulticast, getChannelCredentials } from '@/lib/line-multi-channel';
+import { sendLineMulticast } from '@/lib/line-multi-channel';
+import { createNotification } from '@/lib/notification/notification-service';
 import { addDays, format } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
 import { replaceTemplateVariables } from '@/lib/line/message-templates';
@@ -57,16 +58,16 @@ export async function GET(req: NextRequest) {
         const currentHour = nowJST.getHours();
         const currentMinute = nowJST.getMinutes();
         const targetHour = template.timingHour ?? 9;
-        
+
         // Only process if we're within a 10-minute window of the target hour
         if (currentHour !== targetHour || currentMinute > 10) {
           console.log(`Skipping template ${template.name} - not in time window (current: ${currentHour}:${currentMinute}, target: ${targetHour}:00-${targetHour}:10)`);
           continue;
         }
-        
+
         // Calculate target date for notifications
         const targetDate = format(addDays(nowJST, template.timingValue), 'yyyy-MM-dd');
-        
+
         console.log(`\nProcessing template: ${template.name} (${template.timingValue} days before)`);
         console.log(`Target date for classes: ${targetDate}`);
 
@@ -198,14 +199,14 @@ export async function GET(req: NextRequest) {
             continue;
           }
           processedRecipients.add(recipientKey);
-          
+
           try {
             // Build the daily class list
             let dailyClassList = '';
             recipient.sessions.forEach((session, index) => {
               const startTime = format(new Date(session.startTime), 'HH:mm');
               const endTime = format(new Date(session.endTime), 'HH:mm');
-              
+
               dailyClassList += `【${index + 1}】${session.subject?.name || '授業'}\n`;
               dailyClassList += `時間: ${startTime} - ${endTime}\n`;
               if (session.teacher?.name) {
@@ -218,16 +219,16 @@ export async function GET(req: NextRequest) {
                 dailyClassList += '\n';
               }
             });
-            
+
             // Add summary at the end
             dailyClassList += `\n\n計${recipient.sessions.length}件の授業があります。`;
-            
+
             // Calculate additional variables
             const firstSession = recipient.sessions[0];
             const lastSession = recipient.sessions[recipient.sessions.length - 1];
             const firstClassTime = firstSession ? format(new Date(firstSession.startTime), 'HH:mm') : '';
             const lastClassTime = lastSession ? format(new Date(lastSession.endTime), 'HH:mm') : '';
-            
+
             // Calculate total duration in hours
             let totalMinutes = 0;
             recipient.sessions.forEach(session => {
@@ -237,19 +238,19 @@ export async function GET(req: NextRequest) {
             });
             const totalHours = totalMinutes / 60;
             const totalDuration = totalHours % 1 === 0 ? `${totalHours}時間` : `${totalHours.toFixed(1)}時間`;
-            
+
             // Extract unique teacher names
             const teacherNames = [...new Set(recipient.sessions
               .map(s => s.teacher?.name)
               .filter(Boolean)
             )].join('、');
-            
+
             // Extract unique subject names
             const subjectNames = [...new Set(recipient.sessions
               .map(s => s.subject?.name)
               .filter(Boolean)
             )].join('、');
-            
+
             // Prepare variables for template replacement
             const templateVariables: Record<string, string> = {
               dailyClassList,
@@ -265,18 +266,11 @@ export async function GET(req: NextRequest) {
               subjectNames: subjectNames || '未定',
               branchName: template.branch?.name || ''
             };
-            
+
             // Replace variables in template content
             const message = replaceTemplateVariables(template.content, templateVariables);
 
-            // Get channel credentials for the branch
-            const credentials = await getChannelCredentials(template.branchId || undefined);
-            
-            if (!credentials) {
-              throw new Error('No LINE channel configured for this branch');
-            }
-
-            await sendLineMulticast([recipient.lineId], message, credentials);
+            await sendLineMulticast([recipient.lineId], message);
             totalNotificationsSent++;
 
             // Log notification in database
@@ -284,8 +278,8 @@ export async function GET(req: NextRequest) {
               data: {
                 recipientType: recipient.recipientType,
                 recipientId: recipient.recipientId,
-                notificationType: template.timingValue === 0 ? 'DAILY_SUMMARY_SAMEDAY' : 
-                                 template.timingValue === 1 ? 'DAILY_SUMMARY_24H' : 
+                notificationType: template.timingValue === 0 ? 'DAILY_SUMMARY_SAMEDAY' :
+                                 template.timingValue === 1 ? 'DAILY_SUMMARY_24H' :
                                  `DAILY_SUMMARY_${template.timingValue}D`,
                 message,
                 relatedClassId: recipient.sessions.map(s => s.classId).join(','), // Store all class IDs
@@ -296,9 +290,11 @@ export async function GET(req: NextRequest) {
               }
             });
 
-            console.log(`✓ Sent daily summary to ${recipient.name} (${recipient.recipientType}) with ${recipient.sessions.length} classes`);
+            totalNotificationsSent++;
+
+            console.log(`✓ Queued daily summary for ${recipient.name} (${recipient.recipientType}) with ${recipient.sessions.length} classes`);
           } catch (error) {
-            const errorMsg = `Error sending daily summary to ${recipient.name}: ${error}`;
+            const errorMsg = `Error queuing daily summary for ${recipient.name}: ${error}`;
             console.error(errorMsg);
             if (error instanceof Error && 'response' in error) {
               console.error('LINE API Response:', (error as Error & { response?: { data?: unknown } }).response?.data);

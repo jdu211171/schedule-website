@@ -21,6 +21,7 @@ import {
   Building,
   Menu,
   Archive,
+  Bell,
 } from "lucide-react";
 
 // Custom LINE icon component using text
@@ -78,6 +79,11 @@ const dashboardNavItems: NavItemType[] = [
     title: "アーカイブ",
     href: "/dashboard/archives",
     icon: Archive,
+  },
+  {
+    title: "通知",
+    href: "/dashboard/notifications",
+    icon: Bell,
   },
   // {
   //   title: "LINE通知",

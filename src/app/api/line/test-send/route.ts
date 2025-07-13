@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { sendLinePush, sendLineMulticast } from '@/lib/line';
+import { createNotification } from '@/lib/notification/notification-service';
 import { withRole } from '@/lib/auth';
 
 // POST endpoint to test LINE message sending - restricted to ADMIN only
@@ -8,7 +8,7 @@ export const POST = withRole(
   async (request: NextRequest) => {
     try {
       const body = await request.json();
-      const { lineIds, message, testType = 'individual' } = body;
+      const { lineIds, message } = body;
 
       // Validate input
       if (!lineIds || !Array.isArray(lineIds) || lineIds.length === 0) {
@@ -36,48 +36,29 @@ export const POST = withRole(
       const results = [];
       const errors = [];
 
-      if (testType === 'multicast' && lineIds.length > 1) {
-        // Test multicast (more efficient for multiple users)
+      for (const lineId of lineIds) {
         try {
-          await sendLineMulticast(lineIds, message);
+          await createNotification({
+            recipientId: lineId,
+            recipientType: 'TEACHER', // Assuming TEACHER for testing
+            notificationType: 'TEST',
+            message,
+            sentVia: 'LINE',
+          });
           results.push({
-            type: 'multicast',
-            lineIds,
-            status: 'success',
-            message: `Sent to ${lineIds.length} users via multicast`
+            lineId,
+            status: 'success'
           });
         } catch (error: any) {
           errors.push({
-            type: 'multicast',
-            lineIds,
-            error: error.message || 'Failed to send multicast',
-            details: error.response?.data || error
+            lineId,
+            error: error.message || 'Failed to create notification',
           });
-        }
-      } else {
-        // Test individual push messages
-        for (const lineId of lineIds) {
-          try {
-            await sendLinePush(lineId, message);
-            results.push({
-              type: 'push',
-              lineId,
-              status: 'success'
-            });
-          } catch (error: any) {
-            errors.push({
-              type: 'push',
-              lineId,
-              error: error.message || 'Failed to send',
-              details: error.response?.data || error
-            });
-          }
         }
       }
 
       return NextResponse.json({
         success: errors.length === 0,
-        testType,
         results,
         errors,
         summary: {
@@ -118,7 +99,6 @@ export const GET = withRole(
         body: {
           lineIds: ['array of LINE user IDs'],
           message: 'test message to send',
-          testType: 'individual or multicast (optional)'
         }
       }
     });
