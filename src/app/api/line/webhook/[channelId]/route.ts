@@ -8,12 +8,15 @@ import {
   LineChannelCredentials
 } from '@/lib/line-multi-channel';
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: { channelId: string } }
-) {
+export async function POST(req: NextRequest) {
   try {
-    const { channelId } = params;
+    const channelId = req.url.split('/').pop();
+    
+    if (!channelId) {
+      console.error('Missing channelId in webhook URL');
+      return NextResponse.json({ error: 'Missing channel ID' }, { status: 400 });
+    }
+    
     const body = await req.text();
     const signature = req.headers.get('x-line-signature');
 
