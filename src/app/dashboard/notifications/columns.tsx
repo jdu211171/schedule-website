@@ -2,7 +2,11 @@
 'use client';
 
 import { ColumnDef } from '@tanstack/react-table';
-import { Notification, NotificationStatus } from '@prisma/client';
+import { NotificationStatus } from '@prisma/client';
+import { Notification } from '@/hooks/useNotificationQuery';
+import { Badge } from '@/components/ui/badge';
+import { format, parseISO } from 'date-fns';
+import { ja } from 'date-fns/locale';
 
 const getStatusText = (status: NotificationStatus): string => {
   switch (status) {
@@ -21,16 +25,44 @@ const getStatusText = (status: NotificationStatus): string => {
 
 export const columns: ColumnDef<Notification>[] = [
   {
-    accessorKey: 'recipientId',
-    header: '宛先ID',
+    accessorKey: 'recipientName',
+    header: '宛先',
+    cell: ({ row }) => {
+      const recipientName = row.getValue('recipientName') as string | null;
+      const recipientType = row.original.recipientType;
+      
+      if (!recipientName) {
+        return <span className="text-muted-foreground">未設定</span>;
+      }
+      
+      const variant = recipientType === 'STUDENT' ? 'outline' : 'secondary';
+      return <Badge variant={variant}>{recipientName}</Badge>;
+    },
   },
   {
     accessorKey: 'recipientType',
-    header: '宛先タイプ',
+    header: 'タイプ',
+    cell: ({ row }) => {
+      const type = row.getValue('recipientType') as string | null;
+      return type === 'STUDENT' ? '生徒' : type === 'TEACHER' ? '講師' : '不明';
+    },
   },
   {
     accessorKey: 'notificationType',
-    header: 'タイプ',
+    header: '通知タイプ',
+    cell: ({ row }) => {
+      const type = row.getValue('notificationType') as string | null;
+      if (!type) return '-';
+      
+      const typeMap: Record<string, string> = {
+        'CLASS_REMINDER': '授業リマインダー',
+        'CLASS_CANCELLATION': '授業キャンセル',
+        'CLASS_CHANGE': '授業変更',
+        'GENERAL': '一般通知',
+      };
+      
+      return typeMap[type] || type;
+    },
   },
   {
     accessorKey: 'status',
@@ -50,17 +82,30 @@ export const columns: ColumnDef<Notification>[] = [
     },
   },
   {
+    accessorKey: 'message',
+    header: 'メッセージ',
+    cell: ({ row }) => {
+      const message = row.getValue('message') as string | null;
+      if (!message) return '-';
+      return message.length > 30 ? `${message.substring(0, 30)}...` : message;
+    },
+  },
+  {
     accessorKey: 'scheduledAt',
     header: '予定日時',
-    cell: ({ row }) => new Date(row.getValue('scheduledAt')).toLocaleString(),
+    cell: ({ row }) => {
+      const scheduledAt = row.getValue('scheduledAt') as string;
+      return format(parseISO(scheduledAt), 'MM/dd HH:mm', { locale: ja });
+    },
   },
   {
     accessorKey: 'sentAt',
     header: '送信日時',
-    cell: ({ row }) =>
-      row.getValue('sentAt')
-        ? new Date(row.getValue('sentAt')).toLocaleString()
-        : '未送信',
+    cell: ({ row }) => {
+      const sentAt = row.getValue('sentAt') as string | null;
+      if (!sentAt) return <span className="text-muted-foreground">未送信</span>;
+      return format(parseISO(sentAt), 'MM/dd HH:mm', { locale: ja });
+    },
   },
   {
     accessorKey: 'processingAttempts',
