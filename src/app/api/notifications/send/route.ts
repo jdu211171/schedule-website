@@ -270,7 +270,15 @@ export async function GET(req: NextRequest) {
             // Replace variables in template content
             const message = replaceTemplateVariables(template.content, templateVariables);
 
-            await sendLineMulticast([recipient.lineId], message);
+            // Get channel credentials for this branch
+            const credentials = await import('@/lib/line-multi-channel').then(m => m.getChannelCredentials(template.branchId || undefined));
+            if (credentials) {
+              await sendLineMulticast([recipient.lineId], message, credentials);
+            } else {
+              // Fallback to basic LINE function if no credentials found
+              const { sendLineMulticast: fallbackMulticast } = await import('@/lib/line');
+              await fallbackMulticast([recipient.lineId], message, template.branchId || undefined);
+            }
             totalNotificationsSent++;
 
             // Log notification in database

@@ -1,7 +1,7 @@
 
 import { prisma } from '@/lib/prisma';
 import { Notification, NotificationStatus } from '@prisma/client';
-import { sendLineMessage } from '@/lib/line'; // Assuming this is the function to send LINE messages
+import { sendLinePush } from '@/lib/line'; // Function to send LINE push messages
 
 const MAX_ATTEMPTS = 3;
 
@@ -19,7 +19,7 @@ const processNotification = async (notification: Notification): Promise<void> =>
   try {
     // This is a placeholder for the actual LINE message sending logic
     // You will need to adapt this to your actual implementation
-    await sendLineMessage(notification.recipientId, notification.message);
+    await sendLinePush(notification.recipientId!, notification.message!);
 
     await prisma.notification.update({
       where: { notificationId: notification.notificationId },

@@ -2,31 +2,25 @@
   "permissions": {
     "allow": [
       "Bash(git checkout:*)",
-      "Bash(bun run:*)",
-      "Bash(bun add:*)",
+      "Bash(git pull:*)",
       "Bash(grep:*)",
       "Bash(mkdir:*)",
       "Bash(mv:*)",
       "Bash(rg:*)",
       "Bash(ls:*)",
       "Bash(tsc:*)",
-      "Bash(bunx tsc:*)",
+      "Bash(bunx:*)",
       "Bash(true)",
       "Bash(rm:*)",
       "Bash(find:*)",
-      "Bash(bun prisma migrate dev:*)",
-      "Bash(bun prisma generate:*)",
-      "Bash(bun prisma migrate:*)",
       "Bash(sed:*)",
       "Bash(curl:*)",
       "Bash(node:*)",
       "Bash(tree:*)",
       "Bash(pkill:*)",
-      "Bash(bun prisma db seed:*)",
       "Bash(cp:*)",
-      "Bash(git pull:*)",
-      "Bash(bun prisma db pull:*)",
-      "Bash(git stash show:*)"
+      "Bash(git stash show:*)",
+      "Bash(bun:*)"
     ],
     "deny": []
   }

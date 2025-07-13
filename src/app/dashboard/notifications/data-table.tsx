@@ -14,7 +14,7 @@ export function DataTable<TData, TValue>({
   columns,
   data,
 }: DataTableProps<TData, TValue>) {
-  const table = useDataTable({ data, columns });
+  const table = useDataTable({ data, columns, pageCount: 0 });
 
-  return <BaseDataTable table={table} columns={columns} />;
+  return <BaseDataTable data={data} columns={columns} />;
 }
