@@ -59,12 +59,12 @@ interface DataTableProps<TData, TValue> {
 export function DataTable<TData, TValue>({
   columns,
   data,
-  searchPlaceholder = "Search...",
+  searchPlaceholder = "検索...",
   onSearch,
   searchValue = "",
   isLoading = false,
   onCreateNew,
-  createNewLabel = "New Creation",
+  createNewLabel = "新規作成",
   pageCount = 1,
   pageIndex = 0,
   onPageChange,
@@ -122,14 +122,14 @@ export function DataTable<TData, TValue>({
               onCheckedChange={(value) =>
                 table.toggleAllPageRowsSelected(!!value)
               }
-              aria-label="Select all"
+              aria-label="すべて選択"
             />
           ),
           cell: ({ row }: { row: any }) => (
             <Checkbox
               checked={row.getIsSelected()}
               onCheckedChange={(value) => row.toggleSelected(!!value)}
-              aria-label="Select row"
+              aria-label="行を選択"
             />
           ),
           enableSorting: false,
@@ -307,7 +307,7 @@ export function DataTable<TData, TValue>({
                   colSpan={columnsWithSelection.length}
                   className="h-24 text-center"
                 >
-                  Loading...
+                  読み込み中...
                 </TableCell>
               </TableRow>
             ) : table.getRowModel().rows?.length ? (
@@ -348,7 +348,7 @@ export function DataTable<TData, TValue>({
                   colSpan={columnsWithSelection.length}
                   className="h-24 text-center"
                 >
-                  No results.
+                  結果がありません。
                 </TableCell>
               </TableRow>
             )}

@@ -4,22 +4,37 @@
 import { ColumnDef } from '@tanstack/react-table';
 import { Notification, NotificationStatus } from '@prisma/client';
 
+const getStatusText = (status: NotificationStatus): string => {
+  switch (status) {
+    case NotificationStatus.SENT:
+      return '送信済み';
+    case NotificationStatus.FAILED:
+      return '失敗';
+    case NotificationStatus.PENDING:
+      return '待機中';
+    case NotificationStatus.PROCESSING:
+      return '処理中';
+    default:
+      return status;
+  }
+};
+
 export const columns: ColumnDef<Notification>[] = [
   {
     accessorKey: 'recipientId',
-    header: 'Recipient ID',
+    header: '宛先ID',
   },
   {
     accessorKey: 'recipientType',
-    header: 'Recipient Type',
+    header: '宛先タイプ',
   },
   {
     accessorKey: 'notificationType',
-    header: 'Type',
+    header: 'タイプ',
   },
   {
     accessorKey: 'status',
-    header: 'Status',
+    header: 'ステータス',
     cell: ({ row }) => {
       const status = row.getValue('status') as NotificationStatus;
       const statusColor =
@@ -31,24 +46,24 @@ export const columns: ColumnDef<Notification>[] = [
           ? 'text-yellow-500'
           : 'text-gray-500';
 
-      return <span className={statusColor}>{status}</span>;
+      return <span className={statusColor}>{getStatusText(status)}</span>;
     },
   },
   {
     accessorKey: 'scheduledAt',
-    header: 'Scheduled At',
+    header: '予定日時',
     cell: ({ row }) => new Date(row.getValue('scheduledAt')).toLocaleString(),
   },
   {
     accessorKey: 'sentAt',
-    header: 'Sent At',
+    header: '送信日時',
     cell: ({ row }) =>
       row.getValue('sentAt')
         ? new Date(row.getValue('sentAt')).toLocaleString()
-        : 'N/A',
+        : '未送信',
   },
   {
     accessorKey: 'processingAttempts',
-    header: 'Attempts',
+    header: '試行回数',
   },
 ];
