@@ -4,6 +4,7 @@ import { withBranchAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { studentUpdateSchema } from "@/schemas/student.schema";
 import { Student, StudentType, DayOfWeek } from "@prisma/client";
+import { handlePrismaError } from "@/lib/prisma-error-handler";
 
 // Define a type for the student with includes
 type StudentWithIncludes = Student & {
@@ -1015,9 +1016,10 @@ export const DELETE = withBranchAccess(
       );
     } catch (error) {
       console.error("Error deleting student:", error);
+      const errorResponse = handlePrismaError(error, { entity: 'student', operation: 'delete' });
       return NextResponse.json(
-        { error: "Failed to delete student" },
-        { status: 500 }
+        { error: errorResponse.error },
+        { status: errorResponse.status }
       );
     }
   }
