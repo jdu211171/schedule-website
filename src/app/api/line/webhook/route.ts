@@ -70,18 +70,17 @@ export async function POST(req: NextRequest) {
         continue;
       }
 
-      // Check if message starts with "> " or "/cmd "
+      // Check if message starts with "> " or "/cmd " (case-insensitive)
       const trimmedText = text.trim();
-      if (!trimmedText.startsWith('> ') && !trimmedText.startsWith('/cmd ')) {
+      const lowerText = trimmedText.toLowerCase();
+      if (!lowerText.startsWith('> ') && !lowerText.startsWith('/cmd ')) {
         // Ignore regular chat messages - no error response
         console.log(`Ignoring regular chat message: ${trimmedText.substring(0, 50)}...`);
         continue;
       }
 
-      // Remove the prefix and get the actual identifier
-      const identifier = trimmedText.startsWith('> ') 
-        ? trimmedText.substring(2).trim() 
-        : trimmedText.substring(5).trim(); // Remove "/cmd "
+      // Remove the prefix and get the actual identifier (using regex for case-insensitive matching)
+      const identifier = trimmedText.replace(/^(> |\/cmd\s+)/i, '').trim();
 
       // First try to find a user with this username
       let user = await prisma.user.findFirst({
