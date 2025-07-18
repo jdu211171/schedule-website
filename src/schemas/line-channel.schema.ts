@@ -40,6 +40,7 @@ export const lineChannelUpdateSchema = z.object({
   channelSecret: z.string().min(1).optional(),
   isActive: z.boolean().optional(),
   isDefault: z.boolean().optional(),
+  branchIds: z.array(z.string()).optional(),
 });
 
 // For assigning branches to a LINE channel

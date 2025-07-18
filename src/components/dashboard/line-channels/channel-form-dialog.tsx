@@ -29,7 +29,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { MultiSelect } from "@/components/multi-select";
-import { useLineChannelCreate, useLineChannelUpdate, useLineChannelAssignBranches, useLineChannelTest } from "@/hooks/useLineChannelMutation";
+import { useLineChannelCreate, useLineChannelUpdate, useLineChannelTest } from "@/hooks/useLineChannelMutation";
 import { LineChannelResponse } from "@/types/line-channel";
 import { lineChannelCreateSchema, lineChannelUpdateSchema } from "@/schemas/line-channel.schema";
 import { useAllBranchesOrdered } from "@/hooks/useBranchQuery";
@@ -47,7 +47,6 @@ export function ChannelFormDialog({
 }: ChannelFormDialogProps) {
   const createChannelMutation = useLineChannelCreate();
   const updateChannelMutation = useLineChannelUpdate();
-  const assignBranchesMutation = useLineChannelAssignBranches();
   const testChannelMutation = useLineChannelTest();
   const isEditing = !!channel;
 
@@ -110,27 +109,23 @@ export function ChannelFormDialog({
   async function onSubmit(values: FormData) {
     try {
       if (isEditing && channel) {
-        const { branchIds, ...updateData } = values;
-        
-        // Update channel details
-        await updateChannelMutation.mutateAsync({
+        // Prepare update data, filtering out empty credentials
+        const updateData = {
           channelId: channel.id,
-          ...updateData,
-        });
-
-        // Update branch assignments if changed
-        const currentBranchIds = channel.branches?.map(b => b.branchId) || [];
-        const newBranchIds = branchIds || [];
-        const hasChanged = 
-          newBranchIds.length !== currentBranchIds.length ||
-          newBranchIds.some((id: string) => !currentBranchIds.includes(id));
+          name: values.name,
+          description: values.description,
+          isActive: values.isActive,
+          branchIds: values.branchIds,
+          ...(values.channelAccessToken && values.channelAccessToken.trim().length > 0 
+            ? { channelAccessToken: values.channelAccessToken } 
+            : {}),
+          ...(values.channelSecret && values.channelSecret.trim().length > 0 
+            ? { channelSecret: values.channelSecret } 
+            : {}),
+        };
         
-        if (hasChanged) {
-          await assignBranchesMutation.mutateAsync({
-            channelId: channel.id,
-            branchIds: newBranchIds,
-          });
-        }
+        // Update channel with branch assignments in a single request
+        await updateChannelMutation.mutateAsync(updateData);
       } else {
         // For create, ensure required fields are present
         if (!values.channelAccessToken || !values.channelSecret) {
@@ -416,8 +411,7 @@ export function ChannelFormDialog({
                 type="submit" 
                 disabled={
                   createChannelMutation.isPending || 
-                  updateChannelMutation.isPending ||
-                  assignBranchesMutation.isPending
+                  updateChannelMutation.isPending
                 }
               >
                 {isEditing ? "更新" : "作成"}

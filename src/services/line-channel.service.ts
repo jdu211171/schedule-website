@@ -15,12 +15,13 @@ export interface CreateLineChannelData {
 
 export interface UpdateLineChannelData {
   name?: string;
-  description?: string;
+  description?: string | null;
   channelAccessToken?: string;
   channelSecret?: string;
   webhookUrl?: string | null;
   isActive?: boolean;
   isDefault?: boolean;
+  branchIds?: string[];
 }
 
 export class LineChannelService {
@@ -140,9 +141,13 @@ export class LineChannelService {
     }
 
     // If updating credentials, test them first
-    if (data.channelAccessToken || data.channelSecret) {
-      const accessToken = data.channelAccessToken || decrypt(existingChannel.channelAccessToken);
-      const secret = data.channelSecret || decrypt(existingChannel.channelSecret);
+    // Only test if non-empty credentials are provided
+    const hasNewAccessToken = data.channelAccessToken && data.channelAccessToken.trim().length > 0;
+    const hasNewSecret = data.channelSecret && data.channelSecret.trim().length > 0;
+    
+    if (hasNewAccessToken || hasNewSecret) {
+      const accessToken = hasNewAccessToken ? data.channelAccessToken! : decrypt(existingChannel.channelAccessToken);
+      const secret = hasNewSecret ? data.channelSecret! : decrypt(existingChannel.channelSecret);
 
       const testResult = await testChannelCredentials({
         channelAccessToken: accessToken,
@@ -165,25 +170,65 @@ export class LineChannelService {
       });
     }
 
+    // Extract branchIds from data to handle separately
+    const { branchIds, ...channelUpdateData } = data;
+
     // Prepare update data
     const updateData: Prisma.LineChannelUpdateInput = {
-      ...data,
-      channelAccessToken: data.channelAccessToken ? encrypt(data.channelAccessToken) : undefined,
-      channelSecret: data.channelSecret ? encrypt(data.channelSecret) : undefined,
-      lastRotatedAt: (data.channelAccessToken || data.channelSecret) ? new Date() : undefined
+      ...channelUpdateData,
+      channelAccessToken: hasNewAccessToken && data.channelAccessToken ? encrypt(data.channelAccessToken) : undefined,
+      channelSecret: hasNewSecret && data.channelSecret ? encrypt(data.channelSecret) : undefined,
+      lastRotatedAt: (hasNewAccessToken || hasNewSecret) ? new Date() : undefined
     };
 
-    const channel = await prisma.lineChannel.update({
-      where: { channelId },
-      data: updateData,
-      include: {
-        branchLineChannels: {
-          include: {
-            branch: true
+    // Use transaction to ensure atomicity
+    const channel = await prisma.$transaction(async (tx) => {
+      // Update channel
+      const updatedChannel = await tx.lineChannel.update({
+        where: { channelId },
+        data: updateData,
+        include: {
+          branchLineChannels: {
+            include: {
+              branch: true
+            }
           }
         }
+      });
+
+      // Update branch assignments if provided
+      if (branchIds !== undefined) {
+        // Remove existing assignments
+        await tx.branchLineChannel.deleteMany({
+          where: { channelId }
+        });
+
+        // Create new assignments
+        if (branchIds.length > 0) {
+          await tx.branchLineChannel.createMany({
+            data: branchIds.map(branchId => ({
+              branchId,
+              channelId,
+              isPrimary: true
+            }))
+          });
+        }
+
+        // Return channel with updated branch assignments
+        return await tx.lineChannel.findUnique({
+          where: { channelId },
+          include: {
+            branchLineChannels: {
+              include: {
+                branch: true
+              }
+            }
+          }
+        });
       }
-    });
+
+      return updatedChannel;
+    }) as any;
 
     // Get base URL for webhook endpoints
     const baseUrl = this.getBaseUrl();

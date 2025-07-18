@@ -1,17 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withRole } from '@/lib/auth';
 import { LineChannelService } from '@/services/line-channel.service';
+import { lineChannelUpdateSchema } from '@/schemas/line-channel.schema';
 import { z } from 'zod';
-
-const updateChannelSchema = z.object({
-  name: z.string().min(1).max(100).optional(),
-  description: z.string().optional(),
-  channelAccessToken: z.string().min(1).optional(),
-  channelSecret: z.string().min(1).optional(),
-  webhookUrl: z.string().url().optional().nullable(),
-  isActive: z.boolean().optional(),
-  isDefault: z.boolean().optional()
-});
 
 // GET /api/admin/line-channels/[channelId] - Get a specific LINE channel
 export const GET = withRole(['ADMIN'], async (req: NextRequest) => {
@@ -57,7 +48,7 @@ export const PATCH = withRole(['ADMIN'], async (req: NextRequest) => {
     }
     
     const body = await req.json();
-    const validatedData = updateChannelSchema.parse(body);
+    const validatedData = lineChannelUpdateSchema.parse(body);
 
     const channel = await LineChannelService.updateChannel(channelId, validatedData);
 
