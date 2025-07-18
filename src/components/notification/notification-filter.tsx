@@ -7,6 +7,7 @@ import { format, subDays } from "date-fns";
 import { NotificationStatus } from "@prisma/client";
 
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import {
   Select,
@@ -30,8 +31,9 @@ interface NotificationFilterProps {
     notificationType?: string;
     startDate?: string;
     endDate?: string;
+    search?: string;
   };
-  onFilterChange: (field: "status" | "recipientType" | "notificationType" | "startDate" | "endDate", value: string | undefined) => void;
+  onFilterChange: (field: "status" | "recipientType" | "notificationType" | "startDate" | "endDate" | "search", value: string | undefined) => void;
   onDateRangeChange: (range: DateRange | undefined) => void;
   onResetFilters: () => void;
 }
@@ -162,7 +164,18 @@ export function NotificationFilter({
         </div>
       </div>
       <CollapsibleContent className="space-y-4">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+          {/* Search filter */}
+          <div className="space-y-2 min-w-0">
+            <label className="text-xs font-medium">メッセージ検索</label>
+            <Input
+              placeholder="メッセージを検索..."
+              value={filters.search || ""}
+              onChange={(e) => onFilterChange("search", e.target.value || undefined)}
+              className="w-full"
+            />
+          </div>
+
           {/* Date range filter */}
           <div className="space-y-2 min-w-0">
             <label className="text-xs font-medium">日付範囲</label>

@@ -25,6 +25,27 @@ export interface UpdateLineChannelData {
 
 export class LineChannelService {
   /**
+   * Get base URL for webhook endpoints from server-side environment variables
+   * Uses NEXTAUTH_URL first (recommended), then BASE_URL as fallback
+   */
+  private static getBaseUrl(): string {
+    const nextAuthUrl = process.env.NEXTAUTH_URL;
+    const baseUrl = process.env.BASE_URL;
+    
+    if (nextAuthUrl) {
+      return nextAuthUrl;
+    }
+    
+    if (baseUrl) {
+      return baseUrl;
+    }
+    
+    // Fallback with warning
+    console.warn('BASE_URL environment variable not set. Using default fallback URL.');
+    return 'https://your-domain.com';
+  }
+
+  /**
    * Generate preview for sensitive credentials
    */
   private static generateCredentialPreview(credential: string, showStart = 4, showEnd = 4): string {
@@ -83,8 +104,8 @@ export class LineChannelService {
       }
     });
 
-    // Get base URL from environment
-    const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_BASE_URL || 'https://your-domain.com';
+    // Get base URL for webhook endpoints
+    const baseUrl = this.getBaseUrl();
 
     // Generate previews for credentials
     const tokenPreview = this.generateCredentialPreview(data.channelAccessToken, 10, 10);
@@ -164,8 +185,8 @@ export class LineChannelService {
       }
     });
 
-    // Get base URL from environment
-    const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_BASE_URL || 'https://your-domain.com';
+    // Get base URL for webhook endpoints
+    const baseUrl = this.getBaseUrl();
 
     // Decrypt to generate previews
     const decryptedToken = decrypt(channel.channelAccessToken);
@@ -213,8 +234,8 @@ export class LineChannelService {
       ]
     });
 
-    // Get base URL from environment
-    const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_BASE_URL || 'https://your-domain.com';
+    // Get base URL for webhook endpoints
+    const baseUrl = this.getBaseUrl();
 
     // Remove encrypted credentials and add webhook URL from response
     return channels.map(channel => {
@@ -256,8 +277,8 @@ export class LineChannelService {
       return null;
     }
 
-    // Get base URL from environment
-    const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_BASE_URL || 'https://your-domain.com';
+    // Get base URL for webhook endpoints
+    const baseUrl = this.getBaseUrl();
 
     // Decrypt to generate previews
     const decryptedToken = decrypt(channel.channelAccessToken);
@@ -347,6 +368,57 @@ export class LineChannelService {
       },
       data: { isPrimary: true }
     });
+  }
+
+  /**
+   * Test LINE channel credentials and optionally send a test message
+   */
+  static async testChannel(channelId: string, testUserId?: string) {
+    const channel = await prisma.lineChannel.findUnique({
+      where: { channelId }
+    });
+
+    if (!channel) {
+      throw new Error('Channel not found');
+    }
+
+    const credentials = {
+      channelAccessToken: decrypt(channel.channelAccessToken),
+      channelSecret: decrypt(channel.channelSecret)
+    };
+
+    // Test credentials
+    const testResult = await testChannelCredentials(credentials);
+
+    if (!testResult.success) {
+      throw new Error(testResult.error || 'Invalid credentials');
+    }
+
+    // If a test user ID is provided, send a test message
+    let messageResult = null;
+    if (testUserId) {
+      try {
+        const { sendLinePush } = await import('@/lib/line-multi-channel');
+        await sendLinePush(
+          testUserId,
+          `🔔 テストメッセージ\n\nこれは「${channel.name}」チャンネルからのテストメッセージです。\n\n正常に受信できていれば、このチャンネルは正しく設定されています。`,
+          credentials
+        );
+        messageResult = { success: true };
+      } catch (error) {
+        console.error('Error sending test message:', error);
+        messageResult = { 
+          success: false, 
+          error: 'Failed to send test message. Please check the LINE user ID.'
+        };
+      }
+    }
+
+    return {
+      success: true,
+      botInfo: testResult.botInfo,
+      messageResult
+    };
   }
 
   /**

@@ -43,8 +43,21 @@ export function NotificationDataTable({ columns }: NotificationDataTableProps) {
       notificationType: undefined as string | undefined,
       startDate: yesterday,
       endDate: today,
+      search: undefined as string | undefined,
     };
   });
+
+  // Separate search state for immediate UI updates and debounced API calls
+  const [searchValue, setSearchValue] = useState(filters.search || "");
+
+  // Debounce search to avoid too many API calls
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setFilters((prev: typeof filters) => ({ ...prev, search: searchValue || undefined }));
+    }, 500);
+    
+    return () => clearTimeout(timeoutId);
+  }, [searchValue]);
 
   // Save filters to localStorage whenever they change
   useEffect(() => {
@@ -62,6 +75,7 @@ export function NotificationDataTable({ columns }: NotificationDataTableProps) {
     notificationType: filters.notificationType,
     startDate: filters.startDate,
     endDate: filters.endDate,
+    search: filters.search,
   });
 
   const totalCount = notificationsData?.pagination.total || 0;
@@ -73,6 +87,11 @@ export function NotificationDataTable({ columns }: NotificationDataTableProps) {
   ) => {
     setFilters({ ...filters, [field]: value });
     setPage(1); // Reset to first page when filter changes
+    
+    // If this is a search change, also update the search value for immediate UI feedback
+    if (field === 'search') {
+      setSearchValue(value || "");
+    }
   };
 
   const handleDateRangeChange = (range: DateRange | undefined) => {
@@ -94,8 +113,10 @@ export function NotificationDataTable({ columns }: NotificationDataTableProps) {
       notificationType: undefined,
       startDate: yesterday,
       endDate: today,
+      search: undefined,
     };
     setFilters(defaultFilters);
+    setSearchValue("");
     setPage(1);
     // Clear localStorage when resetting to defaults
     if (typeof window !== 'undefined') {
@@ -128,7 +149,6 @@ export function NotificationDataTable({ columns }: NotificationDataTableProps) {
       pageSize={pageSize}
       totalItems={totalCount}
       filterComponent={filterComponent}
-      searchPlaceholder="メッセージを検索..."
     />
   );
 }

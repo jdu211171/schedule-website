@@ -11,6 +11,7 @@ interface NotificationFilters {
   notificationType?: string;
   startDate?: string;
   endDate?: string;
+  search?: string;
 }
 
 interface Notification {
@@ -61,6 +62,7 @@ export function useNotifications(filters: NotificationFilters = {}) {
       if (filters.notificationType) searchParams.set("notificationType", filters.notificationType);
       if (filters.startDate) searchParams.set("startDate", filters.startDate);
       if (filters.endDate) searchParams.set("endDate", filters.endDate);
+      if (filters.search) searchParams.set("search", filters.search);
 
       const response = await fetch(`/api/notifications?${searchParams.toString()}`, {
         headers: {

@@ -62,8 +62,11 @@ export function BulkNotificationSettings({ onBulkUpdate, isUpdating }: BulkNotif
   const handleConfirm = async () => {
     try {
       await onBulkUpdate(confirmationDialog.userType, confirmationDialog.enabled);
-    } finally {
       setConfirmationDialog(prev => ({ ...prev, open: false }));
+    } catch (error) {
+      console.error('一括通知設定の更新に失敗しました:', error);
+      // Keep dialog open to allow retry
+      // In a real implementation, you might want to show a toast notification here
     }
   };
 

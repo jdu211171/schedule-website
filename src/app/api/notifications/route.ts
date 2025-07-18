@@ -88,6 +88,7 @@ export const GET = withBranchAccess(
     const notificationType = searchParams.get("notificationType");
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
+    const search = searchParams.get("search");
 
     // Default to yesterday if no date filter provided
     const defaultStartDate = format(subDays(new Date(), 1), "yyyy-MM-dd");
@@ -126,6 +127,14 @@ export const GET = withBranchAccess(
         if (actualEndDate) {
           where.scheduledAt.lte = new Date(`${actualEndDate}T23:59:59.999Z`);
         }
+      }
+
+      // Search filter (case-insensitive search in message content)
+      if (search) {
+        where.message = {
+          contains: search,
+          mode: 'insensitive'
+        };
       }
 
       // Get total count

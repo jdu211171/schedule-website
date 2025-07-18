@@ -366,7 +366,43 @@ model Notification {
 
   @@index([branchId])
   @@index([status, scheduledAt])
+  @@index([status, createdAt])
+  @@index([branchId, status, createdAt])
+  @@index([createdAt])
   @@map("notifications")
+}
+
+/// *
+/// * Archive table for notifications that have been moved from the main notifications table
+/// * Used to preserve important notification history while keeping the main table optimized
+model NotificationArchive {
+  id                     String             @id @default(cuid()) @map("id")
+  originalNotificationId String             @map("original_notification_id")
+  recipientType          String?            @map("recipient_type") @db.VarChar(20)
+  recipientId            String?            @map("recipient_id") @db.VarChar(50)
+  notificationType       String?            @map("notification_type") @db.VarChar(50)
+  message                String?            @db.VarChar(255)
+  relatedClassId         String?            @map("related_class_id") @db.VarChar(50)
+  branchId               String?            @map("branch_id")
+  branchName             String?            @map("branch_name") @db.VarChar(100)
+  sentVia                String?            @map("sent_via") @db.VarChar(20)
+  sentAt                 DateTime?          @map("sent_at") @db.Timestamp(6)
+  readAt                 DateTime?          @map("read_at") @db.Timestamp(6)
+  status                 NotificationStatus
+  notes                  String?            @db.VarChar(255)
+  originalCreatedAt      DateTime           @map("original_created_at") @db.Timestamp(6)
+  originalUpdatedAt      DateTime           @map("original_updated_at") @db.Timestamp(6)
+  scheduledAt            DateTime           @map("scheduled_at") @db.Timestamp(6)
+  processingAttempts     Int                @default(0) @map("processing_attempts")
+  logs                   Json?
+  archivedAt             DateTime           @default(now()) @map("archived_at") @db.Timestamp(6)
+  archiveReason          String             @default("CLEANUP_ARCHIVE") @map("archive_reason") @db.VarChar(50)
+
+  @@index([status, archivedAt])
+  @@index([branchId, archivedAt])
+  @@index([originalCreatedAt])
+  @@index([archivedAt])
+  @@map("notification_archives")
 }
 
 model LineMessageTemplate {

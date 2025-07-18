@@ -101,18 +101,43 @@ export async function getChannelCredentials(branchId?: string): Promise<LineChan
 
 /**
  * Get LINE channel by destination (channel's LINE user ID from webhook)
+ * 
+ * NOTE: This function is currently a placeholder implementation.
+ * The current webhook architecture uses URL path routing (/api/line/webhook/[channelId])
+ * rather than destination-based routing from the webhook body.
+ * 
+ * To fully implement this function, you would need to:
+ * 1. Add a 'lineUserId' field to the LineChannel model in the database
+ * 2. Store the channel's LINE user ID when setting up the channel
+ * 3. Query the database to match the destination to the stored LINE user ID
+ * 
+ * @param destination - The destination field from LINE webhook body (channel's LINE user ID)
+ * @returns Channel credentials if found, null otherwise
  */
 export async function getChannelByDestination(destination: string): Promise<LineChannelCredentials | null> {
   try {
-    // Find channel by matching webhook destination
-    // Note: You might need to store the channel's LINE user ID in the database
-    // For now, we'll use the default channel or environment variables
+    // TODO: Implement proper destination-based channel lookup
+    // This would require database schema changes to store LINE user IDs
     
-    // Try to find a channel that matches this destination
-    // This would require storing the channel's LINE user ID when setting up the channel
+    // For now, validate that destination is provided
+    if (!destination) {
+      console.warn('getChannelByDestination: destination parameter is required');
+      return null;
+    }
     
-    // For now, return default channel
-    return getChannelCredentials();
+    console.log(`Looking for channel with destination: ${destination}`);
+    
+    // Current implementation: Return default channel as fallback
+    // This maintains backward compatibility while the function is being developed
+    const credentials = await getChannelCredentials();
+    
+    if (credentials) {
+      console.log('getChannelByDestination: Using default channel credentials');
+    } else {
+      console.warn('getChannelByDestination: No default channel credentials available');
+    }
+    
+    return credentials;
   } catch (error) {
     console.error('Error getting channel by destination:', error);
     return null;
