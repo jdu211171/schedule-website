@@ -586,9 +586,7 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
                   />
                 ) : (
                   <div className="border rounded-md p-2 mt-1 bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground border-input">
-                    {booths.length > 0
-                      ? (booths.find(booth => booth.boothId === lesson.boothId)?.name || `教室 ID: ${lesson.boothId}`)
-                      : `教室 ID: ${lesson.boothId}`}
+                    {lesson.boothName || "教室未設定"}
                   </div>
                 )}
               </div>

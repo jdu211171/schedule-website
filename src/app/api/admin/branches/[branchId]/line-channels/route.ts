@@ -7,16 +7,16 @@ export const GET = withRole(['ADMIN'], async (req: NextRequest) => {
   try {
     const segments = req.url.split('/');
     const branchId = segments[segments.length - 2]; // Get branchId from URL path
-    
+
     if (!branchId) {
       return NextResponse.json(
         { error: 'Branch ID not provided' },
         { status: 400 }
       );
     }
-    
+
     const branchChannels = await LineChannelService.getBranchChannels(branchId);
-    
+
     return NextResponse.json({
       data: branchChannels,
       pagination: {
