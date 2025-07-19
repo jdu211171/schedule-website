@@ -4,7 +4,7 @@ import { sendLineMulticast } from '@/lib/line-multi-channel';
 import { createNotification } from '@/lib/notification/notification-service';
 import { addDays, format } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
-import { replaceTemplateVariables } from '@/lib/line/message-templates';
+import { replaceTemplateVariables, DEFAULT_CLASS_LIST_ITEM_TEMPLATE, DEFAULT_CLASS_LIST_SUMMARY_TEMPLATE } from '@/lib/line/message-templates';
 
 const TIMEZONE = 'Asia/Tokyo';
 
@@ -37,6 +37,8 @@ export async function GET(req: NextRequest) {
         timingHour: true,
         branchId: true,
         content: true,
+        classListItemTemplate: true,
+        classListSummaryTemplate: true,
         branch: {
           select: {
             name: true
@@ -192,27 +194,79 @@ export async function GET(req: NextRequest) {
         // Send one notification per recipient with all their classes
         for (const [, recipient] of recipientSessions) {
           try {
-            // Build the daily class list
+            // Build the daily class list using templates
+            const itemTemplate = template.classListItemTemplate || DEFAULT_CLASS_LIST_ITEM_TEMPLATE;
+            const summaryTemplate = template.classListSummaryTemplate || DEFAULT_CLASS_LIST_SUMMARY_TEMPLATE;
+            
             let dailyClassList = '';
             recipient.sessions.forEach((session, index) => {
               const startTime = format(new Date(session.startTime), 'HH:mm');
               const endTime = format(new Date(session.endTime), 'HH:mm');
+              
+              // Calculate duration in minutes
+              const start = new Date(session.startTime);
+              const end = new Date(session.endTime);
+              const durationMinutes = (end.getTime() - start.getTime()) / (1000 * 60);
+              const duration = `${durationMinutes}分`;
 
-              dailyClassList += `【${index + 1}】${session.subject?.name || '授業'}\n`;
-              dailyClassList += `時間: ${startTime} - ${endTime}\n`;
-              if (session.teacher?.name) {
-                dailyClassList += `講師: ${session.teacher.name}\n`;
+              // Gather student information
+              const studentNames: string[] = [];
+              
+              // Add direct student (1-on-1 sessions)
+              if (session.student) {
+                studentNames.push(session.student.name);
               }
-              if (session.booth?.name) {
-                dailyClassList += `場所: ${session.booth.name}\n`;
+              
+              // Add enrolled students (group sessions)
+              if (session.studentClassEnrollments) {
+                session.studentClassEnrollments.forEach(enrollment => {
+                  studentNames.push(enrollment.student.name);
+                });
               }
+              
+              // Determine class type
+              const studentCount = studentNames.length;
+              const classType = studentCount <= 1 ? '1対1' : 'グループ';
+              
+              // Replace variables in the item template
+              const classItemVariables: Record<string, string> = {
+                classNumber: String(index + 1),
+                subjectName: session.subject?.name || '授業',
+                startTime,
+                endTime,
+                teacherName: session.teacher?.name || '未定',
+                boothName: session.booth?.name || '未定',
+                duration,
+                studentName: studentNames[0] || '未定',
+                studentNames: studentNames.join('、') || '未定',
+                studentCount: String(studentCount),
+                classType
+              };
+              
+              const formattedItem = replaceTemplateVariables(itemTemplate, classItemVariables);
+              dailyClassList += formattedItem;
+              
               if (index < recipient.sessions.length - 1) {
-                dailyClassList += '\n';
+                dailyClassList += '\n\n';
               }
             });
 
-            // Add summary at the end
-            dailyClassList += `\n\n計${recipient.sessions.length}件の授業があります。`;
+            // Add summary using the summary template
+            if (summaryTemplate && recipient.sessions.length > 0) {
+              // Calculate summary variables first
+              const firstSession = recipient.sessions[0];
+              const lastSession = recipient.sessions[recipient.sessions.length - 1];
+              const firstClassTime = firstSession ? format(new Date(firstSession.startTime), 'HH:mm') : '';
+              const lastClassTime = lastSession ? format(new Date(lastSession.endTime), 'HH:mm') : '';
+              
+              const summaryVariables: Record<string, string> = {
+                classCount: String(recipient.sessions.length),
+                firstClassTime,
+                lastClassTime
+              };
+              
+              dailyClassList += '\n\n' + replaceTemplateVariables(summaryTemplate, summaryVariables);
+            }
 
             // Calculate additional variables
             const firstSession = recipient.sessions[0];

@@ -14,6 +14,8 @@ const templateSchema = z.object({
   timingHour: z.number().min(0).max(23), // Required hour for notification time
   content: z.string().min(1),
   variables: z.array(z.string()),
+  classListItemTemplate: z.string().optional(), // Template for each class item
+  classListSummaryTemplate: z.string().optional(), // Template for summary line
   isActive: z.boolean(),
 });
 
@@ -51,6 +53,8 @@ export const GET = withRole(["ADMIN"], async (req: NextRequest) => {
 
 よろしくお願いいたします。`,
         variables: ['dailyClassList'],
+        classListItemTemplate: null,
+        classListSummaryTemplate: null,
         isActive: true,
       };
       
@@ -108,6 +112,8 @@ export const POST = withRole(["ADMIN"], async (req: NextRequest) => {
             ...templateData,
             branchId: branchId || null,
             variables: template.variables || [],
+            classListItemTemplate: template.classListItemTemplate || null,
+            classListSummaryTemplate: template.classListSummaryTemplate || null,
             // Ensure it's always active since it's the only one
             isActive: true
           }

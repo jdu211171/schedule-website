@@ -409,20 +409,22 @@ model NotificationArchive {
 }
 
 model LineMessageTemplate {
-  id                 String   @id @default(cuid()) @map("id")
-  name         String   @db.VarChar(100)
-  description  String?  @db.VarChar(255)
-  templateType String   @map("template_type") @db.VarChar(50)
-  timingType   String   @map("timing_type") @db.VarChar(20) @default("days")
-  timingValue  Int      @map("timing_value")
-  timingHour   Int      @default(9) @map("timing_hour") // Hour (0-23) when notification should be sent
-  content      String
-  variables    Json
-  isActive     Boolean  @default(true) @map("is_active")
-  branchId     String?  @map("branch_id")
-  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
-  branch       Branch?  @relation(fields: [branchId], references: [branchId], onDelete: Cascade)
+  id                      String   @id @default(cuid()) @map("id")
+  name                    String   @db.VarChar(100)
+  description             String?  @db.VarChar(255)
+  templateType            String   @map("template_type") @db.VarChar(50)
+  timingType              String   @map("timing_type") @db.VarChar(20) @default("days")
+  timingValue             Int      @map("timing_value")
+  timingHour              Int      @default(9) @map("timing_hour") // Hour (0-23) when notification should be sent
+  content                 String
+  variables               Json
+  classListItemTemplate   String?  @map("class_list_item_template") @db.Text // Template for each class item
+  classListSummaryTemplate String? @map("class_list_summary_template") @db.Text // Template for summary line
+  isActive                Boolean  @default(true) @map("is_active")
+  branchId                String?  @map("branch_id")
+  createdAt               DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt               DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  branch                  Branch?  @relation(fields: [branchId], references: [branchId], onDelete: Cascade)
 
   @@index([branchId])
   @@index([templateType])

@@ -24,7 +24,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { MESSAGE_VARIABLES, MessageTemplate, extractTemplateVariables, replaceTemplateVariables, TEMPLATE_EXAMPLES } from "@/lib/line/message-templates";
+import { MESSAGE_VARIABLES, MessageTemplate, extractTemplateVariables, replaceTemplateVariables, TEMPLATE_EXAMPLES, CLASS_ITEM_VARIABLES, CLASS_LIST_FORMAT_EXAMPLES, DEFAULT_CLASS_LIST_ITEM_TEMPLATE, DEFAULT_CLASS_LIST_SUMMARY_TEMPLATE } from "@/lib/line/message-templates";
 
 interface MessageTemplateEditorProps {
   templates: MessageTemplate[];
@@ -50,6 +50,8 @@ export function MessageTemplateEditor({ templates, onSave }: MessageTemplateEdit
       timingHour: 9,
       content: `明日の授業予定\n\n{{dailyClassList}}\n\nよろしくお願いいたします。`,
       variables: ['dailyClassList'],
+      classListItemTemplate: DEFAULT_CLASS_LIST_ITEM_TEMPLATE,
+      classListSummaryTemplate: DEFAULT_CLASS_LIST_SUMMARY_TEMPLATE,
       isActive: true,
     }
   );
@@ -63,16 +65,131 @@ export function MessageTemplateEditor({ templates, onSave }: MessageTemplateEdit
     }
   }, [templates]);
 
-  // Initialize preview values with examples
-  useEffect(() => {
+  // Sample class data for preview
+  const sampleClasses = [
+    {
+      classNumber: '1',
+      subjectName: '数学',
+      startTime: '10:00',
+      endTime: '11:30',
+      teacherName: '田中先生',
+      boothName: 'ブース A',
+      duration: '90分',
+      studentName: '山田太郎',
+      studentNames: '山田太郎',
+      studentCount: '1',
+      classType: '1対1'
+    },
+    {
+      classNumber: '2',
+      subjectName: '英語',
+      startTime: '13:00',
+      endTime: '14:30',
+      teacherName: '佐藤先生',
+      boothName: 'ブース B',
+      duration: '90分',
+      studentName: '鈴木花子',
+      studentNames: '鈴木花子、田中次郎、高橋美香',
+      studentCount: '3',
+      classType: 'グループ'
+    },
+    {
+      classNumber: '3',
+      subjectName: '物理',
+      startTime: '15:00',
+      endTime: '16:30',
+      teacherName: '山田先生',
+      boothName: 'ブース C',
+      duration: '90分',
+      studentName: '佐藤三郎',
+      studentNames: '佐藤三郎',
+      studentCount: '1',
+      classType: '1対1'
+    }
+  ];
+
+  // Function to generate dynamic dailyClassList preview
+  const generateDailyClassListPreview = (itemTemplate: string, summaryTemplate: string) => {
+    // Generate class list items
+    const classListItems = sampleClasses.map((classData) => {
+      let itemText = itemTemplate;
+      // Replace all variables in the item template
+      Object.entries(classData).forEach(([key, value]) => {
+        itemText = itemText.replace(new RegExp(`{{${key}}}`, 'g'), value);
+      });
+      return itemText;
+    }).join('\n\n');
+
+    // Generate summary
+    let summaryText = '';
+    if (summaryTemplate) {
+      summaryText = summaryTemplate;
+      // Replace summary variables
+      summaryText = summaryText.replace(/{{classCount}}/g, '3');
+      summaryText = summaryText.replace(/{{firstClassTime}}/g, '10:00');
+      summaryText = summaryText.replace(/{{lastClassTime}}/g, '16:30');
+    }
+
+    // Combine class list and summary
+    return summaryText ? `${classListItems}\n\n${summaryText}` : classListItems;
+  };
+
+  // Function to calculate all dynamic preview values based on sample data
+  const calculatePreviewValues = (itemTemplate: string, summaryTemplate: string) => {
     const values: Record<string, string> = {};
+    
+    // Initialize with static examples from MESSAGE_VARIABLES
     Object.entries(MESSAGE_VARIABLES).forEach(([_, variable]) => {
       const key = variable.key.replace(/[{}]/g, '');
       values[key] = variable.example;
     });
+
+    // Calculate dynamic values based on sample class data
+    values['classCount'] = String(sampleClasses.length);
+    values['firstClassTime'] = sampleClasses[0].startTime;
+    values['lastClassTime'] = sampleClasses[sampleClasses.length - 1].endTime;
     
+    // Calculate total duration
+    const totalMinutes = sampleClasses.length * 90; // Each class is 90 minutes
+    const totalHours = totalMinutes / 60;
+    values['totalDuration'] = totalHours % 1 === 0 ? `${totalHours}時間` : `${totalHours.toFixed(1)}時間`;
+    
+    // Get unique teacher names
+    const teacherSet = new Set(sampleClasses.map(c => c.teacherName));
+    values['teacherNames'] = Array.from(teacherSet).join('、');
+    
+    // Get unique subject names
+    const subjectSet = new Set(sampleClasses.map(c => c.subjectName));
+    values['subjectNames'] = Array.from(subjectSet).join('、');
+    
+    // Generate dailyClassList preview
+    values['dailyClassList'] = generateDailyClassListPreview(itemTemplate, summaryTemplate);
+    
+    // Use realistic values for other variables
+    values['recipientName'] = '山田太郎';
+    values['recipientType'] = '生徒';
+    values['classDate'] = '2025年7月20日';
+    values['currentDate'] = '2025年7月19日';
+    values['branchName'] = '東京校';
+    
+    return values;
+  };
+
+  // Initialize preview values with calculated data
+  useEffect(() => {
+    const itemTemplate = localTemplate.classListItemTemplate || DEFAULT_CLASS_LIST_ITEM_TEMPLATE;
+    const summaryTemplate = localTemplate.classListSummaryTemplate || DEFAULT_CLASS_LIST_SUMMARY_TEMPLATE;
+    const values = calculatePreviewValues(itemTemplate, summaryTemplate);
     setPreviewValues(values);
   }, []);
+
+  // Update all preview values when templates change
+  useEffect(() => {
+    const itemTemplate = localTemplate.classListItemTemplate || DEFAULT_CLASS_LIST_ITEM_TEMPLATE;
+    const summaryTemplate = localTemplate.classListSummaryTemplate || DEFAULT_CLASS_LIST_SUMMARY_TEMPLATE;
+    const values = calculatePreviewValues(itemTemplate, summaryTemplate);
+    setPreviewValues(values);
+  }, [localTemplate.classListItemTemplate, localTemplate.classListSummaryTemplate]);
 
   // Remove handleAddTemplate - we only allow one template
 
@@ -227,8 +344,9 @@ export function MessageTemplateEditor({ templates, onSave }: MessageTemplateEdit
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="preview" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="edit">編集</TabsTrigger>
+              <TabsTrigger value="format">授業リスト形式</TabsTrigger>
               <TabsTrigger value="preview">プレビュー</TabsTrigger>
             </TabsList>
             
@@ -397,6 +515,154 @@ export function MessageTemplateEditor({ templates, onSave }: MessageTemplateEdit
                 disabled={!isEditing}
                 data-template-id="single"
               />
+            </TabsContent>
+            
+            <TabsContent value="format" className="space-y-4">
+              {isEditing ? (
+                <>
+                  <Alert>
+                    <Info className="h-4 w-4" />
+                    <AlertDescription>
+                      授業リストの表示形式をカスタマイズできます。各授業の表示方法とサマリー行を個別に設定できます。
+                    </AlertDescription>
+                  </Alert>
+                  
+                  <div className="space-y-4">
+                    {/* Preset Format Selection */}
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <Label className="text-sm font-medium">プリセット形式</Label>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="sm">
+                              <FileText className="h-4 w-4 mr-2" />
+                              形式を選択
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48">
+                            {Object.entries(CLASS_LIST_FORMAT_EXAMPLES).map(([key, format]) => (
+                              <DropdownMenuItem
+                                key={key}
+                                onClick={() => handleUpdateTemplate({ 
+                                  classListItemTemplate: format.itemTemplate,
+                                  classListSummaryTemplate: format.summaryTemplate
+                                })}
+                              >
+                                {format.name}
+                              </DropdownMenuItem>
+                            ))}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </div>
+                    
+                    {/* Class Item Template */}
+                    <div>
+                      <Label className="text-sm font-medium mb-2">授業項目の形式</Label>
+                      <div className="mb-2">
+                        <Label className="text-xs text-muted-foreground">使用可能な変数:</Label>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {Object.values(CLASS_ITEM_VARIABLES).map((variable) => (
+                            <TooltipProvider key={variable.key}>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Badge
+                                    variant="outline"
+                                    className="cursor-pointer hover:bg-secondary/80 text-xs"
+                                    onClick={() => {
+                                      const textarea = document.querySelector('textarea[data-template-id="class-item"]') as HTMLTextAreaElement;
+                                      if (!textarea) return;
+                                      const start = textarea.selectionStart;
+                                      const end = textarea.selectionEnd;
+                                      const text = localTemplate.classListItemTemplate || '';
+                                      const newText = text.substring(0, start) + variable.key + text.substring(end);
+                                      handleUpdateTemplate({ classListItemTemplate: newText });
+                                      setTimeout(() => {
+                                        textarea.focus();
+                                        textarea.setSelectionRange(start + variable.key.length, start + variable.key.length);
+                                      }, 0);
+                                    }}
+                                  >
+                                    {variable.label}
+                                  </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p className="font-medium">{variable.key}</p>
+                                  <p className="text-xs">{variable.description}</p>
+                                  <p className="text-xs text-muted-foreground">例: {variable.example}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          ))}
+                        </div>
+                      </div>
+                      <Textarea
+                        value={localTemplate.classListItemTemplate || DEFAULT_CLASS_LIST_ITEM_TEMPLATE}
+                        onChange={(e) => handleUpdateTemplate({ classListItemTemplate: e.target.value })}
+                        placeholder="授業項目の表示形式..."
+                        rows={4}
+                        data-template-id="class-item"
+                      />
+                    </div>
+                    
+                    {/* Summary Template */}
+                    <div>
+                      <Label className="text-sm font-medium mb-2">サマリー行の形式</Label>
+                      <div className="mb-2">
+                        <Label className="text-xs text-muted-foreground">使用可能な変数:</Label>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {[MESSAGE_VARIABLES.CLASS_COUNT, MESSAGE_VARIABLES.FIRST_CLASS_TIME, MESSAGE_VARIABLES.LAST_CLASS_TIME].map((variable) => (
+                            <TooltipProvider key={variable.key}>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Badge
+                                    variant="outline"
+                                    className="cursor-pointer hover:bg-secondary/80 text-xs"
+                                    onClick={() => {
+                                      const textarea = document.querySelector('textarea[data-template-id="class-summary"]') as HTMLTextAreaElement;
+                                      if (!textarea) return;
+                                      const start = textarea.selectionStart;
+                                      const end = textarea.selectionEnd;
+                                      const text = localTemplate.classListSummaryTemplate || '';
+                                      const newText = text.substring(0, start) + variable.key + text.substring(end);
+                                      handleUpdateTemplate({ classListSummaryTemplate: newText });
+                                      setTimeout(() => {
+                                        textarea.focus();
+                                        textarea.setSelectionRange(start + variable.key.length, start + variable.key.length);
+                                      }, 0);
+                                    }}
+                                  >
+                                    {variable.label}
+                                  </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p className="font-medium">{variable.key}</p>
+                                  <p className="text-xs">{variable.description}</p>
+                                  <p className="text-xs text-muted-foreground">例: {variable.example}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          ))}
+                        </div>
+                      </div>
+                      <Textarea
+                        value={localTemplate.classListSummaryTemplate || DEFAULT_CLASS_LIST_SUMMARY_TEMPLATE}
+                        onChange={(e) => handleUpdateTemplate({ classListSummaryTemplate: e.target.value })}
+                        placeholder="サマリー行の表示形式..."
+                        rows={2}
+                        data-template-id="class-summary"
+                      />
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <Alert>
+                  <Info className="h-4 w-4" />
+                  <AlertDescription>
+                    編集モードに切り替えて、授業リストの形式をカスタマイズしてください。
+                  </AlertDescription>
+                </Alert>
+              )}
             </TabsContent>
             
             <TabsContent value="preview">

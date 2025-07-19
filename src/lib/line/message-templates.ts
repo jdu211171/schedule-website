@@ -92,6 +92,76 @@ export const MESSAGE_VARIABLES = {
   }
 } as const;
 
+// Class item variables for customizing the format of each class in the list
+export const CLASS_ITEM_VARIABLES = {
+  CLASS_NUMBER: {
+    key: '{{classNumber}}',
+    label: '授業番号',
+    description: 'リスト内の授業番号',
+    example: '1'
+  },
+  SUBJECT_NAME: {
+    key: '{{subjectName}}',
+    label: '科目名',
+    description: '授業の科目名',
+    example: '数学'
+  },
+  START_TIME: {
+    key: '{{startTime}}',
+    label: '開始時間',
+    description: '授業の開始時間',
+    example: '10:00'
+  },
+  END_TIME: {
+    key: '{{endTime}}',
+    label: '終了時間',
+    description: '授業の終了時間',
+    example: '11:30'
+  },
+  TEACHER_NAME: {
+    key: '{{teacherName}}',
+    label: '講師名',
+    description: '授業を担当する講師名',
+    example: '田中先生'
+  },
+  BOOTH_NAME: {
+    key: '{{boothName}}',
+    label: 'ブース名',
+    description: '授業が行われる場所',
+    example: 'ブース A'
+  },
+  DURATION: {
+    key: '{{duration}}',
+    label: '授業時間',
+    description: '授業の長さ（分）',
+    example: '90分'
+  },
+  STUDENT_NAME: {
+    key: '{{studentName}}',
+    label: '生徒名',
+    description: '1対1授業の生徒名',
+    example: '山田太郎'
+  },
+  STUDENT_NAMES: {
+    key: '{{studentNames}}',
+    label: '生徒名一覧',
+    description: '全生徒の名前（カンマ区切り）',
+    example: '山田太郎、田中花子、佐藤次郎'
+  },
+  STUDENT_COUNT: {
+    key: '{{studentCount}}',
+    label: '生徒数',
+    description: '授業に参加する生徒の人数',
+    example: '3'
+  },
+  CLASS_TYPE: {
+    key: '{{classType}}',
+    label: '授業タイプ',
+    description: '授業の形式（1対1またはグループ）',
+    example: '1対1'
+  }
+} as const;
+
 export type MessageVariable = keyof typeof MESSAGE_VARIABLES;
 
 export interface MessageTemplate {
@@ -104,9 +174,46 @@ export interface MessageTemplate {
   timingHour: number; // Hour (0-23) when notification should be sent (now required)
   content: string;
   variables: string[];
+  classListItemTemplate?: string; // Template for each class item in the list
+  classListSummaryTemplate?: string; // Template for the summary line
   isActive: boolean;
   branchId?: string;
 }
+
+// Default templates for class list formatting
+export const DEFAULT_CLASS_LIST_ITEM_TEMPLATE = `【{{classNumber}}】{{subjectName}}
+時間: {{startTime}} - {{endTime}}
+講師: {{teacherName}}
+場所: {{boothName}}`;
+
+export const DEFAULT_CLASS_LIST_SUMMARY_TEMPLATE = `計{{classCount}}件の授業があります。`;
+
+// Class list format examples
+export const CLASS_LIST_FORMAT_EXAMPLES = {
+  DETAILED: {
+    name: '詳細形式',
+    itemTemplate: `【{{classNumber}}】{{subjectName}}
+時間: {{startTime}} - {{endTime}}
+講師: {{teacherName}}
+場所: {{boothName}}`,
+    summaryTemplate: `計{{classCount}}件の授業があります。`
+  },
+  COMPACT: {
+    name: 'コンパクト形式',
+    itemTemplate: `{{classNumber}}. {{startTime}}-{{endTime}} {{subjectName}} ({{teacherName}})`,
+    summaryTemplate: `全{{classCount}}件`
+  },
+  SIMPLE: {
+    name: 'シンプル形式',
+    itemTemplate: `{{classNumber}}. {{subjectName}} {{startTime}}-{{endTime}}`,
+    summaryTemplate: `{{classCount}}件の授業`
+  },
+  TIME_FOCUSED: {
+    name: '時間重視形式',
+    itemTemplate: `{{startTime}} {{subjectName}} ({{duration}})`,
+    summaryTemplate: `{{classCount}}件 ({{firstClassTime}}〜{{lastClassTime}})`
+  }
+};
 
 // Template examples for users to choose from
 export const TEMPLATE_EXAMPLES = {
@@ -170,6 +277,8 @@ export const getDefaultTemplates = (): MessageTemplate[] => [
     timingHour: 9,
     content: TEMPLATE_EXAMPLES.DETAILED.content,
     variables: extractTemplateVariables(TEMPLATE_EXAMPLES.DETAILED.content),
+    classListItemTemplate: DEFAULT_CLASS_LIST_ITEM_TEMPLATE,
+    classListSummaryTemplate: DEFAULT_CLASS_LIST_SUMMARY_TEMPLATE,
     isActive: true
   }
 ];
