@@ -8,7 +8,7 @@ export const POST = withRole(
   async (request: NextRequest) => {
     try {
       const body = await request.json();
-      const { lineIds, message } = body;
+      const { lineIds, message, branchId } = body;
 
       // Validate input
       if (!lineIds || !Array.isArray(lineIds) || lineIds.length === 0) {
@@ -38,17 +38,29 @@ export const POST = withRole(
 
       for (const lineId of lineIds) {
         try {
-          await createNotification({
+          const notification = await createNotification({
             recipientId: lineId,
             recipientType: 'TEACHER', // Assuming TEACHER for testing
             notificationType: 'TEST',
             message,
+            branchId,
             sentVia: 'LINE',
           });
-          results.push({
-            lineId,
-            status: 'success'
-          });
+          
+          if (notification) {
+            results.push({
+              lineId,
+              status: 'success',
+              notificationId: notification.notificationId
+            });
+          } else {
+            // Notification was a duplicate (already exists)
+            results.push({
+              lineId,
+              status: 'skipped',
+              reason: 'Duplicate notification already exists'
+            });
+          }
         } catch (error: any) {
           errors.push({
             lineId,

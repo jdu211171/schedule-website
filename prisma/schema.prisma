@@ -362,13 +362,16 @@ model Notification {
   scheduledAt        DateTime           @default(now()) @map("scheduled_at")
   processingAttempts Int                @default(0) @map("processing_attempts")
   logs               Json?
+  targetDate         DateTime?          @map("target_date") @db.Date
   branch             Branch?            @relation(fields: [branchId], references: [branchId])
 
+  @@unique([recipientId, recipientType, notificationType, targetDate], name: "notifications_unique_daily_20250719")
   @@index([branchId])
   @@index([status, scheduledAt])
   @@index([status, createdAt])
   @@index([branchId, status, createdAt])
   @@index([createdAt])
+  @@index([targetDate])
   @@map("notifications")
 }
 

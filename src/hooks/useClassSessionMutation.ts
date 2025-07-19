@@ -576,7 +576,7 @@ export function useClassSessionDelete() {
       // Invalidate queries in the background to ensure eventual consistency
       queryClient.invalidateQueries({
         queryKey: ["classSessions"],
-        refetchType: "none",
+        refetchType: "all",
       });
 
       queryClient.invalidateQueries({
@@ -773,7 +773,7 @@ export function useClassSessionBulkDelete() {
       // Invalidate queries in the background to ensure eventual consistency
       queryClient.invalidateQueries({
         queryKey: ["classSessions"],
-        refetchType: "none",
+        refetchType: "all",
       });
 
       resolvedIds.forEach((id) => {

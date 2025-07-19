@@ -49,7 +49,6 @@ export async function GET(req: NextRequest) {
 
     let totalNotificationsSent = 0;
     const errors: string[] = [];
-    const processedRecipients = new Set<string>(); // Prevent duplicate notifications
 
     // Process each template
     for (const template of activeTemplates) {
@@ -192,14 +191,6 @@ export async function GET(req: NextRequest) {
 
         // Send one notification per recipient with all their classes
         for (const [, recipient] of recipientSessions) {
-          // Check if we've already sent a notification to this recipient today
-          const recipientKey = `${recipient.recipientType}-${recipient.recipientId}-${targetDate}`;
-          if (processedRecipients.has(recipientKey)) {
-            console.log(`Skipping duplicate notification for ${recipient.name}`);
-            continue;
-          }
-          processedRecipients.add(recipientKey);
-
           try {
             // Build the daily class list
             let dailyClassList = '';
@@ -270,37 +261,57 @@ export async function GET(req: NextRequest) {
             // Replace variables in template content
             const message = replaceTemplateVariables(template.content, templateVariables);
 
-            // Get channel credentials for this branch
-            const credentials = await import('@/lib/line-multi-channel').then(m => m.getChannelCredentials(template.branchId || undefined));
-            if (credentials) {
-              await sendLineMulticast([recipient.lineId], message, credentials);
-            } else {
-              // Fallback to basic LINE function if no credentials found
-              const { sendLineMulticast: fallbackMulticast } = await import('@/lib/line');
-              await fallbackMulticast([recipient.lineId], message, template.branchId || undefined);
-            }
-            totalNotificationsSent++;
-
-            // Log notification in database
-            await prisma.notification.create({
-              data: {
-                recipientType: recipient.recipientType,
-                recipientId: recipient.recipientId,
-                notificationType: template.timingValue === 0 ? 'DAILY_SUMMARY_SAMEDAY' :
-                                 template.timingValue === 1 ? 'DAILY_SUMMARY_24H' :
-                                 `DAILY_SUMMARY_${template.timingValue}D`,
-                message,
-                relatedClassId: recipient.sessions.map(s => s.classId).join(','), // Store all class IDs
-                branchId: template.branchId,
-                sentVia: 'LINE',
-                sentAt: now,
-                status: 'SENT'
-              }
+            // Check for duplicate notification before sending LINE message
+            const notification = await createNotification({
+              recipientType: recipient.recipientType,
+              recipientId: recipient.recipientId,
+              notificationType: template.timingValue === 0 ? 'DAILY_SUMMARY_SAMEDAY' :
+                               template.timingValue === 1 ? 'DAILY_SUMMARY_24H' :
+                               `DAILY_SUMMARY_${template.timingValue}D`,
+              message,
+              relatedClassId: recipient.sessions.length > 0 ? recipient.sessions.map(s => s.classId).join(',') : undefined, // Store all class IDs
+              branchId: template.branchId || undefined,
+              sentVia: 'LINE',
+              targetDate: new Date(targetDate + 'T00:00:00.000Z'), // The date of the classes being notified about
             });
 
-            totalNotificationsSent++;
-
-            console.log(`✓ Queued daily summary for ${recipient.name} (${recipient.recipientType}) with ${recipient.sessions.length} classes`);
+            if (notification) {
+              // Only send LINE message if notification was created (not a duplicate)
+              try {
+                // Get channel credentials for this branch
+                const credentials = await import('@/lib/line-multi-channel').then(m => m.getChannelCredentials(template.branchId || undefined));
+                if (credentials) {
+                  await sendLineMulticast([recipient.lineId], message, credentials);
+                } else {
+                  // Fallback to basic LINE function if no credentials found
+                  const { sendLineMulticast: fallbackMulticast } = await import('@/lib/line');
+                  await fallbackMulticast([recipient.lineId], message, template.branchId || undefined);
+                }
+                
+                // Update the notification status to SENT after successful LINE message
+                await prisma.notification.update({
+                  where: { notificationId: notification.notificationId },
+                  data: { 
+                    status: 'SENT',
+                    sentAt: now
+                  }
+                });
+                totalNotificationsSent++;
+                console.log(`✓ Sent daily summary for ${recipient.name} (${recipient.recipientType}) with ${recipient.sessions.length} classes`);
+              } catch (lineError) {
+                // If LINE message fails, update notification status to FAILED
+                await prisma.notification.update({
+                  where: { notificationId: notification.notificationId },
+                  data: { 
+                    status: 'FAILED',
+                    logs: [{ error: String(lineError), timestamp: now.toISOString() }]
+                  }
+                });
+                throw lineError;
+              }
+            } else {
+              console.log(`⚠️ Duplicate notification skipped for ${recipient.name} (${recipient.recipientType}) - already sent for ${targetDate}`);
+            }
           } catch (error) {
             const errorMsg = `Error queuing daily summary for ${recipient.name}: ${error}`;
             console.error(errorMsg);
