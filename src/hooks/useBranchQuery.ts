@@ -11,6 +11,14 @@ export type Branch = {
   name: string;
   notes: string | null;
   order: number | null;
+  lineChannels?: {
+    channelId: string;
+    name: string;
+    description: string | null;
+    isActive: boolean;
+    isDefault: boolean;
+    isPrimary: boolean;
+  }[];
   createdAt: Date;
   updatedAt: Date;
 };

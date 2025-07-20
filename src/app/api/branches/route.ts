@@ -10,7 +10,7 @@ import {
 import { Branch, UserBranch, Prisma } from "@prisma/client";
 import { z } from "zod";
 
-type BranchWithUsers = Branch & {
+type BranchWithUsersAndChannels = Branch & {
   userBranches: (UserBranch & {
     user: {
       id: string;
@@ -20,6 +20,16 @@ type BranchWithUsers = Branch & {
       role: string;
     };
   })[];
+  branchLineChannels: {
+    isPrimary: boolean;
+    lineChannel: {
+      channelId: string;
+      name: string;
+      description: string | null;
+      isActive: boolean;
+      isDefault: boolean;
+    };
+  }[];
 };
 
 type FormattedBranch = {
@@ -34,17 +44,29 @@ type FormattedBranch = {
     email: string | null;
     role: string;
   }[];
+  lineChannels: {
+    channelId: string;
+    name: string;
+    description: string | null;
+    isActive: boolean;
+    isDefault: boolean;
+    isPrimary: boolean;
+  }[];
   createdAt: Date;
   updatedAt: Date;
 };
 
 // Helper function to format branch response
-const formatBranch = (branch: BranchWithUsers): FormattedBranch => ({
+const formatBranch = (branch: BranchWithUsersAndChannels): FormattedBranch => ({
   branchId: branch.branchId,
   name: branch.name,
   notes: branch.notes,
   order: branch.order,
   users: branch.userBranches.map((ub) => ub.user),
+  lineChannels: branch.branchLineChannels.map((blc) => ({
+    ...blc.lineChannel,
+    isPrimary: blc.isPrimary,
+  })),
   createdAt: branch.createdAt,
   updatedAt: branch.updatedAt,
 });
@@ -88,7 +110,7 @@ export const GET = withBranchAccess(["ADMIN", "STAFF"], async (request: NextRequ
   // Fetch total count
   const total = await prisma.branch.count({ where });
 
-  // Fetch branches with users
+  // Fetch branches with users and LINE channels
   const branches = await prisma.branch.findMany({
     where,
     include: {
@@ -101,6 +123,19 @@ export const GET = withBranchAccess(["ADMIN", "STAFF"], async (request: NextRequ
               username: true,
               email: true,
               role: true,
+            },
+          },
+        },
+      },
+      branchLineChannels: {
+        include: {
+          lineChannel: {
+            select: {
+              channelId: true,
+              name: true,
+              description: true,
+              isActive: true,
+              isDefault: true,
             },
           },
         },
@@ -216,7 +251,7 @@ export const POST = withBranchAccess(
           });
         }
 
-        // Return branch with user associations
+        // Return branch with user associations and LINE channels
         return tx.branch.findUnique({
           where: { branchId: branch.branchId },
           include: {
@@ -229,6 +264,19 @@ export const POST = withBranchAccess(
                     username: true,
                     email: true,
                     role: true,
+                  },
+                },
+              },
+            },
+            branchLineChannels: {
+              include: {
+                lineChannel: {
+                  select: {
+                    channelId: true,
+                    name: true,
+                    description: true,
+                    isActive: true,
+                    isDefault: true,
                   },
                 },
               },
