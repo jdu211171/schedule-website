@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createNotification } from '@/lib/notification/notification-service';
 import { withRole } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
+import { sendLineMulticast } from '@/lib/line-multi-channel';
 
 // POST endpoint to test LINE message sending - restricted to ADMIN only
 export const POST = withRole(
@@ -45,14 +47,52 @@ export const POST = withRole(
             message,
             branchId,
             sentVia: 'LINE',
+            targetDate: new Date(new Date().toISOString().split('T')[0] + 'T00:00:00.000Z'), // Today's date at midnight UTC
           });
           
           if (notification) {
-            results.push({
-              lineId,
-              status: 'success',
-              notificationId: notification.notificationId
-            });
+            try {
+              // Send the LINE message
+              const credentials = await import('@/lib/line-multi-channel').then(m => m.getChannelCredentials(branchId || undefined));
+              if (credentials) {
+                await sendLineMulticast([lineId], message, credentials);
+              } else {
+                // Fallback to basic LINE function if no credentials found
+                const { sendLineMulticast: fallbackMulticast } = await import('@/lib/line');
+                await fallbackMulticast([lineId], message, branchId || undefined);
+              }
+              
+              // Update the notification status to SENT after successful LINE message
+              await prisma.notification.update({
+                where: { notificationId: notification.notificationId },
+                data: { 
+                  status: 'SENT',
+                  sentAt: new Date()
+                }
+              });
+              
+              results.push({
+                lineId,
+                status: 'success',
+                notificationId: notification.notificationId,
+                messageSent: true
+              });
+            } catch (lineError: any) {
+              // If LINE message fails, update notification status to FAILED
+              await prisma.notification.update({
+                where: { notificationId: notification.notificationId },
+                data: { 
+                  status: 'FAILED',
+                  logs: { error: lineError.message || 'Failed to send LINE message', timestamp: new Date().toISOString() }
+                }
+              });
+              
+              errors.push({
+                lineId,
+                error: lineError.message || 'Failed to send LINE message',
+                notificationId: notification.notificationId
+              });
+            }
           } else {
             // Notification was a duplicate (already exists)
             results.push({

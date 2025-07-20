@@ -606,13 +606,60 @@ export class LineChannelService {
     let messageResult = null;
     if (testUserId) {
       try {
-        const { sendLinePush } = await import('@/lib/line-multi-channel');
-        await sendLinePush(
-          testUserId,
-          `🔔 テストメッセージ\n\nこれは「${channel.name}」チャンネルからのテストメッセージです。\n\n正常に受信できていれば、このチャンネルは正しく設定されています。`,
-          credentials
-        );
-        messageResult = { success: true };
+        // Create a notification record
+        const { createNotification } = await import('@/lib/notification/notification-service');
+        const testMessage = `🔔 テストメッセージ\n\nこれは「${channel.name}」チャンネルからのテストメッセージです。\n\n正常に受信できていれば、このチャンネルは正しく設定されています。`;
+        
+        const notification = await createNotification({
+          recipientId: testUserId,
+          recipientType: 'TEACHER', // Assuming TEACHER for channel testing
+          notificationType: 'CHANNEL_TEST',
+          message: testMessage,
+          branchId: undefined, // Channel test is not branch-specific
+          sentVia: 'LINE',
+          targetDate: new Date(new Date().toISOString().split('T')[0] + 'T00:00:00.000Z'), // Today's date at midnight UTC
+        });
+        
+        if (notification) {
+          try {
+            // Send the LINE message
+            const { sendLinePush } = await import('@/lib/line-multi-channel');
+            await sendLinePush(
+              testUserId,
+              testMessage,
+              credentials
+            );
+            
+            // Update notification status to SENT
+            await prisma.notification.update({
+              where: { notificationId: notification.notificationId },
+              data: { 
+                status: 'SENT',
+                sentAt: new Date()
+              }
+            });
+            
+            messageResult = { 
+              success: true,
+              notificationId: notification.notificationId
+            };
+          } catch (lineError) {
+            // If LINE message fails, update notification status to FAILED
+            await prisma.notification.update({
+              where: { notificationId: notification.notificationId },
+              data: { 
+                status: 'FAILED',
+                logs: { error: (lineError as Error).message || 'Failed to send test message', timestamp: new Date().toISOString() }
+              }
+            });
+            throw lineError;
+          }
+        } else {
+          messageResult = { 
+            success: true,
+            message: 'Test message already sent (duplicate notification)'
+          };
+        }
       } catch (error) {
         console.error('Error sending test message:', error);
         messageResult = { 

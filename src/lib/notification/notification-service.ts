@@ -65,6 +65,23 @@ export const createNotification = async (
         );
         return null;
       }
+    } else {
+      // Check for duplicates without targetDate
+      const existing = await prisma.notification.findFirst({
+        where: {
+          recipientId: params.recipientId,
+          recipientType: params.recipientType,
+          notificationType: params.notificationType,
+          targetDate: null,
+        },
+      });
+      
+      if (existing) {
+        console.log(
+          `Duplicate notification prevented for ${params.recipientType} ${params.recipientId} (no targetDate)`
+        );
+        return null;
+      }
     }
 
     const notification = await prisma.notification.create({
