@@ -83,27 +83,64 @@ export class LineChannelService {
     const encryptedToken = encrypt(data.channelAccessToken);
     const encryptedSecret = encrypt(data.channelSecret);
 
-    // Create channel with branch associations
-    const channel = await prisma.lineChannel.create({
-      data: {
-        ...channelData,
-        channelAccessToken: encryptedToken,
-        channelSecret: encryptedSecret,
-        branchLineChannels: branchIds ? {
-          create: branchIds.map(branchId => ({
-            branchId,
-            isPrimary: true
-          }))
-        } : undefined
-      },
-      include: {
-        branchLineChannels: {
-          include: {
-            branch: true
+    // Create channel with branch associations in a transaction
+    const channel = await prisma.$transaction(async (tx) => {
+      // Create the channel first
+      const newChannel = await tx.lineChannel.create({
+        data: {
+          ...channelData,
+          channelAccessToken: encryptedToken,
+          channelSecret: encryptedSecret,
+        }
+      });
+
+      // Handle branch assignments if provided
+      if (branchIds && branchIds.length > 0) {
+        // For each branch, ensure only one primary channel
+        for (let i = 0; i < branchIds.length; i++) {
+          const branchId = branchIds[i];
+          const isPrimary = i === 0; // First branch gets primary status
+
+          // If this will be primary, unset any existing primary channels for this branch
+          if (isPrimary) {
+            await tx.branchLineChannel.updateMany({
+              where: {
+                branchId,
+                isPrimary: true
+              },
+              data: {
+                isPrimary: false
+              }
+            });
           }
+
+          // Create the association
+          await tx.branchLineChannel.create({
+            data: {
+              branchId,
+              channelId: newChannel.channelId,
+              isPrimary
+            }
+          });
         }
       }
+
+      // Return the channel with associations
+      return tx.lineChannel.findUnique({
+        where: { channelId: newChannel.channelId },
+        include: {
+          branchLineChannels: {
+            include: {
+              branch: true
+            }
+          }
+        }
+      });
     });
+
+    if (!channel) {
+      throw new Error('Failed to create channel');
+    }
 
     // Get base URL for webhook endpoints
     const baseUrl = this.getBaseUrl();
@@ -203,15 +240,34 @@ export class LineChannelService {
           where: { channelId }
         });
 
-        // Create new assignments
+        // Create new assignments with proper primary handling
         if (branchIds.length > 0) {
-          await tx.branchLineChannel.createMany({
-            data: branchIds.map(branchId => ({
-              branchId,
-              channelId,
-              isPrimary: true
-            }))
-          });
+          for (let i = 0; i < branchIds.length; i++) {
+            const branchId = branchIds[i];
+            const isPrimary = i === 0; // First branch gets primary status
+
+            // If this will be primary, unset any existing primary channels for this branch
+            if (isPrimary) {
+              await tx.branchLineChannel.updateMany({
+                where: {
+                  branchId,
+                  isPrimary: true
+                },
+                data: {
+                  isPrimary: false
+                }
+              });
+            }
+
+            // Create the association
+            await tx.branchLineChannel.create({
+              data: {
+                branchId,
+                channelId,
+                isPrimary
+              }
+            });
+          }
         }
 
         // Return channel with updated branch assignments
@@ -348,23 +404,151 @@ export class LineChannelService {
    * Assign branches to a channel
    */
   static async assignBranches(channelId: string, branchIds: string[]) {
-    // Remove existing assignments
-    await prisma.branchLineChannel.deleteMany({
-      where: { channelId }
+    // Use transaction to ensure atomicity
+    await prisma.$transaction(async (tx) => {
+      // Remove existing assignments
+      await tx.branchLineChannel.deleteMany({
+        where: { channelId }
+      });
+
+      // Create new assignments with proper primary handling
+      if (branchIds.length > 0) {
+        for (let i = 0; i < branchIds.length; i++) {
+          const branchId = branchIds[i];
+          const isPrimary = i === 0; // First branch gets primary status
+
+          // If this will be primary, unset any existing primary channels for this branch
+          if (isPrimary) {
+            await tx.branchLineChannel.updateMany({
+              where: {
+                branchId,
+                isPrimary: true
+              },
+              data: {
+                isPrimary: false
+              }
+            });
+          }
+
+          // Create the association
+          await tx.branchLineChannel.create({
+            data: {
+              branchId,
+              channelId,
+              isPrimary
+            }
+          });
+        }
+      }
     });
 
-    // Create new assignments
-    if (branchIds.length > 0) {
-      await prisma.branchLineChannel.createMany({
-        data: branchIds.map(branchId => ({
-          branchId,
-          channelId,
-          isPrimary: true
-        }))
-      });
+    return await this.getChannel(channelId);
+  }
+
+  /**
+   * Set a specific channel as primary for a branch
+   */
+  static async setPrimaryChannel(branchId: string, channelId: string) {
+    // Verify the channel is assigned to the branch
+    const assignment = await prisma.branchLineChannel.findFirst({
+      where: {
+        branchId,
+        channelId
+      }
+    });
+
+    if (!assignment) {
+      throw new Error('Channel is not assigned to this branch');
     }
 
-    return await this.getChannel(channelId);
+    // Use transaction to ensure atomicity
+    await prisma.$transaction(async (tx) => {
+      // Unset all primary channels for this branch
+      await tx.branchLineChannel.updateMany({
+        where: {
+          branchId,
+          isPrimary: true
+        },
+        data: {
+          isPrimary: false
+        }
+      });
+
+      // Set the specified channel as primary
+      await tx.branchLineChannel.update({
+        where: {
+          id: assignment.id
+        },
+        data: {
+          isPrimary: true
+        }
+      });
+    });
+
+    return true;
+  }
+
+  /**
+   * Validate that each branch has at most one primary channel
+   * Returns branches with multiple primary channels
+   */
+  static async validatePrimaryChannels() {
+    const result = await prisma.branchLineChannel.groupBy({
+      by: ['branchId'],
+      where: {
+        isPrimary: true
+      },
+      _count: {
+        channelId: true
+      },
+      having: {
+        channelId: {
+          _count: {
+            gt: 1
+          }
+        }
+      }
+    });
+
+    if (result.length > 0) {
+      // Get branch details for the problematic branches
+      const branchIds = result.map(r => r.branchId);
+      const branches = await prisma.branch.findMany({
+        where: {
+          branchId: { in: branchIds }
+        },
+        include: {
+          branchLineChannels: {
+            where: { isPrimary: true },
+            include: {
+              lineChannel: {
+                select: {
+                  channelId: true,
+                  name: true
+                }
+              }
+            }
+          }
+        }
+      });
+
+      return {
+        isValid: false,
+        invalidBranches: branches.map(branch => ({
+          branchId: branch.branchId,
+          branchName: branch.name,
+          primaryChannels: branch.branchLineChannels.map(blc => ({
+            channelId: blc.lineChannel.channelId,
+            channelName: blc.lineChannel.name
+          }))
+        }))
+      };
+    }
+
+    return {
+      isValid: true,
+      invalidBranches: []
+    };
   }
 
   /**
@@ -393,27 +577,6 @@ export class LineChannelService {
     }));
   }
 
-  /**
-   * Set primary channel for a branch
-   */
-  static async setPrimaryChannel(branchId: string, channelId: string) {
-    // First, unset all primary flags for this branch
-    await prisma.branchLineChannel.updateMany({
-      where: { branchId },
-      data: { isPrimary: false }
-    });
-
-    // Set the new primary channel
-    await prisma.branchLineChannel.update({
-      where: {
-        branchId_channelId: {
-          branchId,
-          channelId
-        }
-      },
-      data: { isPrimary: true }
-    });
-  }
 
   /**
    * Test LINE channel credentials and optionally send a test message

@@ -108,7 +108,7 @@ export function MultiSelect({
       </PopoverTrigger>
       <PopoverContent className="w-full p-0">
         <Command className="w-full">
-          <CommandInput placeholder="Search..." className="h-9" />
+          <CommandInput placeholder="検索..." className="h-9" />
           <CommandList>
             <CommandEmpty>{emptyMessage}</CommandEmpty>
             <CommandGroup className="max-h-64 overflow-auto">

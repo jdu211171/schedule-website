@@ -11,7 +11,8 @@ import {
   XCircle,
   Star,
   Building2,
-  TestTube
+  TestTube,
+  Copy
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -40,6 +41,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useToast } from "@/hooks/use-toast";
 
 // Import types to ensure proper column meta support
 import "@/components/data-table/types";
@@ -47,7 +49,9 @@ import "@/components/data-table/types";
 export function LineChannelTable() {
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const pageSize = 10;
+  const { toast } = useToast();
 
   const { data: channels, isLoading } = useLineChannels({
     page,
@@ -64,25 +68,25 @@ export function LineChannelTable() {
   const [channelToTest, setChannelToTest] = useState<LineChannelResponse | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
+  const copyToClipboard = async (channelId: string, webhookUrl: string) => {
+    try {
+      await navigator.clipboard.writeText(webhookUrl);
+      setCopiedId(channelId);
+      toast({
+        title: "コピーしました",
+        description: "Webhook URLをクリップボードにコピーしました。",
+      });
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch {
+      toast({
+        title: "コピーに失敗しました",
+        description: "クリップボードへのアクセスが拒否されました。",
+        variant: "destructive",
+      });
+    }
+  };
+
   const columns: ColumnDef<LineChannelResponse>[] = [
-    {
-      accessorKey: "id",
-      header: "チャンネルID",
-      cell: ({ row }) => (
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger>
-              <code className="text-xs bg-muted px-2 py-1 rounded cursor-pointer truncate max-w-[150px] block">
-                {row.original.id}
-              </code>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p className="font-mono text-xs">{row.original.id}</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      ),
-    },
     {
       accessorKey: "name",
       header: "チャンネル名",
@@ -162,20 +166,33 @@ export function LineChannelTable() {
           ? window.location.origin 
           : process.env.NEXTAUTH_URL || 'https://your-domain.com';
         const webhookUrl = `${baseUrl}/api/line/webhook/${row.original.id}`;
+        const isCopied = copiedId === row.original.id;
         
         return (
           <TooltipProvider>
             <Tooltip>
-              <TooltipTrigger>
-                <code className="text-xs bg-muted px-1 py-0.5 rounded truncate max-w-[250px] block cursor-pointer">
-                  {webhookUrl}
-                </code>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => copyToClipboard(row.original.id, webhookUrl)}
+                  className="relative group flex items-center gap-1 text-left"
+                >
+                  <code className="text-xs bg-muted px-2 py-1 rounded truncate max-w-[250px] block cursor-pointer transition-colors group-hover:bg-muted/80">
+                    {webhookUrl}
+                  </code>
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                    {isCopied ? (
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                    ) : (
+                      <Copy className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </div>
+                </button>
               </TooltipTrigger>
               <TooltipContent className="max-w-none">
                 <div className="space-y-2">
                   <p className="font-mono text-xs">{webhookUrl}</p>
                   <p className="text-xs text-muted-foreground">
-                    LINE Developer ConsoleでこのURLを設定してください
+                    クリックしてコピー • LINE Developer ConsoleでこのURLを設定してください
                   </p>
                 </div>
               </TooltipContent>

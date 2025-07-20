@@ -649,5 +649,6 @@ model BranchLineChannel {
   @@unique([branchId, channelId])
   @@index([branchId])
   @@index([channelId])
+  @@index([branchId, isPrimary], name: "branch_line_channels_branch_id_primary_unique", type: BTree)
   @@map("branch_line_channels")
 }
