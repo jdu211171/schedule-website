@@ -20,14 +20,15 @@ const templateSchema = z.object({
 });
 
 // GET /api/settings/line/templates
-export const GET = withRole(["ADMIN"], async (req: NextRequest) => {
+export const GET = withRole(["ADMIN"], async () => {
   try {
-    const branchId = req.headers.get("X-Selected-Branch");
-    
-    // Get the SINGLE active template for the branch
+    // Always use global templates (branchId: null)
+    // Ignoring X-Selected-Branch header for now
+
+    // Get the SINGLE active global template
     const template = await prisma.lineMessageTemplate.findFirst({
       where: {
-        branchId: branchId || null,
+        branchId: null,
         isActive: true
       },
       orderBy: {
@@ -57,7 +58,7 @@ export const GET = withRole(["ADMIN"], async (req: NextRequest) => {
         classListSummaryTemplate: null,
         isActive: true,
       };
-      
+
       return NextResponse.json({
         data: [{
           ...singleDefault,
@@ -83,34 +84,36 @@ export const POST = withRole(["ADMIN"], async (req: NextRequest) => {
   try {
     const body = await req.json();
     const templates = z.array(templateSchema).parse(body.templates);
-    const branchId = req.headers.get("X-Selected-Branch");
-    
-    // SINGLE NOTIFICATION ENFORCEMENT: Only allow one active template
+    // Always use global templates (branchId: null)
+    // Ignoring X-Selected-Branch header for now
+
+    // SINGLE NOTIFICATION ENFORCEMENT: Only allow one active template globally
     if (templates.length > 1) {
       return NextResponse.json(
-        { error: "Only one notification template is allowed per branch" },
+        { error: "Only one notification template is allowed" },
         { status: 400 }
       );
     }
-    
+
     // Use a transaction to ensure data consistency
     const result = await prisma.$transaction(async (tx) => {
-      // Delete ALL existing templates for this branch (enforcing single template)
+      // Delete ALL existing global templates (enforcing single template)
       await tx.lineMessageTemplate.deleteMany({
         where: {
-          branchId: branchId || null
+          branchId: null
         }
       });
-      
+
       // Create the single template
       if (templates.length === 1) {
         const template = templates[0];
-        const { id, ...templateData } = template;
-        
+        // Remove id if present (it's only for frontend tracking)
+        const { id: _id, ...templateData } = template;
+
         const createdTemplate = await tx.lineMessageTemplate.create({
           data: {
             ...templateData,
-            branchId: branchId || null,
+            branchId: null, // Always global
             variables: template.variables || [],
             classListItemTemplate: template.classListItemTemplate || null,
             classListSummaryTemplate: template.classListSummaryTemplate || null,
@@ -118,16 +121,16 @@ export const POST = withRole(["ADMIN"], async (req: NextRequest) => {
             isActive: true
           }
         });
-        
+
         return { newTemplates: [createdTemplate], createdCount: 1 };
       }
-      
+
       return { newTemplates: [], createdCount: 0 };
     });
-    
-    return NextResponse.json({ 
+
+    return NextResponse.json({
       data: result.newTemplates,
-      created: result.createdCount 
+      created: result.createdCount
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -136,10 +139,10 @@ export const POST = withRole(["ADMIN"], async (req: NextRequest) => {
         { status: 400 }
       );
     }
-    
+
     console.error("Error creating LINE templates:", error);
     return NextResponse.json(
-      { 
+      {
         error: "Failed to create LINE templates",
         details: error instanceof Error ? error.message : String(error)
       },
