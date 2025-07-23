@@ -1,6 +1,6 @@
 STRICT COMMIT MESSAGE FORMAT - Follow this format EXACTLY:
 
-Line 1: main: [summary of changes in one line]
+Line 1: [current-branch-name]: [summary of changes in one line]
 Line 2: [empty line]
 Line 3+: Bullet points starting with "- " for detailed changes
 
