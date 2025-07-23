@@ -1,14 +1,7 @@
 // src/lib/fetcher.ts
-export class CustomError extends Error {
-  info: Record<string, unknown>;
-  status: number;
+import { CustomError } from './custom-error';
 
-  constructor(message: string, info: Record<string, unknown>, status: number) {
-    super(message);
-    this.info = info;
-    this.status = status;
-  }
-}
+export { CustomError };
 
 export async function fetcher<T>(
   url: string,
@@ -32,7 +25,7 @@ export async function fetcher<T>(
   if (!res.ok) {
     const info = await res.json();
     const status = res.status;
-    const error = new CustomError("An error occurred while fetching the data.", info, status);
+    const error = new CustomError("An error occurred while fetching the data.", status, info);
     throw error;
   }
 
