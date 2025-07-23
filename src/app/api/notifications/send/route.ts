@@ -511,14 +511,22 @@ async function processNotifications(skipTimeCheck: boolean = false) {
           // For "X days before at Y hour" template:
           // - Target date: classes happening in X days from now
           // - Scheduled send time: today at Y hour (since we're X days before target)
+          // BUT: If skipTimeCheck is true (manual trigger), send immediately
           const scheduledSendTime = new Date(nowJST);
-          scheduledSendTime.setHours(template.timingHour ?? 9, 0, 0, 0);
+          
+          if (skipTimeCheck) {
+            // Manual trigger: Send immediately
+            // Keep current time (don't change hours)
+          } else {
+            // Cron trigger: Send at scheduled hour
+            scheduledSendTime.setHours(template.timingHour ?? 9, 0, 0, 0);
+          }
           
           console.log(`\n📨 Creating notification for ${recipient.name}`);
           console.log(`  Type: ${recipient.recipientType}`);
           console.log(`  Notification type: ${notificationType}`);
           console.log(`  Target date: ${targetDate}`);
-          console.log(`  Scheduled send time: ${format(scheduledSendTime, 'yyyy-MM-dd HH:mm:ss')}`);
+          console.log(`  Scheduled send time: ${format(scheduledSendTime, 'yyyy-MM-dd HH:mm:ss')}${skipTimeCheck ? ' (IMMEDIATE)' : ''}`);
           console.log(`  LINE ID: ${recipient.lineId}`);
           console.log(`  Classes: ${recipient.sessions.length}`);
           
