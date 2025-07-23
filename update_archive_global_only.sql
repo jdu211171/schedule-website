@@ -66,6 +66,7 @@ BEGIN
 
         -- Insert old class sessions into the archives table
         INSERT INTO archives (
+            archive_id,
             class_id,
             teacher_name,
             student_name,
@@ -82,6 +83,7 @@ BEGIN
             archived_at
         )
         SELECT
+            gen_random_uuid()::text,
             cs.class_id,
             t.name AS teacher_name,
             s.name AS student_name,
@@ -134,6 +136,8 @@ BEGIN
             v_error_message := SQLERRM;
             -- Log error
             RAISE WARNING 'Archive operation failed: %', v_error_message;
+            -- Clean up temp table if it exists
+            DROP TABLE IF EXISTS temp_enrolled_students;
     END;
     
     -- Return the results
