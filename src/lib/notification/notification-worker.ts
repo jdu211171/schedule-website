@@ -201,6 +201,11 @@ export const runNotificationWorker = async (config: Partial<WorkerConfig> = {}):
   let batches = 0;
   
   try {
+    // Add a brief delay to allow for transaction propagation in a distributed environment.
+    // This helps prevent a race condition where the worker starts before the notification
+    // records are visible to it.
+    await new Promise(resolve => setTimeout(resolve, 2000)); // 2-second delay
+
     console.log(`Starting notification worker with config:`, workerConfig);
     
     while (Date.now() - startTime < workerConfig.maxExecutionTimeMs) {
