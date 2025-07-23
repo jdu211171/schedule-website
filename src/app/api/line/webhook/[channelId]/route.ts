@@ -101,17 +101,17 @@ export async function POST(req: NextRequest) {
         continue;
       }
 
-      // Check if message starts with "> " or "/cmd " (case-insensitive)
+      // Check if message starts with "> " or "/ " (case-insensitive)
       const trimmedText = text.trim();
       const lowerText = trimmedText.toLowerCase();
-      if (!lowerText.startsWith('> ') && !lowerText.startsWith('/cmd ')) {
+      if (!lowerText.startsWith('> ') && !lowerText.startsWith('/ ')) {
         // Ignore regular chat messages - no error response
         console.log(`Ignoring regular chat message: ${trimmedText.substring(0, 50)}...`);
         continue;
       }
 
       // Remove the prefix and get the actual identifier (using regex for case-insensitive matching)
-      const identifier = trimmedText.replace(/^(> |\/cmd\s+)/i, '').trim();
+      const identifier = trimmedText.replace(/^(> |\/\s+)/i, '').trim();
 
       // First try to find a user with this username
       let user = await prisma.user.findFirst({
@@ -293,7 +293,7 @@ export async function POST(req: NextRequest) {
       try {
         await sendLineReply(
           replyToken,
-          '❌ 無効なユーザー名またはLINEユーザーIDです。\n\n正しいユーザー名またはLINEユーザーIDを入力するか、システム管理者にお問い合わせください。\n\n💡 ヒント: コマンドは "> " または "/cmd " で始めてください。',
+          '❌ 無効なユーザー名またはLINEユーザーIDです。\n\n正しいユーザー名またはLINEユーザーIDを入力するか、システム管理者にお問い合わせください。\n\n💡 ヒント: コマンドは "> " または "/ " で始めてください。',
           credentials
         );
       } catch (replyError) {
