@@ -97,40 +97,57 @@ export const POST = withRole(["ADMIN"], async (req: NextRequest) => {
 
     // Use a transaction to ensure data consistency
     const result = await prisma.$transaction(async (tx) => {
-      // Delete ALL existing global templates (enforcing single template)
-      await tx.lineMessageTemplate.deleteMany({
+      // Find the existing global template
+      const existingTemplate = await tx.lineMessageTemplate.findFirst({
         where: {
-          branchId: null
-        }
+          branchId: null,
+        },
       });
 
-      // Create the single template
-      if (templates.length === 1) {
-        const template = templates[0];
-        // Remove id if present (it's only for frontend tracking)
-        const { id: _id, ...templateData } = template;
-
-        const createdTemplate = await tx.lineMessageTemplate.create({
-          data: {
-            ...templateData,
-            branchId: null, // Always global
-            variables: template.variables || [],
-            classListItemTemplate: template.classListItemTemplate || null,
-            classListSummaryTemplate: template.classListSummaryTemplate || null,
-            // Ensure it's always active since it's the only one
-            isActive: true
-          }
+      // If there are no templates from the frontend, and one exists in the DB, delete it.
+      if (templates.length === 0 && existingTemplate) {
+        await tx.lineMessageTemplate.delete({
+          where: { id: existingTemplate.id },
         });
-
-        return { newTemplates: [createdTemplate], createdCount: 1 };
+        return { updatedTemplates: [], count: 0 };
       }
 
-      return { newTemplates: [], createdCount: 0 };
+      // If there is a template from the frontend, update or create it.
+      if (templates.length === 1) {
+        const template = templates[0];
+        const { id: _id, ...templateData } = template;
+
+        const dataToUpsert = {
+          ...templateData,
+          branchId: null, // Always global
+          variables: template.variables || [],
+          classListItemTemplate: template.classListItemTemplate || null,
+          classListSummaryTemplate: template.classListSummaryTemplate || null,
+          isActive: true, // Ensure it's always active
+        };
+
+        if (existingTemplate) {
+          // Update the existing template
+          const updatedTemplate = await tx.lineMessageTemplate.update({
+            where: { id: existingTemplate.id },
+            data: dataToUpsert,
+          });
+          return { updatedTemplates: [updatedTemplate], count: 1 };
+        } else {
+          // Create a new template if none exists
+          const createdTemplate = await tx.lineMessageTemplate.create({
+            data: dataToUpsert,
+          });
+          return { updatedTemplates: [createdTemplate], count: 1 };
+        }
+      }
+
+      return { updatedTemplates: [], count: 0 };
     });
 
     return NextResponse.json({
-      data: result.newTemplates,
-      created: result.createdCount
+      data: result.updatedTemplates,
+      count: result.count,
     });
   } catch (error) {
     if (error instanceof z.ZodError) {

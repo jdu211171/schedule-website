@@ -67,26 +67,42 @@ async function processNotifications(skipTimeCheck: boolean = false) {
       const todayEnd = new Date(nowJST);
       todayEnd.setHours(23, 59, 59, 999);
 
-      if (!skipTimeCheck) {
-        const alreadyQueued = await prisma.notification.findFirst({
-          where: {
-            createdAt: {
-              gte: todayStart,
-              lte: todayEnd
-            },
-            targetDate: new Date(targetDate + 'T00:00:00.000Z'),
-            notificationType: {
-              contains: template.timingValue === 0 ? 'SAMEDAY' :
-                       template.timingValue === 1 ? '24H' :
-                       `${template.timingValue}D`
-            }
-          }
-        });
+      // CATCH-UP LOGIC:
+      // If the scheduled time has already passed today, but we haven't queued yet,
+      // we should still queue the notification.
+      const shouldSend = nowJST.getHours() >= template.timingHour;
 
-        if (alreadyQueued) {
-          console.log(`✅ Already queued today for ${template.name} (target: ${targetDate})`);
-          continue;
+      if (!skipTimeCheck && !shouldSend) {
+        console.log(`⏰ Waiting for scheduled hour: ${template.timingHour}:00. Current hour: ${nowJST.getHours()}`);
+        continue; // Skip if it's not time yet
+      }
+
+      // Check if notifications for this target date have already been queued or sent today
+      // This prevents duplicate queueing if the cron runs multiple times.
+      const alreadyProcessed = await prisma.notification.findFirst({
+        where: {
+          targetDate: new Date(targetDate + 'T00:00:00.000Z'),
+          notificationType: {
+            contains: template.timingValue === 0 ? 'SAMEDAY' :
+                      template.timingValue === 1 ? '24H' :
+                      `${template.timingValue}D`
+          },
+          // Check if created today OR already sent
+          OR: [
+            {
+              createdAt: {
+                gte: todayStart,
+                lte: todayEnd
+              }
+            },
+            { status: 'SENT' }
+          ]
         }
+      });
+
+      if (!skipTimeCheck && alreadyProcessed) {
+        console.log(`✅ Already processed today for ${template.name} (target: ${targetDate})`);
+        continue;
       }
 
       console.log(`\n🔄 Processing template: ${template.name}`);

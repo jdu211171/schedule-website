@@ -31,91 +31,91 @@ interface WorkerResult {
 }
 
 /**
- * Processes a single notification.
+ * Processes a single notification. This function is designed to be robust.
+ * It marks the notification as PROCESSING and increments attempts first.
+ * Then, it tries to send the notification. If it succeeds, it marks it as SENT.
+ * If it fails at any point, it marks it as FAILED and re-throws the error.
  *
  * @param notification - The notification to process.
  */
 const processNotification = async (notification: Notification): Promise<void> => {
+  // Immediately mark as processing and increment attempt count.
+  // This prevents other workers from picking up the same job.
+  await prisma.notification.update({
+    where: { notificationId: notification.notificationId },
+    data: {
+      status: NotificationStatus.PROCESSING,
+      processingAttempts: { increment: 1 },
+    },
+  });
+
   try {
-    await prisma.$transaction(async (tx) => {
-      // Mark notification as processing
-      await tx.notification.update({
-        where: { notificationId: notification.notificationId },
-        data: { status: NotificationStatus.PROCESSING },
+    // Get the recipient's LINE ID based on recipientType and recipientId
+    let lineId: string | null = null;
+    
+    if (notification.recipientType === 'TEACHER') {
+      const teacher = await prisma.teacher.findUnique({
+        where: { teacherId: notification.recipientId! },
+        select: { lineId: true, lineNotificationsEnabled: true }
       });
-
-      try {
-        // Get the recipient's LINE ID based on recipientType and recipientId
-        let lineId: string | null = null;
-        
-        if (notification.recipientType === 'TEACHER') {
-          const teacher = await tx.teacher.findUnique({
-            where: { teacherId: notification.recipientId! },
-            select: { lineId: true, lineNotificationsEnabled: true }
-          });
-          if (teacher?.lineNotificationsEnabled) {
-            lineId = teacher.lineId;
-          }
-        } else if (notification.recipientType === 'STUDENT') {
-          const student = await tx.student.findUnique({
-            where: { studentId: notification.recipientId! },
-            select: { lineId: true, lineNotificationsEnabled: true }
-          });
-          if (student?.lineNotificationsEnabled) {
-            lineId = student.lineId;
-          }
-        }
-
-        if (!lineId) {
-          throw new Error(`No LINE ID found for ${notification.recipientType} ${notification.recipientId}`);
-        }
-
-        // Get channel credentials for this branch
-        const credentials = await getChannelCredentials(notification.branchId || undefined);
-        
-        if (credentials) {
-          // Send via multi-channel
-          await sendLineMulticast([lineId], notification.message!, credentials);
-        } else {
-          // Fallback to basic LINE function if no credentials found
-          const { sendLineMulticast: fallbackMulticast } = await import('@/lib/line');
-          await fallbackMulticast([lineId], notification.message!, notification.branchId || undefined);
-        }
-
-        // Mark as sent on success
-        await tx.notification.update({
-          where: { notificationId: notification.notificationId },
-          data: {
-            status: NotificationStatus.SENT,
-            sentAt: new Date(),
-            logs: { success: true, message: 'Message sent successfully via LINE' },
-          },
-        });
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        
-        // Mark as failed and increment attempts
-        await tx.notification.update({
-          where: { notificationId: notification.notificationId },
-          data: {
-            status: NotificationStatus.FAILED,
-            processingAttempts: { increment: 1 },
-            logs: { success: false, message: errorMessage },
-          },
-        });
-        
-        // Re-throw to ensure transaction rollback if needed
-        throw error;
+      if (teacher?.lineNotificationsEnabled) {
+        lineId = teacher.lineId;
       }
+    } else if (notification.recipientType === 'STUDENT') {
+      const student = await prisma.student.findUnique({
+        where: { studentId: notification.recipientId! },
+        select: { lineId: true, lineNotificationsEnabled: true }
+      });
+      if (student?.lineNotificationsEnabled) {
+        lineId = student.lineId;
+      }
+    }
+
+    if (!lineId) {
+      throw new Error(`No LINE ID found or notifications disabled for ${notification.recipientType} ${notification.recipientId}`);
+    }
+
+    // Get channel credentials for this branch
+    const credentials = await getChannelCredentials(notification.branchId || undefined);
+    
+    if (credentials) {
+      // Send via multi-channel
+      await sendLineMulticast([lineId], notification.message!, credentials);
+    } else {
+      // Fallback to basic LINE function if no credentials found
+      const { sendLineMulticast: fallbackMulticast } = await import('@/lib/line');
+      await fallbackMulticast([lineId], notification.message!, notification.branchId || undefined);
+    }
+
+    // Mark as sent on success
+    await prisma.notification.update({
+      where: { notificationId: notification.notificationId },
+      data: {
+        status: NotificationStatus.SENT,
+        sentAt: new Date(),
+        logs: { success: true, message: 'Message sent successfully via LINE' },
+      },
     });
   } catch (error) {
-    // Log the error but don't re-throw to allow processing of other notifications
-    console.error(`Failed to process notification ${notification.notificationId}:`, error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    
+    // Mark as failed on any error
+    await prisma.notification.update({
+      where: { notificationId: notification.notificationId },
+      data: {
+        status: NotificationStatus.FAILED,
+        logs: { success: false, message: errorMessage },
+      },
+    });
+    
+    // Re-throw to signal failure to the batch processor
+    throw error;
   }
 };
 
 /**
- * Process multiple notifications concurrently with controlled concurrency
+ * Process multiple notifications concurrently. It uses Promise.allSettled
+ * to ensure that one failed notification does not stop others in the batch.
  */
 async function processBatchConcurrently(
   notifications: Notification[],
@@ -129,22 +129,16 @@ async function processBatchConcurrently(
     const batch = notifications.slice(i, i + maxConcurrency);
     
     const results = await Promise.allSettled(
-      batch.map(async (notification) => {
-        try {
-          await processNotification(notification);
-          return 'success';
-        } catch (error) {
-          console.error(`Failed to process notification ${notification.notificationId}:`, error);
-          return 'failed';
-        }
-      })
+      batch.map(notification => processNotification(notification))
     );
     
     results.forEach(result => {
-      if (result.status === 'fulfilled' && result.value === 'success') {
+      if (result.status === 'fulfilled') {
         successful++;
       } else {
         failed++;
+        // Log the reason for failure, as the error is re-thrown by processNotification
+        console.error('A notification in the batch failed to process:', result.reason);
       }
     });
   }
