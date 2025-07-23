@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { createNotification } from '@/lib/notification/notification-service';
 import { addDays, format } from 'date-fns';
-import { toZonedTime } from 'date-fns-tz';
+import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 import { replaceTemplateVariables, DEFAULT_CLASS_LIST_ITEM_TEMPLATE, DEFAULT_CLASS_LIST_SUMMARY_TEMPLATE } from '@/lib/line/message-templates';
 import { withRole } from '@/lib/auth';
 
@@ -512,21 +512,27 @@ async function processNotifications(skipTimeCheck: boolean = false) {
           // - Target date: classes happening in X days from now
           // - Scheduled send time: today at Y hour (since we're X days before target)
           // BUT: If skipTimeCheck is true (manual trigger), send immediately
-          const scheduledSendTime = new Date(nowJST);
+          
+          // Create scheduled time in JST
+          const scheduledTimeJST = new Date(nowJST);
           
           if (skipTimeCheck) {
             // Manual trigger: Send immediately
             // Keep current time (don't change hours)
           } else {
             // Cron trigger: Send at scheduled hour
-            scheduledSendTime.setHours(template.timingHour ?? 9, 0, 0, 0);
+            scheduledTimeJST.setHours(template.timingHour ?? 9, 0, 0, 0);
           }
+          
+          // Convert JST time to UTC for database storage
+          const scheduledSendTime = fromZonedTime(scheduledTimeJST, TIMEZONE);
           
           console.log(`\n📨 Creating notification for ${recipient.name}`);
           console.log(`  Type: ${recipient.recipientType}`);
           console.log(`  Notification type: ${notificationType}`);
           console.log(`  Target date: ${targetDate}`);
-          console.log(`  Scheduled send time: ${format(scheduledSendTime, 'yyyy-MM-dd HH:mm:ss')}${skipTimeCheck ? ' (IMMEDIATE)' : ''}`);
+          console.log(`  Scheduled send time (JST): ${format(scheduledTimeJST, 'yyyy-MM-dd HH:mm:ss')}${skipTimeCheck ? ' (IMMEDIATE)' : ''}`);
+          console.log(`  Scheduled send time (UTC): ${format(scheduledSendTime, 'yyyy-MM-dd HH:mm:ss')}`);
           console.log(`  LINE ID: ${recipient.lineId}`);
           console.log(`  Classes: ${recipient.sessions.length}`);
           
@@ -546,7 +552,7 @@ async function processNotifications(skipTimeCheck: boolean = false) {
           if (notification) {
             // Notification successfully queued for worker processing
             console.log(`  ✅ QUEUED: Notification ${notification.notificationId} queued for ${recipient.name}`);
-            console.log(`    Will be sent at: ${format(scheduledSendTime, 'yyyy-MM-dd HH:mm:ss')}`);
+            console.log(`    Will be sent at: ${format(scheduledSendTime, 'yyyy-MM-dd HH:mm:ss')} UTC`);
             totalNotificationsSent++; // Count queued notifications
           } else {
             console.log(`  🔄 DUPLICATE: Already queued for ${recipient.name} on ${targetDate}`);
