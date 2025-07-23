@@ -101,15 +101,17 @@ export default function NotificationTestPage() {
     setCompleteFlowResult(null);
     setFlowStep("");
     
+    const results: any = {
+      createResult: null,
+      sendResult: null,
+      errors: []
+    };
+    
     try {
-      const results: any = {
-        createResult: null,
-        sendResult: null,
-        errors: []
-      };
 
       // Step 1: Create notifications (queue them)
       setFlowStep("テンプレートを取得して通知を作成中...");
+      console.log("Step 1: Creating notifications...");
       
       const createResponse = await fetch("/api/notifications/send", {
         method: "POST",
@@ -121,6 +123,8 @@ export default function NotificationTestPage() {
         }),
       });
 
+      console.log("Create response status:", createResponse.status);
+
       if (!createResponse.ok) {
         const errorData = await createResponse.json();
         throw new Error(errorData.error || `通知作成エラー: ${createResponse.statusText}`);
@@ -128,6 +132,7 @@ export default function NotificationTestPage() {
 
       const createData = await createResponse.json();
       results.createResult = createData;
+      console.log("Notifications created:", createData);
       
       toast({
         title: "✅ 通知作成完了",
@@ -135,10 +140,12 @@ export default function NotificationTestPage() {
       });
 
       // Wait a moment before processing
+      console.log("Waiting before processing...");
       await new Promise(resolve => setTimeout(resolve, 1000));
 
       // Step 2: Process notifications (send them)
       setFlowStep("作成された通知をLINEで送信中...");
+      console.log("Step 2: Processing notifications...");
       
       const processResponse = await fetch("/api/notifications/process", {
         method: "POST",
@@ -152,12 +159,23 @@ export default function NotificationTestPage() {
         }),
       });
 
+      console.log("Process response status:", processResponse.status);
+
       if (!processResponse.ok) {
         const errorData = await processResponse.json();
+        console.error("Process error:", errorData);
         results.errors.push(`送信エラー: ${errorData.error || processResponse.statusText}`);
+        
+        // Also show the error in toast
+        toast({
+          title: "❌ 送信エラー",
+          description: errorData.error || processResponse.statusText,
+          variant: "destructive",
+        });
       } else {
         const processData = await processResponse.json();
         results.sendResult = processData;
+        console.log("Notifications processed:", processData);
         
         toast({
           title: "✅ 送信完了",
@@ -173,9 +191,20 @@ export default function NotificationTestPage() {
       
     } catch (error) {
       console.error("Error in complete notification flow:", error);
+      
+      // Enhanced error display
+      const errorMessage = error instanceof Error ? error.message : "完全な通知フローに失敗しました";
+      const errorDetails = error instanceof Error ? error.stack : JSON.stringify(error);
+      
+      setCompleteFlowResult({
+        createResult: results.createResult,
+        sendResult: null,
+        errors: [`フローエラー: ${errorMessage}`, `詳細: ${errorDetails}`]
+      });
+      
       toast({
         title: "❌ エラー",
-        description: error instanceof Error ? error.message : "完全な通知フローに失敗しました",
+        description: errorMessage,
         variant: "destructive",
       });
       setFlowStep("");
