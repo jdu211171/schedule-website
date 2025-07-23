@@ -22,7 +22,8 @@
       "Bash(git stash show:*)",
       "Bash(bun:*)",
       "Bash(PGPASSWORD=rootroot psql -h localhost -U postgres -d schedule_website -f insert_test_sessions_final.sql)",
-      "Bash(PGPASSWORD=postgres psql -h localhost -U postgres -d schedule_website -f insert_test_sessions_final.sql)"
+      "Bash(PGPASSWORD=postgres psql -h localhost -U postgres -d schedule_website -f insert_test_sessions_final.sql)",
+      "Bash(git log:*)"
     ],
     "deny": []
   }

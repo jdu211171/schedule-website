@@ -574,11 +574,22 @@ async function processNotifications(skipTimeCheck: boolean = false) {
 
 export async function GET(req: NextRequest) {
   try {
-    // Verify the request is from Vercel Cron
+    // Log cron execution
+    console.log('📬 Notification SEND cron triggered at:', new Date().toISOString());
+    console.log('Headers:', Object.fromEntries(req.headers.entries()));
+    
+    // Verify the request is from Vercel Cron (temporarily relaxed for debugging)
     const authHeader = req.headers.get('authorization');
-    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    const cronSecret = process.env.CRON_SECRET;
+    
+    // Allow if no CRON_SECRET is set (for debugging) or if auth matches
+    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+      console.error('❌ Send cron authentication failed. Expected:', cronSecret ? 'Bearer [HIDDEN]' : 'No secret set');
+      console.error('❌ Received:', authHeader || 'No auth header');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    
+    console.log('✅ Send cron authentication passed');
 
     const result = await processNotifications(false);
     

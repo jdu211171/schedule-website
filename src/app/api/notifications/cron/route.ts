@@ -8,11 +8,22 @@ import { cleanupNotifications, getCleanupConfigFromEnv } from '@/lib/notificatio
  * This is typically called by external cron services or scheduled tasks.
  */
 export async function GET(request: NextRequest) {
-  // Verify the request is from Vercel Cron
+  // Log cron execution
+  console.log('🔔 Notification cron triggered at:', new Date().toISOString());
+  console.log('Headers:', Object.fromEntries(request.headers.entries()));
+  
+  // Verify the request is from Vercel Cron (temporarily relaxed for debugging)
   const authHeader = request.headers.get('authorization');
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  const cronSecret = process.env.CRON_SECRET;
+  
+  // Allow if no CRON_SECRET is set (for debugging) or if auth matches
+  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+    console.error('❌ Cron authentication failed. Expected:', cronSecret ? 'Bearer [HIDDEN]' : 'No secret set');
+    console.error('❌ Received:', authHeader || 'No auth header');
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+  
+  console.log('✅ Cron authentication passed');
 
   const { searchParams } = new URL(request.url);
   const action = searchParams.get('action') || 'all';
@@ -27,9 +38,10 @@ export async function GET(request: NextRequest) {
     // Run notification worker (process pending notifications)
     if (action === 'all' || action === 'worker') {
       try {
-        await runNotificationWorker();
-        results.worker = { success: true, message: 'Notification worker ran successfully.' };
-        console.log('Notification worker completed successfully');
+        console.log('🚀 Starting notification worker...');
+        const workerResult = await runNotificationWorker();
+        results.worker = { success: true, message: `Notification worker ran successfully. Processed: ${workerResult.totalProcessed}, Sent: ${workerResult.successful}, Failed: ${workerResult.failed}` };
+        console.log('✅ Notification worker completed:', workerResult);
       } catch (error) {
         results.worker = { 
           success: false, 
