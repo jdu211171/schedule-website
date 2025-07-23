@@ -3,15 +3,20 @@
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, RefreshCw, Send, CheckCircle, XCircle } from "lucide-react";
+import { Loader2, RefreshCw, Send, CheckCircle, XCircle, Zap, AlertCircle } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 export default function NotificationTestPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [pendingInfo, setPendingInfo] = useState<any>(null);
   const [processResult, setProcessResult] = useState<any>(null);
+  const [completeFlowResult, setCompleteFlowResult] = useState<any>(null);
+  const [skipTimeCheck, setSkipTimeCheck] = useState(true);
+  const [flowStep, setFlowStep] = useState<string>("");
   const { toast } = useToast();
 
   const checkPendingNotifications = async () => {
@@ -91,6 +96,94 @@ export default function NotificationTestPage() {
     }
   };
 
+  const runCompleteNotificationFlow = async () => {
+    setIsLoading(true);
+    setCompleteFlowResult(null);
+    setFlowStep("");
+    
+    try {
+      const results: any = {
+        createResult: null,
+        sendResult: null,
+        errors: []
+      };
+
+      // Step 1: Create notifications (queue them)
+      setFlowStep("テンプレートを取得して通知を作成中...");
+      
+      const createResponse = await fetch("/api/notifications/send", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          skipTimeCheck,
+        }),
+      });
+
+      if (!createResponse.ok) {
+        const errorData = await createResponse.json();
+        throw new Error(errorData.error || `通知作成エラー: ${createResponse.statusText}`);
+      }
+
+      const createData = await createResponse.json();
+      results.createResult = createData;
+      
+      toast({
+        title: "✅ 通知作成完了",
+        description: `${createData.notificationsQueued}件の通知が作成されました`,
+      });
+
+      // Wait a moment before processing
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Step 2: Process notifications (send them)
+      setFlowStep("作成された通知をLINEで送信中...");
+      
+      const processResponse = await fetch("/api/notifications/process", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          batchSize: 20,
+          maxConcurrency: 5,
+          maxExecutionTimeMs: 120000, // 2 minutes
+        }),
+      });
+
+      if (!processResponse.ok) {
+        const errorData = await processResponse.json();
+        results.errors.push(`送信エラー: ${errorData.error || processResponse.statusText}`);
+      } else {
+        const processData = await processResponse.json();
+        results.sendResult = processData;
+        
+        toast({
+          title: "✅ 送信完了",
+          description: `${processData.summary.successful}件のLINEメッセージが送信されました`,
+        });
+      }
+
+      setCompleteFlowResult(results);
+      setFlowStep("");
+      
+      // Refresh pending count
+      await checkPendingNotifications();
+      
+    } catch (error) {
+      console.error("Error in complete notification flow:", error);
+      toast({
+        title: "❌ エラー",
+        description: error instanceof Error ? error.message : "完全な通知フローに失敗しました",
+        variant: "destructive",
+      });
+      setFlowStep("");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div>
@@ -99,6 +192,126 @@ export default function NotificationTestPage() {
           LINE通知システムの動作確認とトラブルシューティング
         </p>
       </div>
+
+      {/* Complete Notification Flow Test */}
+      <Card className="border-primary">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Zap className="h-5 w-5" />
+            完全な通知フローテスト
+          </CardTitle>
+          <CardDescription>
+            テンプレート取得から LINE 送信まで、通知の全プロセスを手動で実行します
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>このテストについて</AlertTitle>
+            <AlertDescription>
+              このボタンは以下のプロセスを実行します：
+              <ol className="list-decimal ml-5 mt-2">
+                <li>アクティブな LINE テンプレートを取得</li>
+                <li>テンプレート設定に基づいて対象日の授業を検索</li>
+                <li>該当する受信者（生徒・講師）の通知を作成</li>
+                <li>作成された通知を即座に LINE で送信</li>
+              </ol>
+            </AlertDescription>
+          </Alert>
+
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="skip-time-check"
+              checked={skipTimeCheck}
+              onCheckedChange={setSkipTimeCheck}
+            />
+            <Label htmlFor="skip-time-check">
+              時間チェックをスキップ（設定時間外でも通知を作成）
+            </Label>
+          </div>
+
+          <Button 
+            onClick={runCompleteNotificationFlow} 
+            disabled={isLoading}
+            variant="default"
+            size="lg"
+            className="w-full"
+          >
+            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <Zap className="mr-2 h-4 w-4" />
+            通知フロー全体を実行
+          </Button>
+
+          {flowStep && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              {flowStep}
+            </div>
+          )}
+
+          {completeFlowResult && (
+            <div className="space-y-4 mt-4">
+              <Alert>
+                <AlertTitle>フロー実行結果</AlertTitle>
+                <AlertDescription>
+                  <div className="space-y-3 mt-2">
+                    {/* Create Result */}
+                    {completeFlowResult.createResult && (
+                      <div>
+                        <h4 className="font-semibold mb-1">通知作成結果:</h4>
+                        <div className="ml-4 space-y-1 text-sm">
+                          <div className="flex items-center gap-2">
+                            <CheckCircle className="h-4 w-4 text-green-600" />
+                            作成された通知: {completeFlowResult.createResult.notificationsQueued}件
+                          </div>
+                          <div>処理されたテンプレート: {completeFlowResult.createResult.templatesProcessed}件</div>
+                          {completeFlowResult.createResult.errors && completeFlowResult.createResult.errors.length > 0 && (
+                            <div className="text-red-600">
+                              エラー: {completeFlowResult.createResult.errors.join(", ")}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Send Result */}
+                    {completeFlowResult.sendResult && (
+                      <div>
+                        <h4 className="font-semibold mb-1">LINE送信結果:</h4>
+                        <div className="ml-4 space-y-1 text-sm">
+                          <div className="flex items-center gap-2">
+                            <CheckCircle className="h-4 w-4 text-green-600" />
+                            成功: {completeFlowResult.sendResult.summary.successful}件
+                          </div>
+                          {completeFlowResult.sendResult.summary.failed > 0 && (
+                            <div className="flex items-center gap-2">
+                              <XCircle className="h-4 w-4 text-red-600" />
+                              失敗: {completeFlowResult.sendResult.summary.failed}件
+                            </div>
+                          )}
+                          <div>処理時間: {completeFlowResult.sendResult.summary.executionTimeMs}ms</div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Errors */}
+                    {completeFlowResult.errors && completeFlowResult.errors.length > 0 && (
+                      <div className="text-red-600">
+                        <h4 className="font-semibold mb-1">エラー:</h4>
+                        <ul className="ml-4 list-disc">
+                          {completeFlowResult.errors.map((error: string, index: number) => (
+                            <li key={index}>{error}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                </AlertDescription>
+              </Alert>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Pending Notifications Check */}
       <Card>
