@@ -12,11 +12,14 @@ async function processNotifications(skipTimeCheck: boolean = false) {
   const now = new Date();
   const nowJST = toZonedTime(now, TIMEZONE);
 
-  // Log for debugging
-  console.log('Notification check at:', format(nowJST, 'yyyy-MM-dd HH:mm:ss'));
+  // Enhanced logging for debugging
+  console.log('=== NOTIFICATION PROCESSING STARTED ===');
+  console.log('Current time (JST):', format(nowJST, 'yyyy-MM-dd HH:mm:ss'));
   console.log('Skip time check:', skipTimeCheck);
+  console.log('Current hour:', nowJST.getHours());
 
   // Get all active LINE message templates (currently global-only)
+  console.log('\n--- Fetching Active Templates ---');
   const activeTemplates = await prisma.lineMessageTemplate.findMany({
     where: {
       templateType: 'before_class',
@@ -43,6 +46,11 @@ async function processNotifications(skipTimeCheck: boolean = false) {
   });
 
   console.log(`Found ${activeTemplates.length} active templates`);
+  activeTemplates.forEach(template => {
+    console.log(`- Template: ${template.name} (ID: ${template.id})`);
+    console.log(`  Timing: ${template.timingValue} days before at ${template.timingHour}:00`);
+    console.log(`  Branch: ${template.branchId || 'Global'}`);
+  });
 
   let totalNotificationsSent = 0;
   const errors: string[] = [];
@@ -54,17 +62,52 @@ async function processNotifications(skipTimeCheck: boolean = false) {
       const currentHour = nowJST.getHours();
       const targetHour = template.timingHour ?? 9;
 
-      // Only process if we're in the correct hour (unless skipTimeCheck is true)
+      // Check if we've already sent notifications today for this template
+      const todayStart = new Date(nowJST);
+      todayStart.setHours(0, 0, 0, 0);
+      const todayEnd = new Date(nowJST);
+      todayEnd.setHours(23, 59, 59, 999);
+
+      // Only process if we're in the correct hour OR if skipTimeCheck is true
+      // Also check if we haven't already sent today
       if (!skipTimeCheck && currentHour !== targetHour) {
-        console.log(`Skipping template ${template.name} - not in target hour (current: ${currentHour}, target: ${targetHour})`);
-        continue;
+        console.log(`⏰ Template ${template.name} - scheduled for ${targetHour}:00, current hour: ${currentHour}`);
+        
+        // Check if we've already sent today (catch-up mechanism)
+        const sentToday = await prisma.notification.findFirst({
+          where: {
+            createdAt: {
+              gte: todayStart,
+              lte: todayEnd
+            },
+            message: {
+              contains: template.name
+            },
+            status: {
+              in: ['SENT', 'PENDING', 'PROCESSING']
+            }
+          }
+        });
+
+        if (!sentToday && currentHour > targetHour) {
+          console.log(`⚠️ Missed scheduled time for ${template.name} - executing catch-up send`);
+          // Continue processing even though we missed the exact hour
+        } else if (!sentToday) {
+          console.log(`⏳ Skipping ${template.name} - scheduled for later today`);
+          continue;
+        } else {
+          console.log(`✅ Already sent today for ${template.name}`);
+          continue;
+        }
       }
 
       // Calculate target date for notifications
       const targetDate = format(addDays(nowJST, template.timingValue), 'yyyy-MM-dd');
 
-      console.log(`\nProcessing template: ${template.name} (${template.timingValue} days before)`);
-      console.log(`Target date for classes: ${targetDate}`);
+      console.log(`\n🔄 Processing template: ${template.name}`);
+      console.log(`  Days before: ${template.timingValue}`);
+      console.log(`  Target date for classes: ${targetDate}`);
+      console.log(`  Template ID: ${template.id}`);
 
       // Find ALL sessions for the target date across all branches (since templates are global)
       const whereClause = {
@@ -124,7 +167,20 @@ async function processNotifications(skipTimeCheck: boolean = false) {
         }
       });
 
-      console.log(`Found ${sessions.length} sessions for date ${targetDate}`);
+      console.log(`\n📅 Found ${sessions.length} sessions for date ${targetDate}`);
+      if (sessions.length === 0) {
+        console.log('  ⚠️ No sessions found - skipping this template');
+        continue;
+      }
+      console.log('  Sessions by branch:');
+      const branchCounts = sessions.reduce((acc, session) => {
+        const branchName = session.branch?.name || 'Unknown';
+        acc[branchName] = (acc[branchName] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+      Object.entries(branchCounts).forEach(([branch, count]) => {
+        console.log(`    - ${branch}: ${count} sessions`);
+      });
 
       // Group sessions by recipient (teacher or student)
       const recipientSessions = new Map<string, {
@@ -185,12 +241,25 @@ async function processNotifications(skipTimeCheck: boolean = false) {
         }
       }
 
-      console.log(`Grouped sessions for ${recipientSessions.size} unique recipients`);
+      console.log(`\n👥 Grouped sessions for ${recipientSessions.size} unique recipients`);
       
       // Log recipient details for debugging
+      let recipientsWithLineId = 0;
+      let recipientsWithoutLineId = 0;
+      
       for (const [key, recipient] of recipientSessions) {
-        console.log(`- ${key}: ${recipient.name} (${recipient.sessions.length} classes, lineId: ${recipient.lineId ? 'Yes' : 'No'})`);
+        if (recipient.lineId) {
+          recipientsWithLineId++;
+        } else {
+          recipientsWithoutLineId++;
+        }
+        console.log(`  - ${key}: ${recipient.name}`);
+        console.log(`    Classes: ${recipient.sessions.length}, LINE ID: ${recipient.lineId ? '✓' : '✗'}`);
       }
+      
+      console.log(`\n📊 Recipient Summary:`);
+      console.log(`  With LINE ID: ${recipientsWithLineId}`);
+      console.log(`  Without LINE ID: ${recipientsWithoutLineId}`);
 
       // Send one notification per recipient with all their classes
       for (const [, recipient] of recipientSessions) {
@@ -321,7 +390,12 @@ async function processNotifications(skipTimeCheck: boolean = false) {
                                  template.timingValue === 1 ? 'DAILY_SUMMARY_24H' :
                                  `DAILY_SUMMARY_${template.timingValue}D`;
           
-          console.log(`Creating notification for ${recipient.name} (${recipient.recipientType}), type: ${notificationType}, targetDate: ${targetDate}`);
+          console.log(`\n📨 Creating notification for ${recipient.name}`);
+          console.log(`  Type: ${recipient.recipientType}`);
+          console.log(`  Notification type: ${notificationType}`);
+          console.log(`  Target date: ${targetDate}`);
+          console.log(`  LINE ID: ${recipient.lineId}`);
+          console.log(`  Classes: ${recipient.sessions.length}`);
           
           const notification = await createNotification({
             recipientType: recipient.recipientType,
@@ -336,13 +410,17 @@ async function processNotifications(skipTimeCheck: boolean = false) {
 
           if (notification) {
             // Only send LINE message if notification was created (not a duplicate)
+            console.log(`  🆕 New notification created: ${notification.notificationId}`);
             try {
               // Get channel credentials for this branch
+              console.log(`  🔌 Getting channel credentials...`);
               const credentials = await import('@/lib/line-multi-channel').then(m => m.getChannelCredentials(template.branchId || undefined));
               if (credentials) {
+                console.log(`  📡 Sending via multi-channel to LINE ID: ${recipient.lineId}`);
                 await sendLineMulticast([recipient.lineId], message, credentials);
               } else {
                 // Fallback to basic LINE function if no credentials found
+                console.log(`  📡 Using fallback LINE send to: ${recipient.lineId}`);
                 const { sendLineMulticast: fallbackMulticast } = await import('@/lib/line');
                 await fallbackMulticast([recipient.lineId], message, template.branchId || undefined);
               }
@@ -356,7 +434,7 @@ async function processNotifications(skipTimeCheck: boolean = false) {
                 }
               });
               totalNotificationsSent++;
-              console.log(`✓ Sent daily summary for ${recipient.name} (${recipient.recipientType}) with ${recipient.sessions.length} classes`);
+              console.log(`  ✅ SUCCESS: Sent to ${recipient.name} (${recipient.recipientType})`);
             } catch (lineError) {
               // If LINE message fails, update notification status to FAILED
               await prisma.notification.update({
@@ -369,13 +447,14 @@ async function processNotifications(skipTimeCheck: boolean = false) {
               throw lineError;
             }
           } else {
-            console.log(`⚠️ Duplicate notification skipped for ${recipient.name} (${recipient.recipientType}) - already sent for ${targetDate}`);
+            console.log(`  🔄 DUPLICATE: Already sent to ${recipient.name} for ${targetDate}`);
           }
         } catch (error) {
-          const errorMsg = `Error queuing daily summary for ${recipient.name}: ${error}`;
-          console.error(errorMsg);
+          const errorMsg = `Error for ${recipient.name}: ${error}`;
+          console.error(`  ❌ ERROR: ${errorMsg}`);
           if (error instanceof Error && 'response' in error) {
-            console.error('LINE API Response:', (error as Error & { response?: { data?: unknown } }).response?.data);
+            const lineError = error as Error & { response?: { data?: unknown } };
+            console.error('  LINE API Response:', lineError.response?.data);
           }
           errors.push(errorMsg);
         }
@@ -387,6 +466,11 @@ async function processNotifications(skipTimeCheck: boolean = false) {
     }
   }
 
+  console.log('\n=== NOTIFICATION PROCESSING COMPLETED ===');
+  console.log(`Total notifications sent: ${totalNotificationsSent}`);
+  console.log(`Templates processed: ${activeTemplates.length}`);
+  console.log(`Errors: ${errors.length}`);
+  
   return {
     notificationsSent: totalNotificationsSent,
     templatesProcessed: activeTemplates.length,
