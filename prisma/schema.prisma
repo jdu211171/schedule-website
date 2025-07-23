@@ -362,8 +362,8 @@ model Notification {
   recipientType      String?            @map("recipient_type") @db.VarChar(20)
   recipientId        String?            @map("recipient_id") @db.VarChar(50)
   notificationType   String?            @map("notification_type") @db.VarChar(50)
-  message            String?            @db.VarChar(255)
-  relatedClassId     String?            @map("related_class_id") @db.VarChar(50)
+  message            String?            @db.Text
+  relatedClassId     String?            @map("related_class_id") @db.VarChar(500)
   branchId           String?            @map("branch_id")
   sentVia            String?            @map("sent_via") @db.VarChar(20)
   sentAt             DateTime?          @map("sent_at") @db.Timestamp(6)
@@ -397,8 +397,8 @@ model NotificationArchive {
   recipientType          String?            @map("recipient_type") @db.VarChar(20)
   recipientId            String?            @map("recipient_id") @db.VarChar(50)
   notificationType       String?            @map("notification_type") @db.VarChar(50)
-  message                String?            @db.VarChar(255)
-  relatedClassId         String?            @map("related_class_id") @db.VarChar(50)
+  message                String?            @db.Text
+  relatedClassId         String?            @map("related_class_id") @db.VarChar(500)
   branchId               String?            @map("branch_id")
   branchName             String?            @map("branch_name") @db.VarChar(100)
   sentVia                String?            @map("sent_via") @db.VarChar(20)
