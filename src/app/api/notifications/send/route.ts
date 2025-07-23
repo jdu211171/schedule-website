@@ -4,6 +4,7 @@ import { createNotification } from '@/lib/notification/notification-service';
 import { addDays, format } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
 import { replaceTemplateVariables, DEFAULT_CLASS_LIST_ITEM_TEMPLATE, DEFAULT_CLASS_LIST_SUMMARY_TEMPLATE } from '@/lib/line/message-templates';
+import { withRole } from '@/lib/auth';
 
 const TIMEZONE = 'Asia/Tokyo';
 
@@ -606,35 +607,29 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// Manual trigger endpoint for testing
-export async function POST(req: NextRequest) {
-  try {
-    // Verify authentication (you can use session auth or a special token)
-    const authHeader = req.headers.get('authorization');
-    
-    // For testing, allow either the cron secret or session authentication
-    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-      // TODO: Add session authentication check here
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+// Manual trigger endpoint for testing - restricted to ADMIN users
+export const POST = withRole(
+  ['ADMIN'],
+  async (req: NextRequest) => {
+    try {
+      const body = await req.json();
+      const skipTimeCheck = body.skipTimeCheck ?? true; // Default to skipping time check for manual triggers
+
+      console.log('Manual notification trigger requested by admin with skipTimeCheck:', skipTimeCheck);
+
+      const result = await processNotifications(skipTimeCheck);
+      
+      return NextResponse.json({
+        success: true,
+        manual: true,
+        ...result
+      });
+    } catch (error) {
+      console.error('Error in manual notification trigger:', error);
+      return NextResponse.json(
+        { error: 'Internal server error', details: error },
+        { status: 500 }
+      );
     }
-
-    const body = await req.json();
-    const skipTimeCheck = body.skipTimeCheck ?? true; // Default to skipping time check for manual triggers
-
-    console.log('Manual notification trigger requested with skipTimeCheck:', skipTimeCheck);
-
-    const result = await processNotifications(skipTimeCheck);
-    
-    return NextResponse.json({
-      success: true,
-      manual: true,
-      ...result
-    });
-  } catch (error) {
-    console.error('Error in manual notification trigger:', error);
-    return NextResponse.json(
-      { error: 'Internal server error', details: error },
-      { status: 500 }
-    );
   }
-}
+);
