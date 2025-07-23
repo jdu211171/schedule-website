@@ -217,6 +217,16 @@ export async function sendLinePush(
 }
 
 /**
+ * Validates a LINE user ID.
+ * A valid user ID must start with 'U' and be 33 characters long.
+ * @param lineId The LINE user ID to validate.
+ * @returns True if the ID is valid, false otherwise.
+ */
+export function isValidLineId(lineId: string): boolean {
+  return typeof lineId === 'string' && lineId.startsWith('U') && lineId.length === 33;
+}
+
+/**
  * Send a multicast message to multiple LINE users using specific channel credentials
  */
 export async function sendLineMulticast(
@@ -224,13 +234,18 @@ export async function sendLineMulticast(
   message: string, 
   credentials: LineChannelCredentials
 ): Promise<void> {
-  if (to.length === 0) return;
+  const validRecipients = to.filter(isValidLineId);
+  
+  if (validRecipients.length === 0) {
+    console.warn('No valid LINE IDs to send multicast message.');
+    return;
+  }
 
   try {
     await axios.post(
       `${LINE_API_BASE}/message/multicast`,
       {
-        to,
+        to: validRecipients,
         messages: [{ type: 'text', text: message }]
       },
       {

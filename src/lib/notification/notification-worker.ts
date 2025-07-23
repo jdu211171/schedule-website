@@ -1,7 +1,7 @@
 
 import { prisma } from '@/lib/prisma';
 import { Notification, NotificationStatus } from '@prisma/client';
-import { sendLineMulticast } from '@/lib/line-multi-channel';
+import { sendLineMulticast, isValidLineId } from '@/lib/line-multi-channel';
 import { getChannelCredentials } from '@/lib/line-multi-channel';
 
 const MAX_ATTEMPTS = 3;
@@ -21,6 +21,8 @@ const DEFAULT_CONFIG: WorkerConfig = {
   maxExecutionTimeMs: parseInt(process.env.NOTIFICATION_WORKER_MAX_TIME || '300000'), // 5 minutes
   delayBetweenBatchesMs: parseInt(process.env.NOTIFICATION_WORKER_DELAY || '1000'), // 1 second
 };
+
+console.log('process.env.NODE_ENV', process.env.NODE_ENV);
 
 interface WorkerResult {
   totalProcessed: number;
@@ -73,6 +75,11 @@ const processNotification = async (notification: Notification): Promise<void> =>
 
     if (!lineId) {
       throw new Error(`No LINE ID found or notifications disabled for ${notification.recipientType} ${notification.recipientId}`);
+    }
+
+    // Validate LINE ID format
+    if (!isValidLineId(lineId)) {
+      throw new Error(`Invalid LINE ID format for ${notification.recipientType} ${notification.recipientId}: ${lineId}`);
     }
 
     // Get channel credentials for this branch
