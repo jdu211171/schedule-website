@@ -540,6 +540,7 @@ async function processNotifications(skipTimeCheck: boolean = false) {
             sentVia: 'LINE',
             scheduledAt: scheduledSendTime, // When the notification should be sent
             targetDate: new Date(targetDate + 'T00:00:00.000Z'), // The date of the classes being notified about
+            skipDuplicateCheck: skipTimeCheck, // Skip duplicate check for manual testing
           });
 
           if (notification) {
