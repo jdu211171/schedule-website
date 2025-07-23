@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { sendLineMulticast } from '@/lib/line-multi-channel';
 import { createNotification } from '@/lib/notification/notification-service';
 import { addDays, format } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
@@ -58,51 +57,37 @@ async function processNotifications(skipTimeCheck: boolean = false) {
   // Process each template
   for (const template of activeTemplates) {
     try {
-      // Check if we're in the correct hour for this template
-      const currentHour = nowJST.getHours();
-      const targetHour = template.timingHour ?? 9;
-
-      // Check if we've already sent notifications today for this template
+      // Calculate target date for notifications first
+      const targetDate = format(addDays(nowJST, template.timingValue), 'yyyy-MM-dd');
+      
+      // Check if notifications for this target date have already been queued today
+      // This prevents duplicate queueing regardless of current time
       const todayStart = new Date(nowJST);
       todayStart.setHours(0, 0, 0, 0);
       const todayEnd = new Date(nowJST);
       todayEnd.setHours(23, 59, 59, 999);
 
-      // Only process if we're in the correct hour OR if skipTimeCheck is true
-      // Also check if we haven't already sent today
-      if (!skipTimeCheck && currentHour !== targetHour) {
-        console.log(`⏰ Template ${template.name} - scheduled for ${targetHour}:00, current hour: ${currentHour}`);
-        
-        // Check if we've already sent today (catch-up mechanism)
-        const sentToday = await prisma.notification.findFirst({
+      if (!skipTimeCheck) {
+        const alreadyQueued = await prisma.notification.findFirst({
           where: {
             createdAt: {
               gte: todayStart,
               lte: todayEnd
             },
-            message: {
-              contains: template.name
-            },
-            status: {
-              in: ['SENT', 'PENDING', 'PROCESSING']
+            targetDate: new Date(targetDate + 'T00:00:00.000Z'),
+            notificationType: {
+              contains: template.timingValue === 0 ? 'SAMEDAY' :
+                       template.timingValue === 1 ? '24H' :
+                       `${template.timingValue}D`
             }
           }
         });
 
-        if (!sentToday && currentHour > targetHour) {
-          console.log(`⚠️ Missed scheduled time for ${template.name} - executing catch-up send`);
-          // Continue processing even though we missed the exact hour
-        } else if (!sentToday) {
-          console.log(`⏳ Skipping ${template.name} - scheduled for later today`);
-          continue;
-        } else {
-          console.log(`✅ Already sent today for ${template.name}`);
+        if (alreadyQueued) {
+          console.log(`✅ Already queued today for ${template.name} (target: ${targetDate})`);
           continue;
         }
       }
-
-      // Calculate target date for notifications
-      const targetDate = format(addDays(nowJST, template.timingValue), 'yyyy-MM-dd');
 
       console.log(`\n🔄 Processing template: ${template.name}`);
       console.log(`  Days before: ${template.timingValue}`);
@@ -390,10 +375,18 @@ async function processNotifications(skipTimeCheck: boolean = false) {
                                  template.timingValue === 1 ? 'DAILY_SUMMARY_24H' :
                                  `DAILY_SUMMARY_${template.timingValue}D`;
           
+          // Calculate when this notification should be sent
+          // For "X days before at Y hour" template:
+          // - Target date: classes happening in X days from now
+          // - Scheduled send time: today at Y hour (since we're X days before target)
+          const scheduledSendTime = new Date(nowJST);
+          scheduledSendTime.setHours(template.timingHour ?? 9, 0, 0, 0);
+          
           console.log(`\n📨 Creating notification for ${recipient.name}`);
           console.log(`  Type: ${recipient.recipientType}`);
           console.log(`  Notification type: ${notificationType}`);
           console.log(`  Target date: ${targetDate}`);
+          console.log(`  Scheduled send time: ${format(scheduledSendTime, 'yyyy-MM-dd HH:mm:ss')}`);
           console.log(`  LINE ID: ${recipient.lineId}`);
           console.log(`  Classes: ${recipient.sessions.length}`);
           
@@ -405,49 +398,17 @@ async function processNotifications(skipTimeCheck: boolean = false) {
             relatedClassId: recipient.sessions.length > 0 ? recipient.sessions.map(s => s.classId).join(',') : undefined, // Store all class IDs
             branchId: template.branchId || undefined,
             sentVia: 'LINE',
+            scheduledAt: scheduledSendTime, // When the notification should be sent
             targetDate: new Date(targetDate + 'T00:00:00.000Z'), // The date of the classes being notified about
           });
 
           if (notification) {
-            // Only send LINE message if notification was created (not a duplicate)
-            console.log(`  🆕 New notification created: ${notification.notificationId}`);
-            try {
-              // Get channel credentials for this branch
-              console.log(`  🔌 Getting channel credentials...`);
-              const credentials = await import('@/lib/line-multi-channel').then(m => m.getChannelCredentials(template.branchId || undefined));
-              if (credentials) {
-                console.log(`  📡 Sending via multi-channel to LINE ID: ${recipient.lineId}`);
-                await sendLineMulticast([recipient.lineId], message, credentials);
-              } else {
-                // Fallback to basic LINE function if no credentials found
-                console.log(`  📡 Using fallback LINE send to: ${recipient.lineId}`);
-                const { sendLineMulticast: fallbackMulticast } = await import('@/lib/line');
-                await fallbackMulticast([recipient.lineId], message, template.branchId || undefined);
-              }
-              
-              // Update the notification status to SENT after successful LINE message
-              await prisma.notification.update({
-                where: { notificationId: notification.notificationId },
-                data: { 
-                  status: 'SENT',
-                  sentAt: now
-                }
-              });
-              totalNotificationsSent++;
-              console.log(`  ✅ SUCCESS: Sent to ${recipient.name} (${recipient.recipientType})`);
-            } catch (lineError) {
-              // If LINE message fails, update notification status to FAILED
-              await prisma.notification.update({
-                where: { notificationId: notification.notificationId },
-                data: { 
-                  status: 'FAILED',
-                  logs: [{ error: String(lineError), timestamp: now.toISOString() }]
-                }
-              });
-              throw lineError;
-            }
+            // Notification successfully queued for worker processing
+            console.log(`  ✅ QUEUED: Notification ${notification.notificationId} queued for ${recipient.name}`);
+            console.log(`    Will be sent at: ${format(scheduledSendTime, 'yyyy-MM-dd HH:mm:ss')}`);
+            totalNotificationsSent++; // Count queued notifications
           } else {
-            console.log(`  🔄 DUPLICATE: Already sent to ${recipient.name} for ${targetDate}`);
+            console.log(`  🔄 DUPLICATE: Already queued for ${recipient.name} on ${targetDate}`);
           }
         } catch (error) {
           const errorMsg = `Error for ${recipient.name}: ${error}`;
@@ -467,12 +428,13 @@ async function processNotifications(skipTimeCheck: boolean = false) {
   }
 
   console.log('\n=== NOTIFICATION PROCESSING COMPLETED ===');
-  console.log(`Total notifications sent: ${totalNotificationsSent}`);
+  console.log(`Total notifications queued: ${totalNotificationsSent}`);
   console.log(`Templates processed: ${activeTemplates.length}`);
   console.log(`Errors: ${errors.length}`);
+  console.log('ℹ️ Notifications will be sent by the worker when scheduled time arrives');
   
   return {
-    notificationsSent: totalNotificationsSent,
+    notificationsQueued: totalNotificationsSent,
     templatesProcessed: activeTemplates.length,
     errors: errors.length > 0 ? errors : undefined,
     timestamp: format(nowJST, 'yyyy-MM-dd HH:mm:ss zzz')

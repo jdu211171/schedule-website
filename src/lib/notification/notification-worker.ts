@@ -1,7 +1,8 @@
 
 import { prisma } from '@/lib/prisma';
 import { Notification, NotificationStatus } from '@prisma/client';
-import { sendLinePush } from '@/lib/line'; // Function to send LINE push messages
+import { sendLineMulticast } from '@/lib/line-multi-channel';
+import { getChannelCredentials } from '@/lib/line-multi-channel';
 
 const MAX_ATTEMPTS = 3;
 
@@ -44,8 +45,42 @@ const processNotification = async (notification: Notification): Promise<void> =>
       });
 
       try {
-        // Send the LINE message
-        await sendLinePush(notification.recipientId!, notification.message!, notification.branchId!);
+        // Get the recipient's LINE ID based on recipientType and recipientId
+        let lineId: string | null = null;
+        
+        if (notification.recipientType === 'TEACHER') {
+          const teacher = await tx.teacher.findUnique({
+            where: { teacherId: notification.recipientId! },
+            select: { lineId: true, lineNotificationsEnabled: true }
+          });
+          if (teacher?.lineNotificationsEnabled) {
+            lineId = teacher.lineId;
+          }
+        } else if (notification.recipientType === 'STUDENT') {
+          const student = await tx.student.findUnique({
+            where: { studentId: notification.recipientId! },
+            select: { lineId: true, lineNotificationsEnabled: true }
+          });
+          if (student?.lineNotificationsEnabled) {
+            lineId = student.lineId;
+          }
+        }
+
+        if (!lineId) {
+          throw new Error(`No LINE ID found for ${notification.recipientType} ${notification.recipientId}`);
+        }
+
+        // Get channel credentials for this branch
+        const credentials = await getChannelCredentials(notification.branchId || undefined);
+        
+        if (credentials) {
+          // Send via multi-channel
+          await sendLineMulticast([lineId], notification.message!, credentials);
+        } else {
+          // Fallback to basic LINE function if no credentials found
+          const { sendLineMulticast: fallbackMulticast } = await import('@/lib/line');
+          await fallbackMulticast([lineId], notification.message!, notification.branchId || undefined);
+        }
 
         // Mark as sent on success
         await tx.notification.update({
@@ -53,7 +88,7 @@ const processNotification = async (notification: Notification): Promise<void> =>
           data: {
             status: NotificationStatus.SENT,
             sentAt: new Date(),
-            logs: { success: true, message: 'Message sent successfully' },
+            logs: { success: true, message: 'Message sent successfully via LINE' },
           },
         });
       } catch (error) {

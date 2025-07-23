@@ -8,6 +8,12 @@ import { cleanupNotifications, getCleanupConfigFromEnv } from '@/lib/notificatio
  * This is typically called by external cron services or scheduled tasks.
  */
 export async function GET(request: NextRequest) {
+  // Verify the request is from Vercel Cron
+  const authHeader = request.headers.get('authorization');
+  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const { searchParams } = new URL(request.url);
   const action = searchParams.get('action') || 'all';
   const skipCleanup = searchParams.get('skipCleanup') === 'true';
