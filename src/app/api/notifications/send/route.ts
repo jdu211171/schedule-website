@@ -110,137 +110,252 @@ async function processNotifications(skipTimeCheck: boolean = false) {
       console.log(`  Target date for classes: ${targetDate}`);
       console.log(`  Template ID: ${template.id}`);
 
-      // Find ALL sessions for the target date across all branches (since templates are global)
-      const whereClause = {
-        date: new Date(targetDate + 'T00:00:00.000Z'), // All classes on target date
-        // Note: Not filtering by branchId since templates are global
-      };
+      // Efficiently find recipients who have classes on the target date
+      // This avoids fetching all sessions and then filtering in memory
+      const targetDateFilter = new Date(targetDate + 'T00:00:00.000Z');
 
-      const sessions = await prisma.classSession.findMany({
-        where: whereClause,
-        orderBy: {
-          startTime: 'asc' // Sort by start time for better display
+      // Query teachers who have classes on the target date
+      const teachersWithClasses = await prisma.teacher.findMany({
+        where: {
+          lineNotificationsEnabled: true,
+          lineId: { not: null },
+          classSessions: {
+            some: {
+              date: targetDateFilter
+            }
+          }
         },
-        include: {
-          teacher: {
-            select: {
-              teacherId: true,
-              name: true,
-              lineId: true,
-              lineNotificationsEnabled: true
-            }
-          },
-          student: {
-            select: {
-              studentId: true,
-              name: true,
-              lineId: true,
-              lineNotificationsEnabled: true
-            }
-          },
-          studentClassEnrollments: {
+        select: {
+          teacherId: true,
+          name: true,
+          lineId: true,
+          classSessions: {
+            where: { date: targetDateFilter },
+            orderBy: { startTime: 'asc' },
             include: {
               student: {
                 select: {
                   studentId: true,
-                  name: true,
-                  lineId: true,
-                  lineNotificationsEnabled: true
+                  name: true
+                }
+              },
+              studentClassEnrollments: {
+                include: {
+                  student: {
+                    select: {
+                      studentId: true,
+                      name: true
+                    }
+                  }
+                }
+              },
+              subject: {
+                select: {
+                  name: true
+                }
+              },
+              booth: {
+                select: {
+                  name: true
+                }
+              },
+              branch: {
+                select: {
+                  name: true
                 }
               }
-            }
-          },
-          subject: {
-            select: {
-              name: true
-            }
-          },
-          booth: {
-            select: {
-              name: true
-            }
-          },
-          branch: {
-            select: {
-              name: true
             }
           }
         }
       });
 
-      console.log(`\n📅 Found ${sessions.length} sessions for date ${targetDate}`);
-      if (sessions.length === 0) {
-        console.log('  ⚠️ No sessions found - skipping this template');
-        continue;
-      }
-      console.log('  Sessions by branch:');
-      const branchCounts = sessions.reduce((acc, session) => {
-        const branchName = session.branch?.name || 'Unknown';
-        acc[branchName] = (acc[branchName] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
-      Object.entries(branchCounts).forEach(([branch, count]) => {
-        console.log(`    - ${branch}: ${count} sessions`);
+      // Query students who have direct classes (one-on-one) on the target date
+      const studentsWithDirectClasses = await prisma.student.findMany({
+        where: {
+          lineNotificationsEnabled: true,
+          lineId: { not: null },
+          classSessions: {
+            some: {
+              date: targetDateFilter
+            }
+          }
+        },
+        select: {
+          studentId: true,
+          name: true,
+          lineId: true,
+          classSessions: {
+            where: { date: targetDateFilter },
+            orderBy: { startTime: 'asc' },
+            include: {
+              teacher: {
+                select: {
+                  teacherId: true,
+                  name: true
+                }
+              },
+              subject: {
+                select: {
+                  name: true
+                }
+              },
+              booth: {
+                select: {
+                  name: true
+                }
+              },
+              branch: {
+                select: {
+                  name: true
+                }
+              }
+            }
+          }
+        }
       });
 
-      // Group sessions by recipient (teacher or student)
+      // Query students who have enrolled classes (group sessions) on the target date
+      const studentsWithEnrolledClasses = await prisma.student.findMany({
+        where: {
+          lineNotificationsEnabled: true,
+          lineId: { not: null },
+          studentClassEnrollments: {
+            some: {
+              classSession: {
+                date: targetDateFilter
+              }
+            }
+          }
+        },
+        select: {
+          studentId: true,
+          name: true,
+          lineId: true,
+          studentClassEnrollments: {
+            where: {
+              classSession: {
+                date: targetDateFilter
+              }
+            },
+            include: {
+              classSession: {
+                include: {
+                  teacher: {
+                    select: {
+                      teacherId: true,
+                      name: true
+                    }
+                  },
+                  student: {
+                    select: {
+                      studentId: true,
+                      name: true
+                    }
+                  },
+                  subject: {
+                    select: {
+                      name: true
+                    }
+                  },
+                  booth: {
+                    select: {
+                      name: true
+                    }
+                  },
+                  branch: {
+                    select: {
+                      name: true
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      });
+
+      // Build recipient sessions map from the efficient queries
       const recipientSessions = new Map<string, {
         recipientType: 'TEACHER' | 'STUDENT';
         recipientId: string;
         lineId: string;
         name: string;
-        sessions: typeof sessions;
+        sessions: any[];
       }>();
 
-      // Process all sessions and group by recipient
-      for (const session of sessions) {
-        // Add for teacher
-        if (session.teacher?.lineId && (session.teacher.lineNotificationsEnabled ?? true)) {
-          const key = `teacher-${session.teacher.teacherId}`;
-          if (!recipientSessions.has(key)) {
-            recipientSessions.set(key, {
-              recipientType: 'TEACHER',
-              recipientId: session.teacher.teacherId,
-              lineId: session.teacher.lineId,
-              name: session.teacher.name,
-              sessions: []
-            });
-          }
-          recipientSessions.get(key)!.sessions.push(session);
+      // Add teachers and their sessions
+      for (const teacher of teachersWithClasses) {
+        if (teacher.lineId) {
+          recipientSessions.set(`teacher-${teacher.teacherId}`, {
+            recipientType: 'TEACHER',
+            recipientId: teacher.teacherId,
+            lineId: teacher.lineId,
+            name: teacher.name,
+            sessions: teacher.classSessions
+          });
         }
+      }
 
-        // Add for direct student (one-on-one sessions)
-        if (session.student?.lineId && (session.student.lineNotificationsEnabled ?? true)) {
-          const key = `student-${session.student.studentId}`;
+      // Add students with direct classes
+      for (const student of studentsWithDirectClasses) {
+        if (student.lineId) {
+          const key = `student-${student.studentId}`;
           if (!recipientSessions.has(key)) {
             recipientSessions.set(key, {
               recipientType: 'STUDENT',
-              recipientId: session.student.studentId,
-              lineId: session.student.lineId,
-              name: session.student.name,
+              recipientId: student.studentId,
+              lineId: student.lineId,
+              name: student.name,
               sessions: []
             });
           }
-          recipientSessions.get(key)!.sessions.push(session);
+          recipientSessions.get(key)!.sessions.push(...student.classSessions);
         }
+      }
 
-        // Add for enrolled students (group sessions)
-        for (const enrollment of session.studentClassEnrollments) {
-          if (enrollment.student.lineId && (enrollment.student.lineNotificationsEnabled ?? true)) {
-            const key = `student-${enrollment.student.studentId}`;
-            if (!recipientSessions.has(key)) {
-              recipientSessions.set(key, {
-                recipientType: 'STUDENT',
-                recipientId: enrollment.student.studentId,
-                lineId: enrollment.student.lineId,
-                name: enrollment.student.name,
-                sessions: []
-              });
-            }
-            recipientSessions.get(key)!.sessions.push(session);
+      // Add students with enrolled classes
+      for (const student of studentsWithEnrolledClasses) {
+        if (student.lineId) {
+          const key = `student-${student.studentId}`;
+          if (!recipientSessions.has(key)) {
+            recipientSessions.set(key, {
+              recipientType: 'STUDENT',
+              recipientId: student.studentId,
+              lineId: student.lineId,
+              name: student.name,
+              sessions: []
+            });
+          }
+          // Add enrolled class sessions
+          for (const enrollment of student.studentClassEnrollments) {
+            recipientSessions.get(key)!.sessions.push(enrollment.classSession);
           }
         }
       }
+
+      // Calculate total sessions for logging
+      const totalSessions = recipientSessions.size > 0 
+        ? Array.from(recipientSessions.values()).reduce((sum, recipient) => sum + recipient.sessions.length, 0)
+        : 0;
+
+      console.log(`\n📅 Found ${totalSessions} sessions for date ${targetDate} across ${recipientSessions.size} recipients`);
+      if (recipientSessions.size === 0) {
+        console.log('  ⚠️ No recipients with sessions found - skipping this template');
+        continue;
+      }
+
+      // Log sessions by branch for debugging
+      const branchCounts: Record<string, number> = {};
+      for (const recipient of recipientSessions.values()) {
+        for (const session of recipient.sessions) {
+          const branchName = session.branch?.name || 'Unknown';
+          branchCounts[branchName] = (branchCounts[branchName] || 0) + 1;
+        }
+      }
+      console.log('  Sessions by branch:');
+      Object.entries(branchCounts).forEach(([branch, count]) => {
+        console.log(`    - ${branch}: ${count} sessions`);
+      });
 
       console.log(`\n👥 Grouped sessions for ${recipientSessions.size} unique recipients`);
       
@@ -290,7 +405,7 @@ async function processNotifications(skipTimeCheck: boolean = false) {
             
             // Add enrolled students (group sessions)
             if (session.studentClassEnrollments) {
-              session.studentClassEnrollments.forEach(enrollment => {
+              session.studentClassEnrollments.forEach((enrollment: any) => {
                 studentNames.push(enrollment.student.name);
               });
             }

@@ -99,12 +99,36 @@ const processNotification = async (notification: Notification): Promise<void> =>
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     
+    // Enhanced error logging with notification context
+    console.error(`❌ Failed to process notification:`, {
+      notificationId: notification.notificationId,
+      recipientType: notification.recipientType,
+      recipientId: notification.recipientId,
+      notificationType: notification.notificationType,
+      branchId: notification.branchId,
+      attempt: notification.processingAttempts + 1, // +1 since we incremented it earlier
+      scheduledAt: notification.scheduledAt,
+      targetDate: notification.targetDate,
+      errorMessage,
+      errorStack: error instanceof Error ? error.stack : undefined
+    });
+    
     // Mark as failed on any error
     await prisma.notification.update({
       where: { notificationId: notification.notificationId },
       data: {
         status: NotificationStatus.FAILED,
-        logs: { success: false, message: errorMessage },
+        logs: { 
+          success: false, 
+          message: errorMessage,
+          context: {
+            recipientType: notification.recipientType,
+            recipientId: notification.recipientId,
+            notificationType: notification.notificationType,
+            attempt: notification.processingAttempts + 1,
+            timestamp: new Date().toISOString()
+          }
+        },
       },
     });
     
@@ -132,13 +156,24 @@ async function processBatchConcurrently(
       batch.map(notification => processNotification(notification))
     );
     
-    results.forEach(result => {
+    results.forEach((result, index) => {
       if (result.status === 'fulfilled') {
         successful++;
       } else {
         failed++;
-        // Log the reason for failure, as the error is re-thrown by processNotification
-        console.error('A notification in the batch failed to process:', result.reason);
+        const notification = batch[index];
+        // Enhanced error logging with notification context
+        console.error(`❌ Notification batch failure:`, {
+          notificationId: notification.notificationId,
+          recipientType: notification.recipientType,
+          recipientId: notification.recipientId,
+          notificationType: notification.notificationType,
+          branchId: notification.branchId,
+          attempt: notification.processingAttempts,
+          scheduledAt: notification.scheduledAt,
+          targetDate: notification.targetDate,
+          error: result.reason
+        });
       }
     });
   }
@@ -216,7 +251,18 @@ export const runNotificationWorker = async (config: Partial<WorkerConfig> = {}):
     return result;
     
   } catch (error) {
-    console.error('Notification worker encountered an error:', error);
+    // Enhanced error logging for worker-level failures
+    console.error('❌ Notification worker encountered a critical error:', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      totalProcessed,
+      successful: totalSuccessful,
+      failed: totalFailed,
+      batches,
+      executionTimeMs: Date.now() - startTime,
+      config: workerConfig
+    });
+    
     const executionTimeMs = Date.now() - startTime;
     
     return {
