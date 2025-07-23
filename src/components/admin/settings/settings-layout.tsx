@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { LineSettings } from "./line-settings";
+import { ArchiveSettings } from "./archive-settings";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, MessageSquare } from "lucide-react";
+import { ArrowRight, MessageSquare, Archive } from "lucide-react";
 
 export function SettingsLayout() {
   return (
@@ -48,6 +49,21 @@ export function SettingsLayout() {
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </Link>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Archive className="h-5 w-5" />
+            アーカイブ設定
+          </CardTitle>
+          <CardDescription>
+            授業セッションのアーカイブ保存期間を設定します
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ArchiveSettings />
         </CardContent>
       </Card>
     </div>

@@ -8,6 +8,393 @@ import { replaceTemplateVariables, DEFAULT_CLASS_LIST_ITEM_TEMPLATE, DEFAULT_CLA
 
 const TIMEZONE = 'Asia/Tokyo';
 
+async function processNotifications(skipTimeCheck: boolean = false) {
+  const now = new Date();
+  const nowJST = toZonedTime(now, TIMEZONE);
+
+  // Log for debugging
+  console.log('Notification check at:', format(nowJST, 'yyyy-MM-dd HH:mm:ss'));
+  console.log('Skip time check:', skipTimeCheck);
+
+  // Get all active LINE message templates (currently global-only)
+  const activeTemplates = await prisma.lineMessageTemplate.findMany({
+    where: {
+      templateType: 'before_class',
+      isActive: true,
+      // Templates are currently global-only as per recent changes
+      branchId: null
+    },
+    select: {
+      id: true,
+      name: true,
+      timingType: true,
+      timingValue: true,
+      timingHour: true,
+      branchId: true,
+      content: true,
+      classListItemTemplate: true,
+      classListSummaryTemplate: true,
+      branch: {
+        select: {
+          name: true
+        }
+      }
+    }
+  });
+
+  console.log(`Found ${activeTemplates.length} active templates`);
+
+  let totalNotificationsSent = 0;
+  const errors: string[] = [];
+
+  // Process each template
+  for (const template of activeTemplates) {
+    try {
+      // Check if we're in the correct hour for this template
+      const currentHour = nowJST.getHours();
+      const targetHour = template.timingHour ?? 9;
+
+      // Only process if we're in the correct hour (unless skipTimeCheck is true)
+      if (!skipTimeCheck && currentHour !== targetHour) {
+        console.log(`Skipping template ${template.name} - not in target hour (current: ${currentHour}, target: ${targetHour})`);
+        continue;
+      }
+
+      // Calculate target date for notifications
+      const targetDate = format(addDays(nowJST, template.timingValue), 'yyyy-MM-dd');
+
+      console.log(`\nProcessing template: ${template.name} (${template.timingValue} days before)`);
+      console.log(`Target date for classes: ${targetDate}`);
+
+      // Find ALL sessions for the target date across all branches (since templates are global)
+      const whereClause = {
+        date: new Date(targetDate + 'T00:00:00.000Z'), // All classes on target date
+        // Note: Not filtering by branchId since templates are global
+      };
+
+      const sessions = await prisma.classSession.findMany({
+        where: whereClause,
+        orderBy: {
+          startTime: 'asc' // Sort by start time for better display
+        },
+        include: {
+          teacher: {
+            select: {
+              teacherId: true,
+              name: true,
+              lineId: true,
+              lineNotificationsEnabled: true
+            }
+          },
+          student: {
+            select: {
+              studentId: true,
+              name: true,
+              lineId: true,
+              lineNotificationsEnabled: true
+            }
+          },
+          studentClassEnrollments: {
+            include: {
+              student: {
+                select: {
+                  studentId: true,
+                  name: true,
+                  lineId: true,
+                  lineNotificationsEnabled: true
+                }
+              }
+            }
+          },
+          subject: {
+            select: {
+              name: true
+            }
+          },
+          booth: {
+            select: {
+              name: true
+            }
+          },
+          branch: {
+            select: {
+              name: true
+            }
+          }
+        }
+      });
+
+      console.log(`Found ${sessions.length} sessions for date ${targetDate}`);
+
+      // Group sessions by recipient (teacher or student)
+      const recipientSessions = new Map<string, {
+        recipientType: 'TEACHER' | 'STUDENT';
+        recipientId: string;
+        lineId: string;
+        name: string;
+        sessions: typeof sessions;
+      }>();
+
+      // Process all sessions and group by recipient
+      for (const session of sessions) {
+        // Add for teacher
+        if (session.teacher?.lineId && (session.teacher.lineNotificationsEnabled ?? true)) {
+          const key = `teacher-${session.teacher.teacherId}`;
+          if (!recipientSessions.has(key)) {
+            recipientSessions.set(key, {
+              recipientType: 'TEACHER',
+              recipientId: session.teacher.teacherId,
+              lineId: session.teacher.lineId,
+              name: session.teacher.name,
+              sessions: []
+            });
+          }
+          recipientSessions.get(key)!.sessions.push(session);
+        }
+
+        // Add for direct student (one-on-one sessions)
+        if (session.student?.lineId && (session.student.lineNotificationsEnabled ?? true)) {
+          const key = `student-${session.student.studentId}`;
+          if (!recipientSessions.has(key)) {
+            recipientSessions.set(key, {
+              recipientType: 'STUDENT',
+              recipientId: session.student.studentId,
+              lineId: session.student.lineId,
+              name: session.student.name,
+              sessions: []
+            });
+          }
+          recipientSessions.get(key)!.sessions.push(session);
+        }
+
+        // Add for enrolled students (group sessions)
+        for (const enrollment of session.studentClassEnrollments) {
+          if (enrollment.student.lineId && (enrollment.student.lineNotificationsEnabled ?? true)) {
+            const key = `student-${enrollment.student.studentId}`;
+            if (!recipientSessions.has(key)) {
+              recipientSessions.set(key, {
+                recipientType: 'STUDENT',
+                recipientId: enrollment.student.studentId,
+                lineId: enrollment.student.lineId,
+                name: enrollment.student.name,
+                sessions: []
+              });
+            }
+            recipientSessions.get(key)!.sessions.push(session);
+          }
+        }
+      }
+
+      console.log(`Grouped sessions for ${recipientSessions.size} unique recipients`);
+      
+      // Log recipient details for debugging
+      for (const [key, recipient] of recipientSessions) {
+        console.log(`- ${key}: ${recipient.name} (${recipient.sessions.length} classes, lineId: ${recipient.lineId ? 'Yes' : 'No'})`);
+      }
+
+      // Send one notification per recipient with all their classes
+      for (const [, recipient] of recipientSessions) {
+        try {
+          // Build the daily class list using templates
+          const itemTemplate = template.classListItemTemplate || DEFAULT_CLASS_LIST_ITEM_TEMPLATE;
+          const summaryTemplate = template.classListSummaryTemplate || DEFAULT_CLASS_LIST_SUMMARY_TEMPLATE;
+          
+          let dailyClassList = '';
+          recipient.sessions.forEach((session, index) => {
+            const startTime = format(new Date(session.startTime), 'HH:mm');
+            const endTime = format(new Date(session.endTime), 'HH:mm');
+            
+            // Calculate duration in minutes
+            const start = new Date(session.startTime);
+            const end = new Date(session.endTime);
+            const durationMinutes = (end.getTime() - start.getTime()) / (1000 * 60);
+            const duration = `${durationMinutes}分`;
+
+            // Gather student information
+            const studentNames: string[] = [];
+            
+            // Add direct student (1-on-1 sessions)
+            if (session.student) {
+              studentNames.push(session.student.name);
+            }
+            
+            // Add enrolled students (group sessions)
+            if (session.studentClassEnrollments) {
+              session.studentClassEnrollments.forEach(enrollment => {
+                studentNames.push(enrollment.student.name);
+              });
+            }
+            
+            // Determine class type
+            const studentCount = studentNames.length;
+            const classType = studentCount <= 1 ? '1対1' : 'グループ';
+            
+            // Replace variables in the item template
+            const classItemVariables: Record<string, string> = {
+              classNumber: String(index + 1),
+              subjectName: session.subject?.name || '授業',
+              startTime,
+              endTime,
+              teacherName: session.teacher?.name || '未定',
+              boothName: session.booth?.name || '未定',
+              duration,
+              studentName: studentNames[0] || '未定',
+              studentNames: studentNames.join('、') || '未定',
+              studentCount: String(studentCount),
+              classType
+            };
+            
+            const formattedItem = replaceTemplateVariables(itemTemplate, classItemVariables);
+            dailyClassList += formattedItem;
+            
+            if (index < recipient.sessions.length - 1) {
+              dailyClassList += '\n\n';
+            }
+          });
+
+          // Add summary using the summary template
+          if (summaryTemplate && recipient.sessions.length > 0) {
+            // Calculate summary variables first
+            const firstSession = recipient.sessions[0];
+            const lastSession = recipient.sessions[recipient.sessions.length - 1];
+            const firstClassTime = firstSession ? format(new Date(firstSession.startTime), 'HH:mm') : '';
+            const lastClassTime = lastSession ? format(new Date(lastSession.endTime), 'HH:mm') : '';
+            
+            const summaryVariables: Record<string, string> = {
+              classCount: String(recipient.sessions.length),
+              firstClassTime,
+              lastClassTime
+            };
+            
+            dailyClassList += '\n\n' + replaceTemplateVariables(summaryTemplate, summaryVariables);
+          }
+
+          // Calculate additional variables
+          const firstSession = recipient.sessions[0];
+          const lastSession = recipient.sessions[recipient.sessions.length - 1];
+          const firstClassTime = firstSession ? format(new Date(firstSession.startTime), 'HH:mm') : '';
+          const lastClassTime = lastSession ? format(new Date(lastSession.endTime), 'HH:mm') : '';
+
+          // Calculate total duration in hours
+          let totalMinutes = 0;
+          recipient.sessions.forEach(session => {
+            const start = new Date(session.startTime);
+            const end = new Date(session.endTime);
+            totalMinutes += (end.getTime() - start.getTime()) / (1000 * 60);
+          });
+          const totalHours = totalMinutes / 60;
+          const totalDuration = totalHours % 1 === 0 ? `${totalHours}時間` : `${totalHours.toFixed(1)}時間`;
+
+          // Extract unique teacher names
+          const teacherNames = [...new Set(recipient.sessions
+            .map(s => s.teacher?.name)
+            .filter(Boolean)
+          )].join('、');
+
+          // Extract unique subject names
+          const subjectNames = [...new Set(recipient.sessions
+            .map(s => s.subject?.name)
+            .filter(Boolean)
+          )].join('、');
+
+          // Prepare variables for template replacement
+          const templateVariables: Record<string, string> = {
+            dailyClassList,
+            recipientName: recipient.name,
+            recipientType: recipient.recipientType === 'TEACHER' ? '講師' : '生徒',
+            classDate: format(new Date(targetDate), 'yyyy年M月d日'),
+            currentDate: format(nowJST, 'yyyy年M月d日'),
+            classCount: String(recipient.sessions.length),
+            firstClassTime,
+            lastClassTime,
+            totalDuration,
+            teacherNames: teacherNames || '未定',
+            subjectNames: subjectNames || '未定',
+            branchName: template.branch?.name || ''
+          };
+
+          // Replace variables in template content
+          const message = replaceTemplateVariables(template.content, templateVariables);
+
+          // Check for duplicate notification before sending LINE message
+          const notificationType = template.timingValue === 0 ? 'DAILY_SUMMARY_SAMEDAY' :
+                                 template.timingValue === 1 ? 'DAILY_SUMMARY_24H' :
+                                 `DAILY_SUMMARY_${template.timingValue}D`;
+          
+          console.log(`Creating notification for ${recipient.name} (${recipient.recipientType}), type: ${notificationType}, targetDate: ${targetDate}`);
+          
+          const notification = await createNotification({
+            recipientType: recipient.recipientType,
+            recipientId: recipient.recipientId,
+            notificationType,
+            message,
+            relatedClassId: recipient.sessions.length > 0 ? recipient.sessions.map(s => s.classId).join(',') : undefined, // Store all class IDs
+            branchId: template.branchId || undefined,
+            sentVia: 'LINE',
+            targetDate: new Date(targetDate + 'T00:00:00.000Z'), // The date of the classes being notified about
+          });
+
+          if (notification) {
+            // Only send LINE message if notification was created (not a duplicate)
+            try {
+              // Get channel credentials for this branch
+              const credentials = await import('@/lib/line-multi-channel').then(m => m.getChannelCredentials(template.branchId || undefined));
+              if (credentials) {
+                await sendLineMulticast([recipient.lineId], message, credentials);
+              } else {
+                // Fallback to basic LINE function if no credentials found
+                const { sendLineMulticast: fallbackMulticast } = await import('@/lib/line');
+                await fallbackMulticast([recipient.lineId], message, template.branchId || undefined);
+              }
+              
+              // Update the notification status to SENT after successful LINE message
+              await prisma.notification.update({
+                where: { notificationId: notification.notificationId },
+                data: { 
+                  status: 'SENT',
+                  sentAt: now
+                }
+              });
+              totalNotificationsSent++;
+              console.log(`✓ Sent daily summary for ${recipient.name} (${recipient.recipientType}) with ${recipient.sessions.length} classes`);
+            } catch (lineError) {
+              // If LINE message fails, update notification status to FAILED
+              await prisma.notification.update({
+                where: { notificationId: notification.notificationId },
+                data: { 
+                  status: 'FAILED',
+                  logs: [{ error: String(lineError), timestamp: now.toISOString() }]
+                }
+              });
+              throw lineError;
+            }
+          } else {
+            console.log(`⚠️ Duplicate notification skipped for ${recipient.name} (${recipient.recipientType}) - already sent for ${targetDate}`);
+          }
+        } catch (error) {
+          const errorMsg = `Error queuing daily summary for ${recipient.name}: ${error}`;
+          console.error(errorMsg);
+          if (error instanceof Error && 'response' in error) {
+            console.error('LINE API Response:', (error as Error & { response?: { data?: unknown } }).response?.data);
+          }
+          errors.push(errorMsg);
+        }
+      }
+    } catch (error) {
+      const errorMsg = `Error processing template ${template.name}: ${error}`;
+      console.error(errorMsg);
+      errors.push(errorMsg);
+    }
+  }
+
+  return {
+    notificationsSent: totalNotificationsSent,
+    templatesProcessed: activeTemplates.length,
+    errors: errors.length > 0 ? errors : undefined,
+    timestamp: format(nowJST, 'yyyy-MM-dd HH:mm:ss zzz')
+  };
+}
+
 export async function GET(req: NextRequest) {
   try {
     // Verify the request is from Vercel Cron
@@ -16,381 +403,47 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const now = new Date();
-    const nowJST = toZonedTime(now, TIMEZONE);
-
-    // Log for debugging
-    console.log('Notification check at:', format(nowJST, 'yyyy-MM-dd HH:mm:ss'));
-    console.log('CRON_SECRET present:', !!process.env.CRON_SECRET);
-
-    // Get all active LINE message templates
-    const activeTemplates = await prisma.lineMessageTemplate.findMany({
-      where: {
-        templateType: 'before_class',
-        isActive: true
-      },
-      select: {
-        id: true,
-        name: true,
-        timingType: true,
-        timingValue: true,
-        timingHour: true,
-        branchId: true,
-        content: true,
-        classListItemTemplate: true,
-        classListSummaryTemplate: true,
-        branch: {
-          select: {
-            name: true
-          }
-        }
-      }
-    });
-
-    console.log(`Found ${activeTemplates.length} active templates`);
-
-    let totalNotificationsSent = 0;
-    const errors: string[] = [];
-
-    // Process each template
-    for (const template of activeTemplates) {
-      try {
-        // Check if we're in the correct time window for this template
-        const currentHour = nowJST.getHours();
-        const currentMinute = nowJST.getMinutes();
-        const targetHour = template.timingHour ?? 9;
-
-        // Only process if we're within a 10-minute window of the target hour
-        if (currentHour !== targetHour || currentMinute > 10) {
-          console.log(`Skipping template ${template.name} - not in time window (current: ${currentHour}:${currentMinute}, target: ${targetHour}:00-${targetHour}:10)`);
-          continue;
-        }
-
-        // Calculate target date for notifications
-        const targetDate = format(addDays(nowJST, template.timingValue), 'yyyy-MM-dd');
-
-        console.log(`\nProcessing template: ${template.name} (${template.timingValue} days before)`);
-        console.log(`Target date for classes: ${targetDate}`);
-
-        // Find ALL sessions for the target date (not just specific time window)
-        const whereClause = {
-          date: new Date(targetDate + 'T00:00:00.000Z'), // All classes on target date
-          ...(template.branchId && { branchId: template.branchId })
-        };
-
-        const sessions = await prisma.classSession.findMany({
-          where: whereClause,
-          orderBy: {
-            startTime: 'asc' // Sort by start time for better display
-          },
-          include: {
-            teacher: {
-              select: {
-                teacherId: true,
-                name: true,
-                lineId: true,
-                lineNotificationsEnabled: true
-              }
-            },
-            student: {
-              select: {
-                studentId: true,
-                name: true,
-                lineId: true,
-                lineNotificationsEnabled: true
-              }
-            },
-            studentClassEnrollments: {
-              include: {
-                student: {
-                  select: {
-                    studentId: true,
-                    name: true,
-                    lineId: true,
-                    lineNotificationsEnabled: true
-                  }
-                }
-              }
-            },
-            subject: {
-              select: {
-                name: true
-              }
-            },
-            booth: {
-              select: {
-                name: true
-              }
-            },
-            branch: {
-              select: {
-                name: true
-              }
-            }
-          }
-        });
-
-        console.log(`Found ${sessions.length} sessions for date ${targetDate}`);
-
-        // Group sessions by recipient (teacher or student)
-        const recipientSessions = new Map<string, {
-          recipientType: 'TEACHER' | 'STUDENT';
-          recipientId: string;
-          lineId: string;
-          name: string;
-          sessions: typeof sessions;
-        }>();
-
-        // Process all sessions and group by recipient
-        for (const session of sessions) {
-          // Add for teacher
-          if (session.teacher?.lineId && (session.teacher.lineNotificationsEnabled ?? true)) {
-            const key = `teacher-${session.teacher.teacherId}`;
-            if (!recipientSessions.has(key)) {
-              recipientSessions.set(key, {
-                recipientType: 'TEACHER',
-                recipientId: session.teacher.teacherId,
-                lineId: session.teacher.lineId,
-                name: session.teacher.name,
-                sessions: []
-              });
-            }
-            recipientSessions.get(key)!.sessions.push(session);
-          }
-
-          // Add for direct student (one-on-one sessions)
-          if (session.student?.lineId && (session.student.lineNotificationsEnabled ?? true)) {
-            const key = `student-${session.student.studentId}`;
-            if (!recipientSessions.has(key)) {
-              recipientSessions.set(key, {
-                recipientType: 'STUDENT',
-                recipientId: session.student.studentId,
-                lineId: session.student.lineId,
-                name: session.student.name,
-                sessions: []
-              });
-            }
-            recipientSessions.get(key)!.sessions.push(session);
-          }
-
-          // Add for enrolled students (group sessions)
-          for (const enrollment of session.studentClassEnrollments) {
-            if (enrollment.student.lineId && (enrollment.student.lineNotificationsEnabled ?? true)) {
-              const key = `student-${enrollment.student.studentId}`;
-              if (!recipientSessions.has(key)) {
-                recipientSessions.set(key, {
-                  recipientType: 'STUDENT',
-                  recipientId: enrollment.student.studentId,
-                  lineId: enrollment.student.lineId,
-                  name: enrollment.student.name,
-                  sessions: []
-                });
-              }
-              recipientSessions.get(key)!.sessions.push(session);
-            }
-          }
-        }
-
-        // Send one notification per recipient with all their classes
-        for (const [, recipient] of recipientSessions) {
-          try {
-            // Build the daily class list using templates
-            const itemTemplate = template.classListItemTemplate || DEFAULT_CLASS_LIST_ITEM_TEMPLATE;
-            const summaryTemplate = template.classListSummaryTemplate || DEFAULT_CLASS_LIST_SUMMARY_TEMPLATE;
-            
-            let dailyClassList = '';
-            recipient.sessions.forEach((session, index) => {
-              const startTime = format(new Date(session.startTime), 'HH:mm');
-              const endTime = format(new Date(session.endTime), 'HH:mm');
-              
-              // Calculate duration in minutes
-              const start = new Date(session.startTime);
-              const end = new Date(session.endTime);
-              const durationMinutes = (end.getTime() - start.getTime()) / (1000 * 60);
-              const duration = `${durationMinutes}分`;
-
-              // Gather student information
-              const studentNames: string[] = [];
-              
-              // Add direct student (1-on-1 sessions)
-              if (session.student) {
-                studentNames.push(session.student.name);
-              }
-              
-              // Add enrolled students (group sessions)
-              if (session.studentClassEnrollments) {
-                session.studentClassEnrollments.forEach(enrollment => {
-                  studentNames.push(enrollment.student.name);
-                });
-              }
-              
-              // Determine class type
-              const studentCount = studentNames.length;
-              const classType = studentCount <= 1 ? '1対1' : 'グループ';
-              
-              // Replace variables in the item template
-              const classItemVariables: Record<string, string> = {
-                classNumber: String(index + 1),
-                subjectName: session.subject?.name || '授業',
-                startTime,
-                endTime,
-                teacherName: session.teacher?.name || '未定',
-                boothName: session.booth?.name || '未定',
-                duration,
-                studentName: studentNames[0] || '未定',
-                studentNames: studentNames.join('、') || '未定',
-                studentCount: String(studentCount),
-                classType
-              };
-              
-              const formattedItem = replaceTemplateVariables(itemTemplate, classItemVariables);
-              dailyClassList += formattedItem;
-              
-              if (index < recipient.sessions.length - 1) {
-                dailyClassList += '\n\n';
-              }
-            });
-
-            // Add summary using the summary template
-            if (summaryTemplate && recipient.sessions.length > 0) {
-              // Calculate summary variables first
-              const firstSession = recipient.sessions[0];
-              const lastSession = recipient.sessions[recipient.sessions.length - 1];
-              const firstClassTime = firstSession ? format(new Date(firstSession.startTime), 'HH:mm') : '';
-              const lastClassTime = lastSession ? format(new Date(lastSession.endTime), 'HH:mm') : '';
-              
-              const summaryVariables: Record<string, string> = {
-                classCount: String(recipient.sessions.length),
-                firstClassTime,
-                lastClassTime
-              };
-              
-              dailyClassList += '\n\n' + replaceTemplateVariables(summaryTemplate, summaryVariables);
-            }
-
-            // Calculate additional variables
-            const firstSession = recipient.sessions[0];
-            const lastSession = recipient.sessions[recipient.sessions.length - 1];
-            const firstClassTime = firstSession ? format(new Date(firstSession.startTime), 'HH:mm') : '';
-            const lastClassTime = lastSession ? format(new Date(lastSession.endTime), 'HH:mm') : '';
-
-            // Calculate total duration in hours
-            let totalMinutes = 0;
-            recipient.sessions.forEach(session => {
-              const start = new Date(session.startTime);
-              const end = new Date(session.endTime);
-              totalMinutes += (end.getTime() - start.getTime()) / (1000 * 60);
-            });
-            const totalHours = totalMinutes / 60;
-            const totalDuration = totalHours % 1 === 0 ? `${totalHours}時間` : `${totalHours.toFixed(1)}時間`;
-
-            // Extract unique teacher names
-            const teacherNames = [...new Set(recipient.sessions
-              .map(s => s.teacher?.name)
-              .filter(Boolean)
-            )].join('、');
-
-            // Extract unique subject names
-            const subjectNames = [...new Set(recipient.sessions
-              .map(s => s.subject?.name)
-              .filter(Boolean)
-            )].join('、');
-
-            // Prepare variables for template replacement
-            const templateVariables: Record<string, string> = {
-              dailyClassList,
-              recipientName: recipient.name,
-              recipientType: recipient.recipientType === 'TEACHER' ? '講師' : '生徒',
-              classDate: format(new Date(targetDate), 'yyyy年M月d日'),
-              currentDate: format(nowJST, 'yyyy年M月d日'),
-              classCount: String(recipient.sessions.length),
-              firstClassTime,
-              lastClassTime,
-              totalDuration,
-              teacherNames: teacherNames || '未定',
-              subjectNames: subjectNames || '未定',
-              branchName: template.branch?.name || ''
-            };
-
-            // Replace variables in template content
-            const message = replaceTemplateVariables(template.content, templateVariables);
-
-            // Check for duplicate notification before sending LINE message
-            const notification = await createNotification({
-              recipientType: recipient.recipientType,
-              recipientId: recipient.recipientId,
-              notificationType: template.timingValue === 0 ? 'DAILY_SUMMARY_SAMEDAY' :
-                               template.timingValue === 1 ? 'DAILY_SUMMARY_24H' :
-                               `DAILY_SUMMARY_${template.timingValue}D`,
-              message,
-              relatedClassId: recipient.sessions.length > 0 ? recipient.sessions.map(s => s.classId).join(',') : undefined, // Store all class IDs
-              branchId: template.branchId || undefined,
-              sentVia: 'LINE',
-              targetDate: new Date(targetDate + 'T00:00:00.000Z'), // The date of the classes being notified about
-            });
-
-            if (notification) {
-              // Only send LINE message if notification was created (not a duplicate)
-              try {
-                // Get channel credentials for this branch
-                const credentials = await import('@/lib/line-multi-channel').then(m => m.getChannelCredentials(template.branchId || undefined));
-                if (credentials) {
-                  await sendLineMulticast([recipient.lineId], message, credentials);
-                } else {
-                  // Fallback to basic LINE function if no credentials found
-                  const { sendLineMulticast: fallbackMulticast } = await import('@/lib/line');
-                  await fallbackMulticast([recipient.lineId], message, template.branchId || undefined);
-                }
-                
-                // Update the notification status to SENT after successful LINE message
-                await prisma.notification.update({
-                  where: { notificationId: notification.notificationId },
-                  data: { 
-                    status: 'SENT',
-                    sentAt: now
-                  }
-                });
-                totalNotificationsSent++;
-                console.log(`✓ Sent daily summary for ${recipient.name} (${recipient.recipientType}) with ${recipient.sessions.length} classes`);
-              } catch (lineError) {
-                // If LINE message fails, update notification status to FAILED
-                await prisma.notification.update({
-                  where: { notificationId: notification.notificationId },
-                  data: { 
-                    status: 'FAILED',
-                    logs: [{ error: String(lineError), timestamp: now.toISOString() }]
-                  }
-                });
-                throw lineError;
-              }
-            } else {
-              console.log(`⚠️ Duplicate notification skipped for ${recipient.name} (${recipient.recipientType}) - already sent for ${targetDate}`);
-            }
-          } catch (error) {
-            const errorMsg = `Error queuing daily summary for ${recipient.name}: ${error}`;
-            console.error(errorMsg);
-            if (error instanceof Error && 'response' in error) {
-              console.error('LINE API Response:', (error as Error & { response?: { data?: unknown } }).response?.data);
-            }
-            errors.push(errorMsg);
-          }
-        }
-      } catch (error) {
-        const errorMsg = `Error processing template ${template.name}: ${error}`;
-        console.error(errorMsg);
-        errors.push(errorMsg);
-      }
-    }
-
+    const result = await processNotifications(false);
+    
     return NextResponse.json({
       success: true,
-      notificationsSent: totalNotificationsSent,
-      templatesProcessed: activeTemplates.length,
-      errors: errors.length > 0 ? errors : undefined,
-      timestamp: format(nowJST, 'yyyy-MM-dd HH:mm:ss zzz')
+      ...result
     });
   } catch (error) {
     console.error('Error in notification service:', error);
+    return NextResponse.json(
+      { error: 'Internal server error', details: error },
+      { status: 500 }
+    );
+  }
+}
+
+// Manual trigger endpoint for testing
+export async function POST(req: NextRequest) {
+  try {
+    // Verify authentication (you can use session auth or a special token)
+    const authHeader = req.headers.get('authorization');
+    
+    // For testing, allow either the cron secret or session authentication
+    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+      // TODO: Add session authentication check here
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await req.json();
+    const skipTimeCheck = body.skipTimeCheck ?? true; // Default to skipping time check for manual triggers
+
+    console.log('Manual notification trigger requested with skipTimeCheck:', skipTimeCheck);
+
+    const result = await processNotifications(skipTimeCheck);
+    
+    return NextResponse.json({
+      success: true,
+      manual: true,
+      ...result
+    });
+  } catch (error) {
+    console.error('Error in manual notification trigger:', error);
     return NextResponse.json(
       { error: 'Internal server error', details: error },
       { status: 500 }

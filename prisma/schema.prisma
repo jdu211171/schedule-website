@@ -22,6 +22,7 @@ model Branch {
   userBranches         UserBranch[]
   vacations            Vacation[]
   branchLineChannels   BranchLineChannel[]
+  branchSettings       BranchSettings?
 
   @@index([order])
   @@map("branches")
@@ -35,6 +36,18 @@ model UserBranch {
 
   @@id([userId, branchId])
   @@map("user_branches")
+}
+
+model BranchSettings {
+  id                        String   @id @default(cuid())
+  branchId                  String?  @unique @map("branch_id")
+  archiveRetentionMonths    Int      @default(6) @map("archive_retention_months")
+  createdAt                 DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt                 DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  branch                    Branch?  @relation(fields: [branchId], references: [branchId], onDelete: Cascade)
+
+  @@index([branchId])
+  @@map("branch_settings")
 }
 
 model Booth {
@@ -649,6 +662,5 @@ model BranchLineChannel {
   @@unique([branchId, channelId])
   @@index([branchId])
   @@index([channelId])
-  @@index([branchId, isPrimary], name: "branch_line_channels_branch_id_primary_unique", type: BTree)
   @@map("branch_line_channels")
 }

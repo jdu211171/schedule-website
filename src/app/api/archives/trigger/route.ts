@@ -3,19 +3,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { withBranchAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-// POST - Manually trigger the archive process
+// POST - Manually trigger the archive process (uses global settings)
 export const POST = withBranchAccess(
   ["ADMIN"],
   async (request: NextRequest) => {
     try {
-      // Execute the archive function
+      // Execute the archive function which returns structured data
       const result = await prisma.$queryRaw<
         Array<{
           archived_count: number;
           deleted_count: number;
           error_message: string | null;
         }>
-      >`SELECT * FROM trigger_archive_manually()`;
+      >`SELECT * FROM archive_old_class_sessions()`;
 
       if (!result || result.length === 0) {
         return NextResponse.json(

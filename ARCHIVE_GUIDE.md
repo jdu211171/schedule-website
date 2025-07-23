@@ -2,7 +2,7 @@
 
 ## Overview
 
-The archive system automatically preserves class session data that is older than 6 months. This allows you to delete teachers and students while maintaining historical records of their sessions.
+The archive system automatically preserves class session data based on a configurable global retention period. This allows you to delete teachers and students while maintaining historical records of their sessions. The default retention period is 6 months, but can be customized globally for all branches.
 
 ## Key Features
 
@@ -31,7 +31,7 @@ The `Archive` model stores:
 
 ### `archive_old_class_sessions()`
 Main archiving function that:
-1. Identifies sessions older than 6 months
+1. Identifies sessions older than the global retention period
 2. Captures enrolled students for group classes
 3. Copies data to archives table with denormalized names
 4. Deletes original sessions (cascade deletes enrollments)
@@ -39,6 +39,11 @@ Main archiving function that:
 
 ### `trigger_archive_manually()`
 Wrapper function for manual execution that provides user-friendly output.
+
+### `get_archive_retention_months()`
+Helper function that returns the global retention period:
+1. Checks for global settings (branch_id = NULL)
+2. Defaults to 6 months if no settings exist
 
 ## API Endpoints
 
@@ -81,7 +86,30 @@ Body parameters:
 ```
 POST /api/archives/trigger
 ```
-Manually runs the archive process (Admin only).
+Manually runs the archive process using global retention settings (Admin only).
+
+## Retention Configuration
+
+### Setting Global Retention Period
+
+The archive system uses a single global retention period that applies to all branches:
+
+1. **Via SQL**:
+   ```sql
+   -- Set global retention to 12 months
+   INSERT INTO branch_settings (branch_id, archive_retention_months) 
+   VALUES (NULL, 12)
+   ON CONFLICT (branch_id) DO UPDATE 
+   SET archive_retention_months = 12;
+   ```
+
+2. **Via Admin UI**: 
+   - Navigate to Dashboard → Settings → Archive Settings
+   - Adjust the global retention period in months
+   - Click Save to apply changes to all branches
+
+### Default Setting
+If no global setting is configured, the system defaults to 6 months.
 
 ## Setup Instructions
 
@@ -93,8 +121,8 @@ Manually runs the archive process (Admin only).
 
 2. **Create the archive functions**:
    ```bash
-   # Run the archive script in your database
-   psql $DATABASE_URL < archive_script.sql
+   # Run the global-only archive script in your database
+   psql $DATABASE_URL < update_archive_global_only.sql
    ```
 
 3. **Enable pg_cron** (if not already enabled):
@@ -110,9 +138,15 @@ Manually runs the archive process (Admin only).
 ## Testing
 
 Use the provided `test-archive.sql` script to:
-1. Create test sessions older than 6 months
-2. Run the archive process
+1. Create test sessions older than the configured retention period
+2. Run the archive process with custom retention if needed
 3. Verify data was archived correctly
+
+The archive process will use the configured global retention period:
+```sql
+-- Archive using global settings
+SELECT trigger_archive_manually();
+```
 
 ## Maintenance
 
