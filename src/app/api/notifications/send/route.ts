@@ -130,7 +130,6 @@ async function processNotifications(skipTimeCheck: boolean = false) {
             orderBy: { startTime: 'asc' },
             include: {
               student: { select: { studentId: true, name: true } },
-              studentClassEnrollments: { include: { student: { select: { studentId: true, name: true } } } },
               subject: { select: { name: true } },
               booth: { select: { name: true } },
               branch: { select: { name: true } }
@@ -170,42 +169,7 @@ async function processNotifications(skipTimeCheck: boolean = false) {
 
       console.log(`  Found ${studentsWithDirectClasses.length} students with direct classes on ${targetDateString}`);
       
-      const studentsWithEnrolledClasses = await prisma.student.findMany({
-        where: {
-          lineNotificationsEnabled: true,
-          lineId: { not: null },
-          studentClassEnrollments: {
-            some: {
-              classSession: {
-                date: targetDate
-              }
-            }
-          }
-        },
-        select: {
-          studentId: true,
-          name: true,
-          lineId: true,
-          studentClassEnrollments: {
-            where: {
-              classSession: {
-                date: targetDate
-              }
-            },
-            include: {
-              classSession: {
-                include: {
-                  teacher: { select: { teacherId: true, name: true } },
-                  student: { select: { studentId: true, name: true } },
-                  subject: { select: { name: true } },
-                  booth: { select: { name: true } },
-                  branch: { select: { name: true } }
-                }
-              }
-            }
-          }
-        }
-      });
+      // Removed studentsWithEnrolledClasses query as we no longer support group classes
 
       const recipientSessions = new Map<string, { recipientType: 'TEACHER' | 'STUDENT'; recipientId: string; lineId: string; name: string; sessions: any[]; }>();
 
@@ -225,17 +189,7 @@ async function processNotifications(skipTimeCheck: boolean = false) {
         }
       }
 
-      for (const student of studentsWithEnrolledClasses) {
-        if (student.lineId) {
-          const key = `student-${student.studentId}`;
-          if (!recipientSessions.has(key)) {
-            recipientSessions.set(key, { recipientType: 'STUDENT', recipientId: student.studentId, lineId: student.lineId, name: student.name, sessions: [] });
-          }
-          for (const enrollment of student.studentClassEnrollments) {
-            recipientSessions.get(key)!.sessions.push(enrollment.classSession);
-          }
-        }
-      }
+      // Removed processing of studentsWithEnrolledClasses as we no longer support group classes
 
       const totalSessions = recipientSessions.size > 0 ? Array.from(recipientSessions.values()).reduce((sum, recipient) => sum + recipient.sessions.length, 0) : 0;
       console.log(`\n📅 Found ${totalSessions} sessions for date ${targetDateString} across ${recipientSessions.size} recipients`);
@@ -258,9 +212,8 @@ async function processNotifications(skipTimeCheck: boolean = false) {
             const endTime = `${String(endDate.getUTCHours()).padStart(2, '0')}:${String(endDate.getUTCMinutes()).padStart(2, '0')}`;
             const durationMinutes = (new Date(session.endTime).getTime() - new Date(session.startTime).getTime()) / (1000 * 60);
             const duration = `${durationMinutes}分`;
-            const studentNames = [ ...(session.student ? [session.student.name] : []), ...(session.studentClassEnrollments?.map((e: any) => e.student.name) || []) ];
-            const classType = studentNames.length <= 1 ? '1対1' : 'グループ';
-            const classItemVariables = { classNumber: String(index + 1), subjectName: session.subject?.name || '授業', startTime, endTime, teacherName: session.teacher?.name || '未定', boothName: session.booth?.name || '未定', duration, studentName: studentNames[0] || '未定', studentNames: studentNames.join('、') || '未定', studentCount: String(studentNames.length), classType };
+            const studentName = recipient.recipientType === 'STUDENT' ? recipient.name : '未定';
+            const classItemVariables = { classNumber: String(index + 1), subjectName: session.subject?.name || '授業', startTime, endTime, teacherName: session.teacher?.name || '未定', boothName: session.booth?.name || '未定', duration, studentName };
             dailyClassList += replaceTemplateVariables(itemTemplate, classItemVariables) + (index < recipient.sessions.length - 1 ? '\n\n' : '');
           });
 
@@ -282,8 +235,6 @@ async function processNotifications(skipTimeCheck: boolean = false) {
           let firstClassTime = '';
           let lastClassTime = '';
           let totalDuration = '0';
-          let teacherNames = '';
-          let subjectNames = '';
           let branchName = '';
           
           if (recipient.sessions.length > 0) {
@@ -311,24 +262,6 @@ async function processNotifications(skipTimeCheck: boolean = false) {
             const minutes = totalMinutes % 60;
             totalDuration = hours > 0 ? `${hours}時間${minutes > 0 ? minutes + '分' : ''}` : `${minutes}分`;
             
-            // Extract unique teacher names
-            const uniqueTeachers = new Set<string>();
-            sortedSessions.forEach(session => {
-              if (session.teacher?.name) {
-                uniqueTeachers.add(session.teacher.name);
-              }
-            });
-            teacherNames = Array.from(uniqueTeachers).join('、');
-            
-            // Extract unique subject names
-            const uniqueSubjects = new Set<string>();
-            sortedSessions.forEach(session => {
-              if (session.subject?.name) {
-                uniqueSubjects.add(session.subject.name);
-              }
-            });
-            subjectNames = Array.from(uniqueSubjects).join('、');
-            
             // Get branch name from first session or template
             branchName = sortedSessions[0].branch?.name || template.branch?.name || '';
           }
@@ -343,8 +276,6 @@ async function processNotifications(skipTimeCheck: boolean = false) {
             firstClassTime,
             lastClassTime,
             totalDuration,
-            teacherNames,
-            subjectNames,
             branchName
           };
           const message = replaceTemplateVariables(template.content, templateVariables);

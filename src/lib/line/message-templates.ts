@@ -69,20 +69,6 @@ export const MESSAGE_VARIABLES = {
     example: '4.5時間'
   },
   
-  // Lists
-  TEACHER_NAMES: {
-    key: '{{teacherNames}}',
-    label: '講師名一覧',
-    description: '全講師の名前（カンマ区切り）',
-    example: '田中先生、山田先生'
-  },
-  SUBJECT_NAMES: {
-    key: '{{subjectNames}}',
-    label: '科目名一覧',
-    description: '全科目の名前（カンマ区切り）',
-    example: '数学、英語、物理'
-  },
-  
   // Branch info
   BRANCH_NAME: {
     key: '{{branchName}}',
@@ -142,24 +128,6 @@ export const CLASS_ITEM_VARIABLES = {
     description: '1対1授業の生徒名',
     example: '山田太郎'
   },
-  STUDENT_NAMES: {
-    key: '{{studentNames}}',
-    label: '生徒名一覧',
-    description: '全生徒の名前（カンマ区切り）',
-    example: '山田太郎、田中花子、佐藤次郎'
-  },
-  STUDENT_COUNT: {
-    key: '{{studentCount}}',
-    label: '生徒数',
-    description: '授業に参加する生徒の人数',
-    example: '3'
-  },
-  CLASS_TYPE: {
-    key: '{{classType}}',
-    label: '授業タイプ',
-    description: '授業の形式（1対1またはグループ）',
-    example: '1対1'
-  }
 } as const;
 
 export type MessageVariable = keyof typeof MESSAGE_VARIABLES;
@@ -246,9 +214,7 @@ export const TEMPLATE_EXAMPLES = {
   COMPACT: {
     name: 'コンパクト版',
     content: `【{{classDate}}の授業】
-科目: {{subjectNames}}
 時間: {{firstClassTime}}〜{{lastClassTime}} (計{{classCount}}件)
-講師: {{teacherNames}}
 
 詳細は以下の通りです：
 {{dailyClassList}}`

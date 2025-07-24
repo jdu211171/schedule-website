@@ -77,10 +77,7 @@ export function MessageTemplateEditor({ templates, onSave }: MessageTemplateEdit
       teacherName: '田中先生',
       boothName: 'ブース A',
       duration: '90分',
-      studentName: '山田太郎',
-      studentNames: '山田太郎',
-      studentCount: '1',
-      classType: '1対1'
+      studentName: '山田太郎'
     },
     {
       classNumber: '2',
@@ -90,10 +87,7 @@ export function MessageTemplateEditor({ templates, onSave }: MessageTemplateEdit
       teacherName: '佐藤先生',
       boothName: 'ブース B',
       duration: '90分',
-      studentName: '鈴木花子',
-      studentNames: '鈴木花子、田中次郎、高橋美香',
-      studentCount: '3',
-      classType: 'グループ'
+      studentName: '鈴木花子'
     },
     {
       classNumber: '3',
@@ -103,10 +97,7 @@ export function MessageTemplateEditor({ templates, onSave }: MessageTemplateEdit
       teacherName: '山田先生',
       boothName: 'ブース C',
       duration: '90分',
-      studentName: '佐藤三郎',
-      studentNames: '佐藤三郎',
-      studentCount: '1',
-      classType: '1対1'
+      studentName: '佐藤三郎'
     }
   ];
 
@@ -156,13 +147,6 @@ export function MessageTemplateEditor({ templates, onSave }: MessageTemplateEdit
     const totalHours = totalMinutes / 60;
     values['totalDuration'] = totalHours % 1 === 0 ? `${totalHours}時間` : `${totalHours.toFixed(1)}時間`;
     
-    // Get unique teacher names
-    const teacherSet = new Set(sampleClasses.map(c => c.teacherName));
-    values['teacherNames'] = Array.from(teacherSet).join('、');
-    
-    // Get unique subject names
-    const subjectSet = new Set(sampleClasses.map(c => c.subjectName));
-    values['subjectNames'] = Array.from(subjectSet).join('、');
     
     // Generate dailyClassList preview
     values['dailyClassList'] = generateDailyClassListPreview(itemTemplate, summaryTemplate);
@@ -420,8 +404,7 @@ export function MessageTemplateEditor({ templates, onSave }: MessageTemplateEdit
                         </TooltipProvider>
                         
                         {[MESSAGE_VARIABLES.CLASS_COUNT, MESSAGE_VARIABLES.FIRST_CLASS_TIME, 
-                          MESSAGE_VARIABLES.LAST_CLASS_TIME, MESSAGE_VARIABLES.TOTAL_DURATION,
-                          MESSAGE_VARIABLES.TEACHER_NAMES, MESSAGE_VARIABLES.SUBJECT_NAMES].map((variable) => (
+                          MESSAGE_VARIABLES.LAST_CLASS_TIME, MESSAGE_VARIABLES.TOTAL_DURATION].map((variable) => (
                           <TooltipProvider key={variable.key}>
                             <Tooltip>
                               <TooltipTrigger asChild>
