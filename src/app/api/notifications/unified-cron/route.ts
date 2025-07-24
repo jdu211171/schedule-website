@@ -390,7 +390,8 @@ export async function GET(request: NextRequest) {
               notificationType: notificationType,
               message: messageContent,
               targetDate: targetDate,
-              scheduledAt: now // Schedule for immediate sending
+              scheduledAt: now, // Schedule for immediate sending
+              skipDuplicateCheck: isUpdateNotification // Allow updates to bypass duplicate prevention
             });
             
             // Update the logs field with class information
