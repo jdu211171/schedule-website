@@ -7,11 +7,13 @@ export const MESSAGE_VARIABLES = {
     example: `【1】数学
 時間: 10:00 - 11:30
 講師: 田中先生
+生徒: 佐藤花子
 場所: ブース A
 
 【2】英語
 時間: 14:00 - 15:30
 講師: 山田先生
+生徒: 鈴木太郎
 場所: ブース B`
   },
   
@@ -153,6 +155,7 @@ export interface MessageTemplate {
 export const DEFAULT_CLASS_LIST_ITEM_TEMPLATE = `【{{classNumber}}】{{subjectName}}
 時間: {{startTime}} - {{endTime}}
 講師: {{teacherName}}
+生徒: {{studentName}}
 場所: {{boothName}}`;
 
 export const DEFAULT_CLASS_LIST_SUMMARY_TEMPLATE = `計{{classCount}}件の授業があります。`;
@@ -164,17 +167,18 @@ export const CLASS_LIST_FORMAT_EXAMPLES = {
     itemTemplate: `【{{classNumber}}】{{subjectName}}
 時間: {{startTime}} - {{endTime}}
 講師: {{teacherName}}
+生徒: {{studentName}}
 場所: {{boothName}}`,
     summaryTemplate: `計{{classCount}}件の授業があります。`
   },
   COMPACT: {
     name: 'コンパクト形式',
-    itemTemplate: `{{classNumber}}. {{startTime}}-{{endTime}} {{subjectName}} ({{teacherName}})`,
+    itemTemplate: `{{classNumber}}. {{startTime}}-{{endTime}} {{subjectName}} ({{teacherName}}/{{studentName}})`,
     summaryTemplate: `全{{classCount}}件`
   },
   SIMPLE: {
     name: 'シンプル形式',
-    itemTemplate: `{{classNumber}}. {{subjectName}} {{startTime}}-{{endTime}}`,
+    itemTemplate: `{{classNumber}}. {{subjectName}} {{startTime}}-{{endTime}} ({{studentName}})`,
     summaryTemplate: `{{classCount}}件の授業`
   },
   TIME_FOCUSED: {

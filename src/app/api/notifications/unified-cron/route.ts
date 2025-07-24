@@ -246,7 +246,7 @@ export async function GET(request: NextRequest) {
               const endTime = `${String(endDate.getUTCHours()).padStart(2, '0')}:${String(endDate.getUTCMinutes()).padStart(2, '0')}`;
               const durationMinutes = (endDate.getTime() - startDate.getTime()) / (1000 * 60);
               const duration = `${durationMinutes}分`;
-              const studentName = recipient.recipientType === 'STUDENT' ? recipient.name : '未定';
+              const studentName = session.student?.name || '未定';
 
               const classItemVariables = {
                 classNumber: String(index + 1),
