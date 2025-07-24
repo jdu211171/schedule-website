@@ -267,7 +267,72 @@ async function processNotifications(skipTimeCheck: boolean = false) {
             dailyClassList += '\n\n' + replaceTemplateVariables(summaryTemplate, summaryVariables);
           }
 
-          const templateVariables = { dailyClassList, recipientName: recipient.name, recipientType: recipient.recipientType === 'TEACHER' ? '講師' : '生徒', classDate: formatInTimeZone(targetDate, TIMEZONE, 'yyyy年M月d日'), currentDate: formatInTimeZone(nowJST, TIMEZONE, 'yyyy年M月d日'), classCount: String(recipient.sessions.length) };
+          // Calculate summary variables for the main template
+          let firstClassTime = '';
+          let lastClassTime = '';
+          let totalDuration = '0';
+          let teacherNames = '';
+          let subjectNames = '';
+          let branchName = '';
+          
+          if (recipient.sessions.length > 0) {
+            // Sort sessions by start time to ensure correct first/last
+            const sortedSessions = [...recipient.sessions].sort((a, b) => 
+              new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
+            );
+            
+            const firstSession = sortedSessions[0];
+            const lastSession = sortedSessions[sortedSessions.length - 1];
+            
+            firstClassTime = formatInTimeZone(new Date(firstSession.startTime), TIMEZONE, 'HH:mm');
+            lastClassTime = formatInTimeZone(new Date(lastSession.endTime), TIMEZONE, 'HH:mm');
+            
+            // Calculate total duration in minutes then convert to hours
+            const totalMinutes = sortedSessions.reduce((total, session) => {
+              const duration = (new Date(session.endTime).getTime() - new Date(session.startTime).getTime()) / (1000 * 60);
+              return total + duration;
+            }, 0);
+            
+            const hours = Math.floor(totalMinutes / 60);
+            const minutes = totalMinutes % 60;
+            totalDuration = hours > 0 ? `${hours}時間${minutes > 0 ? minutes + '分' : ''}` : `${minutes}分`;
+            
+            // Extract unique teacher names
+            const uniqueTeachers = new Set<string>();
+            sortedSessions.forEach(session => {
+              if (session.teacher?.name) {
+                uniqueTeachers.add(session.teacher.name);
+              }
+            });
+            teacherNames = Array.from(uniqueTeachers).join('、');
+            
+            // Extract unique subject names
+            const uniqueSubjects = new Set<string>();
+            sortedSessions.forEach(session => {
+              if (session.subject?.name) {
+                uniqueSubjects.add(session.subject.name);
+              }
+            });
+            subjectNames = Array.from(uniqueSubjects).join('、');
+            
+            // Get branch name from first session or template
+            branchName = sortedSessions[0].branch?.name || template.branch?.name || '';
+          }
+          
+          const templateVariables = { 
+            dailyClassList, 
+            recipientName: recipient.name, 
+            recipientType: recipient.recipientType === 'TEACHER' ? '講師' : '生徒', 
+            classDate: formatInTimeZone(targetDate, TIMEZONE, 'yyyy年M月d日'), 
+            currentDate: formatInTimeZone(nowJST, TIMEZONE, 'yyyy年M月d日'), 
+            classCount: String(recipient.sessions.length),
+            firstClassTime,
+            lastClassTime,
+            totalDuration,
+            teacherNames,
+            subjectNames,
+            branchName
+          };
           const message = replaceTemplateVariables(template.content, templateVariables);
           const notificationType = template.timingValue === 0 ? 'DAILY_SUMMARY_SAMEDAY' : `DAILY_SUMMARY_${template.timingValue}D`;
           

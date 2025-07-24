@@ -226,10 +226,16 @@ export const runNotificationWorker = async (config: Partial<WorkerConfig> = {}):
       // If no notifications to process, break
       if (pendingNotifications.length === 0) {
         console.log('No pending notifications found. Worker completed.');
+        console.log(`Query criteria: status IN [PENDING, FAILED], attempts < ${MAX_ATTEMPTS}, scheduledAt <= ${new Date().toISOString()}`);
         break;
       }
       
       console.log(`Processing batch ${batches + 1} with ${pendingNotifications.length} notifications`);
+      
+      // Log details of notifications being processed
+      pendingNotifications.forEach((notif, idx) => {
+        console.log(`  ${idx + 1}. ${notif.recipientType} ${notif.recipientId} - Status: ${notif.status}, Attempts: ${notif.processingAttempts}`);
+      });
       
       // Process batch with controlled concurrency
       const batchResult = await processBatchConcurrently(

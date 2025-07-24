@@ -34,15 +34,15 @@ export function NotificationDataTable({ columns }: NotificationDataTableProps) {
         }
       }
     }
-    // Default to yesterday's notifications
-    const yesterday = format(subDays(new Date(), 1), "yyyy-MM-dd");
+    // Default to today's notifications
     const today = format(new Date(), "yyyy-MM-dd");
+    const tomorrow = format(new Date(new Date().setDate(new Date().getDate() + 1)), "yyyy-MM-dd");
     return {
       status: undefined as NotificationStatus | undefined,
       recipientType: undefined as string | undefined,
       notificationType: undefined as string | undefined,
-      startDate: yesterday,
-      endDate: today,
+      startDate: today,
+      endDate: tomorrow,
       search: undefined as string | undefined,
     };
   });
@@ -104,15 +104,15 @@ export function NotificationDataTable({ columns }: NotificationDataTableProps) {
   };
 
   const resetFilters = () => {
-    // Reset to yesterday's notifications
-    const yesterday = format(subDays(new Date(), 1), "yyyy-MM-dd");
+    // Reset to today's notifications
     const today = format(new Date(), "yyyy-MM-dd");
+    const tomorrow = format(new Date(new Date().setDate(new Date().getDate() + 1)), "yyyy-MM-dd");
     const defaultFilters = {
       status: undefined,
       recipientType: undefined,
       notificationType: undefined,
-      startDate: yesterday,
-      endDate: today,
+      startDate: today,
+      endDate: tomorrow,
       search: undefined,
     };
     setFilters(defaultFilters);

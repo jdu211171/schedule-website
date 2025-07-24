@@ -98,9 +98,12 @@ export const GET = withBranchAccess(
     const actualEndDate = endDate || defaultEndDate;
 
     try {
-      // Build where clause
+      // Build where clause - include both branch-specific and global notifications
       const where: any = {
-        branchId: branchId,
+        OR: [
+          { branchId: branchId },
+          { branchId: null }
+        ]
       };
 
       // Status filter
