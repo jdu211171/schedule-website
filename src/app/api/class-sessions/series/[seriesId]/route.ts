@@ -479,14 +479,43 @@ export const DELETE = withBranchAccess(
         );
       }
 
-      // Delete future sessions
-      await prisma.classSession.deleteMany({
-        where: {
-          seriesId,
-          date: {
-            gte: today,
+      // Delete future sessions and their enrollments in a transaction
+      await prisma.$transaction(async (tx) => {
+        // Get all future session IDs for this series
+        const futureSessions = await tx.classSession.findMany({
+          where: {
+            seriesId,
+            date: {
+              gte: today,
+            },
           },
-        },
+          select: {
+            classId: true,
+          },
+        });
+        
+        const sessionIds = futureSessions.map(session => session.classId);
+        
+        // First delete all enrollments for these sessions
+        if (sessionIds.length > 0) {
+          await tx.studentClassEnrollment.deleteMany({
+            where: {
+              classId: {
+                in: sessionIds,
+              },
+            },
+          });
+        }
+        
+        // Then delete the future sessions
+        await tx.classSession.deleteMany({
+          where: {
+            seriesId,
+            date: {
+              gte: today,
+            },
+          },
+        });
       });
 
       return NextResponse.json(

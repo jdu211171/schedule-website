@@ -448,26 +448,17 @@ export const DELETE = withBranchAccess(
         );
       }
 
-      // Check for enrollments
-      const enrollmentCount = await prisma.studentClassEnrollment.count({
-        where: { classId }
-      });
-
-      if (enrollmentCount > 0) {
-        return NextResponse.json(
-          { 
-            error: `この授業には${enrollmentCount}名の生徒が登録されているため削除できません。`,
-            details: {
-              enrollments: enrollmentCount
-            }
-          },
-          { status: 400 }
-        );
-      }
-
-      // Delete the class session
-      await prisma.classSession.delete({
-        where: { classId },
+      // Delete the class session and its enrollments in a transaction
+      await prisma.$transaction(async (tx) => {
+        // First delete all enrollments for this class
+        await tx.studentClassEnrollment.deleteMany({
+          where: { classId }
+        });
+        
+        // Then delete the class session
+        await tx.classSession.delete({
+          where: { classId }
+        });
       });
 
       return NextResponse.json(
