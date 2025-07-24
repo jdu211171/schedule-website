@@ -113,7 +113,8 @@ export async function GET(request: NextRequest) {
         const todayStartJST = startOfDay(nowJST);
         const todayStartUTC = fromZonedTime(todayStartJST, TIMEZONE);
         
-        const alreadyProcessed = await prisma.notification.count({
+        // Check for existing notifications and get their sent class data
+        const existingNotifications = await prisma.notification.findMany({
           where: {
             targetDate: targetDate,
             notificationType: {
@@ -124,12 +125,24 @@ export async function GET(request: NextRequest) {
             createdAt: {
               gte: todayStartUTC
             }
+          },
+          select: {
+            notificationId: true,
+            recipientType: true,
+            recipientId: true,
+            logs: true,
+            status: true
           }
         });
         
-        if (alreadyProcessed > 0) {
-          console.log(`  ✅ Already processed today for target date ${targetDateString}`);
-          continue;
+        const hasExistingNotifications = existingNotifications.length > 0;
+        let isUpdate = false;
+        
+        if (hasExistingNotifications) {
+          console.log(`  📋 Found ${existingNotifications.length} existing notifications for ${targetDateString}`);
+          // We'll check for updates after fetching current classes
+        } else {
+          console.log(`  🆕 No existing notifications for ${targetDateString} - will create initial notifications`);
         }
         
         console.log(`  🎯 Target date for classes: ${targetDateString}`);
@@ -231,9 +244,42 @@ export async function GET(request: NextRequest) {
         
         console.log(`  Total recipients: ${recipientSessions.size}`);
         
+        // Create a map of existing notifications by recipient
+        const existingByRecipient = new Map<string, any>();
+        for (const notif of existingNotifications) {
+          const key = `${notif.recipientType?.toLowerCase()}-${notif.recipientId}`;
+          existingByRecipient.set(key, notif);
+        }
+        
         // Create notifications for each recipient
-        for (const [, recipient] of recipientSessions) {
+        for (const [recipientKey, recipient] of recipientSessions) {
           try {
+            // Check if this recipient has an existing notification
+            const existingNotif = existingByRecipient.get(recipientKey);
+            let shouldSendNotification = true;
+            let isUpdateNotification = false;
+            
+            if (existingNotif) {
+              // Compare class IDs to check if update is needed
+              const currentClassIds = recipient.sessions.map(s => s.classId).sort();
+              const sentClassIds = (existingNotif.logs as any)?.classIds || [];
+              
+              // Check if classes have changed
+              const classesChanged = currentClassIds.length !== sentClassIds.length ||
+                                   !currentClassIds.every((id, index) => id === sentClassIds[index]);
+              
+              if (classesChanged) {
+                console.log(`    📝 Classes changed for ${recipient.recipientType} ${recipient.name} - will send update`);
+                isUpdateNotification = true;
+              } else {
+                console.log(`    ✅ No changes for ${recipient.recipientType} ${recipient.name} - skipping`);
+                shouldSendNotification = false;
+              }
+            }
+            
+            if (!shouldSendNotification) {
+              continue;
+            }
             // Build class list
             const itemTemplate = template.classListItemTemplate || DEFAULT_CLASS_LIST_ITEM_TEMPLATE;
             const summaryTemplate = template.classListSummaryTemplate || DEFAULT_CLASS_LIST_SUMMARY_TEMPLATE;
@@ -311,12 +357,20 @@ export async function GET(request: NextRequest) {
               branchName
             };
             
-            const messageContent = replaceTemplateVariables(template.content, templateVariables);
+            let messageContent = replaceTemplateVariables(template.content, templateVariables);
+            
+            // Add update prefix if this is an update
+            if (isUpdateNotification) {
+              messageContent = '【更新】' + messageContent;
+            }
             
             // Create notification with immediate scheduling
             const notificationType = template.timingValue === 0 ? 'DAILY_SUMMARY_SAMEDAY' :
                                    template.timingValue === 1 ? 'DAILY_SUMMARY_1D' :
                                    `DAILY_SUMMARY_${template.timingValue}D`;
+            
+            // Get current class IDs to store
+            const currentClassIds = recipient.sessions.map(s => s.classId).sort();
             
             await createNotification({
               recipientType: recipient.recipientType,
@@ -327,8 +381,35 @@ export async function GET(request: NextRequest) {
               scheduledAt: now // Schedule for immediate sending
             });
             
+            // Update the logs field with class information
+            // Since createNotification doesn't support logs parameter, we need to update after creation
+            const createdNotif = await prisma.notification.findFirst({
+              where: {
+                recipientType: recipient.recipientType,
+                recipientId: recipient.recipientId,
+                targetDate: targetDate,
+                notificationType: notificationType,
+                createdAt: { gte: new Date(Date.now() - 1000) } // Created in last second
+              },
+              orderBy: { createdAt: 'desc' }
+            });
+            
+            if (createdNotif) {
+              await prisma.notification.update({
+                where: { notificationId: createdNotif.notificationId },
+                data: {
+                  logs: {
+                    classIds: currentClassIds,
+                    classCount: recipient.sessions.length,
+                    isUpdate: isUpdateNotification,
+                    createdByUnifiedCron: true
+                  }
+                }
+              });
+            }
+            
             results.notificationsCreated++;
-            console.log(`    ✅ Created notification for ${recipient.recipientType} ${recipient.name}`);
+            console.log(`    ✅ Created ${isUpdateNotification ? 'UPDATE' : 'initial'} notification for ${recipient.recipientType} ${recipient.name}`);
           } catch (error) {
             console.error(`    ❌ Failed to create notification for ${recipient.name}:`, error);
             results.errors.push(`Failed to create notification for ${recipient.name}: ${error instanceof Error ? error.message : String(error)}`);
