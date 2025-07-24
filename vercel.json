@@ -1,11 +1,7 @@
 {
   "crons": [
     {
-      "path": "/api/notifications/send",
-      "schedule": "*/15 * * * *"
-    },
-    {
-      "path": "/api/notifications/cron",
+      "path": "/api/notifications/unified-cron",
       "schedule": "*/5 * * * *"
     }
   ]
