@@ -250,8 +250,12 @@ async function processNotifications(skipTimeCheck: boolean = false) {
           const summaryTemplate = template.classListSummaryTemplate || DEFAULT_CLASS_LIST_SUMMARY_TEMPLATE;
           let dailyClassList = '';
           recipient.sessions.forEach((session, index) => {
-            const startTime = formatInTimeZone(new Date(session.startTime), TIMEZONE, 'HH:mm');
-            const endTime = formatInTimeZone(new Date(session.endTime), TIMEZONE, 'HH:mm');
+            // Extract time directly from the Date object without timezone conversion
+            // The Time(6) fields are already stored in the correct timezone (JST)
+            const startDate = new Date(session.startTime);
+            const startTime = `${String(startDate.getUTCHours()).padStart(2, '0')}:${String(startDate.getUTCMinutes()).padStart(2, '0')}`;
+            const endDate = new Date(session.endTime);
+            const endTime = `${String(endDate.getUTCHours()).padStart(2, '0')}:${String(endDate.getUTCMinutes()).padStart(2, '0')}`;
             const durationMinutes = (new Date(session.endTime).getTime() - new Date(session.startTime).getTime()) / (1000 * 60);
             const duration = `${durationMinutes}分`;
             const studentNames = [ ...(session.student ? [session.student.name] : []), ...(session.studentClassEnrollments?.map((e: any) => e.student.name) || []) ];
@@ -263,7 +267,14 @@ async function processNotifications(skipTimeCheck: boolean = false) {
           if (summaryTemplate && recipient.sessions.length > 0) {
             const firstSession = recipient.sessions[0];
             const lastSession = recipient.sessions[recipient.sessions.length - 1];
-            const summaryVariables = { classCount: String(recipient.sessions.length), firstClassTime: firstSession ? formatInTimeZone(new Date(firstSession.startTime), TIMEZONE, 'HH:mm') : '', lastClassTime: lastSession ? formatInTimeZone(new Date(lastSession.endTime), TIMEZONE, 'HH:mm') : '' };
+            // Extract time directly without timezone conversion
+            const firstStartDate = new Date(firstSession.startTime);
+            const lastEndDate = new Date(lastSession.endTime);
+            const summaryVariables = { 
+              classCount: String(recipient.sessions.length), 
+              firstClassTime: firstSession ? `${String(firstStartDate.getUTCHours()).padStart(2, '0')}:${String(firstStartDate.getUTCMinutes()).padStart(2, '0')}` : '', 
+              lastClassTime: lastSession ? `${String(lastEndDate.getUTCHours()).padStart(2, '0')}:${String(lastEndDate.getUTCMinutes()).padStart(2, '0')}` : '' 
+            };
             dailyClassList += '\n\n' + replaceTemplateVariables(summaryTemplate, summaryVariables);
           }
 
@@ -284,8 +295,11 @@ async function processNotifications(skipTimeCheck: boolean = false) {
             const firstSession = sortedSessions[0];
             const lastSession = sortedSessions[sortedSessions.length - 1];
             
-            firstClassTime = formatInTimeZone(new Date(firstSession.startTime), TIMEZONE, 'HH:mm');
-            lastClassTime = formatInTimeZone(new Date(lastSession.endTime), TIMEZONE, 'HH:mm');
+            // Extract time directly without timezone conversion
+            const firstStartDate = new Date(firstSession.startTime);
+            const lastEndDate = new Date(lastSession.endTime);
+            firstClassTime = `${String(firstStartDate.getUTCHours()).padStart(2, '0')}:${String(firstStartDate.getUTCMinutes()).padStart(2, '0')}`;
+            lastClassTime = `${String(lastEndDate.getUTCHours()).padStart(2, '0')}:${String(lastEndDate.getUTCMinutes()).padStart(2, '0')}`;
             
             // Calculate total duration in minutes then convert to hours
             const totalMinutes = sortedSessions.reduce((total, session) => {
