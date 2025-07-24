@@ -292,6 +292,7 @@ export async function GET(request: NextRequest) {
             if (!shouldSendNotification) {
               continue;
             }
+            
             // Build class list
             const itemTemplate = template.classListItemTemplate || DEFAULT_CLASS_LIST_ITEM_TEMPLATE;
             const summaryTemplate = template.classListSummaryTemplate || DEFAULT_CLASS_LIST_SUMMARY_TEMPLATE;
@@ -376,43 +377,70 @@ export async function GET(request: NextRequest) {
               messageContent = '【更新】' + messageContent;
             }
             
-            // Create notification with immediate scheduling
+            // Get current class IDs to store
+            const currentClassIds = recipient.sessions.map(s => s.classId).sort();
+            
+            // Handle notification creation or update
             const notificationType = template.timingValue === 0 ? 'DAILY_SUMMARY_SAMEDAY' :
                                    template.timingValue === 1 ? 'DAILY_SUMMARY_1D' :
                                    `DAILY_SUMMARY_${template.timingValue}D`;
             
-            // Get current class IDs to store
-            const currentClassIds = recipient.sessions.map(s => s.classId).sort();
-            
-            const createdNotif = await createNotification({
-              recipientType: recipient.recipientType,
-              recipientId: recipient.recipientId,
-              notificationType: notificationType,
-              message: messageContent,
-              targetDate: targetDate,
-              scheduledAt: now, // Schedule for immediate sending
-              skipDuplicateCheck: isUpdateNotification // Allow updates to bypass duplicate prevention
-            });
-            
-            // Update the logs field with class information
-            if (createdNotif) {
-              await prisma.notification.update({
-                where: { notificationId: createdNotif.notificationId },
-                data: {
-                  logs: {
-                    classIds: currentClassIds,
-                    classCount: recipient.sessions.length,
-                    isUpdate: isUpdateNotification,
-                    createdByUnifiedCron: true
+            if (isUpdateNotification) {
+              // Update existing notification instead of creating new one
+              const existingNotif = existingByRecipient.get(recipientKey);
+              if (existingNotif) {
+                await prisma.notification.update({
+                  where: { notificationId: existingNotif.notificationId },
+                  data: {
+                    message: messageContent,
+                    logs: {
+                      classIds: currentClassIds,
+                      classCount: recipient.sessions.length,
+                      isUpdate: isUpdateNotification,
+                      createdByUnifiedCron: true
+                    },
+                    status: 'PENDING', // Reset to pending so it gets sent again
+                    processingAttempts: 0 // Reset attempts
                   }
-                }
+                });
+                
+                results.notificationsCreated++;
+                console.log(`    ✅ Updated existing notification for ${recipient.recipientType} ${recipient.name}`);
+                console.log(`    📝 Updated logs: ${recipient.sessions.length} classes, IDs: [${currentClassIds.join(', ')}]`);
+              } else {
+                console.log(`    ❌ No existing notification found to update for ${recipient.recipientType} ${recipient.name}`);
+              }
+            } else {
+              // Create new notification normally
+              const createdNotif = await createNotification({
+                recipientType: recipient.recipientType,
+                recipientId: recipient.recipientId,
+                notificationType: notificationType,
+                message: messageContent,
+                targetDate: targetDate,
+                scheduledAt: now // Schedule for immediate sending
               });
               
-              results.notificationsCreated++;
-              console.log(`    ✅ Created ${isUpdateNotification ? 'UPDATE' : 'initial'} notification for ${recipient.recipientType} ${recipient.name}`);
-              console.log(`    📝 Updated logs: ${recipient.sessions.length} classes, IDs: [${currentClassIds.join(', ')}]`);
-            } else {
-              console.log(`    ❌ Failed to create notification for ${recipient.recipientType} ${recipient.name} - createNotification returned null`);
+              // Update the logs field with class information
+              if (createdNotif) {
+                await prisma.notification.update({
+                  where: { notificationId: createdNotif.notificationId },
+                  data: {
+                    logs: {
+                      classIds: currentClassIds,
+                      classCount: recipient.sessions.length,
+                      isUpdate: isUpdateNotification,
+                      createdByUnifiedCron: true
+                    }
+                  }
+                });
+                
+                results.notificationsCreated++;
+                console.log(`    ✅ Created initial notification for ${recipient.recipientType} ${recipient.name}`);
+                console.log(`    📝 Updated logs: ${recipient.sessions.length} classes, IDs: [${currentClassIds.join(', ')}]`);
+              } else {
+                console.log(`    ❌ Failed to create notification for ${recipient.recipientType} ${recipient.name} - createNotification returned null`);
+              }
             }
           } catch (error) {
             console.error(`    ❌ Failed to create notification for ${recipient.name}:`, error);
