@@ -833,6 +833,9 @@ export const DELETE = withBranchAccess(
       );
     }
 
+    // Get selected branch from headers
+    const selectedBranchId = request.headers.get("X-Selected-Branch");
+    
     try {
       // Check if teacher exists
       const teacher = await prisma.teacher.findUnique({
@@ -847,21 +850,29 @@ export const DELETE = withBranchAccess(
         );
       }
 
-      // Check for dependencies
+      // Check for dependencies in the selected branch only
       const classSessionCount = await prisma.classSession.count({
-        where: { teacherId }
+        where: { 
+          teacherId,
+          ...(selectedBranchId && { branchId: selectedBranchId })
+        }
       });
 
+      // Preferences don't have direct branch relation, so we keep the count as is
       const preferenceCount = await prisma.studentTeacherPreference.count({
         where: { teacherId }
       });
 
-      const totalDependencies = classSessionCount + preferenceCount;
+      // Only count class sessions for branch-specific dependencies
+      const totalDependencies = classSessionCount;
 
       if (totalDependencies > 0) {
         // Get branch information for class sessions
         const sessions = await prisma.classSession.findMany({
-          where: { teacherId },
+          where: { 
+            teacherId,
+            ...(selectedBranchId && { branchId: selectedBranchId })
+          },
           select: {
             branchId: true,
             branch: { select: { name: true } }
@@ -880,7 +891,6 @@ export const DELETE = withBranchAccess(
             error: `この講師は${totalDependencies}件の授業セッション${branchText}に関連付けられているため削除できません。`,
             details: {
               classSessions: classSessionCount,
-              preferences: preferenceCount,
               branches
             }
           },

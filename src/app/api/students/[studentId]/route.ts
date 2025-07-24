@@ -958,6 +958,9 @@ export const DELETE = withBranchAccess(
       );
     }
 
+    // Get selected branch from headers
+    const selectedBranchId = request.headers.get("X-Selected-Branch");
+
     try {
       // Check if student exists
       const student = await prisma.student.findUnique({
@@ -972,29 +975,57 @@ export const DELETE = withBranchAccess(
         );
       }
 
-      // Check for dependencies
+      // Check for dependencies in the selected branch only
       const classSessionCount = await prisma.classSession.count({
-        where: { studentId }
+        where: { 
+          studentId,
+          ...(selectedBranchId && { branchId: selectedBranchId })
+        }
       });
 
       const enrollmentCount = await prisma.studentClassEnrollment.count({
-        where: { studentId }
+        where: { 
+          studentId,
+          classSession: {
+            ...(selectedBranchId && { branchId: selectedBranchId })
+          }
+        }
       });
 
+      // For preferences, we only count those related to the current branch through class sessions
+      // Since preferences don't have direct branch relation
       const preferenceCount = await prisma.studentTeacherPreference.count({
         where: { studentId }
       });
 
-      const totalDependencies = classSessionCount + enrollmentCount + preferenceCount;
+      const totalDependencies = classSessionCount + enrollmentCount;
 
       if (totalDependencies > 0) {
+        // Get branch information for better error message
+        const branches = await prisma.classSession.findMany({
+          where: { 
+            studentId,
+            ...(selectedBranchId && { branchId: selectedBranchId })
+          },
+          select: {
+            branch: { select: { name: true } }
+          },
+          distinct: ['branchId']
+        });
+        
+        const branchNames = branches
+          .map(s => s.branch?.name)
+          .filter(Boolean);
+        
+        const branchText = branchNames.length > 0 ? `（${branchNames.join('、')}）` : '';
+        
         return NextResponse.json(
           { 
-            error: `この生徒は${totalDependencies}件の授業に関連付けられているため削除できません。`,
+            error: `この生徒は${totalDependencies}件の授業${branchText}に関連付けられているため削除できません。`,
             details: {
               classSessions: classSessionCount,
               enrollments: enrollmentCount,
-              preferences: preferenceCount
+              branches: branchNames
             }
           },
           { status: 400 }

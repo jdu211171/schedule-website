@@ -235,9 +235,12 @@ export const DELETE = withBranchAccess(
         );
       }
 
-      // Check for dependencies
+      // Check for dependencies - only count sessions in the booth's branch
       const classSessionCount = await prisma.classSession.count({
-        where: { boothId }
+        where: { 
+          boothId,
+          branchId: booth.branchId // Ensure we only count sessions in the booth's branch
+        }
       });
 
       if (classSessionCount > 0) {
@@ -245,7 +248,8 @@ export const DELETE = withBranchAccess(
           { 
             error: `このブースは${classSessionCount}件の授業セッションに関連付けられているため削除できません。`,
             details: {
-              classSessions: classSessionCount
+              classSessions: classSessionCount,
+              branch: booth.branchId
             }
           },
           { status: 400 }

@@ -155,6 +155,9 @@ export const DELETE = withBranchAccess(
       return NextResponse.json({ error: "科目IDが必要です" }, { status: 400 });
     }
 
+    // Get selected branch from headers
+    const selectedBranchId = request.headers.get("X-Selected-Branch");
+
     try {
       // Check if subject exists
       const subject = await prisma.subject.findUnique({
@@ -168,11 +171,15 @@ export const DELETE = withBranchAccess(
         );
       }
 
-      // Check for dependencies
+      // Check for dependencies in the selected branch only
       const classSessionCount = await prisma.classSession.count({
-        where: { subjectId }
+        where: { 
+          subjectId,
+          ...(selectedBranchId && { branchId: selectedBranchId })
+        }
       });
 
+      // Preferences don't have direct branch relation, but we can check if they're used in any class sessions in this branch
       const preferenceCount = await prisma.userSubjectPreference.count({
         where: { subjectId }
       });
@@ -181,12 +188,16 @@ export const DELETE = withBranchAccess(
         where: { subjectId }
       });
 
-      const totalDependencies = classSessionCount + preferenceCount + studentPreferenceCount;
+      // Only count class sessions for branch-specific dependencies
+      const totalDependencies = classSessionCount;
 
       if (totalDependencies > 0) {
         // Get branch information for class sessions
         const sessions = await prisma.classSession.findMany({
-          where: { subjectId },
+          where: { 
+            subjectId,
+            ...(selectedBranchId && { branchId: selectedBranchId })
+          },
           select: {
             branchId: true,
             branch: { select: { name: true } }
@@ -205,8 +216,6 @@ export const DELETE = withBranchAccess(
             error: `この科目は${totalDependencies}件の授業セッション${branchText}に関連付けられているため削除できません。`,
             details: {
               classSessions: classSessionCount,
-              preferences: preferenceCount,
-              studentPreferences: studentPreferenceCount,
               branches
             }
           },

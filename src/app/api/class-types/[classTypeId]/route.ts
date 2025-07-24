@@ -1,6 +1,6 @@
 // src/app/api/class-types/[classTypeId]/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { withRole } from "@/lib/auth";
+import { withRole, withBranchAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { classTypeUpdateSchema } from "@/schemas/class-type.schema";
 import { ClassType } from "@prisma/client";
@@ -305,7 +305,7 @@ export const PATCH = withRole(
 );
 
 // DELETE - Delete a class type
-export const DELETE = withRole(
+export const DELETE = withBranchAccess(
   ["ADMIN", "STAFF"],
   async (request: NextRequest, session) => {
     const classTypeId = request.url.split("/").pop();
@@ -316,6 +316,9 @@ export const DELETE = withRole(
         { status: 400 }
       );
     }
+
+    // Get selected branch from headers
+    const selectedBranchId = request.headers.get("X-Selected-Branch");
 
     try {
       // Check if class type exists
@@ -355,17 +358,39 @@ export const DELETE = withRole(
         );
       }
 
-      // Check for class sessions
+      // Check for class sessions in the selected branch only
       const classSessionCount = await prisma.classSession.count({
-        where: { classTypeId }
+        where: { 
+          classTypeId,
+          ...(selectedBranchId && { branchId: selectedBranchId })
+        }
       });
 
       if (classSessionCount > 0) {
+        // Get branch information for better error message
+        const sessions = await prisma.classSession.findMany({
+          where: { 
+            classTypeId,
+            ...(selectedBranchId && { branchId: selectedBranchId })
+          },
+          select: {
+            branch: { select: { name: true } }
+          },
+          distinct: ['branchId']
+        });
+        
+        const branchNames = sessions
+          .map(s => s.branch?.name)
+          .filter(Boolean);
+        
+        const branchText = branchNames.length > 0 ? `（${branchNames.join('、')}）` : '';
+        
         return NextResponse.json(
           { 
-            error: `このクラスタイプは${classSessionCount}件の授業セッションに関連付けられているため削除できません。`,
+            error: `このクラスタイプは${classSessionCount}件の授業セッション${branchText}に関連付けられているため削除できません。`,
             details: {
-              classSessions: classSessionCount
+              classSessions: classSessionCount,
+              branches: branchNames
             }
           },
           { status: 400 }
