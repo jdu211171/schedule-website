@@ -244,6 +244,18 @@ export async function GET(request: NextRequest) {
         
         console.log(`  Total recipients: ${recipientSessions.size}`);
         
+        // Debug update detection
+        if (hasExistingNotifications) {
+          console.log('\n  🔍 Update Detection Check:');
+          console.log(`  Existing notifications: ${existingNotifications.length}`);
+          const sampleExisting = existingNotifications[0];
+          if (sampleExisting?.logs) {
+            const logs = sampleExisting.logs as any;
+            console.log(`  Previously sent class count: ${logs.classCount || 0}`);
+            console.log(`  Previously sent class IDs: ${(logs.classIds || []).length} classes`);
+          }
+        }
+        
         // Create a map of existing notifications by recipient
         const existingByRecipient = new Map<string, any>();
         for (const notif of existingNotifications) {
