@@ -402,7 +402,7 @@ export const PATCH = withBranchAccess(
 
       return NextResponse.json({
         data: formattedSessions,
-        message: `${formattedSessions.length}件の未来のクラスセッションを更新しました`,
+        message: `${formattedSessions.length}件の未来の授業を更新しました`,
         pagination: {
           total: formattedSessions.length,
           page: 1,
@@ -413,7 +413,7 @@ export const PATCH = withBranchAccess(
     } catch (error) {
       console.error("Error updating class session series:", error);
       return NextResponse.json(
-        { error: "クラスセッションシリーズの更新に失敗しました" },
+        { error: "授業シリーズの更新に失敗しました" },
         { status: 500 }
       );
     }
@@ -492,7 +492,7 @@ export const DELETE = withBranchAccess(
       return NextResponse.json(
         {
           data: [],
-          message: `${futureSessionsCount}件の未来のクラスセッションを削除しました`,
+          message: `${futureSessionsCount}件の未来の授業を削除しました`,
           pagination: {
             total: 0,
             page: 0,
@@ -505,7 +505,7 @@ export const DELETE = withBranchAccess(
     } catch (error) {
       console.error("Error deleting class session series:", error);
       return NextResponse.json(
-        { error: "クラスセッションシリーズの削除に失敗しました" },
+        { error: "授業シリーズの削除に失敗しました" },
         { status: 500 }
       );
     }

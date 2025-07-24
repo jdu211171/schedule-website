@@ -76,7 +76,7 @@ export function useUserSubjectPreferenceCreate() {
       queries.forEach(([queryKey]) => {
         const currentData =
           queryClient.getQueryData<UserSubjectPreferencesResponse>(queryKey);
-        if (currentData) {
+        if (currentData?.data) {
           // Create optimistic user subject preference
           const optimisticUserSubjectPreference: UserSubjectPreference = {
             id: tempId,
@@ -139,7 +139,7 @@ export function useUserSubjectPreferenceCreate() {
       queries.forEach(([queryKey]) => {
         const currentData =
           queryClient.getQueryData<UserSubjectPreferencesResponse>(queryKey);
-        if (currentData) {
+        if (currentData?.data) {
           queryClient.setQueryData<UserSubjectPreferencesResponse>(queryKey, {
             ...currentData,
             data: currentData.data.map((preference) =>
@@ -213,7 +213,7 @@ export function useUserSubjectPreferenceUpdate() {
       queries.forEach(([queryKey]) => {
         const currentData =
           queryClient.getQueryData<UserSubjectPreferencesResponse>(queryKey);
-        if (currentData) {
+        if (currentData?.data) {
           queryClient.setQueryData<UserSubjectPreferencesResponse>(queryKey, {
             ...currentData,
             data: currentData.data.map((preference) =>
@@ -347,7 +347,7 @@ export function useUserSubjectPreferenceDelete() {
       // Save the user subject preference being deleted
       let deletedUserSubjectPreference: UserSubjectPreference | undefined;
       for (const [, data] of queries) {
-        if (data) {
+        if (data?.data) {
           const found = data.data.find((preference) => preference.id === id);
           if (found) {
             deletedUserSubjectPreference = found;
@@ -361,7 +361,7 @@ export function useUserSubjectPreferenceDelete() {
         const currentData =
           queryClient.getQueryData<UserSubjectPreferencesResponse>(queryKey);
 
-        if (currentData) {
+        if (currentData?.data) {
           queryClient.setQueryData<UserSubjectPreferencesResponse>(queryKey, {
             ...currentData,
             data: currentData.data.filter((preference) => preference.id !== id),

@@ -203,7 +203,9 @@ export const DELETE = withBranchAccess(
         return NextResponse.json(
           {
             error: "このタイプを使用している生徒がいるため削除できません",
-            studentCount,
+            details: {
+              studentCount
+            }
           },
           { status: 400 }
         );

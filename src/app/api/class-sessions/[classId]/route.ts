@@ -183,7 +183,7 @@ export const GET = withBranchAccess(
 
     if (!classSession) {
       return NextResponse.json(
-        { error: "クラスセッションが見つかりません" },
+        { error: "授業が見つかりません" },
         { status: 404 }
       );
     }
@@ -195,7 +195,7 @@ export const GET = withBranchAccess(
       session.user?.role !== "ADMIN"
     ) {
       return NextResponse.json(
-        { error: "このクラスセッションにアクセスする権限がありません" },
+        { error: "この授業にアクセスする権限がありません" },
         { status: 403 }
       );
     }
@@ -240,7 +240,7 @@ export const PATCH = withBranchAccess(
 
       if (!existingClassSession) {
         return NextResponse.json(
-          { error: "クラスセッションが見つかりません" },
+          { error: "授業が見つかりません" },
           { status: 404 }
         );
       }
@@ -252,7 +252,7 @@ export const PATCH = withBranchAccess(
         session.user?.role !== "ADMIN"
       ) {
         return NextResponse.json(
-          { error: "このクラスセッションにアクセスする権限がありません" },
+          { error: "この授業にアクセスする権限がありません" },
           { status: 403 }
         );
       }
@@ -300,7 +300,7 @@ export const PATCH = withBranchAccess(
 
         if (hasVacationConflict) {
           return NextResponse.json(
-            { error: "指定された日付は休日期間中のため、クラスセッションを更新できません" },
+            { error: "指定された日付は休日期間中のため、授業を更新できません" },
             { status: 400 }
           );
         }
@@ -398,12 +398,12 @@ export const PATCH = withBranchAccess(
 
       return NextResponse.json({
         data: formattedClassSession,
-        message: "クラスセッションを更新しました",
+        message: "授業を更新しました",
       });
     } catch (error) {
       console.error("Error updating class session:", error);
       return NextResponse.json(
-        { error: "クラスセッションの更新に失敗しました" },
+        { error: "授業の更新に失敗しました" },
         { status: 500 }
       );
     }
@@ -431,7 +431,7 @@ export const DELETE = withBranchAccess(
 
       if (!classSession) {
         return NextResponse.json(
-          { error: "クラスセッションが見つかりません" },
+          { error: "授業が見つかりません" },
           { status: 404 }
         );
       }
@@ -443,8 +443,25 @@ export const DELETE = withBranchAccess(
         session.user?.role !== "ADMIN"
       ) {
         return NextResponse.json(
-          { error: "このクラスセッションにアクセスする権限がありません" },
+          { error: "この授業にアクセスする権限がありません" },
           { status: 403 }
+        );
+      }
+
+      // Check for enrollments
+      const enrollmentCount = await prisma.studentClassEnrollment.count({
+        where: { classId }
+      });
+
+      if (enrollmentCount > 0) {
+        return NextResponse.json(
+          { 
+            error: `この授業には${enrollmentCount}名の生徒が登録されているため削除できません。`,
+            details: {
+              enrollments: enrollmentCount
+            }
+          },
+          { status: 400 }
         );
       }
 
@@ -456,7 +473,7 @@ export const DELETE = withBranchAccess(
       return NextResponse.json(
         {
           data: [],
-          message: "クラスセッションを削除しました",
+          message: "授業を削除しました",
           pagination: {
             total: 0,
             page: 0,
@@ -469,7 +486,7 @@ export const DELETE = withBranchAccess(
     } catch (error) {
       console.error("Error deleting class session:", error);
       return NextResponse.json(
-        { error: "クラスセッションの削除に失敗しました" },
+        { error: "授業の削除に失敗しました" },
         { status: 500 }
       );
     }

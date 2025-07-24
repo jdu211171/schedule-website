@@ -323,7 +323,7 @@ export function useVacationDelete() {
         // Save the vacation being deleted
         let deletedVacation: Vacation | undefined;
         for (const [, data] of queries) {
-          if (data) {
+          if (data?.data) {
             deletedVacation = data.data.find(
               (v) => v.id === vacationId || v.id === resolvedId
             );
@@ -451,7 +451,7 @@ export function useVacationOrderUpdate() {
       queries.forEach(([queryKey]) => {
         const currentData =
           queryClient.getQueryData<VacationsResponse>(queryKey);
-        if (currentData) {
+        if (currentData?.data) {
           const updatedData = {
             ...currentData,
             data: currentData.data.map((vacation) => {

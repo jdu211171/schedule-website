@@ -219,7 +219,7 @@ export const GET = withRole(
     } catch (error) {
       console.error("Error fetching student's class sessions:", error);
       return NextResponse.json(
-        { error: "クラスセッションの取得に失敗しました" }, // "Failed to fetch class sessions"
+        { error: "授業の取得に失敗しました" }, // "Failed to fetch class sessions"
         { status: 500 }
       );
     }

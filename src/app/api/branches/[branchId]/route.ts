@@ -240,15 +240,9 @@ export const DELETE = withBranchAccess(
     }
 
     try {
-      // Check if branch exists and has associated records
+      // Check if branch exists
       const branch = await prisma.branch.findUnique({
         where: { branchId },
-        include: {
-          booths: { take: 1 },
-          classSessions: { take: 1 },
-          vacations: { take: 1 },
-          notifications: { take: 1 },
-        },
       });
 
       if (!branch) {
@@ -258,17 +252,57 @@ export const DELETE = withBranchAccess(
         );
       }
 
-      // Delete branch in a transaction
-      await prisma.$transaction(async (tx) => {
-        // Delete user-branch associations first
-        await tx.userBranch.deleteMany({
-          where: { branchId },
-        });
+      // Check for dependencies
+      const boothCount = await prisma.booth.count({
+        where: { branchId }
+      });
 
-        // Delete the branch
-        await tx.branch.delete({
-          where: { branchId },
-        });
+      const classSessionCount = await prisma.classSession.count({
+        where: { branchId }
+      });
+
+      const vacationCount = await prisma.vacation.count({
+        where: { branchId }
+      });
+
+      const notificationCount = await prisma.notification.count({
+        where: { branchId }
+      });
+
+      const userBranchCount = await prisma.userBranch.count({
+        where: { branchId }
+      });
+
+      const hasAnyDependencies = boothCount > 0 || classSessionCount > 0 || 
+                                 vacationCount > 0 || notificationCount > 0 || 
+                                 userBranchCount > 0;
+
+      if (hasAnyDependencies) {
+        const details = [];
+        if (boothCount > 0) details.push(`ブース: ${boothCount}件`);
+        if (classSessionCount > 0) details.push(`授業セッション: ${classSessionCount}件`);
+        if (vacationCount > 0) details.push(`休暇: ${vacationCount}件`);
+        if (notificationCount > 0) details.push(`通知: ${notificationCount}件`);
+        if (userBranchCount > 0) details.push(`ユーザー割り当て: ${userBranchCount}件`);
+        
+        return NextResponse.json(
+          { 
+            error: `この校舎には関連するデータがあるため削除できません。（${details.join('、')}）`,
+            details: {
+              booths: boothCount,
+              classSessions: classSessionCount,
+              vacations: vacationCount,
+              notifications: notificationCount,
+              userBranches: userBranchCount
+            }
+          },
+          { status: 400 }
+        );
+      }
+
+      // Delete the branch
+      await prisma.branch.delete({
+        where: { branchId },
       });
 
       return NextResponse.json(

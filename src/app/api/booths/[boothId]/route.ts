@@ -218,9 +218,6 @@ export const DELETE = withBranchAccess(
       // Check if booth exists
       const booth = await prisma.booth.findUnique({
         where: { boothId },
-        include: {
-          classSessions: { take: 1 }, // Check if there are any associated class sessions
-        },
       });
 
       if (!booth) {
@@ -238,7 +235,24 @@ export const DELETE = withBranchAccess(
         );
       }
 
-      // Delete the booth (ClassSession.boothId will be set to null automatically)
+      // Check for dependencies
+      const classSessionCount = await prisma.classSession.count({
+        where: { boothId }
+      });
+
+      if (classSessionCount > 0) {
+        return NextResponse.json(
+          { 
+            error: `このブースは${classSessionCount}件の授業セッションに関連付けられているため削除できません。`,
+            details: {
+              classSessions: classSessionCount
+            }
+          },
+          { status: 400 }
+        );
+      }
+
+      // Delete the booth
       await prisma.booth.delete({
         where: { boothId },
       });

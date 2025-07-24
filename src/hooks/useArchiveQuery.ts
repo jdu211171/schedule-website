@@ -134,10 +134,12 @@ export function useArchiveTrigger() {
       queryClient.invalidateQueries({ queryKey: ["archives"] });
       queryClient.invalidateQueries({ queryKey: ["archive-stats"] });
       
-      const result = data.data;
-      toast.success(
-        `${result.message}\n${result.archivedCount}件をアーカイブ、${result.deletedCount}件を削除しました`
-      );
+      const result = data?.data;
+      if (result) {
+        toast.success(
+          `${result.message}\n${result.archivedCount}件をアーカイブ、${result.deletedCount}件を削除しました`
+        );
+      }
     },
     onError: (error: Error) => {
       toast.error("アーカイブ処理の実行に失敗しました");

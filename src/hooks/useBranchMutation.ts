@@ -125,7 +125,7 @@ export function useBranchCreate() {
           queries.forEach(([queryKey]) => {
             const currentData =
               queryClient.getQueryData<BranchesResponse>(queryKey);
-            if (currentData) {
+            if (currentData?.data) {
               queryClient.setQueryData<BranchesResponse>(queryKey, {
                 ...currentData,
                 data: currentData.data.map((branch) =>
@@ -190,7 +190,7 @@ export function useBranchUpdate() {
           queries.forEach(([queryKey]) => {
             const currentData =
               queryClient.getQueryData<BranchesResponse>(queryKey);
-            if (currentData) {
+            if (currentData?.data) {
               queryClient.setQueryData<BranchesResponse>(queryKey, {
                 ...currentData,
                 data: currentData.data.map((branch) =>
@@ -297,7 +297,7 @@ export function useBranchDelete() {
       // Save the branch being deleted
       let deletedBranch: Branch | undefined;
       for (const [, data] of queries) {
-        if (data) {
+        if (data?.data) {
           const found = data.data.find(
             (branch) => branch.branchId === branchId
           );
@@ -313,7 +313,7 @@ export function useBranchDelete() {
         const currentData =
           queryClient.getQueryData<BranchesResponse>(queryKey);
 
-        if (currentData) {
+        if (currentData?.data) {
           queryClient.setQueryData<BranchesResponse>(queryKey, {
             ...currentData,
             data: currentData.data.filter(
@@ -425,7 +425,7 @@ export function useBranchOrderUpdate() {
       // Optimistically update the order
       queries.forEach(([queryKey]) => {
         const currentData = queryClient.getQueryData<BranchesResponse>(queryKey);
-        if (currentData) {
+        if (currentData?.data) {
           const updatedData = {
             ...currentData,
             data: currentData.data.map((branch) => {

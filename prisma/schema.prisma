@@ -85,12 +85,12 @@ model ClassSession {
   notes                   String?                  @db.VarChar(255)
   createdAt               DateTime                 @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt               DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
-  booth                   Booth?                   @relation(fields: [boothId], references: [boothId])
-  branch                  Branch?                  @relation(fields: [branchId], references: [branchId])
-  classType               ClassType?               @relation(fields: [classTypeId], references: [classTypeId])
-  student                 Student?                 @relation(fields: [studentId], references: [studentId])
-  subject                 Subject?                 @relation(fields: [subjectId], references: [subjectId])
-  teacher                 Teacher?                 @relation(fields: [teacherId], references: [teacherId])
+  booth                   Booth?                   @relation(fields: [boothId], references: [boothId], onDelete: Restrict)
+  branch                  Branch?                  @relation(fields: [branchId], references: [branchId], onDelete: Restrict)
+  classType               ClassType?               @relation(fields: [classTypeId], references: [classTypeId], onDelete: Restrict)
+  student                 Student?                 @relation(fields: [studentId], references: [studentId], onDelete: Restrict)
+  subject                 Subject?                 @relation(fields: [subjectId], references: [subjectId], onDelete: Restrict)
+  teacher                 Teacher?                 @relation(fields: [teacherId], references: [teacherId], onDelete: Restrict)
   studentClassEnrollments StudentClassEnrollment[]
 
   @@unique([teacherId, date, startTime, endTime])
@@ -235,8 +235,8 @@ model StudentClassEnrollment {
   notes        String?      @db.VarChar(255)
   createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt    DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
-  classSession ClassSession @relation(fields: [classId], references: [classId], onDelete: Cascade)
-  student      Student      @relation(fields: [studentId], references: [studentId], onDelete: Cascade)
+  classSession ClassSession @relation(fields: [classId], references: [classId], onDelete: Restrict)
+  student      Student      @relation(fields: [studentId], references: [studentId], onDelete: Restrict)
 
   @@unique([classId, studentId])
   @@map("student_class_enrollments")
@@ -306,8 +306,8 @@ model UserSubjectPreference {
   subjectId     String
   subjectTypeId String
   createdAt     DateTime    @default(now())
-  subject       Subject     @relation(fields: [subjectId], references: [subjectId], onDelete: Cascade)
-  subjectType   SubjectType @relation(fields: [subjectTypeId], references: [subjectTypeId], onDelete: Cascade)
+  subject       Subject     @relation(fields: [subjectId], references: [subjectId], onDelete: Restrict)
+  subjectType   SubjectType @relation(fields: [subjectTypeId], references: [subjectTypeId], onDelete: Restrict)
   user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, subjectId, subjectTypeId])
@@ -324,10 +324,10 @@ model StudentTeacherPreference {
   subjectTypeId String      @map("subject_type_id")
   createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt     DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
-  student       Student     @relation(fields: [studentId], references: [studentId], onDelete: Cascade)
-  subject       Subject     @relation(fields: [subjectId], references: [subjectId], onDelete: Cascade)
-  subjectType   SubjectType @relation(fields: [subjectTypeId], references: [subjectTypeId], onDelete: Cascade)
-  teacher       Teacher     @relation(fields: [teacherId], references: [teacherId], onDelete: Cascade)
+  student       Student     @relation(fields: [studentId], references: [studentId], onDelete: Restrict)
+  subject       Subject     @relation(fields: [subjectId], references: [subjectId], onDelete: Restrict)
+  subjectType   SubjectType @relation(fields: [subjectTypeId], references: [subjectTypeId], onDelete: Restrict)
+  teacher       Teacher     @relation(fields: [teacherId], references: [teacherId], onDelete: Restrict)
 
   @@unique([studentId, teacherId, subjectId, subjectTypeId])
   @@index([studentId])
@@ -438,7 +438,7 @@ model LineMessageTemplate {
   branchId                String?  @map("branch_id")
   createdAt               DateTime @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt               DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
-  branch                  Branch?  @relation(fields: [branchId], references: [branchId], onDelete: Cascade)
+  branch                  Branch?  @relation(fields: [branchId], references: [branchId], onDelete: Restrict)
 
   @@index([branchId])
   @@index([templateType])

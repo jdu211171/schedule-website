@@ -35,7 +35,7 @@ export function generateResolutionOptions(
   options.push({
     type: "skip",
     label: "この日をスキップ",
-    description: "この日のクラスセッションを作成しません",
+    description: "この日の授業を作成しません",
     available: true,
   });
 

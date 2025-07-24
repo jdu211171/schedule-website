@@ -828,7 +828,7 @@ export const DELETE = withBranchAccess(
 
     if (!teacherId) {
       return NextResponse.json(
-        { error: "Teacher ID is required" },
+        { error: "講師IDが必要です" },
         { status: 400 }
       );
     }
@@ -842,8 +842,49 @@ export const DELETE = withBranchAccess(
 
       if (!teacher) {
         return NextResponse.json(
-          { error: "Teacher not found" },
+          { error: "講師が見つかりません" },
           { status: 404 }
+        );
+      }
+
+      // Check for dependencies
+      const classSessionCount = await prisma.classSession.count({
+        where: { teacherId }
+      });
+
+      const preferenceCount = await prisma.studentTeacherPreference.count({
+        where: { teacherId }
+      });
+
+      const totalDependencies = classSessionCount + preferenceCount;
+
+      if (totalDependencies > 0) {
+        // Get branch information for class sessions
+        const sessions = await prisma.classSession.findMany({
+          where: { teacherId },
+          select: {
+            branchId: true,
+            branch: { select: { name: true } }
+          },
+          distinct: ['branchId']
+        });
+        
+        const branches = sessions
+          .map(s => s.branch?.name)
+          .filter(Boolean);
+        
+        const branchText = branches.length > 0 ? `（${branches.join('、')}）` : '';
+        
+        return NextResponse.json(
+          { 
+            error: `この講師は${totalDependencies}件の授業セッション${branchText}に関連付けられているため削除できません。`,
+            details: {
+              classSessions: classSessionCount,
+              preferences: preferenceCount,
+              branches
+            }
+          },
+          { status: 400 }
         );
       }
 
@@ -886,7 +927,7 @@ export const DELETE = withBranchAccess(
     } catch (error) {
       console.error("Error deleting teacher:", error);
       return NextResponse.json(
-        { error: "Failed to delete teacher" },
+        { error: "講師の削除に失敗しました" },
         { status: 500 }
       );
     }

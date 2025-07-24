@@ -321,10 +321,6 @@ export const DELETE = withRole(
       // Check if class type exists
       const classType = await prisma.classType.findUnique({
         where: { classTypeId },
-        include: {
-          classSessions: { take: 1 }, // Check if there are any associated class sessions
-          children: { take: 1 }, // Check if there are any child class types
-        },
       });
 
       if (!classType) {
@@ -342,23 +338,35 @@ export const DELETE = withRole(
         );
       }
 
-      // Prevent deletion if class type has associated class sessions
-      if (classType.classSessions.length > 0) {
+      // Check for child class types
+      const childCount = await prisma.classType.count({
+        where: { parentId: classTypeId }
+      });
+
+      if (childCount > 0) {
         return NextResponse.json(
           {
-            error:
-              "関連するクラスセッションがあるため、このクラスタイプを削除できません",
+            error: "サブクラスタイプが存在するため、このクラスタイプを削除できません。先にサブクラスタイプを削除してください。",
+            details: {
+              childTypes: childCount
+            }
           },
           { status: 400 }
         );
       }
 
-      // Prevent deletion if class type has children
-      if (classType.children.length > 0) {
+      // Check for class sessions
+      const classSessionCount = await prisma.classSession.count({
+        where: { classTypeId }
+      });
+
+      if (classSessionCount > 0) {
         return NextResponse.json(
-          {
-            error:
-              "サブクラスタイプが存在するため、このクラスタイプを削除できません。先にサブクラスタイプを削除してください。",
+          { 
+            error: `このクラスタイプは${classSessionCount}件の授業セッションに関連付けられているため削除できません。`,
+            details: {
+              classSessions: classSessionCount
+            }
           },
           { status: 400 }
         );

@@ -159,9 +159,6 @@ export const DELETE = withBranchAccess(
       // Check if subject exists
       const subject = await prisma.subject.findUnique({
         where: { subjectId },
-        include: {
-          classSessions: { take: 1 }, // Check if there are any associated class sessions
-        },
       });
 
       if (!subject) {
@@ -171,12 +168,47 @@ export const DELETE = withBranchAccess(
         );
       }
 
-      // Prevent deletion if subject has associated class sessions
-      if (subject.classSessions.length > 0) {
+      // Check for dependencies
+      const classSessionCount = await prisma.classSession.count({
+        where: { subjectId }
+      });
+
+      const preferenceCount = await prisma.userSubjectPreference.count({
+        where: { subjectId }
+      });
+
+      const studentPreferenceCount = await prisma.studentTeacherPreference.count({
+        where: { subjectId }
+      });
+
+      const totalDependencies = classSessionCount + preferenceCount + studentPreferenceCount;
+
+      if (totalDependencies > 0) {
+        // Get branch information for class sessions
+        const sessions = await prisma.classSession.findMany({
+          where: { subjectId },
+          select: {
+            branchId: true,
+            branch: { select: { name: true } }
+          },
+          distinct: ['branchId']
+        });
+        
+        const branches = sessions
+          .map(s => s.branch?.name)
+          .filter(Boolean);
+        
+        const branchText = branches.length > 0 ? `（${branches.join('、')}）` : '';
+        
         return NextResponse.json(
-          {
-            error:
-              "関連するクラスセッションがあるため、この科目を削除できません",
+          { 
+            error: `この科目は${totalDependencies}件の授業セッション${branchText}に関連付けられているため削除できません。`,
+            details: {
+              classSessions: classSessionCount,
+              preferences: preferenceCount,
+              studentPreferences: studentPreferenceCount,
+              branches
+            }
           },
           { status: 400 }
         );

@@ -3,6 +3,7 @@ import { withRole } from '@/lib/auth';
 import { LineChannelService } from '@/services/line-channel.service';
 import { lineChannelUpdateSchema } from '@/schemas/line-channel.schema';
 import { z } from 'zod';
+import { prisma } from '@/lib/prisma';
 
 // GET /api/admin/line-channels/[channelId] - Get a specific LINE channel
 export const GET = withRole(['ADMIN'], async (req: NextRequest) => {
@@ -93,7 +94,24 @@ export const DELETE = withRole(['ADMIN'], async (req: NextRequest) => {
     
     if (!channelId) {
       return NextResponse.json(
-        { error: 'Channel ID not provided' },
+        { error: 'チャンネルIDが指定されていません' },
+        { status: 400 }
+      );
+    }
+    
+    // Check for branch associations
+    const branchChannelCount = await prisma.branchLineChannel.count({
+      where: { channelId }
+    });
+
+    if (branchChannelCount > 0) {
+      return NextResponse.json(
+        { 
+          error: `このLINEチャンネルは${branchChannelCount}つの校舎に関連付けられているため削除できません。`,
+          details: {
+            branchAssociations: branchChannelCount
+          }
+        },
         { status: 400 }
       );
     }
@@ -104,7 +122,7 @@ export const DELETE = withRole(['ADMIN'], async (req: NextRequest) => {
   } catch (error) {
     console.error('Error deleting LINE channel:', error);
     return NextResponse.json(
-      { error: 'Failed to delete LINE channel' },
+      { error: 'LINEチャンネルの削除に失敗しました' },
       { status: 500 }
     );
   }

@@ -296,7 +296,7 @@ export function useSubjectDelete() {
       // Save the subject being deleted
       let deletedSubject: Subject | undefined;
       for (const [, data] of queries) {
-        if (data) {
+        if (data && data.data) {
           const found = data.data.find(
             (subject) => subject.subjectId === subjectId
           );
@@ -369,7 +369,7 @@ export function useSubjectDelete() {
         description: getErrorMessage(error),
       });
     },
-    onSuccess: (data, subjectId) => {
+    onSuccess: (_, subjectId) => {
       // If it was a temporary ID, clean up the mapping on success
       if (subjectId.startsWith("temp-")) {
         tempToServerIdMap.delete(subjectId);

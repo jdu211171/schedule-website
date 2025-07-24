@@ -273,7 +273,24 @@ export const DELETE = withFullAdminRole(
         );
       }
 
-      // Delete the admin user (cascade will handle branch associations)
+      // Check for branch assignments
+      const branchAssignments = await prisma.userBranch.count({
+        where: { userId: id }
+      });
+
+      if (branchAssignments > 0) {
+        return NextResponse.json(
+          { 
+            error: `この管理者は${branchAssignments}つの校舎に割り当てられているため削除できません。`,
+            details: {
+              branchAssignments
+            }
+          },
+          { status: 400 }
+        );
+      }
+
+      // Delete the admin user
       await prisma.user.delete({
         where: { id },
       });

@@ -252,7 +252,7 @@ export const DELETE = withBranchAccess(
 
     if (!id) {
       return NextResponse.json(
-        { error: "Staff ID is required" },
+        { error: "スタッフIDが必要です" },
         { status: 400 }
       );
     }
@@ -264,27 +264,36 @@ export const DELETE = withBranchAccess(
       });
 
       if (!staff || staff.role !== "STAFF") {
-        return NextResponse.json({ error: "Staff not found" }, { status: 404 });
+        return NextResponse.json({ error: "スタッフが見つかりません" }, { status: 404 });
       }
 
       // Prevent deleting if it's the currently logged in user
       if (staff.id === session.user?.id) {
         return NextResponse.json(
-          { error: "Cannot delete your own account" },
+          { error: "自分のアカウントは削除できません" },
           { status: 400 }
         );
       }
 
-      // Delete staff user and branch associations in a transaction
-      await prisma.$transaction(async (tx) => {
-        // Delete branch associations first
-        await tx.userBranch.deleteMany({
-          where: { userId: id },
-        });
-
-        // Delete staff user
-        await tx.user.delete({ where: { id } });
+      // Check for branch assignments
+      const branchAssignments = await prisma.userBranch.count({
+        where: { userId: id }
       });
+
+      if (branchAssignments > 0) {
+        return NextResponse.json(
+          { 
+            error: `このスタッフは${branchAssignments}つの校舎に割り当てられているため削除できません。`,
+            details: {
+              branchAssignments
+            }
+          },
+          { status: 400 }
+        );
+      }
+
+      // Delete staff user
+      await prisma.user.delete({ where: { id } });
 
       return NextResponse.json(
         {
@@ -301,7 +310,7 @@ export const DELETE = withBranchAccess(
     } catch (error) {
       console.error("Error deleting staff:", error);
       return NextResponse.json(
-        { error: "Failed to delete staff" },
+        { error: "スタッフの削除に失敗しました" },
         { status: 500 }
       );
     }

@@ -178,7 +178,7 @@ export function useTeacherCreate() {
       queries.forEach(([queryKey]) => {
         const currentData =
           queryClient.getQueryData<TeachersResponse>(queryKey);
-        if (currentData) {
+        if (currentData?.data) {
           queryClient.setQueryData<TeachersResponse>(queryKey, {
             ...currentData,
             data: currentData.data.map((teacher) =>
@@ -240,7 +240,7 @@ export function useTeacherUpdate() {
       queries.forEach(([queryKey]) => {
         const currentData =
           queryClient.getQueryData<TeachersResponse>(queryKey);
-        if (currentData) {
+        if (currentData?.data) {
           queryClient.setQueryData<TeachersResponse>(queryKey, {
             ...currentData,
             data: currentData.data.map((teacher) =>
@@ -346,7 +346,7 @@ export function useTeacherUpdate() {
         queries.forEach(([queryKey]) => {
           const currentData =
             queryClient.getQueryData<TeachersResponse>(queryKey);
-          if (currentData) {
+          if (currentData?.data) {
             queryClient.setQueryData<TeachersResponse>(queryKey, {
               ...currentData,
               data: currentData.data.map((teacher) =>
@@ -412,7 +412,7 @@ export function useTeacherDelete() {
 
       let deletedTeacher: Teacher | undefined;
       for (const [, data] of queries) {
-        if (data) {
+        if (data?.data) {
           const found = data.data.find(
             (teacher) => teacher.teacherId === teacherId
           );
@@ -427,7 +427,7 @@ export function useTeacherDelete() {
         const currentData =
           queryClient.getQueryData<TeachersResponse>(queryKey);
 
-        if (currentData) {
+        if (currentData?.data) {
           queryClient.setQueryData<TeachersResponse>(queryKey, {
             ...currentData,
             data: currentData.data.filter(

@@ -143,7 +143,7 @@ export function useStaffCreate() {
           queries.forEach(([queryKey]) => {
             const currentData =
               queryClient.getQueryData<StaffsResponse>(queryKey);
-            if (currentData) {
+            if (currentData?.data) {
               queryClient.setQueryData<StaffsResponse>(queryKey, {
                 ...currentData,
                 data: currentData.data.map((staff) =>
@@ -208,7 +208,7 @@ export function useStaffUpdate() {
           queries.forEach(([queryKey]) => {
             const currentData =
               queryClient.getQueryData<StaffsResponse>(queryKey);
-            if (currentData) {
+            if (currentData?.data) {
               queryClient.setQueryData<StaffsResponse>(queryKey, {
                 ...currentData,
                 data: currentData.data.map((staff) =>
@@ -272,7 +272,7 @@ export function useStaffUpdate() {
             });
             queries.forEach(([queryKey]) => {
               const currentData = queryClient.getQueryData<StaffsResponse>(queryKey);
-              if (currentData) {
+              if (currentData?.data) {
                 queryClient.setQueryData<StaffsResponse>(queryKey, {
                   ...currentData,
                   data: currentData.data.map((staff) =>
@@ -340,7 +340,7 @@ export function useStaffDelete() {
       // Save the staff being deleted
       let deletedStaff: Staff | undefined;
       for (const [, data] of queries) {
-        if (data) {
+        if (data?.data) {
           const found = data.data.find((staff) => staff.id === staffId);
           if (found) {
             deletedStaff = found;
@@ -353,7 +353,7 @@ export function useStaffDelete() {
       queries.forEach(([queryKey]) => {
         const currentData = queryClient.getQueryData<StaffsResponse>(queryKey);
 
-        if (currentData) {
+        if (currentData?.data) {
           queryClient.setQueryData<StaffsResponse>(queryKey, {
             ...currentData,
             data: currentData.data.filter((staff) => staff.id !== staffId),

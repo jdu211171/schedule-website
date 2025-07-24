@@ -634,7 +634,7 @@ export const POST = withBranchAccess(
 
         if (existingSession) {
           return NextResponse.json(
-            { error: "同じ講師、日付、時間のクラスセッションが既に存在します" },
+            { error: "同じ講師、日付、時間の授業が既に存在します" },
             { status: 409 }
           );
         }
@@ -782,8 +782,8 @@ export const POST = withBranchAccess(
             data: [formattedSession],
             message:
               conflicts.length > 0
-                ? "クラスセッションを作成しました（競合あり）"
-                : "クラスセッションを作成しました",
+                ? "授業を作成しました（競合あり）"
+                : "授業を作成しました",
             conflicts: conflicts.length > 0 ? conflicts : undefined,
             pagination: {
               total: 1,
@@ -1091,7 +1091,7 @@ export const POST = withBranchAccess(
             {
               data: [],
               message:
-                "すべての日付で競合が発生したため、クラスセッションを作成できませんでした",
+                "すべての日付で競合が発生したため、授業を作成できませんでした",
               conflicts: allConflicts,
               pagination: {
                 total: 0,
@@ -1180,7 +1180,7 @@ export const POST = withBranchAccess(
         const formattedSessions = createdSessions.map(formatClassSession);
 
         // Create response message based on what happened
-        let message = `${formattedSessions.length}件の繰り返しクラスセッションを作成しました`;
+        let message = `${formattedSessions.length}件の繰り返し授業を作成しました`;
         const responseData = {
           data: formattedSessions,
           message,
@@ -1242,7 +1242,7 @@ export const POST = withBranchAccess(
     } catch (error) {
       console.error("Error creating class session:", error);
       return NextResponse.json(
-        { error: "クラスセッションの作成に失敗しました" },
+        { error: "授業の作成に失敗しました" },
         { status: 500 }
       );
     }
@@ -1278,7 +1278,7 @@ export const DELETE = withBranchAccess(
 
       if (classSessionsToDelete.length === 0) {
         return NextResponse.json(
-          { error: "削除対象のクラスセッションが見つかりません" },
+          { error: "削除対象の授業が見つかりません" },
           { status: 404 }
         );
       }
@@ -1291,10 +1291,47 @@ export const DELETE = withBranchAccess(
 
         if (unauthorizedSessions.length > 0) {
           return NextResponse.json(
-            { error: "一部のクラスセッションにアクセスする権限がありません" },
+            { error: "一部の授業にアクセスする権限がありません" },
             { status: 403 }
           );
         }
+      }
+
+      // Check for enrollments
+      const enrollmentsCount = await prisma.studentClassEnrollment.count({
+        where: {
+          classId: {
+            in: classIds
+          }
+        }
+      });
+
+      if (enrollmentsCount > 0) {
+        // Get sessions with enrollments
+        const sessionsWithEnrollments = await prisma.studentClassEnrollment.findMany({
+          where: {
+            classId: {
+              in: classIds
+            }
+          },
+          distinct: ['classId'],
+          select: {
+            classId: true
+          }
+        });
+        
+        const sessionIdsWithEnrollments = sessionsWithEnrollments.map(e => e.classId);
+        
+        return NextResponse.json(
+          { 
+            error: `${sessionIdsWithEnrollments.length}件の授業に生徒が登録されているため削除できません。`,
+            details: {
+              totalEnrollments: enrollmentsCount,
+              sessionsWithEnrollments: sessionIdsWithEnrollments
+            }
+          },
+          { status: 400 }
+        );
       }
 
       // Count sessions that actually exist and will be deleted
@@ -1312,7 +1349,7 @@ export const DELETE = withBranchAccess(
       return NextResponse.json(
         {
           data: [],
-          message: `${actualDeleteCount}件のクラスセッションを削除しました`,
+          message: `${actualDeleteCount}件の授業を削除しました`,
           deletedCount: actualDeleteCount,
           pagination: {
             total: 0,
@@ -1326,7 +1363,7 @@ export const DELETE = withBranchAccess(
     } catch (error) {
       console.error("Error bulk deleting class sessions:", error);
       return NextResponse.json(
-        { error: "クラスセッションの一括削除に失敗しました" },
+        { error: "授業の一括削除に失敗しました" },
         { status: 500 }
       );
     }

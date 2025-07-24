@@ -183,7 +183,7 @@ export function useClassSessionCreate() {
         tempToServerIdMap.delete(context.tempId);
       }
 
-      toast.error("クラスセッションの追加に失敗しました", {
+      toast.error("授業の追加に失敗しました", {
         id: "class-session-create-error",
         description: getErrorMessage(error),
       });
@@ -227,8 +227,8 @@ export function useClassSessionCreate() {
       }
 
       const successMessage = newClassSession.isRecurring
-        ? `${response.data.length}件の繰り返しクラスセッションを作成しました`
-        : "クラスセッションを作成しました";
+        ? `${response.data.length}件の繰り返し授業を作成しました`
+        : "授業を作成しました";
 
       toast.success(successMessage, {
         id: "class-session-create-success",
@@ -369,13 +369,13 @@ export function useClassSessionUpdate() {
         );
       }
 
-      toast.error("クラスセッションの更新に失敗しました", {
+      toast.error("授業の更新に失敗しました", {
         id: "class-session-update-error",
         description: getErrorMessage(error),
       });
     },
     onSuccess: () => {
-      toast.success("クラスセッションを更新しました", {
+      toast.success("授業を更新しました", {
         id: "class-session-update-success",
       });
     },
@@ -554,7 +554,7 @@ export function useClassSessionDelete() {
         }
       }
 
-      toast.error("クラスセッションの削除に失敗しました", {
+      toast.error("授業の削除に失敗しました", {
         id: "class-session-delete-error",
         description: getErrorMessage(error),
       });
@@ -565,7 +565,7 @@ export function useClassSessionDelete() {
         tempToServerIdMap.delete(classId);
       }
 
-      toast.success("クラスセッションを削除しました", {
+      toast.success("授業を削除しました", {
         id: "class-session-delete-success",
       });
     },
@@ -747,7 +747,7 @@ export function useClassSessionBulkDelete() {
         });
       }
 
-      toast.error("クラスセッションの一括削除に失敗しました", {
+      toast.error("授業の一括削除に失敗しました", {
         id: "class-session-bulk-delete-error",
         description: getErrorMessage(error),
       });
@@ -828,14 +828,14 @@ export function useClassSessionSeriesUpdate() {
         );
       }
 
-      toast.error("クラスセッションシリーズの更新に失敗しました", {
+      toast.error("授業シリーズの更新に失敗しました", {
         id: "class-session-series-update-error",
         description: getErrorMessage(error),
       });
     },
     onSuccess: (response) => {
       toast.success(
-        `${response.data.length}件の未来のクラスセッションを更新しました`,
+        `${response.data.length}件の未来の授業を更新しました`,
         {
           id: "class-session-series-update-success",
         }
@@ -893,13 +893,13 @@ export function useClassSessionSeriesDelete() {
         );
       }
 
-      toast.error("クラスセッションシリーズの削除に失敗しました", {
+      toast.error("授業シリーズの削除に失敗しました", {
         id: "class-session-series-delete-error",
         description: getErrorMessage(error),
       });
     },
     onSuccess: () => {
-      toast.success("未来のクラスセッションを削除しました", {
+      toast.success("未来の授業を削除しました", {
         id: "class-session-series-delete-success",
       });
     },

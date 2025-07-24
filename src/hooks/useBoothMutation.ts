@@ -172,7 +172,7 @@ export function useBoothCreate() {
 
       queries.forEach(([queryKey]) => {
         const currentData = queryClient.getQueryData<BoothsQueryData>(queryKey);
-        if (currentData) {
+        if (currentData?.data) {
           queryClient.setQueryData<BoothsQueryData>(queryKey, {
             ...currentData,
             data: currentData.data.map((booth) =>
@@ -236,7 +236,7 @@ export function useBoothUpdate() {
       ]);
       queries.forEach(([queryKey]) => {
         const currentData = queryClient.getQueryData<BoothsQueryData>(queryKey);
-        if (currentData) {
+        if (currentData?.data) {
           queryClient.setQueryData<BoothsQueryData>(queryKey, {
             ...currentData,
             data: currentData.data.map((booth) =>
@@ -343,7 +343,7 @@ export function useBoothDelete() {
       // Save the booth being deleted
       let deletedBooth: FormattedBooth | undefined;
       for (const [, data] of queries) {
-        if (data) {
+        if (data?.data) {
           const found = data.data.find((booth) => booth.boothId === boothId);
           if (found) {
             deletedBooth = found;
@@ -356,7 +356,7 @@ export function useBoothDelete() {
       queries.forEach(([queryKey]) => {
         const currentData = queryClient.getQueryData<BoothsQueryData>(queryKey);
 
-        if (currentData) {
+        if (currentData?.data) {
           queryClient.setQueryData<BoothsQueryData>(queryKey, {
             ...currentData,
             data: currentData.data.filter((booth) => booth.boothId !== boothId),

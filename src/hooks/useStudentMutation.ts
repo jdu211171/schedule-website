@@ -66,7 +66,7 @@ export function useStudentCreate() {
           queries.forEach(([queryKey]) => {
             const currentData =
               queryClient.getQueryData<StudentsResponse>(queryKey);
-            if (currentData) {
+            if (currentData?.data) {
               // Create optimistic student
               const optimisticStudent: Student = {
                 studentId: tempId,
@@ -186,7 +186,7 @@ export function useStudentCreate() {
           queries.forEach(([queryKey]) => {
             const currentData =
               queryClient.getQueryData<StudentsResponse>(queryKey);
-            if (currentData) {
+            if (currentData?.data) {
               queryClient.setQueryData<StudentsResponse>(queryKey, {
                 ...currentData,
                 data: currentData.data.map((student) =>
@@ -248,7 +248,7 @@ export function useStudentUpdate() {
           queries.forEach(([queryKey]) => {
             const currentData =
               queryClient.getQueryData<StudentsResponse>(queryKey);
-            if (currentData) {
+            if (currentData?.data) {
               queryClient.setQueryData<StudentsResponse>(queryKey, {
                 ...currentData,
                 data: currentData.data.map((student) =>
@@ -380,7 +380,7 @@ export function useStudentUpdate() {
             });
             queries.forEach(([queryKey]) => {
               const currentData = queryClient.getQueryData<StudentsResponse>(queryKey);
-              if (currentData) {
+              if (currentData?.data) {
                 queryClient.setQueryData<StudentsResponse>(queryKey, {
                   ...currentData,
                   data: currentData.data.map((student) =>
@@ -447,7 +447,7 @@ export function useStudentDelete() {
 
           let deletedStudent: Student | undefined;
           for (const [, data] of queries) {
-            if (data) {
+            if (data?.data) {
               const found = data.data.find(
                 (student) => student.studentId === studentId
               );
@@ -462,7 +462,7 @@ export function useStudentDelete() {
             const currentData =
               queryClient.getQueryData<StudentsResponse>(queryKey);
 
-            if (currentData) {
+            if (currentData?.data) {
               queryClient.setQueryData<StudentsResponse>(queryKey, {
                 ...currentData,
                 data: currentData.data.filter(

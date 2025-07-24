@@ -116,7 +116,7 @@ export function useLineChannelCreate() {
       
       queries.forEach(([queryKey]) => {
         const currentData = queryClient.getQueryData<LineChannelListResponse>(queryKey);
-        if (currentData) {
+        if (currentData?.data) {
           queryClient.setQueryData<LineChannelListResponse>(queryKey, {
             ...currentData,
             data: currentData.data.map((channel) =>
@@ -181,7 +181,7 @@ export function useLineChannelUpdate() {
       // Optimistic update for list queries
       queries.forEach(([queryKey]) => {
         const currentData = queryClient.getQueryData<LineChannelListResponse>(queryKey);
-        if (currentData) {
+        if (currentData?.data) {
           queryClient.setQueryData<LineChannelListResponse>(queryKey, {
             ...currentData,
             data: currentData.data.map((channel) =>
@@ -286,7 +286,7 @@ export function useLineChannelDelete() {
       // Save the channel being deleted
       let deletedChannel: LineChannelResponse | undefined;
       for (const [, data] of queries) {
-        if (data) {
+        if (data?.data) {
           const found = data.data.find((channel) => channel.id === channelId);
           if (found) {
             deletedChannel = found;
@@ -299,7 +299,7 @@ export function useLineChannelDelete() {
       queries.forEach(([queryKey]) => {
         const currentData = queryClient.getQueryData<LineChannelListResponse>(queryKey);
         
-        if (currentData) {
+        if (currentData?.data) {
           queryClient.setQueryData<LineChannelListResponse>(queryKey, {
             ...currentData,
             data: currentData.data.filter((channel) => channel.id !== channelId),

@@ -953,7 +953,7 @@ export const DELETE = withBranchAccess(
 
     if (!studentId) {
       return NextResponse.json(
-        { error: "Student ID is required" },
+        { error: "生徒IDが必要です" },
         { status: 400 }
       );
     }
@@ -967,8 +967,37 @@ export const DELETE = withBranchAccess(
 
       if (!student) {
         return NextResponse.json(
-          { error: "Student not found" },
+          { error: "生徒が見つかりません" },
           { status: 404 }
+        );
+      }
+
+      // Check for dependencies
+      const classSessionCount = await prisma.classSession.count({
+        where: { studentId }
+      });
+
+      const enrollmentCount = await prisma.studentClassEnrollment.count({
+        where: { studentId }
+      });
+
+      const preferenceCount = await prisma.studentTeacherPreference.count({
+        where: { studentId }
+      });
+
+      const totalDependencies = classSessionCount + enrollmentCount + preferenceCount;
+
+      if (totalDependencies > 0) {
+        return NextResponse.json(
+          { 
+            error: `この生徒は${totalDependencies}件の授業に関連付けられているため削除できません。`,
+            details: {
+              classSessions: classSessionCount,
+              enrollments: enrollmentCount,
+              preferences: preferenceCount
+            }
+          },
+          { status: 400 }
         );
       }
 
@@ -1016,7 +1045,7 @@ export const DELETE = withBranchAccess(
     } catch (error) {
       console.error("Error deleting student:", error);
       return NextResponse.json(
-        { error: "Failed to delete student" },
+        { error: "生徒の削除に失敗しました" },
         { status: 500 }
       );
     }

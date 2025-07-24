@@ -171,9 +171,6 @@ export const DELETE = withBranchAccess(
       // Check if subject type exists
       const subjectType = await prisma.subjectType.findUnique({
         where: { subjectTypeId },
-        include: {
-          preferences: { take: 1 }, // Check if there are any associated preferences
-        },
       });
 
       if (!subjectType) {
@@ -183,12 +180,25 @@ export const DELETE = withBranchAccess(
         );
       }
 
-      // Prevent deletion if subject type has associated preferences
-      if (subjectType.preferences.length > 0) {
+      // Check for dependencies
+      const userPreferenceCount = await prisma.userSubjectPreference.count({
+        where: { subjectTypeId }
+      });
+
+      const studentPreferenceCount = await prisma.studentTeacherPreference.count({
+        where: { subjectTypeId }
+      });
+
+      const totalDependencies = userPreferenceCount + studentPreferenceCount;
+
+      if (totalDependencies > 0) {
         return NextResponse.json(
-          {
-            error:
-              "関連するユーザー設定があるため、この科目タイプを削除できません",
+          { 
+            error: `この科目タイプは使用されているため削除できません。`,
+            details: {
+              userPreferences: userPreferenceCount,
+              studentPreferences: studentPreferenceCount
+            }
           },
           { status: 400 }
         );
