@@ -384,7 +384,7 @@ export async function GET(request: NextRequest) {
             // Get current class IDs to store
             const currentClassIds = recipient.sessions.map(s => s.classId).sort();
             
-            await createNotification({
+            const createdNotif = await createNotification({
               recipientType: recipient.recipientType,
               recipientId: recipient.recipientId,
               notificationType: notificationType,
@@ -395,18 +395,6 @@ export async function GET(request: NextRequest) {
             });
             
             // Update the logs field with class information
-            // Since createNotification doesn't support logs parameter, we need to update after creation
-            const createdNotif = await prisma.notification.findFirst({
-              where: {
-                recipientType: recipient.recipientType,
-                recipientId: recipient.recipientId,
-                targetDate: targetDate,
-                notificationType: notificationType,
-                createdAt: { gte: new Date(Date.now() - 1000) } // Created in last second
-              },
-              orderBy: { createdAt: 'desc' }
-            });
-            
             if (createdNotif) {
               await prisma.notification.update({
                 where: { notificationId: createdNotif.notificationId },
@@ -419,10 +407,13 @@ export async function GET(request: NextRequest) {
                   }
                 }
               });
+              
+              results.notificationsCreated++;
+              console.log(`    ✅ Created ${isUpdateNotification ? 'UPDATE' : 'initial'} notification for ${recipient.recipientType} ${recipient.name}`);
+              console.log(`    📝 Updated logs: ${recipient.sessions.length} classes, IDs: [${currentClassIds.join(', ')}]`);
+            } else {
+              console.log(`    ❌ Failed to create notification for ${recipient.recipientType} ${recipient.name} - createNotification returned null`);
             }
-            
-            results.notificationsCreated++;
-            console.log(`    ✅ Created ${isUpdateNotification ? 'UPDATE' : 'initial'} notification for ${recipient.recipientType} ${recipient.name}`);
           } catch (error) {
             console.error(`    ❌ Failed to create notification for ${recipient.name}:`, error);
             results.errors.push(`Failed to create notification for ${recipient.name}: ${error instanceof Error ? error.message : String(error)}`);
