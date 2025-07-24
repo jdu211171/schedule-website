@@ -17,6 +17,8 @@ async function processNotifications(skipTimeCheck: boolean = false) {
   console.log('Current time (JST):', formatInTimeZone(now, TIMEZONE, 'yyyy-MM-dd HH:mm:ss zzz'));
   console.log('Skip time check:', skipTimeCheck);
   console.log('Current hour (JST):', nowJST.getHours());
+  console.log('Current minute (JST):', nowJST.getMinutes());
+  console.log('Environment:', process.env.NODE_ENV || 'development');
 
   const activeTemplates = await prisma.lineMessageTemplate.findMany({
     where: {
@@ -103,7 +105,11 @@ async function processNotifications(skipTimeCheck: boolean = false) {
       console.log(`  Days before: ${template.timingValue}`);
       console.log(`  Target date for classes: ${targetDateString}`);
       console.log(`  Target date object (JST): ${format(targetDate, 'yyyy-MM-dd HH:mm:ss')}`);
+      console.log(`  Target date object (UTC): ${targetDate.toISOString()}`);
       console.log(`  Template ID: ${template.id}`);
+      console.log(`  Branch: ${template.branchId || 'Global (all branches)'}`);
+      console.log(`  Searching for classes on date: ${format(targetDate, 'yyyy-MM-dd')}`);
+      console.log(`  Date range: ${targetDate.toISOString()} to ${new Date(targetDate.getTime() + 24 * 60 * 60 * 1000).toISOString()}`);
 
       const teachersWithClasses = await prisma.teacher.findMany({
         where: {
@@ -133,6 +139,8 @@ async function processNotifications(skipTimeCheck: boolean = false) {
         }
       });
 
+      console.log(`  Found ${teachersWithClasses.length} teachers with classes on ${targetDateString}`);
+      
       const studentsWithDirectClasses = await prisma.student.findMany({
         where: {
           lineNotificationsEnabled: true,
@@ -160,6 +168,8 @@ async function processNotifications(skipTimeCheck: boolean = false) {
         }
       });
 
+      console.log(`  Found ${studentsWithDirectClasses.length} students with direct classes on ${targetDateString}`);
+      
       const studentsWithEnrolledClasses = await prisma.student.findMany({
         where: {
           lineNotificationsEnabled: true,
