@@ -429,6 +429,7 @@ model LineMessageTemplate {
   timingType              String   @map("timing_type") @db.VarChar(20) @default("days")
   timingValue             Int      @map("timing_value")
   timingHour              Int      @default(9) @map("timing_hour") // Hour (0-23) when notification should be sent
+  timingMinute            Int      @default(0) @map("timing_minute") // Minute (0-59) when notification should be sent
   content                 String
   variables               Json
   classListItemTemplate   String?  @map("class_list_item_template") @db.Text // Template for each class item

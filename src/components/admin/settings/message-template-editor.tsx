@@ -35,7 +35,8 @@ interface MessageTemplateEditorProps {
 const formatTiming = (template: MessageTemplate) => {
   const timing = template.timingValue === 0 ? '当日' : `${template.timingValue}日前`;
   const hour = String(template.timingHour).padStart(2, '0');
-  return `${timing} ${hour}:00`;
+  const minute = String(template.timingMinute ?? 0).padStart(2, '0');
+  return `${timing} ${hour}:${minute}`;
 };
 
 export function MessageTemplateEditor({ templates, onSave }: MessageTemplateEditorProps) {
@@ -48,6 +49,7 @@ export function MessageTemplateEditor({ templates, onSave }: MessageTemplateEdit
       timingType: 'days',
       timingValue: 1,
       timingHour: 9,
+      timingMinute: 0,
       content: `明日の授業予定\n\n{{dailyClassList}}\n\nよろしくお願いいたします。`,
       variables: ['dailyClassList'],
       classListItemTemplate: DEFAULT_CLASS_LIST_ITEM_TEMPLATE,
@@ -326,13 +328,31 @@ export function MessageTemplateEditor({ templates, onSave }: MessageTemplateEdit
                       timingHour: parseInt(value) 
                     })}
                   >
-                    <SelectTrigger className="w-24">
+                    <SelectTrigger className="w-20">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       {Array.from({ length: 24 }, (_, i) => (
                         <SelectItem key={i} value={String(i)}>
-                          {String(i).padStart(2, '0')}:00
+                          {String(i).padStart(2, '0')}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <span className="text-sm">:</span>
+                  <Select
+                    value={String(localTemplate.timingMinute ?? 0)}
+                    onValueChange={(value) => handleUpdateTemplate({ 
+                      timingMinute: parseInt(value) 
+                    })}
+                  >
+                    <SelectTrigger className="w-20">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map((minute) => (
+                        <SelectItem key={minute} value={String(minute)}>
+                          {String(minute).padStart(2, '0')}
                         </SelectItem>
                       ))}
                     </SelectContent>

@@ -30,6 +30,7 @@ async function processNotifications(skipTimeCheck: boolean = false) {
       timingType: true,
       timingValue: true,
       timingHour: true,
+      timingMinute: true,
       branchId: true,
       content: true,
       classListItemTemplate: true,
@@ -45,7 +46,8 @@ async function processNotifications(skipTimeCheck: boolean = false) {
   console.log(`Found ${activeTemplates.length} active templates`);
   activeTemplates.forEach(template => {
     console.log(`- Template: ${template.name} (ID: ${template.id})`);
-    console.log(`  Timing: ${template.timingValue} days before at ${template.timingHour}:00 JST`);
+    const timeStr = `${template.timingHour}:${String(template.timingMinute ?? 0).padStart(2, '0')}`;
+    console.log(`  Timing: ${template.timingValue} days before at ${timeStr} JST`);
     console.log(`  Branch: ${template.branchId || 'Global'}`);
   });
 
@@ -54,9 +56,15 @@ async function processNotifications(skipTimeCheck: boolean = false) {
 
   for (const template of activeTemplates) {
     try {
-      const shouldSend = nowJST.getHours() >= template.timingHour;
+      // Check if current time is at or past the scheduled time (hours and minutes)
+      const currentMinutes = nowJST.getHours() * 60 + nowJST.getMinutes();
+      const templateMinutes = template.timingHour * 60 + (template.timingMinute ?? 0);
+      const shouldSend = currentMinutes >= templateMinutes;
+      
       if (!skipTimeCheck && !shouldSend) {
-        console.log(`⏰ Waiting for scheduled hour: ${template.timingHour}:00. Current hour: ${nowJST.getHours()}`);
+        const currentTime = `${nowJST.getHours()}:${String(nowJST.getMinutes()).padStart(2, '0')}`;
+        const scheduledTime = `${template.timingHour}:${String(template.timingMinute ?? 0).padStart(2, '0')}`;
+        console.log(`⏰ Waiting for scheduled time: ${scheduledTime}. Current time: ${currentTime}`);
         continue;
       }
 
@@ -254,7 +262,7 @@ async function processNotifications(skipTimeCheck: boolean = false) {
           const notificationType = template.timingValue === 0 ? 'DAILY_SUMMARY_SAMEDAY' : `DAILY_SUMMARY_${template.timingValue}D`;
           
           const scheduledAtJST = startOfDay(nowJST);
-          scheduledAtJST.setHours(template.timingHour ?? 9);
+          scheduledAtJST.setHours(template.timingHour ?? 9, template.timingMinute ?? 0, 0, 0);
 
           const scheduledAt = skipTimeCheck ? now : fromZonedTime(scheduledAtJST, TIMEZONE);
 

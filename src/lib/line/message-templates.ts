@@ -172,6 +172,7 @@ export interface MessageTemplate {
   timingType: 'days'; // Now only supports days-based timing
   timingValue: number; // Number of days before class
   timingHour: number; // Hour (0-23) when notification should be sent (now required)
+  timingMinute?: number; // Minute (0-59) when notification should be sent
   content: string;
   variables: string[];
   classListItemTemplate?: string; // Template for each class item in the list
@@ -275,6 +276,7 @@ export const getDefaultTemplates = (): MessageTemplate[] => [
     timingType: 'days',
     timingValue: 1,
     timingHour: 9,
+    timingMinute: 0,
     content: TEMPLATE_EXAMPLES.DETAILED.content,
     variables: extractTemplateVariables(TEMPLATE_EXAMPLES.DETAILED.content),
     classListItemTemplate: DEFAULT_CLASS_LIST_ITEM_TEMPLATE,

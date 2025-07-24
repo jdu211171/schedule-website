@@ -12,6 +12,7 @@ const templateSchema = z.object({
   timingType: z.literal("days"), // Only allow days-based timing
   timingValue: z.number().min(0).max(999), // Allow 0 for same-day notifications
   timingHour: z.number().min(0).max(23), // Required hour for notification time
+  timingMinute: z.number().min(0).max(59).optional(), // Optional minute for notification time
   content: z.string().min(1),
   variables: z.array(z.string()),
   classListItemTemplate: z.string().optional(), // Template for each class item
@@ -48,6 +49,7 @@ export const GET = withRole(["ADMIN"], async () => {
         timingType: 'days' as const,
         timingValue: 1,
         timingHour: 9,
+        timingMinute: 0,
         content: `明日の授業予定
 
 {{dailyClassList}}
