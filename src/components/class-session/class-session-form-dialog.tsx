@@ -311,14 +311,24 @@ export function ClassSessionFormDialog({
   };
 
   function onSubmit(values: FormValues) {
+    // Validate required fields
+    if (values.teacherId === "none" || !values.teacherId) {
+      form.setError("teacherId", { message: "Teacher is required" });
+      return;
+    }
+    if (values.studentId === "none" || !values.studentId) {
+      form.setError("studentId", { message: "Student is required" });
+      return;
+    }
+    
     // Close the dialog immediately for better UX
     onOpenChange(false);
 
     // Handle special "none" values
     const formattedValues = {
       ...values,
-      teacherId: values.teacherId === "none" ? null : values.teacherId,
-      studentId: values.studentId === "none" ? null : values.studentId,
+      teacherId: values.teacherId,
+      studentId: values.studentId,
       subjectId: values.subjectId === "none" ? null : values.subjectId,
       classTypeId: values.classTypeId === "none" ? null : values.classTypeId,
       boothId: values.boothId === "none" ? null : values.boothId,

@@ -12,8 +12,8 @@ export const sessionActionSchema = z.object({
 
 // Schema for creating a new class session
 export const classSessionCreateSchema = z.object({
-  teacherId: z.string().optional().nullable(),
-  studentId: z.string().optional().nullable(),
+  teacherId: z.string().min(1, "Teacher is required"),
+  studentId: z.string().min(1, "Student is required"),
   subjectId: z.string().optional().nullable(),
   classTypeId: z.string().optional().nullable(),
   boothId: z.string().optional().nullable(),

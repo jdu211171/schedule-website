@@ -141,7 +141,9 @@ export async function GET(request: NextRequest) {
             lineId: { not: null },
             classSessions: {
               some: {
-                date: targetDate
+                date: targetDate,
+                // Only include sessions with both teacher and student assigned
+                studentId: { not: null }
               }
             }
           },
@@ -150,7 +152,10 @@ export async function GET(request: NextRequest) {
             name: true,
             lineId: true,
             classSessions: {
-              where: { date: targetDate },
+              where: { 
+                date: targetDate,
+                studentId: { not: null }
+              },
               orderBy: { startTime: 'asc' },
               include: {
                 student: { select: { studentId: true, name: true } },
@@ -171,7 +176,9 @@ export async function GET(request: NextRequest) {
             lineId: { not: null },
             classSessions: {
               some: {
-                date: targetDate
+                date: targetDate,
+                // Only include sessions with both teacher and student assigned
+                teacherId: { not: null }
               }
             }
           },
@@ -180,7 +187,10 @@ export async function GET(request: NextRequest) {
             name: true,
             lineId: true,
             classSessions: {
-              where: { date: targetDate },
+              where: { 
+                date: targetDate,
+                teacherId: { not: null }
+              },
               orderBy: { startTime: 'asc' },
               include: {
                 teacher: { select: { teacherId: true, name: true } },
@@ -246,15 +256,24 @@ export async function GET(request: NextRequest) {
               const endTime = `${String(endDate.getUTCHours()).padStart(2, '0')}:${String(endDate.getUTCMinutes()).padStart(2, '0')}`;
               const durationMinutes = (endDate.getTime() - startDate.getTime()) / (1000 * 60);
               const duration = `${durationMinutes}分`;
-              const studentName = session.student?.name || '未定';
+              
+              // Show appropriate names based on recipient type
+              // Teachers see student names, students see teacher names
+              const studentName = session.student?.name || '生徒未設定';
+              const teacherName = session.teacher?.name || '講師未設定';
+              
+              // Log warning if data is missing
+              if (!session.student?.name || !session.teacher?.name) {
+                console.warn(`⚠️ Class session ${session.classId} is missing ${!session.student?.name ? 'student' : 'teacher'} information`);
+              }
 
               const classItemVariables = {
                 classNumber: String(index + 1),
-                subjectName: session.subject?.name || '授業',
+                subjectName: session.subject?.name || '科目未設定',
                 startTime,
                 endTime,
-                teacherName: session.teacher?.name || '未定',
-                boothName: session.booth?.name || '未定',
+                teacherName,
+                boothName: session.booth?.name || 'ブース未設定',
                 duration,
                 studentName
               };
