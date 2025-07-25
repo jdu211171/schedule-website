@@ -158,6 +158,14 @@ export const DELETE = withBranchAccess(
     // Get selected branch from headers
     const selectedBranchId = request.headers.get("X-Selected-Branch");
 
+    // Require branch context for deletion
+    if (!selectedBranchId) {
+      return NextResponse.json(
+        { error: "削除を実行するには校舎を選択してください" },
+        { status: 400 }
+      );
+    }
+
     try {
       // Check if subject exists
       const subject = await prisma.subject.findUnique({
@@ -175,12 +183,12 @@ export const DELETE = withBranchAccess(
       const classSessionCount = await prisma.classSession.count({
         where: { 
           subjectId,
-          ...(selectedBranchId && { branchId: selectedBranchId })
+          branchId: selectedBranchId
         }
       });
 
-      // Preferences don't have direct branch relation, but we can check if they're used in any class sessions in this branch
-      const preferenceCount = await prisma.userSubjectPreference.count({
+      // Count preferences separately (not branch-specific)
+      const userPreferenceCount = await prisma.userSubjectPreference.count({
         where: { subjectId }
       });
 
@@ -188,45 +196,78 @@ export const DELETE = withBranchAccess(
         where: { subjectId }
       });
 
-      // Only count class sessions for branch-specific dependencies
-      const totalDependencies = classSessionCount;
+      const totalPreferences = userPreferenceCount + studentPreferenceCount;
 
-      if (totalDependencies > 0) {
+      if (classSessionCount > 0) {
         // Get branch information for class sessions
         const sessions = await prisma.classSession.findMany({
           where: { 
             subjectId,
-            ...(selectedBranchId && { branchId: selectedBranchId })
+            branchId: selectedBranchId
           },
           select: {
-            branchId: true,
             branch: { select: { name: true } }
           },
           distinct: ['branchId']
         });
         
-        const branches = sessions
+        const branchNames = [...new Set(sessions
           .map(s => s.branch?.name)
-          .filter(Boolean);
+          .filter(Boolean))];
         
-        const branchText = branches.length > 0 ? `（${branches.join('、')}）` : '';
+        const branchText = branchNames.length > 0 ? `（${branchNames.join('、')}）` : '';
         
         return NextResponse.json(
           { 
-            error: `この科目は${totalDependencies}件の授業セッション${branchText}に関連付けられているため削除できません。`,
+            error: `この科目は${classSessionCount}件の授業セッション${branchText}に関連付けられているため削除できません。`,
             details: {
               classSessions: classSessionCount,
-              branches
+              branches: branchNames,
+              ...(totalPreferences > 0 && { 
+                userPreferences: userPreferenceCount,
+                studentPreferences: studentPreferenceCount
+              })
             }
           },
           { status: 400 }
         );
       }
 
-      // Delete the subject
-      await prisma.subject.delete({
-        where: { subjectId },
-      });
+      // Delete the subject and related preferences in a transaction
+      try {
+        await prisma.$transaction(async (tx) => {
+          // Delete user subject preferences
+          await tx.userSubjectPreference.deleteMany({
+            where: { subjectId },
+          });
+
+          // Delete student teacher preferences
+          await tx.studentTeacherPreference.deleteMany({
+            where: { subjectId },
+          });
+
+          // Delete the subject
+          await tx.subject.delete({
+            where: { subjectId },
+          });
+        });
+      } catch (error: any) {
+        // Handle foreign key constraint violations
+        if (error?.code === 'P2003') {
+          console.error("Foreign key constraint error:", error);
+          return NextResponse.json(
+            { 
+              error: "科目を削除できません。関連するデータが存在します。", 
+              details: { 
+                message: "削除前に関連する授業セッションや設定を確認してください。",
+                code: error.code 
+              }
+            },
+            { status: 400 }
+          );
+        }
+        throw error;
+      }
 
       return NextResponse.json(
         {

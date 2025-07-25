@@ -836,6 +836,14 @@ export const DELETE = withBranchAccess(
     // Get selected branch from headers
     const selectedBranchId = request.headers.get("X-Selected-Branch");
     
+    // Require branch context for deletion
+    if (!selectedBranchId) {
+      return NextResponse.json(
+        { error: "削除を実行するには校舎を選択してください" },
+        { status: 400 }
+      );
+    }
+    
     try {
       // Check if teacher exists
       const teacher = await prisma.teacher.findUnique({
@@ -854,44 +862,41 @@ export const DELETE = withBranchAccess(
       const classSessionCount = await prisma.classSession.count({
         where: { 
           teacherId,
-          ...(selectedBranchId && { branchId: selectedBranchId })
+          branchId: selectedBranchId
         }
       });
 
-      // Preferences don't have direct branch relation, so we keep the count as is
+      // Count preferences separately (not branch-specific)
       const preferenceCount = await prisma.studentTeacherPreference.count({
         where: { teacherId }
       });
 
-      // Only count class sessions for branch-specific dependencies
-      const totalDependencies = classSessionCount;
-
-      if (totalDependencies > 0) {
+      if (classSessionCount > 0) {
         // Get branch information for class sessions
         const sessions = await prisma.classSession.findMany({
           where: { 
             teacherId,
-            ...(selectedBranchId && { branchId: selectedBranchId })
+            branchId: selectedBranchId
           },
           select: {
-            branchId: true,
             branch: { select: { name: true } }
           },
           distinct: ['branchId']
         });
         
-        const branches = sessions
+        const branchNames = [...new Set(sessions
           .map(s => s.branch?.name)
-          .filter(Boolean);
+          .filter(Boolean))];
         
-        const branchText = branches.length > 0 ? `（${branches.join('、')}）` : '';
+        const branchText = branchNames.length > 0 ? `（${branchNames.join('、')}）` : '';
         
         return NextResponse.json(
           { 
-            error: `この講師は${totalDependencies}件の授業セッション${branchText}に関連付けられているため削除できません。`,
+            error: `この講師は${classSessionCount}件の授業セッション${branchText}に関連付けられているため削除できません。`,
             details: {
               classSessions: classSessionCount,
-              branches
+              branches: branchNames,
+              ...(preferenceCount > 0 && { preferences: preferenceCount })
             }
           },
           { status: 400 }
@@ -899,28 +904,56 @@ export const DELETE = withBranchAccess(
       }
 
       // Delete teacher, user and branch associations in a transaction
-      await prisma.$transaction(async (tx) => {
-        // Delete user availability first
-        await tx.userAvailability.deleteMany({
-          where: { userId: teacher.userId },
+      try {
+        await prisma.$transaction(async (tx) => {
+          // Delete user availability first
+          await tx.userAvailability.deleteMany({
+            where: { userId: teacher.userId },
+          });
+
+          // Delete student teacher preferences
+          await tx.studentTeacherPreference.deleteMany({
+            where: { teacherId },
+          });
+
+          // Delete subject preferences
+          await tx.userSubjectPreference.deleteMany({
+            where: { userId: teacher.userId },
+          });
+
+          // Delete branch associations
+          await tx.userBranch.deleteMany({
+            where: { userId: teacher.userId },
+          });
+
+          // Delete contact phones (though this should cascade automatically)
+          await tx.teacherContactPhone.deleteMany({
+            where: { teacherId },
+          });
+
+          // Delete teacher
+          await tx.teacher.delete({ where: { teacherId } });
+
+          // Delete associated user
+          await tx.user.delete({ where: { id: teacher.userId } });
         });
-
-        // Delete subject preferences
-        await tx.userSubjectPreference.deleteMany({
-          where: { userId: teacher.userId },
-        });
-
-        // Delete branch associations
-        await tx.userBranch.deleteMany({
-          where: { userId: teacher.userId },
-        });
-
-        // Delete teacher
-        await tx.teacher.delete({ where: { teacherId } });
-
-        // Delete associated user
-        await tx.user.delete({ where: { id: teacher.userId } });
-      });
+      } catch (error: any) {
+        // Handle foreign key constraint violations
+        if (error?.code === 'P2003') {
+          console.error("Foreign key constraint error:", error);
+          return NextResponse.json(
+            { 
+              error: "講師を削除できません。関連するデータが存在します。", 
+              details: { 
+                message: "削除前に関連する授業セッションや設定を確認してください。",
+                code: error.code 
+              }
+            },
+            { status: 400 }
+          );
+        }
+        throw error;
+      }
 
       return NextResponse.json(
         {

@@ -320,6 +320,14 @@ export const DELETE = withBranchAccess(
     // Get selected branch from headers
     const selectedBranchId = request.headers.get("X-Selected-Branch");
 
+    // Require branch context for deletion
+    if (!selectedBranchId) {
+      return NextResponse.json(
+        { error: "削除を実行するには校舎を選択してください" },
+        { status: 400 }
+      );
+    }
+
     try {
       // Check if class type exists
       const classType = await prisma.classType.findUnique({
@@ -362,7 +370,7 @@ export const DELETE = withBranchAccess(
       const classSessionCount = await prisma.classSession.count({
         where: { 
           classTypeId,
-          ...(selectedBranchId && { branchId: selectedBranchId })
+          branchId: selectedBranchId
         }
       });
 
@@ -371,7 +379,7 @@ export const DELETE = withBranchAccess(
         const sessions = await prisma.classSession.findMany({
           where: { 
             classTypeId,
-            ...(selectedBranchId && { branchId: selectedBranchId })
+            branchId: selectedBranchId
           },
           select: {
             branch: { select: { name: true } }
