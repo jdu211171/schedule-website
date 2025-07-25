@@ -1,7 +1,6 @@
 
 "use client";
 
-import { columns } from './columns';
 import { NotificationDataTable } from './notification-data-table';
 
 /**
@@ -11,7 +10,7 @@ export default function NotificationsPage() {
   return (
     <div className="container mx-auto py-10">
       <h1 className="text-2xl font-bold mb-4">通知</h1>
-      <NotificationDataTable columns={columns} />
+      <NotificationDataTable />
     </div>
   );
 }

@@ -7,6 +7,15 @@ import { Notification } from '@/hooks/useNotificationQuery';
 import { Badge } from '@/components/ui/badge';
 import { format, parseISO } from 'date-fns';
 import { ja } from 'date-fns/locale';
+import { MoreHorizontal, Trash2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 const getStatusText = (status: NotificationStatus): string => {
   switch (status) {
@@ -23,7 +32,9 @@ const getStatusText = (status: NotificationStatus): string => {
   }
 };
 
-export const columns: ColumnDef<Notification>[] = [
+export const createColumns = (
+  onDelete: (notification: Notification) => void
+): ColumnDef<Notification>[] => [
   {
     accessorKey: 'recipientName',
     header: '宛先',
@@ -110,5 +121,34 @@ export const columns: ColumnDef<Notification>[] = [
   {
     accessorKey: 'processingAttempts',
     header: '試行回数',
+  },
+  {
+    id: 'actions',
+    header: '操作',
+    cell: ({ row }) => {
+      const notification = row.original;
+
+      return (
+        <div className="flex justify-end">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>アクション</DropdownMenuLabel>
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                onClick={() => onDelete(notification)}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                削除
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      );
+    },
   },
 ];

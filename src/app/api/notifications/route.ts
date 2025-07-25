@@ -3,6 +3,7 @@ import { withBranchAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Notification, NotificationStatus } from "@prisma/client";
 import { format, subDays } from "date-fns";
+import { notificationBulkDeleteSchema } from "@/schemas/notification.schema";
 
 type FormattedNotification = {
   notificationId: string;
@@ -207,6 +208,89 @@ export const GET = withBranchAccess(
       console.error("Error fetching notifications:", error);
       return NextResponse.json(
         { error: "通知の取得に失敗しました" },
+        { status: 500 }
+      );
+    }
+  }
+);
+
+// DELETE - Bulk delete notifications
+export const DELETE = withBranchAccess(
+  ["ADMIN", "STAFF"],
+  async (request: NextRequest, session, branchId) => {
+    try {
+      const body = await request.json();
+
+      // Validate request body
+      const result = notificationBulkDeleteSchema.safeParse(body);
+      if (!result.success) {
+        return NextResponse.json(
+          { error: "入力データが無効です" }, // "Invalid input data"
+          { status: 400 }
+        );
+      }
+
+      const { notificationIds } = result.data;
+
+      // Fetch all notifications to be deleted
+      const notificationsToDelete = await prisma.notification.findMany({
+        where: {
+          notificationId: {
+            in: notificationIds,
+          },
+        },
+      });
+
+      if (notificationsToDelete.length === 0) {
+        return NextResponse.json(
+          { error: "削除対象の通知が見つかりません" },
+          { status: 404 }
+        );
+      }
+
+      // Check if user has access to all notifications' branches (non-admin users)
+      if (session.user?.role !== "ADMIN") {
+        const unauthorizedNotifications = notificationsToDelete.filter(
+          (notification) => notification.branchId && notification.branchId !== branchId
+        );
+
+        if (unauthorizedNotifications.length > 0) {
+          return NextResponse.json(
+            { error: "一部の通知にアクセスする権限がありません" },
+            { status: 403 }
+          );
+        }
+      }
+
+      // Count notifications that actually exist and will be deleted
+      const actualDeleteCount = notificationsToDelete.length;
+
+      // Delete the notifications
+      await prisma.notification.deleteMany({
+        where: {
+          notificationId: {
+            in: notificationIds,
+          },
+        },
+      });
+
+      return NextResponse.json(
+        {
+          data: [],
+          message: `${actualDeleteCount}件の通知を削除しました`,
+          pagination: {
+            total: 0,
+            page: 0,
+            limit: 0,
+            pages: 0,
+          },
+        },
+        { status: 200 }
+      );
+    } catch (error) {
+      console.error("Error bulk deleting notifications:", error);
+      return NextResponse.json(
+        { error: "通知の一括削除に失敗しました" },
         { status: 500 }
       );
     }

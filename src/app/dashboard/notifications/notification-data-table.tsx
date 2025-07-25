@@ -1,21 +1,30 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ColumnDef } from "@tanstack/react-table";
-import { format, subDays } from "date-fns";
-import { ja } from "date-fns/locale";
+import { format } from "date-fns";
 import { DateRange } from "react-day-picker";
 import { NotificationStatus } from "@prisma/client";
 
 import { DataTable } from "@/components/data-table";
 import { useNotifications, Notification } from "@/hooks/useNotificationQuery";
 import { NotificationFilter } from "@/components/notification/notification-filter";
+import { createColumns } from "./columns";
+import {
+  useNotificationDelete,
+  useNotificationBulkDelete,
+} from "@/hooks/useNotificationMutation";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
-interface NotificationDataTableProps {
-  columns: ColumnDef<Notification>[];
-}
-
-export function NotificationDataTable({ columns }: NotificationDataTableProps) {
+export function NotificationDataTable() {
   const [page, setPage] = useState(1);
   const pageSize = 15;
 
@@ -81,6 +90,15 @@ export function NotificationDataTable({ columns }: NotificationDataTableProps) {
   const totalCount = notificationsData?.pagination.total || 0;
   const totalPages = Math.ceil(totalCount / pageSize);
 
+  // Delete mutations
+  const deleteNotificationMutation = useNotificationDelete();
+  const bulkDeleteNotificationMutation = useNotificationBulkDelete();
+
+  // State for delete dialogs
+  const [notificationToDelete, setNotificationToDelete] = useState<Notification | null>(null);
+  const [selectedRowsForDeletion, setSelectedRowsForDeletion] = useState<Notification[]>([]);
+  const [isConfirmingBulkDelete, setIsConfirmingBulkDelete] = useState(false);
+
   const handleFilterChange = (
     field: keyof typeof filters,
     value: string | undefined
@@ -128,6 +146,37 @@ export function NotificationDataTable({ columns }: NotificationDataTableProps) {
     setPage(newPage + 1);
   };
 
+  // Delete handlers
+  const handleDeleteNotification = () => {
+    if (notificationToDelete) {
+      const notificationId = notificationToDelete.notificationId;
+      setNotificationToDelete(null);
+      deleteNotificationMutation.mutate(notificationId);
+    }
+  };
+
+  const handleBulkDelete = (selectedRowData: Notification[]) => {
+    if (selectedRowData.length === 0) return;
+    setSelectedRowsForDeletion(selectedRowData);
+    setIsConfirmingBulkDelete(true);
+  };
+
+  const confirmBulkDelete = () => {
+    if (selectedRowsForDeletion.length === 0) return;
+
+    const notificationIds = selectedRowsForDeletion.map(
+      (notification) => notification.notificationId
+    );
+    bulkDeleteNotificationMutation.mutate({ notificationIds });
+
+    // Clear selection and close dialog
+    setSelectedRowsForDeletion([]);
+    setIsConfirmingBulkDelete(false);
+  };
+
+  // Create columns with delete handler
+  const columns = createColumns((notification) => setNotificationToDelete(notification));
+
   // Create filter component for the DataTable
   const filterComponent = (
     <NotificationFilter
@@ -139,16 +188,87 @@ export function NotificationDataTable({ columns }: NotificationDataTableProps) {
   );
 
   return (
-    <DataTable
-      columns={columns}
-      data={notificationsData?.data || []}
-      isLoading={isLoading}
-      pageIndex={page - 1}
-      pageCount={totalPages || 1}
-      onPageChange={handlePageChange}
-      pageSize={pageSize}
-      totalItems={totalCount}
-      filterComponent={filterComponent}
-    />
+    <>
+      <DataTable
+        columns={columns}
+        data={notificationsData?.data || []}
+        isLoading={isLoading}
+        pageIndex={page - 1}
+        pageCount={totalPages || 1}
+        onPageChange={handlePageChange}
+        pageSize={pageSize}
+        totalItems={totalCount}
+        filterComponent={filterComponent}
+        enableRowSelection={true}
+        onBatchDelete={handleBulkDelete}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog
+        open={!!notificationToDelete}
+        onOpenChange={(open) => !open && setNotificationToDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>本当に削除しますか？</AlertDialogTitle>
+            <AlertDialogDescription>
+              この操作は元に戻せません。この通知を完全に削除します。
+              {notificationToDelete?.recipientName && (
+                <div className="mt-2">
+                  宛先: <strong>{notificationToDelete.recipientName}</strong>
+                </div>
+              )}
+              {notificationToDelete?.message && (
+                <div className="mt-1 text-sm">
+                  メッセージ:{" "}
+                  {notificationToDelete.message.length > 50
+                    ? `${notificationToDelete.message.substring(0, 50)}...`
+                    : notificationToDelete.message}
+                </div>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>キャンセル</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteNotification}
+              disabled={deleteNotificationMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteNotificationMutation.isPending ? "削除中..." : "削除"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk Delete Confirmation Dialog */}
+      <AlertDialog
+        open={isConfirmingBulkDelete}
+        onOpenChange={(open) => !open && setIsConfirmingBulkDelete(false)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>選択した通知を一括削除しますか？</AlertDialogTitle>
+            <AlertDialogDescription>
+              この操作は元に戻せません。
+              選択された<strong>{selectedRowsForDeletion.length}件</strong>
+              の通知を完全に削除します。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>キャンセル</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmBulkDelete}
+              disabled={bulkDeleteNotificationMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {bulkDeleteNotificationMutation.isPending
+                ? "削除中..."
+                : `${selectedRowsForDeletion.length}件を削除`}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
