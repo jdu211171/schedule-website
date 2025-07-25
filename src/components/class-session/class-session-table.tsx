@@ -69,38 +69,16 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
   const [page, setPage] = useState(1);
   const pageSize = 10;
 
-  // Storage key for filter persistence
-  const FILTERS_STORAGE_KEY = "classsession_filters";
-
-  // Initialize filters with localStorage values or defaults
-  const [filters, setFilters] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const savedFilters = localStorage.getItem(FILTERS_STORAGE_KEY);
-      if (savedFilters) {
-        try {
-          return JSON.parse(savedFilters);
-        } catch (error) {
-          console.error('Error parsing saved filters:', error);
-        }
-      }
-    }
-    return {
-      teacherId: undefined as string | undefined,
-      studentId: undefined as string | undefined,
-      subjectId: undefined as string | undefined,
-      classTypeId: undefined as string | undefined,
-      boothId: undefined as string | undefined,
-      startDate: undefined as string | undefined,
-      endDate: undefined as string | undefined,
-    };
+  // Initialize filters with defaults
+  const [filters, setFilters] = useState({
+    teacherId: undefined as string | undefined,
+    studentId: undefined as string | undefined,
+    subjectId: undefined as string | undefined,
+    classTypeId: undefined as string | undefined,
+    boothId: undefined as string | undefined,
+    startDate: undefined as string | undefined,
+    endDate: undefined as string | undefined,
   });
-
-  // Save filters to localStorage whenever they change
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(FILTERS_STORAGE_KEY, JSON.stringify(filters));
-    }
-  }, [filters]);
 
   // Row selection state for multiselect
   const [selectedRowsForDeletion, setSelectedRowsForDeletion] = useState<ExtendedClassSession[]>([]);
@@ -171,10 +149,6 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
     };
     setFilters(defaultFilters);
     setPage(1);
-    // Clear localStorage when resetting
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem(FILTERS_STORAGE_KEY);
-    }
   };
 
   const columns: ColumnDef<ExtendedClassSession, unknown>[] = [
