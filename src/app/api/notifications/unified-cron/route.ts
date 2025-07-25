@@ -267,6 +267,16 @@ export async function GET(request: NextRequest) {
                 console.warn(`⚠️ Class session ${session.classId} is missing ${!session.student?.name ? 'student' : 'teacher'} information`);
               }
 
+              // Modify the template based on recipient type to avoid showing redundant information
+              let recipientSpecificTemplate = itemTemplate;
+              if (recipient.recipientType === 'TEACHER') {
+                // For teachers, remove their own name from the template
+                recipientSpecificTemplate = itemTemplate.replace(/講師: {{teacherName}}\n?/g, '');
+              } else if (recipient.recipientType === 'STUDENT') {
+                // For students, remove their own name from the template
+                recipientSpecificTemplate = itemTemplate.replace(/生徒: {{studentName}}\n?/g, '');
+              }
+
               const classItemVariables = {
                 classNumber: String(index + 1),
                 subjectName: session.subject?.name || '科目未設定',
@@ -278,7 +288,7 @@ export async function GET(request: NextRequest) {
                 studentName
               };
 
-              dailyClassList += replaceTemplateVariables(itemTemplate, classItemVariables) + (index < recipient.sessions.length - 1 ? '\n\n' : '');
+              dailyClassList += replaceTemplateVariables(recipientSpecificTemplate, classItemVariables) + (index < recipient.sessions.length - 1 ? '\n\n' : '');
             });
 
             // Add summary if template exists

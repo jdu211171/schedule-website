@@ -212,9 +212,30 @@ async function processNotifications(skipTimeCheck: boolean = false) {
             const endTime = `${String(endDate.getUTCHours()).padStart(2, '0')}:${String(endDate.getUTCMinutes()).padStart(2, '0')}`;
             const durationMinutes = (new Date(session.endTime).getTime() - new Date(session.startTime).getTime()) / (1000 * 60);
             const duration = `${durationMinutes}分`;
-            const studentName = recipient.recipientType === 'STUDENT' ? recipient.name : '未定';
-            const classItemVariables = { classNumber: String(index + 1), subjectName: session.subject?.name || '授業', startTime, endTime, teacherName: session.teacher?.name || '未定', boothName: session.booth?.name || '未定', duration, studentName };
-            dailyClassList += replaceTemplateVariables(itemTemplate, classItemVariables) + (index < recipient.sessions.length - 1 ? '\n\n' : '');
+            const studentName = session.student?.name || '生徒未設定';
+            const teacherName = session.teacher?.name || '講師未設定';
+
+            // Modify the template based on recipient type to avoid showing redundant information
+            let recipientSpecificTemplate = itemTemplate;
+            if (recipient.recipientType === 'TEACHER') {
+              // For teachers, remove their own name from the template
+              recipientSpecificTemplate = itemTemplate.replace(/講師: {{teacherName}}\n?/g, '');
+            } else if (recipient.recipientType === 'STUDENT') {
+              // For students, remove their own name from the template
+              recipientSpecificTemplate = itemTemplate.replace(/生徒: {{studentName}}\n?/g, '');
+            }
+
+            const classItemVariables = { 
+              classNumber: String(index + 1), 
+              subjectName: session.subject?.name || '科目未設定', 
+              startTime, 
+              endTime, 
+              teacherName, 
+              boothName: session.booth?.name || 'ブース未設定', 
+              duration, 
+              studentName 
+            };
+            dailyClassList += replaceTemplateVariables(recipientSpecificTemplate, classItemVariables) + (index < recipient.sessions.length - 1 ? '\n\n' : '');
           });
 
           if (summaryTemplate && recipient.sessions.length > 0) {
