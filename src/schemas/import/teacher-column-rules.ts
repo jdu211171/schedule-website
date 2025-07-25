@@ -16,14 +16,14 @@ export const TEACHER_COLUMN_RULES: Record<string, ColumnRule> = {
     dbField: 'name',
     createRule: 'required',
     updateRule: 'optional',
-    description: '教師の名前'
+    description: '講師の名前'
   },
   kanaName: {
     csvHeader: 'カナ',
     dbField: 'kanaName',
     createRule: 'optional',
     updateRule: 'optional',
-    description: '教師の名前（カナ）'
+    description: '講師の名前（カナ）'
   },
   status: {
     csvHeader: 'ステータス',
@@ -39,7 +39,7 @@ export const TEACHER_COLUMN_RULES: Record<string, ColumnRule> = {
     updateRule: 'optional',
     description: '生年月日（YYYY-MM-DD形式）'
   },
-  
+
   // Account Information
   username: {
     csvHeader: 'ユーザー名',
@@ -51,7 +51,7 @@ export const TEACHER_COLUMN_RULES: Record<string, ColumnRule> = {
   email: {
     csvHeader: 'メールアドレス',
     dbField: 'email',
-    createRule: 'required',
+    createRule: 'optional',
     updateRule: 'optional',
     description: 'メールアドレス'
   },
@@ -62,7 +62,7 @@ export const TEACHER_COLUMN_RULES: Record<string, ColumnRule> = {
     updateRule: 'optional',
     description: 'パスワード（6文字以上）'
   },
-  
+
   // LINE Integration
   lineId: {
     csvHeader: 'メッセージ連携',
@@ -71,7 +71,7 @@ export const TEACHER_COLUMN_RULES: Record<string, ColumnRule> = {
     updateRule: 'ignore',
     description: 'LINE連携ID - システムで管理'
   },
-  
+
   // Contact Information
   phoneNumber: {
     csvHeader: '携帯番号',
@@ -87,7 +87,7 @@ export const TEACHER_COLUMN_RULES: Record<string, ColumnRule> = {
     updateRule: 'ignore',
     description: '電話番号に関する備考（連絡可能時間など）'
   },
-  
+
   // Organization
   branches: {
     csvHeader: '校舎',
@@ -96,7 +96,7 @@ export const TEACHER_COLUMN_RULES: Record<string, ColumnRule> = {
     updateRule: 'optional',
     description: '所属校舎（セミコロン区切りで複数指定可）'
   },
-  
+
   // Subjects
   subjects: {
     csvHeader: '選択科目',
@@ -105,7 +105,7 @@ export const TEACHER_COLUMN_RULES: Record<string, ColumnRule> = {
     updateRule: 'ignore',
     description: '担当科目 - 別途管理画面で設定'
   },
-  
+
   // Other
   notes: {
     csvHeader: '備考',
@@ -143,8 +143,8 @@ export function csvHeaderToDbField(csvHeader: string): string | undefined {
 // Get columns to include in export
 export function getExportColumns(): string[] {
   return Object.entries(TEACHER_COLUMN_RULES)
-    .filter(([_, rule]) => 
-      rule.createRule !== 'ignore' || 
+    .filter(([_, rule]) =>
+      rule.createRule !== 'ignore' ||
       rule.updateRule !== 'ignore'
     )
     .map(([field, _]) => field);

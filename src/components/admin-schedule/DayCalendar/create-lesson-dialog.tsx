@@ -166,17 +166,17 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
   const handleConflictResolution = async (actions: SessionAction[]) => {
     console.log('Received actions in handleConflictResolution:', actions);
     if (!currentPayload) return;
-  
+
     setIsSubmitting(true);
     try {
       const finalPayload: CreateClassSessionWithConflictsPayload = {
         ...currentPayload,
-        sessionActions: actions  
+        sessionActions: actions
       };
 
       console.log('Final payload with sessionActions:', finalPayload);
       console.log('About to call onSave with finalPayload');
-  
+
       const result = await onSave(finalPayload);
       if (result.success) {
         setConflictData(null);
@@ -252,7 +252,7 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
     } else if (student.compatibilityType === 'student-no-prefs') {
       description = '科目設定なし';
     } else if (student.compatibilityType === 'teacher-no-prefs') {
-      description = '教師の設定なし（全対応可）';
+      description = '講師の設定なし（全対応可）';
     }
 
     return {
@@ -276,7 +276,7 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
         description = '部分一致（科目のみ・レベル違い）';
         break;
       case 'teacher-only':
-        description = '教師のみ対応';
+        description = '講師のみ対応';
         break;
       case 'student-only':
         description = '生徒のみ希望';
@@ -497,7 +497,7 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
     }
 
     if (!selectedTeacherId) {
-      errors.push("教師を選択してください。");
+      errors.push("講師を選択してください。");
     }
 
     if (!selectedStudentId) {
@@ -606,7 +606,7 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
     setIsSubmitting(true);
     try {
       const result = await onSave(payload);
-      
+
       if (result.success) {
         onOpenChange(false);
       } else if (result.conflicts) {
@@ -623,7 +623,7 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
 
   const handleReset = () => {
     if (isFormDisabled) return;
-    
+
     const correctParentTypeId = preselectedClassTypeId ?
       (classTypes.find(type => type.classTypeId === preselectedClassTypeId && !type.parentId)?.classTypeId || regularClassTypeId) :
       regularClassTypeId;
@@ -669,7 +669,7 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
             {format(typeof lessonData.date === 'string' ? new Date(lessonData.date) : lessonData.date, 'yyyy年MM月dd日', { locale: ja })}
           </div>
         </div>
-        
+
         {/* UPDATED: Booth Field - Conditional selector or static display */}
         <div>
           <label className="text-sm font-medium text-foreground">
@@ -857,7 +857,7 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label htmlFor="teacher-select" className="text-sm font-medium mb-1 block text-foreground">
-            教師 <span className="text-destructive">*</span>
+            講師 <span className="text-destructive">*</span>
             {hasStudentSelected && (
               <span className="text-xs text-muted-foreground ml-1">
                 ({enhancedTeachers.filter((t: EnhancedTeacher) => t.compatibilityType === 'perfect').length} 完全一致)
@@ -870,9 +870,9 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
                 value={selectedTeacherId}
                 onValueChange={handleTeacherChange}
                 items={teacherItems}
-                placeholder="教師を選択"
-                searchPlaceholder="教師を検索..."
-                emptyMessage="教師が見つかりません"
+                placeholder="講師を選択"
+                searchPlaceholder="講師を検索..."
+                emptyMessage="講師が見つかりません"
                 showCompatibilityIcons={hasStudentSelected}
                 disabled={disabled}
               />
@@ -967,7 +967,7 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
           科目 <span className="text-destructive">*</span>
           {!canSelectSubject && (
             <span className="text-xs text-amber-600 dark:text-amber-500 ml-2">
-              (推奨: 教師と生徒を選択すると適合度が表示されます)
+              (推奨: 講師と生徒を選択すると適合度が表示されます)
             </span>
           )}
           {canSelectSubject && (
@@ -1013,7 +1013,7 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
             <SimpleDateRangePicker
   value={dateRange}
   onValueChange={setDateRange}
-  placeholder="期間を選択してください"  
+  placeholder="期間を選択してください"
   disabled={disabled}
   showPresets={true}
   disablePastDates={true}
@@ -1103,7 +1103,7 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent 
+      <DialogContent
         className={cn(
           "max-h-[90vh]",
           conflictData ? "sm:max-w-[1400px]" : "sm:max-w-[800px]"

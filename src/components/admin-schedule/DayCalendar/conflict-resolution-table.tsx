@@ -45,11 +45,11 @@ const getConflictTypeLabel = (type: string): string => {
     case 'STUDENT_UNAVAILABLE':
       return '生徒不在';
     case 'TEACHER_UNAVAILABLE':
-      return '教師不在';
+      return '講師不在';
     case 'STUDENT_WRONG_TIME':
       return '生徒時間不一致';
     case 'TEACHER_WRONG_TIME':
-      return '教師時間不一致';
+      return '講師時間不一致';
     case 'VACATION':
       return '休暇期間';
     case 'BOOTH_CONFLICT':

@@ -15,7 +15,7 @@ export async function GET() {
         lineId: "line_tanaka",
         subjects: "数学,物理",
         subjectTypes: "個別指導,グループ指導",
-        notes: "数学と物理の専門教師"
+        notes: "数学と物理の専門講師"
       },
       {
         username: "teacher2",
@@ -26,7 +26,7 @@ export async function GET() {
         lineId: "",
         subjects: "英語",
         subjectTypes: "個別指導",
-        notes: "ネイティブ英語教師"
+        notes: "ネイティブ英語講師"
       }
     ];
 

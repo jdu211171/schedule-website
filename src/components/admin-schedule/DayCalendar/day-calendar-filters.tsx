@@ -18,18 +18,18 @@ export const DayCalendarFilters: React.FC<DayCalendarFiltersProps> = ({
   onFiltersChange,
   dateKey
 }) => {
-  const { data: subjectsResponse, isLoading: isLoadingSubjects } = useSubjects({ 
-    limit: 100 
+  const { data: subjectsResponse, isLoading: isLoadingSubjects } = useSubjects({
+    limit: 100
   });
-  
-  const { data: teachersResponse, isLoading: isLoadingTeachers } = useTeachers({ 
-    limit: 100 
+
+  const { data: teachersResponse, isLoading: isLoadingTeachers } = useTeachers({
+    limit: 100
   });
-  
-  const { data: studentsResponse, isLoading: isLoadingStudents } = useStudents({ 
-    limit: 100 
+
+  const { data: studentsResponse, isLoading: isLoadingStudents } = useStudents({
+    limit: 100
   });
-  
+
   const subjects = subjectsResponse?.data || [];
   const teachers = teachersResponse?.data || [];
   const students = studentsResponse?.data || [];
@@ -112,7 +112,7 @@ export const DayCalendarFilters: React.FC<DayCalendarFiltersProps> = ({
             disabled={isLoadingSubjects}
             className="w-[160px]"
           />
-          
+
           {filters.subjectId && (
             <Button
               variant="ghost"
@@ -130,14 +130,14 @@ export const DayCalendarFilters: React.FC<DayCalendarFiltersProps> = ({
             value={filters.teacherId || ''}
             onValueChange={handleTeacherChange}
             items={teacherItems}
-            placeholder="教師を選択"
-            searchPlaceholder="教師を検索..."
-            emptyMessage="教師が見つかりません"
+            placeholder="講師を選択"
+            searchPlaceholder="講師を検索..."
+            emptyMessage="講師が見つかりません"
             loading={isLoadingTeachers}
             disabled={isLoadingTeachers}
             className="w-[180px]"
           />
-          
+
           {filters.teacherId && (
             <Button
               variant="ghost"
@@ -162,7 +162,7 @@ export const DayCalendarFilters: React.FC<DayCalendarFiltersProps> = ({
             disabled={isLoadingStudents}
             className="w-[180px]"
           />
-          
+
           {filters.studentId && (
             <Button
               variant="ghost"

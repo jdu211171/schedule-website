@@ -144,7 +144,7 @@ function PrivacySection() {
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label>プロフィール表示</Label>
-              <p className="text-sm text-muted-foreground">他の教師や生徒にプロフィールの表示を許可する</p>
+              <p className="text-sm text-muted-foreground">他の講師や生徒にプロフィールの表示を許可する</p>
             </div>
             <Switch />
           </div>

@@ -311,7 +311,7 @@ export function StudentTable() {
   const queryClient = useQueryClient();
   const [isImportDialogOpen, setIsImportDialogOpen] = React.useState(false);
 
-  const pageSize = 10;
+  const [pageSize, setPageSize] = React.useState(10);
 
   // Load data
   const { data: studentTypesResponse } = useStudentTypes();
@@ -1088,6 +1088,22 @@ export function StudentTable() {
   }, [debouncedName, filters.status, filters.studentType, filters.gradeYear, filters.branch, 
       filters.subject, filters.lineConnection, filters.schoolType, filters.examCategory, 
       filters.examCategoryType, filters.birthDateRange, filters.examDateRange]);
+
+  // Handle pagination changes from the table
+  const tablePagination = table.getState().pagination;
+  React.useEffect(() => {
+    // Sync page index (table uses 0-based, our state uses 1-based)
+    if (tablePagination.pageIndex + 1 !== page) {
+      setPage(tablePagination.pageIndex + 1);
+    }
+    
+    // Sync page size
+    if (tablePagination.pageSize !== pageSize) {
+      setPageSize(tablePagination.pageSize);
+      setPage(1); // Reset to first page when page size changes
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tablePagination.pageIndex, tablePagination.pageSize]);
 
   const handleDeleteStudent = () => {
     if (studentToDelete) {

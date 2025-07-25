@@ -49,17 +49,17 @@ export interface CompatibilityInfo {
 function checkSubjectMatch(teacherPref: any, studentPref: any) {
   const sameSubject = teacherPref.subjectId === studentPref.subjectId;
   if (!sameSubject) return { perfect: false, partial: false };
-  
+
   // Check if subject types overlap
   const teacherTypes = teacherPref.subjectTypeIds || [];
   const studentTypes = studentPref.subjectTypeIds || [];
-  
-  const commonTypes = teacherTypes.filter((typeId: string) => 
+
+  const commonTypes = teacherTypes.filter((typeId: string) =>
     studentTypes.includes(typeId)
   );
-  
+
   const hasCommonTypes = commonTypes.length > 0;
-  
+
   return {
     perfect: sameSubject && hasCommonTypes,
     partial: sameSubject && !hasCommonTypes
@@ -71,7 +71,7 @@ function getMatches(teacherPrefs: any[], studentPrefs: any[]) {
   let perfectMatches = 0;
   let partialMatches = 0;
   const matchedSubjects = new Set<string>();
-  
+
   teacherPrefs.forEach(teacherPref => {
     studentPrefs.forEach(studentPref => {
       const match = checkSubjectMatch(teacherPref, studentPref);
@@ -84,7 +84,7 @@ function getMatches(teacherPrefs: any[], studentPrefs: any[]) {
       }
     });
   });
-  
+
   return { perfectMatches, partialMatches };
 }
 
@@ -102,13 +102,13 @@ export const useSmartSelection = (options: SmartSelectionOptions = {}) => {
   const allSubjectTypes = subjectTypesResponse?.data || [];
 
   // Find selected teacher and student
-  const selectedTeacher = useMemo(() => 
-    allTeachers.find(t => t.teacherId === selectedTeacherId), 
+  const selectedTeacher = useMemo(() =>
+    allTeachers.find(t => t.teacherId === selectedTeacherId),
     [allTeachers, selectedTeacherId]
   );
-  
-  const selectedStudent = useMemo(() => 
-    allStudents.find(s => s.studentId === selectedStudentId), 
+
+  const selectedStudent = useMemo(() =>
+    allStudents.find(s => s.studentId === selectedStudentId),
     [allStudents, selectedStudentId]
   );
 
@@ -140,7 +140,7 @@ export const useSmartSelection = (options: SmartSelectionOptions = {}) => {
 
     return allStudents.map(student => {
       const studentPrefs = student.subjectPreferences || [];
-      
+
       if (!studentPrefs.length) {
         return {
           ...student,
@@ -153,7 +153,7 @@ export const useSmartSelection = (options: SmartSelectionOptions = {}) => {
 
       const matches = getMatches(teacherPreferences, studentPrefs);
       const totalMatches = matches.perfectMatches + matches.partialMatches;
-      
+
       let compatibilityType: EnhancedStudent['compatibilityType'];
       if (matches.perfectMatches > 0) {
         compatibilityType = 'perfect';
@@ -197,7 +197,7 @@ export const useSmartSelection = (options: SmartSelectionOptions = {}) => {
 
     return allTeachers.map(teacher => {
       const teacherPrefs = teacher.subjectPreferences || [];
-      
+
       if (!teacherPrefs.length) {
         return {
           ...teacher,
@@ -210,7 +210,7 @@ export const useSmartSelection = (options: SmartSelectionOptions = {}) => {
 
       const matches = getMatches(teacherPrefs, studentPreferences);
       const totalMatches = matches.perfectMatches + matches.partialMatches;
-      
+
       let compatibilityType: EnhancedTeacher['compatibilityType'];
       if (matches.perfectMatches > 0) {
         compatibilityType = 'perfect';
@@ -236,14 +236,14 @@ export const useSmartSelection = (options: SmartSelectionOptions = {}) => {
       // Check if teacher has this subject
       const teacherHasSubject = teacherPreferences?.some(pref => pref.subjectId === subject.subjectId) || false;
       const teacherSubjectPref = teacherPreferences?.find(pref => pref.subjectId === subject.subjectId);
-      
+
       // Check if student has this subject
       const studentHasSubject = studentPreferences?.some(pref => pref.subjectId === subject.subjectId) || false;
       const studentSubjectPref = studentPreferences?.find(pref => pref.subjectId === subject.subjectId);
 
       let hasFullMatch = false;
       let hasPartialMatch = false;
-      
+
       // Check for matches if both have the subject
       if (teacherHasSubject && studentHasSubject && teacherSubjectPref && studentSubjectPref) {
         const match = checkSubjectMatch(teacherSubjectPref, studentSubjectPref);
@@ -253,7 +253,7 @@ export const useSmartSelection = (options: SmartSelectionOptions = {}) => {
 
       // Determine compatibility type
       let compatibilityType: SubjectCompatibility['compatibilityType'];
-      
+
       if (!selectedTeacherId && !selectedStudentId) {
         compatibilityType = 'no-preferences';
       } else if (hasFullMatch) {
@@ -301,7 +301,7 @@ export const useSmartSelection = (options: SmartSelectionOptions = {}) => {
     }
 
     // Return subject types that match student's preferences for this subject
-    return allSubjectTypes.filter(type => 
+    return allSubjectTypes.filter(type =>
       studentPref.subjectTypeIds.includes(type.subjectTypeId)
     );
   }, [selectedSubjectId, studentPreferences, allSubjectTypes]);
@@ -339,7 +339,7 @@ export const useSmartSelection = (options: SmartSelectionOptions = {}) => {
         teacherSubjectsCount: 0,
         studentSubjectsCount,
         compatibilityType: 'student-only',
-        message: "教師の科目設定がありません - 生徒の科目を優先表示"
+        message: "講師の科目設定がありません - 生徒の科目を優先表示"
       };
     }
 
@@ -352,7 +352,7 @@ export const useSmartSelection = (options: SmartSelectionOptions = {}) => {
         teacherSubjectsCount,
         studentSubjectsCount: 0,
         compatibilityType: 'teacher-only',
-        message: "生徒の科目設定がありません - 教師の科目を優先表示"
+        message: "生徒の科目設定がありません - 講師の科目を優先表示"
       };
     }
 
@@ -360,10 +360,10 @@ export const useSmartSelection = (options: SmartSelectionOptions = {}) => {
     const matches = getMatches(teacherPreferences!, studentPreferences!);
 
     if (matches.perfectMatches > 0) {
-      const message = matches.partialMatches > 0 
+      const message = matches.partialMatches > 0
         ? `完全一致: ${matches.perfectMatches}件, 部分一致: ${matches.partialMatches}件`
         : `完全一致: ${matches.perfectMatches}件`;
-        
+
       return {
         hasTeacherPrefs: true,
         hasStudentPrefs: true,
@@ -402,33 +402,33 @@ export const useSmartSelection = (options: SmartSelectionOptions = {}) => {
   return {
     // Enhanced lists with compatibility info
     enhancedTeachers,
-    enhancedStudents, 
+    enhancedStudents,
     enhancedSubjects,
     filteredSubjectTypes,
-    
+
     // Original lists (for backward compatibility)
     allTeachers,
     allStudents,
     allSubjects,
     allSubjectTypes,
-    
+
     // Filtered lists (now just return all for backward compatibility)
     filteredTeachers: allTeachers,
     filteredStudents: allStudents,
     filteredSubjects: allSubjects,
-    
+
     // Preferences data (extracted from selected users)
     teacherPreferences,
     studentPreferences,
-    
+
     // Utility functions
     getCompatibilityInfo,
-    
+
     // Status flags
     hasTeacherSelected: !!selectedTeacherId,
     hasStudentSelected: !!selectedStudentId,
     hasSubjectSelected: !!selectedSubjectId,
-    
+
     // Loading states
     isLoadingPreferences: false // No separate requests needed
   };

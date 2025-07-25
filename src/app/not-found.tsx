@@ -61,7 +61,7 @@ export default function NotFound() {
                   <Link href="/student">学生ポータル</Link>
                 </Button>
                 <Button asChild variant="link" size="sm">
-                  <Link href="/teacher">教師ポータル</Link>
+                  <Link href="/teacher">講師ポータル</Link>
                 </Button>
                 <Button asChild variant="link" size="sm">
                   <Link href="/dashboard/schedules">ダッシュボード</Link>

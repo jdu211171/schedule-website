@@ -819,7 +819,7 @@ export const POST = withBranchAccess(
     } catch (error) {
       console.error("Error creating teacher:", error);
       return NextResponse.json(
-        { error: "教師の作成に失敗しました" }, // "Failed to create teacher"
+        { error: "講師の作成に失敗しました" }, // "Failed to create teacher"
         { status: 500 }
       );
     }

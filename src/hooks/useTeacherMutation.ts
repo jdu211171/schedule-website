@@ -160,7 +160,7 @@ export function useTeacherCreate() {
         tempToServerIdMap.delete(context.tempId);
       }
 
-      toast.error("教師の追加に失敗しました", {
+      toast.error("講師の追加に失敗しました", {
         id: "teacher-create-error",
         description: getErrorMessage(error),
       });
@@ -188,7 +188,7 @@ export function useTeacherCreate() {
         }
       });
 
-      toast.success("教師を追加しました", {
+      toast.success("講師を追加しました", {
         id: "teacher-create-success",
       });
     },
@@ -249,7 +249,7 @@ export function useTeacherUpdate() {
                     ...teacher,
                     ...updatedTeacher,
                     name: updatedTeacher.name || teacher.name,
-                    birthDate: updatedTeacher.birthDate !== undefined 
+                    birthDate: updatedTeacher.birthDate !== undefined
                       ? (updatedTeacher.birthDate ? new Date(updatedTeacher.birthDate).toISOString() : null)
                       : teacher.birthDate,
                     contactPhones: updatedTeacher.contactPhones !== undefined
@@ -285,7 +285,7 @@ export function useTeacherUpdate() {
           ...previousTeacher,
           ...updatedTeacher,
           name: updatedTeacher.name || previousTeacher.name,
-          birthDate: updatedTeacher.birthDate !== undefined 
+          birthDate: updatedTeacher.birthDate !== undefined
             ? (updatedTeacher.birthDate ? new Date(updatedTeacher.birthDate).toISOString() : null)
             : previousTeacher.birthDate,
           contactPhones: updatedTeacher.contactPhones !== undefined
@@ -332,7 +332,7 @@ export function useTeacherUpdate() {
           context.previousTeacher
         );
       }
-      toast.error("教師の更新に失敗しました", {
+      toast.error("講師の更新に失敗しました", {
         id: "teacher-update-error",
         description: getErrorMessage(error),
       });
@@ -362,7 +362,7 @@ export function useTeacherUpdate() {
           updatedTeacher
         );
       }
-      toast.success("教師を更新しました", {
+      toast.success("講師を更新しました", {
         id: "teacher-update-success",
       });
     },
@@ -472,7 +472,7 @@ export function useTeacherDelete() {
         );
       }
 
-      toast.error("教師の削除に失敗しました", {
+      toast.error("講師の削除に失敗しました", {
         id: "teacher-delete-error",
         description: getErrorMessage(error),
       });
@@ -482,7 +482,7 @@ export function useTeacherDelete() {
         tempToServerIdMap.delete(teacherId);
       }
 
-      toast.success("教師を削除しました", {
+      toast.success("講師を削除しました", {
         id: "teacher-delete-success",
       });
     },

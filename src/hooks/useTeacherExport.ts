@@ -69,7 +69,7 @@ export function useTeacherExport() {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
 
-      toast.success("教師データをエクスポートしました");
+      toast.success("講師データをエクスポートしました");
     } catch (error) {
       console.error("Export error:", error);
       toast.error("エクスポートに失敗しました");

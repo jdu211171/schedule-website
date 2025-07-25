@@ -211,7 +211,7 @@ export function TeacherTable() {
   const queryClient = useQueryClient();
   const [isImportDialogOpen, setIsImportDialogOpen] = React.useState(false);
 
-  const pageSize = 10;
+  const [pageSize, setPageSize] = React.useState(10);
 
   // Load data
   const { data: subjects = [] } = useAllSubjects();
@@ -645,6 +645,22 @@ export function TeacherTable() {
     setPage(1);
   }, [debouncedName, filters.status, filters.branch, filters.subject, filters.lineConnection]);
 
+  // Handle pagination changes from the table
+  const tablePagination = table.getState().pagination;
+  React.useEffect(() => {
+    // Sync page index (table uses 0-based, our state uses 1-based)
+    if (tablePagination.pageIndex + 1 !== page) {
+      setPage(tablePagination.pageIndex + 1);
+    }
+
+    // Sync page size
+    if (tablePagination.pageSize !== pageSize) {
+      setPageSize(tablePagination.pageSize);
+      setPage(1); // Reset to first page when page size changes
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tablePagination.pageIndex, tablePagination.pageSize]);
+
   const handleDeleteTeacher = () => {
     if (teacherToDelete) {
       const teacherId = getResolvedTeacherId(teacherToDelete.teacherId);
@@ -702,7 +718,7 @@ export function TeacherTable() {
     <>
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold tracking-tight">教師管理</h2>
+          <h2 className="text-2xl font-bold tracking-tight">講師管理</h2>
           <div className="flex items-center gap-2">
             <Button
               onClick={handleImport}
@@ -737,17 +753,17 @@ export function TeacherTable() {
               disabled={deleteTeacherMutation.isPending}
             >
               <Trash2 className="mr-2 h-4 w-4" />
-              選択した教師を削除 ({table.getFilteredSelectedRowModel().rows.length})
+              選択した講師を削除 ({table.getFilteredSelectedRowModel().rows.length})
             </Button>
           </div>
         )}
 
         <div className="rounded-md border">
-          <GenericDraggableTable 
-            table={table} 
-            dataIds={teachers?.data.map(t => t.teacherId) || []} 
-            onDragEnd={() => {}} 
-            columnsLength={columns.length} 
+          <GenericDraggableTable
+            table={table}
+            dataIds={teachers?.data.map(t => t.teacherId) || []}
+            onDragEnd={() => {}}
+            columnsLength={columns.length}
           />
         </div>
 
@@ -778,7 +794,7 @@ export function TeacherTable() {
           <AlertDialogHeader>
             <AlertDialogTitle>本当に削除しますか？</AlertDialogTitle>
             <AlertDialogDescription>
-              この操作は元に戻せません。教師「
+              この操作は元に戻せません。講師「
               {teacherToDelete?.name}
               」を完全に削除します。
             </AlertDialogDescription>
@@ -799,8 +815,8 @@ export function TeacherTable() {
       <CSVImportDialog
         open={isImportDialogOpen}
         onOpenChange={setIsImportDialogOpen}
-        title="教師をインポート"
-        description="CSVファイルから教師データを一括インポートします"
+        title="講師をインポート"
+        description="CSVファイルから講師データを一括インポートします"
         templateUrl="/api/import/teachers/template"
         importUrl="/api/import/teachers"
         onImportComplete={handleImportComplete}

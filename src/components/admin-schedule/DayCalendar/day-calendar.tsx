@@ -349,17 +349,17 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
 
   const earliestLesson = useMemo(() => {
     if (filteredSessions.length === 0) return null;
-    
+
     return filteredSessions.reduce((earliest, current) => {
       const earliestTime = extractTime(earliest.startTime);
       const currentTime = extractTime(current.startTime);
-      
+
       const [earliestHour, earliestMin] = earliestTime.split(':').map(Number);
       const [currentHour, currentMin] = currentTime.split(':').map(Number);
-      
+
       const earliestMinutes = earliestHour * 60 + earliestMin;
       const currentMinutes = currentHour * 60 + currentMin;
-      
+
       return currentMinutes < earliestMinutes ? current : earliest;
     });
   }, [filteredSessions]);
@@ -391,20 +391,20 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
   // Auto-scroll to earliest lesson
   useEffect(() => {
     if (!earliestLesson || !containerRef.current) return;
-    
+
     const startTime = extractTime(earliestLesson.startTime);
     const [hour, minute] = startTime.split(':').map(Number);
-    
+
     // Find the time slot index
     const timeSlotIndex = timeSlots.findIndex(slot => {
       const [slotHour, slotMinute] = slot.start.split(':').map(Number);
       return slotHour === hour && slotMinute === minute;
     });
-    
+
     if (timeSlotIndex !== -1) {
       // Calculate scroll position (with some padding)
       const scrollPosition = (timeSlotIndex * CELL_WIDTH) - 100;
-      
+
       // Scroll horizontally to show the earliest lesson
       containerRef.current.scrollLeft = Math.max(0, scrollPosition);
     }
@@ -553,7 +553,7 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
             )}
             {!canDrag && (
               <div className="text-xs text-amber-600 dark:text-amber-500 mt-1 font-medium">
-                 授業を作成するには授業タイプ、教師、生徒を選択してください
+                 授業を作成するには授業タイプ、講師、生徒を選択してください
               </div>
             )}
           </div>

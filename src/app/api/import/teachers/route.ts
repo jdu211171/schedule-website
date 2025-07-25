@@ -193,7 +193,7 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
               result.errors.push({
                 row: rowNumber,
                 errors: [
-                  `ユーザー「${existingUser.username}」は教師ではありません`,
+                  `ユーザー「${existingUser.username}」は講師ではありません`,
                 ],
               });
               continue;

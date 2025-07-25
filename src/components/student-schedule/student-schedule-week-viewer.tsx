@@ -92,7 +92,7 @@ export const StudentScheduleWeekViewer: React.FC<WeekViewerProps> = ({
                               className={cn(iconColor, "w-3 h-3 flex-shrink-0")}
                             />
                             <span className={cn("truncate", text)}>
-                              {lesson.teacherName || "教師未設定"}
+                              {lesson.teacherName || "講師未設定"}
                             </span>
                           </div>
                           <div className="flex items-center gap-2">
@@ -198,7 +198,7 @@ export const StudentScheduleWeekViewer: React.FC<WeekViewerProps> = ({
                           className={cn(iconColor, "w-3 h-3 flex-shrink-0")}
                         />
                         <span className={cn("text-xs", text)}>
-                          {lesson.teacherName || "教師未設定"}
+                          {lesson.teacherName || "講師未設定"}
                         </span>
                       </div>
 

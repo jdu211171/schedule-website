@@ -7,8 +7,15 @@ export const teacherImportSchema = z.object({
     .max(50, "ユーザー名は50文字以下で入力してください"),
   email: z
     .string()
-    .email("有効なメールアドレスを入力してください")
-    .max(100, "メールアドレスは100文字以下で入力してください"),
+    .transform(val => val === "" ? null : val)
+    .nullable()
+    .optional()
+    .refine(val => !val || z.string().email().safeParse(val).success, {
+      message: "有効なメールアドレスを入力してください"
+    })
+    .refine(val => !val || val.length <= 100, {
+      message: "メールアドレスは100文字以下で入力してください"
+    }),
   password: z
     .string()
     .min(6, "パスワードは6文字以上で入力してください")
@@ -164,6 +171,5 @@ export const TEACHER_CSV_HEADERS = [
 // Required headers that must be present in the CSV
 export const REQUIRED_TEACHER_CSV_HEADERS = [
   "username",
-  "name",
-  "email"
+  "name"
 ] as const;

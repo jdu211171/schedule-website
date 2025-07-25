@@ -620,7 +620,7 @@ export function TeacherFormDialog({
   // Enhanced button presets
   const saveButtonPresets = {
     create: {
-      defaultState: { label: "教師を作成", icon: Save },
+      defaultState: { label: "講師を作成", icon: Save },
       loadingState: { label: "作成中...", icon: Loader2 },
       successState: { label: "作成完了!", icon: Check },
       errorState: { label: "作成失敗", icon: X },
@@ -639,7 +639,7 @@ export function TeacherFormDialog({
         <DialogHeader className="flex-shrink-0 pb-4">
           <DialogTitle className="text-xl font-semibold flex items-center gap-2">
             <User className="h-5 w-5" />
-            {isEditing ? "教師情報の編集" : "新しい教師の作成"}
+            {isEditing ? "講師情報の編集" : "新しい講師の作成"}
           </DialogTitle>
         </DialogHeader>
 
@@ -1223,7 +1223,7 @@ export function TeacherFormDialog({
                           定期利用可能時間
                         </CardTitle>
                         <p className="text-sm text-muted-foreground">
-                          教師の通常の利用可能時間を曜日ごとに設定してください。各曜日に複数の時間帯を設定することができます。
+                          講師の通常の利用可能時間を曜日ごとに設定してください。各曜日に複数の時間帯を設定することができます。
                           特別な日程については、後で例外設定で管理できます。
                         </p>
                       </CardHeader>
@@ -1255,7 +1255,7 @@ export function TeacherFormDialog({
                                   例外的な利用可能時間
                                 </p>
                                 <p className="text-blue-700 dark:text-blue-300 mt-1">
-                                  特定の日付での利用可能時間の変更は、教師詳細ページの「例外設定」タブで管理できます。
+                                  特定の日付での利用可能時間の変更は、講師詳細ページの「例外設定」タブで管理できます。
                                 </p>
                               </div>
                             </div>
@@ -1294,7 +1294,7 @@ export function TeacherFormDialog({
                                   例外的な利用可能時間の管理
                                 </p>
                                 <p className="text-blue-700 dark:text-blue-300 mt-1">
-                                  保存後、より詳細な例外的な利用可能時間の管理は、教師詳細ページの「例外設定」タブで行うことができます。
+                                  保存後、より詳細な例外的な利用可能時間の管理は、講師詳細ページの「例外設定」タブで行うことができます。
                                 </p>
                               </div>
                             </div>
@@ -1478,7 +1478,7 @@ export function TeacherFormDialog({
                     ) : (
                       <>
                         <Save className="h-4 w-4 mr-2" />
-                        {isEditing ? "変更を保存" : "教師を作成"}
+                        {isEditing ? "変更を保存" : "講師を作成"}
                       </>
                     )}
                   </Button>

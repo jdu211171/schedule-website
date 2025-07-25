@@ -19,7 +19,7 @@ export async function PATCH(request: NextRequest) {
     // Ensure the user is a teacher
     if (session.user.role !== "TEACHER") {
       return NextResponse.json(
-        { error: "教師のみがこの機能を使用できます" }, // "Only teachers can use this feature"
+        { error: "講師のみがこの機能を使用できます" }, // "Only teachers can use this feature"
         { status: 403 }
       );
     }
@@ -45,7 +45,7 @@ export async function PATCH(request: NextRequest) {
 
     if (!user || !user.teacher) {
       return NextResponse.json(
-        { error: "教師アカウントが見つかりません" }, // "Teacher account not found"
+        { error: "講師アカウントが見つかりません" }, // "Teacher account not found"
         { status: 404 }
       );
     }

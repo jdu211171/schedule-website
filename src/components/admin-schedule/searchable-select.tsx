@@ -47,24 +47,24 @@ const getCompatibilityIcon = (compatibilityType?: string) => {
 
 const getCompatibilityDescription = (item: SearchableSelectItem): string => {
   if (item.description) return item.description;
-  
+
   switch (item.compatibilityType) {
     case 'perfect':
       return '完全一致';
     case 'subject-only':
       return '科目一致（レベル違い）';
     case 'teacher-only':
-      return '教師のみ';
+      return '講師のみ';
     case 'student-only':
       return '生徒のみ';
     case 'mismatch':
       return '共通設定なし';
     case 'teacher-no-prefs':
-      return '教師の設定なし';
+      return '講師の設定なし';
     case 'student-no-prefs':
       return '生徒の設定なし';
     case 'no-teacher-selected':
-      return '教師未選択';
+      return '講師未選択';
     case 'no-student-selected':
       return '生徒未選択';
     default:
@@ -111,47 +111,47 @@ export function SearchableSelect({
   const containerRef = React.useRef<HTMLDivElement>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
   const [highlightedIndex, setHighlightedIndex] = React.useState(0);
-  
+
   const selectedItem = React.useMemo(
     () => items.find((item) => item.value === value),
     [items, value]
   );
-  
+
   // Filter and sort items
   const filteredItems = React.useMemo(() => {
     let filtered = items;
-    
+
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      filtered = items.filter(item => 
+      filtered = items.filter(item =>
         item.label.toLowerCase().includes(query) ||
         (item.description && item.description.toLowerCase().includes(query))
       );
     }
-    
+
     // Sort by compatibility priority if showCompatibilityIcons is true
     if (showCompatibilityIcons) {
       filtered = filtered.sort((a, b) => {
         const priorityA = getItemPriority(a);
         const priorityB = getItemPriority(b);
-        
+
         if (priorityA !== priorityB) {
           return priorityB - priorityA; // Higher priority first
         }
-        
+
         // If same priority, sort alphabetically
         return a.label.localeCompare(b.label);
       });
     }
-    
+
     return filtered;
   }, [items, searchQuery, showCompatibilityIcons]);
-  
+
   // Reset highlighted index when items change
   React.useEffect(() => {
     setHighlightedIndex(0);
   }, [filteredItems]);
-  
+
   // Handle outside clicks
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -165,7 +165,7 @@ export function SearchableSelect({
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
   }, [open]);
-  
+
   // Focus input when opening
   React.useEffect(() => {
     if (open && inputRef.current) {
@@ -177,12 +177,12 @@ export function SearchableSelect({
       setHighlightedIndex(0);
     }
   }, [open]);
-  
+
   const handleSelect = (itemValue: string) => {
     onValueChange(itemValue);
     setOpen(false);
   };
-  
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (!open && e.key === 'Enter') {
       e.preventDefault();
@@ -195,13 +195,13 @@ export function SearchableSelect({
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault();
-        setHighlightedIndex(prev => 
+        setHighlightedIndex(prev =>
           prev < filteredItems.length - 1 ? prev + 1 : 0
         );
         break;
       case 'ArrowUp':
         e.preventDefault();
-        setHighlightedIndex(prev => 
+        setHighlightedIndex(prev =>
           prev > 0 ? prev - 1 : filteredItems.length - 1
         );
         break;
@@ -248,7 +248,7 @@ export function SearchableSelect({
 
       {/* Dropdown */}
       {open && (
-        <div 
+        <div
           className={cn(
             "absolute z-50 mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-md",
             "animate-in fade-in-0 zoom-in-95"
@@ -298,7 +298,7 @@ export function SearchableSelect({
                   const isHighlighted = highlightedIndex === index;
                   const compatibilityIcon = showCompatibilityIcons ? getCompatibilityIcon(item.compatibilityType) : null;
                   const compatibilityDescription = showCompatibilityIcons ? getCompatibilityDescription(item) : item.description;
-                  
+
                   return (
                     <div
                       key={item.value}

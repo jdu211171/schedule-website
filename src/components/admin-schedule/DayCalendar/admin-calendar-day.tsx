@@ -21,7 +21,7 @@ import {
 } from '../date';
 
 import {
-  CreateClassSessionWithConflictsPayload, 
+  CreateClassSessionWithConflictsPayload,
   NewClassSessionData,
   formatDateToString,
   ConflictResponse
@@ -83,7 +83,7 @@ const TIME_SLOTS: TimeSlot[] = Array.from({ length: 57 }, (_el, i) => {
 
 export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayProps) {
   const today = useMemo(() => startOfDay(new Date()), []);
-  
+
   const [viewStartDate, setViewStartDate] = useState<Date>(today);
   const [selectedDays, setSelectedDays] = useState<Date[]>([today]);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -164,10 +164,10 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
 
   const { data: teacherData } = useTeacher(selectedTeacherId);
   const { data: studentData } = useStudent(selectedStudentId);
-  
+
   const teacherUserId = teacherData?.userId;
   const studentUserId = studentData?.userId;
-  
+
   const booths = useMemo(() => boothsResponse?.data || [], [boothsResponse]);
   const teachers = useMemo(() => teachersResponse?.data || [], [teachersResponse]);
   const students = useMemo(() => studentsResponse?.data || [], [studentsResponse]);
@@ -178,29 +178,29 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
   const parentClassTypes = useMemo(() => {
     return classTypes.filter(type => !type.parentId) || [];
   }, [classTypes]);
-  
+
   const selectedDatesStrings = useMemo(() => {
     return selectedDays.map(day => getDateKey(day));
   }, [selectedDays]);
 
   const enhancedDayFilters = useMemo(() => {
     const enhanced: Record<string, DayFilters> = {};
-  
+
     Object.entries(dayFilters).forEach(([dateKey, filters]) => {
       enhanced[dateKey] = { ...filters };
     });
-  
+
     selectedDatesStrings.forEach(dateStr => {
       if (!enhanced[dateStr]) {
         enhanced[dateStr] = {};
       }
     });
-  
+
     return enhanced;
   }, [dayFilters, selectedDatesStrings]);
 
   const classSessionQueries = useMultipleDaysClassSessions(
-    selectedDatesStrings, 
+    selectedDatesStrings,
     enhancedDayFilters
   );
 
@@ -293,11 +293,11 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
       const defaultType = parentClassTypes.find(type => type.name === '通常授業');
       defaultClassTypeId = defaultType?.classTypeId || '';
     }
-    
-    const lessonData = { 
-      date, 
-      startTime, 
-      endTime, 
+
+    const lessonData = {
+      date,
+      startTime,
+      endTime,
       boothId,
       classTypeId: defaultClassTypeId,
       teacherId: selectedTeacherId,
@@ -318,7 +318,7 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
     try {
       const dateStr = typeof lessonData.date === 'string' ?
         lessonData.date : formatDateToString(lessonData.date);
-  
+
       const requestBody: Record<string, unknown> = {
         date: dateStr,
         startTime: lessonData.startTime,
@@ -330,7 +330,7 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
         classTypeId: lessonData.classTypeId || "",
         notes: lessonData.notes || ""
       };
-  
+
       if (lessonData.isRecurring) {
         requestBody.isRecurring = true;
         requestBody.startDate = lessonData.startDate;
@@ -339,7 +339,7 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
           requestBody.daysOfWeek = lessonData.daysOfWeek;
         }
       }
-  
+
       // ВАЖНО: Добавляем флаги конфликтов если они есть
       if (lessonData.skipConflicts) {
         requestBody.skipConflicts = true;
@@ -347,14 +347,14 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
       if (lessonData.forceCreate) {
         requestBody.forceCreate = true;
       }
-  
+
       // ВАЖНО: Добавляем sessionActions!!!
       if (lessonData.sessionActions && lessonData.sessionActions.length > 0) {
         requestBody.sessionActions = lessonData.sessionActions;
       }
-  
+
       console.log("Final request body:", JSON.stringify(requestBody, null, 2));
-  
+
       const response = await fetch('/api/class-sessions', {
         method: 'POST',
         headers: {
@@ -362,44 +362,44 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
         },
         body: JSON.stringify(requestBody),
       });
-  
+
       const contentType = response.headers.get("content-type");
-      
+
       if (!response.ok) {
         let errorData: any = {};
-  
+
         if (contentType && contentType.includes("application/json")) {
           errorData = await response.json();
         } else {
           const errorText = await response.text();
           errorData = { message: errorText || `サーバーエラー: ${response.status}` };
         }
-  
+
         // ВАЖНО: Проверяем на наличие конфликтов
         if (errorData.requiresConfirmation) {
           console.log('Conflicts detected:', errorData);
-          return { 
-            success: false, 
-            conflicts: errorData as ConflictResponse 
+          return {
+            success: false,
+            conflicts: errorData as ConflictResponse
           };
         }
-  
+
         // Обычная ошибка - выбрасываем исключение
         let errorMessage = '授業の作成に失敗しました';
-  
+
         if (errorData.message) {
           errorMessage = errorData.message;
         } else if (errorData.error) {
           errorMessage = errorData.error;
         }
-  
+
         if (errorData.issues && Array.isArray(errorData.issues)) {
           errorMessage += ': ' + errorData.issues.map((issue: any) => issue.message).join(', ');
         }
-  
+
         throw new Error(errorMessage || `エラー ${response.status}: ${response.statusText}`);
       }
-  
+
       // Успешное создание
       if (contentType && contentType.includes("application/json")) {
         try {
@@ -408,26 +408,26 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
           console.warn("応答のパースエラー:", parseError);
         }
       }
-  
+
       console.log('Lesson created successfully');
-      
+
       // Обновляем данные только при успехе
       refreshData();
       setNewLessonData(null);
-      
+
       return { success: true };
-  
+
     } catch (error) {
       console.error('Error creating lesson:', error);
-      
+
       // Проверяем, не является ли это конфликтом (на случай если ошибка содержит данные конфликтов)
       if (error instanceof Error && (error as any).conflicts) {
-        return { 
-          success: false, 
-          conflicts: (error as any).conflicts 
+        return {
+          success: false,
+          conflicts: (error as any).conflicts
         };
       }
-      
+
       // Обычная ошибка - перебрасываем для показа alert'а
       throw error;
     }
@@ -448,13 +448,13 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
   const handleGlobalAvailabilityModeChange = useCallback((checked: boolean) => {
     const newMode: AvailabilityMode = checked ? 'regular-only' : 'with-special';
     setGlobalAvailabilityMode(newMode);
-    
+
     const updatedSettings: Record<string, AvailabilityMode> = {};
     selectedDays.forEach(day => {
       updatedSettings[getDateKey(day)] = newMode;
     });
     setDayAvailabilitySettings(updatedSettings);
-    
+
     console.log('Global availability mode changed to:', newMode);
   }, [selectedDays]);
 
@@ -520,7 +520,7 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
       <div className="bg-background border rounded-lg p-4 space-y-4">
         <div className="flex items-start justify-between">
           <h3 className="text-sm font-medium text-muted-foreground">授業作成の設定</h3>
-          
+
           {(selectedTeacherId || selectedStudentId) && (
             <div className="flex-shrink-0">
               <div className="text-xs text-muted-foreground mb-1">空き時間表示:</div>
@@ -531,7 +531,7 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
                 </div>
                 <div className="flex items-center gap-1">
                   <div className="w-3 h-3 rounded-sm bg-blue-400/40 border border-blue-300"></div>
-                  <span className="text-blue-700 dark:text-blue-300">教師のみ</span>
+                  <span className="text-blue-700 dark:text-blue-300">講師のみ</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <div className="w-3 h-3 rounded-sm bg-yellow-400/40 border border-yellow-300"></div>
@@ -554,13 +554,13 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
             </Label>
           </div>
           <div className="text-xs text-muted-foreground">
-            {globalAvailabilityMode === 'regular-only' 
+            {globalAvailabilityMode === 'regular-only'
               ? '特別希望を除外して通常希望のみ表示します'
               : '特別希望を優先して表示します（デフォルト）'
             }
           </div>
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="flex items-end gap-1">
             <div className="flex-1">
@@ -586,17 +586,17 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
               </Button>
             )}
           </div>
-          
+
           <div className="flex items-end gap-1">
             <div className="flex-1">
-              <label className="text-sm font-medium mb-1 block">教師</label>
+              <label className="text-sm font-medium mb-1 block">講師</label>
               <SearchableSelect
                 value={selectedTeacherId}
                 onValueChange={setSelectedTeacherId}
                 items={teacherItems}
-                placeholder="教師を選択"
-                searchPlaceholder="教師を検索..."
-                emptyMessage="教師が見つかりません"
+                placeholder="講師を選択"
+                searchPlaceholder="講師を検索..."
+                emptyMessage="講師が見つかりません"
                 disabled={isLoadingTeachers}
               />
             </div>
@@ -611,7 +611,7 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
               </Button>
             )}
           </div>
-          
+
           <div className="flex items-end gap-1">
             <div className="flex-1">
               <label className="text-sm font-medium mb-1 block">生徒</label>
@@ -645,10 +645,10 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
             ) : selectedTeacherId && selectedStudentId ? (
               '授業タイプが選択されていません。作成時は「通常授業」が使用されます。'
             ) : (
-              '授業を作成するには、教師と生徒を選択してください。授業タイプは任意です（未選択時は「通常授業」）。'
+              '授業を作成するには、講師と生徒を選択してください。授業タイプは任意です（未選択時は「通常授業」）。'
             )}
           </div>
-          
+
           {hasActiveSelections && (
             <Button
               variant="outline"
@@ -665,7 +665,7 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
       <div className="flex flex-col sm:flex-row justify-between items-center space-y-2 sm:space-y-0">
         <div className="flex items-center gap-6">
           <h2 className="text-xl font-semibold text-foreground dark:text-foreground"></h2>
-          
+
           <div className="flex items-center gap-4">
             <div className="text-xs text-muted-foreground">授業タイプ表示:</div>
             <div className="flex items-center gap-3 text-xs">
@@ -683,7 +683,7 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
             </div>
           </div>
         </div>
-        
+
         <DaySelector
           startDate={viewStartDate}
           selectedDays={selectedDays}

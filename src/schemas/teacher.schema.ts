@@ -218,7 +218,7 @@ export const teacherCreateSchema = teacherBaseSchema.extend({
 
 // 更新用スキーマ（teacherId必須、他は任意）
 export const teacherUpdateSchema = teacherBaseSchema.partial().extend({
-  teacherId: z.string({ required_error: "更新には教師IDが必要です" }),
+  teacherId: z.string({ required_error: "更新には講師IDが必要です" }),
 });
 
 export const teacherFilterSchema = z.object({
