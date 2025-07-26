@@ -86,33 +86,9 @@ export async function sendLinePush(to: string, message: string, branchId?: strin
     return sendMultiChannelPush(to, message, credentials);
   }
   
-  // Fall back to environment variables
-  if (!CHANNEL_ACCESS_TOKEN) {
-    console.error('LINE_CHANNEL_ACCESS_TOKEN is not set');
-    throw new Error('LINE_CHANNEL_ACCESS_TOKEN is not set');
-  }
-
-  try {
-    await axios.post(
-      `${LINE_API_BASE}/message/push`,
-      {
-        to,
-        messages: [{ type: 'text', text: message }]
-      },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${CHANNEL_ACCESS_TOKEN}`
-        }
-      }
-    );
-  } catch (error) {
-    console.error('Error sending LINE push message:', error);
-    if (axios.isAxiosError(error) && error.response) {
-      console.error('LINE API Response:', error.response.data);
-    }
-    throw error;
-  }
+  // No credentials found - do not fall back to environment variables
+  console.error('❌ No LINE channel credentials found. Please configure LINE channels in the admin panel.');
+  throw new Error('No LINE channel credentials available. Configure channels in admin panel.');
 }
 
 /**
@@ -131,33 +107,9 @@ export async function sendLineMulticast(to: string[], message: string, branchId?
     return sendMultiChannelMulticast(to, message, credentials);
   }
   
-  // Fall back to environment variables
-  if (!CHANNEL_ACCESS_TOKEN) {
-    console.error('LINE_CHANNEL_ACCESS_TOKEN is not set');
-    throw new Error('LINE_CHANNEL_ACCESS_TOKEN is not set');
-  }
-
-  try {
-    await axios.post(
-      `${LINE_API_BASE}/message/multicast`,
-      {
-        to,
-        messages: [{ type: 'text', text: message }]
-      },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${CHANNEL_ACCESS_TOKEN}`
-        }
-      }
-    );
-  } catch (error) {
-    console.error('Error sending LINE multicast:', error);
-    if (axios.isAxiosError(error) && error.response) {
-      console.error('LINE API Response:', error.response.data);
-    }
-    throw error;
-  }
+  // No credentials found - do not fall back to environment variables
+  console.error('❌ No LINE channel credentials found. Please configure LINE channels in the admin panel.');
+  throw new Error('No LINE channel credentials available. Configure channels in admin panel.');
 }
 
 

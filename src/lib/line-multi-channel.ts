@@ -81,15 +81,19 @@ export async function getChannelCredentials(branchId?: string): Promise<LineChan
       };
     }
 
-    // Fall back to environment variables (backward compatibility)
-    const envToken = process.env.LINE_CHANNEL_ACCESS_TOKEN;
-    const envSecret = process.env.LINE_CHANNEL_SECRET;
+    // Log warning instead of falling back to environment variables
+    console.warn('⚠️ No LINE channel credentials found in database', {
+      branchId,
+      hasDefaultChannel: false,
+      message: 'Please configure LINE channels in the admin panel'
+    });
 
-    if (envToken && envSecret) {
-      return {
-        channelAccessToken: envToken,
-        channelSecret: envSecret
-      };
+    // Check if environment variables exist but don't use them
+    const hasEnvToken = !!process.env.LINE_CHANNEL_ACCESS_TOKEN;
+    const hasEnvSecret = !!process.env.LINE_CHANNEL_SECRET;
+    
+    if (hasEnvToken || hasEnvSecret) {
+      console.error('❌ Environment variables detected but not used. Remove LINE_CHANNEL_ACCESS_TOKEN and LINE_CHANNEL_SECRET from environment.');
     }
 
     return null;

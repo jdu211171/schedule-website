@@ -23,8 +23,8 @@ async function processNotifications(skipTimeCheck: boolean = false) {
   const activeTemplates = await prisma.lineMessageTemplate.findMany({
     where: {
       templateType: 'before_class',
-      isActive: true,
-      branchId: null
+      isActive: true
+      // Removed branchId filter to get both global and branch-specific templates
     },
     select: {
       id: true,
@@ -200,10 +200,33 @@ async function processNotifications(skipTimeCheck: boolean = false) {
 
       for (const [, recipient] of recipientSessions) {
         try {
-          const itemTemplate = template.classListItemTemplate || DEFAULT_CLASS_LIST_ITEM_TEMPLATE;
-          const summaryTemplate = template.classListSummaryTemplate || DEFAULT_CLASS_LIST_SUMMARY_TEMPLATE;
-          let dailyClassList = '';
-          recipient.sessions.forEach((session, index) => {
+          // Group sessions by branch
+          const sessionsByBranch = new Map<string, any[]>();
+          
+          for (const session of recipient.sessions) {
+            const branchId = session.branch?.branchId || 'NO_BRANCH';
+            if (!sessionsByBranch.has(branchId)) {
+              sessionsByBranch.set(branchId, []);
+            }
+            sessionsByBranch.get(branchId)!.push(session);
+          }
+          
+          // Create notifications per branch
+          for (const [branchId, branchSessions] of sessionsByBranch) {
+            if (branchId === 'NO_BRANCH' && template.branchId) {
+              // Skip sessions without branch for branch-specific templates
+              continue;
+            }
+            
+            if (branchId !== 'NO_BRANCH' && template.branchId && template.branchId !== branchId) {
+              // Skip sessions from other branches for branch-specific templates
+              continue;
+            }
+            
+            const itemTemplate = template.classListItemTemplate || DEFAULT_CLASS_LIST_ITEM_TEMPLATE;
+            const summaryTemplate = template.classListSummaryTemplate || DEFAULT_CLASS_LIST_SUMMARY_TEMPLATE;
+            let dailyClassList = '';
+            branchSessions.forEach((session, index) => {
             // Extract time directly from the Date object without timezone conversion
             // The Time(6) fields are already stored in the correct timezone (JST)
             const startDate = new Date(session.startTime);
@@ -235,17 +258,17 @@ async function processNotifications(skipTimeCheck: boolean = false) {
               duration, 
               studentName 
             };
-            dailyClassList += replaceTemplateVariables(recipientSpecificTemplate, classItemVariables) + (index < recipient.sessions.length - 1 ? '\n\n' : '');
+            dailyClassList += replaceTemplateVariables(recipientSpecificTemplate, classItemVariables) + (index < branchSessions.length - 1 ? '\n\n' : '');
           });
 
-          if (summaryTemplate && recipient.sessions.length > 0) {
-            const firstSession = recipient.sessions[0];
-            const lastSession = recipient.sessions[recipient.sessions.length - 1];
+          if (summaryTemplate && branchSessions.length > 0) {
+            const firstSession = branchSessions[0];
+            const lastSession = branchSessions[branchSessions.length - 1];
             // Extract time directly without timezone conversion
             const firstStartDate = new Date(firstSession.startTime);
             const lastEndDate = new Date(lastSession.endTime);
             const summaryVariables = { 
-              classCount: String(recipient.sessions.length), 
+              classCount: String(branchSessions.length), 
               firstClassTime: firstSession ? `${String(firstStartDate.getUTCHours()).padStart(2, '0')}:${String(firstStartDate.getUTCMinutes()).padStart(2, '0')}` : '', 
               lastClassTime: lastSession ? `${String(lastEndDate.getUTCHours()).padStart(2, '0')}:${String(lastEndDate.getUTCMinutes()).padStart(2, '0')}` : '' 
             };
@@ -258,9 +281,9 @@ async function processNotifications(skipTimeCheck: boolean = false) {
           let totalDuration = '0';
           let branchName = '';
           
-          if (recipient.sessions.length > 0) {
+          if (branchSessions.length > 0) {
             // Sort sessions by start time to ensure correct first/last
-            const sortedSessions = [...recipient.sessions].sort((a, b) => 
+            const sortedSessions = [...branchSessions].sort((a, b) => 
               new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
             );
             
@@ -283,8 +306,8 @@ async function processNotifications(skipTimeCheck: boolean = false) {
             const minutes = totalMinutes % 60;
             totalDuration = hours > 0 ? `${hours}時間${minutes > 0 ? minutes + '分' : ''}` : `${minutes}分`;
             
-            // Get branch name from first session or template
-            branchName = sortedSessions[0].branch?.name || template.branch?.name || '';
+            // Get branch name from sessions
+            branchName = sortedSessions[0].branch?.name || '';
           }
           
           const templateVariables = { 
@@ -293,7 +316,7 @@ async function processNotifications(skipTimeCheck: boolean = false) {
             recipientType: recipient.recipientType === 'TEACHER' ? '講師' : '生徒', 
             classDate: formatInTimeZone(targetDate, TIMEZONE, 'yyyy年M月d日'), 
             currentDate: formatInTimeZone(nowJST, TIMEZONE, 'yyyy年M月d日'), 
-            classCount: String(recipient.sessions.length),
+            classCount: String(branchSessions.length),
             firstClassTime,
             lastClassTime,
             totalDuration,
@@ -307,9 +330,14 @@ async function processNotifications(skipTimeCheck: boolean = false) {
 
           const scheduledAt = skipTimeCheck ? now : fromZonedTime(scheduledAtJST, TIMEZONE);
 
+          // Use the actual branch ID from sessions, not from template
+          const notificationBranchId = branchId !== 'NO_BRANCH' ? branchId : (template.branchId || undefined);
+
           console.log(`\n📨 Creating notification for ${recipient.name}`);
           console.log(`  Type: ${recipient.recipientType}`);
           console.log(`  Target date: ${targetDateString}`);
+          console.log(`  Branch: ${branchName || 'Global'} (ID: ${notificationBranchId || 'none'})`);
+          console.log(`  Classes in branch: ${branchSessions.length}`);
           console.log(`  Scheduled at (UTC): ${format(scheduledAt, 'yyyy-MM-dd HH:mm:ss')}`);
           
           const notification = await createNotification({
@@ -317,8 +345,8 @@ async function processNotifications(skipTimeCheck: boolean = false) {
             recipientId: recipient.recipientId,
             notificationType,
             message,
-            relatedClassId: recipient.sessions.length > 0 ? recipient.sessions.map(s => s.classId).join(',') : undefined,
-            branchId: template.branchId || undefined,
+            relatedClassId: branchSessions.length > 0 ? branchSessions.map(s => s.classId).join(',') : undefined,
+            branchId: notificationBranchId,
             sentVia: 'LINE',
             scheduledAt,
             targetDate: new Date(targetDateString + 'T00:00:00.000Z'),  // Ensure UTC date format
@@ -329,6 +357,7 @@ async function processNotifications(skipTimeCheck: boolean = false) {
             console.log(`  ✅ QUEUED: Notification ${notification.notificationId} queued for ${recipient.name}`);
             totalNotificationsSent++;
           }
+          } // End of branch loop
         } catch (error) {
           const errorMsg = `Error for ${recipient.name}: ${error}`;
           console.error(`  ❌ ERROR: ${errorMsg}`);
