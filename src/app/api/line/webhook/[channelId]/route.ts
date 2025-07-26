@@ -113,6 +113,75 @@ export async function POST(req: NextRequest) {
       // Remove the prefix and get the actual identifier (using regex for case-insensitive matching)
       const identifier = trimmedText.replace(/^(> |\/\s+)/i, '').trim();
 
+      // Check for logout commands (exit, quit) - case insensitive
+      const logoutRegex = /^(>?\s*exit|>?\s*quit|\/?\s*exit|\/?\s*quit)$/i;
+      if (logoutRegex.test(trimmedText)) {
+        // Find the user by LINE ID
+        const student = await prisma.student.findFirst({
+          where: { lineId },
+          include: { user: true }
+        });
+
+        const teacher = await prisma.teacher.findFirst({
+          where: { lineId },
+          include: { user: true }
+        });
+
+        if (student) {
+          // Clear LINE ID for student
+          await prisma.student.update({
+            where: { studentId: student.studentId },
+            data: { 
+              lineId: null,
+              lineNotificationsEnabled: false
+            }
+          });
+
+          try {
+            await sendLineReply(
+              replyToken,
+              `✅ ログアウトしました。\n\n今後LINEで通知を受け取ることはありません。\n\n再度連携する場合は "> ${student.user.username}" または新しいアカウント名を送信してください。`,
+              credentials
+            );
+          } catch (replyError) {
+            console.error('Error sending logout reply for student:', replyError);
+          }
+          continue;
+        } else if (teacher) {
+          // Clear LINE ID for teacher
+          await prisma.teacher.update({
+            where: { teacherId: teacher.teacherId },
+            data: { 
+              lineId: null,
+              lineNotificationsEnabled: false
+            }
+          });
+
+          try {
+            await sendLineReply(
+              replyToken,
+              `✅ ログアウトしました。\n\n今後LINEで通知を受け取ることはありません。\n\n再度連携する場合は "> ${teacher.user.username}" または新しいアカウント名を送信してください。`,
+              credentials
+            );
+          } catch (replyError) {
+            console.error('Error sending logout reply for teacher:', replyError);
+          }
+          continue;
+        } else {
+          // No linked account found
+          try {
+            await sendLineReply(
+              replyToken,
+              '❌ まだアカウントが連携されていません。\n\nアカウントを連携するには "> ユーザー名" を送信してください。',
+              credentials
+            );
+          } catch (replyError) {
+            console.error('Error sending no account reply:', replyError);
+          }
+          continue;
+        }
+      }
+
       // First try to find a user with this username
       let user = await prisma.user.findFirst({
         where: { 
