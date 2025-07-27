@@ -25,7 +25,8 @@
       "Bash(PGPASSWORD=postgres psql -h localhost -U postgres -d schedule_website -f insert_test_sessions_final.sql)",
       "Bash(git log:*)",
       "Bash(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M:%S %Z')",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
+      "mcp__ide__executeCode"
     ],
     "deny": []
   }

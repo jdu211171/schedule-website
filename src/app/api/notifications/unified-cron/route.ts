@@ -171,7 +171,7 @@ async function processNotifications(reset: boolean = false, templateId?: string)
                 student: { select: { studentId: true, name: true } },
                 subject: { select: { name: true } },
                 booth: { select: { name: true } },
-                branch: { select: { name: true } }
+                branch: { select: { branchId: true, name: true } }
               }
             }
           }
@@ -206,7 +206,7 @@ async function processNotifications(reset: boolean = false, templateId?: string)
                 teacher: { select: { teacherId: true, name: true } },
                 subject: { select: { name: true } },
                 booth: { select: { name: true } },
-                branch: { select: { name: true } }
+                branch: { select: { branchId: true, name: true } }
               }
             }
           }
@@ -336,6 +336,16 @@ async function processNotifications(reset: boolean = false, templateId?: string)
             const minutes = totalMinutes % 60;
             const totalDuration = hours > 0 ? `${hours}時間${minutes > 0 ? minutes + '分' : ''}` : `${minutes}分`;
             const branchName = sortedSessions[0].branch?.name || template.branch?.name || '';
+            
+            // Determine branchId from sessions
+            // If all sessions are from the same branch, use that branchId
+            // Otherwise, use the first session's branchId
+            const branchIds = [...new Set(sortedSessions.map(s => s.branch?.branchId).filter(Boolean))];
+            const branchId = branchIds.length === 1 ? branchIds[0] : sortedSessions[0].branch?.branchId;
+            
+            if (!branchId) {
+              console.warn(`    ⚠️ No branchId found for ${recipient.recipientType} ${recipient.name}. Sessions may not have branch information.`);
+            }
 
             const templateVariables = {
               dailyClassList,
@@ -364,6 +374,7 @@ async function processNotifications(reset: boolean = false, templateId?: string)
               message: messageContent,
               targetDate: targetDate,
               templateId: template.id,
+              branchId: branchId,
               scheduledAt: now,
               skipDuplicateCheck: reset // Skip duplicate check in reset mode
             });
