@@ -350,6 +350,7 @@ async function processNotifications(skipTimeCheck: boolean = false) {
             sentVia: 'LINE',
             scheduledAt,
             targetDate: new Date(targetDateString + 'T00:00:00.000Z'),  // Ensure UTC date format
+            templateId: template.id,
             skipDuplicateCheck: skipTimeCheck,
           });
 

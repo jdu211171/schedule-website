@@ -5,39 +5,24 @@ import { runNotificationWorker } from '@/lib/notification/notification-worker';
 import { addDays, format, startOfDay } from 'date-fns';
 import { toZonedTime, formatInTimeZone, fromZonedTime } from 'date-fns-tz';
 import { replaceTemplateVariables, DEFAULT_CLASS_LIST_ITEM_TEMPLATE, DEFAULT_CLASS_LIST_SUMMARY_TEMPLATE } from '@/lib/line/message-templates';
+import { withRole } from '@/lib/auth';
 
 const TIMEZONE = 'Asia/Tokyo';
 
 /**
- * Unified notification cron job that creates and sends notifications in one flow.
- * This mirrors the manual "通知フロー全体を実行" button behavior.
+ * Process notifications with optional reset capability
  */
-export async function GET(request: NextRequest) {
+async function processNotifications(reset: boolean = false, templateId?: string) {
   const startTime = Date.now();
   const now = new Date();
   const nowJST = toZonedTime(now, TIMEZONE);
 
-  console.log('🚀 === UNIFIED NOTIFICATION CRON STARTED ===');
+  console.log('🚀 === UNIFIED NOTIFICATION PROCESSING STARTED ===');
   console.log('Current time (UTC):', now.toISOString());
   console.log('Current time (JST):', formatInTimeZone(now, TIMEZONE, 'yyyy-MM-dd HH:mm:ss zzz'));
+  console.log('Reset mode:', reset);
+  console.log('Template ID:', templateId || 'All templates');
   console.log('Environment:', process.env.NODE_ENV);
-
-  // Verify authentication
-  const authHeader = request.headers.get('authorization');
-  const cronSecret = process.env.CRON_SECRET;
-
-  // In development, allow without auth. In production, require CRON_SECRET
-  if (process.env.NODE_ENV === 'production' && cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-    console.error('❌ Cron authentication failed');
-    console.error('Expected:', cronSecret ? 'Bearer [HIDDEN]' : 'No secret set');
-    console.error('Received:', authHeader || 'No auth header');
-    return NextResponse.json({
-      error: 'Unauthorized',
-      hint: 'Make sure CRON_SECRET is set in Vercel environment variables and matches the cron job configuration'
-    }, { status: 401 });
-  }
-
-  console.log('✅ Cron authentication passed');
 
   const results = {
     phase: 'starting',
@@ -45,7 +30,8 @@ export async function GET(request: NextRequest) {
     notificationsSent: 0,
     notificationsFailed: 0,
     errors: [] as string[],
-    executionTimeMs: 0
+    executionTimeMs: 0,
+    deletedNotifications: 0
   };
 
   try {
@@ -57,7 +43,8 @@ export async function GET(request: NextRequest) {
       where: {
         templateType: 'before_class',
         isActive: true,
-        branchId: null
+        branchId: null,
+        ...(templateId && { id: templateId })
       },
       select: {
         id: true,
@@ -97,7 +84,7 @@ export async function GET(request: NextRequest) {
         const templateTotalMinutes = templateHour * 60 + templateMinute;
         const minutesDiff = currentTotalMinutes - templateTotalMinutes;
 
-        if (minutesDiff < 0 || minutesDiff >= 15) {
+        if (!reset && (minutesDiff < 0 || minutesDiff >= 15)) {
           console.log(`  ⏰ Not in time window. Current: ${currentHour}:${String(currentMinute).padStart(2, '0')}, Scheduled: ${templateHour}:${String(templateMinute).padStart(2, '0')}`);
           console.log(`  Minutes difference: ${minutesDiff} (must be 0-14)`);
           continue;
@@ -109,27 +96,50 @@ export async function GET(request: NextRequest) {
         const targetDate = startOfDay(addDays(nowJST, template.timingValue));
         const targetDateString = format(targetDate, 'yyyy-MM-dd');
 
-        // Check for duplicates to prevent multiple sends
-        const todayStartJST = startOfDay(nowJST);
-        const todayStartUTC = fromZonedTime(todayStartJST, TIMEZONE);
-
-        const alreadyProcessed = await prisma.notification.count({
-          where: {
-            targetDate: targetDate,
-            notificationType: {
-              contains: template.timingValue === 0 ? 'SAMEDAY' :
-                        template.timingValue === 1 ? '1D' :
-                        `${template.timingValue}D`
-            },
-            createdAt: {
-              gte: todayStartUTC
+        // Handle reset mode - delete existing PENDING notifications for this template
+        if (reset) {
+          const notificationType = template.timingValue === 0 ? 'DAILY_SUMMARY_SAMEDAY' :
+                                 template.timingValue === 1 ? 'DAILY_SUMMARY_1D' :
+                                 `DAILY_SUMMARY_${template.timingValue}D`;
+          
+          const deleted = await prisma.notification.deleteMany({
+            where: {
+              templateId: template.id,
+              notificationType,
+              targetDate,
+              status: 'PENDING'
             }
+          });
+          
+          if (deleted.count > 0) {
+            console.log(`  🗑️ Reset: Deleted ${deleted.count} PENDING notifications for template ${template.name}`);
+            results.deletedNotifications += deleted.count;
           }
-        });
+        }
 
-        if (alreadyProcessed > 0) {
-          console.log(`  ✅ Already processed today for target date ${targetDateString}`);
-          continue;
+        // Check for duplicates to prevent multiple sends (skip if reset mode)
+        if (!reset) {
+          const todayStartJST = startOfDay(nowJST);
+          const todayStartUTC = fromZonedTime(todayStartJST, TIMEZONE);
+
+          const alreadyProcessed = await prisma.notification.count({
+            where: {
+              targetDate: targetDate,
+              notificationType: {
+                contains: template.timingValue === 0 ? 'SAMEDAY' :
+                          template.timingValue === 1 ? '1D' :
+                          `${template.timingValue}D`
+              },
+              createdAt: {
+                gte: todayStartUTC
+              }
+            }
+          });
+
+          if (alreadyProcessed > 0) {
+            console.log(`  ✅ Already processed today for target date ${targetDateString}`);
+            continue;
+          }
         }
 
         console.log(`  🎯 Target date for classes: ${targetDateString}`);
@@ -353,7 +363,9 @@ export async function GET(request: NextRequest) {
               notificationType: notificationType,
               message: messageContent,
               targetDate: targetDate,
-              scheduledAt: now // Schedule for immediate sending
+              templateId: template.id,
+              scheduledAt: now,
+              skipDuplicateCheck: reset // Skip duplicate check in reset mode
             });
 
             results.notificationsCreated++;
@@ -393,37 +405,81 @@ export async function GET(request: NextRequest) {
     results.executionTimeMs = Date.now() - startTime;
     results.phase = 'completed';
 
-    console.log('\n📊 === UNIFIED CRON COMPLETED ===');
+    console.log('\n📊 === UNIFIED NOTIFICATION PROCESSING COMPLETED ===');
     console.log(`Total notifications created: ${results.notificationsCreated}`);
     console.log(`Total notifications sent: ${results.notificationsSent}`);
     console.log(`Total notifications failed: ${results.notificationsFailed}`);
+    console.log(`Total notifications deleted (reset): ${results.deletedNotifications}`);
+    console.log(`Errors: ${results.errors.length}`);
     console.log(`Execution time: ${results.executionTimeMs}ms`);
 
-    if (results.errors.length > 0) {
-      console.log('Errors encountered:', results.errors);
-    }
-
-    return NextResponse.json({
-      success: true,
-      ...results
-    });
+    return results;
 
   } catch (error) {
-    console.error('❌ Unified cron failed:', error);
+    console.error('💥 Critical error in notification processing:', error);
     results.phase = 'error';
-    results.errors.push(error instanceof Error ? error.message : String(error));
+    results.errors.push(`Critical error: ${error instanceof Error ? error.message : String(error)}`);
     results.executionTimeMs = Date.now() - startTime;
+    return results;
+  }
+}
 
+/**
+ * Unified notification cron job that creates and sends notifications in one flow.
+ * This mirrors the manual "通知フロー全体を実行" button behavior.
+ */
+export async function GET(request: NextRequest) {
+  console.log('📬 Unified notification cron triggered at:', new Date().toISOString());
+
+  // Verify authentication
+  const authHeader = request.headers.get('authorization');
+  const cronSecret = process.env.CRON_SECRET;
+
+  // In development, allow without auth. In production, require CRON_SECRET
+  if (process.env.NODE_ENV === 'production' && cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+    console.error('❌ Cron authentication failed');
+    console.error('Expected:', cronSecret ? 'Bearer [HIDDEN]' : 'No secret set');
+    console.error('Received:', authHeader || 'No auth header');
     return NextResponse.json({
-      success: false,
-      error: 'Unified cron failed',
-      ...results
+      error: 'Unauthorized',
+      hint: 'Make sure CRON_SECRET is set in Vercel environment variables and matches the cron job configuration'
+    }, { status: 401 });
+  }
+
+  console.log('✅ Cron authentication passed');
+
+  try {
+    const results = await processNotifications();
+    return NextResponse.json({ success: true, ...results });
+  } catch (error) {
+    console.error('Error in notification service:', error);
+    return NextResponse.json({ 
+      error: 'Internal server error', 
+      details: error instanceof Error ? error.message : String(error) 
     }, { status: 500 });
   }
 }
 
-// POST method for manual trigger with auth
-export async function POST(request: NextRequest) {
-  // This allows manual triggering via admin UI
-  return GET(request);
-}
+export const POST = withRole(
+  ['ADMIN'],
+  async (req: NextRequest) => {
+    try {
+      const body = await req.json();
+      const reset = body.reset ?? false;
+      const templateId = body.templateId;
+      
+      console.log('Manual notification trigger requested by admin');
+      console.log('Reset mode:', reset);
+      console.log('Template ID:', templateId || 'All templates');
+      
+      const results = await processNotifications(reset, templateId);
+      return NextResponse.json({ success: true, manual: true, ...results });
+    } catch (error) {
+      console.error('Error in manual notification trigger:', error);
+      return NextResponse.json({ 
+        error: 'Internal server error', 
+        details: error instanceof Error ? error.message : String(error) 
+      }, { status: 500 });
+    }
+  }
+);

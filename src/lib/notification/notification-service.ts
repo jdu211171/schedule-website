@@ -12,6 +12,7 @@ interface CreateNotificationParams {
   sentVia?: string;
   scheduledAt?: Date;
   targetDate?: Date;
+  templateId?: string;
   skipDuplicateCheck?: boolean; // Add flag to skip duplicate check for manual testing
 }
 

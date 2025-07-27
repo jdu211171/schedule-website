@@ -362,6 +362,7 @@ model Notification {
   recipientType      String?            @map("recipient_type") @db.VarChar(20)
   recipientId        String?            @map("recipient_id") @db.VarChar(50)
   notificationType   String?            @map("notification_type") @db.VarChar(50)
+  templateId         String?            @map("template_id")
   message            String?            @db.Text
   relatedClassId     String?            @map("related_class_id") @db.VarChar(500)
   branchId           String?            @map("branch_id")
@@ -385,6 +386,7 @@ model Notification {
   @@index([branchId, status, createdAt])
   @@index([createdAt])
   @@index([targetDate])
+  @@index([templateId])
   @@map("notifications")
 }
 
