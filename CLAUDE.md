@@ -106,49 +106,43 @@ GOOGLE_CLIENT_SECRET=
 - **Complete code output** - Provide full files, not diffs
 - **Absolute paths only** - Never use relative paths in responses
 
-### **AI Coding Assistant Guidelines**
+🚨 **MANDATORY AI CODING ASSISTANT RULES - NO EXCEPTIONS** 🚨
 
-- **Tools**
+⚠️ **CRITICAL**: These rules are FREQUENTLY IGNORED - PAY ATTENTION! ⚠️
 
-  - Use Bun for package management.
-  - Fix TypeScript errors after changes.
+- **🔧 TOOLS - STRICT REQUIREMENTS**
 
-- **Code Changes**
+  - 🛑 **MANDATORY**: Use Bun for package management (NOT npm, NOT yarn)
+  - 🛑 **MANDATORY**: Fix TypeScript errors after ALL changes
 
-  - Modify only relevant code parts.
-  - Preserve formatting, names, and documentation unless specified.
-  - Output complete code if modified.
+- **📝 CODE CHANGES - ZERO TOLERANCE POLICY**
 
-- **Project Management**
+  - ✅ **ONLY modify relevant code parts** - Do NOT touch unrelated code
+  - ✅ **PRESERVE ALL**: formatting, names, and documentation unless EXPLICITLY requested
+  - ✅ **FOLLOW EXISTING PATTERNS**: Refer to existing similar code structure when generating new code (components, API routes, utilities, types, assets)
 
-  - Use TODO.md for tasks, progress, and issues. Update regularly.
-  - At session start: review TODO.md, run `git status`, check recent commits.
+- **📋 PROJECT MANAGEMENT - ABSOLUTELY REQUIRED**
 
-- **Git Practices**
+  - 🔴 **MANDATORY**: Use TODO.md for tasks, progress, and issues. Update regularly - NO EXCEPTIONS
+  - 🔴 **SESSION START CHECKLIST**: review TODO.md, run `git status`, check recent commits - DO NOT SKIP
 
-  - Work on main branch with conventional commits.
-  - Run pre-commit checks.
-  - Commit regularly with permission.
+- **⚡ DEVELOPMENT PROCESS - ENFORCE STRICTLY**
 
-- **Development Process**
+  - 🛑 **REQUIRED**: Plan and discuss approaches before coding - NO RUSHING
+  - 🛑 **REQUIRED**: Make small, testable changes - NO BIG CHANGES
+  - 🛑 **REQUIRED**: Eliminate duplicates proactively
+  - 🛑 **REQUIRED**: Log recurring issues in TODO.md - ALWAYS DOCUMENT
 
-  - Plan and discuss approaches before coding.
-  - Make small, testable changes.
-  - Eliminate duplicates.
-  - Log recurring issues in TODO.md.
+- **🔒 CODE QUALITY - NON-NEGOTIABLE STANDARDS**
 
-- **Code Quality**
+  - ✅ **MANDATORY**: Handle errors and validate inputs - NO EXCEPTIONS
+  - ✅ **MANDATORY**: Follow conventions and secure secrets - NEVER EXPOSE SECRETS
+  - ✅ **MANDATORY**: Write clear, type-safe code - NO SHORTCUTS
+  - ✅ **PRODUCTION RULE**: Remove ALL debug logs before production - CLEAN CODE ONLY
 
-  - Handle errors and validate inputs.
-  - Follow conventions and secure secrets.
-  - Write clear, type-safe code.
-  - Remove debug logs before production.
+- **📐 DEVELOPMENT STANDARDS - ABSOLUTE REQUIREMENTS**
+  - 🎯 **PRIORITY #1**: Simplicity and readability over clever solutions
+  - 🎯 **APPROACH**: Start with minimal working functionality - BUILD INCREMENTALLY
+  - 🎯 **CONSISTENCY**: Maintain consistent style throughout - NO STYLE MIXING
 
-- **Documentation**
-
-  - Document code structure (components, API routes, utilities, types, assets).
-
-- **Development Standards**
-  - Prioritize simplicity and readability.
-  - Start with minimal working functionality.
-  - Maintain consistent style.
+🔥 **FINAL WARNING**: If you violate these rules, you are COMPLETELY IGNORING the project standards!
