@@ -26,7 +26,8 @@
       "Bash(git log:*)",
       "Bash(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M:%S %Z')",
       "Bash(chmod:*)",
-      "mcp__ide__executeCode"
+      "mcp__ide__executeCode",
+      "Bash(git restore:*)"
     ],
     "deny": []
   }

@@ -379,3 +379,59 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
+export async function GET(req: NextRequest) {
+  try {
+    const channelId = req.url.split('/').pop();
+    
+    if (!channelId) {
+      return NextResponse.json({ error: 'Missing channel ID' }, { status: 400 });
+    }
+    
+    // Get channel information
+    const channel = await prisma.lineChannel.findUnique({
+      where: { channelId },
+      include: {
+        branchLineChannels: {
+          include: {
+            branch: true
+          }
+        }
+      }
+    });
+
+    if (!channel) {
+      return NextResponse.json({ error: 'Channel not found' }, { status: 404 });
+    }
+
+    // Get branches assigned to this channel
+    const branches = channel.branchLineChannels.map(bc => bc.branch.name);
+    
+    // Return webhook information
+    return NextResponse.json({
+      status: 'ok',
+      webhook: {
+        url: req.url,
+        channelId: channel.channelId,
+        channelName: channel.name,
+        isActive: channel.isActive,
+        branches: branches.length > 0 ? branches : ['No branches assigned'],
+        setupInstructions: {
+          step1: 'Copy this webhook URL',
+          step2: 'Go to LINE Developers Console (https://developers.line.biz/console/)',
+          step3: 'Select your channel',
+          step4: 'Go to "Messaging API" tab',
+          step5: 'In "Webhook settings", paste this URL and enable "Use webhook"',
+          step6: 'Click "Verify" to test the connection',
+          note: 'Make sure your NEXTAUTH_URL environment variable is set to your actual domain'
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error handling webhook GET request:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
