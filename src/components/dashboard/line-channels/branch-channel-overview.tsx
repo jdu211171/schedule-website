@@ -2,7 +2,6 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { CheckCircle, XCircle, Users, GraduationCap, AlertTriangle } from "lucide-react";
 import { useAllBranchesOrdered } from "@/hooks/useBranchQuery";
 import { useLineChannels } from "@/hooks/useLineChannelQuery";
@@ -21,7 +20,7 @@ export function BranchChannelOverview() {
   const { data: channelsData } = useLineChannels({ limit: 100 });
 
   // Calculate channel coverage for each branch
-  const coverage: BranchChannelCoverage[] = (branchesData?.data || []).map(branch => {
+  const coverage: BranchChannelCoverage[] = (branchesData || []).map(branch => {
     const teacherChannels = (channelsData?.data || []).filter(channel =>
       channel.branches.some(b => b.branchId === branch.branchId && b.channelType === 'TEACHER')
     );
