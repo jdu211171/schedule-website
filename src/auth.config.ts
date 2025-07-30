@@ -52,6 +52,12 @@ export default {
           include: {
             teacher: true,
             student: true,
+            defaultBranch: {
+              select: {
+                branchId: true,
+                name: true,
+              },
+            },
             branches: {
               include: {
                 branch: {
@@ -76,6 +82,12 @@ export default {
                 include: {
                   student: true,
                   teacher: true,
+                  defaultBranch: {
+                    select: {
+                      branchId: true,
+                      name: true,
+                    },
+                  },
                   branches: {
                     include: {
                       branch: {
@@ -102,6 +114,12 @@ export default {
                   include: {
                     student: true,
                     teacher: true,
+                    defaultBranch: {
+                      select: {
+                        branchId: true,
+                        name: true,
+                      },
+                    },
                     branches: {
                       include: {
                         branch: {
@@ -133,6 +151,12 @@ export default {
                 include: {
                   student: true,
                   teacher: true,
+                  defaultBranch: {
+                    select: {
+                      branchId: true,
+                      name: true,
+                    },
+                  },
                   branches: {
                     include: {
                       branch: {
@@ -159,6 +183,12 @@ export default {
                   include: {
                     student: true,
                     teacher: true,
+                    defaultBranch: {
+                      select: {
+                        branchId: true,
+                        name: true,
+                      },
+                    },
                     branches: {
                       include: {
                         branch: {
@@ -215,9 +245,13 @@ export default {
         // Determine initial selectedBranchId more intelligently
         let selectedBranchId: string | null = null;
         if (userBranches.length > 0) {
-          // First priority: Check if user has a stored preference (this would need to be implemented in DB if needed)
-          // Second priority: Default to first branch alphabetically
-          selectedBranchId = userBranches[0].branchId;
+          // First priority: Use user's default branch if set and still valid
+          if (user.defaultBranchId && userBranches.some((b) => b.branchId === user.defaultBranchId)) {
+            selectedBranchId = user.defaultBranchId;
+          } else {
+            // Second priority: Default to first branch alphabetically
+            selectedBranchId = userBranches[0].branchId;
+          }
         }
 
         return {
@@ -257,6 +291,12 @@ export default {
             include: {
               teacher: true,
               student: true,
+              defaultBranch: {
+                select: {
+                  branchId: true,
+                  name: true,
+                },
+              },
               branches: {
                 include: {
                   branch: {
@@ -312,7 +352,13 @@ export default {
         // Determine initial selectedBranchId
         let selectedBranchId: string | null = null;
         if (userBranches.length > 0) {
-          selectedBranchId = userBranches[0].branchId;
+          // First priority: Use user's default branch if set and still valid
+          if (existingUser.defaultBranchId && userBranches.some((b) => b.branchId === existingUser.defaultBranchId)) {
+            selectedBranchId = existingUser.defaultBranchId;
+          } else {
+            // Second priority: Default to first branch alphabetically
+            selectedBranchId = userBranches[0].branchId;
+          }
         }
 
         // Attach additional user data

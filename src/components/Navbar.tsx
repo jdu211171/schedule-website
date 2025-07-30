@@ -166,6 +166,19 @@ function BranchSelector() {
           throw new Error("Failed to update branch selection");
         }
 
+        // Update user's default branch preference
+        const updateDefaultResponse = await fetch("/api/users/me", {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ defaultBranchId: value }),
+        });
+
+        if (!updateDefaultResponse.ok) {
+          console.error("Failed to update default branch preference");
+        }
+
         await update({
           user: {
             selectedBranchId: value,

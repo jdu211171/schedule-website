@@ -23,6 +23,7 @@ model Branch {
   vacations            Vacation[]
   branchLineChannels   BranchLineChannel[]
   branchSettings       BranchSettings?
+  defaultForUsers      User[]                @relation("UserDefaultBranch")
 
   @@index([order])
   @@map("branches")
@@ -477,11 +478,12 @@ model User {
   image              String?
   username           String?                 @unique
   passwordHash       String?
-  role               UserRole                @default(ADMIN)
+  role               UserRole                @default(STUDENT)
   createdAt          DateTime                @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt          DateTime                @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
   order              Int?                    @map("order")
   isRestrictedAdmin  Boolean                 @default(false) @map("is_restricted_admin")
+  defaultBranchId    String?                 @map("default_branch_id")
   subjectPreferences UserSubjectPreference[]
   accounts           Account[]
   sessions           Session[]
@@ -489,8 +491,10 @@ model User {
   teacher            Teacher?
   availability       UserAvailability[]
   branches           UserBranch[]
+  defaultBranch      Branch?                 @relation("UserDefaultBranch", fields: [defaultBranchId], references: [branchId])
 
   @@index([order])
+  @@index([defaultBranchId])
   @@map("users")
 }
 
