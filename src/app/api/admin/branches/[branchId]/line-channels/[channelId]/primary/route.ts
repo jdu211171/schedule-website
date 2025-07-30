@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withRole } from '@/lib/auth';
 import { LineChannelService } from '@/services/line-channel.service';
 
-// PUT /api/admin/branches/[branchId]/line-channels/[channelId]/primary - Set primary channel for a branch
+// PUT /api/admin/branches/[branchId]/line-channels/[channelId]/primary - Set channel type for a branch
 export const PUT = withRole(['ADMIN'], async (req: NextRequest) => {
   try {
     const segments = req.url.split('/');
@@ -16,14 +16,24 @@ export const PUT = withRole(['ADMIN'], async (req: NextRequest) => {
       );
     }
     
-    await LineChannelService.setPrimaryChannel(branchId, channelId);
+    const body = await req.json();
+    const { channelType } = body;
+    
+    if (!channelType || !['TEACHER', 'STUDENT'].includes(channelType)) {
+      return NextResponse.json(
+        { error: 'Valid channelType (TEACHER or STUDENT) is required' },
+        { status: 400 }
+      );
+    }
+    
+    await LineChannelService.setChannelType(branchId, channelId, channelType);
     
     return NextResponse.json({ 
       success: true,
-      message: 'Primary channel set successfully'
+      message: `Channel type set to ${channelType} successfully`
     });
   } catch (error) {
-    console.error('Error setting primary channel:', error);
+    console.error('Error setting channel type:', error);
     
     if (error instanceof Error && error.message.includes('not found')) {
       return NextResponse.json(
@@ -33,7 +43,7 @@ export const PUT = withRole(['ADMIN'], async (req: NextRequest) => {
     }
     
     return NextResponse.json(
-      { error: 'Failed to set primary channel' },
+      { error: 'Failed to set channel type' },
       { status: 500 }
     );
   }

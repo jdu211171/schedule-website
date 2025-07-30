@@ -634,6 +634,11 @@ enum NotificationStatus {
   FAILED
 }
 
+enum ChannelType {
+  TEACHER
+  STUDENT
+}
+
 /// *
 /// * LINE Channel configuration for multi-channel support
 /// * Stores encrypted LINE channel credentials
@@ -663,13 +668,14 @@ model BranchLineChannel {
   id           String      @id @default(cuid())
   branchId     String      @map("branch_id")
   channelId    String      @map("channel_id")
-  isPrimary    Boolean     @default(true) @map("is_primary")
+  channelType  ChannelType @default(TEACHER) @map("channel_type")
   createdAt    DateTime    @default(now()) @map("created_at") @db.Timestamp(6)
   branch       Branch      @relation(fields: [branchId], references: [branchId], onDelete: Cascade)
   lineChannel  LineChannel @relation(fields: [channelId], references: [channelId], onDelete: Cascade)
 
-  @@unique([branchId, channelId])
+  @@unique([branchId, channelType])
   @@index([branchId])
   @@index([channelId])
+  @@index([channelType])
   @@map("branch_line_channels")
 }

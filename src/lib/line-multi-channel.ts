@@ -38,17 +38,63 @@ export interface LineWebhookBody {
 }
 
 /**
- * Get LINE channel credentials for a specific branch
- * Falls back to default channel or environment variables
+ * Get LINE channel credentials for a specific branch and recipient type
+ * Falls back to default channel if specific channel type not found
  */
-export async function getChannelCredentials(branchId?: string): Promise<LineChannelCredentials | null> {
+export async function getChannelCredentials(
+  branchId?: string, 
+  recipientType?: 'TEACHER' | 'STUDENT'
+): Promise<LineChannelCredentials | null> {
   try {
-    // If branchId is provided, try to get branch-specific channel
-    if (branchId) {
+    // If branchId is provided, try to get branch-specific channel for the recipient type
+    if (branchId && recipientType) {
       const branchChannel = await prisma.branchLineChannel.findFirst({
         where: {
           branchId,
-          isPrimary: true,
+          channelType: recipientType,
+          lineChannel: {
+            isActive: true
+          }
+        },
+        include: {
+          lineChannel: true
+        }
+      });
+
+      if (branchChannel?.lineChannel) {
+        return {
+          channelAccessToken: decrypt(branchChannel.lineChannel.channelAccessToken),
+          channelSecret: decrypt(branchChannel.lineChannel.channelSecret)
+        };
+      }
+
+      // If specific channel type not found, try to get the other type as fallback
+      const fallbackChannelType = recipientType === 'TEACHER' ? 'STUDENT' : 'TEACHER';
+      const fallbackBranchChannel = await prisma.branchLineChannel.findFirst({
+        where: {
+          branchId,
+          channelType: fallbackChannelType,
+          lineChannel: {
+            isActive: true
+          }
+        },
+        include: {
+          lineChannel: true
+        }
+      });
+
+      if (fallbackBranchChannel?.lineChannel) {
+        console.warn(`⚠️ Using ${fallbackChannelType} channel for ${recipientType} notification in branch ${branchId}`);
+        return {
+          channelAccessToken: decrypt(fallbackBranchChannel.lineChannel.channelAccessToken),
+          channelSecret: decrypt(fallbackBranchChannel.lineChannel.channelSecret)
+        };
+      }
+    } else if (branchId) {
+      // Legacy support: if no recipientType provided, get any channel for the branch
+      const branchChannel = await prisma.branchLineChannel.findFirst({
+        where: {
+          branchId,
           lineChannel: {
             isActive: true
           }
@@ -81,9 +127,10 @@ export async function getChannelCredentials(branchId?: string): Promise<LineChan
       };
     }
 
-    // Log warning instead of falling back to environment variables
+    // Log warning with more context
     console.warn('⚠️ No LINE channel credentials found in database', {
       branchId,
+      recipientType,
       hasDefaultChannel: false,
       message: 'Please configure LINE channels in the admin panel'
     });

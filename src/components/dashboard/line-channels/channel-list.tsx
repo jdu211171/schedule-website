@@ -141,13 +141,29 @@ export function LineChannelTable() {
         
         return (
           <div className="flex flex-wrap gap-1">
-            {branches.slice(0, 3).map((branch) => (
-              <Badge key={branch.id} variant="outline" className="text-xs">
-                <Building2 className="mr-1 h-3 w-3" />
-                {branch.branch.name}
-                {branch.isPrimary && " (主)"}
-              </Badge>
-            ))}
+            {branches.slice(0, 3).map((branch) => {
+              const isTeacher = branch.channelType === 'TEACHER';
+              const isStudent = branch.channelType === 'STUDENT';
+              
+              return (
+                <div key={branch.id} className="flex items-center gap-1">
+                  <Badge variant="outline" className="text-xs">
+                    <Building2 className="mr-1 h-3 w-3" />
+                    {branch.branch.name}
+                  </Badge>
+                  <Badge 
+                    variant={isTeacher ? "default" : "secondary"} 
+                    className={`text-xs ${
+                      isTeacher 
+                        ? "bg-blue-100 text-blue-800 border-blue-200" 
+                        : "bg-green-100 text-green-800 border-green-200"
+                    }`}
+                  >
+                    {isTeacher ? "講師" : "生徒"}
+                  </Badge>
+                </div>
+              );
+            })}
             {branches.length > 3 && (
               <Badge variant="outline" className="text-xs">
                 +{branches.length - 3}

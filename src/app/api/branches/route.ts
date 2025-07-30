@@ -21,7 +21,7 @@ type BranchWithUsersAndChannels = Branch & {
     };
   })[];
   branchLineChannels: {
-    isPrimary: boolean;
+    channelType: 'TEACHER' | 'STUDENT';
     lineChannel: {
       channelId: string;
       name: string;
@@ -50,7 +50,7 @@ type FormattedBranch = {
     description: string | null;
     isActive: boolean;
     isDefault: boolean;
-    isPrimary: boolean;
+    channelType: 'TEACHER' | 'STUDENT';
   }[];
   createdAt: Date;
   updatedAt: Date;
@@ -65,7 +65,7 @@ const formatBranch = (branch: BranchWithUsersAndChannels): FormattedBranch => ({
   users: branch.userBranches.map((ub) => ub.user),
   lineChannels: branch.branchLineChannels.map((blc) => ({
     ...blc.lineChannel,
-    isPrimary: blc.isPrimary,
+    channelType: blc.channelType,
   })),
   createdAt: branch.createdAt,
   updatedAt: branch.updatedAt,

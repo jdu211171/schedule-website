@@ -18,7 +18,7 @@ export interface BranchLineChannel {
   id: string
   branchId: string
   lineChannelId: string
-  isPrimary: boolean
+  channelType: 'TEACHER' | 'STUDENT'
   createdAt: Date
   updatedAt: Date
   branch?: Branch
@@ -47,6 +47,27 @@ export interface AssignBranchesInput {
   branchIds: string[]
 }
 
+export interface SetChannelTypeInput {
+  branchId: string
+  channelId: string
+  channelType: 'TEACHER' | 'STUDENT'
+}
+
+export interface BranchChannelStatus {
+  branchId: string
+  branchName: string
+  teacherChannel?: {
+    id: string
+    name: string
+    isActive: boolean
+  }
+  studentChannel?: {
+    id: string
+    name: string
+    isActive: boolean
+  }
+}
+
 export interface TestChannelInput {
   channelAccessToken: string
   channelSecret: string
@@ -66,7 +87,7 @@ export interface LineChannelResponse {
   branches: {
     id: string
     branchId: string
-    isPrimary: boolean
+    channelType: 'TEACHER' | 'STUDENT'
     branch: {
       id: string
       name: string

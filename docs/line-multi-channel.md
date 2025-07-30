@@ -1,8 +1,9 @@
-# Multi-Channel LINE Notifications Implementation
+# Dual-Channel LINE Notifications Implementation
 
-This document describes the multi-channel LINE notifications backend that supports:
-- Multiple LINE channels per learning center
-- Branch-specific or shared channel configurations
+This document describes the dual-channel LINE notifications backend that supports:
+- Multiple LINE channels per learning center with role-based routing
+- Branch-specific TEACHER and STUDENT channel configurations  
+- Smart notification routing based on recipient type
 - Secure credential management with encryption
 - Backward compatibility with existing setup
 
@@ -23,7 +24,23 @@ This document describes the multi-channel LINE notifications backend that suppor
 2. **BranchLineChannel** - Junction table for branch-channel mapping
    - `branchId` - Reference to Branch
    - `channelId` - Reference to LineChannel
-   - `isPrimary` - Primary channel flag for branch
+   - `channelType` - Channel type: 'TEACHER' or 'STUDENT'
+
+### Dual Channel Architecture
+
+Each branch can have up to two LINE channels configured:
+
+1. **TEACHER Channel**: Handles notifications for:
+   - Teacher-specific notifications (schedule updates, reminders)
+   - Administrative communications to teachers
+   - Staff announcements
+
+2. **STUDENT Channel**: Handles notifications for:  
+   - Student notifications (class reminders, homework)
+   - Parent notifications (multiple LINE accounts per student)
+   - General student/parent communications
+
+**Smart Routing**: The system automatically selects the appropriate channel based on the notification recipient type. If a specific channel type is not configured, the system gracefully falls back to the available channel.
 
 ### Key Components
 
@@ -56,6 +73,8 @@ This document describes the multi-channel LINE notifications backend that suppor
 **Channel Operations:**
 - `POST /api/admin/line-channels/[channelId]/test` - Test channel
 - `PUT /api/admin/line-channels/[channelId]/branches` - Assign branches
+- `POST /api/admin/line-channels/set-primary` - Set channel type for branch
+- `GET /api/admin/line-channels/validate` - Validate channel type assignments
 - `POST /api/admin/line-channels/migrate` - Migrate from env vars
 
 **Webhooks:**
@@ -107,12 +126,42 @@ https://your-domain.com/api/line/webhook/[channelId]
 
 ### Sending Notifications
 
-The notification system automatically selects the appropriate channel:
+The notification system automatically selects the appropriate channel based on recipient type:
 
 ```typescript
-// In notification send API
-const credentials = await getChannelCredentials(branchId);
+// In notification send API - with recipient type
+const credentials = await getChannelCredentials(branchId, recipientType);
 await sendLineMulticast(lineIds, message, credentials);
+
+// Examples:
+// For teacher notifications
+const teacherCredentials = await getChannelCredentials('branch-123', 'TEACHER');
+
+// For student/parent notifications  
+const studentCredentials = await getChannelCredentials('branch-123', 'STUDENT');
+
+// Legacy support (without recipient type)
+const credentials = await getChannelCredentials(branchId); // Uses any available channel
+```
+
+### Managing Channel Types
+
+Set a channel as TEACHER type for a specific branch:
+```bash
+curl -X POST http://localhost:3000/api/admin/line-channels/set-primary \
+  -H "Authorization: Bearer YOUR_AUTH_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "branchId": "branch-123",
+    "channelId": "channel-456", 
+    "channelType": "TEACHER"
+  }'
+```
+
+Validate all branch channel assignments:
+```bash
+curl -X GET http://localhost:3000/api/admin/line-channels/validate \
+  -H "Authorization: Bearer YOUR_AUTH_TOKEN"
 ```
 
 ### Testing a Channel
@@ -150,9 +199,10 @@ curl -X POST http://localhost:3000/api/admin/line-channels/[channelId]/test \
 ## Best Practices
 
 1. **Channel Organization**:
-   - One channel per physical location
-   - Shared channels for small branches
+   - Two channels per branch: one TEACHER, one STUDENT
+   - Shared channels for small branches (can serve both types)
    - Separate test/production channels
+   - Consider dedicated channels for different campuses or subjects
 
 2. **Credential Rotation**:
    - Regular rotation schedule

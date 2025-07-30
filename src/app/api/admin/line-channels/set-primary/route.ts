@@ -3,27 +3,29 @@ import { withRole } from '@/lib/auth';
 import { LineChannelService } from '@/services/line-channel.service';
 import { z } from 'zod';
 
-const setPrimarySchema = z.object({
+const setChannelTypeSchema = z.object({
   branchId: z.string().min(1),
-  channelId: z.string().min(1)
+  channelId: z.string().min(1),
+  channelType: z.enum(['TEACHER', 'STUDENT'])
 });
 
-// POST /api/admin/line-channels/set-primary - Set a channel as primary for a branch
+// POST /api/admin/line-channels/set-primary - Set a channel type for a branch
 export const POST = withRole(['ADMIN'], async (req: NextRequest) => {
   try {
     const body = await req.json();
-    const validatedData = setPrimarySchema.parse(body);
+    const validatedData = setChannelTypeSchema.parse(body);
 
-    await LineChannelService.setPrimaryChannel(
+    await LineChannelService.setChannelType(
       validatedData.branchId,
-      validatedData.channelId
+      validatedData.channelId,
+      validatedData.channelType
     );
 
     return NextResponse.json({ 
-      message: 'Primary channel set successfully'
+      message: `Channel type set to ${validatedData.channelType} successfully`
     });
   } catch (error) {
-    console.error('Error setting primary channel:', error);
+    console.error('Error setting channel type:', error);
     
     if (error instanceof z.ZodError) {
       return NextResponse.json(
@@ -40,7 +42,7 @@ export const POST = withRole(['ADMIN'], async (req: NextRequest) => {
     }
 
     return NextResponse.json(
-      { error: 'Failed to set primary channel' },
+      { error: 'Failed to set channel type' },
       { status: 500 }
     );
   }

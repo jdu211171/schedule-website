@@ -105,8 +105,11 @@ const processNotification = async (notification: Notification): Promise<void> =>
       throw new Error(`No valid LINE IDs found for ${notification.recipientType} ${notification.recipientId}`);
     }
 
-    // Get channel credentials for this branch
-    const credentials = await getChannelCredentials(notification.branchId || undefined);
+    // Get channel credentials for this branch and recipient type
+    const credentials = await getChannelCredentials(
+      notification.branchId || undefined, 
+      notification.recipientType as 'TEACHER' | 'STUDENT'
+    );
     
     if (credentials) {
       // Send via multi-channel to all valid LINE IDs

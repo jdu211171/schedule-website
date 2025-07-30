@@ -97,20 +97,31 @@ export class LineChannelService {
       // Handle branch assignments if provided
       if (branchIds && branchIds.length > 0) {
         // For each branch, ensure only one primary channel
-        for (let i = 0; i < branchIds.length; i++) {
-          const branchId = branchIds[i];
-          const isPrimary = i === 0; // First branch gets primary status
+        for (const branchId of branchIds) {
+          // Check if this branch already has a TEACHER channel
+          const existingTeacherChannel = await tx.branchLineChannel.findFirst({
+            where: {
+              branchId,
+              channelType: 'TEACHER'
+            }
+          });
 
-          // If this will be primary, unset any existing primary channels for this branch
-          if (isPrimary) {
-            await tx.branchLineChannel.updateMany({
-              where: {
-                branchId,
-                isPrimary: true
-              },
-              data: {
-                isPrimary: false
-              }
+          // If no TEACHER channel exists, assign this channel as TEACHER
+          // Otherwise, assign as STUDENT channel
+          const channelType = existingTeacherChannel ? 'STUDENT' : 'TEACHER';
+
+          // Check if this channel type already exists for this branch
+          const existingChannelOfType = await tx.branchLineChannel.findFirst({
+            where: {
+              branchId,
+              channelType
+            }
+          });
+
+          if (existingChannelOfType) {
+            // Replace the existing channel of this type
+            await tx.branchLineChannel.delete({
+              where: { id: existingChannelOfType.id }
             });
           }
 
@@ -119,7 +130,7 @@ export class LineChannelService {
             data: {
               branchId,
               channelId: newChannel.channelId,
-              isPrimary
+              channelType
             }
           });
         }
@@ -240,31 +251,27 @@ export class LineChannelService {
           where: { channelId }
         });
 
-        // Create new assignments with proper primary handling
+        // Create new assignments with proper channel type handling
         if (branchIds.length > 0) {
-          for (let i = 0; i < branchIds.length; i++) {
-            const branchId = branchIds[i];
-            const isPrimary = i === 0; // First branch gets primary status
+          for (const branchId of branchIds) {
+            // Check if this branch already has a TEACHER channel
+            const existingTeacherChannel = await tx.branchLineChannel.findFirst({
+              where: {
+                branchId,
+                channelType: 'TEACHER'
+              }
+            });
 
-            // If this will be primary, unset any existing primary channels for this branch
-            if (isPrimary) {
-              await tx.branchLineChannel.updateMany({
-                where: {
-                  branchId,
-                  isPrimary: true
-                },
-                data: {
-                  isPrimary: false
-                }
-              });
-            }
+            // If no TEACHER channel exists, assign this channel as TEACHER
+            // Otherwise, assign as STUDENT channel
+            const channelType = existingTeacherChannel ? 'STUDENT' : 'TEACHER';
 
             // Create the association
             await tx.branchLineChannel.create({
               data: {
                 branchId,
                 channelId,
-                isPrimary
+                channelType
               }
             });
           }
@@ -411,31 +418,27 @@ export class LineChannelService {
         where: { channelId }
       });
 
-      // Create new assignments with proper primary handling
+      // Create new assignments with proper channel type handling
       if (branchIds.length > 0) {
-        for (let i = 0; i < branchIds.length; i++) {
-          const branchId = branchIds[i];
-          const isPrimary = i === 0; // First branch gets primary status
+        for (const branchId of branchIds) {
+          // Check if this branch already has a TEACHER channel
+          const existingTeacherChannel = await tx.branchLineChannel.findFirst({
+            where: {
+              branchId,
+              channelType: 'TEACHER'
+            }
+          });
 
-          // If this will be primary, unset any existing primary channels for this branch
-          if (isPrimary) {
-            await tx.branchLineChannel.updateMany({
-              where: {
-                branchId,
-                isPrimary: true
-              },
-              data: {
-                isPrimary: false
-              }
-            });
-          }
+          // If no TEACHER channel exists, assign this channel as TEACHER
+          // Otherwise, assign as STUDENT channel
+          const channelType = existingTeacherChannel ? 'STUDENT' : 'TEACHER';
 
           // Create the association
           await tx.branchLineChannel.create({
             data: {
               branchId,
               channelId,
-              isPrimary
+              channelType
             }
           });
         }
@@ -446,9 +449,9 @@ export class LineChannelService {
   }
 
   /**
-   * Set a specific channel as primary for a branch
+   * Set a specific channel type for a branch
    */
-  static async setPrimaryChannel(branchId: string, channelId: string) {
+  static async setChannelType(branchId: string, channelId: string, channelType: 'TEACHER' | 'STUDENT') {
     // Verify the channel is assigned to the branch
     const assignment = await prisma.branchLineChannel.findFirst({
       where: {
@@ -463,24 +466,22 @@ export class LineChannelService {
 
     // Use transaction to ensure atomicity
     await prisma.$transaction(async (tx) => {
-      // Unset all primary channels for this branch
-      await tx.branchLineChannel.updateMany({
+      // Remove any existing channel of this type for this branch
+      await tx.branchLineChannel.deleteMany({
         where: {
           branchId,
-          isPrimary: true
-        },
-        data: {
-          isPrimary: false
+          channelType,
+          id: { not: assignment.id } // Don't delete the current assignment
         }
       });
 
-      // Set the specified channel as primary
+      // Update the channel type
       await tx.branchLineChannel.update({
         where: {
           id: assignment.id
         },
         data: {
-          isPrimary: true
+          channelType
         }
       });
     });
@@ -489,15 +490,12 @@ export class LineChannelService {
   }
 
   /**
-   * Validate that each branch has at most one primary channel
-   * Returns branches with multiple primary channels
+   * Validate that each branch has at most one channel of each type
+   * Returns branches with multiple channels of the same type
    */
-  static async validatePrimaryChannels() {
+  static async validateChannelTypes() {
     const result = await prisma.branchLineChannel.groupBy({
-      by: ['branchId'],
-      where: {
-        isPrimary: true
-      },
+      by: ['branchId', 'channelType'],
       _count: {
         channelId: true
       },
@@ -519,7 +517,6 @@ export class LineChannelService {
         },
         include: {
           branchLineChannels: {
-            where: { isPrimary: true },
             include: {
               lineChannel: {
                 select: {
@@ -537,9 +534,10 @@ export class LineChannelService {
         invalidBranches: branches.map(branch => ({
           branchId: branch.branchId,
           branchName: branch.name,
-          primaryChannels: branch.branchLineChannels.map(blc => ({
+          channels: branch.branchLineChannels.map(blc => ({
             channelId: blc.lineChannel.channelId,
-            channelName: blc.lineChannel.name
+            channelName: blc.lineChannel.name,
+            channelType: blc.channelType
           }))
         }))
       };
@@ -561,7 +559,7 @@ export class LineChannelService {
         lineChannel: true
       },
       orderBy: [
-        { isPrimary: 'desc' },
+        { channelType: 'asc' }, // TEACHER channels first, then STUDENT
         { createdAt: 'asc' }
       ]
     });
