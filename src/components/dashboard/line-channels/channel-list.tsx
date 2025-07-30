@@ -3,23 +3,21 @@
 import { useState } from "react";
 import * as React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { 
-  Pencil, 
-  Trash2, 
-  Plus, 
-  CheckCircle, 
+import {
+  Pencil,
+  Trash2,
+  BadgeCheck,
   XCircle,
-  Star,
   Building2,
-  TestTube,
-  Copy
+  Copy,
+  ShieldCheck
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/data-table";
 import { LineChannelResponse } from "@/types/line-channel";
 import { useLineChannels, useMigrationStatus } from "@/hooks/useLineChannelQuery";
-import { 
+import {
   useLineChannelDelete,
   useLineChannelMigrate
 } from "@/hooks/useLineChannelMutation";
@@ -97,7 +95,7 @@ export function LineChannelTable() {
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger>
-                  <Star className="h-4 w-4 fill-yellow-500 text-yellow-500" />
+                  <ShieldCheck className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                 </TooltipTrigger>
                 <TooltipContent>
                   <p>デフォルトチャンネル</p>
@@ -123,7 +121,7 @@ export function LineChannelTable() {
       cell: ({ row }) => (
         <Badge variant={row.original.isActive ? "default" : "secondary"}>
           {row.original.isActive ? (
-            <><CheckCircle className="mr-1 h-3 w-3" /> 有効</>
+            <><BadgeCheck className="mr-1 h-3 w-3" /> 有効</>
           ) : (
             <><XCircle className="mr-1 h-3 w-3" /> 無効</>
           )}
@@ -138,24 +136,24 @@ export function LineChannelTable() {
         if (!branches || branches.length === 0) {
           return <span className="text-muted-foreground">未割り当て</span>;
         }
-        
+
         return (
           <div className="flex flex-wrap gap-1">
             {branches.slice(0, 3).map((branch) => {
               const isTeacher = branch.channelType === 'TEACHER';
               const isStudent = branch.channelType === 'STUDENT';
-              
+
               return (
                 <div key={branch.id} className="flex items-center gap-1">
                   <Badge variant="outline" className="text-xs">
                     <Building2 className="mr-1 h-3 w-3" />
                     {branch.branch.name}
                   </Badge>
-                  <Badge 
-                    variant={isTeacher ? "default" : "secondary"} 
+                  <Badge
+                    variant={isTeacher ? "default" : "secondary"}
                     className={`text-xs ${
-                      isTeacher 
-                        ? "bg-blue-100 text-blue-800 border-blue-200" 
+                      isTeacher
+                        ? "bg-blue-100 text-blue-800 border-blue-200"
                         : "bg-green-100 text-green-800 border-green-200"
                     }`}
                   >
@@ -178,12 +176,12 @@ export function LineChannelTable() {
       header: "Webhook URL",
       cell: ({ row }) => {
         // Generate the webhook URL using the channel ID
-        const baseUrl = typeof window !== 'undefined' 
-          ? window.location.origin 
+        const baseUrl = typeof window !== 'undefined'
+          ? window.location.origin
           : process.env.NEXTAUTH_URL || 'https://your-domain.com';
         const webhookUrl = `${baseUrl}/api/line/webhook/${row.original.id}`;
         const isCopied = copiedId === row.original.id;
-        
+
         return (
           <TooltipProvider>
             <Tooltip>
@@ -197,7 +195,7 @@ export function LineChannelTable() {
                   </code>
                   <div className="opacity-0 group-hover:opacity-100 transition-opacity">
                     {isCopied ? (
-                      <CheckCircle className="h-4 w-4 text-green-600" />
+                      <BadgeCheck className="h-4 w-4 text-green-600" />
                     ) : (
                       <Copy className="h-4 w-4 text-muted-foreground" />
                     )}
@@ -227,7 +225,7 @@ export function LineChannelTable() {
             size="icon"
             onClick={() => setChannelToTest(row.original)}
           >
-            <TestTube className="h-4 w-4" />
+            <BadgeCheck className="h-4 w-4" />
           </Button>
           <Button
             variant="ghost"
@@ -251,7 +249,7 @@ export function LineChannelTable() {
 
   const handleDelete = async () => {
     if (!channelToDelete) return;
-    
+
     try {
       await deleteMutation.mutateAsync(channelToDelete.id);
       setChannelToDelete(null);
