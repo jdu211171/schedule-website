@@ -111,14 +111,24 @@ export async function POST(req: NextRequest) {
       }
 
       // Remove the prefix and get the actual identifier (using regex for case-insensitive matching)
-      const identifier = trimmedText.replace(/^(> |\/\s+)/i, '').trim();
+      const identifierWithType = trimmedText.replace(/^(> |\/\s+)/i, '').trim();
+      
+      // Parse identifier and account type (e.g., "username:parent1")
+      const [identifier, accountType] = identifierWithType.split(':').map(s => s.trim());
+      const lineAccountType = accountType?.toLowerCase() || 'student'; // default to student
 
       // Check for logout commands (exit, quit) - case insensitive
       const logoutRegex = /^(>?\s*exit|>?\s*quit|\/?\s*exit|\/?\s*quit)$/i;
       if (logoutRegex.test(trimmedText)) {
-        // Find the user by LINE ID
+        // Find the user by LINE ID in any of the three possible fields
         const student = await prisma.student.findFirst({
-          where: { lineId },
+          where: { 
+            OR: [
+              { lineId },
+              { parentLineId1: lineId },
+              { parentLineId2: lineId }
+            ]
+          },
           include: { user: true }
         });
 
@@ -128,19 +138,35 @@ export async function POST(req: NextRequest) {
         });
 
         if (student) {
-          // Clear LINE ID for student
+          // Determine which field to clear based on which one matches
+          const updateData: any = {};
+          let accountTypeName = '';
+          
+          if (student.lineId === lineId) {
+            updateData.lineId = null;
+            accountTypeName = '生徒';
+          } else if (student.parentLineId1 === lineId) {
+            updateData.parentLineId1 = null;
+            accountTypeName = '保護者1';
+          } else if (student.parentLineId2 === lineId) {
+            updateData.parentLineId2 = null;
+            accountTypeName = '保護者2';
+          }
+
+          // If this was the student's main account, disable notifications
+          if (student.lineId === lineId) {
+            updateData.lineNotificationsEnabled = false;
+          }
+
           await prisma.student.update({
             where: { studentId: student.studentId },
-            data: { 
-              lineId: null,
-              lineNotificationsEnabled: false
-            }
+            data: updateData
           });
 
           try {
             await sendLineReply(
               replyToken,
-              `✅ ログアウトしました。\n\n今後LINEで通知を受け取ることはありません。\n\n再度連携する場合は "> ${student.user.username}" または新しいアカウント名を送信してください。`,
+              `✅ ${accountTypeName}アカウントのログアウトが完了しました。\n\n今後このLINEアカウントには通知を送信しません。\n\n再度連携する場合は "> ${student.user.username}:${accountTypeName === '生徒' ? 'student' : accountTypeName === '保護者1' ? 'parent1' : 'parent2'}" を送信してください。`,
               credentials
             );
           } catch (replyError) {
@@ -260,11 +286,33 @@ export async function POST(req: NextRequest) {
       if (user) {
         // Check if user has a student or teacher profile
         if (user.student) {
-          // Check if this LINE ID is already linked to another student account
+          // Validate account type for students
+          if (!['student', 'parent1', 'parent2'].includes(lineAccountType)) {
+            try {
+              await sendLineReply(
+                replyToken,
+                '❌ 無効なアカウントタイプです。student、parent1、parent2のいずれかを指定してください。\n\n例: "> username:parent1"',
+                credentials
+              );
+            } catch (replyError) {
+              console.error('Error sending invalid account type reply:', replyError);
+            }
+            continue;
+          }
+
+          // Check if this LINE ID is already linked to any student account in any field
           const existingStudent = await prisma.student.findFirst({
             where: {
-              lineId,
-              NOT: { studentId: user.student.studentId }
+              AND: [
+                {
+                  OR: [
+                    { lineId },
+                    { parentLineId1: lineId },
+                    { parentLineId2: lineId }
+                  ]
+                },
+                { NOT: { studentId: user.student.studentId } }
+              ]
             }
           });
 
@@ -281,13 +329,60 @@ export async function POST(req: NextRequest) {
             continue;
           }
 
+          // Check if the target field is already occupied
+          const currentStudent = await prisma.student.findUnique({
+            where: { studentId: user.student.studentId }
+          });
+
+          let fieldAlreadyOccupied = false;
+          let currentLineId = null;
+
+          if (lineAccountType === 'student' && currentStudent?.lineId) {
+            fieldAlreadyOccupied = true;
+            currentLineId = currentStudent.lineId;
+          } else if (lineAccountType === 'parent1' && currentStudent?.parentLineId1) {
+            fieldAlreadyOccupied = true;
+            currentLineId = currentStudent.parentLineId1;
+          } else if (lineAccountType === 'parent2' && currentStudent?.parentLineId2) {
+            fieldAlreadyOccupied = true;
+            currentLineId = currentStudent.parentLineId2;
+          }
+
+          if (fieldAlreadyOccupied) {
+            try {
+              await sendLineReply(
+                replyToken,
+                `この${lineAccountType === 'student' ? '生徒' : lineAccountType === 'parent1' ? '保護者1' : '保護者2'}アカウントスロットは既に使用されています。\n\n既存のアカウント: ${currentLineId}\n\n先にそのアカウントをログアウトしてから再度お試しください。`,
+                credentials
+              );
+            } catch (replyError) {
+              console.error('Error sending field occupied reply:', replyError);
+            }
+            continue;
+          }
+
+          // Prepare update data based on account type
+          const updateData: {
+            linkingCode?: null;
+            lineId?: string;
+            parentLineId1?: string;
+            parentLineId2?: string;
+          } = {
+            linkingCode: null // Clear any existing linking code
+          };
+
+          if (lineAccountType === 'student') {
+            updateData.lineId = lineId;
+          } else if (lineAccountType === 'parent1') {
+            updateData.parentLineId1 = lineId;
+          } else if (lineAccountType === 'parent2') {
+            updateData.parentLineId2 = lineId;
+          }
+
           // Link the LINE account to student
           await prisma.student.update({
             where: { studentId: user.student.studentId },
-            data: {
-              lineId,
-              linkingCode: null // Clear any existing linking code
-            }
+            data: updateData
           });
 
           // Get branch names for the message
@@ -297,10 +392,13 @@ export async function POST(req: NextRequest) {
           });
           const branchNames = userBranches.map(ub => ub.branch.name).join(', ');
 
+          const accountTypeName = lineAccountType === 'student' ? '生徒' : 
+                                 lineAccountType === 'parent1' ? '保護者1' : '保護者2';
+
           try {
             await sendLineReply(
               replyToken,
-              `✅ LINEアカウントが正常にリンクされました！\n生徒名: ${user.student.name}\nユーザー名: ${user.username}\n所属: ${branchNames || 'なし'}\n\n授業の通知をこちらのLINEアカウントにお送りします。`,
+              `✅ ${accountTypeName}のLINEアカウントが正常にリンクされました！\n生徒名: ${user.student.name}\nユーザー名: ${user.username}\nアカウントタイプ: ${accountTypeName}\n所属: ${branchNames || 'なし'}\n\n授業の通知をこちらのLINEアカウントにお送りします。`,
               credentials
             );
           } catch (replyError) {

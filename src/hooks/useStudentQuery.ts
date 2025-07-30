@@ -12,6 +12,8 @@ export type Student = {
   maxYears: number | null;
   gradeYear: number | null;
   lineId: string | null;
+  parentLineId1: string | null;
+  parentLineId2: string | null;
   lineUserId: string | null;
   lineNotificationsEnabled: boolean | null;
   notes: string | null;

@@ -52,46 +52,69 @@ const processNotification = async (notification: Notification): Promise<void> =>
   });
 
   try {
-    // Get the recipient's LINE ID based on recipientType and recipientId
-    let lineId: string | null = null;
+    // Get the recipient's LINE IDs based on recipientType and recipientId
+    let lineIds: string[] = [];
     
     if (notification.recipientType === 'TEACHER') {
       const teacher = await prisma.teacher.findUnique({
         where: { teacherId: notification.recipientId! },
         select: { lineId: true, lineNotificationsEnabled: true }
       });
-      if (teacher?.lineNotificationsEnabled) {
-        lineId = teacher.lineId;
+      if (teacher?.lineNotificationsEnabled && teacher.lineId) {
+        lineIds.push(teacher.lineId);
       }
     } else if (notification.recipientType === 'STUDENT') {
       const student = await prisma.student.findUnique({
         where: { studentId: notification.recipientId! },
-        select: { lineId: true, lineNotificationsEnabled: true }
+        select: { 
+          lineId: true, 
+          parentLineId1: true, 
+          parentLineId2: true, 
+          lineNotificationsEnabled: true 
+        }
       });
+      
       if (student?.lineNotificationsEnabled) {
-        lineId = student.lineId;
+        // Collect all available LINE IDs for the student and parents
+        if (student.lineId) {
+          lineIds.push(student.lineId);
+        }
+        if (student.parentLineId1) {
+          lineIds.push(student.parentLineId1);
+        }
+        if (student.parentLineId2) {
+          lineIds.push(student.parentLineId2);
+        }
       }
     }
 
-    if (!lineId) {
-      throw new Error(`No LINE ID found or notifications disabled for ${notification.recipientType} ${notification.recipientId}`);
+    if (lineIds.length === 0) {
+      throw new Error(`No LINE IDs found or notifications disabled for ${notification.recipientType} ${notification.recipientId}`);
     }
 
-    // Validate LINE ID format
-    if (!isValidLineId(lineId)) {
-      throw new Error(`Invalid LINE ID format for ${notification.recipientType} ${notification.recipientId}: ${lineId}`);
+    // Validate all LINE ID formats
+    const validLineIds = lineIds.filter(lineId => {
+      const isValid = isValidLineId(lineId);
+      if (!isValid) {
+        console.warn(`Invalid LINE ID format for ${notification.recipientType} ${notification.recipientId}: ${lineId}`);
+      }
+      return isValid;
+    });
+
+    if (validLineIds.length === 0) {
+      throw new Error(`No valid LINE IDs found for ${notification.recipientType} ${notification.recipientId}`);
     }
 
     // Get channel credentials for this branch
     const credentials = await getChannelCredentials(notification.branchId || undefined);
     
     if (credentials) {
-      // Send via multi-channel
-      await sendLineMulticast([lineId], notification.message!, credentials);
+      // Send via multi-channel to all valid LINE IDs
+      await sendLineMulticast(validLineIds, notification.message!, credentials);
     } else {
       // Fallback to basic LINE function if no credentials found
       const { sendLineMulticast: fallbackMulticast } = await import('@/lib/line');
-      await fallbackMulticast([lineId], notification.message!, notification.branchId || undefined);
+      await fallbackMulticast(validLineIds, notification.message!, notification.branchId || undefined);
     }
 
     // Mark as sent on success
@@ -100,7 +123,11 @@ const processNotification = async (notification: Notification): Promise<void> =>
       data: {
         status: NotificationStatus.SENT,
         sentAt: new Date(),
-        logs: { success: true, message: 'Message sent successfully via LINE' },
+        logs: { 
+          success: true, 
+          message: `Message sent successfully via LINE to ${validLineIds.length} account(s)`,
+          recipients: validLineIds.length,
+        },
       },
     });
   } catch (error) {

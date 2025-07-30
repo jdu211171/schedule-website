@@ -131,6 +131,8 @@ model Student {
   studentTypeId            String?                    @map("student_type_id") @db.VarChar(50)
   gradeYear                Int?                       @map("grade_year")
   lineId                   String?                    @unique @map("line_id") @db.VarChar(50)
+  parentLineId1            String?                    @unique @map("parent_line_id1") @db.VarChar(50)
+  parentLineId2            String?                    @unique @map("parent_line_id2") @db.VarChar(50)
   notes                    String?                    @db.VarChar(255)
   status                   UserStatus                 @default(ACTIVE)
   createdAt                DateTime                   @default(now()) @map("created_at") @db.Timestamp(6)

@@ -1718,6 +1718,8 @@ export function StudentFormDialog({
                         userType="student"
                         userName={student.name}
                         lineId={student.lineId}
+                        parentLineId1={student.parentLineId1}
+                        parentLineId2={student.parentLineId2}
                         lineUserId={student.lineUserId}
                         lineNotificationsEnabled={student.lineNotificationsEnabled}
                         username={student.username || ""}
