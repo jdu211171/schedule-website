@@ -95,45 +95,12 @@ export class LineChannelService {
       });
 
       // Handle branch assignments if provided
+      // Note: This now only creates the channel without assigning channel types
+      // Channel types (TEACHER/STUDENT) must be set explicitly through the UI
       if (branchIds && branchIds.length > 0) {
-        // For each branch, ensure only one primary channel
-        for (const branchId of branchIds) {
-          // Check if this branch already has a TEACHER channel
-          const existingTeacherChannel = await tx.branchLineChannel.findFirst({
-            where: {
-              branchId,
-              channelType: 'TEACHER'
-            }
-          });
-
-          // If no TEACHER channel exists, assign this channel as TEACHER
-          // Otherwise, assign as STUDENT channel
-          const channelType = existingTeacherChannel ? 'STUDENT' : 'TEACHER';
-
-          // Check if this channel type already exists for this branch
-          const existingChannelOfType = await tx.branchLineChannel.findFirst({
-            where: {
-              branchId,
-              channelType
-            }
-          });
-
-          if (existingChannelOfType) {
-            // Replace the existing channel of this type
-            await tx.branchLineChannel.delete({
-              where: { id: existingChannelOfType.id }
-            });
-          }
-
-          // Create the association
-          await tx.branchLineChannel.create({
-            data: {
-              branchId,
-              channelId: newChannel.channelId,
-              channelType
-            }
-          });
-        }
+        // For now, we'll skip branch assignments during creation
+        // Users will need to explicitly set channel types through the UI
+        console.log('Branch assignments requested but will need to be configured separately:', branchIds);
       }
 
       // Return the channel with associations

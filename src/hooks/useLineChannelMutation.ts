@@ -497,6 +497,43 @@ export function useLineChannelSetPrimary() {
   });
 }
 
+// Set channel type (TEACHER/STUDENT) for a branch
+export function useLineChannelSetType() {
+  const queryClient = useQueryClient();
+  
+  return useMutation<
+    { message: string },
+    Error,
+    { branchId: string; channelId: string; channelType: 'TEACHER' | 'STUDENT' }
+  >({
+    mutationFn: (data) =>
+      fetcher("/api/admin/line-channels/set-primary", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    onError: (error) => {
+      toast.error("チャンネルタイプの設定に失敗しました", {
+        id: "line-channel-type-error",
+        description: getErrorMessage(error),
+      });
+    },
+    onSuccess: (_, variables) => {
+      const typeLabel = variables.channelType === 'TEACHER' ? '講師用' : '生徒用';
+      toast.success(`チャンネルを${typeLabel}に設定しました`, {
+        id: "line-channel-type-success",
+      });
+    },
+    onSettled: (_, __, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["branch-line-channels", variables.branchId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["line-channels"],
+      });
+    },
+  });
+}
+
 // Migrate from environment variables to database
 export function useLineChannelMigrate() {
   const queryClient = useQueryClient();

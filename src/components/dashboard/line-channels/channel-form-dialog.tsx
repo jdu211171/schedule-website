@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { useEffect, useState } from "react";
 import * as React from "react";
-import { Eye, EyeOff, TestTube, CheckCircle, XCircle } from "lucide-react";
+import { Eye, EyeOff, BadgeCheck, CheckCircle, XCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -28,11 +28,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { MultiSelect } from "@/components/multi-select";
 import { useLineChannelCreate, useLineChannelUpdate, useLineChannelTest } from "@/hooks/useLineChannelMutation";
 import { LineChannelResponse } from "@/types/line-channel";
 import { lineChannelCreateSchema, lineChannelUpdateSchema } from "@/schemas/line-channel.schema";
-import { useAllBranchesOrdered } from "@/hooks/useBranchQuery";
 
 interface ChannelFormDialogProps {
   open: boolean;
@@ -58,8 +56,6 @@ export function ChannelFormDialog({
     tested: boolean;
   } | null>(null);
 
-  const { data: branches = [] } = useAllBranchesOrdered();
-
   // Form schema - always use the create schema with all fields
   const formSchema = z.object({
     name: z.string().min(1).max(100),
@@ -67,7 +63,6 @@ export function ChannelFormDialog({
     channelAccessToken: z.string().optional(),
     channelSecret: z.string().optional(),
     isActive: z.boolean().default(true),
-    branchIds: z.array(z.string()).optional(),
   });
 
   type FormData = z.infer<typeof formSchema>;
@@ -80,7 +75,6 @@ export function ChannelFormDialog({
       channelAccessToken: "",
       channelSecret: "",
       isActive: channel?.isActive ?? true,
-      branchIds: channel?.branches?.map(b => b.branchId) || [],
     },
   });
 
@@ -92,7 +86,6 @@ export function ChannelFormDialog({
         channelAccessToken: "",
         channelSecret: "",
         isActive: channel.isActive ?? true,
-        branchIds: channel.branches?.map(b => b.branchId) || [],
       });
     } else {
       form.reset({
@@ -101,7 +94,6 @@ export function ChannelFormDialog({
         channelAccessToken: "",
         channelSecret: "",
         isActive: true,
-        branchIds: [],
       });
     }
   }, [channel, form]);
@@ -115,15 +107,14 @@ export function ChannelFormDialog({
           name: values.name,
           description: values.description,
           isActive: values.isActive,
-          branchIds: values.branchIds,
-          ...(values.channelAccessToken && values.channelAccessToken.trim().length > 0 
-            ? { channelAccessToken: values.channelAccessToken } 
+          ...(values.channelAccessToken && values.channelAccessToken.trim().length > 0
+            ? { channelAccessToken: values.channelAccessToken }
             : {}),
-          ...(values.channelSecret && values.channelSecret.trim().length > 0 
-            ? { channelSecret: values.channelSecret } 
+          ...(values.channelSecret && values.channelSecret.trim().length > 0
+            ? { channelSecret: values.channelSecret }
             : {}),
         };
-        
+
         // Update channel with branch assignments in a single request
         await updateChannelMutation.mutateAsync(updateData);
       } else {
@@ -133,17 +124,16 @@ export function ChannelFormDialog({
           form.setError("channelSecret", { message: "チャンネルシークレットは必須です" });
           return;
         }
-        
+
         await createChannelMutation.mutateAsync({
           name: values.name,
           description: values.description,
           channelAccessToken: values.channelAccessToken,
           channelSecret: values.channelSecret,
           isActive: values.isActive,
-          branchIds: values.branchIds,
         });
       }
-      
+
       onOpenChange(false);
       form.reset();
     } catch (error) {
@@ -151,21 +141,17 @@ export function ChannelFormDialog({
     }
   }
 
-  const branchOptions = branches.map(branch => ({
-    value: branch.branchId,
-    label: branch.name,
-  }));
 
   const handleTestCredentials = async () => {
     const accessToken = form.getValues('channelAccessToken');
     const secret = form.getValues('channelSecret');
 
     if (!accessToken || !secret) {
-      form.setError('channelAccessToken', { 
-        message: 'テストするにはトークンを入力してください' 
+      form.setError('channelAccessToken', {
+        message: 'テストするにはトークンを入力してください'
       });
-      form.setError('channelSecret', { 
-        message: 'テストするにはシークレットを入力してください' 
+      form.setError('channelSecret', {
+        message: 'テストするにはシークレットを入力してください'
       });
       return;
     }
@@ -231,10 +217,10 @@ export function ChannelFormDialog({
                 <FormItem>
                   <FormLabel>説明</FormLabel>
                   <FormControl>
-                    <Textarea 
-                      {...field} 
-                      value={field.value || ""} 
-                      className="resize-none" 
+                    <Textarea
+                      {...field}
+                      value={field.value || ""}
+                      className="resize-none"
                     />
                   </FormControl>
                   <FormDescription>
@@ -254,8 +240,8 @@ export function ChannelFormDialog({
                     <FormLabel>チャンネルアクセストークン</FormLabel>
                     <FormControl>
                       <div className="relative">
-                        <Input 
-                          {...field} 
+                        <Input
+                          {...field}
                           type={showAccessToken ? "text" : "password"}
                           placeholder={isEditing ? "新しいトークンを入力（変更する場合）" : ""}
                         />
@@ -294,8 +280,8 @@ export function ChannelFormDialog({
                     <FormLabel>チャンネルシークレット</FormLabel>
                     <FormControl>
                       <div className="relative">
-                        <Input 
-                          {...field} 
+                        <Input
+                          {...field}
                           type={showSecret ? "text" : "password"}
                           placeholder={isEditing ? "新しいシークレットを入力（変更する場合）" : ""}
                         />
@@ -335,14 +321,14 @@ export function ChannelFormDialog({
                   disabled={testChannelMutation.isPending}
                   className="w-full"
                 >
-                  <TestTube className="mr-2 h-4 w-4" />
+                  <BadgeCheck className="mr-2 h-4 w-4" />
                   {testChannelMutation.isPending ? "テスト中..." : "認証情報をテスト"}
                 </Button>
-                
+
                 {testResult && testResult.tested && (
                   <div className={`flex items-center gap-2 p-3 rounded-md text-sm ${
-                    testResult.success 
-                      ? 'bg-green-50 text-green-800 dark:bg-green-900/20 dark:text-green-400' 
+                    testResult.success
+                      ? 'bg-green-50 text-green-800 dark:bg-green-900/20 dark:text-green-400'
                       : 'bg-red-50 text-red-800 dark:bg-red-900/20 dark:text-red-400'
                   }`}>
                     {testResult.success ? (
@@ -377,27 +363,16 @@ export function ChannelFormDialog({
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="branchIds"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>割り当てブランチ</FormLabel>
-                  <FormControl>
-                    <MultiSelect
-                      options={branchOptions}
-                      value={field.value || []}
-                      onChange={field.onChange}
-                      placeholder="ブランチを選択..."
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    このチャンネルを使用できるブランチを選択してください
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {!isEditing && (
+              <div className="rounded-md bg-blue-50 dark:bg-blue-900/20 p-3 space-y-2">
+                <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                  チャンネル作成後の設定について
+                </p>
+                <p className="text-sm text-blue-700 dark:text-blue-300">
+                  チャンネルを作成した後、各校舎の設定から講師用・生徒用として割り当ててください。
+                </p>
+              </div>
+            )}
 
             <DialogFooter>
               <Button
@@ -407,10 +382,10 @@ export function ChannelFormDialog({
               >
                 キャンセル
               </Button>
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 disabled={
-                  createChannelMutation.isPending || 
+                  createChannelMutation.isPending ||
                   updateChannelMutation.isPending
                 }
               >

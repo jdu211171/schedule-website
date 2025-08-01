@@ -1,8 +1,11 @@
 "use client";
 
-import { Users, GraduationCap } from "lucide-react";
+import { useState } from "react";
+import { Users, GraduationCap, Settings } from "lucide-react";
 import { useAllBranchesOrdered } from "@/hooks/useBranchQuery";
 import { useLineChannels } from "@/hooks/useLineChannelQuery";
+import { Button } from "@/components/ui/button";
+import { BranchChannelAssignment } from "./branch-channel-assignment";
 
 interface BranchChannelCoverage {
   branchId: string;
@@ -16,6 +19,12 @@ interface BranchChannelCoverage {
 export function BranchChannelOverview() {
   const { data: branchesData } = useAllBranchesOrdered();
   const { data: channelsData } = useLineChannels({ limit: 100 });
+  const [selectedBranch, setSelectedBranch] = useState<{
+    branchId: string;
+    branchName: string;
+    teacherChannelId?: string;
+    studentChannelId?: string;
+  } | null>(null);
 
   // Calculate channel coverage for each branch
   const coverage: BranchChannelCoverage[] = (branchesData || []).map(branch => {
@@ -121,18 +130,53 @@ export function BranchChannelOverview() {
                 </div>
               </div>
 
-              <div className="text-xs text-muted-foreground">
-                {branch.hasTeacherChannel && branch.hasStudentChannel
-                  ? '完全対応'
-                  : (branch.hasTeacherChannel || branch.hasStudentChannel)
-                  ? '部分対応'
-                  : '未対応'
-                }
+              <div className="flex items-center gap-2">
+                <div className="text-xs text-muted-foreground">
+                  {branch.hasTeacherChannel && branch.hasStudentChannel
+                    ? '完全対応'
+                    : (branch.hasTeacherChannel || branch.hasStudentChannel)
+                    ? '部分対応'
+                    : '未対応'
+                  }
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={() => {
+                    const teacherChannel = (channelsData?.data || []).find(channel =>
+                      channel.branches.some(b => b.branchId === branch.branchId && b.channelType === 'TEACHER')
+                    );
+                    const studentChannel = (channelsData?.data || []).find(channel =>
+                      channel.branches.some(b => b.branchId === branch.branchId && b.channelType === 'STUDENT')
+                    );
+                    
+                    setSelectedBranch({
+                      branchId: branch.branchId,
+                      branchName: branch.branchName,
+                      teacherChannelId: teacherChannel?.id,
+                      studentChannelId: studentChannel?.id,
+                    });
+                  }}
+                >
+                  <Settings className="h-4 w-4" />
+                </Button>
               </div>
             </div>
           ))}
         </div>
       </div>
+      
+      {selectedBranch && (
+        <BranchChannelAssignment
+          open={!!selectedBranch}
+          onOpenChange={(open) => !open && setSelectedBranch(null)}
+          branchId={selectedBranch.branchId}
+          branchName={selectedBranch.branchName}
+          currentTeacherChannelId={selectedBranch.teacherChannelId}
+          currentStudentChannelId={selectedBranch.studentChannelId}
+        />
+      )}
     </div>
   );
 }
