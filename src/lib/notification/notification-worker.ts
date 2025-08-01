@@ -53,7 +53,7 @@ const processNotification = async (notification: Notification): Promise<void> =>
 
   try {
     // Get the recipient's LINE IDs based on recipientType and recipientId
-    let lineIds: string[] = [];
+    const lineIds: string[] = [];
     
     if (notification.recipientType === 'TEACHER') {
       const teacher = await prisma.teacher.findUnique({
