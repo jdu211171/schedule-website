@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { DateRange } from "react-day-picker";
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { X, CheckCircle2, AlertTriangle, Users } from "lucide-react";
@@ -187,7 +188,11 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
       }
     } catch (error) {
       console.error('Error handling conflict resolution:', error);
-      setError('競合解決中にエラーが発生しました');
+      if (error instanceof Error) {
+        toast.error(error.message || '競合解決中にエラーが発生しました');
+      } else {
+        toast.error('競合解決中にエラーが発生しました');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -615,7 +620,8 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
       }
     } catch (error) {
       console.error('Error creating lesson:', error);
-      setError('授業の作成中にエラーが発生しました');
+      // The error should already be handled as a toast in the parent component
+      // Just log it here for debugging
     } finally {
       setIsSubmitting(false);
     }

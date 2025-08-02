@@ -54,7 +54,7 @@ const processNotification = async (notification: Notification): Promise<void> =>
   try {
     // Get the recipient's LINE IDs based on recipientType and recipientId
     const lineIds: string[] = [];
-    
+
     if (notification.recipientType === 'TEACHER') {
       const teacher = await prisma.teacher.findUnique({
         where: { teacherId: notification.recipientId! },
@@ -66,14 +66,14 @@ const processNotification = async (notification: Notification): Promise<void> =>
     } else if (notification.recipientType === 'STUDENT') {
       const student = await prisma.student.findUnique({
         where: { studentId: notification.recipientId! },
-        select: { 
-          lineId: true, 
-          parentLineId1: true, 
-          parentLineId2: true, 
-          lineNotificationsEnabled: true 
+        select: {
+          lineId: true,
+          parentLineId1: true,
+          parentLineId2: true,
+          lineNotificationsEnabled: true
         }
       });
-      
+
       if (student?.lineNotificationsEnabled) {
         // Collect all available LINE IDs for the student and parents
         if (student.lineId) {
@@ -107,10 +107,10 @@ const processNotification = async (notification: Notification): Promise<void> =>
 
     // Get channel credentials for this branch and recipient type
     const credentials = await getChannelCredentials(
-      notification.branchId || undefined, 
+      notification.branchId || undefined,
       notification.recipientType as 'TEACHER' | 'STUDENT'
     );
-    
+
     if (credentials) {
       // Send via multi-channel to all valid LINE IDs
       await sendLineMulticast(validLineIds, notification.message!, credentials);
@@ -126,8 +126,8 @@ const processNotification = async (notification: Notification): Promise<void> =>
       data: {
         status: NotificationStatus.SENT,
         sentAt: new Date(),
-        logs: { 
-          success: true, 
+        logs: {
+          success: true,
           message: `Message sent successfully via LINE to ${validLineIds.length} account(s)`,
           recipients: validLineIds.length,
         },
@@ -135,7 +135,7 @@ const processNotification = async (notification: Notification): Promise<void> =>
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    
+
     // Enhanced error logging with notification context
     console.error(`❌ Failed to process notification:`, {
       notificationId: notification.notificationId,
@@ -149,14 +149,14 @@ const processNotification = async (notification: Notification): Promise<void> =>
       errorMessage,
       errorStack: error instanceof Error ? error.stack : undefined
     });
-    
+
     // Mark as failed on any error
     await prisma.notification.update({
       where: { notificationId: notification.notificationId },
       data: {
         status: NotificationStatus.FAILED,
-        logs: { 
-          success: false, 
+        logs: {
+          success: false,
           message: errorMessage,
           context: {
             recipientType: notification.recipientType,
@@ -168,7 +168,7 @@ const processNotification = async (notification: Notification): Promise<void> =>
         },
       },
     });
-    
+
     // Re-throw to signal failure to the batch processor
     throw error;
   }
@@ -184,15 +184,15 @@ async function processBatchConcurrently(
 ): Promise<{ successful: number; failed: number }> {
   let successful = 0;
   let failed = 0;
-  
+
   // Process in chunks to control concurrency
   for (let i = 0; i < notifications.length; i += maxConcurrency) {
     const batch = notifications.slice(i, i + maxConcurrency);
-    
+
     const results = await Promise.allSettled(
       batch.map(notification => processNotification(notification))
     );
-    
+
     results.forEach((result, index) => {
       if (result.status === 'fulfilled') {
         successful++;
@@ -214,7 +214,7 @@ async function processBatchConcurrently(
       }
     });
   }
-  
+
   return { successful, failed };
 }
 
@@ -224,12 +224,12 @@ async function processBatchConcurrently(
 export const runNotificationWorker = async (config: Partial<WorkerConfig> = {}): Promise<WorkerResult> => {
   const startTime = Date.now();
   const workerConfig = { ...DEFAULT_CONFIG, ...config };
-  
+
   let totalProcessed = 0;
   let totalSuccessful = 0;
   let totalFailed = 0;
   let batches = 0;
-  
+
   try {
     // Add a brief delay to allow for transaction propagation in a distributed environment.
     // This helps prevent a race condition where the worker starts before the notification
@@ -237,7 +237,7 @@ export const runNotificationWorker = async (config: Partial<WorkerConfig> = {}):
     await new Promise(resolve => setTimeout(resolve, 2000)); // 2-second delay
 
     console.log(`Starting notification worker with config:`, workerConfig);
-    
+
     while (Date.now() - startTime < workerConfig.maxExecutionTimeMs) {
       // Fetch next batch of pending notifications
       const pendingNotifications = await prisma.notification.findMany({
@@ -252,40 +252,40 @@ export const runNotificationWorker = async (config: Partial<WorkerConfig> = {}):
           { scheduledAt: 'asc' }, // Then by scheduled time
         ],
       });
-      
+
       // If no notifications to process, break
       if (pendingNotifications.length === 0) {
         console.log('No pending notifications found. Worker completed.');
         console.log(`Query criteria: status IN [PENDING, FAILED], attempts < ${MAX_ATTEMPTS}, scheduledAt <= ${new Date().toISOString()}`);
         break;
       }
-      
+
       console.log(`Processing batch ${batches + 1} with ${pendingNotifications.length} notifications`);
-      
+
       // Log details of notifications being processed
       pendingNotifications.forEach((notif, idx) => {
         console.log(`  ${idx + 1}. ${notif.recipientType} ${notif.recipientId} - Status: ${notif.status}, Attempts: ${notif.processingAttempts}`);
       });
-      
+
       // Process batch with controlled concurrency
       const batchResult = await processBatchConcurrently(
         pendingNotifications,
         workerConfig.maxConcurrency
       );
-      
+
       totalProcessed += pendingNotifications.length;
       totalSuccessful += batchResult.successful;
       totalFailed += batchResult.failed;
       batches++;
-      
+
       console.log(`Batch ${batches} completed: ${batchResult.successful} successful, ${batchResult.failed} failed`);
-      
+
       // Delay between batches to avoid overwhelming the system
       if (pendingNotifications.length === workerConfig.batchSize) {
         await new Promise(resolve => setTimeout(resolve, workerConfig.delayBetweenBatchesMs));
       }
     }
-    
+
     const executionTimeMs = Date.now() - startTime;
     const result: WorkerResult = {
       totalProcessed,
@@ -294,10 +294,10 @@ export const runNotificationWorker = async (config: Partial<WorkerConfig> = {}):
       executionTimeMs,
       batches
     };
-    
+
     console.log(`Notification worker completed:`, result);
     return result;
-    
+
   } catch (error) {
     // Enhanced error logging for worker-level failures
     console.error('❌ Notification worker encountered a critical error:', {
@@ -310,9 +310,9 @@ export const runNotificationWorker = async (config: Partial<WorkerConfig> = {}):
       executionTimeMs: Date.now() - startTime,
       config: workerConfig
     });
-    
+
     const executionTimeMs = Date.now() - startTime;
-    
+
     return {
       totalProcessed,
       successful: totalSuccessful,

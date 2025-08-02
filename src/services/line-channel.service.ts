@@ -161,8 +161,31 @@ export class LineChannelService {
     const hasNewSecret = data.channelSecret && data.channelSecret.trim().length > 0;
     
     if (hasNewAccessToken || hasNewSecret) {
-      const accessToken = hasNewAccessToken ? data.channelAccessToken! : decrypt(existingChannel.channelAccessToken);
-      const secret = hasNewSecret ? data.channelSecret! : decrypt(existingChannel.channelSecret);
+      // Get access token - handle both encrypted and unencrypted data
+      let accessToken: string;
+      if (hasNewAccessToken) {
+        accessToken = data.channelAccessToken!;
+      } else {
+        // Decrypt existing token - handle both encrypted and unencrypted
+        if (isEncrypted(existingChannel.channelAccessToken)) {
+          accessToken = decrypt(existingChannel.channelAccessToken);
+        } else {
+          accessToken = existingChannel.channelAccessToken;
+        }
+      }
+      
+      // Get secret - handle both encrypted and unencrypted data
+      let secret: string;
+      if (hasNewSecret) {
+        secret = data.channelSecret!;
+      } else {
+        // Decrypt existing secret - handle both encrypted and unencrypted
+        if (isEncrypted(existingChannel.channelSecret)) {
+          secret = decrypt(existingChannel.channelSecret);
+        } else {
+          secret = existingChannel.channelSecret;
+        }
+      }
 
       const testResult = await testChannelCredentials({
         channelAccessToken: accessToken,
@@ -263,9 +286,33 @@ export class LineChannelService {
     // Get base URL for webhook endpoints
     const baseUrl = this.getBaseUrl();
 
-    // Decrypt to generate previews
-    const decryptedToken = decrypt(channel.channelAccessToken);
-    const decryptedSecret = decrypt(channel.channelSecret);
+    // Decrypt to generate previews - handle both encrypted and unencrypted data
+    let decryptedToken: string;
+    let decryptedSecret: string;
+    
+    try {
+      // Check if data is encrypted before attempting to decrypt
+      if (isEncrypted(channel.channelAccessToken)) {
+        decryptedToken = decrypt(channel.channelAccessToken);
+      } else {
+        // Data is not encrypted, use as-is
+        decryptedToken = channel.channelAccessToken;
+        console.warn(`LINE channel ${channel.channelId} has unencrypted access token`);
+      }
+      
+      if (isEncrypted(channel.channelSecret)) {
+        decryptedSecret = decrypt(channel.channelSecret);
+      } else {
+        // Data is not encrypted, use as-is
+        decryptedSecret = channel.channelSecret;
+        console.warn(`LINE channel ${channel.channelId} has unencrypted secret`);
+      }
+    } catch (error) {
+      console.error(`Failed to decrypt credentials for channel ${channel.channelId}:`, error);
+      // If decryption fails, try using the raw value
+      decryptedToken = channel.channelAccessToken;
+      decryptedSecret = channel.channelSecret;
+    }
 
     // Return channel without encrypted credentials but with webhook URL and previews
     return {
@@ -313,10 +360,45 @@ export class LineChannelService {
     const baseUrl = this.getBaseUrl();
 
     // Remove encrypted credentials and add webhook URL from response
-    return channels.map(channel => {
-      // Decrypt to generate previews
-      const decryptedToken = decrypt(channel.channelAccessToken);
-      const decryptedSecret = decrypt(channel.channelSecret);
+    const processedChannels = channels.map(channel => {
+      // Decrypt to generate previews - handle both encrypted and unencrypted data
+      let decryptedToken: string;
+      let decryptedSecret: string;
+      
+      try {
+        // Check if data is encrypted before attempting to decrypt
+        if (isEncrypted(channel.channelAccessToken)) {
+          try {
+            decryptedToken = decrypt(channel.channelAccessToken);
+          } catch (decryptError) {
+            console.warn(`LINE channel ${channel.channelId} appears encrypted but failed to decrypt access token - may be encrypted with different key`);
+            // Skip this channel if we can't decrypt it
+            return null;
+          }
+        } else {
+          // Data is not encrypted, use as-is
+          decryptedToken = channel.channelAccessToken;
+          console.warn(`LINE channel ${channel.channelId} has unencrypted access token`);
+        }
+        
+        if (isEncrypted(channel.channelSecret)) {
+          try {
+            decryptedSecret = decrypt(channel.channelSecret);
+          } catch (decryptError) {
+            console.warn(`LINE channel ${channel.channelId} appears encrypted but failed to decrypt secret - may be encrypted with different key`);
+            // Skip this channel if we can't decrypt it
+            return null;
+          }
+        } else {
+          // Data is not encrypted, use as-is
+          decryptedSecret = channel.channelSecret;
+          console.warn(`LINE channel ${channel.channelId} has unencrypted secret`);
+        }
+      } catch (error) {
+        console.error(`Failed to process credentials for channel ${channel.channelId}:`, error);
+        // Skip this channel
+        return null;
+      }
       
       return {
         id: channel.channelId,
@@ -331,6 +413,9 @@ export class LineChannelService {
         branchLineChannels: undefined
       };
     });
+    
+    // Filter out any channels that couldn't be processed (null values)
+    return processedChannels.filter(channel => channel !== null);
   }
 
   /**
@@ -355,9 +440,33 @@ export class LineChannelService {
     // Get base URL for webhook endpoints
     const baseUrl = this.getBaseUrl();
 
-    // Decrypt to generate previews
-    const decryptedToken = decrypt(channel.channelAccessToken);
-    const decryptedSecret = decrypt(channel.channelSecret);
+    // Decrypt to generate previews - handle both encrypted and unencrypted data
+    let decryptedToken: string;
+    let decryptedSecret: string;
+    
+    try {
+      // Check if data is encrypted before attempting to decrypt
+      if (isEncrypted(channel.channelAccessToken)) {
+        decryptedToken = decrypt(channel.channelAccessToken);
+      } else {
+        // Data is not encrypted, use as-is
+        decryptedToken = channel.channelAccessToken;
+        console.warn(`LINE channel ${channel.channelId} has unencrypted access token`);
+      }
+      
+      if (isEncrypted(channel.channelSecret)) {
+        decryptedSecret = decrypt(channel.channelSecret);
+      } else {
+        // Data is not encrypted, use as-is
+        decryptedSecret = channel.channelSecret;
+        console.warn(`LINE channel ${channel.channelId} has unencrypted secret`);
+      }
+    } catch (error) {
+      console.error(`Failed to decrypt credentials for channel ${channel.channelId}:`, error);
+      // If decryption fails, try using the raw value
+      decryptedToken = channel.channelAccessToken;
+      decryptedSecret = channel.channelSecret;
+    }
 
     // Remove encrypted credentials and add webhook URL from response
     return {
@@ -555,9 +664,35 @@ export class LineChannelService {
       throw new Error('Channel not found');
     }
 
+    // Decrypt credentials - handle both encrypted and unencrypted data
+    let channelAccessToken: string;
+    let channelSecret: string;
+    
+    try {
+      // Check if data is encrypted before attempting to decrypt
+      if (isEncrypted(channel.channelAccessToken)) {
+        channelAccessToken = decrypt(channel.channelAccessToken);
+      } else {
+        // Data is not encrypted, use as-is
+        channelAccessToken = channel.channelAccessToken;
+        console.warn(`LINE channel ${channelId} has unencrypted access token`);
+      }
+      
+      if (isEncrypted(channel.channelSecret)) {
+        channelSecret = decrypt(channel.channelSecret);
+      } else {
+        // Data is not encrypted, use as-is
+        channelSecret = channel.channelSecret;
+        console.warn(`LINE channel ${channelId} has unencrypted secret`);
+      }
+    } catch (error) {
+      console.error(`Failed to decrypt credentials for channel ${channelId}:`, error);
+      throw new Error('Failed to decrypt channel credentials');
+    }
+    
     const credentials = {
-      channelAccessToken: decrypt(channel.channelAccessToken),
-      channelSecret: decrypt(channel.channelSecret)
+      channelAccessToken,
+      channelSecret
     };
 
     // Test credentials

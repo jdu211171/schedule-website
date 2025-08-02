@@ -1,7 +1,7 @@
 import { createHmac } from 'crypto';
 import axios from 'axios';
 import { prisma } from '@/lib/prisma';
-import { decrypt } from '@/lib/encryption';
+import { decrypt, isEncrypted } from '@/lib/encryption';
 
 const LINE_API_BASE = 'https://api.line.me/v2/bot';
 
@@ -42,7 +42,7 @@ export interface LineWebhookBody {
  * Falls back to default channel if specific channel type not found
  */
 export async function getChannelCredentials(
-  branchId?: string, 
+  branchId?: string,
   recipientType?: 'TEACHER' | 'STUDENT'
 ): Promise<LineChannelCredentials | null> {
   try {
@@ -62,9 +62,32 @@ export async function getChannelCredentials(
       });
 
       if (branchChannel?.lineChannel) {
+        // Handle both encrypted and unencrypted data
+        let accessToken: string;
+        let secret: string;
+
+        try {
+          if (isEncrypted(branchChannel.lineChannel.channelAccessToken)) {
+            accessToken = decrypt(branchChannel.lineChannel.channelAccessToken);
+          } else {
+            accessToken = branchChannel.lineChannel.channelAccessToken;
+            console.warn(`Branch channel ${branchChannel.lineChannel.channelId} has unencrypted access token`);
+          }
+
+          if (isEncrypted(branchChannel.lineChannel.channelSecret)) {
+            secret = decrypt(branchChannel.lineChannel.channelSecret);
+          } else {
+            secret = branchChannel.lineChannel.channelSecret;
+            console.warn(`Branch channel ${branchChannel.lineChannel.channelId} has unencrypted secret`);
+          }
+        } catch (error) {
+          console.error('Failed to decrypt branch channel credentials:', error);
+          return null;
+        }
+
         return {
-          channelAccessToken: decrypt(branchChannel.lineChannel.channelAccessToken),
-          channelSecret: decrypt(branchChannel.lineChannel.channelSecret)
+          channelAccessToken: accessToken,
+          channelSecret: secret
         };
       }
 
@@ -105,9 +128,32 @@ export async function getChannelCredentials(
       });
 
       if (branchChannel?.lineChannel) {
+        // Handle both encrypted and unencrypted data
+        let accessToken: string;
+        let secret: string;
+
+        try {
+          if (isEncrypted(branchChannel.lineChannel.channelAccessToken)) {
+            accessToken = decrypt(branchChannel.lineChannel.channelAccessToken);
+          } else {
+            accessToken = branchChannel.lineChannel.channelAccessToken;
+            console.warn(`Branch channel ${branchChannel.lineChannel.channelId} has unencrypted access token`);
+          }
+
+          if (isEncrypted(branchChannel.lineChannel.channelSecret)) {
+            secret = decrypt(branchChannel.lineChannel.channelSecret);
+          } else {
+            secret = branchChannel.lineChannel.channelSecret;
+            console.warn(`Branch channel ${branchChannel.lineChannel.channelId} has unencrypted secret`);
+          }
+        } catch (error) {
+          console.error('Failed to decrypt branch channel credentials:', error);
+          return null;
+        }
+
         return {
-          channelAccessToken: decrypt(branchChannel.lineChannel.channelAccessToken),
-          channelSecret: decrypt(branchChannel.lineChannel.channelSecret)
+          channelAccessToken: accessToken,
+          channelSecret: secret
         };
       }
     }
@@ -121,9 +167,32 @@ export async function getChannelCredentials(
     });
 
     if (defaultChannel) {
+      // Handle both encrypted and unencrypted data
+      let accessToken: string;
+      let secret: string;
+
+      try {
+        if (isEncrypted(defaultChannel.channelAccessToken)) {
+          accessToken = decrypt(defaultChannel.channelAccessToken);
+        } else {
+          accessToken = defaultChannel.channelAccessToken;
+          console.warn(`Default channel ${defaultChannel.channelId} has unencrypted access token`);
+        }
+
+        if (isEncrypted(defaultChannel.channelSecret)) {
+          secret = decrypt(defaultChannel.channelSecret);
+        } else {
+          secret = defaultChannel.channelSecret;
+          console.warn(`Default channel ${defaultChannel.channelId} has unencrypted secret`);
+        }
+      } catch (error) {
+        console.error('Failed to decrypt default channel credentials:', error);
+        return null;
+      }
+
       return {
-        channelAccessToken: decrypt(defaultChannel.channelAccessToken),
-        channelSecret: decrypt(defaultChannel.channelSecret)
+        channelAccessToken: accessToken,
+        channelSecret: secret
       };
     }
 
@@ -138,7 +207,7 @@ export async function getChannelCredentials(
     // Check if environment variables exist but don't use them
     const hasEnvToken = !!process.env.LINE_CHANNEL_ACCESS_TOKEN;
     const hasEnvSecret = !!process.env.LINE_CHANNEL_SECRET;
-    
+
     if (hasEnvToken || hasEnvSecret) {
       console.error('❌ Environment variables detected but not used. Remove LINE_CHANNEL_ACCESS_TOKEN and LINE_CHANNEL_SECRET from environment.');
     }
@@ -152,16 +221,16 @@ export async function getChannelCredentials(
 
 /**
  * Get LINE channel by destination (channel's LINE user ID from webhook)
- * 
+ *
  * NOTE: This function is currently a placeholder implementation.
  * The current webhook architecture uses URL path routing (/api/line/webhook/[channelId])
  * rather than destination-based routing from the webhook body.
- * 
+ *
  * To fully implement this function, you would need to:
  * 1. Add a 'lineUserId' field to the LineChannel model in the database
  * 2. Store the channel's LINE user ID when setting up the channel
  * 3. Query the database to match the destination to the stored LINE user ID
- * 
+ *
  * @param destination - The destination field from LINE webhook body (channel's LINE user ID)
  * @returns Channel credentials if found, null otherwise
  */
@@ -169,25 +238,25 @@ export async function getChannelByDestination(destination: string): Promise<Line
   try {
     // TODO: Implement proper destination-based channel lookup
     // This would require database schema changes to store LINE user IDs
-    
+
     // For now, validate that destination is provided
     if (!destination) {
       console.warn('getChannelByDestination: destination parameter is required');
       return null;
     }
-    
+
     console.log(`Looking for channel with destination: ${destination}`);
-    
+
     // Current implementation: Return default channel as fallback
     // This maintains backward compatibility while the function is being developed
     const credentials = await getChannelCredentials();
-    
+
     if (credentials) {
       console.log('getChannelByDestination: Using default channel credentials');
     } else {
       console.warn('getChannelByDestination: No default channel credentials available');
     }
-    
+
     return credentials;
   } catch (error) {
     console.error('Error getting channel by destination:', error);
@@ -209,8 +278,8 @@ export function verifySignature(body: string, signature: string, channelSecret: 
  * Send a reply message to LINE using specific channel credentials
  */
 export async function sendLineReply(
-  replyToken: string, 
-  message: string, 
+  replyToken: string,
+  message: string,
   credentials: LineChannelCredentials
 ): Promise<void> {
   try {
@@ -240,8 +309,8 @@ export async function sendLineReply(
  * Send a push message to a single LINE user using specific channel credentials
  */
 export async function sendLinePush(
-  to: string, 
-  message: string, 
+  to: string,
+  message: string,
   credentials: LineChannelCredentials
 ): Promise<void> {
   try {
@@ -281,12 +350,12 @@ export function isValidLineId(lineId: string): boolean {
  * Send a multicast message to multiple LINE users using specific channel credentials
  */
 export async function sendLineMulticast(
-  to: string[], 
-  message: string, 
+  to: string[],
+  message: string,
   credentials: LineChannelCredentials
 ): Promise<void> {
   const validRecipients = to.filter(isValidLineId);
-  
+
   if (validRecipients.length === 0) {
     console.warn('No valid LINE IDs to send multicast message.');
     return;
@@ -332,7 +401,7 @@ export async function testChannelCredentials(credentials: LineChannelCredentials
         }
       }
     );
-    
+
     return {
       success: true,
       botInfo: response.data

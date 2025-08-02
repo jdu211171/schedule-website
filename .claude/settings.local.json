@@ -27,7 +27,19 @@
       "Bash(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M:%S %Z')",
       "Bash(chmod:*)",
       "mcp__ide__executeCode",
-      "Bash(git restore:*)"
+      "Bash(git restore:*)",
+      "Bash(PGPASSWORD=password psql:*)",
+      "Bash(PGPASSWORD=postgres psql -h localhost -p 5432 -U postgres -d schedulewebsite -c \"\\dt\")",
+      "Bash(PGPASSWORD=postgres psql -h localhost -p 5432 -U postgres -d schedulewebsite -c \"SELECT COUNT(*) as teacher_count FROM teachers WHERE status = ''ACTIVE''; SELECT COUNT(*) as student_count FROM students WHERE status = ''ACTIVE''; SELECT COUNT(*) as subject_count FROM subjects; SELECT COUNT(*) as booth_count FROM booths WHERE status = true;\")",
+      "Bash(PGPASSWORD=postgres psql -h localhost -p 5432 -U postgres -d schedulewebsite -c \"SELECT teacher_id, name FROM teachers WHERE status = ''ACTIVE'' ORDER BY name;\")",
+      "Bash(PGPASSWORD=postgres psql -h localhost -p 5432 -U postgres -d schedulewebsite -c \"SELECT student_id, name FROM students WHERE status = ''ACTIVE'' ORDER BY name;\")",
+      "Bash(PGPASSWORD=postgres psql -h localhost -p 5432 -U postgres -d schedulewebsite -c \"SELECT subject_id, name FROM subjects ORDER BY name;\")",
+      "Bash(PGPASSWORD=postgres psql -h localhost -p 5432 -U postgres -d schedulewebsite -f /tmp/populate_combinatorial_sessions.sql)",
+      "Bash(PGPASSWORD=postgres psql -h localhost -p 5432 -U postgres -d schedulewebsite -c \"SELECT start_time, end_time, COUNT(*) as count FROM class_sessions WHERE date = ''2025-08-03'' GROUP BY start_time, end_time ORDER BY start_time;\")",
+      "Bash(PGPASSWORD=postgres psql -h localhost -p 5432 -U postgres -d schedulewebsite -f /tmp/populate_combinatorial_sessions_v2.sql)",
+      "Bash(PGPASSWORD=postgres psql -h localhost -p 5432 -U postgres -d schedulewebsite -c \"SELECT start_time, end_time, COUNT(*) as sessions_count FROM class_sessions WHERE date = ''2025-08-03'' GROUP BY start_time, end_time ORDER BY start_time;\")",
+      "Bash(PGPASSWORD=postgres psql -h localhost -p 5432 -U postgres -d schedulewebsite -f /tmp/populate_combinatorial_sessions_v3.sql)",
+      "Bash(PGPASSWORD=postgres psql:*)"
     ],
     "deny": []
   }

@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { startOfDay } from 'date-fns';
+import { toast } from 'sonner';
 import { useBooths } from '@/hooks/useBoothQuery';
 import { useTeachers, useTeacher } from '@/hooks/useTeacherQuery';
 import { useStudents, useStudent } from '@/hooks/useStudentQuery';
@@ -194,10 +195,14 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
       if (!enhanced[dateStr]) {
         enhanced[dateStr] = {};
       }
+      // Add selectedBranchId to all day filters to ensure proper branch filtering
+      if (selectedBranchId) {
+        enhanced[dateStr].branchId = selectedBranchId;
+      }
     });
 
     return enhanced;
-  }, [dayFilters, selectedDatesStrings]);
+  }, [dayFilters, selectedDatesStrings, selectedBranchId]);
 
   const classSessionQueries = useMultipleDaysClassSessions(
     selectedDatesStrings,
@@ -384,7 +389,7 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
           };
         }
 
-        // Обычная ошибка - выбрасываем исключение
+        // Show error as toast instead of throwing
         let errorMessage = '授業の作成に失敗しました';
 
         if (errorData.message) {
@@ -397,7 +402,19 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
           errorMessage += ': ' + errorData.issues.map((issue: any) => issue.message).join(', ');
         }
 
-        throw new Error(errorMessage || `エラー ${response.status}: ${response.statusText}`);
+        // Show appropriate toast based on status code
+        if (response.status === 409) {
+          // Conflict error - show as warning
+          toast.warning(errorMessage || '同じ講師、日付、時間の授業が既に存在します');
+        } else if (response.status === 400) {
+          // Validation error
+          toast.error(errorMessage || '入力データに問題があります');
+        } else {
+          // Other errors
+          toast.error(errorMessage || `エラー ${response.status}: ${response.statusText}`);
+        }
+
+        return { success: false };
       }
 
       // Успешное создание
@@ -411,6 +428,9 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
 
       console.log('Lesson created successfully');
 
+      // Show success toast
+      toast.success('授業が正常に作成されました');
+
       // Обновляем данные только при успехе
       refreshData();
       setNewLessonData(null);
@@ -420,7 +440,7 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
     } catch (error) {
       console.error('Error creating lesson:', error);
 
-      // Проверяем, не является ли это конфликтом (на случай если ошибка содержит данные конфликтов)
+      // Check if this is a conflict error (in case error contains conflict data)
       if (error instanceof Error && (error as any).conflicts) {
         return {
           success: false,
@@ -428,8 +448,14 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
         };
       }
 
-      // Обычная ошибка - перебрасываем для показа alert'а
-      throw error;
+      // Network or other errors - show toast
+      if (error instanceof Error) {
+        toast.error(error.message || 'ネットワークエラーが発生しました');
+      } else {
+        toast.error('予期しないエラーが発生しました');
+      }
+
+      return { success: false };
     }
   }, [refreshData]);
 
