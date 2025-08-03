@@ -40,8 +40,8 @@ export function BranchChannelAssignment({
   currentTeacherChannelId,
   currentStudentChannelId,
 }: BranchChannelAssignmentProps) {
-  const [teacherChannelId, setTeacherChannelId] = useState<string>("");
-  const [studentChannelId, setStudentChannelId] = useState<string>("");
+  const [teacherChannelId, setTeacherChannelId] = useState<string>("none");
+  const [studentChannelId, setStudentChannelId] = useState<string>("none");
   
   const { data: channelsData, isLoading } = useLineChannels({ limit: 100 });
   const setChannelTypeMutation = useLineChannelSetType();
@@ -49,8 +49,8 @@ export function BranchChannelAssignment({
   // Initialize with current values when dialog opens
   useEffect(() => {
     if (open) {
-      setTeacherChannelId(currentTeacherChannelId || "");
-      setStudentChannelId(currentStudentChannelId || "");
+      setTeacherChannelId(currentTeacherChannelId || "none");
+      setStudentChannelId(currentStudentChannelId || "none");
     }
   }, [open, currentTeacherChannelId, currentStudentChannelId]);
   
@@ -61,7 +61,7 @@ export function BranchChannelAssignment({
     const mutations = [];
     
     // Update teacher channel if changed
-    if (teacherChannelId && teacherChannelId !== currentTeacherChannelId) {
+    if (teacherChannelId !== "none" && teacherChannelId !== currentTeacherChannelId) {
       mutations.push(
         setChannelTypeMutation.mutateAsync({
           branchId,
@@ -72,7 +72,7 @@ export function BranchChannelAssignment({
     }
     
     // Update student channel if changed
-    if (studentChannelId && studentChannelId !== currentStudentChannelId) {
+    if (studentChannelId !== "none" && studentChannelId !== currentStudentChannelId) {
       mutations.push(
         setChannelTypeMutation.mutateAsync({
           branchId,
@@ -125,7 +125,7 @@ export function BranchChannelAssignment({
                   <SelectValue placeholder="講師用チャンネルを選択..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">なし</SelectItem>
+                  <SelectItem value="none">なし</SelectItem>
                   {activeChannels.map((channel) => (
                     <SelectItem 
                       key={channel.id} 
@@ -162,7 +162,7 @@ export function BranchChannelAssignment({
                   <SelectValue placeholder="生徒用チャンネルを選択..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">なし</SelectItem>
+                  <SelectItem value="none">なし</SelectItem>
                   {activeChannels.map((channel) => (
                     <SelectItem 
                       key={channel.id} 
@@ -182,7 +182,7 @@ export function BranchChannelAssignment({
           </div>
           
           {/* Warning if same channel selected for both */}
-          {teacherChannelId && studentChannelId && teacherChannelId === studentChannelId && (
+          {teacherChannelId !== "none" && studentChannelId !== "none" && teacherChannelId === studentChannelId && (
             <div className="rounded-md bg-yellow-50 dark:bg-yellow-900/20 p-3">
               <p className="text-sm text-yellow-800 dark:text-yellow-200">
                 ⚠️ 同じチャンネルを講師用と生徒用の両方に設定することはできません
@@ -206,9 +206,9 @@ export function BranchChannelAssignment({
             disabled={
               isSubmitting ||
               isLoading ||
-              (teacherChannelId === currentTeacherChannelId && 
-               studentChannelId === currentStudentChannelId) ||
-              (!!teacherChannelId && !!studentChannelId && 
+              (teacherChannelId === (currentTeacherChannelId || "none") && 
+               studentChannelId === (currentStudentChannelId || "none")) ||
+              (teacherChannelId !== "none" && studentChannelId !== "none" && 
                teacherChannelId === studentChannelId)
             }
           >

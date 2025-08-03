@@ -183,9 +183,9 @@ export function ChannelFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle>
+      <DialogContent className="sm:max-w-[600px] max-h-[95vh] overflow-hidden flex flex-col">
+        <DialogHeader className="flex-shrink-0 pb-4">
+          <DialogTitle className="text-xl font-semibold">
             {isEditing ? "LINEチャンネルを編集" : "新規LINEチャンネル"}
           </DialogTitle>
           <DialogDescription>
@@ -194,8 +194,9 @@ export function ChannelFormDialog({
               : "新しいLINEチャンネルを作成します。"}
           </DialogDescription>
         </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <div className="flex-1 overflow-y-auto px-1">
+          <Form {...form}>
+            <form className="space-y-4">
             <FormField
               control={form.control}
               name="name"
@@ -231,85 +232,81 @@ export function ChannelFormDialog({
               )}
             />
 
-            {(!isEditing || form.watch("channelAccessToken")) && (
-              <FormField
-                control={form.control}
-                name="channelAccessToken"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>チャンネルアクセストークン</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <Input
-                          {...field}
-                          type={showAccessToken ? "text" : "password"}
-                          placeholder={isEditing ? "新しいトークンを入力（変更する場合）" : ""}
-                        />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="absolute right-0 top-0 h-full px-3"
-                          onClick={() => setShowAccessToken(!showAccessToken)}
-                        >
-                          {showAccessToken ? (
-                            <EyeOff className="h-4 w-4" />
-                          ) : (
-                            <Eye className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </div>
-                    </FormControl>
-                    {isEditing && (
-                      <FormDescription>
-                        現在のトークン: {channel?.channelAccessTokenPreview}
-                      </FormDescription>
-                    )}
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
+            <FormField
+              control={form.control}
+              name="channelAccessToken"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>チャンネルアクセストークン</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <Input
+                        {...field}
+                        type={showAccessToken ? "text" : "password"}
+                        placeholder={isEditing ? "新しいトークンを入力（変更する場合）" : ""}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-0 top-0 h-full px-3"
+                        onClick={() => setShowAccessToken(!showAccessToken)}
+                      >
+                        {showAccessToken ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </FormControl>
+                  {isEditing && (
+                    <FormDescription>
+                      現在のトークン: {channel?.channelAccessTokenPreview}
+                    </FormDescription>
+                  )}
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-            {(!isEditing || form.watch("channelSecret")) && (
-              <FormField
-                control={form.control}
-                name="channelSecret"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>チャンネルシークレット</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <Input
-                          {...field}
-                          type={showSecret ? "text" : "password"}
-                          placeholder={isEditing ? "新しいシークレットを入力（変更する場合）" : ""}
-                        />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="absolute right-0 top-0 h-full px-3"
-                          onClick={() => setShowSecret(!showSecret)}
-                        >
-                          {showSecret ? (
-                            <EyeOff className="h-4 w-4" />
-                          ) : (
-                            <Eye className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </div>
-                    </FormControl>
-                    {isEditing && (
-                      <FormDescription>
-                        現在のシークレット: {channel?.channelSecretPreview}
-                      </FormDescription>
-                    )}
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
+            <FormField
+              control={form.control}
+              name="channelSecret"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>チャンネルシークレット</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <Input
+                        {...field}
+                        type={showSecret ? "text" : "password"}
+                        placeholder={isEditing ? "新しいシークレットを入力（変更する場合）" : ""}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-0 top-0 h-full px-3"
+                        onClick={() => setShowSecret(!showSecret)}
+                      >
+                        {showSecret ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </FormControl>
+                  {isEditing && (
+                    <FormDescription>
+                      現在のシークレット: {channel?.channelSecretPreview}
+                    </FormDescription>
+                  )}
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             {/* Test Credentials Button and Results */}
             {!isEditing && (
@@ -369,31 +366,36 @@ export function ChannelFormDialog({
                   チャンネル作成後の設定について
                 </p>
                 <p className="text-sm text-blue-700 dark:text-blue-300">
-                  チャンネルを作成した後、各校舎の設定から講師用・生徒用として割り当ててください。
+                  チャンネルを作成した後、このページの「校舎別チャンネル設定」から各校舎に講師用・生徒用として割り当ててください。
                 </p>
               </div>
             )}
-
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-              >
-                キャンセル
-              </Button>
-              <Button
-                type="submit"
-                disabled={
-                  createChannelMutation.isPending ||
-                  updateChannelMutation.isPending
-                }
-              >
-                {isEditing ? "更新" : "作成"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
+            </form>
+          </Form>
+        </div>
+        <DialogFooter className="flex-shrink-0 pt-4">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={
+              createChannelMutation.isPending ||
+              updateChannelMutation.isPending
+            }
+          >
+            キャンセル
+          </Button>
+          <Button
+            type="button"
+            onClick={form.handleSubmit(onSubmit)}
+            disabled={
+              createChannelMutation.isPending ||
+              updateChannelMutation.isPending
+            }
+          >
+            {isEditing ? "更新" : "作成"}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
