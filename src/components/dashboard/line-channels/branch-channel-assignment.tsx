@@ -20,7 +20,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useLineChannels } from "@/hooks/useLineChannelQuery";
-import { useLineChannelSetType } from "@/hooks/useLineChannelMutation";
+import { useLineChannelSetType, useLineChannelUnassign } from "@/hooks/useLineChannelMutation";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface BranchChannelAssignmentProps {
@@ -45,6 +45,7 @@ export function BranchChannelAssignment({
   
   const { data: channelsData, isLoading } = useLineChannels({ limit: 100 });
   const setChannelTypeMutation = useLineChannelSetType();
+  const unassignChannelMutation = useLineChannelUnassign();
   
   // Initialize with current values when dialog opens
   useEffect(() => {
@@ -60,26 +61,48 @@ export function BranchChannelAssignment({
   const handleSave = async () => {
     const mutations = [];
     
-    // Update teacher channel if changed
-    if (teacherChannelId !== "none" && teacherChannelId !== currentTeacherChannelId) {
-      mutations.push(
-        setChannelTypeMutation.mutateAsync({
-          branchId,
-          channelId: teacherChannelId,
-          channelType: 'TEACHER'
-        })
-      );
+    // Handle teacher channel changes
+    if (teacherChannelId !== currentTeacherChannelId) {
+      if (teacherChannelId === "none" && currentTeacherChannelId) {
+        // Unassign teacher channel
+        mutations.push(
+          unassignChannelMutation.mutateAsync({
+            branchId,
+            channelType: 'TEACHER'
+          })
+        );
+      } else if (teacherChannelId !== "none") {
+        // Assign or update teacher channel
+        mutations.push(
+          setChannelTypeMutation.mutateAsync({
+            branchId,
+            channelId: teacherChannelId,
+            channelType: 'TEACHER'
+          })
+        );
+      }
     }
     
-    // Update student channel if changed
-    if (studentChannelId !== "none" && studentChannelId !== currentStudentChannelId) {
-      mutations.push(
-        setChannelTypeMutation.mutateAsync({
-          branchId,
-          channelId: studentChannelId,
-          channelType: 'STUDENT'
-        })
-      );
+    // Handle student channel changes
+    if (studentChannelId !== currentStudentChannelId) {
+      if (studentChannelId === "none" && currentStudentChannelId) {
+        // Unassign student channel
+        mutations.push(
+          unassignChannelMutation.mutateAsync({
+            branchId,
+            channelType: 'STUDENT'
+          })
+        );
+      } else if (studentChannelId !== "none") {
+        // Assign or update student channel
+        mutations.push(
+          setChannelTypeMutation.mutateAsync({
+            branchId,
+            channelId: studentChannelId,
+            channelType: 'STUDENT'
+          })
+        );
+      }
     }
     
     if (mutations.length > 0) {
@@ -94,7 +117,7 @@ export function BranchChannelAssignment({
     }
   };
   
-  const isSubmitting = setChannelTypeMutation.isPending;
+  const isSubmitting = setChannelTypeMutation.isPending || unassignChannelMutation.isPending;
   
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

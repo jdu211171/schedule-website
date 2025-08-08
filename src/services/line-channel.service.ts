@@ -805,4 +805,37 @@ export class LineChannelService {
       isDefault: true
     });
   }
+
+  /**
+   * Unassign a channel type from a branch
+   */
+  static async unassignChannelType(branchId: string, channelType: 'TEACHER' | 'STUDENT') {
+    // Verify the branch exists
+    const branch = await prisma.branch.findUnique({
+      where: { branchId }
+    });
+
+    if (!branch) {
+      throw new Error('Branch not found');
+    }
+
+    // Check if there's a channel assigned for this type
+    const assignment = await prisma.branchLineChannel.findFirst({
+      where: {
+        branchId,
+        channelType
+      }
+    });
+
+    if (!assignment) {
+      throw new Error('No channel assigned for this type');
+    }
+
+    // Delete the assignment
+    await prisma.branchLineChannel.delete({
+      where: {
+        id: assignment.id
+      }
+    });
+  }
 }

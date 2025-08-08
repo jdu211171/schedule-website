@@ -534,6 +534,43 @@ export function useLineChannelSetType() {
   });
 }
 
+// Unassign channel type from a branch
+export function useLineChannelUnassign() {
+  const queryClient = useQueryClient();
+  
+  return useMutation<
+    { message: string },
+    Error,
+    { branchId: string; channelType: 'TEACHER' | 'STUDENT' }
+  >({
+    mutationFn: (data) =>
+      fetcher("/api/admin/line-channels/unassign", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    onError: (error) => {
+      toast.error("チャンネルの割り当て解除に失敗しました", {
+        id: "line-channel-unassign-error",
+        description: getErrorMessage(error),
+      });
+    },
+    onSuccess: (_, variables) => {
+      const typeLabel = variables.channelType === 'TEACHER' ? '講師用' : '生徒用';
+      toast.success(`${typeLabel}チャンネルの割り当てを解除しました`, {
+        id: "line-channel-unassign-success",
+      });
+    },
+    onSettled: (_, __, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["branch-line-channels", variables.branchId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["line-channels"],
+      });
+    },
+  });
+}
+
 // Migrate from environment variables to database
 export function useLineChannelMigrate() {
   const queryClient = useQueryClient();
