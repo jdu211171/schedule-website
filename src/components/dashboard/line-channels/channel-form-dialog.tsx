@@ -5,9 +5,10 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { useEffect, useState } from "react";
 import * as React from "react";
-import { Eye, EyeOff, BadgeCheck, CheckCircle, XCircle } from "lucide-react";
+import { Eye, EyeOff, BadgeCheck, CheckCircle, XCircle, Building2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -31,6 +32,9 @@ import { Switch } from "@/components/ui/switch";
 import { useLineChannelCreate, useLineChannelUpdate, useLineChannelTest } from "@/hooks/useLineChannelMutation";
 import { LineChannelResponse } from "@/types/line-channel";
 import { lineChannelCreateSchema, lineChannelUpdateSchema } from "@/schemas/line-channel.schema";
+import { useBranches } from "@/hooks/useBranchQuery";
+import { SearchableMultiSelect } from "@/components/admin-schedule/searchable-multi-select";
+import { Separator } from "@/components/ui/separator";
 
 interface ChannelFormDialogProps {
   open: boolean;
@@ -47,6 +51,11 @@ export function ChannelFormDialog({
   const updateChannelMutation = useLineChannelUpdate();
   const testChannelMutation = useLineChannelTest();
   const isEditing = !!channel;
+  
+  const { data: branchesData, isLoading: isBranchesLoading } = useBranches({
+    limit: 100,
+  });
+  const branches = branchesData?.data || [];
 
   const [showAccessToken, setShowAccessToken] = useState(false);
   const [showSecret, setShowSecret] = useState(false);
@@ -63,6 +72,7 @@ export function ChannelFormDialog({
     channelAccessToken: z.string().optional(),
     channelSecret: z.string().optional(),
     isActive: z.boolean().default(true),
+    branchIds: z.array(z.string()).optional(),
   });
 
   type FormData = z.infer<typeof formSchema>;
@@ -75,6 +85,7 @@ export function ChannelFormDialog({
       channelAccessToken: "",
       channelSecret: "",
       isActive: channel?.isActive ?? true,
+      branchIds: channel?.branches?.map(b => b.branchId) || [],
     },
   });
 
@@ -86,6 +97,7 @@ export function ChannelFormDialog({
         channelAccessToken: "",
         channelSecret: "",
         isActive: channel.isActive ?? true,
+        branchIds: channel.branches?.map(b => b.branchId) || [],
       });
     } else {
       form.reset({
@@ -94,6 +106,7 @@ export function ChannelFormDialog({
         channelAccessToken: "",
         channelSecret: "",
         isActive: true,
+        branchIds: [],
       });
     }
   }, [channel, form]);
@@ -107,6 +120,7 @@ export function ChannelFormDialog({
           name: values.name,
           description: values.description,
           isActive: values.isActive,
+          branchIds: values.branchIds,
           ...(values.channelAccessToken && values.channelAccessToken.trim().length > 0
             ? { channelAccessToken: values.channelAccessToken }
             : {}),
@@ -131,6 +145,7 @@ export function ChannelFormDialog({
           channelAccessToken: values.channelAccessToken,
           channelSecret: values.channelSecret,
           isActive: values.isActive,
+          branchIds: values.branchIds,
         });
       }
 
@@ -360,13 +375,85 @@ export function ChannelFormDialog({
               )}
             />
 
+            {/* Branch Assignment Section */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-medium text-muted-foreground">
+                  校舎配属
+                </h3>
+                <Separator className="flex-1" />
+              </div>
+
+              <FormField
+                control={form.control}
+                name="branchIds"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm font-medium">
+                      割り当て校舎（複数選択可）
+                    </FormLabel>
+                    <FormControl>
+                      <SearchableMultiSelect
+                        value={field.value || []}
+                        onValueChange={field.onChange}
+                        items={branches.map((branch) => ({
+                          value: branch.branchId,
+                          label: branch.name,
+                        }))}
+                        placeholder="校舎を選択してください"
+                        searchPlaceholder="校舎名を検索..."
+                        emptyMessage="該当する校舎が見つかりません"
+                        loading={isBranchesLoading}
+                        disabled={isBranchesLoading}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      このチャンネルを使用する校舎を選択してください。
+                      各校舎での講師用・生徒用の設定は「校舎別チャンネル設定」で行います。
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Show current channel type assignments for editing mode */}
+              {isEditing && channel && channel.branches && channel.branches.length > 0 && (
+                <div className="rounded-lg bg-muted/50 p-3 space-y-2">
+                  <p className="text-sm font-medium">現在のチャンネルタイプ設定:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {channel.branches.map((branch) => {
+                      const isTeacher = branch.channelType === 'TEACHER';
+                      return (
+                        <div key={branch.id} className="flex items-center gap-1">
+                          <Badge variant="outline" className="text-xs">
+                            <Building2 className="mr-1 h-3 w-3" />
+                            {branch.branch.name}
+                          </Badge>
+                          <Badge
+                            variant={isTeacher ? "default" : "secondary"}
+                            className={`text-xs ${
+                              isTeacher
+                                ? "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800"
+                                : "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800"
+                            }`}
+                          >
+                            {isTeacher ? "講師" : "生徒"}
+                          </Badge>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
             {!isEditing && (
               <div className="rounded-md bg-blue-50 dark:bg-blue-900/20 p-3 space-y-2">
                 <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
-                  チャンネル作成後の設定について
+                  チャンネルタイプの設定について
                 </p>
                 <p className="text-sm text-blue-700 dark:text-blue-300">
-                  チャンネルを作成した後、このページの「校舎別チャンネル設定」から各校舎に講師用・生徒用として割り当ててください。
+                  チャンネルを作成・校舎に割り当てた後、「校舎別チャンネル設定」から各校舎での講師用・生徒用の設定を行ってください。
                 </p>
               </div>
             )}
