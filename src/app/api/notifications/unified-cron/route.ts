@@ -148,7 +148,6 @@ async function processNotifications(reset: boolean = false, templateId?: string)
         const teachersWithClasses = await prisma.teacher.findMany({
           where: {
             lineNotificationsEnabled: true,
-            lineId: { not: null },
             classSessions: {
               some: {
                 date: targetDate,
@@ -183,7 +182,6 @@ async function processNotifications(reset: boolean = false, templateId?: string)
         const studentsWithClasses = await prisma.student.findMany({
           where: {
             lineNotificationsEnabled: true,
-            lineId: { not: null },
             classSessions: {
               some: {
                 date: targetDate,
@@ -225,162 +223,131 @@ async function processNotifications(reset: boolean = false, templateId?: string)
 
         // Add teachers
         for (const teacher of teachersWithClasses) {
-          if (teacher.lineId) {
-            recipientSessions.set(`teacher-${teacher.teacherId}`, {
-              recipientType: 'TEACHER',
-              recipientId: teacher.teacherId,
-              lineId: teacher.lineId,
-              name: teacher.name,
-              sessions: teacher.classSessions
-            });
-          }
+          recipientSessions.set(`teacher-${teacher.teacherId}`, {
+            recipientType: 'TEACHER',
+            recipientId: teacher.teacherId,
+            lineId: teacher.lineId || '',
+            name: teacher.name,
+            sessions: teacher.classSessions
+          });
         }
 
         // Add students
         for (const student of studentsWithClasses) {
-          if (student.lineId) {
-            recipientSessions.set(`student-${student.studentId}`, {
-              recipientType: 'STUDENT',
-              recipientId: student.studentId,
-              lineId: student.lineId,
-              name: student.name,
-              sessions: student.classSessions
-            });
-          }
+          recipientSessions.set(`student-${student.studentId}`, {
+            recipientType: 'STUDENT',
+            recipientId: student.studentId,
+            lineId: student.lineId || '',
+            name: student.name,
+            sessions: student.classSessions
+          });
         }
 
         console.log(`  Total recipients: ${recipientSessions.size}`);
 
-        // Create notifications for each recipient
+        // Create notifications for each recipient, partitioned by branch
         for (const [, recipient] of recipientSessions) {
           try {
-            // Build class list
-            const itemTemplate = template.classListItemTemplate || DEFAULT_CLASS_LIST_ITEM_TEMPLATE;
-            const summaryTemplate = template.classListSummaryTemplate || DEFAULT_CLASS_LIST_SUMMARY_TEMPLATE;
-            let dailyClassList = '';
-
-            recipient.sessions.forEach((session, index) => {
-              const startDate = new Date(session.startTime);
-              const startTime = `${String(startDate.getUTCHours()).padStart(2, '0')}:${String(startDate.getUTCMinutes()).padStart(2, '0')}`;
-              const endDate = new Date(session.endTime);
-              const endTime = `${String(endDate.getUTCHours()).padStart(2, '0')}:${String(endDate.getUTCMinutes()).padStart(2, '0')}`;
-              const durationMinutes = (endDate.getTime() - startDate.getTime()) / (1000 * 60);
-              const duration = `${durationMinutes}分`;
-              
-              // Show appropriate names based on recipient type
-              // Teachers see student names, students see teacher names
-              const studentName = session.student?.name || '生徒未設定';
-              const teacherName = session.teacher?.name || '講師未設定';
-              
-              // Log warning if data is missing
-              if (!session.student?.name || !session.teacher?.name) {
-                console.warn(`⚠️ Class session ${session.classId} is missing ${!session.student?.name ? 'student' : 'teacher'} information`);
-              }
-
-              // Modify the template based on recipient type to avoid showing redundant information
-              let recipientSpecificTemplate = itemTemplate;
-              if (recipient.recipientType === 'TEACHER') {
-                // For teachers, remove their own name from the template
-                recipientSpecificTemplate = itemTemplate.replace(/講師: {{teacherName}}\n?/g, '');
-              } else if (recipient.recipientType === 'STUDENT') {
-                // For students, remove their own name from the template
-                recipientSpecificTemplate = itemTemplate.replace(/生徒: {{studentName}}\n?/g, '');
-              }
-
-              const classItemVariables = {
-                classNumber: String(index + 1),
-                subjectName: session.subject?.name || '科目未設定',
-                startTime,
-                endTime,
-                teacherName,
-                boothName: session.booth?.name || 'ブース未設定',
-                duration,
-                studentName
-              };
-
-              dailyClassList += replaceTemplateVariables(recipientSpecificTemplate, classItemVariables) + (index < recipient.sessions.length - 1 ? '\n\n' : '');
+            // Group sessions by branch
+            const sessionsByBranch = new Map<string, any[]>();
+            recipient.sessions.forEach((s: any) => {
+              const b = s.branch?.branchId as string | undefined;
+              if (!b) return; // skip if no branch
+              if (!sessionsByBranch.has(b)) sessionsByBranch.set(b, []);
+              sessionsByBranch.get(b)!.push(s);
             });
 
-            // Add summary if template exists
-            if (summaryTemplate && recipient.sessions.length > 0) {
-              const firstSession = recipient.sessions[0];
-              const lastSession = recipient.sessions[recipient.sessions.length - 1];
-              const firstStartDate = new Date(firstSession.startTime);
-              const lastEndDate = new Date(lastSession.endTime);
-              const summaryVariables = {
-                classCount: String(recipient.sessions.length),
-                firstClassTime: `${String(firstStartDate.getUTCHours()).padStart(2, '0')}:${String(firstStartDate.getUTCMinutes()).padStart(2, '0')}`,
-                lastClassTime: `${String(lastEndDate.getUTCHours()).padStart(2, '0')}:${String(lastEndDate.getUTCMinutes()).padStart(2, '0')}`
+            for (const [branchId, sessions] of sessionsByBranch) {
+              const itemTemplate = template.classListItemTemplate || DEFAULT_CLASS_LIST_ITEM_TEMPLATE;
+              const summaryTemplate = template.classListSummaryTemplate || DEFAULT_CLASS_LIST_SUMMARY_TEMPLATE;
+              let dailyClassList = '';
+
+              sessions.forEach((session: any, index: number) => {
+                const startDate = new Date(session.startTime);
+                const startTime = `${String(startDate.getUTCHours()).padStart(2, '0')}:${String(startDate.getUTCMinutes()).padStart(2, '0')}`;
+                const endDate = new Date(session.endTime);
+                const endTime = `${String(endDate.getUTCHours()).padStart(2, '0')}:${String(endDate.getUTCMinutes()).padStart(2, '0')}`;
+                const durationMinutes = (endDate.getTime() - startDate.getTime()) / (1000 * 60);
+                const duration = `${durationMinutes}分`;
+                const studentName = session.student?.name || '生徒未設定';
+                const teacherName = session.teacher?.name || '講師未設定';
+                if (!session.student?.name || !session.teacher?.name) {
+                  console.warn(`⚠️ Class session ${session.classId} is missing ${!session.student?.name ? 'student' : 'teacher'} information`);
+                }
+                let recipientSpecificTemplate = itemTemplate;
+                if (recipient.recipientType === 'TEACHER') {
+                  recipientSpecificTemplate = itemTemplate.replace(/講師: {{teacherName}}\n?/g, '');
+                } else if (recipient.recipientType === 'STUDENT') {
+                  recipientSpecificTemplate = itemTemplate.replace(/生徒: {{studentName}}\n?/g, '');
+                }
+                const classItemVariables = {
+                  classNumber: String(index + 1),
+                  subjectName: session.subject?.name || '科目未設定',
+                  startTime,
+                  endTime,
+                  teacherName,
+                  boothName: session.booth?.name || 'ブース未設定',
+                  duration,
+                  studentName
+                };
+                dailyClassList += replaceTemplateVariables(recipientSpecificTemplate, classItemVariables) + (index < sessions.length - 1 ? '\n\n' : '');
+              });
+
+              if (summaryTemplate && sessions.length > 0) {
+                const firstStartDate = new Date(sessions[0].startTime);
+                const lastEndDate = new Date(sessions[sessions.length - 1].endTime);
+                const summaryVariables = {
+                  classCount: String(sessions.length),
+                  firstClassTime: `${String(firstStartDate.getUTCHours()).padStart(2, '0')}:${String(firstStartDate.getUTCMinutes()).padStart(2, '0')}`,
+                  lastClassTime: `${String(lastEndDate.getUTCHours()).padStart(2, '0')}:${String(lastEndDate.getUTCMinutes()).padStart(2, '0')}`
+                };
+                dailyClassList += '\n\n' + replaceTemplateVariables(summaryTemplate, summaryVariables);
+              }
+
+              const sortedSessions = [...sessions].sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+              const firstStartDate = new Date(sortedSessions[0].startTime);
+              const lastEndDate = new Date(sortedSessions[sortedSessions.length - 1].endTime);
+              const firstClassTime = `${String(firstStartDate.getUTCHours()).padStart(2, '0')}:${String(firstStartDate.getUTCMinutes()).padStart(2, '0')}`;
+              const lastClassTime = `${String(lastEndDate.getUTCHours()).padStart(2, '0')}:${String(lastEndDate.getUTCMinutes()).padStart(2, '0')}`;
+              const totalMinutes = sortedSessions.reduce((total, session) => {
+                const duration = (new Date(session.endTime).getTime() - new Date(session.startTime).getTime()) / (1000 * 60);
+                return total + duration;
+              }, 0);
+              const hours = Math.floor(totalMinutes / 60);
+              const minutes = totalMinutes % 60;
+              const totalDuration = hours > 0 ? `${hours}時間${minutes > 0 ? minutes + '分' : ''}` : `${minutes}分`;
+              const branchName = sortedSessions[0].branch?.name || template.branch?.name || '';
+
+              const templateVariables = {
+                dailyClassList,
+                recipientName: recipient.name,
+                recipientType: recipient.recipientType === 'TEACHER' ? '講師' : '生徒',
+                classDate: formatInTimeZone(targetDate, TIMEZONE, 'yyyy年M月d日'),
+                currentDate: formatInTimeZone(nowJST, TIMEZONE, 'yyyy年M月d日'),
+                classCount: String(sessions.length),
+                firstClassTime,
+                lastClassTime,
+                totalDuration,
+                branchName
               };
-              dailyClassList += '\n\n' + replaceTemplateVariables(summaryTemplate, summaryVariables);
+
+              const messageContent = replaceTemplateVariables(template.content, templateVariables);
+              const notificationType = template.timingValue === 0 ? 'DAILY_SUMMARY_SAMEDAY' : template.timingValue === 1 ? 'DAILY_SUMMARY_1D' : `DAILY_SUMMARY_${template.timingValue}D`;
+
+              await createNotification({
+                recipientType: recipient.recipientType,
+                recipientId: recipient.recipientId,
+                notificationType,
+                message: messageContent,
+                targetDate,
+                templateId: template.id,
+                branchId,
+                scheduledAt: now,
+                skipDuplicateCheck: reset
+              });
+              results.notificationsCreated++;
+              console.log(`    ✅ Created notification for ${recipient.recipientType} ${recipient.name} (branch ${branchName})`);
             }
-
-            // Calculate summary variables
-            const sortedSessions = [...recipient.sessions].sort((a, b) =>
-              new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
-            );
-
-            const firstSession = sortedSessions[0];
-            const lastSession = sortedSessions[sortedSessions.length - 1];
-            const firstStartDate = new Date(firstSession.startTime);
-            const lastEndDate = new Date(lastSession.endTime);
-            const firstClassTime = `${String(firstStartDate.getUTCHours()).padStart(2, '0')}:${String(firstStartDate.getUTCMinutes()).padStart(2, '0')}`;
-            const lastClassTime = `${String(lastEndDate.getUTCHours()).padStart(2, '0')}:${String(lastEndDate.getUTCMinutes()).padStart(2, '0')}`;
-
-            const totalMinutes = sortedSessions.reduce((total, session) => {
-              const duration = (new Date(session.endTime).getTime() - new Date(session.startTime).getTime()) / (1000 * 60);
-              return total + duration;
-            }, 0);
-
-            const hours = Math.floor(totalMinutes / 60);
-            const minutes = totalMinutes % 60;
-            const totalDuration = hours > 0 ? `${hours}時間${minutes > 0 ? minutes + '分' : ''}` : `${minutes}分`;
-            const branchName = sortedSessions[0].branch?.name || template.branch?.name || '';
-            
-            // Determine branchId from sessions
-            // If all sessions are from the same branch, use that branchId
-            // Otherwise, use the first session's branchId
-            const branchIds = [...new Set(sortedSessions.map(s => s.branch?.branchId).filter(Boolean))];
-            const branchId = branchIds.length === 1 ? branchIds[0] : sortedSessions[0].branch?.branchId;
-            
-            if (!branchId) {
-              console.warn(`    ⚠️ No branchId found for ${recipient.recipientType} ${recipient.name}. Sessions may not have branch information.`);
-            }
-
-            const templateVariables = {
-              dailyClassList,
-              recipientName: recipient.name,
-              recipientType: recipient.recipientType === 'TEACHER' ? '講師' : '生徒',
-              classDate: formatInTimeZone(targetDate, TIMEZONE, 'yyyy年M月d日'),
-              currentDate: formatInTimeZone(nowJST, TIMEZONE, 'yyyy年M月d日'),
-              classCount: String(recipient.sessions.length),
-              firstClassTime,
-              lastClassTime,
-              totalDuration,
-              branchName
-            };
-
-            const messageContent = replaceTemplateVariables(template.content, templateVariables);
-
-            // Create notification with immediate scheduling
-            const notificationType = template.timingValue === 0 ? 'DAILY_SUMMARY_SAMEDAY' :
-                                   template.timingValue === 1 ? 'DAILY_SUMMARY_1D' :
-                                   `DAILY_SUMMARY_${template.timingValue}D`;
-
-            await createNotification({
-              recipientType: recipient.recipientType,
-              recipientId: recipient.recipientId,
-              notificationType: notificationType,
-              message: messageContent,
-              targetDate: targetDate,
-              templateId: template.id,
-              branchId: branchId,
-              scheduledAt: now,
-              skipDuplicateCheck: reset // Skip duplicate check in reset mode
-            });
-
-            results.notificationsCreated++;
-            console.log(`    ✅ Created notification for ${recipient.recipientType} ${recipient.name}`);
           } catch (error) {
             console.error(`    ❌ Failed to create notification for ${recipient.name}:`, error);
             results.errors.push(`Failed to create notification for ${recipient.name}: ${error instanceof Error ? error.message : String(error)}`);

@@ -87,6 +87,7 @@ import {
 import { EnhancedAvailabilityRegularSelector } from "./enhanced-availability-regular-selector";
 import { EnhancedAvailabilityIrregularSelector } from "./enhanced-availability-irregular-selector";
 import { LineLinking } from "@/components/shared/line-linking";
+import { LineManagementDialog } from "@/components/shared/line-management-dialog";
 import { AlertCircle } from "lucide-react";
 
 import {
@@ -152,6 +153,14 @@ export function StudentFormDialog({
   onOpenChange,
   student,
 }: StudentFormDialogProps) {
+  const [openLineManage, setOpenLineManage] = useState(false);
+  // Local LINE connection state for immediate UI reflection
+  const [lineState, setLineState] = useState({
+    lineId: student?.lineId ?? null,
+    parentLineId1: student?.parentLineId1 ?? null,
+    lineUserId: student?.lineUserId ?? null,
+    lineNotificationsEnabled: student?.lineNotificationsEnabled ?? true,
+  });
   const createStudentMutation = useStudentCreate();
   const updateStudentMutation = useStudentUpdate();
   const { data: session } = useSession();
@@ -285,6 +294,13 @@ export function StudentFormDialog({
 
   useEffect(() => {
     if (student) {
+      // Sync local LINE state when the student changes
+      setLineState({
+        lineId: student.lineId ?? null,
+        parentLineId1: student.parentLineId1 ?? null,
+        lineUserId: student.lineUserId ?? null,
+        lineNotificationsEnabled: student.lineNotificationsEnabled ?? true,
+      });
       const branchIds =
         student.branches?.map((branch) => branch.branchId) || [];
       // Ensure defaultBranchId is always included
@@ -395,6 +411,12 @@ export function StudentFormDialog({
       setStudentSubjects([]);
       setRegularAvailability([]);
       setIrregularAvailability([]);
+      setLineState({
+        lineId: null,
+        parentLineId1: null,
+        lineUserId: null,
+        lineNotificationsEnabled: true,
+      });
     }
   }, [student, form, defaultBranchId]);
 
@@ -1717,16 +1739,31 @@ export function StudentFormDialog({
                         userId={student.studentId}
                         userType="student"
                         userName={student.name}
-                        lineId={student.lineId}
-                        parentLineId1={student.parentLineId1}
-                        parentLineId2={student.parentLineId2}
-                        lineUserId={student.lineUserId}
-                        lineNotificationsEnabled={student.lineNotificationsEnabled}
+                        lineId={lineState.lineId}
+                        parentLineId1={lineState.parentLineId1}
+                        lineUserId={lineState.lineUserId ?? undefined}
+                        lineNotificationsEnabled={lineState.lineNotificationsEnabled}
                         username={student.username || ""}
                         onNotificationToggle={(enabled) => {
                           form.setValue("lineNotificationsEnabled", enabled);
+                          setLineState((s) => ({ ...s, lineNotificationsEnabled: enabled }));
                         }}
                       />
+                    )}
+                    {student && (
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-lg flex items-center gap-2">
+                            <MessageSquare className="h-5 w-5" />
+                            チャネル連携の管理
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <Button type="button" variant="outline" onClick={() => setOpenLineManage(true)}>
+                            チャネル連携を管理する
+                          </Button>
+                        </CardContent>
+                      </Card>
                     )}
                     {!student && (
                       <Alert>
@@ -2170,7 +2207,30 @@ export function StudentFormDialog({
                         )}
                       </CardContent>
                     </Card>
-                  </TabsContent>
+                </TabsContent>
+
+                {student && (
+                  <LineManagementDialog
+                    open={openLineManage}
+                    onOpenChange={setOpenLineManage}
+                    userType="student"
+                    userId={student.studentId}
+                    userName={student.name}
+                    lineConnections={{
+                      lineId: lineState.lineId,
+                      lineUserId: lineState.lineUserId,
+                      lineNotificationsEnabled: lineState.lineNotificationsEnabled,
+                      parentLineId1: lineState.parentLineId1,
+                    }}
+                    onConnectionUnbound={(accountType) => {
+                      if (accountType === "student") {
+                        setLineState((s) => ({ ...s, lineId: null }));
+                      } else if (accountType === "parent") {
+                        setLineState((s) => ({ ...s, parentLineId1: null }));
+                      }
+                    }}
+                  />
+                )}
 
                   <TabsContent
                     value="availabilityRegular"

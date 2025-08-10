@@ -211,7 +211,10 @@ export function ChannelFormDialog({
         </DialogHeader>
         <div className="flex-1 overflow-y-auto px-1">
           <Form {...form}>
-            <form className="space-y-4">
+            <form className="space-y-4" autoComplete="off">
+            {/* Autofill blockers (some browsers ignore autocomplete=off). Keep visually hidden. */}
+            <input type="text" name="fake-username" autoComplete="username" style={{ display: 'none' }} aria-hidden="true" />
+            <input type="password" name="fake-password" autoComplete="new-password" style={{ display: 'none' }} aria-hidden="true" />
             <FormField
               control={form.control}
               name="name"
@@ -219,7 +222,7 @@ export function ChannelFormDialog({
                 <FormItem>
                   <FormLabel>チャンネル名</FormLabel>
                   <FormControl>
-                    <Input {...field} />
+                    <Input {...field} autoComplete="off" autoCapitalize="none" autoCorrect="off" spellCheck={false} name="line-channel-name" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -237,6 +240,10 @@ export function ChannelFormDialog({
                       {...field}
                       value={field.value || ""}
                       className="resize-none"
+                      autoComplete="off"
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                      spellCheck={false}
                     />
                   </FormControl>
                   <FormDescription>
@@ -259,6 +266,11 @@ export function ChannelFormDialog({
                         {...field}
                         type={showAccessToken ? "text" : "password"}
                         placeholder={isEditing ? "新しいトークンを入力（変更する場合）" : ""}
+                        autoComplete="new-password"
+                        name="line-channel-access-token"
+                        autoCapitalize="none"
+                        autoCorrect="off"
+                        spellCheck={false}
                       />
                       <Button
                         type="button"
@@ -297,6 +309,11 @@ export function ChannelFormDialog({
                         {...field}
                         type={showSecret ? "text" : "password"}
                         placeholder={isEditing ? "新しいシークレットを入力（変更する場合）" : ""}
+                        autoComplete="new-password"
+                        name="line-channel-secret"
+                        autoCapitalize="none"
+                        autoCorrect="off"
+                        spellCheck={false}
                       />
                       <Button
                         type="button"

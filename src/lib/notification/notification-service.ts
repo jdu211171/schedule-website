@@ -28,6 +28,7 @@ export const checkExistingNotification = async (
     recipientType: string;
     notificationType: string;
     targetDate: Date;
+    branchId?: string | null;
   }
 ): Promise<boolean> => {
   const existing = await prisma.notification.findFirst({
@@ -36,6 +37,7 @@ export const checkExistingNotification = async (
       recipientType: params.recipientType,
       notificationType: params.notificationType,
       targetDate: params.targetDate,
+      branchId: params.branchId ?? null,
     },
   });
   return !!existing;
@@ -61,11 +63,12 @@ export const createNotification = async (
           recipientType: params.recipientType,
           notificationType: params.notificationType,
           targetDate: params.targetDate,
+          branchId: params.branchId,
         });
         
         if (exists) {
           console.log(
-            `Duplicate notification prevented for ${params.recipientType} ${params.recipientId} on ${params.targetDate.toISOString().split('T')[0]}`
+            `Duplicate notification prevented for ${params.recipientType} ${params.recipientId} on ${params.targetDate.toISOString().split('T')[0]} (branch=${params.branchId ?? 'none'})`
           );
           return null;
         }
@@ -77,12 +80,13 @@ export const createNotification = async (
             recipientType: params.recipientType,
             notificationType: params.notificationType,
             targetDate: null,
+            branchId: params.branchId ?? null,
           },
         });
         
         if (existing) {
           console.log(
-            `Duplicate notification prevented for ${params.recipientType} ${params.recipientId} (no targetDate)`
+            `Duplicate notification prevented for ${params.recipientType} ${params.recipientId} (no targetDate, branch=${params.branchId ?? 'none'})`
           );
           return null;
         }

@@ -78,7 +78,6 @@ type FormattedStudent = {
   gradeYear: number | null;
   lineId: string | null;
   parentLineId1: string | null;
-  parentLineId2: string | null;
   lineUserId: string | null;
   lineNotificationsEnabled: boolean | null;
   notes: string | null;
@@ -304,7 +303,6 @@ const formatStudent = (student: StudentWithIncludes): FormattedStudent => {
     gradeYear: student.gradeYear,
     lineId: student.lineId,
     parentLineId1: student.parentLineId1,
-    parentLineId2: student.parentLineId2,
     lineUserId: student.lineUserId,
     lineNotificationsEnabled: student.lineNotificationsEnabled,
     notes: student.notes,

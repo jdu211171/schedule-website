@@ -132,7 +132,6 @@ model Student {
   gradeYear                Int?                       @map("grade_year")
   lineId                   String?                    @unique @map("line_id") @db.VarChar(50)
   parentLineId1            String?                    @unique @map("parent_line_id1") @db.VarChar(50)
-  parentLineId2            String?                    @unique @map("parent_line_id2") @db.VarChar(50)
   notes                    String?                    @db.VarChar(255)
   status                   UserStatus                 @default(ACTIVE)
   createdAt                DateTime                   @default(now()) @map("created_at") @db.Timestamp(6)
@@ -158,6 +157,7 @@ model Student {
   teacherPreferences       StudentTeacherPreference[]
   studentType              StudentType?               @relation(fields: [studentTypeId], references: [studentTypeId])
   user                     User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lineLinks                StudentLineLink[]
 
   @@index([studentTypeId])
   @@map("students")
@@ -269,6 +269,7 @@ model Teacher {
   studentPreferences       StudentTeacherPreference[]
   contactPhones            TeacherContactPhone[]
   user                     User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lineLinks                TeacherLineLink[]
 
   @@map("teachers")
 }
@@ -382,7 +383,7 @@ model Notification {
   targetDate         DateTime?          @map("target_date") @db.Date
   branch             Branch?            @relation(fields: [branchId], references: [branchId])
 
-  @@unique([recipientId, recipientType, notificationType, targetDate], name: "notifications_unique_daily_20250719")
+  @@unique([recipientId, recipientType, notificationType, targetDate, branchId], name: "notifications_unique_daily_branch_20250808")
   @@index([branchId])
   @@index([status, scheduledAt])
   @@index([status, createdAt])
@@ -639,6 +640,12 @@ enum ChannelType {
   STUDENT
 }
 
+// Account slots for student-linked LINE IDs
+enum LineAccountSlot {
+  student
+  parent
+}
+
 /// *
 /// * LINE Channel configuration for multi-channel support
 /// * Stores encrypted LINE channel credentials
@@ -655,6 +662,8 @@ model LineChannel {
   updatedAt            DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
   lastRotatedAt        DateTime?           @map("last_rotated_at") @db.Timestamp(6)
   branchLineChannels   BranchLineChannel[]
+  teacherLineLinks     TeacherLineLink[]
+  studentLineLinks     StudentLineLink[]
 
   @@index([isActive])
   @@index([isDefault])
@@ -678,4 +687,43 @@ model BranchLineChannel {
   @@index([channelId])
   @@index([channelType])
   @@map("branch_line_channels")
+}
+
+/// Links a teacher to a specific LINE channel (per-channel linkage)
+model TeacherLineLink {
+  id         String      @id @default(cuid())
+  channelId  String      @map("channel_id")
+  teacherId  String      @map("teacher_id")
+  lineUserId String      @map("line_user_id") @db.VarChar(50)
+  enabled    Boolean     @default(true)
+  createdAt  DateTime    @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt  DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  channel    LineChannel @relation(fields: [channelId], references: [channelId], onDelete: Cascade)
+  teacher    Teacher     @relation(fields: [teacherId], references: [teacherId], onDelete: Cascade)
+
+  @@unique([channelId, teacherId])
+  @@unique([channelId, lineUserId])
+  @@index([teacherId])
+  @@index([channelId])
+  @@map("teacher_line_links")
+}
+
+/// Links a student (per slot) to a specific LINE channel (per-channel linkage)
+model StudentLineLink {
+  id          String          @id @default(cuid())
+  channelId   String          @map("channel_id")
+  studentId   String          @map("student_id")
+  accountSlot LineAccountSlot @map("account_slot")
+  lineUserId  String          @map("line_user_id") @db.VarChar(50)
+  enabled     Boolean         @default(true)
+  createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt   DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  channel     LineChannel     @relation(fields: [channelId], references: [channelId], onDelete: Cascade)
+  student     Student         @relation(fields: [studentId], references: [studentId], onDelete: Cascade)
+
+  @@unique([channelId, studentId, accountSlot])
+  @@unique([channelId, lineUserId])
+  @@index([studentId])
+  @@index([channelId])
+  @@map("student_line_links")
 }

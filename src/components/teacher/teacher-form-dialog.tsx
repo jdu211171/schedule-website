@@ -97,6 +97,7 @@ import { SearchableMultiSelect } from "@/components/admin-schedule/searchable-mu
 import { useAllBranchesOrdered } from "@/hooks/useBranchQuery";
 import { EnhancedStateButton } from "../ui/enhanced-state-button";
 import { LineLinking } from "@/components/shared/line-linking";
+import { LineManagementDialog } from "@/components/shared/line-management-dialog";
 
 interface TimeSlot {
   id: string;
@@ -139,6 +140,13 @@ export function TeacherFormDialog({
   onOpenChange,
   teacher,
 }: TeacherFormDialogProps) {
+  const [openLineManage, setOpenLineManage] = useState(false);
+  // Local LINE connection state for immediate UI reflection
+  const [lineState, setLineState] = useState({
+    lineId: teacher?.lineId ?? null,
+    lineUserId: teacher?.lineUserId ?? null,
+    lineNotificationsEnabled: teacher?.lineNotificationsEnabled ?? true,
+  });
   const createTeacherMutation = useTeacherCreate();
   const updateTeacherMutation = useTeacherUpdate();
   const { data: session } = useSession();
@@ -202,6 +210,11 @@ export function TeacherFormDialog({
 
   useEffect(() => {
     if (teacher) {
+      setLineState({
+        lineId: teacher.lineId ?? null,
+        lineUserId: teacher.lineUserId ?? null,
+        lineNotificationsEnabled: teacher.lineNotificationsEnabled ?? true,
+      });
       const branchIds =
         teacher.branches?.map((branch) => branch.branchId) || [];
       // Ensure defaultBranchId is always included
@@ -297,6 +310,7 @@ export function TeacherFormDialog({
       setTeacherSubjects([]);
       setRegularAvailability([]);
       setIrregularAvailability([]);
+      setLineState({ lineId: null, lineUserId: null, lineNotificationsEnabled: true });
     }
   }, [teacher, form, defaultBranchId]);
 
@@ -1015,14 +1029,30 @@ export function TeacherFormDialog({
                         userId={teacher.teacherId}
                         userType="teacher"
                         userName={teacher.name}
-                        lineId={teacher.lineId}
-                        lineUserId={teacher.lineUserId}
-                        lineNotificationsEnabled={teacher.lineNotificationsEnabled}
+                        lineId={lineState.lineId}
+                        lineUserId={lineState.lineUserId ?? undefined}
+                        lineNotificationsEnabled={lineState.lineNotificationsEnabled}
                         username={teacher.username || ""}
                         onNotificationToggle={(enabled) => {
                           form.setValue("lineNotificationsEnabled", enabled);
+                          setLineState((s) => ({ ...s, lineNotificationsEnabled: enabled }));
                         }}
                       />
+                    )}
+                    {teacher && (
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-lg flex items-center gap-2">
+                            <MessageSquare className="h-5 w-5" />
+                            チャネル連携の管理
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <Button type="button" variant="outline" onClick={() => setOpenLineManage(true)}>
+                            チャネル連携を管理する
+                          </Button>
+                        </CardContent>
+                      </Card>
                     )}
                     {!teacher && (
                       <Alert>
@@ -1213,8 +1243,25 @@ export function TeacherFormDialog({
                         )}
                       </CardContent>
                     </Card>
-                  </TabsContent>
+                </TabsContent>
 
+                {teacher && (
+                  <LineManagementDialog
+                    open={openLineManage}
+                    onOpenChange={setOpenLineManage}
+                    userType="teacher"
+                    userId={teacher.teacherId}
+                    userName={teacher.name}
+                    lineConnections={{
+                      lineId: lineState.lineId,
+                      lineUserId: lineState.lineUserId,
+                      lineNotificationsEnabled: lineState.lineNotificationsEnabled,
+                    }}
+                    onConnectionUnbound={() => {
+                      setLineState((s) => ({ ...s, lineId: null }));
+                    }}
+                  />
+                )}
                   <TabsContent value="availability" className="space-y-6 mt-0">
                     <Card>
                       <CardHeader>

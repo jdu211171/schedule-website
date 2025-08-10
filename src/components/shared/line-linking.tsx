@@ -26,7 +26,6 @@ interface LineLinkingProps {
   userName: string;
   lineId?: string | null;
   parentLineId1?: string | null;
-  parentLineId2?: string | null;
   lineUserId?: string | null;
   lineNotificationsEnabled?: boolean | null;
   username: string;
@@ -53,7 +52,7 @@ function LineAccountCard({
   onNotificationToggle,
   isMainAccount = false
 }: {
-  accountType: 'student' | 'parent1' | 'parent2';
+  accountType: 'student' | 'parent';
   accountName: string;
   lineId?: string | null;
   username: string;
@@ -117,7 +116,7 @@ function LineAccountCard({
           </Alert>
 
           {isMainAccount && onNotificationToggle && (
-            <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+            <div className="flex items-center justify-between p-2 bg-muted rounded">
               <div className="flex items-center gap-2">
                 {notificationsEnabled ? (
                   <Bell className="h-4 w-4 text-blue-600" />
@@ -147,7 +146,7 @@ function LineAccountCard({
                   type="text"
                   value={`${lineUserId || username}:${accountType}`}
                   readOnly
-                  className="w-full px-3 py-2 pr-12 text-sm font-mono text-center bg-gray-50 border rounded text-gray-900"
+                  className="w-full px-3 py-2 pr-12 text-sm font-mono text-center bg-muted border rounded text-foreground"
                 />
                 <Button
                   size="sm"
@@ -176,7 +175,6 @@ export function LineLinking({
   userName,
   lineId: initialLineId,
   parentLineId1,
-  parentLineId2,
   lineUserId,
   lineNotificationsEnabled: initialNotificationsEnabled,
   username,
@@ -242,7 +240,7 @@ export function LineLinking({
   }
 
   // For students, show the new 3-account view
-  const hasAnyConnection = !!(initialLineId || parentLineId1 || parentLineId2);
+  const hasAnyConnection = !!(initialLineId || parentLineId1);
 
   return (
     <Card>
@@ -261,7 +259,7 @@ export function LineLinking({
             {hasAnyConnection ? (
               <>
                 <Link className="h-3 w-3 mr-1" />
-                {[initialLineId, parentLineId1, parentLineId2].filter(Boolean).length}件連携中
+                {[initialLineId, parentLineId1].filter(Boolean).length}件連携中
               </>
             ) : (
               <>
@@ -286,17 +284,9 @@ export function LineLinking({
           />
           
           <LineAccountCard
-            accountType="parent1"
-            accountName="保護者1"
+            accountType="parent"
+            accountName="保護者"
             lineId={parentLineId1}
-            username={username}
-            lineUserId={lineUserId}
-          />
-          
-          <LineAccountCard
-            accountType="parent2"
-            accountName="保護者2"
-            lineId={parentLineId2}
             username={username}
             lineUserId={lineUserId}
           />

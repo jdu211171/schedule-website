@@ -408,7 +408,6 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
             gradeYear: student.gradeYear,
             lineId: student.lineId,
             parentLineId1: student.parentLineId1,
-            parentLineId2: student.parentLineId2,
             lineUserId: student.lineUserId,
             lineNotificationsEnabled: student.lineNotificationsEnabled,
             notes: student.notes,

@@ -79,7 +79,6 @@ export function useStudentCreate() {
                 gradeYear: newStudent.gradeYear || null,
                 lineId: newStudent.lineId || null,
                 parentLineId1: newStudent.parentLineId1 || null,
-                parentLineId2: newStudent.parentLineId2 || null,
                 lineUserId: newStudent.lineUserId || null,
                 lineNotificationsEnabled: newStudent.lineNotificationsEnabled ?? true,
                 notes: newStudent.notes || null,

@@ -112,6 +112,7 @@ GOOGLE_CLIENT_SECRET=
 
   - Use Bun for package management.
   - Fix TypeScript errors after changes.
+  - For local database operations, use local Postgres with psql (not Prisma CLI). Example: PGPASSWORD=postgres psql -h localhost -U postgres -d schedulewebsite -c "<your_command_here>"
 
 - **Code Changes**
 

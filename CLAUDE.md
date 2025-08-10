@@ -114,6 +114,7 @@ GOOGLE_CLIENT_SECRET=
 
   - 🛑 **MANDATORY**: Use Bun for package management (NOT npm, NOT yarn)
   - 🛑 **MANDATORY**: Fix TypeScript errors after ALL changes
+  - 🛑 **MANDATORY**: Use the local PostgreSQL database via psql (with credentials) instead of Prisma for local DB operations, e.g.: `PGPASSWORD=postgres psql -h localhost -U postgres -d schedulewebsite -c "<your_command_here>"`
 
 - **📝 CODE CHANGES - ZERO TOLERANCE POLICY**
 

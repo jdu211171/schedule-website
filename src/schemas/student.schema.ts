@@ -160,12 +160,7 @@ export const studentBaseSchema = z.object({
     .nullable(),
   parentLineId1: z
     .string()
-    .max(50, "保護者1のLINE IDは50文字以内で入力してください")
-    .optional()
-    .nullable(),
-  parentLineId2: z
-    .string()
-    .max(50, "保護者2のLINE IDは50文字以内で入力してください")
+    .max(50, "保護者のLINE IDは50文字以内で入力してください")
     .optional()
     .nullable(),
   lineUserId: z
