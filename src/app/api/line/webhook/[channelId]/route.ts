@@ -112,39 +112,72 @@ export async function POST(req: NextRequest) {
 
       // Remove the prefix and get the actual identifier (using regex for case-insensitive matching)
       const identifierWithType = trimmedText.replace(/^(> |\/\s+)/i, '').trim();
-      
-      // Parse identifier and account type (e.g., "username:parent")
-      const [identifier, accountType] = identifierWithType.split(':').map(s => s.trim());
-      const lineAccountType = accountType?.toLowerCase() || 'student'; // default to student
 
-      // Check for logout commands (exit, quit) - case insensitive
-      const logoutRegex = /^(>?\s*exit|>?\s*quit|\/?\s*exit|\/?\s*quit)$/i;
-      // Support optional per-slot logout: "> exit:student|parent"
-      const slotLogoutMatch = trimmedText.match(/^(?:>\s*|\/\s*)exit\s*:\s*(student|parent)\s*$/i);
-      if (slotLogoutMatch) {
-        const slot = slotLogoutMatch[1].toLowerCase() as 'student' | 'parent';
-        // Disable only the specified slot for this channel and LINE ID
-        await prisma.studentLineLink.updateMany({
-          where: {
-            channelId,
-            lineUserId: lineId,
-            accountSlot: slot,
-            enabled: true,
-          },
-          data: { enabled: false }
+      // Built-in commands
+      const cmdLower = identifierWithType.toLowerCase();
+
+      // whoami: show current link status on this channel for this LINE user
+      if (cmdLower === 'whoami') {
+        const studentLinks = await prisma.studentLineLink.findMany({
+          where: { channelId, lineUserId: lineId },
+          include: {
+            student: { include: { user: true } }
+          }
         });
 
-        try {
+        const teacherLink = await prisma.teacherLineLink.findFirst({
+          where: { channelId, lineUserId: lineId },
+          include: { teacher: { include: { user: true } } }
+        });
+
+        if (studentLinks.length === 0 && !teacherLink) {
           await sendLineReply(
             replyToken,
-            `✅ ${slot === 'student' ? '生徒' : '保護者'}アカウントのログアウトが完了しました。\n\n再度連携するには、\"> ユーザー名:${slot}\" を送信してください。`,
+            'ℹ️ このチャンネルに連携されたアカウントはありません。\n\n連携するには "> ユーザー名" を送信してください。',
             credentials
           );
-        } catch (replyError) {
-          console.error('Error sending per-slot logout reply:', replyError);
+        } else {
+          const lines: string[] = ['🔎 現在の連携状況:'];
+          for (const link of studentLinks) {
+            const status = link.enabled ? '通知有効' : '通知無効';
+            const slotName = link.accountSlot === 'parent' ? '保護者' : '生徒';
+            lines.push(`- ${slotName}: ${link.student.name} (@${link.student.user.username}) / ${status}`);
+          }
+          if (teacherLink) {
+            const status = teacherLink.enabled ? '通知有効' : '通知無効';
+            lines.push(`- 講師: ${teacherLink.teacher.name} (@${teacherLink.teacher.user.username}) / ${status}`);
+          }
+          await sendLineReply(replyToken, lines.join('\n'), credentials);
         }
         continue;
       }
+
+      // stop: disable notifications on this channel for this LINE user (keep links)
+      if (cmdLower === 'stop') {
+        await prisma.studentLineLink.updateMany({
+          where: { channelId, lineUserId: lineId, enabled: true },
+          data: { enabled: false }
+        });
+        await prisma.teacherLineLink.updateMany({
+          where: { channelId, lineUserId: lineId, enabled: true },
+          data: { enabled: false }
+        });
+
+        await sendLineReply(
+          replyToken,
+          '✅ 通知を停止しました。\n\n今後このチャンネルからの通知は届きません。\n再開するには "> ユーザー名" を送信してください。',
+          credentials
+        );
+        continue;
+      }
+      
+      // Parse identifier and optional account type suffix (legacy: "username:parent")
+      const [identifier, accountType] = identifierWithType.split(':').map(s => s.trim());
+      const explicitAccountType = accountType?.toLowerCase(); // may be undefined
+
+      // Check for logout commands (exit, quit) - case insensitive
+      const logoutRegex = /^(>?\s*exit|>?\s*quit|\/?\s*exit|\/?\s*quit)$/i;
+      // Removed per-slot logout; use unified exit only
 
       if (logoutRegex.test(trimmedText)) {
         // Find linked accounts for this channel and LINE ID
@@ -190,7 +223,7 @@ export async function POST(req: NextRequest) {
           try {
             await sendLineReply(
               replyToken,
-              `✅ ${accountTypes}アカウントのログアウトが完了しました。\n\n今後このチャンネルからの通知を送信しません。\n\n再度連携する場合は "> ${student.user.username}:アカウントタイプ" を送信してください。`,
+              `✅ ${accountTypes}アカウントのログアウトが完了しました。\n\n今後このチャンネルからの通知を送信しません。\n\n再度連携する場合は "> ${student.user.username}" を送信してください。`,
               credentials
             );
           } catch (replyError) {
@@ -308,9 +341,10 @@ export async function POST(req: NextRequest) {
         // Multi-channel link per channelId
         try {
           if (user.student) {
-            if (!['student', 'parent'].includes(lineAccountType)) {
-              await sendLineReply(replyToken, '❌ 無効なアカウントタイプです。student または parent を指定してください。', credentials);
-              continue;
+            // Determine slot: honor explicit legacy suffix if provided; otherwise auto-assign
+            let slot: 'student' | 'parent' | 'auto' = 'auto';
+            if (explicitAccountType === 'student' || explicitAccountType === 'parent') {
+              slot = explicitAccountType;
             }
             // Prevent linking same LINE ID to another account on this channel
             const conflict = await prisma.studentLineLink.findFirst({ where: { channelId, lineUserId: lineId, NOT: { studentId: user.student.studentId } } })
@@ -319,31 +353,71 @@ export async function POST(req: NextRequest) {
               await sendLineReply(replyToken, 'このLINEアカウントは既に別のアカウントにリンクされています。', credentials);
               continue;
             }
-            // Upsert link
-            const slot = lineAccountType as 'student' | 'parent';
-
-            // Global constraint: student may have only one parent across channels
-            if (slot === 'parent') {
-              const existingParent = await prisma.studentLineLink.findFirst({
-                where: {
-                  studentId: user.student.studentId,
-                  accountSlot: 'parent',
+            // Resolve desired slot and upsert
+            let finalSlot: 'student' | 'parent' = 'student';
+            if (slot === 'student' || slot === 'parent') {
+              // Legacy explicit behavior
+              if (slot === 'parent') {
+                const existingParent = await prisma.studentLineLink.findFirst({
+                  where: {
+                    studentId: user.student.studentId,
+                    accountSlot: 'parent',
+                  }
+                });
+                if (existingParent && existingParent.lineUserId !== lineId) {
+                  await sendLineReply(
+                    replyToken,
+                    '❌ 既に別の保護者アカウントが連携されています。先に既存の保護者連携を解除してください。',
+                    credentials
+                  );
+                  continue;
                 }
+              }
+              await prisma.studentLineLink.upsert({
+                where: { channelId_studentId_accountSlot: { channelId, studentId: user.student.studentId, accountSlot: slot } },
+                update: { lineUserId: lineId, enabled: true },
+                create: { channelId, studentId: user.student.studentId, accountSlot: slot as any, lineUserId: lineId, enabled: true }
               });
-              if (existingParent && existingParent.lineUserId !== lineId) {
-                await sendLineReply(
-                  replyToken,
-                  '❌ 既に別の保護者アカウントが連携されています。先に既存の保護者連携を解除してください。',
-                  credentials
-                );
-                continue;
+              finalSlot = slot;
+            } else {
+              // Auto-assign: prefer student slot, else parent (respect global parent constraint)
+              const existingLinks = await prisma.studentLineLink.findMany({
+                where: { channelId, studentId: user.student.studentId }
+              });
+              const studentLink = existingLinks.find(l => l.accountSlot === 'student');
+              const parentLink = existingLinks.find(l => l.accountSlot === 'parent');
+
+              if (!studentLink || !studentLink.enabled || studentLink.lineUserId === lineId) {
+                await prisma.studentLineLink.upsert({
+                  where: { channelId_studentId_accountSlot: { channelId, studentId: user.student.studentId, accountSlot: 'student' } },
+                  update: { lineUserId: lineId, enabled: true },
+                  create: { channelId, studentId: user.student.studentId, accountSlot: 'student' as any, lineUserId: lineId, enabled: true }
+                });
+                finalSlot = 'student';
+              } else {
+                // Check global one-parent constraint
+                const existingParentGlobal = await prisma.studentLineLink.findFirst({
+                  where: {
+                    studentId: user.student.studentId,
+                    accountSlot: 'parent',
+                  }
+                });
+                if (existingParentGlobal && existingParentGlobal.lineUserId && existingParentGlobal.lineUserId !== lineId && (!parentLink || parentLink.lineUserId !== lineId)) {
+                  await sendLineReply(
+                    replyToken,
+                    '❌ 既に別の保護者アカウントが連携されています。先に既存の保護者連携を解除してください。',
+                    credentials
+                  );
+                  continue;
+                }
+                await prisma.studentLineLink.upsert({
+                  where: { channelId_studentId_accountSlot: { channelId, studentId: user.student.studentId, accountSlot: 'parent' } },
+                  update: { lineUserId: lineId, enabled: true },
+                  create: { channelId, studentId: user.student.studentId, accountSlot: 'parent' as any, lineUserId: lineId, enabled: true }
+                });
+                finalSlot = 'parent';
               }
             }
-            await prisma.studentLineLink.upsert({
-              where: { channelId_studentId_accountSlot: { channelId, studentId: user.student.studentId, accountSlot: slot } },
-              update: { lineUserId: lineId, enabled: true },
-              create: { channelId, studentId: user.student.studentId, accountSlot: slot as any, lineUserId: lineId, enabled: true }
-            });
             
             // Get branch names for the message
             const userBranches = await prisma.userBranch.findMany({
@@ -352,7 +426,7 @@ export async function POST(req: NextRequest) {
             });
             const branchNames = userBranches.map(ub => ub.branch.name).join(', ');
             
-            const accountTypeName = lineAccountType === 'student' ? '生徒' : '保護者';
+            const accountTypeName = finalSlot === 'parent' ? '保護者' : '生徒';
             
             await sendLineReply(
               replyToken,

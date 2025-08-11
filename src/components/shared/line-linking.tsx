@@ -64,9 +64,9 @@ function LineAccountCard({
   const [isCopied, setIsCopied] = useState(false);
   const { toast } = useToast();
 
-  const copyToClipboard = async (suffix: string) => {
+  const copyToClipboard = async () => {
     const baseText = lineUserId || username;
-    const textToCopy = `${baseText}:${suffix}`;
+    const textToCopy = `> ${baseText}`;
 
     try {
       await navigator.clipboard.writeText(textToCopy);
@@ -144,7 +144,7 @@ function LineAccountCard({
               <div className="relative">
                 <input
                   type="text"
-                  value={`${lineUserId || username}:${accountType}`}
+                  value={`> ${lineUserId || username}`}
                   readOnly
                   className="w-full px-3 py-2 pr-12 text-sm font-mono text-center bg-muted border rounded text-foreground"
                 />
@@ -152,7 +152,7 @@ function LineAccountCard({
                   size="sm"
                   variant="ghost"
                   className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 p-0"
-                  onClick={() => copyToClipboard(accountType)}
+                  onClick={copyToClipboard}
                 >
                   {isCopied ? (
                     <CheckCircle className="h-3 w-3 text-green-600" />
