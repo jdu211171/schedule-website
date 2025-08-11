@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Pencil, Trash2, MoreHorizontal, Download, Upload, Plus } from "lucide-react";
+import { Pencil, Trash2, MoreHorizontal, Download, Upload, Plus, Bell, BellOff, MessageSquare } from "lucide-react";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useTeacherExport } from "@/hooks/useTeacherExport";
 
@@ -460,14 +460,37 @@ export function TeacherTable() {
           ],
         },
         enableColumnFilter: true,
-        cell: ({ row }) => (
-          <GenericInlineEditableCell
-            value={row.original.lineId}
-            onSubmit={(value) => handleCellUpdate(row.original.teacherId, "lineId", value)}
-            placeholder="-"
-            readOnly={true}
-          />
-        ),
+        cell: ({ row }) => {
+          const hasLine = !!row.original.lineId;
+          const notificationsEnabled = row.original.lineNotificationsEnabled ?? true;
+
+          let iconColor: string;
+          let bellIcon: React.ReactNode = null;
+          let statusText: string;
+
+          if (!hasLine) {
+            iconColor = "text-gray-400";
+            statusText = "未連携";
+          } else if (notificationsEnabled) {
+            iconColor = "text-[#00B900]";
+            bellIcon = <Bell className="h-3 w-3 text-blue-600" />;
+            statusText = "連携済み";
+          } else {
+            iconColor = "text-orange-500";
+            bellIcon = <BellOff className="h-3 w-3 text-gray-400" />;
+            statusText = "通知無効";
+          }
+
+          return (
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1">
+                <MessageSquare className={cn("h-4 w-4", iconColor)} />
+                {bellIcon}
+              </div>
+              <span className="text-sm">{statusText}</span>
+            </div>
+          );
+        },
       },
       {
         id: "branches",
