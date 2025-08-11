@@ -35,7 +35,7 @@ async function main() {
   // 1‑a. Branch
   const mainBranch = await prisma.branch.create({
     data: {
-      name: "川崎日航ホテル教室",
+      name: "川崎",
       notes: "デフォルト拠点",
       order: 1,
     },
@@ -43,7 +43,7 @@ async function main() {
 
   const eastBranch = await prisma.branch.create({
     data: {
-      name: "東校",
+      name: "横浜",
       notes: "東側の分校",
       order: 2,
     },
@@ -51,7 +51,7 @@ async function main() {
 
   const westBranch = await prisma.branch.create({
     data: {
-      name: "西校",
+      name: "上大岡",
       notes: "西側の分校",
       order: 3,
     },
@@ -1394,12 +1394,12 @@ async function main() {
       order: 3,
     },
     {
-      name: "東校メンテナンス日",
+      name: "横浜メンテナンス日",
       startDate: getRelativeDateUTC(45),
       endDate: getRelativeDateUTC(45),
       isRecurring: false,
       branchId: eastBranch.branchId,
-      notes: "設備メンテナンスのため東校のみ休校",
+      notes: "設備メンテナンスのため横浜のみ休校",
       order: 4,
     },
     {
