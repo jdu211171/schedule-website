@@ -74,7 +74,7 @@ export const PATCH = withBranchAccess(["ADMIN", "STAFF"], async (
       data: {
         lineId: null,
         lineUserId: null,
-        lineNotificationsEnabled: false
+        // Do not change global notification flag on unbind
       },
       select: {
         teacherId: true,

@@ -78,7 +78,7 @@ export const PATCH = withBranchAccess(["ADMIN", "STAFF"], async (
         updateData = {
           lineId: null,
           lineUserId: null,
-          lineNotificationsEnabled: false
+          // Do not change global notification flag on unbind
         };
         break;
 
