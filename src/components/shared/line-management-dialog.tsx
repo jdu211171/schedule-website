@@ -274,21 +274,37 @@ export function LineManagementDialog({
       notificationsEnabled: currentConnections.lineNotificationsEnabled,
     });
   } else {
+    // Derive per-slot linked status from per-channel links first; fall back to legacy fields
+    const activeStudentSlotLink = studentLinks.find(
+      (l) => l.accountSlot === "student" && !!l.enabled
+    );
+    const anyStudentSlotLink = studentLinks.find(
+      (l) => l.accountSlot === "student"
+    );
+    const activeParentSlotLink = studentLinks.find(
+      (l) => l.accountSlot === "parent" && !!l.enabled
+    );
+    const anyParentSlotLink = studentLinks.find(
+      (l) => l.accountSlot === "parent"
+    );
+
     connections.push(
       {
         type: "student",
         label: "生徒アカウント",
         icon: <User className="h-4 w-4" />,
-        lineId: currentConnections.lineId,
-        lineUserId: currentConnections.lineUserId,
+        // Treat as linked when there is an active per-channel link; otherwise fall back to legacy field
+        lineId: activeStudentSlotLink ? "linked" : currentConnections.lineId || (anyStudentSlotLink ? "linked" : null),
+        // Prefer showing the current active link's LINE User ID if available
+        lineUserId: activeStudentSlotLink?.lineUserId ?? currentConnections.lineUserId,
         notificationsEnabled: currentConnections.lineNotificationsEnabled,
       },
       {
         type: "parent",
         label: "保護者アカウント",
         icon: <Users className="h-4 w-4" />,
-        lineId: currentConnections.parentLineId1,
-        lineUserId: currentConnections.parentLineUserId1,
+        lineId: activeParentSlotLink ? "linked" : currentConnections.parentLineId1 || (anyParentSlotLink ? "linked" : null),
+        lineUserId: activeParentSlotLink?.lineUserId ?? currentConnections.parentLineUserId1,
         notificationsEnabled: currentConnections.parent1LineNotificationsEnabled,
       }
     );
