@@ -263,11 +263,13 @@ export function LineManagementDialog({
   const connections = [];
 
   if (userType === "teacher") {
+    const hasActiveTeacherLink = teacherLinks.some((l) => !!l.enabled);
     connections.push({
       type: "teacher",
       label: "講師アカウント",
       icon: <User className="h-4 w-4" />,
-      lineId: currentConnections.lineId,
+      // Consider linked when there is at least one active per-channel link
+      lineId: hasActiveTeacherLink ? "linked" : null,
       lineUserId: currentConnections.lineUserId,
       notificationsEnabled: currentConnections.lineNotificationsEnabled,
     });

@@ -19,6 +19,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
+import { fetcher } from "@/lib/fetcher";
 
 interface LineLinkingProps {
   userId: string;
@@ -193,8 +194,18 @@ export function LineLinking({
     onNotificationToggle?.(newValue);
   };
 
-  // For teachers, show the legacy single account view
+  // For teachers, show single account view but derive linked status from TeacherLineLink
   if (userType === 'teacher') {
+    // Load teacher's per-channel links to determine linked status
+    const { data: teacherLinksData } = useQuery<{ data: Array<{ enabled: boolean }> }>({
+      queryKey: ["teacher-line-links", userId],
+      queryFn: () => fetcher(`/api/teachers/${userId}/line-links?r=${Date.now()}`, { cache: "no-store" }),
+      // Keep UI snappy; status is a simple boolean derived from presence of links
+      staleTime: 30_000,
+    });
+
+    const hasActiveTeacherLink = !!teacherLinksData?.data?.some((l) => l.enabled);
+
     return (
       <Card>
         <CardHeader>
@@ -208,8 +219,8 @@ export function LineLinking({
                 メッセージアカウントと連携して授業の通知を受け取ります
               </CardDescription>
             </div>
-            <Badge variant={initialLineId ? "default" : "secondary"}>
-              {initialLineId ? (
+            <Badge variant={hasActiveTeacherLink ? "default" : "secondary"}>
+              {hasActiveTeacherLink ? (
                 <>
                   <Link className="h-3 w-3 mr-1" />
                   連携済み
@@ -227,7 +238,8 @@ export function LineLinking({
           <LineAccountCard
             accountType="student"
             accountName="講師アカウント"
-            lineId={initialLineId}
+            // Treat as linked when any active TeacherLineLink exists
+            lineId={hasActiveTeacherLink ? "linked" : null}
             username={username}
             lineUserId={lineUserId}
             notificationsEnabled={localNotificationsEnabled}
