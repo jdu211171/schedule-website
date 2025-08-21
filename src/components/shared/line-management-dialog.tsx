@@ -322,7 +322,8 @@ export function LineManagementDialog({
             <DialogDescription>{userName}さんのLINE連携状況</DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
+          {/* Scrollable content to prevent overflow */}
+          <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto pr-1">
             {/* Channel-specific linked accounts */}
             <div className="space-y-2">
               <p className="font-medium text-sm">チャネル連携</p>
@@ -333,12 +334,12 @@ export function LineManagementDialog({
                   <div className="text-sm text-muted-foreground">チャネル連携がありません</div>
                 ) : (
                   teacherLinks.map((link) => (
-                    <div key={link.id} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="text-sm">
-                        <div className="font-medium">{link.channelName}</div>
-                        <div className="text-xs text-muted-foreground">LINE ID: {link.lineUserId}</div>
+                    <div key={link.id} className="flex items-center justify-between gap-3 p-3 border rounded-lg">
+                      <div className="text-sm min-w-0">
+                        <div className="font-medium truncate" title={link.channelName}>{link.channelName}</div>
+                        <div className="text-xs text-muted-foreground break-all">LINE ID: {link.lineUserId}</div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 shrink-0">
                         <Badge variant={link.enabled ? "default" : "secondary"} className="text-xs">
                           {link.enabled ? "有効" : "無効"}
                         </Badge>
@@ -360,12 +361,14 @@ export function LineManagementDialog({
                   <div className="text-sm text-muted-foreground">チャネル連携がありません</div>
                 ) : (
                   studentLinks.map((link) => (
-                    <div key={link.id} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="text-sm">
-                        <div className="font-medium">{link.channelName}（{link.accountSlot}）</div>
-                        <div className="text-xs text-muted-foreground">LINE ID: {link.lineUserId}</div>
+                    <div key={link.id} className="flex items-center justify-between gap-3 p-3 border rounded-lg">
+                      <div className="text-sm min-w-0">
+                        <div className="font-medium truncate" title={`${link.channelName}（${link.accountSlot}）`}>
+                          {link.channelName}（{link.accountSlot}）
+                        </div>
+                        <div className="text-xs text-muted-foreground break-all">LINE ID: {link.lineUserId}</div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 shrink-0">
                         <Badge variant={link.enabled ? "default" : "secondary"} className="text-xs">
                           {link.enabled ? "有効" : "無効"}
                         </Badge>

@@ -9,10 +9,16 @@ import {
   Link,
   Unlink,
   Bell,
-  BellOff
+  BellOff,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Switch } from "@/components/ui/switch";
@@ -51,9 +57,9 @@ function LineAccountCard({
   lineUserId,
   notificationsEnabled,
   onNotificationToggle,
-  isMainAccount = false
+  isMainAccount = false,
 }: {
-  accountType: 'student' | 'parent';
+  accountType: "student" | "parent";
   accountName: string;
   lineId?: string | null;
   username: string;
@@ -92,19 +98,6 @@ function LineAccountCard({
     <div className="border rounded-lg p-4 space-y-3">
       <div className="flex items-center justify-between">
         <h4 className="font-medium text-sm">{accountName}</h4>
-        <Badge variant={isLinked ? "default" : "secondary"} className="text-xs">
-          {isLinked ? (
-            <>
-              <Link className="h-3 w-3 mr-1" />
-              連携済み
-            </>
-          ) : (
-            <>
-              <Unlink className="h-3 w-3 mr-1" />
-              未連携
-            </>
-          )}
-        </Badge>
       </div>
 
       {isLinked ? (
@@ -115,25 +108,6 @@ function LineAccountCard({
               メッセージアカウントが連携されています。
             </AlertDescription>
           </Alert>
-
-          {isMainAccount && onNotificationToggle && (
-            <div className="flex items-center justify-between p-2 bg-muted rounded">
-              <div className="flex items-center gap-2">
-                {notificationsEnabled ? (
-                  <Bell className="h-4 w-4 text-blue-600" />
-                ) : (
-                  <BellOff className="h-4 w-4 text-gray-400" />
-                )}
-                <Label className="text-xs">
-                  {notificationsEnabled ? "通知有効" : "通知無効"}
-                </Label>
-              </div>
-              <Switch
-                checked={notificationsEnabled}
-                onCheckedChange={onNotificationToggle}
-              />
-            </div>
-          )}
         </div>
       ) : (
         <div className="space-y-3">
@@ -166,6 +140,25 @@ function LineAccountCard({
           </div>
         </div>
       )}
+
+      {isMainAccount && onNotificationToggle && (
+        <div className="flex items-center justify-between p-2 bg-muted rounded">
+          <div className="flex items-center gap-2">
+            {notificationsEnabled ? (
+              <Bell className="h-4 w-4 text-blue-600" />
+            ) : (
+              <BellOff className="h-4 w-4 text-gray-400" />
+            )}
+            <Label className="text-xs">
+              {notificationsEnabled ? "通知有効" : "通知無効"}
+            </Label>
+          </div>
+          <Switch
+            checked={notificationsEnabled}
+            onCheckedChange={onNotificationToggle}
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -179,9 +172,11 @@ export function LineLinking({
   lineUserId,
   lineNotificationsEnabled: initialNotificationsEnabled,
   username,
-  onNotificationToggle
+  onNotificationToggle,
 }: LineLinkingProps) {
-  const [localNotificationsEnabled, setLocalNotificationsEnabled] = useState(initialNotificationsEnabled ?? true);
+  const [localNotificationsEnabled, setLocalNotificationsEnabled] = useState(
+    initialNotificationsEnabled ?? true,
+  );
 
   // Update local state when prop changes
   useEffect(() => {
@@ -195,16 +190,23 @@ export function LineLinking({
   };
 
   // For teachers, show single account view but derive linked status from TeacherLineLink
-  if (userType === 'teacher') {
+  if (userType === "teacher") {
     // Load teacher's per-channel links to determine linked status
-    const { data: teacherLinksData } = useQuery<{ data: Array<{ enabled: boolean }> }>({
+    const { data: teacherLinksData } = useQuery<{
+      data: Array<{ enabled: boolean }>;
+    }>({
       queryKey: ["teacher-line-links", userId],
-      queryFn: () => fetcher(`/api/teachers/${userId}/line-links?r=${Date.now()}`, { cache: "no-store" }),
+      queryFn: () =>
+        fetcher(`/api/teachers/${userId}/line-links?r=${Date.now()}`, {
+          cache: "no-store",
+        }),
       // Keep UI snappy; status is a simple boolean derived from presence of links
       staleTime: 30_000,
     });
 
-    const hasActiveTeacherLink = !!teacherLinksData?.data?.some((l) => l.enabled);
+    const hasActiveTeacherLink = !!teacherLinksData?.data?.some(
+      (l) => l.enabled,
+    );
 
     return (
       <Card>
@@ -219,19 +221,6 @@ export function LineLinking({
                 メッセージアカウントと連携して授業の通知を受け取ります
               </CardDescription>
             </div>
-            <Badge variant={hasActiveTeacherLink ? "default" : "secondary"}>
-              {hasActiveTeacherLink ? (
-                <>
-                  <Link className="h-3 w-3 mr-1" />
-                  連携済み
-                </>
-              ) : (
-                <>
-                  <Unlink className="h-3 w-3 mr-1" />
-                  未連携
-                </>
-              )}
-            </Badge>
           </div>
         </CardHeader>
         <CardContent>
@@ -267,19 +256,6 @@ export function LineLinking({
               生徒と保護者（最大2名）のメッセージアカウントを連携できます
             </CardDescription>
           </div>
-          <Badge variant={hasAnyConnection ? "default" : "secondary"}>
-            {hasAnyConnection ? (
-              <>
-                <Link className="h-3 w-3 mr-1" />
-                {[initialLineId, parentLineId1].filter(Boolean).length}件連携中
-              </>
-            ) : (
-              <>
-                <Unlink className="h-3 w-3 mr-1" />
-                未連携
-              </>
-            )}
-          </Badge>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -294,7 +270,7 @@ export function LineLinking({
             onNotificationToggle={toggleNotifications}
             isMainAccount={true}
           />
-          
+
           <LineAccountCard
             accountType="parent"
             accountName="保護者"
@@ -310,7 +286,9 @@ export function LineLinking({
             <li>1. メッセージ公式アカウント (@992emavw) を友だち追加</li>
             <li>2. 各アカウントから表示されたコマンドを送信</li>
             <li>3. 連携完了のメッセージが届きます</li>
-            <li className="text-xs text-blue-600">※ 同じメッセージに同じ内容が複数届く場合があります</li>
+            <li className="text-xs text-blue-600">
+              ※ 同じメッセージに同じ内容が複数届く場合があります
+            </li>
           </ol>
         </div>
       </CardContent>
