@@ -64,8 +64,8 @@ export default function MasterDataPage() {
               <TabsTrigger value="staff">スタッフ</TabsTrigger>
             </>
           )}
-          <TabsTrigger value="students">生徒</TabsTrigger>
           <TabsTrigger value="teachers">講師</TabsTrigger>
+          <TabsTrigger value="students">生徒</TabsTrigger>
           <TabsTrigger value="subjects">科目</TabsTrigger>
           <TabsTrigger value="subjectTypes">科目タイプ</TabsTrigger>
           <TabsTrigger value="studentTypes">生徒タイプ</TabsTrigger>

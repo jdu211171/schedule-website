@@ -59,16 +59,6 @@ export default function UserProfileMenu() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
-          <Link href={dashboardLink} className="flex items-center w-full">
-            ダッシュボード
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
-          {/* TODO: make profile page */}
-          <Link href="/profile" className="flex items-center w-full">
-            プロフィール
-          </Link>
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => signOut()}>
           <span className="flex items-center">
