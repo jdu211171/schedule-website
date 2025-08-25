@@ -315,7 +315,7 @@ export function EnhancedAvailabilityRegularSelector({
               size="sm"
               onClick={setWeekdaysFullDay}
             >
-              平日終日設定
+              全てチェック
             </Button>
             <Button
               type="button"
