@@ -328,7 +328,7 @@ export const PATCH = withBranchAccess(
       }
 
       // If both start and end times are provided, validate them
-      if (startTime && endTime) {
+  if (startTime && endTime) {
         const newStartTime = createDateTime(baseDate, startTime);
         const newEndTime = createDateTime(baseDate, endTime);
 
@@ -346,11 +346,80 @@ export const PATCH = withBranchAccess(
           );
         }
       } else if (duration !== undefined) {
-        updateData.duration = duration;
-      }
+      updateData.duration = duration;
+    }
 
-      // Update class session
-      const updatedClassSession = await prisma.classSession.update({
+    // Determine effective fields for conflict checks
+    const effectiveDate = updateData.date ?? existingClassSession.date;
+    const effectiveTeacherId =
+      updateData.teacherId !== undefined
+        ? updateData.teacherId
+        : existingClassSession.teacherId;
+    const effectiveStudentId =
+      updateData.studentId !== undefined
+        ? updateData.studentId
+        : existingClassSession.studentId;
+    const effectiveStart = updateData.startTime ?? existingClassSession.startTime;
+    const effectiveEnd = updateData.endTime ?? existingClassSession.endTime;
+
+    // Validate overlap conflicts for teacher
+    if (effectiveTeacherId) {
+      const teacherConflict = await prisma.classSession.findFirst({
+        where: {
+          classId: { not: classId },
+          teacherId: effectiveTeacherId,
+          date: effectiveDate,
+          OR: [
+            { AND: [{ startTime: { lte: effectiveStart } }, { endTime: { gt: effectiveStart } }] },
+            { AND: [{ startTime: { lt: effectiveEnd } }, { endTime: { gte: effectiveEnd } }] },
+            { AND: [{ startTime: { gte: effectiveStart } }, { endTime: { lte: effectiveEnd } }] },
+          ],
+        },
+        include: {
+          teacher: { select: { name: true } },
+          student: { select: { name: true } },
+        },
+      });
+      if (teacherConflict) {
+        const conflictStart = format(teacherConflict.startTime, "HH:mm");
+        const conflictEnd = format(teacherConflict.endTime, "HH:mm");
+        return NextResponse.json(
+          { error: `講師は${conflictStart}-${conflictEnd}に別の授業があります` },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Validate overlap conflicts for student
+    if (effectiveStudentId) {
+      const studentConflict = await prisma.classSession.findFirst({
+        where: {
+          classId: { not: classId },
+          studentId: effectiveStudentId,
+          date: effectiveDate,
+          OR: [
+            { AND: [{ startTime: { lte: effectiveStart } }, { endTime: { gt: effectiveStart } }] },
+            { AND: [{ startTime: { lt: effectiveEnd } }, { endTime: { gte: effectiveEnd } }] },
+            { AND: [{ startTime: { gte: effectiveStart } }, { endTime: { lte: effectiveEnd } }] },
+          ],
+        },
+        include: {
+          teacher: { select: { name: true } },
+          student: { select: { name: true } },
+        },
+      });
+      if (studentConflict) {
+        const conflictStart = format(studentConflict.startTime, "HH:mm");
+        const conflictEnd = format(studentConflict.endTime, "HH:mm");
+        return NextResponse.json(
+          { error: `生徒は${conflictStart}-${conflictEnd}に別の授業があります` },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Update class session
+    const updatedClassSession = await prisma.classSession.update({
         where: { classId },
         data: updateData,
         include: {

@@ -325,19 +325,18 @@ export const PATCH = withBranchAccess(
         );
       }
 
-      // Update each future session
-      const updatedSessions = await prisma.$transaction(
-        futureSessions.map((session) => {
+      // Update each future session within a single transaction
+      const updatedSessions = await prisma.$transaction(async (tx) => {
+        const results: ClassSession[] = [] as any;
+        for (const session of futureSessions) {
           // If updating times, calculate for each session's date
+          // Format date as YYYY-MM-DD for the current session (used for messages and time recompute)
+          const sessionDateUTC = new Date(session.date);
+          const sessionDateStr = `${sessionDateUTC.getUTCFullYear()}-${String(
+            sessionDateUTC.getUTCMonth() + 1
+          ).padStart(2, "0")}-${String(sessionDateUTC.getUTCDate()).padStart(2, "0")}`;
+
           if (hasTimeUpdate) {
-            // Format date as YYYY-MM-DD for the current session
-            const sessionDateUTC = new Date(session.date);
-            const sessionDateStr = `${sessionDateUTC.getUTCFullYear()}-${String(
-              sessionDateUTC.getUTCMonth() + 1
-            ).padStart(2, "0")}-${String(sessionDateUTC.getUTCDate()).padStart(
-              2,
-              "0"
-            )}`;
 
             if (startTime) {
               const sessionStartTime = createDateTime(
@@ -352,7 +351,54 @@ export const PATCH = withBranchAccess(
             }
           }
 
-          return prisma.classSession.update({
+          // Overlap validation: compute effective values for this specific session
+          const effTeacherId = updateData.teacherId ?? session.teacherId;
+          const effStudentId = updateData.studentId ?? session.studentId;
+          const effDate = updateData.date ?? session.date;
+          const effStart = updateData.startTime ?? session.startTime;
+          const effEnd = updateData.endTime ?? session.endTime;
+
+          if (effTeacherId) {
+            const teacherConflict = await tx.classSession.findFirst({
+              where: {
+                classId: { not: session.classId },
+                teacherId: effTeacherId,
+                date: effDate,
+                OR: [
+                  { AND: [{ startTime: { lte: effStart } }, { endTime: { gt: effStart } }] },
+                  { AND: [{ startTime: { lt: effEnd } }, { endTime: { gte: effEnd } }] },
+                  { AND: [{ startTime: { gte: effStart } }, { endTime: { lte: effEnd } }] },
+                ],
+              },
+              select: { classId: true },
+            });
+
+            if (teacherConflict) {
+              throw new Error(`講師の時間重複が検出されました（${sessionDateStr}）`);
+            }
+          }
+
+          if (effStudentId) {
+            const studentConflict = await tx.classSession.findFirst({
+              where: {
+                classId: { not: session.classId },
+                studentId: effStudentId,
+                date: effDate,
+                OR: [
+                  { AND: [{ startTime: { lte: effStart } }, { endTime: { gt: effStart } }] },
+                  { AND: [{ startTime: { lt: effEnd } }, { endTime: { gte: effEnd } }] },
+                  { AND: [{ startTime: { gte: effStart } }, { endTime: { lte: effEnd } }] },
+                ],
+              },
+              select: { classId: true },
+            });
+
+            if (studentConflict) {
+              throw new Error(`生徒の時間重複が検出されました（${sessionDateStr}）`);
+            }
+          }
+
+          const updated = await tx.classSession.update({
             where: { classId: session.classId },
             data: updateData,
             include: {
@@ -394,8 +440,12 @@ export const PATCH = withBranchAccess(
               },
             },
           });
-        })
-      );
+
+          results.push(updated as any);
+        }
+
+        return results as any;
+      });
 
       // Format response
       const formattedSessions = updatedSessions.map(formatClassSession);
@@ -410,11 +460,16 @@ export const PATCH = withBranchAccess(
           pages: 1,
         },
       });
-    } catch (error) {
+  } catch (error) {
       console.error("Error updating class session series:", error);
+      const message =
+        error instanceof Error && error.message
+          ? error.message
+          : "授業シリーズの更新に失敗しました";
+      const status = error instanceof Error && error.message ? 400 : 500;
       return NextResponse.json(
-        { error: "授業シリーズの更新に失敗しました" },
-        { status: 500 }
+        { error: message },
+        { status }
       );
     }
   }

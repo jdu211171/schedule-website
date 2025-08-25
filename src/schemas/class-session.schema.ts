@@ -103,6 +103,8 @@ export type ConflictInfo = {
     | "STUDENT_UNAVAILABLE"
     | "TEACHER_WRONG_TIME"
     | "STUDENT_WRONG_TIME"
+    | "TEACHER_CONFLICT" // overlapping session for teacher
+    | "STUDENT_CONFLICT" // overlapping session for student
     | "BOOTH_CONFLICT"
     | "NO_SHARED_AVAILABILITY";
   details: string;

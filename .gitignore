@@ -64,3 +64,5 @@ next-env.d.ts
 # http requests
 /docs.http
 bun.lock
+
+scripts/

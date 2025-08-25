@@ -84,6 +84,10 @@ function getForceCreateWarning(conflictType: ConflictInfo["type"]): string {
       return "生徒の利用可能時間と異なります。";
     case "BOOTH_CONFLICT":
       return "ブースが重複予約されます。";
+    case "TEACHER_CONFLICT":
+      return "同一講師の授業が時間重複します。";
+    case "STUDENT_CONFLICT":
+      return "同一生徒の授業が時間重複します。";
     case "NO_SHARED_AVAILABILITY":
       return "共通の利用可能時間がありません。";
     default:
@@ -178,6 +182,20 @@ export function getConflictTypeInfo(type: ConflictInfo["type"]) {
       color: "purple",
       severity: "medium",
       title: "ブース重複",
+      canUseAlternative: true,
+    },
+    TEACHER_CONFLICT: {
+      icon: "👨‍🏫",
+      color: "purple",
+      severity: "high",
+      title: "講師重複",
+      canUseAlternative: true,
+    },
+    STUDENT_CONFLICT: {
+      icon: "👨‍🎓",
+      color: "purple",
+      severity: "high",
+      title: "生徒重複",
       canUseAlternative: true,
     },
     NO_SHARED_AVAILABILITY: {

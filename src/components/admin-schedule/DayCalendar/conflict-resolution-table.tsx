@@ -54,6 +54,10 @@ const getConflictTypeLabel = (type: string): string => {
       return '休暇期間';
     case 'BOOTH_CONFLICT':
       return '教室競合';
+    case 'TEACHER_CONFLICT':
+      return '講師重複';
+    case 'STUDENT_CONFLICT':
+      return '生徒重複';
     default:
       return '競合';
   }
@@ -71,6 +75,9 @@ const getConflictTypeColor = (type: string): string => {
       return 'text-blue-600 bg-blue-50 border-blue-200';
     case 'BOOTH_CONFLICT':
       return 'text-purple-600 bg-purple-50 border-purple-200';
+    case 'TEACHER_CONFLICT':
+    case 'STUDENT_CONFLICT':
+      return 'text-purple-700 bg-purple-50 border-purple-300';
     default:
       return 'text-gray-600 bg-gray-50 border-gray-200';
   }

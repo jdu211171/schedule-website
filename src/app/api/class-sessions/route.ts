@@ -289,6 +289,59 @@ const checkEnhancedAvailabilityConflicts = async (
   }
 };
 
+// Helper to find time-overlap conflicts for a given participant (teacher or student)
+const findOverlapConflict = async (
+  participant: "teacher" | "student",
+  participantId: string | null | undefined,
+  date: Date,
+  start: Date,
+  end: Date
+): Promise<
+  | null
+  | {
+      conflict: ClassSession & {
+        teacher?: { name: string } | null;
+        student?: { name: string } | null;
+      };
+      type: "TEACHER_CONFLICT" | "STUDENT_CONFLICT";
+    }
+> => {
+  if (!participantId) return null;
+
+  const whereBase: Record<string, unknown> = {
+    date,
+    OR: [
+      {
+        AND: [{ startTime: { lte: start } }, { endTime: { gt: start } }],
+      },
+      {
+        AND: [{ startTime: { lt: end } }, { endTime: { gte: end } }],
+      },
+      {
+        AND: [{ startTime: { gte: start } }, { endTime: { lte: end } }],
+      },
+    ] as any,
+  } as const;
+
+  const conflict = await prisma.classSession.findFirst({
+    where:
+      participant === "teacher"
+        ? ({ ...(whereBase as object), teacherId: participantId } as any)
+        : ({ ...(whereBase as object), studentId: participantId } as any),
+    include: {
+      teacher: { select: { name: true } },
+      student: { select: { name: true } },
+    },
+  });
+
+  if (!conflict) return null;
+
+  return {
+    conflict,
+    type: participant === "teacher" ? ("TEACHER_CONFLICT" as const) : ("STUDENT_CONFLICT" as const),
+  };
+};
+
 // GET - List class sessions with pagination and filters
 export const GET = withBranchAccess(
   ["ADMIN", "STAFF", "TEACHER", "STUDENT"],
@@ -705,6 +758,66 @@ export const POST = withBranchAccess(
           }
         }
 
+        // Check teacher time overlap
+        if (teacherId) {
+          const t = await findOverlapConflict(
+            "teacher",
+            teacherId,
+            dateObj,
+            effectiveStartDateTime,
+            effectiveEndDateTime
+          );
+          if (t) {
+            const conflictStartTime = format(t.conflict.startTime, "HH:mm");
+            const conflictEndTime = format(t.conflict.endTime, "HH:mm");
+            if (!shouldForceCreate) {
+              conflicts.push({
+                date: format(dateObj, "yyyy-MM-dd"),
+                dayOfWeek: getDayOfWeekFromDate(dateObj),
+                type: t.type,
+                details: `講師は${conflictStartTime}-${conflictEndTime}に別の授業があります`,
+                conflictingSession: {
+                  classId: t.conflict.classId,
+                  teacherName: t.conflict.teacher?.name || "不明",
+                  studentName: t.conflict.student?.name || "不明",
+                  startTime: conflictStartTime,
+                  endTime: conflictEndTime,
+                },
+              });
+            }
+          }
+        }
+
+        // Check student time overlap
+        if (studentId) {
+          const s = await findOverlapConflict(
+            "student",
+            studentId,
+            dateObj,
+            effectiveStartDateTime,
+            effectiveEndDateTime
+          );
+          if (s) {
+            const conflictStartTime = format(s.conflict.startTime, "HH:mm");
+            const conflictEndTime = format(s.conflict.endTime, "HH:mm");
+            if (!shouldForceCreate) {
+              conflicts.push({
+                date: format(dateObj, "yyyy-MM-dd"),
+                dayOfWeek: getDayOfWeekFromDate(dateObj),
+                type: s.type,
+                details: `生徒は${conflictStartTime}-${conflictEndTime}に別の授業があります`,
+                conflictingSession: {
+                  classId: s.conflict.classId,
+                  teacherName: s.conflict.teacher?.name || "不明",
+                  studentName: s.conflict.student?.name || "不明",
+                  startTime: conflictStartTime,
+                  endTime: conflictEndTime,
+                },
+              });
+            }
+          }
+        }
+
         // Handle conflicts based on user preference
         if (conflicts.length > 0 && !shouldForceCreate) {
           return NextResponse.json(
@@ -1029,6 +1142,62 @@ export const POST = withBranchAccess(
                   classId: boothConflict.classId,
                   teacherName: boothConflict.teacher?.name || "不明",
                   studentName: boothConflict.student?.name || "不明",
+                  startTime: conflictStartTime,
+                  endTime: conflictEndTime,
+                },
+              });
+            }
+          }
+
+          // Teacher overlap per date/time
+          if (teacherId) {
+            const t = await findOverlapConflict(
+              "teacher",
+              teacherId,
+              sessionDate,
+              sessionStartTime,
+              sessionEndTime
+            );
+            if (t) {
+              const conflictStartTime = format(t.conflict.startTime, "HH:mm");
+              const conflictEndTime = format(t.conflict.endTime, "HH:mm");
+              dateConflicts.push({
+                date: formattedSessionDate,
+                dayOfWeek: getDayOfWeekFromDate(sessionDate),
+                type: t.type,
+                details: `講師は${conflictStartTime}-${conflictEndTime}に別の授業があります`,
+                conflictingSession: {
+                  classId: t.conflict.classId,
+                  teacherName: t.conflict.teacher?.name || "不明",
+                  studentName: t.conflict.student?.name || "不明",
+                  startTime: conflictStartTime,
+                  endTime: conflictEndTime,
+                },
+              });
+            }
+          }
+
+          // Student overlap per date/time
+          if (studentId) {
+            const s = await findOverlapConflict(
+              "student",
+              studentId,
+              sessionDate,
+              sessionStartTime,
+              sessionEndTime
+            );
+            if (s) {
+              const conflictStartTime = format(s.conflict.startTime, "HH:mm");
+              const conflictEndTime = format(s.conflict.endTime, "HH:mm");
+              dateConflicts.push({
+                date: formattedSessionDate,
+                dayOfWeek: getDayOfWeekFromDate(sessionDate),
+                type: s.type,
+                details: `生徒は${conflictStartTime}-${conflictEndTime}に別の授業があります`,
+                conflictingSession: {
+                  classId: s.conflict.classId,
+                  teacherName: s.conflict.teacher?.name || "不明",
+                  studentName: s.conflict.student?.name || "不明",
                   startTime: conflictStartTime,
                   endTime: conflictEndTime,
                 },
