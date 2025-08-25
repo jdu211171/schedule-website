@@ -35,7 +35,7 @@ async function main() {
   // 1‑a. Branch
   const mainBranch = await prisma.branch.create({
     data: {
-      name: "川崎",
+      name: "川崎日航ホテル教室",
       notes: "デフォルト拠点",
       order: 1,
     },
@@ -112,44 +112,85 @@ async function main() {
     },
   });
 
-  // 1‑c. ClassType
-  const regularClassType = await prisma.classType.create({
-    data: {
-      name: "通常授業",
-      notes: "週次の通常授業枠",
-      order: 1,
-    },
+  // 1‑c. ClassType (idempotent without relying on null in composite unique)
+  let regularClassType =
+    (await prisma.classType.findFirst({
+      where: { name: "通常授業", parentId: null },
+    })) ||
+    (await prisma.classType.create({
+      data: { name: "通常授業", notes: "週次の通常授業枠", order: 1 },
+    }));
+  // Ensure notes/order are up to date
+  regularClassType = await prisma.classType.update({
+    where: { classTypeId: regularClassType.classTypeId },
+    data: { notes: "週次の通常授業枠", order: 1 },
   });
 
-  const specialClassType = await prisma.classType.create({
-    data: {
-      name: "特別授業",
-      notes: "夏期講習やイベントなどの特別枠",
-      order: 2,
-    },
+  let specialClassType =
+    (await prisma.classType.findFirst({
+      where: { name: "特別授業", parentId: null },
+    })) ||
+    (await prisma.classType.create({
+      data: { name: "特別授業", notes: "夏期講習やイベントなどの特別枠", order: 2 },
+    }));
+  specialClassType = await prisma.classType.update({
+    where: { classTypeId: specialClassType.classTypeId },
+    data: { notes: "夏期講習やイベントなどの特別枠", order: 2 },
   });
 
-  const rescheduleClassType = await prisma.classType.create({
-    data: {
-      name: "振替授業",
-      notes: "",
-      parentId: specialClassType.classTypeId,
-      order: 3,
-    },
+  let rescheduleClassType =
+    (await prisma.classType.findFirst({
+      where: { name: "振替授業", parentId: specialClassType.classTypeId },
+    })) ||
+    (await prisma.classType.create({
+      data: {
+        name: "振替授業",
+        notes: "",
+        parentId: specialClassType.classTypeId,
+        order: 3,
+      },
+    }));
+  rescheduleClassType = await prisma.classType.update({
+    where: { classTypeId: rescheduleClassType.classTypeId },
+    data: { notes: "", parentId: specialClassType.classTypeId, order: 3 },
   });
 
-  const makeupClassType = await prisma.classType.create({
+  let makeupClassType =
+    (await prisma.classType.findFirst({
+      where: { name: "補習授業", parentId: specialClassType.classTypeId },
+    })) ||
+    (await prisma.classType.create({
+      data: {
+        name: "補習授業",
+        notes: "欠席者向けの補習授業",
+        parentId: specialClassType.classTypeId,
+        order: 4,
+      },
+    }));
+  makeupClassType = await prisma.classType.update({
+    where: { classTypeId: makeupClassType.classTypeId },
     data: {
-      name: "補習授業",
       notes: "欠席者向けの補習授業",
       parentId: specialClassType.classTypeId,
       order: 4,
     },
   });
 
-  const testPrepClassType = await prisma.classType.create({
+  let testPrepClassType =
+    (await prisma.classType.findFirst({
+      where: { name: "テスト対策", parentId: specialClassType.classTypeId },
+    })) ||
+    (await prisma.classType.create({
+      data: {
+        name: "テスト対策",
+        notes: "定期テスト・入試対策授業",
+        parentId: specialClassType.classTypeId,
+        order: 5,
+      },
+    }));
+  testPrepClassType = await prisma.classType.update({
+    where: { classTypeId: testPrepClassType.classTypeId },
     data: {
-      name: "テスト対策",
       notes: "定期テスト・入試対策授業",
       parentId: specialClassType.classTypeId,
       order: 5,
@@ -157,32 +198,40 @@ async function main() {
   });
 
   // 1‑d. Subject Types
-  const elementarySubjectType = await prisma.subjectType.create({
-    data: {
+  const elementarySubjectType = await prisma.subjectType.upsert({
+    where: { name: "小学生" },
+    update: { notes: "", order: 1 },
+    create: {
       name: "小学生",
       notes: "",
       order: 1,
     },
   });
 
-  const juniorExamSubjectType = await prisma.subjectType.create({
-    data: {
+  const juniorExamSubjectType = await prisma.subjectType.upsert({
+    where: { name: "中学受験生" },
+    update: { notes: "", order: 2 },
+    create: {
       name: "中学受験生",
       notes: "",
       order: 2,
     },
   });
 
-  const juniorSubjectType = await prisma.subjectType.create({
-    data: {
+  const juniorSubjectType = await prisma.subjectType.upsert({
+    where: { name: "中学生" },
+    update: { notes: "", order: 3 },
+    create: {
       name: "中学生",
       notes: "",
       order: 3,
     },
   });
 
-  const highExamSubjectType = await prisma.subjectType.create({
-    data: {
+  const highExamSubjectType = await prisma.subjectType.upsert({
+    where: { name: "高校受験生" },
+    update: { notes: "", order: 4 },
+    create: {
       name: "高校受験生",
       notes: "",
       order: 4,
@@ -190,50 +239,64 @@ async function main() {
   });
 
   // 1‑e. Subjects
-  const mathSubject = await prisma.subject.create({
-    data: {
+  const mathSubject = await prisma.subject.upsert({
+    where: { name: "数学" },
+    update: { notes: "算数・数学全般" },
+    create: {
       name: "数学",
       notes: "算数・数学全般",
     },
   });
 
-  const englishSubject = await prisma.subject.create({
-    data: {
+  const englishSubject = await prisma.subject.upsert({
+    where: { name: "英語" },
+    update: { notes: "英語全般" },
+    create: {
       name: "英語",
       notes: "英語全般",
     },
   });
 
-  const japaneseSubject = await prisma.subject.create({
-    data: {
+  const japaneseSubject = await prisma.subject.upsert({
+    where: { name: "国語" },
+    update: { notes: "現代文・古文・漢文" },
+    create: {
       name: "国語",
       notes: "現代文・古文・漢文",
     },
   });
 
-  const scienceSubject = await prisma.subject.create({
-    data: {
+  const scienceSubject = await prisma.subject.upsert({
+    where: { name: "理科" },
+    update: { notes: "物理・化学・生物・地学" },
+    create: {
       name: "理科",
       notes: "物理・化学・生物・地学",
     },
   });
 
-  const socialSubject = await prisma.subject.create({
-    data: {
+  const socialSubject = await prisma.subject.upsert({
+    where: { name: "社会" },
+    update: { notes: "日本史・世界史・地理・公民" },
+    create: {
       name: "社会",
       notes: "日本史・世界史・地理・公民",
     },
   });
 
-  const programmingSubject = await prisma.subject.create({
-    data: {
+  const programmingSubject = await prisma.subject.upsert({
+    where: { name: "プログラミング" },
+    update: { notes: "各種プログラミング言語" },
+    create: {
       name: "プログラミング",
       notes: "各種プログラミング言語",
     },
   });
 
-  const businessSubject = await prisma.subject.create({
-    data: {
+  const businessSubject = await prisma.subject.upsert({
+    where: { name: "ビジネス" },
+    update: { notes: "ビジネススキル・マナー" },
+    create: {
       name: "ビジネス",
       notes: "ビジネススキル・マナー",
     },
@@ -1146,16 +1209,15 @@ async function main() {
     },
   ];
 
-  for (const availability of teacherAvailabilities) {
-    await prisma.userAvailability.create({
-      data: {
-        ...availability,
-        type: AvailabilityType.REGULAR,
-        status: AvailabilityStatus.APPROVED,
-        notes: "定期勤務時間",
-      },
-    });
-  }
+  await prisma.userAvailability.createMany({
+    data: teacherAvailabilities.map((availability) => ({
+      ...availability,
+      type: AvailabilityType.REGULAR,
+      status: AvailabilityStatus.APPROVED,
+      notes: "定期勤務時間",
+    })),
+    skipDuplicates: true,
+  })
 
   // Add some exception availabilities
   await prisma.userAvailability.createMany({
@@ -1182,14 +1244,32 @@ async function main() {
         notes: "特別対応日",
       },
     ],
+    skipDuplicates: true,
   });
 
   /* ------------------------------------------------------------------
    * 6. 授業 (ClassSession) と関連テーブル
    * ----------------------------------------------------------------*/
   // Create multiple class sessions
-  const classSession1 = await prisma.classSession.create({
-    data: {
+  const classSession1 = await prisma.classSession.upsert({
+    where: {
+      teacherId_date_startTime_endTime: {
+        teacherId: teacher1.teacherId,
+        date: getRelativeDateUTC(15),
+        startTime: new Date(Date.UTC(getRelativeDate(15).getFullYear(), getRelativeDate(15).getMonth(), getRelativeDate(15).getDate(), 9, 0, 0, 0)),
+        endTime: new Date(Date.UTC(getRelativeDate(15).getFullYear(), getRelativeDate(15).getMonth(), getRelativeDate(15).getDate(), 10, 30, 0, 0)),
+      },
+    },
+    update: {
+      studentId: student1.studentId,
+      subjectId: mathSubject.subjectId,
+      classTypeId: regularClassType.classTypeId,
+      boothId: booth1.boothId,
+      duration: 90,
+      branchId: mainBranch.branchId,
+      notes: "小学5年生 算数 分数の計算",
+    },
+    create: {
       teacherId: teacher1.teacherId,
       studentId: student1.studentId,
       subjectId: mathSubject.subjectId,
@@ -1204,8 +1284,25 @@ async function main() {
     },
   });
 
-  const classSession2 = await prisma.classSession.create({
-    data: {
+  const classSession2 = await prisma.classSession.upsert({
+    where: {
+      teacherId_date_startTime_endTime: {
+        teacherId: teacher2.teacherId,
+        date: getRelativeDateUTC(16),
+        startTime: new Date(Date.UTC(getRelativeDate(16).getFullYear(), getRelativeDate(16).getMonth(), getRelativeDate(16).getDate(), 14, 0, 0, 0)),
+        endTime: new Date(Date.UTC(getRelativeDate(16).getFullYear(), getRelativeDate(16).getMonth(), getRelativeDate(16).getDate(), 15, 30, 0, 0)),
+      },
+    },
+    update: {
+      studentId: student2.studentId,
+      subjectId: englishSubject.subjectId,
+      classTypeId: regularClassType.classTypeId,
+      boothId: booth2.boothId,
+      duration: 90,
+      branchId: mainBranch.branchId,
+      notes: "中2英語 現在完了形",
+    },
+    create: {
       teacherId: teacher2.teacherId,
       studentId: student2.studentId,
       subjectId: englishSubject.subjectId,
@@ -1220,8 +1317,25 @@ async function main() {
     },
   });
 
-  const classSession3 = await prisma.classSession.create({
-    data: {
+  const classSession3 = await prisma.classSession.upsert({
+    where: {
+      teacherId_date_startTime_endTime: {
+        teacherId: teacher1.teacherId,
+        date: getRelativeDateUTC(17),
+        startTime: new Date(Date.UTC(getRelativeDate(17).getFullYear(), getRelativeDate(17).getMonth(), getRelativeDate(17).getDate(), 16, 0, 0, 0)),
+        endTime: new Date(Date.UTC(getRelativeDate(17).getFullYear(), getRelativeDate(17).getMonth(), getRelativeDate(17).getDate(), 18, 0, 0, 0)),
+      },
+    },
+    update: {
+      studentId: student3.studentId,
+      subjectId: mathSubject.subjectId,
+      classTypeId: testPrepClassType.classTypeId,
+      boothId: booth3.boothId,
+      duration: 120,
+      branchId: mainBranch.branchId,
+      notes: "高3数学 大学受験対策 微分積分",
+    },
+    create: {
       teacherId: teacher1.teacherId,
       studentId: student3.studentId,
       subjectId: mathSubject.subjectId,
@@ -1236,8 +1350,25 @@ async function main() {
     },
   });
 
-  const classSession4 = await prisma.classSession.create({
-    data: {
+  const classSession4 = await prisma.classSession.upsert({
+    where: {
+      teacherId_date_startTime_endTime: {
+        teacherId: teacher4.teacherId,
+        date: getRelativeDateUTC(18),
+        startTime: new Date(Date.UTC(getRelativeDate(18).getFullYear(), getRelativeDate(18).getMonth(), getRelativeDate(18).getDate(), 10, 0, 0, 0)),
+        endTime: new Date(Date.UTC(getRelativeDate(18).getFullYear(), getRelativeDate(18).getMonth(), getRelativeDate(18).getDate(), 12, 0, 0, 0)),
+      },
+    },
+    update: {
+      studentId: student3.studentId,
+      subjectId: scienceSubject.subjectId,
+      classTypeId: testPrepClassType.classTypeId,
+      boothId: booth8.boothId,
+      duration: 120,
+      branchId: eastBranch.branchId,
+      notes: "高3化学 大学受験対策 有機化学",
+    },
+    create: {
       teacherId: teacher4.teacherId,
       studentId: student3.studentId,
       subjectId: scienceSubject.subjectId,
@@ -1252,8 +1383,25 @@ async function main() {
     },
   });
 
-  const classSession5 = await prisma.classSession.create({
-    data: {
+  const classSession5 = await prisma.classSession.upsert({
+    where: {
+      teacherId_date_startTime_endTime: {
+        teacherId: teacher5.teacherId,
+        date: getRelativeDateUTC(19),
+        startTime: new Date(Date.UTC(getRelativeDate(19).getFullYear(), getRelativeDate(19).getMonth(), getRelativeDate(19).getDate(), 19, 0, 0, 0)),
+        endTime: new Date(Date.UTC(getRelativeDate(19).getFullYear(), getRelativeDate(19).getMonth(), getRelativeDate(19).getDate(), 21, 0, 0, 0)),
+      },
+    },
+    update: {
+      studentId: student5.studentId,
+      subjectId: programmingSubject.subjectId,
+      classTypeId: specialClassType.classTypeId,
+      boothId: booth15.boothId,
+      duration: 120,
+      branchId: westBranch.branchId,
+      notes: "JavaScript基礎 社会人向け",
+    },
+    create: {
       teacherId: teacher5.teacherId,
       studentId: student5.studentId,
       subjectId: programmingSubject.subjectId,
@@ -1268,8 +1416,25 @@ async function main() {
     },
   });
 
-  const classSession6 = await prisma.classSession.create({
-    data: {
+  const classSession6 = await prisma.classSession.upsert({
+    where: {
+      teacherId_date_startTime_endTime: {
+        teacherId: teacher2.teacherId,
+        date: getRelativeDateUTC(20),
+        startTime: new Date(Date.UTC(getRelativeDate(20).getFullYear(), getRelativeDate(20).getMonth(), getRelativeDate(20).getDate(), 11, 0, 0, 0)),
+        endTime: new Date(Date.UTC(getRelativeDate(20).getFullYear(), getRelativeDate(20).getMonth(), getRelativeDate(20).getDate(), 12, 0, 0, 0)),
+      },
+    },
+    update: {
+      studentId: student6.studentId,
+      subjectId: japaneseSubject.subjectId,
+      classTypeId: regularClassType.classTypeId,
+      boothId: booth4.boothId,
+      duration: 60,
+      branchId: mainBranch.branchId,
+      notes: "小3国語 音読練習",
+    },
+    create: {
       teacherId: teacher2.teacherId,
       studentId: student6.studentId,
       subjectId: japaneseSubject.subjectId,
@@ -1284,8 +1449,25 @@ async function main() {
     },
   });
 
-  const classSession7 = await prisma.classSession.create({
-    data: {
+  const classSession7 = await prisma.classSession.upsert({
+    where: {
+      teacherId_date_startTime_endTime: {
+        teacherId: teacher4.teacherId,
+        date: getRelativeDateUTC(21),
+        startTime: new Date(Date.UTC(getRelativeDate(21).getFullYear(), getRelativeDate(21).getMonth(), getRelativeDate(21).getDate(), 15, 0, 0, 0)),
+        endTime: new Date(Date.UTC(getRelativeDate(21).getFullYear(), getRelativeDate(21).getMonth(), getRelativeDate(21).getDate(), 16, 30, 0, 0)),
+      },
+    },
+    update: {
+      studentId: student7.studentId,
+      subjectId: scienceSubject.subjectId,
+      classTypeId: regularClassType.classTypeId,
+      boothId: booth9.boothId,
+      duration: 90,
+      branchId: eastBranch.branchId,
+      notes: "高1物理 力学の基礎",
+    },
+    create: {
       teacherId: teacher4.teacherId,
       studentId: student7.studentId,
       subjectId: scienceSubject.subjectId,
@@ -1300,8 +1482,25 @@ async function main() {
     },
   });
 
-  const classSession8 = await prisma.classSession.create({
-    data: {
+  const classSession8 = await prisma.classSession.upsert({
+    where: {
+      teacherId_date_startTime_endTime: {
+        teacherId: teacher1.teacherId,
+        date: getRelativeDateUTC(22),
+        startTime: new Date(Date.UTC(getRelativeDate(22).getFullYear(), getRelativeDate(22).getMonth(), getRelativeDate(22).getDate(), 9, 0, 0, 0)),
+        endTime: new Date(Date.UTC(getRelativeDate(22).getFullYear(), getRelativeDate(22).getMonth(), getRelativeDate(22).getDate(), 12, 0, 0, 0)),
+      },
+    },
+    update: {
+      studentId: student8.studentId,
+      subjectId: mathSubject.subjectId,
+      classTypeId: testPrepClassType.classTypeId,
+      boothId: booth5.boothId,
+      duration: 180,
+      branchId: mainBranch.branchId,
+      notes: "浪人生数学 医学部受験対策",
+    },
+    create: {
       teacherId: teacher1.teacherId,
       studentId: student8.studentId,
       subjectId: mathSubject.subjectId,
@@ -1365,6 +1564,84 @@ async function main() {
       data: enrollment,
     });
   }
+
+  // Seed past class sessions (1–6 months before today) and enroll the student
+  const createPastSession = async (
+    monthsAgo: number,
+    startHourUTC: number,
+    endHourUTC: number,
+    notes: string
+  ) => {
+    const today = new Date();
+    // Base date at midnight UTC today
+    const baseDateUTC = new Date(
+      Date.UTC(
+        today.getUTCFullYear(),
+        today.getUTCMonth(),
+        today.getUTCDate(),
+        0,
+        0,
+        0,
+        0
+      )
+    );
+    // Move back by N months, preserving day-of-month when possible
+    baseDateUTC.setUTCMonth(baseDateUTC.getUTCMonth() - monthsAgo);
+
+    const start = new Date(
+      Date.UTC(
+        baseDateUTC.getUTCFullYear(),
+        baseDateUTC.getUTCMonth(),
+        baseDateUTC.getUTCDate(),
+        startHourUTC,
+        0,
+        0,
+        0
+      )
+    );
+    const end = new Date(
+      Date.UTC(
+        baseDateUTC.getUTCFullYear(),
+        baseDateUTC.getUTCMonth(),
+        baseDateUTC.getUTCDate(),
+        endHourUTC,
+        0,
+        0,
+        0
+      )
+    );
+
+    const session = await prisma.classSession.create({
+      data: {
+        teacherId: teacher1.teacherId,
+        studentId: student1.studentId,
+        subjectId: mathSubject.subjectId,
+        classTypeId: regularClassType.classTypeId,
+        boothId: booth1.boothId,
+        branchId: mainBranch.branchId,
+        date: baseDateUTC,
+        startTime: start,
+        endTime: end,
+        duration: (endHourUTC - startHourUTC) * 60,
+        notes,
+      },
+    });
+
+    await prisma.studentClassEnrollment.create({
+      data: {
+        classId: session.classId,
+        studentId: student1.studentId,
+        status: "Confirmed",
+      },
+    });
+  };
+
+  await createPastSession(1, 10, 11, "過去レッスン（1ヶ月前）");
+  await createPastSession(2, 10, 11, "過去レッスン（2ヶ月前）");
+  await createPastSession(3, 10, 11, "過去レッスン（3ヶ月前）");
+  await createPastSession(4, 10, 11, "過去レッスン（4ヶ月前）");
+  await createPastSession(5, 10, 11, "過去レッスン（5ヶ月前）");
+  await createPastSession(6, 10, 11, "過去レッスン（6ヶ月前）");
 
   // Vacations and Holidays
   const vacations = [
