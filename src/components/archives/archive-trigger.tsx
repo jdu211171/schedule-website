@@ -34,7 +34,7 @@ export function ArchiveTrigger() {
             手動アーカイブ実行
           </CardTitle>
           <CardDescription>
-            6ヶ月以上前の授業記録を手動でアーカイブします
+            過去の授業記録を手動でアーカイブします
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -42,7 +42,7 @@ export function ArchiveTrigger() {
             <div className="rounded-lg bg-muted p-4">
               <h4 className="text-sm font-medium mb-2">実行内容:</h4>
               <ul className="text-sm text-muted-foreground space-y-1">
-                <li>• 6ヶ月以上前の授業記録を検索</li>
+                <li>• 過去の授業記録を検索</li>
                 <li>• 講師・生徒・科目名などの情報を保存</li>
                 <li>• グループクラスの参加生徒情報を保存</li>
                 <li>• 元の授業記録を削除</li>
@@ -88,7 +88,7 @@ export function ArchiveTrigger() {
           <AlertDialogHeader>
             <AlertDialogTitle>アーカイブの実行確認</AlertDialogTitle>
             <AlertDialogDescription>
-              6ヶ月以上前の授業記録をアーカイブして削除します。
+              過去の授業記録をアーカイブして削除します。
               この操作は取り消せません。本当に実行しますか？
             </AlertDialogDescription>
           </AlertDialogHeader>

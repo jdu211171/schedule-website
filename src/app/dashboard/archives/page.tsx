@@ -23,7 +23,7 @@ export default async function ArchivesPage() {
       <div className="mb-6">
         <h1 className="text-3xl font-bold tracking-tight">アーカイブ管理</h1>
         <p className="text-muted-foreground mt-2">
-          6ヶ月以上前の授業記録を安全に保管・検索できます
+          過去の授業記録を安全に保管・検索できます
         </p>
       </div>
 
@@ -74,7 +74,7 @@ export default async function ArchivesPage() {
                       <div>
                         <p className="text-sm font-medium">対象期間</p>
                         <p className="text-sm text-muted-foreground">
-                          6ヶ月以上前の授業記録
+                          過去の授業記録
                         </p>
                       </div>
                     </div>

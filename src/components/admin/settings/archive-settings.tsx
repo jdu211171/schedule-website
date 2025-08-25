@@ -129,7 +129,7 @@ export function ArchiveSettings() {
           </p>
           {currentSettings?.isDefault && (
             <p className="text-sm text-blue-600">
-              現在はデフォルト設定（6ヶ月）を使用しています
+              現在はデフォルト設定を使用しています
             </p>
           )}
           <Alert className="mt-4">
