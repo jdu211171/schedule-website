@@ -978,14 +978,14 @@ export function StudentFormDialog({
                     className="flex items-center gap-2 "
                   >
                     <Clock className="h-4 w-4" />
-                    通常時
+                    通常日程
                   </TabsTrigger>
                   <TabsTrigger
                     value="availabilityIrregular"
                     className="flex items-center gap-2"
                   >
                     <Clock className="h-4 w-4" />
-                    特別時
+                    特別日程
                   </TabsTrigger>
                   <TabsTrigger
                     value="branches"
