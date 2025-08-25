@@ -26,7 +26,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { DateRangePicker } from "@/components/date-range-picker";
+import { SimpleDateRangePicker } from "@/components/fix-date-range-picker/simple-date-range-picker";
 import {
   useVacationCreate,
   useVacationUpdate,
@@ -205,9 +205,12 @@ export function VacationFormDialog({
                     期間
                   </FormLabel>
                   <FormControl>
-                    <DateRangePicker
-                      dateRange={field.value}
-                      onChange={field.onChange}
+                    <SimpleDateRangePicker
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      placeholder="期間を選択してください"
+                      showPresets={true}
+                      disablePastDates={false}
                     />
                   </FormControl>
                   <FormMessage />
