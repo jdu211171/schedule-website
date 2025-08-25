@@ -977,7 +977,7 @@ export function TeacherFormDialog({
                               </FormLabel>
                               <FormControl>
                                 <Input
-                                  placeholder="teacher_username"
+                                  placeholder="講師のユーザな"
                                   className="h-11"
                                   {...field}
                                 />
