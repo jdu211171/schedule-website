@@ -1,4 +1,6 @@
 import { Metadata } from "next";
+import { redirect } from "next/navigation";
+import { auth } from "@/auth";
 import { ArchiveTable } from "@/components/archives/archive-table";
 import { ArchiveStats } from "@/components/archives/archive-stats";
 import { ArchiveTrigger } from "@/components/archives/archive-trigger";
@@ -10,7 +12,12 @@ export const metadata: Metadata = {
   description: "過去の授業記録のアーカイブを管理",
 };
 
-export default function ArchivesPage() {
+export default async function ArchivesPage() {
+  const session = await auth();
+  if (session?.user?.role === "STAFF") {
+    redirect("/dashboard/schedules");
+  }
+
   return (
     <div className="space-y-4">
       <div className="mb-6">

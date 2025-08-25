@@ -951,20 +951,13 @@ export function StudentFormDialog({
                 onValueChange={setActiveTab}
                 className="w-full"
               >
-                <TabsList className="grid w-full grid-cols-7 mb-6">
+                <TabsList className="grid w-full grid-cols-6 mb-6">
                   <TabsTrigger
                     value="basic"
                     className="flex items-center gap-2 "
                   >
                     <User className="h-4 w-4" />
                     基本情報
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="account"
-                    className="flex items-center gap-2"
-                  >
-                    <Settings className="h-4 w-4" />
-                    アカウント
                   </TabsTrigger>
                   <TabsTrigger
                     value="line"
@@ -1013,6 +1006,57 @@ export function StudentFormDialog({
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-4">
+                        <FormField
+                          control={form.control}
+                          name="username"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-sm font-medium after:content-['*'] after:ml-1 after:text-destructive">
+                                ユーザー名
+                              </FormLabel>
+                              <FormControl>
+                                <Input
+                                  placeholder="student_username"
+                                  className="h-11"
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="password"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel
+                                className={`text-sm font-medium ${
+                                  isEditing
+                                    ? ""
+                                    : "after:content-['*'] after:ml-1 after:text-destructive"
+                                }`}
+                              >
+                                パスワード
+                                {isEditing ? "（変更する場合のみ）" : ""}
+                              </FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="password"
+                                  placeholder={
+                                    isEditing
+                                      ? "新しいパスワードを入力"
+                                      : "パスワードを入力"
+                                  }
+                                  className="h-11"
+                                  {...field}
+                                  value={field.value || ""}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                           <FormField
                             control={form.control}
@@ -1668,70 +1712,7 @@ export function StudentFormDialog({
                     </Card>
                   </TabsContent>
 
-                  <TabsContent value="account" className="space-y-6 mt-0">
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="text-lg flex items-center gap-2">
-                          <Settings className="h-5 w-5" />
-                          アカウント情報
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        <FormField
-                          control={form.control}
-                          name="username"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-sm font-medium after:content-['*'] after:ml-1 after:text-destructive">
-                                ユーザー名
-                              </FormLabel>
-                              <FormControl>
-                                <Input
-                                  placeholder="student_username"
-                                  className="h-11"
-                                  {...field}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={form.control}
-                          name="password"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel
-                                className={`text-sm font-medium ${
-                                  isEditing
-                                    ? ""
-                                    : "after:content-['*'] after:ml-1 after:text-destructive"
-                                }`}
-                              >
-                                パスワード
-                                {isEditing ? "（変更する場合のみ）" : ""}
-                              </FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="password"
-                                  placeholder={
-                                    isEditing
-                                      ? "新しいパスワードを入力"
-                                      : "パスワードを入力"
-                                  }
-                                  className="h-11"
-                                  {...field}
-                                  value={field.value || ""}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </CardContent>
-                    </Card>
-                  </TabsContent>
+                  {/* アカウントタブは削除され、項目は基本情報の上部に移動しました */}
 
                   <TabsContent value="line" className="space-y-6 mt-0">
                     {student && (

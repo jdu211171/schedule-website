@@ -362,6 +362,7 @@ function MobileNavMenu({
 
 export default function Navbar() {
   const pathname = usePathname();
+  const { data: session } = useSession();
   const isTeacherRoute = pathname.startsWith("/teacher");
   const isStudentRoute = pathname.startsWith("/student");
 
@@ -370,6 +371,13 @@ export default function Navbar() {
     navItems = teacherNavItems;
   } else if (isStudentRoute) {
     navItems = studentNavItems;
+  }
+
+  // Hide アーカイブ and 設定 for STAFF users on dashboard routes
+  if (!isTeacherRoute && !isStudentRoute && session?.user?.role === "STAFF") {
+    navItems = navItems.filter(
+      (item) => item.href !== "/dashboard/archives" && item.href !== "/dashboard/settings"
+    );
   }
 
   let homeLink = "/dashboard/schedules";
