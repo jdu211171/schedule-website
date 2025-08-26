@@ -1122,12 +1122,12 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="overflow-y-auto max-h-[70vh]">
+        <div className={cn(conflictData ? "max-h-[70vh]" : "overflow-y-auto max-h-[70vh]")}>
           {conflictData ? (
             // Two-column layout when conflicts exist
             <div className="flex gap-6">
               {/* Left column - Form (disabled) - FIXED HEIGHT */}
-              <div className="w-[600px] flex-shrink-0">
+              <div className="w-[600px] flex-shrink-0 max-h-[70vh] overflow-auto">
                 <div className="text-sm font-medium mb-2 text-muted-foreground">
                   入力された情報:
                 </div>
@@ -1137,14 +1137,16 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
               </div>
 
               {/* Right column - Conflict Resolution Table */}
-              <div className="flex-1 min-w-0 border-l border-border pl-6">
-                <ConflictResolutionTable
-                  conflictData={conflictData}
-                  originalTime={{ startTime, endTime }}
-                  onSubmit={handleConflictResolution}
-                  onCancel={handleConflictCancel}
-                  isLoading={isSubmitting}
-                />
+              <div className="flex-1 min-w-0 border-l border-border pl-6 flex flex-col max-h-[70vh]">
+                <div className="flex-1 min-h-0">
+                  <ConflictResolutionTable
+                    conflictData={conflictData}
+                    originalTime={{ startTime, endTime }}
+                    onSubmit={handleConflictResolution}
+                    onCancel={handleConflictCancel}
+                    isLoading={isSubmitting}
+                  />
+                </div>
               </div>
             </div>
           ) : (

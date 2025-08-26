@@ -628,6 +628,24 @@ export const POST = withBranchAccess(
         const sessionAction = sessionActions?.find((action) => action.date === dateStr);
         const shouldForceCreate = forceCreate || sessionAction?.action === "FORCE_CREATE";
 
+        // Honor SKIP for single-session creates: return success without creating
+        if (sessionAction?.action === "SKIP") {
+          return NextResponse.json(
+            {
+              data: [],
+              message: "この日の授業はスキップされました",
+              skipped: true,
+              pagination: {
+                total: 0,
+                page: 1,
+                limit: 0,
+                pages: 0,
+              },
+            },
+            { status: 200 }
+          );
+        }
+
         // Determine times to use (original or alternative)
         let effectiveStartTime = startTime;
         let effectiveEndTime = endTime;
@@ -1028,13 +1046,30 @@ export const POST = withBranchAccess(
           // Handle user actions first
           if (userAction) {
             switch (userAction.action) {
-              case "SKIP":
+              case "SKIP": {
                 skippedDates.push(sessionDate);
                 continue;
-              case "FORCE_CREATE":
-                forcedDates.push(sessionDate);
-                validSessionDates.push(sessionDate);
+              }
+              case "FORCE_CREATE": {
+                // For FORCE_CREATE we still must avoid DB unique violations.
+                // If an identical session already exists for the teacher/date/time, skip instead of failing the whole batch.
+                const existingSession = await prisma.classSession.findFirst({
+                  where: {
+                    teacherId,
+                    date: sessionDate,
+                    startTime: sessionStartTime,
+                    endTime: sessionEndTime,
+                  },
+                });
+
+                if (existingSession) {
+                  skippedDates.push(sessionDate);
+                } else {
+                  forcedDates.push(sessionDate);
+                  validSessionDates.push(sessionDate);
+                }
                 continue;
+              }
               // USE_ALTERNATIVE continues to conflict checking with new times
             }
           }

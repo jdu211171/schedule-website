@@ -92,8 +92,15 @@ export const ConflictResolutionTable: React.FC<ConflictResolutionTableProps> = (
 }) => {
   const [rowStates, setRowStates] = useState<Record<string, ConflictRowState>>(() => {
     const initialState: Record<string, ConflictRowState> = {};
-    conflictData.conflicts.forEach(conflict => {
-      initialState[conflict.date] = {
+    // Initialize one state per DATE (not per conflict)
+    const uniqueDates = new Set<string>();
+    if (conflictData.conflictsByDate) {
+      Object.keys(conflictData.conflictsByDate).forEach((d) => uniqueDates.add(d));
+    } else {
+      conflictData.conflicts.forEach((c) => uniqueDates.add(c.date));
+    }
+    Array.from(uniqueDates).forEach((date) => {
+      initialState[date] = {
         selected: false,
         action: null,
         isEditing: false,
@@ -151,6 +158,7 @@ export const ConflictResolutionTable: React.FC<ConflictResolutionTableProps> = (
   }, []);
 
   // Computed values
+  // One row per DATE
   const selectedRows = useMemo(() => {
     return Object.entries(rowStates)
       .filter(([_, state]) => state.selected)
@@ -184,7 +192,7 @@ export const ConflictResolutionTable: React.FC<ConflictResolutionTableProps> = (
       [date]: { ...rowStates[date], selected: checked }
     }).filter(state => state.selected).length;
 
-    setSelectAll(newSelectedCount === conflictData.conflicts.length);
+    setSelectAll(newSelectedCount === (conflictData.conflictsByDate ? Object.keys(conflictData.conflictsByDate).length : new Set(conflictData.conflicts.map(c => c.date)).size));
   };
 
   const handleIndividualAction = (date: string, action: SessionAction['action']) => {
@@ -347,9 +355,9 @@ export const ConflictResolutionTable: React.FC<ConflictResolutionTableProps> = (
   };
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-4 h-full min-h-0">
       {/* Fixed header with bulk actions */}
-      <div className="p-3 bg-muted rounded-md">
+      <div className="p-3 bg-muted rounded-md shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
@@ -360,7 +368,7 @@ export const ConflictResolutionTable: React.FC<ConflictResolutionTableProps> = (
               />
               <span className="text-sm font-medium">すべて選択</span>
               <span className="text-xs text-muted-foreground">
-                ({selectedRows.length}/{conflictData.conflicts.length})
+                ({selectedRows.length}/{conflictData.conflictsByDate ? Object.keys(conflictData.conflictsByDate).length : new Set(conflictData.conflicts.map(c => c.date)).size})
               </span>
             </div>
 
@@ -402,7 +410,7 @@ export const ConflictResolutionTable: React.FC<ConflictResolutionTableProps> = (
       </div>
 
       {/* Scrollable table container with fixed height */}
-      <div className="border rounded-md h-[630px] overflow-hidden">
+      <div className="border rounded-md overflow-hidden flex-1 min-h-0">
         <div className="h-full overflow-y-auto">
           <Table>
             <TableHeader className="sticky top-0 bg-background z-10 border-b">
@@ -415,185 +423,203 @@ export const ConflictResolutionTable: React.FC<ConflictResolutionTableProps> = (
               </TableRow>
             </TableHeader>
             <TableBody>
-              {conflictData.conflicts.map((conflict, index) => {
-                const rowState = rowStates[conflict.date];
-                const displayTime = rowState.editedTime
-                  ? `${rowState.editedTime.startTime}-${rowState.editedTime.endTime}`
-                  : `${originalTime.startTime}-${originalTime.endTime}`;
+              {(() => {
+                const dateKeys = conflictData.conflictsByDate
+                  ? Object.keys(conflictData.conflictsByDate)
+                  : Array.from(new Set(conflictData.conflicts.map((c) => c.date)));
 
-                const uniqueKey = `${conflict.date}-${index}`;
+                return dateKeys.map((dateKey) => {
+                  const conflictsForDate = conflictData.conflictsByDate
+                    ? conflictData.conflictsByDate[dateKey]
+                    : conflictData.conflicts.filter((c) => c.date === dateKey);
 
-                return (
-                  <React.Fragment key={uniqueKey}>
-                    {/* Message row */}
-                    <TableRow className="border-b-0">
-                      <TableCell className="w-12"></TableCell>
-                      <TableCell colSpan={4} className="py-2 text-sm text-muted-foreground bg-muted/30">
-                        <div className="flex items-start gap-2">
-                          <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                          <span>{conflict.details}</span>
-                        </div>
-                      </TableCell>
-                    </TableRow>
+                  const rowState = rowStates[dateKey];
+                  const displayTime = rowState.editedTime
+                    ? `${rowState.editedTime.startTime}-${rowState.editedTime.endTime}`
+                    : `${originalTime.startTime}-${originalTime.endTime}`;
 
-                    {/* Main row */}
-                    <TableRow className={`hover:bg-muted/50 ${getRowStateStyles(rowState)}`}>
-                      <TableCell className="w-12">
-                        <Checkbox
-                          checked={rowState.selected}
-                          onCheckedChange={(checked) => handleRowSelect(conflict.date, !!checked)}
-                          disabled={isLoading}
-                        />
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        {formatDate(conflict.date)}
-                      </TableCell>
-                      <TableCell>
-                        {rowState.isEditing ? (
-                          <div className="flex items-center gap-2">
-                            <div className="flex items-center gap-2">
-                              {(() => {
-                                const startTime = rowState.tempStartTime || originalTime.startTime;
-                                const endTime = rowState.tempEndTime || originalTime.endTime;
-                                const isInvalidTime = startTime >= endTime;
+                  // Aggregate availability slots across conflicts for this date
+                  const aggregatedTeacherSlots = conflictsForDate.flatMap((c) => c.teacherSlots || []);
+                  const aggregatedStudentSlots = conflictsForDate.flatMap((c) => c.studentSlots || []);
 
-                                return (
-                                  <>
-                                    <div className={`${isInvalidTime ? 'ring-2 ring-red-500 rounded-md' : ''}`}>
-                                      <TimeInput
-                                        value={startTime}
-                                        onChange={(value) => handleTimeChange(conflict.date, 'start', value)}
-                                        className="w-24"
-                                        teacherAvailability={convertSlotsToAvailability(conflict.teacherSlots)}
-                                        studentAvailability={convertSlotsToAvailability(conflict.studentSlots)}
-                                        timeSlots={timeSlots}
-                                        usePortal={true}
-                                      />
-                                    </div>
-                                    <span className={`text-muted-foreground ${isInvalidTime ? 'text-red-500' : ''}`}>-</span>
-                                    <div className={`${isInvalidTime ? 'ring-2 ring-red-500 rounded-md' : ''}`}>
-                                      <TimeInput
-                                        value={endTime}
-                                        onChange={(value) => handleTimeChange(conflict.date, 'end', value)}
-                                        className="w-24"
-                                        teacherAvailability={convertSlotsToAvailability(conflict.teacherSlots)}
-                                        studentAvailability={convertSlotsToAvailability(conflict.studentSlots)}
-                                        timeSlots={timeSlots}
-                                        usePortal={true}
-                                      />
-                                    </div>
-                                  </>
-                                );
-                              })()}
+                  return (
+                    <React.Fragment key={dateKey}>
+                      {/* One or more message rows for this date */}
+                      {conflictsForDate.map((conflict, idx) => (
+                        <TableRow className="border-b-0" key={`${dateKey}-msg-${idx}`}>
+                          <TableCell className="w-12"></TableCell>
+                          <TableCell colSpan={4} className="py-2 text-sm text-muted-foreground bg-muted/30">
+                            <div className="flex items-start gap-2">
+                              <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                              <span>{conflict.details}</span>
                             </div>
-                            <div className="flex flex-col gap-1 ml-2">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => handleSaveTimeEdit(conflict.date)}
-                                className="h-6 w-6 p-0 hover:bg-green-100 text-green-600"
-                                disabled={(() => {
+                          </TableCell>
+                        </TableRow>
+                      ))}
+
+                      {/* Single main action row per date */}
+                      <TableRow className={`hover:bg-muted/50 ${getRowStateStyles(rowState)}`}>
+                        <TableCell className="w-12">
+                          <Checkbox
+                            checked={rowState.selected}
+                            onCheckedChange={(checked) => handleRowSelect(dateKey, !!checked)}
+                            disabled={isLoading}
+                          />
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          {formatDate(dateKey)}
+                        </TableCell>
+                        <TableCell>
+                          {rowState.isEditing ? (
+                            <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2">
+                                {(() => {
                                   const startTime = rowState.tempStartTime || originalTime.startTime;
                                   const endTime = rowState.tempEndTime || originalTime.endTime;
-                                  return startTime >= endTime;
+                                  const isInvalidTime = startTime >= endTime;
+
+                                  return (
+                                    <>
+                                      <div className={`${isInvalidTime ? 'ring-2 ring-red-500 rounded-md' : ''}`}>
+                                        <TimeInput
+                                          value={startTime}
+                                          onChange={(value) => handleTimeChange(dateKey, 'start', value)}
+                                          className="w-24"
+                                          teacherAvailability={convertSlotsToAvailability(aggregatedTeacherSlots)}
+                                          studentAvailability={convertSlotsToAvailability(aggregatedStudentSlots)}
+                                          timeSlots={timeSlots}
+                                          usePortal={true}
+                                        />
+                                      </div>
+                                      <span className={`text-muted-foreground ${isInvalidTime ? 'text-red-500' : ''}`}>-</span>
+                                      <div className={`${isInvalidTime ? 'ring-2 ring-red-500 rounded-md' : ''}`}>
+                                        <TimeInput
+                                          value={endTime}
+                                          onChange={(value) => handleTimeChange(dateKey, 'end', value)}
+                                          className="w-24"
+                                          teacherAvailability={convertSlotsToAvailability(aggregatedTeacherSlots)}
+                                          studentAvailability={convertSlotsToAvailability(aggregatedStudentSlots)}
+                                          timeSlots={timeSlots}
+                                          usePortal={true}
+                                        />
+                                      </div>
+                                    </>
+                                  );
                                 })()}
-                              >
-                                <Check className="w-4 h-4" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => handleCancelTimeEdit(conflict.date)}
-                                className="h-6 w-6 p-0 hover:bg-red-100 text-red-600"
-                              >
-                                <XIcon className="w-4 h-4" />
-                              </Button>
+                              </div>
+                              <div className="flex flex-col gap-1 ml-2">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handleSaveTimeEdit(dateKey)}
+                                  className="h-6 w-6 p-0 hover:bg-green-100 text-green-600"
+                                  disabled={(() => {
+                                    const startTime = rowState.tempStartTime || originalTime.startTime;
+                                    const endTime = rowState.tempEndTime || originalTime.endTime;
+                                    return startTime >= endTime;
+                                  })()}
+                                >
+                                  <Check className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handleCancelTimeEdit(dateKey)}
+                                  className="h-6 w-6 p-0 hover:bg-red-100 text-red-600"
+                                >
+                                  <XIcon className="w-4 h-4" />
+                                </Button>
+                              </div>
                             </div>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-2">
-                            <span
-                              className={`cursor-pointer hover:bg-muted/50 px-2 py-1 rounded ${
-                                rowState.editedTime ? 'font-semibold text-green-600' : ''
-                              }`}
-                              onClick={() => handleStartTimeEdit(conflict.date)}
-                            >
-                              {displayTime}
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={`cursor-pointer hover:bg-muted/50 px-2 py-1 rounded ${
+                                  rowState.editedTime ? 'font-semibold text-green-600' : ''
+                                }`}
+                                onClick={() => handleStartTimeEdit(dateKey)}
+                              >
+                                {displayTime}
+                              </span>
+                              {rowState.editedTime && (
+                                <span className="text-xs text-green-600">(編集済み)</span>
+                              )}
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {conflictsForDate.length === 1 ? (
+                            <span className={`px-1 py-0.5 rounded text-xs border ${getConflictTypeColor(conflictsForDate[0].type)}`}>
+                              {getConflictTypeLabel(conflictsForDate[0].type)}
                             </span>
-                            {rowState.editedTime && (
-                              <span className="text-xs text-green-600">(編集済み)</span>
-                            )}
+                          ) : (
+                            <span className={`px-1 py-0.5 rounded text-xs border`}>複数の競合</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleIndividualAction(dateKey, 'USE_ALTERNATIVE')}
+                              disabled={isLoading}
+                              className={`hover:bg-accent/50 ${
+                                rowState.action === 'USE_ALTERNATIVE'
+                                  ? 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900 dark:text-green-200 dark:hover:bg-green-800'
+                                  : ''
+                              }`}
+                            >
+                              <Edit3 className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleIndividualAction(dateKey, 'SKIP')}
+                              disabled={isLoading}
+                              className={`hover:bg-accent/50 ${
+                                rowState.action === 'SKIP'
+                                  ? 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900 dark:text-red-200 dark:hover:bg-red-800 border border-red-300 dark:border-red-700'
+                                  : ''
+                              }`}
+                            >
+                              <SkipForward className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleIndividualAction(dateKey, 'FORCE_CREATE')}
+                              disabled={isLoading}
+                              className={`hover:bg-accent/50 ${
+                                rowState.action === 'FORCE_CREATE'
+                                  ? 'bg-orange-100 text-orange-700 hover:bg-orange-200 dark:bg-orange-900 dark:text-orange-200 dark:hover:bg-orange-800'
+                                  : ''
+                              }`}
+                            >
+                              <Zap className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleReset(dateKey)}
+                              disabled={isLoading || !rowState.action}
+                              className="hover:bg-accent/50"
+                            >
+                              <RotateCcw className="w-4 h-4" />
+                            </Button>
                           </div>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <span className={`px-1 py-0.5 rounded text-xs border ${getConflictTypeColor(conflict.type)}`}>
-                          {getConflictTypeLabel(conflict.type)}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleIndividualAction(conflict.date, 'USE_ALTERNATIVE')}
-                            disabled={isLoading}
-                            className={`hover:bg-accent/50 ${
-                              rowState.action === 'USE_ALTERNATIVE'
-                                ? 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900 dark:text-green-200 dark:hover:bg-green-800'
-                                : ''
-                            }`}
-                          >
-                            <Edit3 className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleIndividualAction(conflict.date, 'SKIP')}
-                            disabled={isLoading}
-                            className={`hover:bg-accent/50 ${
-                              rowState.action === 'SKIP'
-                                ? 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900 dark:text-red-200 dark:hover:bg-red-800 border border-red-300 dark:border-red-700'
-                                : ''
-                            }`}
-                          >
-                            <SkipForward className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleIndividualAction(conflict.date, 'FORCE_CREATE')}
-                            disabled={isLoading}
-                            className={`hover:bg-accent/50 ${
-                              rowState.action === 'FORCE_CREATE'
-                                ? 'bg-orange-100 text-orange-700 hover:bg-orange-200 dark:bg-orange-900 dark:text-orange-200 dark:hover:bg-orange-800'
-                                : ''
-                            }`}
-                          >
-                            <Zap className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleReset(conflict.date)}
-                            disabled={isLoading || !rowState.action}
-                            className="hover:bg-accent/50"
-                          >
-                            <RotateCcw className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  </React.Fragment>
-                );
-              })}
+                        </TableCell>
+                      </TableRow>
+                    </React.Fragment>
+                  );
+                });
+              })()}
             </TableBody>
           </Table>
         </div>
       </div>
 
       {/* Fixed footer with main actions */}
-      <div className="flex items-center justify-between pt-4">
+      <div className="flex items-center justify-between pt-4 shrink-0">
         <div className="text-sm text-muted-foreground">
           {hasAnyChanges ?
             `${Object.values(rowStates).filter(s => s.action).length}件の変更があります` :
