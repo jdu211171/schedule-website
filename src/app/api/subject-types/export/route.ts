@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 
 // CSV export handler for subject types
 export const GET = withRole(
-  ["ADMIN"],
+  ["ADMIN", "STAFF", "TEACHER"],
   async (request: NextRequest) => {
     const searchParams = request.nextUrl.searchParams;
 

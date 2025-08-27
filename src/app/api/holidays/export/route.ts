@@ -1,16 +1,20 @@
 // src/app/api/holidays/export/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { withRole } from "@/lib/auth";
+import { withBranchAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 // CSV export handler for holidays
-export const GET = withRole(
-  ["ADMIN"],
-  async (request: NextRequest) => {
+export const GET = withBranchAccess(
+  ["ADMIN", "STAFF", "TEACHER"],
+  async (request: NextRequest, session, branchId) => {
     const searchParams = request.nextUrl.searchParams;
 
-    // Fetch all holidays (vacations)
+    // For non-admins, limit to selected branch; admins export all
+    const where = session.user?.role === "ADMIN" ? {} : { branchId };
+
+    // Fetch holidays (vacations)
     const holidays = await prisma.vacation.findMany({
+      where,
       include: {
         branch: true,
       },

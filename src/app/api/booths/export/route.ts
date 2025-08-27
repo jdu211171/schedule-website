@@ -1,16 +1,17 @@
 // src/app/api/booths/export/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { withRole } from "@/lib/auth";
+import { withBranchAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 // CSV export handler for booths
-export const GET = withRole(
-  ["ADMIN"],
-  async (request: NextRequest) => {
+export const GET = withBranchAccess(
+  ["ADMIN", "STAFF"],
+  async (request: NextRequest, session, branchId) => {
     const searchParams = request.nextUrl.searchParams;
 
-    // Fetch all booths
+    // Fetch booths for selected branch (admins can still export per selected branch)
     const booths = await prisma.booth.findMany({
+      where: { branchId },
       include: {
         branch: true,
       },
