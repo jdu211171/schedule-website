@@ -49,15 +49,36 @@ async function handleImport(req: NextRequest, session: any) {
       );
     }
 
-    const actualHeaders = Object.keys(parseResult.data[0]);
+    // Remap localized headers (exported) to schema keys for import
+    const headerMap: Record<string, string> = {
+      "授業タイプ名": "name",
+      "備考": "notes",
+      "親タイプ": "parentName",
+      "表示順": "order",
+    };
+
+    let actualHeaders = Object.keys(parseResult.data[0]);
     const requiredHeaders = [...REQUIRED_CLASS_TYPE_CSV_HEADERS];
-    const missingHeaders = requiredHeaders.filter(h => !actualHeaders.includes(h));
+    let missingHeaders = requiredHeaders.filter((h) => !actualHeaders.includes(h));
+
+    if (missingHeaders.length > 0) {
+      const canRemap = actualHeaders.some((h) => headerMap[h]);
+      if (canRemap) {
+        parseResult.data = parseResult.data.map((row) => {
+          const out: Record<string, string> = {};
+          for (const [k, v] of Object.entries(row)) {
+            out[headerMap[k] ?? k] = v as string;
+          }
+          return out;
+        }) as any;
+        actualHeaders = Object.keys(parseResult.data[0]);
+        missingHeaders = requiredHeaders.filter((h) => !actualHeaders.includes(h));
+      }
+    }
 
     if (missingHeaders.length > 0) {
       return NextResponse.json(
-        {
-          error: `必須列が不足しています: ${missingHeaders.join(", ")}`
-        },
+        { error: `必須列が不足しています: ${missingHeaders.join(", ")}` },
         { status: 400 }
       );
     }

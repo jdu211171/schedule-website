@@ -49,15 +49,37 @@ async function handleImport(req: NextRequest, session: any) {
       );
     }
 
-    const actualHeaders = Object.keys(parseResult.data[0]);
+    // Remap localized headers (export) to schema keys for import
+    const headerMap: Record<string, string> = {
+      "休日名": "name",
+      "開始日": "startDate",
+      "終了日": "endDate",
+      "繰り返し": "isRecurring",
+      "備考": "description",
+    };
+
+    let actualHeaders = Object.keys(parseResult.data[0]);
     const requiredHeaders = [...REQUIRED_HOLIDAY_CSV_HEADERS];
-    const missingHeaders = requiredHeaders.filter(h => !actualHeaders.includes(h));
+    let missingHeaders = requiredHeaders.filter((h) => !actualHeaders.includes(h));
+
+    if (missingHeaders.length > 0) {
+      const canRemap = actualHeaders.some((h) => headerMap[h]);
+      if (canRemap) {
+        parseResult.data = parseResult.data.map((row) => {
+          const out: Record<string, string> = {};
+          for (const [k, v] of Object.entries(row)) {
+            out[headerMap[k] ?? k] = v as string;
+          }
+          return out;
+        }) as any;
+        actualHeaders = Object.keys(parseResult.data[0]);
+        missingHeaders = requiredHeaders.filter((h) => !actualHeaders.includes(h));
+      }
+    }
 
     if (missingHeaders.length > 0) {
       return NextResponse.json(
-        {
-          error: `必須列が不足しています: ${missingHeaders.join(", ")}`
-        },
+        { error: `必須列が不足しています: ${missingHeaders.join(", ")}` },
         { status: 400 }
       );
     }

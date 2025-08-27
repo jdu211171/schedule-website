@@ -50,15 +50,43 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
       );
     }
 
-    const actualHeaders = Object.keys(parseResult.data[0]);
+    // Remap localized headers (export) to schema keys for import
+    const headerMap: Record<string, string> = {
+      "ユーザー名": "username",
+      "メールアドレス": "email",
+      "パスワード": "password",
+      "名前": "name",
+      "所属校舎": "branchNames",
+    };
+
+    let actualHeaders = Object.keys(parseResult.data[0]);
     const requiredHeaders = [...REQUIRED_STAFF_CSV_HEADERS];
-    const missingHeaders = requiredHeaders.filter(h => !actualHeaders.includes(h));
+    let missingHeaders = requiredHeaders.filter((h) => !actualHeaders.includes(h));
+
+    if (missingHeaders.length > 0) {
+      const canRemap = actualHeaders.some((h) => headerMap[h]);
+      if (canRemap) {
+        parseResult.data = parseResult.data.map((row) => {
+          const out: Record<string, string> = {};
+          for (const [k, v] of Object.entries(row)) {
+            const key = headerMap[k] ?? k;
+            let value = (v as string) ?? "";
+            // Normalize Japanese delimiter for branch names
+            if (key === "branchNames") {
+              value = value.replace(/、/g, ",");
+            }
+            out[key] = value;
+          }
+          return out;
+        }) as any;
+        actualHeaders = Object.keys(parseResult.data[0]);
+        missingHeaders = requiredHeaders.filter((h) => !actualHeaders.includes(h));
+      }
+    }
 
     if (missingHeaders.length > 0) {
       return NextResponse.json(
-        {
-          error: `必須列が不足しています: ${missingHeaders.join(", ")}`
-        },
+        { error: `必須列が不足しています: ${missingHeaders.join(", ")}` },
         { status: 400 }
       );
     }

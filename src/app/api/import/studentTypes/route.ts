@@ -49,15 +49,40 @@ async function handleImport(req: NextRequest, session: any) {
       );
     }
 
-    const actualHeaders = Object.keys(parseResult.data[0]);
+    // Accept localized headers by mapping to schema keys when possible
+    const headerMap: Record<string, string> = {
+      // Japanese -> schema keys
+      "生徒タイプ名": "name",
+      "最大学年数": "maxYears",
+      "説明": "description",
+      "表示順": "order",
+    };
+
+    // If required headers are missing, try remapping localized headers
+    let actualHeaders = Object.keys(parseResult.data[0]);
     const requiredHeaders = [...REQUIRED_STUDENT_TYPE_CSV_HEADERS];
-    const missingHeaders = requiredHeaders.filter(h => !actualHeaders.includes(h));
+    let missingHeaders = requiredHeaders.filter((h) => !actualHeaders.includes(h));
+
+    if (missingHeaders.length > 0) {
+      // Attempt header remap
+      const canRemap = actualHeaders.some((h) => headerMap[h]);
+      if (canRemap) {
+        const remapped = parseResult.data.map((row) => {
+          const out: Record<string, string> = {};
+          for (const [k, v] of Object.entries(row)) {
+            out[headerMap[k] ?? k] = v as string;
+          }
+          return out;
+        });
+        parseResult.data = remapped as any;
+        actualHeaders = Object.keys(parseResult.data[0]);
+        missingHeaders = requiredHeaders.filter((h) => !actualHeaders.includes(h));
+      }
+    }
 
     if (missingHeaders.length > 0) {
       return NextResponse.json(
-        {
-          error: `必須列が不足しています: ${missingHeaders.join(", ")}`
-        },
+        { error: `必須列が不足しています: ${missingHeaders.join(", ")}` },
         { status: 400 }
       );
     }
