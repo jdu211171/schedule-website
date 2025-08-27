@@ -78,7 +78,7 @@ export const GET = withBranchAccess(
 
 // PATCH - Update a student type
 export const PATCH = withBranchAccess(
-  ["ADMIN"],
+  ["ADMIN", "STAFF"],
   async (request: NextRequest, session) => {
     try {
       const studentTypeId = request.url.split("/").pop();
@@ -170,7 +170,7 @@ export const PATCH = withBranchAccess(
 
 // DELETE - Delete a student type
 export const DELETE = withBranchAccess(
-  ["ADMIN"],
+  ["ADMIN", "STAFF"],
   async (request: NextRequest, session) => {
     const studentTypeId = request.url.split("/").pop();
 

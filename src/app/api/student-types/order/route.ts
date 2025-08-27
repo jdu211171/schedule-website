@@ -6,7 +6,7 @@ import { studentTypeOrderUpdateSchema } from "@/schemas/student-type.schema";
 
 // PATCH - Update student type order
 export const PATCH = withBranchAccess(
-  ["ADMIN"],
+  ["ADMIN", "STAFF"],
   async (request: NextRequest) => {
     try {
       const body = await request.json();
