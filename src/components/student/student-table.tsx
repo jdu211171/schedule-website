@@ -1162,6 +1162,24 @@ export function StudentTable() {
 
     exportToCSV({
       name: debouncedName || undefined,
+      status: filters.status.length > 0 ? filters.status : undefined,
+      studentType:
+        filters.studentType.length > 0 ? filters.studentType : undefined,
+      gradeYear: filters.gradeYear.length > 0 ? filters.gradeYear : undefined,
+      branch: filters.branch.length > 0 ? filters.branch : undefined,
+      subject: filters.subject.length > 0 ? filters.subject : undefined,
+      lineConnection:
+        filters.lineConnection.length > 0 ? filters.lineConnection : undefined,
+      schoolType:
+        filters.schoolType.length > 0 ? filters.schoolType : undefined,
+      examCategory:
+        filters.examCategory.length > 0 ? filters.examCategory : undefined,
+      examCategoryType:
+        filters.examCategoryType.length > 0
+          ? filters.examCategoryType
+          : undefined,
+      birthDateRange: filters.birthDateRange,
+      examDateRange: filters.examDateRange,
       columns: visibleColumns,
     });
   };

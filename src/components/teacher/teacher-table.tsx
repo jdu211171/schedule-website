@@ -740,6 +740,11 @@ export function TeacherTable() {
 
     exportToCSV({
       name: debouncedName || undefined,
+      status: filters.status.length > 0 ? filters.status : undefined,
+      branch: filters.branch.length > 0 ? filters.branch : undefined,
+      subject: filters.subject.length > 0 ? filters.subject : undefined,
+      lineConnection:
+        filters.lineConnection.length > 0 ? filters.lineConnection : undefined,
       columns: visibleColumns,
     });
   };
