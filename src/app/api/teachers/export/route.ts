@@ -119,8 +119,9 @@ export const GET = withBranchAccess(
       });
     }
 
-    // Get visible columns from query params
-    const visibleColumns = searchParams.get("columns")?.split(",") || [
+    // Get visible columns from query params and ensure ID is included
+    const rawColumns = searchParams.get("columns")?.split(",") || [
+      "id",
       "name",
       "kanaName",
       "status",
@@ -129,6 +130,7 @@ export const GET = withBranchAccess(
       "branches",
       "subjectPreferences",
     ];
+    const visibleColumns = rawColumns.includes("id") ? rawColumns : ["id", ...rawColumns];
 
     // Filter out LINE-related fields, phone fields, and contactPhones for security/privacy
     const allowedColumns = visibleColumns.filter(col =>
@@ -137,6 +139,7 @@ export const GET = withBranchAccess(
 
     // Column headers mapping
     const columnHeaders: Record<string, string> = {
+      id: "ID",
       name: "名前",
       kanaName: "カナ",
       status: "ステータス",
@@ -167,6 +170,8 @@ export const GET = withBranchAccess(
     const rows = filteredTeachers.map((teacher) => {
       const row = allowedColumns.map((col) => {
         switch (col) {
+          case "id":
+            return teacher.teacherId || "";
           case "name":
             return teacher.name || "";
           case "kanaName":

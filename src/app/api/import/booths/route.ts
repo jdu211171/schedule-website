@@ -51,6 +51,7 @@ async function handleImport(req: NextRequest, session: any) {
 
     // Remap localized headers (export) to schema keys for import
     const headerMap: Record<string, string> = {
+      "ID": "id",
       "ブース名": "name",
       "校舎": "branchName",
       "ステータス": "status",
@@ -102,10 +103,12 @@ async function handleImport(req: NextRequest, session: any) {
       const rowNumber = i + 2; // +1 for header, +1 for 1-based indexing
 
       try {
+        const id = (row as any).id as string | undefined;
+
         // Validate row data
         const validated = boothImportSchema.parse(row);
 
-        // Check if branch exists
+        // Resolve branch
         const branchId = branchMap.get(validated.branchName);
         if (!branchId) {
           result.errors.push({
@@ -115,26 +118,40 @@ async function handleImport(req: NextRequest, session: any) {
           continue;
         }
 
-        // Check if booth with same name already exists in this branch
-        const existingBooth = await prisma.booth.findFirst({
-          where: {
-            name: validated.name,
-            branchId: branchId
+        if (id) {
+          const existing = await prisma.booth.findUnique({ where: { boothId: id } });
+          if (existing) {
+            await prisma.booth.update({
+              where: { boothId: id },
+              data: {
+                name: validated.name,
+                status: validated.status,
+                branchId,
+                order: validated.order,
+              },
+            });
+            result.success++;
+            continue;
           }
-        });
+        }
 
+        // Upsert by branch + name if no ID
+        const existingBooth = await prisma.booth.findFirst({
+          where: { name: validated.name, branchId },
+        });
         if (existingBooth) {
-          result.warnings.push({
-            row: rowNumber,
-            warnings: [`ブース「${validated.name}」は支店「${validated.branchName}」に既に存在します。スキップしました。`]
+          await prisma.booth.update({
+            where: { boothId: existingBooth.boothId },
+            data: {
+              status: validated.status,
+              order: validated.order ?? existingBooth.order,
+            },
           });
+          result.success++;
           continue;
         }
 
-        validatedData.push({
-          ...validated,
-          branchId
-        });
+        validatedData.push({ ...validated, branchId });
       } catch (error) {
         if (error instanceof z.ZodError) {
           result.errors.push(formatValidationErrors(error.errors, rowNumber));

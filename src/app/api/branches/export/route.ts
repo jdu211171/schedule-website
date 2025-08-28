@@ -28,15 +28,18 @@ export const GET = withRole(
       orderBy: { order: "asc" },
     });
 
-    // Get visible columns from query params
-    const visibleColumns = searchParams.get("columns")?.split(",") || [
+    // Get visible columns from query params and ensure ID is included
+    const rawColumns = searchParams.get("columns")?.split(",") || [
+      "id",
       "name",
       "notes",
       "userCount",
     ];
+    const visibleColumns = rawColumns.includes("id") ? rawColumns : ["id", ...rawColumns];
 
     // Column headers mapping
     const columnHeaders: Record<string, string> = {
+      id: "ID",
       name: "校舎名",
       notes: "備考",
       userCount: "ユーザー数",
@@ -51,6 +54,8 @@ export const GET = withRole(
     const rows = branches.map((branch) => {
       const row = visibleColumns.map((col) => {
         switch (col) {
+          case "id":
+            return branch.branchId || "";
           case "name":
             return branch.name || "";
           case "notes":

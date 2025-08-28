@@ -18,17 +18,20 @@ export const GET = withBranchAccess(
       orderBy: { order: "asc" },
     });
 
-    // Get visible columns from query params
-    const visibleColumns = searchParams.get("columns")?.split(",") || [
+    // Get visible columns from query params and ensure ID is included
+    const rawColumns = searchParams.get("columns")?.split(",") || [
+      "id",
       "name",
       "branch",
       "status",
       "notes",
       "order",
     ];
+    const visibleColumns = rawColumns.includes("id") ? rawColumns : ["id", ...rawColumns];
 
     // Column headers mapping
     const columnHeaders: Record<string, string> = {
+      id: "ID",
       name: "ブース名",
       branch: "校舎",
       status: "ステータス",
@@ -45,6 +48,8 @@ export const GET = withBranchAccess(
     const rows = booths.map((booth) => {
       const row = visibleColumns.map((col) => {
         switch (col) {
+          case "id":
+            return booth.boothId || "";
           case "name":
             return booth.name || "";
           case "branch":

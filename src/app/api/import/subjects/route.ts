@@ -51,6 +51,7 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
 
     // Allow localized headers (from export) by remapping to schema keys
     const headerMap: Record<string, string> = {
+      "ID": "id",
       "科目名": "name",
       "備考": "notes",
     };
@@ -94,19 +95,36 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
       const rowNumber = i + 2; // +1 for header, +1 for 1-based indexing
 
       try {
+        // Extract optional id for upsert
+        const id = (row as any).id as string | undefined;
+
         // Validate row data
         const validated = subjectImportSchema.parse(row);
 
-        // Check if subject with same name already exists
-        const existingSubject = await prisma.subject.findFirst({
-          where: { name: validated.name }
-        });
+        if (id) {
+          // Try update by ID
+          const existing = await prisma.subject.findUnique({ where: { subjectId: id } });
+          if (existing) {
+            await prisma.subject.update({
+              where: { subjectId: id },
+              data: { name: validated.name, notes: validated.notes ?? null },
+            });
+            result.success++;
+            continue;
+          }
+        }
 
+        // No ID path: create if not exists by unique name
+        const existingSubject = await prisma.subject.findFirst({
+          where: { name: validated.name },
+        });
         if (existingSubject) {
-          result.warnings.push({
-            row: rowNumber,
-            warnings: [`科目「${validated.name}」は既に存在します。スキップしました。`]
+          // Update existing by name
+          await prisma.subject.update({
+            where: { subjectId: existingSubject.subjectId },
+            data: { notes: validated.notes ?? existingSubject.notes },
           });
+          result.success++;
           continue;
         }
 

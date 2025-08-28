@@ -53,7 +53,7 @@ const getConflictTypeLabel = (type: string): string => {
     case 'VACATION':
       return '休暇期間';
     case 'BOOTH_CONFLICT':
-      return '教室競合';
+      return 'ブース競合';
     case 'TEACHER_CONFLICT':
       return '講師重複';
     case 'STUDENT_CONFLICT':

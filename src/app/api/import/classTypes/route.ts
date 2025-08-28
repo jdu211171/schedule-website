@@ -51,6 +51,7 @@ async function handleImport(req: NextRequest, session: any) {
 
     // Remap localized headers (exported) to schema keys for import
     const headerMap: Record<string, string> = {
+      "ID": "id",
       "授業タイプ名": "name",
       "備考": "notes",
       "親タイプ": "parentName",
@@ -102,10 +103,12 @@ async function handleImport(req: NextRequest, session: any) {
       const rowNumber = i + 2; // +1 for header, +1 for 1-based indexing
 
       try {
+        const id = (row as any).id as string | undefined;
+
         // Validate row data
         const validated = classTypeImportSchema.parse(row);
 
-        // Check if parent exists (if specified)
+        // Resolve parent if provided
         let parentId: string | undefined;
         if (validated.parentName) {
           parentId = classTypeMap.get(validated.parentName);
@@ -118,23 +121,42 @@ async function handleImport(req: NextRequest, session: any) {
           }
         }
 
-        // Check if class type with same name already exists
+        if (id) {
+          const existing = await prisma.classType.findUnique({ where: { classTypeId: id } });
+          if (existing) {
+            await prisma.classType.update({
+              where: { classTypeId: id },
+              data: {
+                name: validated.name,
+                notes: validated.notes ?? null,
+                parentId: parentId ?? existing.parentId,
+                order: validated.order ?? existing.order,
+              },
+            });
+            result.success++;
+            continue;
+          }
+        }
+
+        // Upsert by name if no ID
         const existingClassType = await prisma.classType.findFirst({
-          where: { name: validated.name }
+          where: { name: validated.name },
         });
 
         if (existingClassType) {
-          result.warnings.push({
-            row: rowNumber,
-            warnings: [`クラスタイプ「${validated.name}」は既に存在します。スキップしました。`]
+          await prisma.classType.update({
+            where: { classTypeId: existingClassType.classTypeId },
+            data: {
+              notes: validated.notes ?? existingClassType.notes,
+              parentId: parentId ?? existingClassType.parentId,
+              order: validated.order ?? existingClassType.order,
+            },
           });
+          result.success++;
           continue;
         }
 
-        validatedData.push({
-          ...validated,
-          parentId
-        });
+        validatedData.push({ ...validated, parentId });
       } catch (error) {
         if (error instanceof z.ZodError) {
           result.errors.push(formatValidationErrors(error.errors, rowNumber));

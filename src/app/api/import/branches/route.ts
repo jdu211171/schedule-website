@@ -51,6 +51,7 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
 
     // Remap localized headers (export) to schema keys for import
     const headerMap: Record<string, string> = {
+      "ID": "id",
       "校舎名": "name",
       "備考": "notes",
       "表示順": "order",
@@ -95,19 +96,38 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
       const rowNumber = i + 2; // +1 for header, +1 for 1-based indexing
 
       try {
+        const id = (row as any).id as string | undefined;
+
         // Validate row data
         const validated = branchImportSchema.parse(row);
 
-        // Check if branch with same name already exists
-        const existingBranch = await prisma.branch.findFirst({
-          where: { name: validated.name }
-        });
+        if (id) {
+          const existing = await prisma.branch.findUnique({ where: { branchId: id } });
+          if (existing) {
+            await prisma.branch.update({
+              where: { branchId: id },
+              data: {
+                name: validated.name,
+                notes: validated.notes ?? existing.notes,
+                order: validated.order ?? existing.order,
+              },
+            });
+            result.success++;
+            continue;
+          }
+        }
 
+        // Upsert by unique name when no ID
+        const existingBranch = await prisma.branch.findFirst({ where: { name: validated.name } });
         if (existingBranch) {
-          result.warnings.push({
-            row: rowNumber,
-            warnings: [`支店「${validated.name}」は既に存在します。スキップしました。`]
+          await prisma.branch.update({
+            where: { branchId: existingBranch.branchId },
+            data: {
+              notes: validated.notes ?? existingBranch.notes,
+              order: validated.order ?? existingBranch.order,
+            },
           });
+          result.success++;
           continue;
         }
 

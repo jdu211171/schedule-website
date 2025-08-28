@@ -51,6 +51,7 @@ async function handleImport(req: NextRequest, session: any) {
 
     // Remap localized headers (export) to schema keys for import
     const headerMap: Record<string, string> = {
+      "ID": "id",
       "休日名": "name",
       "開始日": "startDate",
       "終了日": "endDate",
@@ -97,23 +98,47 @@ async function handleImport(req: NextRequest, session: any) {
       const rowNumber = i + 2; // +1 for header, +1 for 1-based indexing
 
       try {
+        const id = (row as any).id as string | undefined;
+
         // Validate row data
         const validated = holidayImportSchema.parse(row);
 
-        // Check if holiday with same name and dates already exists
+        if (id) {
+          const existing = await prisma.vacation.findUnique({ where: { id } });
+          if (existing) {
+            await prisma.vacation.update({
+              where: { id },
+              data: {
+                name: validated.name,
+                startDate: validated.startDate,
+                endDate: validated.endDate,
+                isRecurring: validated.isRecurring,
+                notes: validated.description ?? existing.notes,
+              },
+            });
+            result.success++;
+            continue;
+          }
+        }
+
+        // Upsert by unique combo if no ID
         const existingHoliday = await prisma.vacation.findFirst({
           where: {
             name: validated.name,
             startDate: validated.startDate,
-            endDate: validated.endDate
-          }
+            endDate: validated.endDate,
+          },
         });
 
         if (existingHoliday) {
-          result.warnings.push({
-            row: rowNumber,
-            warnings: [`休日「${validated.name}」（${validated.startDate.toISOString().split('T')[0]} - ${validated.endDate.toISOString().split('T')[0]}）は既に存在します。スキップしました。`]
+          await prisma.vacation.update({
+            where: { id: existingHoliday.id },
+            data: {
+              isRecurring: validated.isRecurring,
+              notes: validated.description ?? existingHoliday.notes,
+            },
           });
+          result.success++;
           continue;
         }
 

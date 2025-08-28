@@ -286,7 +286,7 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
   const handleParentClassTypeChange = (parentTypeId: string) => {
     setSelectedParentClassTypeId(parentTypeId);
     setSelectedChildClassTypeId('');
-    
+
     // Обновляем classTypeId в editedLesson
     const updatedLesson = { ...editedLesson };
     updatedLesson.classTypeId = parentTypeId;
@@ -295,7 +295,7 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
 
   const handleChildClassTypeChange = (childTypeId: string) => {
     setSelectedChildClassTypeId(childTypeId);
-    
+
     // Обновляем classTypeId в editedLesson
     const updatedLesson = { ...editedLesson };
     updatedLesson.classTypeId = childTypeId;
@@ -512,7 +512,7 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
               </span>
             </DialogTitle>
             <DialogDescription>
-              {mode === 'view' ? '授業の詳細情報です' : '時間と教室を変更できます'}
+              {mode === 'view' ? '授業の詳細情報です' : '時間とブースを変更できます'}
             </DialogDescription>
           </DialogHeader>
 
@@ -574,19 +574,19 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
                 </div>
               </div>
               <div>
-                <label className="text-sm font-medium text-foreground">教室 {mode === 'edit' && <span className="text-destructive">*</span>}</label>
+                <label className="text-sm font-medium text-foreground">ブース {mode === 'edit' && <span className="text-destructive">*</span>}</label>
                 {mode === 'edit' ? (
                   <SearchableSelect
                     value={editedLesson.boothId || ''}
                     onValueChange={(value) => handleInputChange('boothId', value)}
                     items={boothItems}
-                    placeholder="教室を選択"
-                    searchPlaceholder="教室を検索..."
-                    emptyMessage="教室が見つかりません"
+                    placeholder="ブースを選択"
+                    searchPlaceholder="ブースを検索..."
+                    emptyMessage="ブースが見つかりません"
                   />
                 ) : (
                   <div className="border rounded-md p-2 mt-1 bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground border-input">
-                    {lesson.boothName || "教室未設定"}
+                    {lesson.boothName || "ブース未設定"}
                   </div>
                 )}
               </div>

@@ -24,17 +24,20 @@ export const GET = withRole(
       orderBy: { order: "asc" },
     });
 
-    // Get visible columns from query params
-    const visibleColumns = searchParams.get("columns")?.split(",") || [
+    // Get visible columns from query params and ensure ID is included
+    const rawColumns = searchParams.get("columns")?.split(",") || [
+      "id",
       "name",
       "email",
       "username",
       "isRestrictedAdmin",
       "branches",
     ];
+    const visibleColumns = rawColumns.includes("id") ? rawColumns : ["id", ...rawColumns];
 
     // Column headers mapping
     const columnHeaders: Record<string, string> = {
+      id: "ID",
       name: "名前",
       email: "メールアドレス",
       username: "ユーザー名",
@@ -51,6 +54,8 @@ export const GET = withRole(
     const rows = admins.map((admin) => {
       const row = visibleColumns.map((col) => {
         switch (col) {
+          case "id":
+            return admin.id || "";
           case "name":
             return admin.name || "";
           case "email":

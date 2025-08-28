@@ -52,6 +52,7 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
 
     // Remap localized headers (export) to schema keys for import
     const headerMap: Record<string, string> = {
+      "ID": "id",
       "ユーザー名": "username",
       "メールアドレス": "email",
       "パスワード": "password",
@@ -110,44 +111,53 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
       const rowNumber = i + 2; // +1 for header, +1 for 1-based indexing
 
       try {
+        const id = (row as any).id as string | undefined;
+
         // Validate row data
         const validated = adminImportSchema.parse(row);
-
-        // Check if user with same username or email already exists
-        const existingUser = await prisma.user.findFirst({
-          where: {
-            OR: [
-              { username: validated.username },
-              { email: validated.email }
-            ]
-          }
-        });
-
-        if (existingUser) {
-          if (existingUser.username === validated.username) {
-            result.errors.push({
-              row: rowNumber,
-              errors: [`ユーザー名「${validated.username}」は既に使用されています`]
-            });
-          } else {
-            result.errors.push({
-              row: rowNumber,
-              errors: [`メールアドレス「${validated.email}」は既に使用されています`]
-            });
-          }
-          continue;
-        }
 
         // Validate branch names if provided
         if (validated.branchNames && validated.branchNames.length > 0) {
           const invalidBranches = validated.branchNames.filter(name => !branchMap.has(name));
           if (invalidBranches.length > 0) {
-            result.errors.push({
-              row: rowNumber,
-              errors: [`支店が見つかりません: ${invalidBranches.join(", ")}`]
-            });
+            result.errors.push({ row: rowNumber, errors: [`支店が見つかりません: ${invalidBranches.join(", ")}`] });
             continue;
           }
+        }
+
+        if (id) {
+          const existingUser = await prisma.user.findUnique({ where: { id } });
+          if (existingUser) {
+            await prisma.user.update({
+              where: { id },
+              data: {
+                username: validated.username,
+                email: validated.email,
+                name: validated.name,
+                isRestrictedAdmin: validated.isRestrictedAdmin,
+              },
+            });
+
+            if (validated.branchNames && validated.branchNames.length > 0) {
+              await prisma.userBranch.deleteMany({ where: { userId: id } });
+              const branchIds = validated.branchNames.map(name => branchMap.get(name)).filter((x): x is string => !!x);
+              if (branchIds.length > 0) {
+                await prisma.userBranch.createMany({ data: branchIds.map(branchId => ({ userId: id, branchId })) });
+              }
+            }
+
+            result.success++;
+            continue;
+          }
+        }
+
+        // No ID: enforce uniqueness then create later
+        const conflict = await prisma.user.findFirst({ where: { OR: [{ username: validated.username }, { email: validated.email }] } });
+        if (conflict) {
+          result.errors.push({ row: rowNumber, errors: [
+            conflict.username === validated.username ? `ユーザー名「${validated.username}」は既に使用されています` : `メールアドレス「${validated.email}」は既に使用されています`
+          ]});
+          continue;
         }
 
         validatedData.push(validated);

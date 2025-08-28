@@ -66,7 +66,8 @@ export const GET = withBranchAccess(
     const examDateTo = searchParams.get("examDateTo") ? new Date(searchParams.get("examDateTo")!) : undefined;
 
     // Get visible columns from query params
-    const visibleColumns = searchParams.get("columns")?.split(",") || [
+    const rawColumns = searchParams.get("columns")?.split(",") || [
+      "id",
       "name",
       "kanaName",
       "status",
@@ -86,6 +87,9 @@ export const GET = withBranchAccess(
       "branches",
       "notes",
     ];
+
+    // Ensure ID is included and then filter out disallowed columns
+    const visibleColumns = rawColumns.includes("id") ? rawColumns : ["id", ...rawColumns];
 
     // Filter out LINE-related fields, phone fields, and contactPhones for security/privacy
     const allowedColumns = visibleColumns.filter(col =>
@@ -292,6 +296,10 @@ export const GET = withBranchAccess(
       }
     }
 
+    // Add ID header mapping
+    columnIdToHeader['id'] = 'ID';
+    headerToColumnId['ID'] = 'id';
+
     // Build CSV header from allowed columns
     const headers = allowedColumns
       .map((col) => columnIdToHeader[col] || col)
@@ -303,6 +311,9 @@ export const GET = withBranchAccess(
         let value = "";
         
         switch (col) {
+          case "id":
+            value = student.studentId || "";
+            break;
           case "name":
             value = student.name || "";
             break;

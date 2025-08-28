@@ -35,7 +35,7 @@ async function main() {
   // 1‑a. Branch
   const mainBranch = await prisma.branch.create({
     data: {
-      name: "川崎日航ホテル教室",
+      name: "川崎日航ホテルブース",
       notes: "デフォルト拠点",
       order: 1,
     },

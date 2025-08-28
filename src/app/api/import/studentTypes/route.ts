@@ -51,6 +51,7 @@ async function handleImport(req: NextRequest, session: any) {
 
     // Accept localized headers by mapping to schema keys when possible
     const headerMap: Record<string, string> = {
+      "ID": "id",
       // Japanese -> schema keys
       "生徒タイプ名": "name",
       "最大学年数": "maxYears",

@@ -516,7 +516,7 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
     // NEW: Booth validation
     const finalBoothId = lessonData.boothId || selectedBoothId;
     if (!finalBoothId) {
-      errors.push("教室を選択してください。");
+      errors.push("ブースを選択してください。");
     }
 
     if (!startTime) {
@@ -676,11 +676,10 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
           </div>
         </div>
 
-        {/* UPDATED: Booth Field - Conditional selector or static display */}
-        <div>
-          <label className="text-sm font-medium text-foreground">
-            教室 <span className="text-destructive">*</span>
-          </label>
+        {/* UPDATED: Booth Field - Conditional selector or static display */}          <div>
+            <label className="text-sm font-medium text-foreground">
+              ブース <span className="text-destructive">*</span>
+            </label>
           {!lessonData.boothId ? (
             // Show selector for weekly calendar (no pre-selected booth)
             <div className="flex items-center gap-2 mt-1">
@@ -689,9 +688,9 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
                   value={selectedBoothId}
                   onValueChange={handleBoothChange}
                   items={boothItems}
-                  placeholder="教室を選択"
-                  searchPlaceholder="教室を検索..."
-                  emptyMessage="教室が見つかりません"
+                  placeholder="ブースを選択"
+                  searchPlaceholder="ブースを検索..."
+                  emptyMessage="ブースが見つかりません"
                   disabled={disabled}
                 />
               </div>

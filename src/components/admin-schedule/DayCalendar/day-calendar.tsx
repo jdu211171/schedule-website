@@ -239,7 +239,7 @@ const TimeHeader = React.memo(({
           zIndex: 30
         }}
       >
-        教室
+        ブース
       </div>
 
       <div className="flex relative" style={{ height: `${TIME_SLOT_HEIGHT}px` }}>

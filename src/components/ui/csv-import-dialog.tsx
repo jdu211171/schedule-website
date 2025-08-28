@@ -5,7 +5,7 @@ import { CloudUpload, FileSpreadsheet, X, Info } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { ImportMode, importModeLabels, importModeDescriptions } from "@/types/import";
+// ImportMode removed: unified upsert behavior, no mode selection
 
 import {
   Dialog,
@@ -38,13 +38,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+// Select components no longer used here
 import type { ImportResult } from "@/schemas/import";
 
 const formSchema = z.object({
@@ -59,7 +53,6 @@ const formSchema = z.object({
     .refine((file) => file?.size <= 10 * 1024 * 1024, {
       message: "ファイルサイズは10MB以下にしてください",
     }),
-  importMode: z.nativeEnum(ImportMode).default(ImportMode.CREATE_ONLY),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -97,7 +90,7 @@ export function CSVImportDialog({
     try {
       const formData = new FormData();
       formData.append("file", data.file);
-      formData.append("importMode", data.importMode);
+      // Import mode no longer required; backend performs upsert
 
       const response = await fetch(importUrl, {
         method: "POST",
@@ -161,39 +154,7 @@ export function CSVImportDialog({
           {!importResult ? (
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="importMode"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>インポートモード</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="インポートモードを選択" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {Object.values(ImportMode).map((mode) => (
-                            <SelectItem key={mode} value={mode}>
-                              {importModeLabels[mode]}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormDescription className="flex items-start gap-1">
-                        <Info className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                        <span>
-                          {field.value ? importModeDescriptions[field.value] : "インポートモードを選択してください"}
-                        </span>
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                {/* Import mode selection removed: unified upsert */}
 
                 <FormField
                   control={form.control}
@@ -270,6 +231,18 @@ export function CSVImportDialog({
                       テンプレートCSVをダウンロード
                     </a>
                     して、フォーマットを確認してください。
+                  </AlertDescription>
+                </Alert>
+
+                <Alert>
+                  <AlertDescription className="flex items-start gap-2">
+                    <Info className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                    <span>
+                      エクスポートされたCSVには「ID」列が含まれます。<br />
+                      ・IDがある行は既存レコードを更新します。<br />
+                      ・IDがない行は新規作成します（または重複しない一意キーがある場合は更新します）。<br />
+                      例）ブースは「校舎名+ブース名」、科目/科目タイプ/校舎は「名前」で重複チェックします。
+                    </span>
                   </AlertDescription>
                 </Alert>
 

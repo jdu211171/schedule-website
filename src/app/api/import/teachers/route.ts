@@ -122,6 +122,14 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
       const rowNumber = i + 2; // +1 for header, +1 for 1-based indexing
 
       try {
+        // If an ID (teacherId) is provided, prefer updating that record
+        let forcedExistingUserId: string | undefined;
+        const importTeacherId = ((row as any).id || (row as any).ID) as string | undefined;
+        if (importTeacherId) {
+          const t = await prisma.teacher.findUnique({ where: { teacherId: importTeacherId }, include: { user: true } });
+          if (t) forcedExistingUserId = t.userId;
+        }
+
         // Map CSV data to DB fields and filter ignored columns
         const filteredRow: Record<string, string> = {};
         const fieldsInRow: Set<string> = new Set();
@@ -149,17 +157,19 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
             : teacherImportSchema.parse(filteredRow);
 
         // Check if user with same username or email already exists
-        const existingUser = await prisma.user.findFirst({
-          where: {
-            OR: [
-              { username: validated.username },
-              ...(validated.email ? [{ email: validated.email }] : []),
-            ],
-          },
-          include: {
-            teacher: true,
-          },
-        });
+        const existingUser = forcedExistingUserId
+          ? await prisma.user.findUnique({ where: { id: forcedExistingUserId }, include: { teacher: true } })
+          : await prisma.user.findFirst({
+            where: {
+              OR: [
+                { username: validated.username },
+                ...(validated.email ? [{ email: validated.email }] : []),
+              ],
+            },
+            include: {
+              teacher: true,
+            },
+          });
 
         // Validate branches
         let branchIds: string[] = [];
@@ -182,12 +192,6 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
 
         // Handle based on import mode
         if (existingUser) {
-          if (importMode === ImportMode.CREATE_ONLY) {
-            result.skipped!++;
-            continue;
-          } else if (
-            importMode === ImportMode.UPDATE_ONLY
-          ) {
             // For updates, user must be a teacher
             if (!existingUser.teacher) {
               result.errors.push({
@@ -206,13 +210,8 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
               fieldsInRow,
               rowNumber,
             });
-          }
         } else {
           // No existing user
-          if (importMode === ImportMode.UPDATE_ONLY) {
-            result.skipped!++;
-            continue;
-          }
           // CREATE_ONLY will create new records
           validatedData.push({
             ...validated,

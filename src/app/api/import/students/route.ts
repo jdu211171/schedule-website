@@ -189,18 +189,27 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
           }
         }
 
-        // Check if user with same username or email already exists
-        const existingUser = await prisma.user.findFirst({
-          where: {
-            OR: [
-              { username: validated.username },
-              ...(validated.email ? [{ email: validated.email }] : []),
-            ],
-          },
-          include: {
-            student: true,
-          },
-        });
+        // Prefer existing user lookup by explicit student ID if provided
+        let existingUser: any | null = null;
+        const importStudentId = ((row as any).id || (row as any).ID) as string | undefined;
+        if (importStudentId) {
+          const s = await prisma.student.findUnique({ where: { studentId: importStudentId }, include: { user: true } });
+          if (s) {
+            existingUser = await prisma.user.findUnique({ where: { id: s.userId }, include: { student: true } });
+          }
+        }
+        if (!existingUser) {
+          // Fallback: username/email
+          existingUser = await prisma.user.findFirst({
+            where: {
+              OR: [
+                { username: validated.username },
+                ...(validated.email ? [{ email: validated.email }] : []),
+              ],
+            },
+            include: { student: true },
+          });
+        }
 
         // Validate branches
         let branchIds: string[] = [];
@@ -216,23 +225,13 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
             continue;
           }
           branchIds = validated.branches.map((name) => branchMap.get(name)!);
-        } else if (!isUpdateMode && !existingUser) {
-          // Branches are required for create mode
-          result.errors.push({
-            row: rowNumber,
-            errors: [`校舎は必須項目です`],
-          });
-          continue;
+        } else if (!existingUser) {
+          // Default to current branch when creating and branches not provided
+          if (branchId) branchIds = [branchId];
         }
 
         // Handle based on import mode
         if (existingUser) {
-          if (importMode === ImportMode.CREATE_ONLY) {
-            result.skipped!++;
-            continue;
-          } else if (
-            importMode === ImportMode.UPDATE_ONLY
-          ) {
             // For updates, user must be a student
             if (!existingUser.student) {
               result.errors.push({
@@ -252,13 +251,8 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
               fieldsInRow,
               rowNumber,
             });
-          }
         } else {
           // No existing user
-          if (importMode === ImportMode.UPDATE_ONLY) {
-            result.skipped!++;
-            continue;
-          }
           // CREATE_ONLY will create new records
           validatedData.push({
             ...validated,
