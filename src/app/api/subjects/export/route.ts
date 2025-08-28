@@ -9,8 +9,14 @@ export const GET = withRole(
   async (request: NextRequest) => {
     const searchParams = request.nextUrl.searchParams;
 
-    // Fetch all subjects
+    // Optional filters
+    const name = searchParams.get("name") || undefined;
+
+    // Fetch subjects with optional name filter
     const subjects = await prisma.subject.findMany({
+      where: name
+        ? { name: { contains: name, mode: "insensitive" } }
+        : undefined,
       orderBy: { name: "asc" },
     });
 

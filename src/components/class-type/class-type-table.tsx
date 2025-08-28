@@ -218,7 +218,7 @@ export function ClassTypeTable() {
     const visibleColumns = columns
       .map(col => (col as ColumnDef<ClassType> & { accessorKey?: string }).accessorKey)
       .filter(key => key) as string[];
-    exportToCSV({ columns: visibleColumns });
+    exportToCSV({ columns: visibleColumns, query: { name: searchTerm || "" } });
   };
 
   const handleImport = () => {

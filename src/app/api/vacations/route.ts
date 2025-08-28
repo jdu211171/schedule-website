@@ -78,6 +78,7 @@ export const GET = withBranchAccess(
       startDate,
       endDate,
       isRecurring,
+      includeGlobal,
       sortBy,
       sortOrder,
     } = result.data;
@@ -87,11 +88,22 @@ export const GET = withBranchAccess(
 
     // If a specific branchId is provided in the request, use that
     if (result.data.branchId) {
-      where.branchId = result.data.branchId;
-    }
-    // Otherwise use the user's current branch unless they are an admin
-    else if (session.user?.role !== "ADMIN") {
-      where.branchId = branchId;
+      // Explicit branch target
+      if (includeGlobal) {
+        where.OR = [{ branchId: result.data.branchId }, { branchId: null }];
+      } else {
+        where.branchId = result.data.branchId;
+      }
+    } else if (session.user?.role !== "ADMIN") {
+      // Staff/Teacher: default to selected branch
+      if (includeGlobal) {
+        where.OR = [{ branchId }, { branchId: null }];
+      } else {
+        where.branchId = branchId;
+      }
+    } else if (includeGlobal === false) {
+      // Admin without specific branch: exclude global if requested
+      where.NOT = { branchId: null };
     }
 
     if (name) {

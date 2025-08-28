@@ -159,7 +159,7 @@ export function SubjectTypeTable() {
     const visibleColumns = columns
       .map(col => (col as any).accessorKey)
       .filter(key => key) as string[];
-    exportToCSV({ columns: visibleColumns });
+    exportToCSV({ columns: visibleColumns, query: { name: searchTerm || "" } });
   };
 
   const handleImport = () => {

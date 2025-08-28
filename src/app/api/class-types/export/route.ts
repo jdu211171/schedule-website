@@ -9,8 +9,14 @@ export const GET = withRole(
   async (request: NextRequest) => {
     const searchParams = request.nextUrl.searchParams;
 
-    // Fetch all class types
+    // Optional filters
+    const name = searchParams.get("name") || undefined;
+
+    // Fetch class types with optional name filter
     const classTypes = await prisma.classType.findMany({
+      where: name
+        ? { name: { contains: name, mode: "insensitive" } }
+        : undefined,
       include: {
         parent: true,
         children: true,

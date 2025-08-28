@@ -129,7 +129,7 @@ export function SubjectTable() {
       .filter(col => col.id !== "actions")
       .map(col => (col as any).accessorKey)
       .filter(key => key) as string[];
-    exportToCSV({ columns: visibleColumns });
+    exportToCSV({ columns: visibleColumns, query: { name: searchTerm || "" } });
   };
 
   const handleImport = () => {

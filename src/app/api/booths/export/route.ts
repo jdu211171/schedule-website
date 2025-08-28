@@ -9,9 +9,17 @@ export const GET = withBranchAccess(
   async (request: NextRequest, session, branchId) => {
     const searchParams = request.nextUrl.searchParams;
 
+    // Optional filters
+    const name = searchParams.get("name") || undefined;
+
     // Fetch booths for selected branch (admins can still export per selected branch)
     const booths = await prisma.booth.findMany({
-      where: { branchId },
+      where: {
+        branchId,
+        ...(name
+          ? { name: { contains: name, mode: "insensitive" } }
+          : {}),
+      },
       include: {
         branch: true,
       },

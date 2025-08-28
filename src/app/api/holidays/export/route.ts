@@ -9,8 +9,18 @@ export const GET = withBranchAccess(
   async (request: NextRequest, session, branchId) => {
     const searchParams = request.nextUrl.searchParams;
 
-    // For non-admins, limit to selected branch; admins export all
-    const where = session.user?.role === "ADMIN" ? {} : { branchId };
+    // Optional filters
+    const name = searchParams.get("name") || undefined;
+    const includeGlobal = searchParams.get("includeGlobal") === "false" ? false : true;
+
+    // Restrict to selected branch; include global only if requested
+    const branchScope = includeGlobal
+      ? ({ OR: [{ branchId }, { branchId: null }] } as const)
+      : ({ branchId } as const);
+    const where = {
+      ...branchScope,
+      ...(name ? { name: { contains: name, mode: "insensitive" } } : {}),
+    } as any;
 
     // Fetch holidays (vacations)
     const holidays = await prisma.vacation.findMany({

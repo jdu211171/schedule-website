@@ -55,6 +55,11 @@ export function VacationTable() {
   const [page, setPage] = useState(1);
   const [isSortMode, setIsSortMode] = useState(false);
   const [localVacations, setLocalVacations] = useState<Vacation[]>([]);
+  const [includeGlobal, setIncludeGlobal] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return true;
+    const saved = localStorage.getItem('vacation_include_global');
+    return saved ? saved === 'true' : true;
+  });
   const pageSize = 10;
   const queryClient = useQueryClient();
 
@@ -62,6 +67,7 @@ export function VacationTable() {
     page,
     limit: pageSize,
     name: searchTerm || undefined,
+    includeGlobal,
   });
 
   const { data: session } = useSession();
@@ -80,6 +86,13 @@ export function VacationTable() {
       setLocalVacations(vacations.data);
     }
   }, [vacations?.data, isSortMode]);
+
+  // Persist includeGlobal preference
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('vacation_include_global', includeGlobal ? 'true' : 'false');
+    }
+  }, [includeGlobal]);
 
   const [vacationToEdit, setVacationToEdit] = useState<Vacation | null>(null);
   const [vacationToDelete, setVacationToDelete] = useState<Vacation | null>(
@@ -224,7 +237,10 @@ export function VacationTable() {
     const exportColumns = visibleColumns
       .map(col => (col as any).accessorKey)
       .filter(key => key) as string[];
-    exportToCSV({ columns: exportColumns });
+    exportToCSV({
+      columns: exportColumns,
+      query: { name: searchTerm || "", includeGlobal: includeGlobal ? 'true' : 'false' },
+    });
   };
 
   const handleImport = () => {

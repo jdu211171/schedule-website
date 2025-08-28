@@ -193,7 +193,7 @@ export function BoothTable() {
     const exportColumns = visibleColumns
       .map(col => (col as any).accessorKey)
       .filter(key => key) as string[];
-    exportToCSV({ columns: exportColumns });
+    exportToCSV({ columns: exportColumns, query: { name: searchTerm || "" } });
   };
 
   const handleImport = () => {
