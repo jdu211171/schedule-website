@@ -51,7 +51,7 @@ export function ChannelFormDialog({
   const updateChannelMutation = useLineChannelUpdate();
   const testChannelMutation = useLineChannelTest();
   const isEditing = !!channel;
-  
+
   const { data: branchesData, isLoading: isBranchesLoading } = useBranches({
     limit: 100,
   });
@@ -392,80 +392,82 @@ export function ChannelFormDialog({
               )}
             />
 
-            {/* Branch Assignment Section */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm font-medium text-muted-foreground">
-                  校舎配属
-                </h3>
-                <Separator className="flex-1" />
-              </div>
-
-              <FormField
-                control={form.control}
-                name="branchIds"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-sm font-medium">
-                      割り当て校舎（複数選択可）
-                    </FormLabel>
-                    <FormControl>
-                      <SearchableMultiSelect
-                        value={field.value || []}
-                        onValueChange={field.onChange}
-                        items={branches.map((branch) => ({
-                          value: branch.branchId,
-                          label: branch.name,
-                        }))}
-                        placeholder="校舎を選択してください"
-                        searchPlaceholder="校舎名を検索..."
-                        emptyMessage="該当する校舎が見つかりません"
-                        loading={isBranchesLoading}
-                        disabled={isBranchesLoading}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      このチャンネルを使用する校舎を選択してください。
-                      各校舎での講師用・生徒用の設定は「校舎別チャンネル設定」で行います。
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {/* Show current channel type assignments for editing mode */}
-              {isEditing && channel && channel.branches && channel.branches.length > 0 && (
-                <div className="rounded-lg bg-muted/50 p-3 space-y-2">
-                  <p className="text-sm font-medium">現在のチャンネルタイプ設定:</p>
-                  <div className="flex flex-wrap gap-2">
-                    {channel.branches.map((branch) => {
-                      const isTeacher = branch.channelType === 'TEACHER';
-                      const isStudent = branch.channelType === 'STUDENT';
-                      return (
-                        <div key={branch.id} className="flex items-center gap-1">
-                          <Badge variant="outline" className="text-xs">
-                            <Building2 className="mr-1 h-3 w-3" />
-                            {branch.branch.name}
-                          </Badge>
-                          <Badge
-                            variant={isTeacher ? "default" : isStudent ? "secondary" : "outline"}
-                            className={`text-xs ${
-                              isTeacher
-                                ? "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800"
-                                : isStudent
-                                  ? "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800"
-                                  : "bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-900/30 dark:text-gray-300 dark:border-gray-800"
-                            }`}
-                          >
-                            {isTeacher ? "講師" : isStudent ? "生徒" : "未設定"}
-                          </Badge>
-                        </div>
-                      );
-                    })}
-                  </div>
+            {/* Branch Assignment Section (only show when editing) */}
+            {isEditing && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-medium text-muted-foreground">
+                    校舎配属
+                  </h3>
+                  <Separator className="flex-1" />
                 </div>
-              )}
-            </div>
+
+                <FormField
+                  control={form.control}
+                  name="branchIds"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm font-medium">
+                        割り当て校舎（複数選択可）
+                      </FormLabel>
+                      <FormControl>
+                        <SearchableMultiSelect
+                          value={field.value || []}
+                          onValueChange={field.onChange}
+                          items={branches.map((branch) => ({
+                            value: branch.branchId,
+                            label: branch.name,
+                          }))}
+                          placeholder="校舎を選択してください"
+                          searchPlaceholder="校舎名を検索..."
+                          emptyMessage="該当する校舎が見つかりません"
+                          loading={isBranchesLoading}
+                          disabled={isBranchesLoading}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        このチャンネルを使用する校舎を選択してください。
+                        各校舎での講師用・生徒用の設定は「校舎別チャンネル設定」で行います。
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Show current channel type assignments for editing mode */}
+                {isEditing && channel && channel.branches && channel.branches.length > 0 && (
+                  <div className="rounded-lg bg-muted/50 p-3 space-y-2">
+                    <p className="text-sm font-medium">現在のチャンネルタイプ設定:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {channel.branches.map((branch) => {
+                        const isTeacher = branch.channelType === 'TEACHER';
+                        const isStudent = branch.channelType === 'STUDENT';
+                        return (
+                          <div key={branch.id} className="flex items-center gap-1">
+                            <Badge variant="outline" className="text-xs">
+                              <Building2 className="mr-1 h-3 w-3" />
+                              {branch.branch.name}
+                            </Badge>
+                            <Badge
+                              variant={isTeacher ? "default" : isStudent ? "secondary" : "outline"}
+                              className={`text-xs ${
+                                isTeacher
+                                  ? "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800"
+                                  : isStudent
+                                    ? "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800"
+                                    : "bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-900/30 dark:text-gray-300 dark:border-gray-800"
+                              }`}
+                            >
+                              {isTeacher ? "講師" : isStudent ? "生徒" : "未設定"}
+                            </Badge>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {!isEditing && (
               <div className="rounded-md bg-blue-50 dark:bg-blue-900/20 p-3 space-y-2">

@@ -291,11 +291,14 @@ export const GET = withBranchAccess(
     const where: Record<string, unknown> = {};
 
     if (name) {
+      // Search teacher by own name/kana
       where.OR = [
         { name: { contains: name, mode: "insensitive" } },
         { kanaName: { contains: name, mode: "insensitive" } },
       ];
     }
+
+    // No student-linked search here; teacher name search remains consistent with students table
 
     if (status) {
       where.status = status;

@@ -94,8 +94,18 @@ export class LineChannelService {
         }
       });
 
-      // Note: Do NOT assign branches here; creation should not decide TEACHER/STUDENT.
-      // Branch assignments (and channel types) are configured explicitly via the branch assignment UI.
+      // Assign branches neutrally (UNSPECIFIED) if provided. Role is set later explicitly via UI.
+      if (branchIds && branchIds.length > 0) {
+        for (const branchId of branchIds) {
+          await tx.branchLineChannel.create({
+            data: {
+              branchId,
+              channelId: newChannel.channelId,
+              channelType: 'UNSPECIFIED'
+            }
+          });
+        }
+      }
 
       // Return the channel with associations
       return tx.lineChannel.findUnique({

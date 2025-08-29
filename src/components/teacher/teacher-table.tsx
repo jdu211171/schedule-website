@@ -348,6 +348,8 @@ export function TeacherTable() {
         header: "名前",
         meta: {
           label: "名前",
+          placeholder: "名前で検索...",
+          variant: "text",
         },
         cell: ({ row }) => (
           <GenericInlineEditableCell
@@ -357,6 +359,7 @@ export function TeacherTable() {
             readOnly={true}
           />
         ),
+        enableColumnFilter: true,
       },
       {
         id: "kanaName",
