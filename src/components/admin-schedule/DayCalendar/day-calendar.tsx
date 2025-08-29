@@ -3,11 +3,15 @@ import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { ExtendedClassSessionWithRelations, DayFilters } from '@/hooks/useClassSessionQuery';
 import { getDateKey } from '../date';
-import { LessonCard, extractTime } from './lesson-card';
+import { LessonCard } from './lesson-card';
+import { extractTime } from '@/utils/lesson-positioning';
 import { DayCalendarFilters } from './day-calendar-filters';
 import { AvailabilityLayer, useAvailability } from './availability-layer';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { useLessonDragDrop } from '@/hooks/useLessonDragDrop';
+import { useDroppable } from '@dnd-kit/core';
+import { cn } from '@/lib/utils';
 
 export type TimeSlot = {
   index: number;
@@ -144,7 +148,87 @@ const CalendarCell = React.memo(({
 
 CalendarCell.displayName = 'CalendarCell';
 
-const BoothRow = React.memo(({
+// Droppable version of CalendarCell for drag and drop
+const DroppableCalendarCell = React.memo(({ 
+  booth,
+  boothIndex,
+  timeSlot, 
+  isSelected,
+  isSelecting,
+  canDrag,
+  onMouseDown,
+  onMouseEnter,
+  onMouseUp 
+}: { 
+  booth: Booth,
+  boothIndex: number,
+  timeSlot: TimeSlot, 
+  isSelected: boolean,
+  isSelecting: boolean,
+  canDrag: boolean,
+  onMouseDown: (e: React.MouseEvent) => void,
+  onMouseEnter: (e: React.MouseEvent) => void,
+  onMouseUp: (e: React.MouseEvent) => void
+}) => {
+  const dropId = `drop-${boothIndex}-${timeSlot.index}`;
+  const { setNodeRef, isOver } = useDroppable({
+    id: dropId,
+    data: {
+      boothIndex,
+      timeIndex: timeSlot.index,
+      boothId: booth.boothId,
+      timeSlot
+    }
+  });
+  
+  const cellKey = `cell-${boothIndex}-${timeSlot.index}`;
+  
+  return (
+    <div
+      ref={setNodeRef}
+      key={cellKey}
+      id={cellKey}
+      data-booth-index={boothIndex}
+      data-time-index={timeSlot.index}
+      data-start-time={timeSlot.start}
+      data-selected={isSelected ? "true" : "false"}
+      className={cn(
+        "border-r border-b relative select-none",
+        timeSlot.index % 4 === 0 
+          ? "bg-muted dark:bg-muted" 
+          : "bg-background dark:bg-background",
+        isSelecting 
+          ? "cursor-move" 
+          : "hover:bg-accent dark:hover:bg-accent cursor-pointer",
+        isSelected 
+          ? "!bg-blue-200 dark:!bg-blue-900 !opacity-100 shadow-inner" 
+          : "",
+        "border-border dark:border-border",
+        !isSelecting ? "transition-none" : "",
+        isOver && "!bg-blue-100 dark:!bg-blue-900/50 ring-2 ring-blue-400 dark:ring-blue-600 ring-inset"
+      )}
+      style={{ 
+        width: `${CELL_WIDTH}px`, 
+        minWidth: `${CELL_WIDTH}px`,
+        height: `${TIME_SLOT_HEIGHT}px`,
+      }}
+      onMouseDown={onMouseDown}
+      onMouseEnter={onMouseEnter}
+      onMouseUp={onMouseUp}
+    />
+  );
+}, (prevProps, nextProps) => {
+  return prevProps.boothIndex === nextProps.boothIndex &&
+         prevProps.timeSlot.index === nextProps.timeSlot.index &&
+         prevProps.isSelected === nextProps.isSelected &&
+         prevProps.isSelecting === nextProps.isSelecting &&
+         prevProps.canDrag === nextProps.canDrag &&
+         prevProps.booth.boothId === nextProps.booth.boothId;
+});
+
+DroppableCalendarCell.displayName = 'DroppableCalendarCell';
+
+const BoothRow = React.memo(({ 
   booth,
   boothIndex,
   timeSlots,
@@ -152,6 +236,7 @@ const BoothRow = React.memo(({
   selectionEnd,
   isSelecting,
   canDrag,
+  isDragging,
   onStartSelection,
   onCellHover,
   onEndSelection
@@ -163,6 +248,7 @@ const BoothRow = React.memo(({
   selectionEnd: SelectionPosition | null,
   isSelecting: boolean,
   canDrag: boolean,
+  isDragging?: boolean,
   onStartSelection: (boothIndex: number, timeIndex: number, e: React.MouseEvent) => void,
   onCellHover: (boothIndex: number, timeIndex: number, e: React.MouseEvent) => void,
   onEndSelection: (e: React.MouseEvent) => void
@@ -188,8 +274,9 @@ const BoothRow = React.memo(({
         const isSelected = isCellInSelection(boothIndex, timeSlot.index, selectionStart, selectionEnd);
 
         return (
-          <CalendarCell
+          <DroppableCalendarCell
             key={`cell-${boothIndex}-${timeSlot.index}`}
+            booth={booth}
             boothIndex={boothIndex}
             timeSlot={timeSlot}
             isSelected={isSelected}
@@ -208,8 +295,10 @@ const BoothRow = React.memo(({
          prevProps.booth.boothId === nextProps.booth.boothId &&
          prevProps.isSelecting === nextProps.isSelecting &&
          prevProps.canDrag === nextProps.canDrag &&
+         prevProps.isDragging === nextProps.isDragging &&
          prevProps.selectionStart === nextProps.selectionStart &&
-         prevProps.selectionEnd === nextProps.selectionEnd;
+         prevProps.selectionEnd === nextProps.selectionEnd &&
+         prevProps.timeSlots.length === nextProps.timeSlots.length;
 });
 
 BoothRow.displayName = 'BoothRow';
@@ -324,6 +413,13 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
     timeSlots,
     availabilityMode
   );
+
+  // Initialize drag and drop functionality
+  const { DndContextWrapper, DragOverlayWrapper, isDragging } = useLessonDragDrop({
+    timeSlots,
+    booths,
+    classSessions,
+  });
 
   const dateKey = useMemo(() => {
     return getDateKey(date); // Use consistent date formatting
@@ -465,7 +561,7 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
 
       cancelSelection();
     }
-  }, [selection, timeSlots, booths, onCreateLesson, date, cancelSelection]);
+  }, [selection, timeSlots, booths, onCreateLesson, date, cancelSelection, isDragging]);
 
   const updateContainerWidth = useCallback(() => {
     if (containerRef.current) {
@@ -536,7 +632,8 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
   }, [onAvailabilityModeChange]);
 
   return (
-    <div className="border rounded-md overflow-hidden shadow-sm bg-background dark:bg-background border-border dark:border-border">
+    <DndContextWrapper>
+      <div className="border rounded-md overflow-hidden shadow-sm bg-background dark:bg-background border-border dark:border-border">
       <div className="p-3 border-b bg-muted dark:bg-muted border-border dark:border-border">
         <div className="flex items-start gap-6">
           <div className="flex-shrink-0">
@@ -651,6 +748,8 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
         </div>
       </div>
     </div>
+    <DragOverlayWrapper />
+  </DndContextWrapper>
   );
 };
 
