@@ -366,7 +366,7 @@ export function useLineChannelAssignBranches() {
   >({
     mutationFn: ({ channelId, ...data }) =>
       fetcher(`/api/admin/line-channels/${channelId}/branches`, {
-        method: "POST",
+        method: "PUT",
         body: JSON.stringify(data),
       }),
     onError: (error) => {

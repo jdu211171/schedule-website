@@ -636,6 +636,7 @@ enum NotificationStatus {
 }
 
 enum ChannelType {
+  UNSPECIFIED
   TEACHER
   STUDENT
 }
@@ -677,12 +678,11 @@ model BranchLineChannel {
   id           String      @id @default(cuid())
   branchId     String      @map("branch_id")
   channelId    String      @map("channel_id")
-  channelType  ChannelType @default(TEACHER) @map("channel_type")
+  channelType  ChannelType @default(UNSPECIFIED) @map("channel_type")
   createdAt    DateTime    @default(now()) @map("created_at") @db.Timestamp(6)
   branch       Branch      @relation(fields: [branchId], references: [branchId], onDelete: Cascade)
   lineChannel  LineChannel @relation(fields: [channelId], references: [channelId], onDelete: Cascade)
 
-  @@unique([branchId, channelType])
   @@index([branchId])
   @@index([channelId])
   @@index([channelType])

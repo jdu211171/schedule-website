@@ -440,6 +440,7 @@ export function ChannelFormDialog({
                   <div className="flex flex-wrap gap-2">
                     {channel.branches.map((branch) => {
                       const isTeacher = branch.channelType === 'TEACHER';
+                      const isStudent = branch.channelType === 'STUDENT';
                       return (
                         <div key={branch.id} className="flex items-center gap-1">
                           <Badge variant="outline" className="text-xs">
@@ -447,14 +448,16 @@ export function ChannelFormDialog({
                             {branch.branch.name}
                           </Badge>
                           <Badge
-                            variant={isTeacher ? "default" : "secondary"}
+                            variant={isTeacher ? "default" : isStudent ? "secondary" : "outline"}
                             className={`text-xs ${
                               isTeacher
                                 ? "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800"
-                                : "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800"
+                                : isStudent
+                                  ? "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800"
+                                  : "bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-900/30 dark:text-gray-300 dark:border-gray-800"
                             }`}
                           >
-                            {isTeacher ? "講師" : "生徒"}
+                            {isTeacher ? "講師" : isStudent ? "生徒" : "未設定"}
                           </Badge>
                         </div>
                       );

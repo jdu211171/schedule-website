@@ -150,14 +150,16 @@ export function LineChannelTable() {
                     {branch.branch.name}
                   </Badge>
                   <Badge
-                    variant={isTeacher ? "default" : "secondary"}
+                    variant={isTeacher ? "default" : isStudent ? "secondary" : "outline"}
                     className={`text-xs ${
                       isTeacher
                         ? "bg-blue-100 text-blue-800 border-blue-200"
-                        : "bg-green-100 text-green-800 border-green-200"
+                        : isStudent
+                          ? "bg-green-100 text-green-800 border-green-200"
+                          : "bg-gray-100 text-gray-800 border-gray-200"
                     }`}
                   >
-                    {isTeacher ? "講師" : "生徒"}
+                    {isTeacher ? "講師" : isStudent ? "生徒" : "未設定"}
                   </Badge>
                 </div>
               );

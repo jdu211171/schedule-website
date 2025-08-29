@@ -18,7 +18,7 @@ export interface BranchLineChannel {
   id: string
   branchId: string
   lineChannelId: string
-  channelType: 'TEACHER' | 'STUDENT'
+  channelType: 'UNSPECIFIED' | 'TEACHER' | 'STUDENT'
   createdAt: Date
   updatedAt: Date
   branch?: Branch
@@ -87,7 +87,7 @@ export interface LineChannelResponse {
   branches: {
     id: string
     branchId: string
-    channelType: 'TEACHER' | 'STUDENT'
+    channelType: 'UNSPECIFIED' | 'TEACHER' | 'STUDENT'
     branch: {
       id: string
       name: string
