@@ -34,7 +34,7 @@ export const POST = withRole(['ADMIN'], async (req: NextRequest) => {
       );
     }
 
-    if (error instanceof Error && error.message === 'Channel is not assigned to this branch') {
+    if (error instanceof Error && error.message === 'この校舎にはチャンネルが割り当てられていません') {
       return NextResponse.json(
         { error: error.message },
         { status: 400 }

@@ -18,14 +18,39 @@ export async function POST(req: NextRequest) {
       signatureLength: signature?.length
     });
 
-    // Check if signature is present
+    // Allow LINE "Verify" pings without signature or with empty body
     if (!signature) {
-      console.error('Missing x-line-signature header');
+      if (!body || body.trim() === '') {
+        console.log('Verification without signature (empty body)');
+        return NextResponse.json({}, { status: 200 });
+      }
+      try {
+        const maybe = JSON.parse(body);
+        if (!maybe?.events || maybe.events.length === 0) {
+          console.log('Verification without signature (no events)');
+          return NextResponse.json({}, { status: 200 });
+        }
+      } catch {
+        console.log('Verification without signature (non-JSON body)');
+        return NextResponse.json({}, { status: 200 });
+      }
+      console.error('Missing x-line-signature header for non-verification payload');
       return NextResponse.json({ error: 'Missing signature' }, { status: 400 });
     }
 
     // Verify webhook signature
     if (!verifySignature(body, signature)) {
+      // Still allow verification attempts with no/empty events
+      try {
+        const maybe = body ? JSON.parse(body) : {};
+        if (!maybe?.events || maybe.events.length === 0) {
+          console.log('Invalid signature but empty/no events – treating as verification');
+          return NextResponse.json({}, { status: 200 });
+        }
+      } catch {
+        console.log('Invalid signature but non-JSON – treating as verification');
+        return NextResponse.json({}, { status: 200 });
+      }
       console.error('Invalid LINE webhook signature');
       return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
     }

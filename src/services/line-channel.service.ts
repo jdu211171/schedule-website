@@ -516,7 +516,7 @@ export class LineChannelService {
     });
 
     if (!assignment) {
-      throw new Error('Channel is not assigned to this branch');
+      throw new Error('この校舎にはチャンネルが割り当てられていません');
     }
 
     // Use transaction to ensure atomicity
@@ -807,7 +807,7 @@ export class LineChannelService {
     });
 
     if (!assignment) {
-      throw new Error('No channel assigned for this type');
+      throw new Error('この校舎にはチャンネルが割り当てられていません');
     }
 
     // Delete the assignment
