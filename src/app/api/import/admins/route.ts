@@ -156,7 +156,7 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
         if (conflict) {
           result.errors.push({ row: rowNumber, errors: [
             conflict.username === validated.username ? `ユーザー名「${validated.username}」は既に使用されています` : `メールアドレス「${validated.email}」は既に使用されています`
-          ]});
+          ] });
           continue;
         }
 

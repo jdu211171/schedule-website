@@ -7,7 +7,7 @@ import {
   branchFilterSchema,
   BRANCH_SORT_FIELDS,
 } from "@/schemas/branch.schema";
-import { Branch, UserBranch, Prisma } from "@prisma/client";
+import { Branch, UserBranch, Prisma, ChannelType } from "@prisma/client";
 import { z } from "zod";
 
 type BranchWithUsersAndChannels = Branch & {
@@ -21,7 +21,7 @@ type BranchWithUsersAndChannels = Branch & {
     };
   })[];
   branchLineChannels: {
-    channelType: 'TEACHER' | 'STUDENT';
+    channelType: ChannelType;
     lineChannel: {
       channelId: string;
       name: string;
@@ -50,7 +50,7 @@ type FormattedBranch = {
     description: string | null;
     isActive: boolean;
     isDefault: boolean;
-    channelType: 'TEACHER' | 'STUDENT';
+    channelType: ChannelType;
   }[];
   createdAt: Date;
   updatedAt: Date;

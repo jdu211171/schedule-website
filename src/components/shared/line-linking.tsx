@@ -189,24 +189,21 @@ export function LineLinking({
     onNotificationToggle?.(newValue);
   };
 
+  // Load teacher's per-channel links (hook must be unconditionally called)
+  const { data: teacherLinksData } = useQuery<{ data: Array<{ enabled: boolean }> }>({
+    queryKey: ["teacher-line-links", userId],
+    queryFn: () =>
+      fetcher(`/api/teachers/${userId}/line-links?r=${Date.now()}`, {
+        cache: "no-store",
+      }),
+    staleTime: 30_000,
+    enabled: userType === "teacher",
+  });
+
+  const hasActiveTeacherLink = !!teacherLinksData?.data?.some((l) => l.enabled);
+
   // For teachers, show single account view but derive linked status from TeacherLineLink
   if (userType === "teacher") {
-    // Load teacher's per-channel links to determine linked status
-    const { data: teacherLinksData } = useQuery<{
-      data: Array<{ enabled: boolean }>;
-    }>({
-      queryKey: ["teacher-line-links", userId],
-      queryFn: () =>
-        fetcher(`/api/teachers/${userId}/line-links?r=${Date.now()}`, {
-          cache: "no-store",
-        }),
-      // Keep UI snappy; status is a simple boolean derived from presence of links
-      staleTime: 30_000,
-    });
-
-    const hasActiveTeacherLink = !!teacherLinksData?.data?.some(
-      (l) => l.enabled,
-    );
 
     return (
       <Card>
