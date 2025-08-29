@@ -120,14 +120,7 @@ function StudentTableToolbarFilter<TData>({
 
     switch (columnMeta.variant) {
       case "text":
-        return (
-          <Input
-            placeholder={columnMeta.placeholder ?? columnMeta.label}
-            value={(column.getFilterValue() as string) ?? ""}
-            onChange={(event) => column.setFilterValue(event.target.value)}
-            className="h-8 w-40 lg:w-56"
-          />
-        );
+        return <IMETextFilter column={column} placeholder={columnMeta.placeholder ?? columnMeta.label} />;
 
       case "number":
         return (
@@ -191,6 +184,44 @@ function StudentTableToolbarFilter<TData>({
   }, [column, columnMeta]);
 
   return onFilterRender();
+}
+
+// IME-aware text filter to prevent mid-composition updates
+function IMETextFilter<TData>({ column, placeholder }: { column: Column<TData>; placeholder?: string }) {
+  const isComposingRef = React.useRef(false);
+  const [value, setValue] = React.useState<string>(() => (column.getFilterValue() as string) ?? "");
+  const debounced = useDebounce(value, 200);
+
+  React.useEffect(() => {
+    if (!isComposingRef.current) {
+      column.setFilterValue(debounced);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debounced]);
+
+  React.useEffect(() => {
+    const current = (column.getFilterValue() as string) ?? "";
+    if (!isComposingRef.current && current !== value) {
+      setValue(current);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [column.id]);
+
+  return (
+    <Input
+      placeholder={placeholder}
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      onCompositionStart={() => {
+        isComposingRef.current = true;
+      }}
+      onCompositionEnd={() => {
+        isComposingRef.current = false;
+        column.setFilterValue((v: any) => (typeof v === 'string' ? value : value));
+      }}
+      className="h-8 w-40 lg:w-56"
+    />
+  );
 }
 
 
