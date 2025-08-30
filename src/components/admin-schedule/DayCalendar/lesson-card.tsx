@@ -31,7 +31,10 @@ export const extractTime = (timeValue: string | Date | undefined): string => {
         return timeMatch[1];
       }
     } else if (timeValue instanceof Date) {
-      return `${timeValue.getHours().toString().padStart(2, "0")}:${timeValue.getMinutes().toString().padStart(2, "0")}`;
+      return `${timeValue.getHours().toString().padStart(2, "0")}:${timeValue
+        .getMinutes()
+        .toString()
+        .padStart(2, "0")}`;
     }
     return "";
   } catch {
