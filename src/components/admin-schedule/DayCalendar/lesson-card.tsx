@@ -280,7 +280,12 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
               </span>
             )}
           </div>
-          <span className="truncate text-right ml-2">{teacherName}T</span>
+          <span className="truncate text-right ml-2">
+            {teacherName}
+            <span className="text-[10px] px-1 bg-gray-600 dark:bg-gray-400 text-white dark:text-gray-900 rounded flex-shrink-0">
+              T
+            </span>
+          </span>
         </div>
 
         {/* Bottom row */}
