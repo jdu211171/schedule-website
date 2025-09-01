@@ -5,29 +5,22 @@ import { prisma } from "@/lib/prisma";
 import {
   studentImportSchema,
   studentUpdateImportSchema,
-  STUDENT_CSV_HEADERS,
-  REQUIRED_STUDENT_CSV_HEADERS,
   type StudentImportData,
   type StudentUpdateImportData,
   type ImportResult,
   formatValidationErrors,
 } from "@/schemas/import";
-import {
-  STUDENT_COLUMN_RULES,
-  getRequiredFields,
-  csvHeaderToDbField
-} from "@/schemas/import/student-column-rules";
+import { STUDENT_COLUMN_RULES, csvHeaderToDbField } from "@/schemas/import/student-column-rules";
 import { z } from "zod";
 import { handleImportError } from "@/lib/import-error-handler";
-import { ImportMode } from "@/types/import";
+// ImportMode not used in strict variant
 
 async function handleImport(req: NextRequest, session: any, branchId: string) {
   try {
     // Get the form data
     const formData = await req.formData();
     const file = formData.get("file");
-    const importMode =
-      (formData.get("importMode") as ImportMode) || ImportMode.CREATE_ONLY;
+    // Strict variant: row-level decision by presence of ID; no importMode
 
     if (!file || typeof file === "string") {
       return NextResponse.json(
@@ -64,61 +57,6 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
     }
 
     const actualHeaders = Object.keys(parseResult.data[0]);
-
-    // Get required headers based on import mode and column rules
-    const isUpdateMode = importMode === ImportMode.UPDATE_ONLY;
-    const requiredFields = getRequiredFields(isUpdateMode ? 'update' : 'create');
-    const requiredHeaders = requiredFields
-      .map(field => STUDENT_COLUMN_RULES[field]?.csvHeader)
-      .filter(Boolean) as string[];
-
-    const missingHeaders = requiredHeaders.filter(
-      (h) => !actualHeaders.includes(h),
-    );
-
-    if (missingHeaders.length > 0) {
-      return NextResponse.json(
-        {
-          error: `必須列が不足しています: ${missingHeaders.join(", ")}`,
-        },
-        { status: 400 },
-      );
-    }
-
-    // Prefetch existing users and students to reduce per-row DB lookups
-    const candidateUsernames = new Set<string>();
-    const candidateEmails = new Set<string>();
-    const candidateStudentIds = new Set<string>();
-    for (const row of parseResult.data) {
-      const id = ((row as any).id || (row as any).ID) as string | undefined;
-      const username = ((row as any)['ユーザー名'] || (row as any).username) as string | undefined;
-      const email = ((row as any)['メールアドレス'] || (row as any).email) as string | undefined;
-      if (id) candidateStudentIds.add(id);
-      if (username) candidateUsernames.add(username);
-      if (email) candidateEmails.add(email);
-    }
-
-    const [existingUsers, existingStudentsById] = await Promise.all([
-      prisma.user.findMany({
-        where: {
-          OR: [
-            ...(candidateUsernames.size > 0 ? [{ username: { in: Array.from(candidateUsernames) } }] : []),
-            ...(candidateEmails.size > 0 ? [{ email: { in: Array.from(candidateEmails) } }] : []),
-          ],
-        },
-        include: { student: true },
-      }),
-      candidateStudentIds.size > 0
-        ? prisma.student.findMany({
-            where: { studentId: { in: Array.from(candidateStudentIds) } },
-            include: { user: true },
-          })
-        : Promise.resolve([] as any[]),
-    ]);
-
-    const userByUsername = new Map(existingUsers.map(u => [u.username, u]));
-    const userByEmail = new Map(existingUsers.filter(u => !!u.email).map(u => [u.email!, u]));
-    const studentById = new Map(existingStudentsById.map(s => [s.studentId, s]));
 
     // Process and validate each row
     const validatedData: ((StudentImportData | StudentUpdateImportData) & {
@@ -179,9 +117,8 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
           const rule = Object.values(STUDENT_COLUMN_RULES).find(r => r.dbField === dbField);
           if (!rule) continue;
 
-          // Skip ignored columns
-          const ruleType = isUpdateMode ? rule.updateRule : rule.createRule;
-          if (ruleType === 'ignore') continue;
+          // Skip columns marked ignore for both create and update
+          if (rule.createRule === 'ignore' && rule.updateRule === 'ignore') continue;
 
           // Map to internal field name for schema validation
           filteredRow[dbField] = csvValue;
@@ -189,10 +126,11 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
         }
 
         // Validate row data with filtered columns using appropriate schema
-        const validated =
-          importMode === ImportMode.UPDATE_ONLY
-            ? studentUpdateImportSchema.parse(filteredRow)
-            : studentImportSchema.parse(filteredRow);
+        const importStudentId = ((row as any).id || (row as any).ID) as string | undefined;
+        const isUpdateRow = !!importStudentId;
+        const validated = isUpdateRow
+          ? studentUpdateImportSchema.parse(filteredRow)
+          : studentImportSchema.parse(filteredRow);
 
         // Validate student type (only if provided)
         let studentType = null;
@@ -224,18 +162,6 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
           }
         }
 
-        // Prefer existing user lookup by explicit student ID if provided
-        let existingUser: any | null = null;
-        const importStudentId = ((row as any).id || (row as any).ID) as string | undefined;
-        if (importStudentId) {
-          const s = studentById.get(importStudentId) || null;
-          if (s?.user) existingUser = s.user;
-        }
-        if (!existingUser) {
-          // Fallback: username/email from prefetch maps
-          existingUser = userByUsername.get(validated.username) || (validated.email ? userByEmail.get(validated.email) : null) || null;
-        }
-
         // Validate branches
         let branchIds: string[] = [];
         if (validated.branches && validated.branches.length > 0) {
@@ -250,43 +176,20 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
             continue;
           }
           branchIds = validated.branches.map((name) => branchMap.get(name)!);
-        } else if (!existingUser) {
+        } else if (!isUpdateRow) {
           // Default to current branch when creating and branches not provided
           if (branchId) branchIds = [branchId];
         }
 
-        // Handle based on import mode
-        if (existingUser) {
-            // For updates, user must be a student
-            if (!existingUser.student) {
-              result.errors.push({
-                row: rowNumber,
-                errors: [
-                  `ユーザー「${existingUser.username}」は学生ではありません`,
-                ],
-              });
-              continue;
-            }
-            // Mark for update
-            validatedData.push({
-              ...validated,
-              studentTypeId: studentType?.studentTypeId || null,
-              branchIds,
-              existingUserId: existingUser.id,
-              fieldsInRow,
-              rowNumber,
-            });
-        } else {
-          // No existing user
-          // CREATE_ONLY will create new records
-          validatedData.push({
-            ...validated,
-            studentTypeId: studentType?.studentTypeId || null,
-            branchIds,
-            fieldsInRow,
-            rowNumber,
-          });
-        }
+        // Decide create vs update strictly by presence of ID
+        validatedData.push({
+          ...validated,
+          studentTypeId: studentType?.studentTypeId || null,
+          branchIds,
+          fieldsInRow,
+          rowNumber,
+          ...(isUpdateRow ? { studentId: importStudentId } : {} as any),
+        } as any);
       } catch (error) {
         if (error instanceof z.ZodError) {
           result.errors.push(formatValidationErrors(error.errors, rowNumber));
@@ -315,131 +218,59 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
         const batch = validatedData.slice(start, start + batchSize);
         await prisma.$transaction(async (tx) => {
           for (const data of batch) {
-            if (data.existingUserId) {
-            // Update existing student
-            const existingStudent = await tx.student.findUnique({
-              where: { userId: data.existingUserId },
-              include: { user: true },
-            });
-
-            if (!existingStudent) {
-              continue; // Should not happen
-            }
-
-            // Update user fields if provided
-            const userUpdates: any = {};
-            const fieldsInRow = data.fieldsInRow || new Set();
-
-            if (
-              fieldsInRow.has("email") &&
-              data.email !== existingStudent.user.email
-            ) {
-              userUpdates.email = data.email;
-            }
-            if (
-              fieldsInRow.has("name") &&
-              data.name !== existingStudent.user.name
-            ) {
-              userUpdates.name = data.name;
-            }
-            // Only update password if explicitly provided in CSV with a non-empty value
-            if (
-              fieldsInRow.has("password") &&
-              data.password &&
-              data.password.trim() !== ""
-            ) {
-              // For students, use the password directly (no hashing)
-              // NOTE: This is a security risk - passwords should normally be hashed
-              userUpdates.passwordHash = data.password;
-            }
-
-            if (Object.keys(userUpdates).length > 0) {
-              await tx.user.update({
-                where: { id: data.existingUserId },
-                data: userUpdates,
-              });
-            }
-
-            // Update student fields - only update fields that were present in the CSV
-            const studentUpdates: any = {};
-            const fields = data.fieldsInRow || new Set();
-
-            // Only update fields that were present in the CSV row
-            if (fields.has("name")) studentUpdates.name = data.name || null;
-            if (fields.has("kanaName"))
-              studentUpdates.kanaName = data.kanaName || null;
-            if (fields.has("studentTypeName") && data.studentTypeId)
-              studentUpdates.studentTypeId = data.studentTypeId;
-            if (fields.has("gradeYear"))
-              studentUpdates.gradeYear = data.gradeYear;
-            if (fields.has("notes")) studentUpdates.notes = data.notes || null;
-
-            // School information
-            if (fields.has("schoolName"))
-              studentUpdates.schoolName = data.schoolName || null;
-            if (fields.has("schoolType"))
-              studentUpdates.schoolType = data.schoolType || null;
-
-            // Exam information
-            if (fields.has("examCategory"))
-              studentUpdates.examCategory = data.examCategory || null;
-            if (fields.has("examCategoryType"))
-              studentUpdates.examCategoryType = data.examCategoryType || null;
-            if (fields.has("firstChoice"))
-              studentUpdates.firstChoice = data.firstChoice || null;
-            if (fields.has("secondChoice"))
-              studentUpdates.secondChoice = data.secondChoice || null;
-            if (fields.has("examDate"))
-              studentUpdates.examDate = data.examDate || null;
-
-            // Contact information
-            if (fields.has("parentEmail"))
-              studentUpdates.parentEmail = data.parentEmail || null;
-
-            // Personal information
-            if (fields.has("birthDate"))
-              studentUpdates.birthDate = data.birthDate || null;
-
-            // LINE ID - update if provided
-            if (fields.has("lineId"))
-              studentUpdates.lineId = data.lineId || null;
-
-            await tx.student.update({
-              where: { userId: data.existingUserId },
-              data: studentUpdates,
-            });
-
-            // Update branch assignments if provided
-            if (fields.has("branches") && data.branchIds) {
-              // Remove existing branch assignments
-              await tx.userBranch.deleteMany({
-                where: { userId: data.existingUserId },
-              });
-
-              // Add new branch assignments
-              if (data.branchIds.length > 0) {
-                for (const branchId of data.branchIds) {
-                  await tx.userBranch.create({
-                    data: {
-                      userId: data.existingUserId,
-                      branchId: branchId,
-                    },
-                  });
-                }
-              } else {
-                // If branches field was empty, assign to current branch
-                await tx.userBranch.create({
-                  data: {
-                    userId: data.existingUserId,
-                    branchId: branchId,
-                  },
-                });
+            if ((data as any).studentId) {
+              // Strict update by ID; only update fields present in the row
+              const fieldsInRow = data.fieldsInRow || new Set();
+              const userUpdates: any = {};
+              if (fieldsInRow.has("email")) userUpdates.email = data.email ?? null;
+              if (fieldsInRow.has("name")) userUpdates.name = data.name ?? null;
+              if (fieldsInRow.has("password") && data.password && data.password.trim() !== "") {
+                userUpdates.passwordHash = data.password;
               }
-            }
 
+              const studentUpdates: any = {};
+              if (fieldsInRow.has("name")) studentUpdates.name = data.name || null;
+              if (fieldsInRow.has("kanaName")) studentUpdates.kanaName = data.kanaName || null;
+              if (fieldsInRow.has("studentTypeName") && data.studentTypeId) studentUpdates.studentTypeId = data.studentTypeId;
+              if (fieldsInRow.has("gradeYear")) studentUpdates.gradeYear = data.gradeYear;
+              if (fieldsInRow.has("notes")) studentUpdates.notes = data.notes || null;
+              if (fieldsInRow.has("schoolName")) studentUpdates.schoolName = data.schoolName || null;
+              if (fieldsInRow.has("schoolType")) studentUpdates.schoolType = data.schoolType || null;
+              if (fieldsInRow.has("examCategory")) studentUpdates.examCategory = data.examCategory || null;
+              if (fieldsInRow.has("examCategoryType")) studentUpdates.examCategoryType = data.examCategoryType || null;
+              if (fieldsInRow.has("firstChoice")) studentUpdates.firstChoice = data.firstChoice || null;
+              if (fieldsInRow.has("secondChoice")) studentUpdates.secondChoice = data.secondChoice || null;
+              if (fieldsInRow.has("examDate")) studentUpdates.examDate = data.examDate || null;
+              if (fieldsInRow.has("parentEmail")) studentUpdates.parentEmail = data.parentEmail || null;
+              if (fieldsInRow.has("birthDate")) studentUpdates.birthDate = data.birthDate || null;
+              if (fieldsInRow.has("lineId")) studentUpdates.lineId = data.lineId || null;
 
-            result.updated!++;
-          } else {
+              try {
+                const updated = await tx.student.update({
+                  where: { studentId: (data as any).studentId },
+                  data: {
+                    ...studentUpdates,
+                    ...(Object.keys(userUpdates).length > 0 ? { user: { update: userUpdates } } : {}),
+                  },
+                  select: { userId: true },
+                });
+
+                if (fieldsInRow.has("branches") && data.branchIds) {
+                  await tx.userBranch.deleteMany({ where: { userId: updated.userId } });
+                  if (data.branchIds.length > 0) {
+                    for (const bId of data.branchIds) {
+                      await tx.userBranch.create({ data: { userId: updated.userId, branchId: bId } });
+                    }
+                  } else {
+                    await tx.userBranch.create({ data: { userId: updated.userId, branchId } });
+                  }
+                }
+                result.updated!++;
+              } catch (e) {
+                result.errors.push({ row: data.rowNumber, errors: ["指定されたIDの生徒が見つかりません"] });
+                continue;
+              }
+            } else {
             // Create new student
             // For create mode, password is optional - generate a default if not provided
             let hashedPassword: string;
@@ -458,49 +289,60 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
               });
             }
 
-            // Create user
-            const user = await tx.user.create({
-              data: {
-                username: data.username,
-                email: data.email || null,
-                passwordHash: hashedPassword,
-                name: data.name!,
-                role: "STUDENT",
-                isRestrictedAdmin: false,
-              },
-            });
+            // Create user + student in try/catch to keep batch going on constraint errors
+            try {
+              // Create user
+              const user = await tx.user.create({
+                data: {
+                  username: data.username,
+                  email: data.email || null,
+                  passwordHash: hashedPassword,
+                  name: data.name!,
+                  role: "STUDENT",
+                  isRestrictedAdmin: false,
+                },
+              });
 
-            // Create student with all fields
-            await tx.student.create({
-              data: {
-                userId: user.id,
-                name: data.name!,
-                kanaName: data.kanaName || null,
-                studentTypeId: data.studentTypeId || null,
-                gradeYear: data.gradeYear || null,
-                lineId: data.lineId || null,
-                notes: data.notes || null,
-                status: "ACTIVE",
-                // School information
-                schoolName: data.schoolName || null,
-                schoolType: data.schoolType || null,
-                // Exam information
-                examCategory: data.examCategory || null,
-                examCategoryType: data.examCategoryType || null,
-                firstChoice: data.firstChoice || null,
-                secondChoice: data.secondChoice || null,
-                examDate: data.examDate || null,
-                // Contact information
-                parentEmail: data.parentEmail || null,
-                // Personal information
-                birthDate: data.birthDate || null,
-              },
-            });
+              // Create student with all fields
+              await tx.student.create({
+                data: {
+                  userId: user.id,
+                  name: data.name!,
+                  kanaName: data.kanaName || null,
+                  studentTypeId: data.studentTypeId || null,
+                  gradeYear: data.gradeYear || null,
+                  lineId: data.lineId || null,
+                  notes: data.notes || null,
+                  status: "ACTIVE",
+                  // School information
+                  schoolName: data.schoolName || null,
+                  schoolType: data.schoolType || null,
+                  // Exam information
+                  examCategory: data.examCategory || null,
+                  examCategoryType: data.examCategoryType || null,
+                  firstChoice: data.firstChoice || null,
+                  secondChoice: data.secondChoice || null,
+                  examDate: data.examDate || null,
+                  // Contact information
+                  parentEmail: data.parentEmail || null,
+                  // Personal information
+                  birthDate: data.birthDate || null,
+                },
+              });
 
-            // Assign student to branches
-            if (data.branchIds && data.branchIds.length > 0) {
-              // Use branches from CSV
-              for (const branchId of data.branchIds) {
+              // Assign student to branches
+              if (data.branchIds && data.branchIds.length > 0) {
+                // Use branches from CSV
+                for (const branchId of data.branchIds) {
+                  await tx.userBranch.create({
+                    data: {
+                      userId: user.id,
+                      branchId: branchId,
+                    },
+                  });
+                }
+              } else {
+                // Default to current branch if no branches specified
                 await tx.userBranch.create({
                   data: {
                     userId: user.id,
@@ -508,18 +350,12 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
                   },
                 });
               }
-            } else {
-              // Default to current branch if no branches specified
-              await tx.userBranch.create({
-                data: {
-                  userId: user.id,
-                  branchId: branchId,
-                },
-              });
+
+              result.created!++;
+            } catch (e: any) {
+              result.errors.push({ row: data.rowNumber, errors: ["新規作成中にエラーが発生しました（重複や無効な値の可能性）"] });
+              continue;
             }
-
-
-            result.created!++;
           }
 
           result.success++;

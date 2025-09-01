@@ -137,7 +137,8 @@ export const studentUpdateImportSchema = z.object({
   username: z
     .string()
     .min(3, "ユーザー名は3文字以上で入力してください")
-    .max(50, "ユーザー名は50文字以下で入力してください"),
+    .max(50, "ユーザー名は50文字以下で入力してください")
+    .optional(),
   email: z
     .string()
     .transform(val => val === "" ? null : val)
