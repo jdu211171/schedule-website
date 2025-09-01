@@ -28,6 +28,7 @@ type FormattedClassSession = {
   subjectName: string | null;
   classTypeId: string | null;
   classTypeName: string | null;
+  classTypeColor?: string | null;
   boothId: string | null;
   boothName: string | null;
   branchId: string | null;
@@ -47,7 +48,7 @@ const formatClassSession = (
     teacher?: { name: string } | null;
     student?: { name: string; gradeYear: number | null; studentType?: { name: string } | null } | null;
     subject?: { name: string } | null;
-    classType?: { name: string } | null;
+    classType?: { name: string; color?: string | null } | null;
     booth?: { name: string } | null;
     branch?: { name: string } | null;
   }
@@ -84,6 +85,7 @@ const formatClassSession = (
     subjectName: classSession.subject?.name || null,
     classTypeId: classSession.classTypeId,
     classTypeName: classSession.classType?.name || null,
+    classTypeColor: (classSession as any).classType?.color ?? null,
     boothId: classSession.boothId,
     boothName: classSession.booth?.name || null,
     branchId: classSession.branchId,
@@ -163,6 +165,28 @@ const checkVacationConflict = async (
     }
   }
 
+  return false;
+};
+
+// Helper to determine if a class type is "特別授業" or a child of it
+const isSpecialClassType = async (classTypeId?: string | null): Promise<boolean> => {
+  if (!classTypeId) return false;
+  try {
+    // Walk up the hierarchy up to a reasonable depth
+    let currentId: string | null | undefined = classTypeId;
+    for (let i = 0; i < 10 && currentId; i++) {
+      const ct: { name: string; parentId: string | null } | null = await prisma.classType.findUnique({
+        where: { classTypeId: currentId },
+        select: { name: true, parentId: true },
+      });
+      if (!ct) return false;
+      if (ct.name === "特別授業") return true;
+      currentId = ct.parentId;
+    }
+  } catch (e) {
+    // If schema or data missing, default to not special
+    return false;
+  }
   return false;
 };
 
@@ -521,6 +545,7 @@ export const GET = withBranchAccess(
         classType: {
           select: {
             name: true,
+            color: true,
           },
         },
         booth: {
@@ -683,27 +708,29 @@ export const POST = withBranchAccess(
           effectiveEndDateTime = createDateTime(date, effectiveEndTime);
         }
 
-        // Check vacation conflict — silently skip if vacation
-        const hasVacationConflict = await checkVacationConflict(
-          dateObj,
-          sessionBranchId
-        );
-
-        if (hasVacationConflict) {
-          return NextResponse.json(
-            {
-              data: [],
-              message: "この日の授業は休日期間のためスキップされました",
-              skipped: true,
-              pagination: {
-                total: 0,
-                page: 1,
-                limit: 0,
-                pages: 0,
-              },
-            },
-            { status: 200 }
+        // Check vacation conflict — but allow for 特別授業 (and its descendants)
+        const isSpecial = await isSpecialClassType(classTypeId);
+        if (!isSpecial) {
+          const hasVacationConflict = await checkVacationConflict(
+            dateObj,
+            sessionBranchId
           );
+          if (hasVacationConflict) {
+            return NextResponse.json(
+              {
+                data: [],
+                message: "この日の授業は休日期間のためスキップされました",
+                skipped: true,
+                pagination: {
+                  total: 0,
+                  page: 1,
+                  limit: 0,
+                  pages: 0,
+                },
+              },
+              { status: 200 }
+            );
+          }
         }
 
         // Enhanced availability check with effective times
@@ -919,6 +946,7 @@ export const POST = withBranchAccess(
             classType: {
               select: {
                 name: true,
+                color: true,
               },
             },
             booth: {
@@ -1102,15 +1130,17 @@ export const POST = withBranchAccess(
             }
           }
 
-          // Check vacation conflict — silently skip this date if vacation
-          const hasVacationConflict = await checkVacationConflict(
-            sessionDate,
-            sessionBranchId
-          );
-
-          if (hasVacationConflict) {
-            skippedDates.push(sessionDate);
-            continue;
+          // Check vacation conflict — but allow for 特別授業 (and its descendants)
+          const isSpecial = await isSpecialClassType(classTypeId);
+          if (!isSpecial) {
+            const hasVacationConflict = await checkVacationConflict(
+              sessionDate,
+              sessionBranchId
+            );
+            if (hasVacationConflict) {
+              skippedDates.push(sessionDate);
+              continue;
+            }
           }
 
           // Enhanced availability check
@@ -1388,6 +1418,7 @@ export const POST = withBranchAccess(
                 classType: {
                   select: {
                     name: true,
+                    color: true,
                   },
                 },
                 booth: {

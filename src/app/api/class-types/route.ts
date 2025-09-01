@@ -19,6 +19,7 @@ type FormattedClassType = {
   notes: string | null;
   parentId: string | null;
   order: number | null;
+  color: string | null;
   parent?: FormattedClassType | null;
   children?: FormattedClassType[];
   createdAt: Date;
@@ -34,6 +35,7 @@ const formatClassType = (
   notes: classType.notes,
   parentId: classType.parentId,
   order: classType.order,
+  color: (classType as any).color ?? null,
   parent: classType.parent ? formatClassType(classType.parent) : undefined,
   children: classType.children?.map(formatClassType),
   createdAt: classType.createdAt,
@@ -169,7 +171,7 @@ export const POST = withRole(
         );
       }
 
-      const { name, notes, parentId, order } = result.data;
+      const { name, notes, parentId, order, color } = result.data;
 
       // Check if class type name already exists within the same parent context
       const existingClassType = await prisma.classType.findFirst({
@@ -203,6 +205,24 @@ export const POST = withRole(
         }
       }
 
+      // If color provided, ensure uniqueness (best-effort for older schemas)
+      if (color) {
+        try {
+          const colorInUse = await prisma.classType.findFirst({
+            where: { color: { equals: color, mode: 'insensitive' } as any },
+            select: { classTypeId: true },
+          });
+          if (colorInUse) {
+            return NextResponse.json(
+              { error: "この色は別のクラスタイプで利用されています" },
+              { status: 409 }
+            );
+          }
+        } catch {
+          // Schema might not have `color`; skip uniqueness check gracefully
+        }
+      }
+
       // Determine the order value
       let finalOrder = order;
       if (!finalOrder) {
@@ -224,19 +244,26 @@ export const POST = withRole(
         order: finalOrder,
       });
 
-      // Create class type
-      const newClassType = await prisma.classType.create({
-        data: {
-          name,
-          notes,
-          parentId,
-          order: finalOrder,
-        },
-        include: {
-          parent: true,
-          children: true,
-        },
-      });
+      // Create class type (tolerate older schemas without `color` field)
+      let newClassType: any;
+      try {
+        newClassType = await prisma.classType.create({
+          data: {
+            name,
+            notes,
+            parentId,
+            order: finalOrder,
+            ...(color !== undefined ? { color } : {} as any),
+          } as any,
+          include: { parent: true, children: true },
+        });
+      } catch (e) {
+        // Retry without color
+        newClassType = await prisma.classType.create({
+          data: { name, notes, parentId, order: finalOrder },
+          include: { parent: true, children: true },
+        });
+      }
 
       // Format response
       const formattedClassType = formatClassType(newClassType);

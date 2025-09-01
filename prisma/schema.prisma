@@ -113,6 +113,8 @@ model ClassType {
   updatedAt     DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
   parentId      String?        @map("parent_id")
   order         Int?           @map("order")
+  // Optional unique color identifier for UI highlighting
+  color         String?        @unique @db.VarChar(30)
   classSessions ClassSession[]
   parent        ClassType?     @relation("ClassTypeHierarchy", fields: [parentId], references: [classTypeId])
   children      ClassType[]    @relation("ClassTypeHierarchy")

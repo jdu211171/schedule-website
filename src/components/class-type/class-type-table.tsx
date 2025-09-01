@@ -29,6 +29,7 @@ import { ClassTypeFormDialog } from "./class-type-form-dialog";
 import { ClassType, useClassTypes } from "@/hooks/useClassTypeQuery";
 import { useSession } from "next-auth/react";
 import { CSVImportDialog } from "@/components/ui/csv-import-dialog";
+import { classTypeColorClasses, getHexForClassTypeColor, isHexColor, isValidClassTypeColor, ClassTypeColor } from "@/lib/class-type-colors";
 
 // Define custom column meta type
 interface ColumnMetaType {
@@ -100,6 +101,36 @@ export function ClassTypeTable() {
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
 
   const columns: ColumnDef<ClassType>[] = [
+    {
+      accessorKey: "color",
+      header: "色",
+      cell: ({ row }) => {
+        const colorKey = row.original.color as string | null | undefined;
+        let circle: React.ReactNode = null;
+        if (isValidClassTypeColor(colorKey || null)) {
+          const key = colorKey as ClassTypeColor;
+          circle = <span className={`inline-block h-4 w-4 rounded-full border ${classTypeColorClasses[key].dot} border-white shadow`} />;
+        } else {
+          const hex = getHexForClassTypeColor(colorKey || null);
+          if (hex) {
+            circle = (
+              <span
+                className={"inline-block h-3 w-3 rounded-full border border-white shadow"}
+                style={{ backgroundColor: hex }}
+              />
+            );
+          } else {
+            circle = <span className="inline-block h-3 w-3 rounded-full border border-muted bg-muted/60" />;
+          }
+        }
+        return <div className="flex items-center justify-center">{circle}</div>;
+      },
+      meta: {
+        align: "center",
+        headerClassName: "w-[32px] text-center",
+        cellClassName: "w-[32px] text-center",
+      } as ColumnMetaType,
+    },
     {
       accessorKey: "name",
       header: "名前",

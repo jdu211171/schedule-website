@@ -9,6 +9,7 @@ export type ClassType = {
   notes: string | null;
   parentId: string | null;
   order: number | null;
+  color: string | null;
   parent?: ClassType | null;
   children?: ClassType[];
   createdAt: Date;

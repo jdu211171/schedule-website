@@ -2,6 +2,7 @@ import React, { useMemo } from "react";
 import { ExtendedClassSessionWithRelations } from "@/hooks/useClassSessionQuery";
 import { TimeSlot } from "./day-calendar";
 import { UserCheck, GraduationCap } from "lucide-react";
+import { classTypeColorClasses, isValidClassTypeColor, isHexColor, rgba, getContrastText } from "@/lib/class-type-colors";
 
 interface Booth {
   boothId: string;
@@ -194,27 +195,39 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
     lesson.boothId,
   ]);
 
-  const colors = useMemo(() => {
-    const isRecurringLesson =
-      lesson.seriesId !== null && lesson.seriesId !== undefined;
-    const subjectName = lesson.subject?.name || lesson.subjectName || "";
-
-    if (isRecurringLesson) {
-      return {
-        background: "bg-indigo-100 dark:bg-indigo-900/70",
-        border: "border-indigo-300 dark:border-indigo-700",
-        text: "text-indigo-800 dark:text-indigo-100",
-        hover: "hover:bg-indigo-200 dark:hover:bg-indigo-800",
-      };
-    } else {
-      return {
-        background: "bg-red-100 dark:bg-red-900/70",
-        border: "border-red-300 dark:border-red-700",
-        text: "text-red-800 dark:text-red-100",
-        hover: "hover:bg-red-200 dark:hover:bg-red-800",
-      };
+  const { colorClasses, colorStyle } = useMemo(() => {
+    const colorKey = ((lesson as any)?.classType?.color ?? (lesson as any)?.classTypeColor) as string | undefined;
+    if (isValidClassTypeColor(colorKey)) {
+      return { colorClasses: classTypeColorClasses[colorKey], colorStyle: undefined as React.CSSProperties | undefined };
     }
-  }, [lesson.seriesId, lesson.subject?.name, lesson.subjectName]);
+    if (isHexColor(colorKey || '')) {
+      const bg = rgba(colorKey!, 0.18) || undefined;
+      const border = rgba(colorKey!, 0.5) || undefined;
+      const textColor = getContrastText(colorKey!);
+      const style: React.CSSProperties = {
+        backgroundColor: bg,
+        borderColor: border,
+        color: textColor === 'white' ? '#f8fafc' : '#0f172a',
+      };
+      return { colorClasses: undefined, colorStyle: style };
+    }
+    // fallback to previous behavior (series-based)
+    const isRecurringLesson = lesson.seriesId !== null && lesson.seriesId !== undefined;
+    const fallback = isRecurringLesson
+      ? {
+          background: "bg-indigo-100 dark:bg-indigo-900/70",
+          border: "border-indigo-300 dark:border-indigo-700",
+          text: "text-indigo-800 dark:text-indigo-100",
+          hover: "hover:bg-indigo-200 dark:hover:bg-indigo-800",
+        }
+      : {
+          background: "bg-red-100 dark:bg-red-900/70",
+          border: "border-red-300 dark:border-red-700",
+          text: "text-red-800 dark:text-red-100",
+          hover: "hover:bg-red-200 dark:hover:bg-red-800",
+        };
+    return { colorClasses: fallback, colorStyle: undefined };
+  }, [lesson.seriesId, (lesson as any)?.classTypeColor, (lesson as any)?.classType?.color]);
 
   const style = useMemo(
     () =>
@@ -265,11 +278,11 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
       className={`
         absolute rounded border shadow-sm cursor-pointer
         transition-colors duration-100 ease-in-out transform
-        ${colors.background} ${colors.border} ${colors.text} ${colors.hover}
+        ${colorClasses ? `${colorClasses.background} ${colorClasses.border} ${colorClasses.text} ${colorClasses.hover}` : ''}
         active:scale-[0.98] hover:shadow-md
         overflow-hidden truncate pointer-events-auto
       `}
-      style={style}
+      style={{ ...style, ...(colorStyle || {}) }}
       onClick={() => onClick(lesson)}
     >
       <div className="text-[11px] p-1 flex flex-col h-full justify-between relative">

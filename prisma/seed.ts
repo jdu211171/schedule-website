@@ -125,7 +125,7 @@ async function main() {
   // Ensure notes/order are up to date
   regularClassType = await prisma.classType.update({
     where: { classTypeId: regularClassType.classTypeId },
-    data: { notes: "週次の通常授業枠", order: 1 },
+    data: { notes: "週次の通常授業枠", order: 1, color: 'blue' },
   });
 
   let specialClassType =
@@ -141,7 +141,7 @@ async function main() {
     }));
   specialClassType = await prisma.classType.update({
     where: { classTypeId: specialClassType.classTypeId },
-    data: { notes: "夏期講習やイベントなどの特別枠", order: 2 },
+    data: { notes: "夏期講習やイベントなどの特別枠", order: 2, color: 'red' },
   });
 
   let rescheduleClassType =

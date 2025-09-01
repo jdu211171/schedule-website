@@ -15,6 +15,12 @@ export const classTypeCreateSchema = z.object({
   notes: z.string().max(255).optional().nullable(),
   parentId: z.string().optional().nullable(),
   order: z.number().int().min(1).optional().nullable(),
+  color: z
+    .string()
+    .trim()
+    .max(30)
+    .optional()
+    .nullable(),
 });
 
 export const classTypeUpdateSchema = z.object({
@@ -23,6 +29,12 @@ export const classTypeUpdateSchema = z.object({
   notes: z.string().max(255).optional().nullable(),
   parentId: z.string().optional().nullable(),
   order: z.number().int().min(1).optional().nullable(),
+  color: z
+    .string()
+    .trim()
+    .max(30)
+    .optional()
+    .nullable(),
 });
 
 export const classTypeFilterSchema = z.object({

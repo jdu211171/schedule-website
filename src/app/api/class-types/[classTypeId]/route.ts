@@ -16,6 +16,7 @@ type FormattedClassType = {
   notes: string | null;
   parentId: string | null;
   order: number | null;
+  color: string | null;
   parent?: FormattedClassType | null;
   children?: FormattedClassType[];
   createdAt: Date;
@@ -37,6 +38,7 @@ const formatClassType = (
   notes: classType.notes,
   parentId: classType.parentId,
   order: classType.order,
+  color: (classType as any).color ?? null,
   parent: classType.parent ? formatClassType(classType.parent) : undefined,
   children: classType.children?.map(formatClassType),
   createdAt: classType.createdAt,
@@ -162,24 +164,21 @@ export const PATCH = withRole(
         );
       }
 
-      const { name, notes, parentId, order } = result.data;
+      const { name, notes, parentId, order, color } = result.data;
 
       // Check if this is a protected class type (通常授業 or 特別授業)
       const isProtected = isProtectedClassType(existingClassType);
       
       if (isProtected) {
-        // For protected class types, only allow updating notes
+        // For protected class types, only allow updating notes. Color is reserved and cannot be changed.
         const allowedFields = Object.keys(body);
-        const hasDisallowedFields = allowedFields.some(field => field !== 'notes');
-        
+        const hasDisallowedFields = allowedFields.some((field) => field !== "notes");
         if (hasDisallowedFields) {
           return NextResponse.json(
             { error: "基本クラスタイプはメモのみ編集可能です" },
             { status: 403 }
           );
         }
-        
-        // Only update notes for protected class types
         const updatedClassType = await prisma.classType.update({
           where: { classTypeId },
           data: {
@@ -264,22 +263,52 @@ export const PATCH = withRole(
         }
       }
 
-      // Update class type
-      const updatedClassType = await prisma.classType.update({
-        where: { classTypeId },
-        data: {
-          name,
-          notes,
-          parentId,
-          order,
-        },
-        include: {
-          parent: true,
-          children: {
-            orderBy: { name: "asc" },
+      // Color uniqueness check for non-protected updates (if provided); tolerate older schemas
+      if (color !== undefined && color !== null) {
+        try {
+          const colorInUse = await prisma.classType.findFirst({
+            where: {
+              color: { equals: color, mode: 'insensitive' } as any,
+              classTypeId: { not: classTypeId },
+            },
+            select: { classTypeId: true },
+          });
+          if (colorInUse) {
+            return NextResponse.json(
+              { error: "この色は別のクラスタイプで利用されています" },
+              { status: 409 }
+            );
+          }
+        } catch {}
+      }
+
+      // Update class type (tolerate schemas without `color`)
+      let updatedClassType: any;
+      try {
+        updatedClassType = await prisma.classType.update({
+          where: { classTypeId },
+          data: {
+            name,
+            notes,
+            parentId,
+            order,
+            ...(color !== undefined ? { color } : {} as any),
+          } as any,
+          include: {
+            parent: true,
+            children: { orderBy: { name: "asc" } },
           },
-        },
-      });
+        });
+      } catch (e) {
+        updatedClassType = await prisma.classType.update({
+          where: { classTypeId },
+          data: { name, notes, parentId, order },
+          include: {
+            parent: true,
+            children: { orderBy: { name: "asc" } },
+          },
+        });
+      }
 
       // Format response
       const formattedClassType = formatClassType(updatedClassType);
