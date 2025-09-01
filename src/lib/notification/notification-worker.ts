@@ -33,6 +33,31 @@ interface WorkerResult {
   batches: number;
 }
 
+// Helper: check if the given date is a vacation for the branch (handles recurring)
+async function isVacationDay(branchId: string | null | undefined, date: Date | null): Promise<boolean> {
+  if (!branchId || !date) return false;
+  const vacations = await prisma.vacation.findMany({
+    where: { branchId },
+    select: { startDate: true, endDate: true, isRecurring: true },
+  });
+  const md = (d: Date) => (d.getUTCMonth() + 1) * 100 + d.getUTCDate();
+  const targetMD = md(date);
+  for (const v of vacations) {
+    if (!v.isRecurring) {
+      if (v.startDate <= date && v.endDate >= date) return true;
+    } else {
+      const startMD = md(v.startDate);
+      const endMD = md(v.endDate);
+      if (startMD <= endMD) {
+        if (targetMD >= startMD && targetMD <= endMD) return true;
+      } else {
+        if (targetMD >= startMD || targetMD <= endMD) return true;
+      }
+    }
+  }
+  return false;
+}
+
 /**
  * Processes a single notification. This function is designed to be robust.
  * It marks the notification as PROCESSING and increments attempts first.
@@ -681,32 +706,6 @@ export const runNotificationWorker = async (config: Partial<WorkerConfig> = {}):
       executionTimeMs: Date.now() - startTime,
       config: workerConfig
     });
-// Helper: check if the given date is a vacation for the branch (handles recurring)
-async function isVacationDay(branchId: string | null | undefined, date: Date | null): Promise<boolean> {
-  if (!branchId || !date) return false;
-  const vacations = await prisma.vacation.findMany({
-    where: { branchId },
-    select: { startDate: true, endDate: true, isRecurring: true },
-  });
-  const md = (d: Date) => (d.getUTCMonth() + 1) * 100 + d.getUTCDate();
-  const targetMD = md(date);
-  for (const v of vacations) {
-    if (!v.isRecurring) {
-      if (v.startDate <= date && v.endDate >= date) return true;
-    } else {
-      const startMD = md(v.startDate);
-      const endMD = md(v.endDate);
-      if (startMD <= endMD) {
-        if (targetMD >= startMD && targetMD <= endMD) return true;
-      } else {
-        if (targetMD >= startMD || targetMD <= endMD) return true;
-      }
-    }
-  }
-  return false;
-}
-
-
     const executionTimeMs = Date.now() - startTime;
 
     return {

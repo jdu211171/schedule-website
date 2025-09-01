@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { withRole } from "@/lib/auth";
+import { withBranchAccess } from "@/lib/auth";
 import { CSVParser } from "@/lib/csv-parser";
 import { prisma } from "@/lib/prisma";
 import {
@@ -12,7 +12,7 @@ import {
 import { z } from "zod";
 import { handleImportError } from "@/lib/import-error-handler";
 
-async function handleImport(req: NextRequest, session: any) {
+async function handleImport(req: NextRequest, session: any, branchId: string) {
   try {
     // Get the form data
     const formData = await req.formData();
@@ -127,6 +127,7 @@ async function handleImport(req: NextRequest, session: any) {
             name: validated.name,
             startDate: validated.startDate,
             endDate: validated.endDate,
+            branchId,
           },
         });
 
@@ -170,7 +171,8 @@ async function handleImport(req: NextRequest, session: any) {
               startDate: data.startDate,
               endDate: data.endDate,
               isRecurring: data.isRecurring,
-              notes: data.description
+              notes: data.description,
+              branchId,
             }
           });
           result.success++;
@@ -184,4 +186,4 @@ async function handleImport(req: NextRequest, session: any) {
   }
 }
 
-export const POST = withRole(["ADMIN", "STAFF"], handleImport);
+export const POST = withBranchAccess(["ADMIN", "STAFF"], handleImport);

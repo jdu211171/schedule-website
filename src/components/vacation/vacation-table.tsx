@@ -65,7 +65,7 @@ export function VacationTable() {
     page,
     limit: pageSize,
     name: searchTerm || undefined,
-    branchId: selectedBranchId,
+    branchId: selectedBranchId || undefined,
   });
 
   const isAdmin = session?.user?.role === "ADMIN";

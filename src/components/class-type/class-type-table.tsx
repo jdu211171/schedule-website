@@ -66,6 +66,7 @@ export function ClassTypeTable() {
     page,
     limit: pageSize,
     name: searchTerm || undefined,
+    includeParent: true,
   });
 
   const { data: session } = useSession();
@@ -119,9 +120,11 @@ export function ClassTypeTable() {
         if (!row.original.parentId) return (
           <span className="text-muted-foreground">ルート</span>
         );
-        const parent = typedClassTypes.find(
-          (type) => type.classTypeId === row.original.parentId
-        );
+        const parent =
+          row.original.parent ??
+          typedClassTypes.find(
+            (type) => type.classTypeId === row.original.parentId
+          );
         return (
           <span className="text-muted-foreground">
             {parent?.name || "-"}

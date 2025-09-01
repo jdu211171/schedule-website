@@ -190,9 +190,18 @@ export function BoothTable() {
 
   const handleExport = () => {
     // Get visible columns (all columns except actions)
-    const exportColumns = visibleColumns
+    let exportColumns = visibleColumns
       .map(col => (col as any).accessorKey)
       .filter(key => key) as string[];
+
+    // Map UI accessor keys to API export columns
+    exportColumns = exportColumns.map((key) => (key === "branchName" ? "branch" : key));
+
+    // Ensure branch column is included in export
+    if (!exportColumns.includes("branch")) {
+      exportColumns.push("branch");
+    }
+
     exportToCSV({ columns: exportColumns, query: { name: searchTerm || "" } });
   };
 

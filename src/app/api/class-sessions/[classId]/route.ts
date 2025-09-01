@@ -114,7 +114,6 @@ const checkVacationConflict = async (date: Date, branchId: string): Promise<bool
     where: {
       OR: [
         { branchId: branchId },
-        { branchId: null }, // Global vacations
       ],
       AND: [
         { startDate: { lte: date } },
@@ -523,7 +522,7 @@ export const DELETE = withBranchAccess(
         await tx.studentClassEnrollment.deleteMany({
           where: { classId }
         });
-        
+
         // Then delete the class session
         await tx.classSession.delete({
           where: { classId }
