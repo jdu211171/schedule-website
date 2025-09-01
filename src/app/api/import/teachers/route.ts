@@ -125,8 +125,20 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
           ? teacherUpdateImportSchema.parse(filteredRow)
           : teacherImportSchema.parse(filteredRow);
 
-        // Strict variant: don't match by username/email here
-        const existingUser = null as any;
+        // Upsert semantics similar to student import:
+        // If no explicit ID, try to find existing user by username/email to update
+        let existingUser: any | null = null;
+        if (!importTeacherId) {
+          existingUser = await prisma.user.findFirst({
+            where: {
+              OR: [
+                { username: validated.username },
+                ...(validated.email ? [{ email: validated.email }] : []),
+              ],
+            },
+            include: { teacher: true },
+          });
+        }
 
         // Validate branches
         let branchIds: string[] = [];
@@ -147,14 +159,43 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
           branchIds = [branchId]; // Default to current branch
         }
 
-        // Push row with strict marker
-        validatedData.push({
-          ...validated,
-          branchIds,
-          fieldsInRow,
-          rowNumber,
-          ...(isUpdateRow ? { teacherId: importTeacherId } : {} as any),
-        } as any);
+        // Decide if this row is an update or create
+        if (isUpdateRow) {
+          // Update by provided teacher ID
+          validatedData.push({
+            ...validated,
+            branchIds,
+            fieldsInRow,
+            rowNumber,
+            teacherId: importTeacherId,
+          } as any);
+        } else if (existingUser) {
+          // Update existing teacher matched by username/email
+          if (!existingUser.teacher) {
+            result.errors.push({
+              row: rowNumber,
+              errors: [
+                `ユーザー「${existingUser.username}」は講師ではありません`,
+              ],
+            });
+            continue;
+          }
+          validatedData.push({
+            ...validated,
+            branchIds,
+            fieldsInRow,
+            rowNumber,
+            existingUserId: existingUser.id,
+          } as any);
+        } else {
+          // Create new teacher
+          validatedData.push({
+            ...validated,
+            branchIds,
+            fieldsInRow,
+            rowNumber,
+          } as any);
+        }
       } catch (error) {
         if (error instanceof z.ZodError) {
           result.errors.push(formatValidationErrors(error.errors, rowNumber));
@@ -225,6 +266,52 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
                 result.errors.push({ row: data.rowNumber, errors: ["指定されたIDの講師が見つかりません"] });
                 continue;
               }
+            } else if ((data as any).existingUserId) {
+              // Update by existing user (matched via username/email)
+              const fieldsInRow = data.fieldsInRow || new Set();
+              const userUpdates: any = {};
+              if (fieldsInRow.has("email")) userUpdates.email = data.email ?? null;
+              if (fieldsInRow.has("name")) userUpdates.name = data.name ?? null;
+              if (fieldsInRow.has("password") && data.password && data.password.trim() !== "") {
+                userUpdates.passwordHash = data.password;
+              }
+
+              try {
+                // Update user
+                if (Object.keys(userUpdates).length > 0) {
+                  await tx.user.update({ where: { id: (data as any).existingUserId }, data: userUpdates });
+                }
+
+                // Update teacher (by userId)
+                const teacherUpdates: any = {};
+                const fields = data.fieldsInRow || new Set();
+                if (fields.has("name")) teacherUpdates.name = data.name || null;
+                if (fields.has("kanaName")) teacherUpdates.kanaName = data.kanaName || null;
+                if (fields.has("notes")) teacherUpdates.notes = data.notes || null;
+                if (fields.has("birthDate")) teacherUpdates.birthDate = data.birthDate || null;
+                if (fields.has("lineId")) teacherUpdates.lineId = data.lineId || null;
+
+                if (Object.keys(teacherUpdates).length > 0) {
+                  await tx.teacher.update({ where: { userId: (data as any).existingUserId }, data: teacherUpdates });
+                }
+
+                // Update branches
+                if (fields.has("branches") && data.branchIds) {
+                  await tx.userBranch.deleteMany({ where: { userId: (data as any).existingUserId } });
+                  if (data.branchIds.length > 0) {
+                    for (const bId of data.branchIds) {
+                      await tx.userBranch.create({ data: { userId: (data as any).existingUserId, branchId: bId } });
+                    }
+                  } else {
+                    await tx.userBranch.create({ data: { userId: (data as any).existingUserId, branchId } });
+                  }
+                }
+
+                result.updated!++;
+              } catch (e) {
+                result.errors.push({ row: data.rowNumber, errors: ["更新中にエラーが発生しました"] });
+                continue;
+              }
             } else {
               // Create new teacher
               try {
@@ -238,6 +325,13 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
                     message: `行 ${data.rowNumber}: パスワードが指定されていないため、デフォルトパスワード（${defaultPassword}）を設定しました`,
                     type: "default_password",
                   });
+                }
+
+                // Pre-check user conflicts
+                const conflict = await tx.user.findFirst({ where: { OR: [ { username: data.username }, ...(data.email ? [{ email: data.email }] : []) ] } });
+                if (conflict) {
+                  result.errors.push({ row: data.rowNumber, errors: [ conflict.username === data.username ? `ユーザー名「${data.username}」は既に使用されています` : `メールアドレス「${data.email}」は既に使用されています` ] });
+                  continue;
                 }
 
                 const user = await tx.user.create({
