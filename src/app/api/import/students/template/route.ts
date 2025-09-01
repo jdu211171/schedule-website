@@ -1,39 +1,81 @@
 import { NextResponse } from "next/server";
 import { CSVParser } from "@/lib/csv-parser";
-import { STUDENT_CSV_HEADERS } from "@/schemas/import";
+import { STUDENT_COLUMN_RULES } from "@/schemas/import/student-column-rules";
 
 export async function GET() {
   try {
-    // Sample data for template
+    // Align template with student export default columns
+    const defaultKeys: (keyof typeof STUDENT_COLUMN_RULES)[] = [
+      'name',
+      'kanaName',
+      'status',
+      'studentTypeName',
+      'gradeYear',
+      'birthDate',
+      'schoolName',
+      'schoolType',
+      'examCategory',
+      'examCategoryType',
+      'firstChoice',
+      'secondChoice',
+      'examDate',
+      'username',
+      'email',
+      'parentEmail',
+      'branches',
+      'notes',
+    ];
+    const exportHeaders = defaultKeys.map(key => STUDENT_COLUMN_RULES[key].csvHeader);
+    const columns = ["ID", ...exportHeaders] as const;
+
+    // Sample data for template using localized headers
     const sampleData = [
       {
-        username: "student1",
-        email: "student1@example.com",
-        password: "password123",
-        name: "山田花子",
-        kanaName: "ヤマダハナコ",
-        studentTypeName: "高校生",
-        gradeYear: "2",
-        lineId: "line_hanako",
-        notes: "成績優秀",
-        subjects: "数学,英語"
+        ID: "",
+        名前: "山田花子",
+        カナ: "ヤマダハナコ",
+        ステータス: "在籍",
+        生徒タイプ: "高校生",
+        学年: "2",
+        生年月日: "2008-04-12",
+        学校名: "東京高校",
+        学校種別: "公立",
+        受験区分: "高校",
+        受験区分種別: "公立",
+        第一志望校: "第一高校",
+        第二志望校: "第二高校",
+        試験日: "2026-02-15",
+        ユーザー名: "student1",
+        メールアドレス: "student1@example.com",
+        保護者メール: "parent1@example.com",
+        校舎: "メイン校; サブ校",
+        備考: "成績優秀",
       },
       {
-        username: "student2",
-        email: "student2@example.com",
-        password: "password456",
-        name: "鈴木一郎",
-        kanaName: "スズキイチロウ",
-        studentTypeName: "中学生",
-        gradeYear: "1",
-        lineId: "",
-        notes: "",
-        subjects: "国語,理科,社会"
-      }
+        ID: "",
+        名前: "鈴木一郎",
+        カナ: "スズキイチロウ",
+        ステータス: "在籍",
+        生徒タイプ: "中学生",
+        学年: "1",
+        生年月日: "2011-10-01",
+        学校名: "東京中学",
+        学校種別: "私立",
+        受験区分: "中学校",
+        受験区分種別: "私立",
+        第一志望校: "第一中学",
+        第二志望校: "第二中学",
+        試験日: "2025-02-10",
+        ユーザー名: "student2",
+        メールアドレス: "student2@example.com",
+        保護者メール: "",
+        校舎: "メイン校",
+        備考: "",
+      },
     ];
 
-    // Generate CSV with headers
-    const csv = CSVParser.generateCSV(sampleData, [...STUDENT_CSV_HEADERS]);
+    // Generate CSV with headers matching export
+    const csv = CSVParser.generateCSV(sampleData, [...columns]);
 
     // Return CSV file
     return new NextResponse(csv, {
