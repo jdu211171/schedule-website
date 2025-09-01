@@ -113,6 +113,10 @@ export function useVacationCreate() {
       return { previousVacations, tempId };
     },
     onError: (error, _, context) => {
+      // Suppress toast for 409 (handled by UI confirm flow)
+      if (error instanceof CustomError && error.status === 409) {
+        return;
+      }
       if (context?.previousVacations) {
         Object.entries(context.previousVacations).forEach(
           ([queryKey, data]) => {

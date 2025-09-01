@@ -8,6 +8,31 @@ import { withRole } from '@/lib/auth';
 
 const TIMEZONE = 'Asia/Tokyo';
 
+// Helper: check if the given date is a vacation for the branch (handles recurring)
+async function isVacationDay(branchId: string | undefined, date: Date): Promise<boolean> {
+  if (!branchId) return false;
+  const vacations = await prisma.vacation.findMany({
+    where: { branchId },
+    select: { startDate: true, endDate: true, isRecurring: true },
+  });
+  const md = (d: Date) => (d.getUTCMonth() + 1) * 100 + d.getUTCDate();
+  const targetMD = md(date);
+  for (const v of vacations) {
+    if (!v.isRecurring) {
+      if (v.startDate <= date && v.endDate >= date) return true;
+    } else {
+      const startMD = md(v.startDate);
+      const endMD = md(v.endDate);
+      if (startMD <= endMD) {
+        if (targetMD >= startMD && targetMD <= endMD) return true;
+      } else {
+        if (targetMD >= startMD || targetMD <= endMD) return true;
+      }
+    }
+  }
+  return false;
+}
+
 async function processNotifications(skipTimeCheck: boolean = false) {
   const now = new Date();
   const nowJST = toZonedTime(now, TIMEZONE);
@@ -211,7 +236,7 @@ async function processNotifications(skipTimeCheck: boolean = false) {
             sessionsByBranch.get(branchId)!.push(session);
           }
           
-          // Create notifications per branch
+          // Create notifications per branch (skip branches on vacation day)
           for (const [branchId, branchSessions] of sessionsByBranch) {
             if (branchId === 'NO_BRANCH' && template.branchId) {
               // Skip sessions without branch for branch-specific templates
@@ -223,6 +248,13 @@ async function processNotifications(skipTimeCheck: boolean = false) {
               continue;
             }
             
+            // Suppress notifications on vacation days for this branch
+            const effectiveBranchId = branchId !== 'NO_BRANCH' ? branchId : (template.branchId || undefined);
+            if (await isVacationDay(effectiveBranchId, targetDate)) {
+              console.log(`  ⛔ Skipping notifications for branch ${effectiveBranchId} on vacation day ${targetDateString}`);
+              continue;
+            }
+
             const itemTemplate = template.classListItemTemplate || DEFAULT_CLASS_LIST_ITEM_TEMPLATE;
             const summaryTemplate = template.classListSummaryTemplate || DEFAULT_CLASS_LIST_SUMMARY_TEMPLATE;
             let dailyClassList = '';

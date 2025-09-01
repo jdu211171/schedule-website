@@ -11,14 +11,11 @@ export const GET = withBranchAccess(
 
     // Optional filters
     const name = searchParams.get("name") || undefined;
-    const includeGlobal = searchParams.get("includeGlobal") === "false" ? false : true;
+    const paramBranchId = searchParams.get("branchId") || undefined;
 
-    // Restrict to selected branch; include global only if requested
-    const branchScope = includeGlobal
-      ? ({ OR: [{ branchId }, { branchId: null }] } as const)
-      : ({ branchId } as const);
+    // Restrict to a single branch (param if provided, otherwise selected branch)
     const where = {
-      ...branchScope,
+      branchId: paramBranchId || branchId,
       ...(name ? { name: { contains: name, mode: "insensitive" } } : {}),
     } as any;
 
@@ -70,7 +67,7 @@ export const GET = withBranchAccess(
           case "name":
             return holiday.name || "";
           case "branch":
-            return holiday.branch?.name || "全校舎";
+            return holiday.branch?.name || "";
           case "startDate":
             return holiday.startDate.toISOString().split("T")[0];
           case "endDate":

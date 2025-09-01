@@ -461,12 +461,12 @@ model Vacation {
   notes       String?  @db.VarChar(255)
   startDate   DateTime
   endDate     DateTime
-  branchId    String?  @map("branch_id")
+  branchId    String   @map("branch_id")
   isRecurring Boolean  @default(false)
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
   order       Int?     @map("order")
-  branch      Branch?  @relation(fields: [branchId], references: [branchId])
+  branch      Branch   @relation(fields: [branchId], references: [branchId])
 
   @@index([branchId])
   @@index([order])

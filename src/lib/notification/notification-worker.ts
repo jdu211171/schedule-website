@@ -55,6 +55,26 @@ const processNotification = async (notification: Notification): Promise<void> =>
   let channelIdForDelivery: string | null = null;
   
   try {
+    // Skip notifications on vacation days for the branch
+    if (await isVacationDay(notification.branchId, notification.targetDate)) {
+      await prisma.notification.update({
+        where: { notificationId: notification.notificationId },
+        data: {
+          status: NotificationStatus.FAILED,
+          processingAttempts: MAX_ATTEMPTS,
+          logs: {
+            success: false,
+            message: 'SKIPPED_VACATION_DAY: Target date is vacation for branch',
+            context: {
+              branchId: notification.branchId,
+              targetDate: notification.targetDate,
+            }
+          }
+        }
+      });
+      return;
+    }
+
     // Always use multi-channel links strategy
     const lineIds: string[] = [];
 
@@ -661,6 +681,31 @@ export const runNotificationWorker = async (config: Partial<WorkerConfig> = {}):
       executionTimeMs: Date.now() - startTime,
       config: workerConfig
     });
+// Helper: check if the given date is a vacation for the branch (handles recurring)
+async function isVacationDay(branchId: string | null | undefined, date: Date | null): Promise<boolean> {
+  if (!branchId || !date) return false;
+  const vacations = await prisma.vacation.findMany({
+    where: { branchId },
+    select: { startDate: true, endDate: true, isRecurring: true },
+  });
+  const md = (d: Date) => (d.getUTCMonth() + 1) * 100 + d.getUTCDate();
+  const targetMD = md(date);
+  for (const v of vacations) {
+    if (!v.isRecurring) {
+      if (v.startDate <= date && v.endDate >= date) return true;
+    } else {
+      const startMD = md(v.startDate);
+      const endMD = md(v.endDate);
+      if (startMD <= endMD) {
+        if (targetMD >= startMD && targetMD <= endMD) return true;
+      } else {
+        if (targetMD >= startMD || targetMD <= endMD) return true;
+      }
+    }
+  }
+  return false;
+}
+
 
     const executionTimeMs = Date.now() - startTime;
 

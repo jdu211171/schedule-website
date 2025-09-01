@@ -38,3 +38,4 @@
 ## Agent & Ops Notes
 - Use Bun only for packages; fix TS errors after changes.
 - Maintain `TODO.md` for tasks/progress. Start sessions by reviewing `TODO.md`, running `git status`, and checking recent commits.
+- Before writing new code, search the repo for similar/related implementations and reference them. Reuse established patterns (APIs, hooks, components, dialogs) and align naming, props, and behavior. Prefer `rg` for fast code search.

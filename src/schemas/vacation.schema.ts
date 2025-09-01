@@ -21,7 +21,6 @@ export const vacationFilterSchema = z.object({
   endDate: z.coerce.date().optional(),
   isRecurring: z.coerce.boolean().optional(),
   branchId: z.string().optional(),
-  includeGlobal: z.coerce.boolean().optional(),
   sortBy: z.enum(VACATION_SORT_FIELDS).default("order"),
   sortOrder: z.enum(["asc", "desc"]).default("asc"),
 });
@@ -44,6 +43,8 @@ export const vacationUpdateSchema = z.object({
   isRecurring: z.boolean().optional(),
   notes: z.string().max(255).optional().nullable(),
   order: z.number().int().min(1).optional().nullable(),
+  branchId: z.string().optional(),
+  branchIds: z.array(z.string()).optional(),
 });
 
 // For updating vacation order

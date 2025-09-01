@@ -9,6 +9,31 @@ import { withRole } from '@/lib/auth';
 
 const TIMEZONE = 'Asia/Tokyo';
 
+// Helper: check if the given date is a vacation for the branch (handles recurring)
+async function isVacationDay(branchId: string | undefined, date: Date): Promise<boolean> {
+  if (!branchId) return false;
+  const vacations = await prisma.vacation.findMany({
+    where: { branchId },
+    select: { startDate: true, endDate: true, isRecurring: true },
+  });
+  const md = (d: Date) => (d.getUTCMonth() + 1) * 100 + d.getUTCDate();
+  const targetMD = md(date);
+  for (const v of vacations) {
+    if (!v.isRecurring) {
+      if (v.startDate <= date && v.endDate >= date) return true;
+    } else {
+      const startMD = md(v.startDate);
+      const endMD = md(v.endDate);
+      if (startMD <= endMD) {
+        if (targetMD >= startMD && targetMD <= endMD) return true;
+      } else {
+        if (targetMD >= startMD || targetMD <= endMD) return true;
+      }
+    }
+  }
+  return false;
+}
+
 /**
  * Process notifications with optional reset capability
  */
@@ -258,6 +283,11 @@ async function processNotifications(reset: boolean = false, templateId?: string)
             });
 
             for (const [branchId, sessions] of sessionsByBranch) {
+              // Suppress notifications on vacation days for this branch
+              if (await isVacationDay(branchId, targetDate)) {
+                console.log(`  ⛔ Skipping notifications for branch ${branchId} on vacation day ${format(targetDate, 'yyyy-MM-dd')}`);
+                continue;
+              }
               const itemTemplate = template.classListItemTemplate || DEFAULT_CLASS_LIST_ITEM_TEMPLATE;
               const summaryTemplate = template.classListSummaryTemplate || DEFAULT_CLASS_LIST_SUMMARY_TEMPLATE;
               let dailyClassList = '';

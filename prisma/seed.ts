@@ -23,7 +23,9 @@ const getRelativeDate = (daysFromNow: number): Date => {
 const getRelativeDateUTC = (daysFromNow: number): Date => {
   const date = new Date();
   date.setDate(date.getDate() + daysFromNow);
-  return new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0));
+  return new Date(
+    Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0),
+  );
 };
 
 async function main() {
@@ -131,7 +133,11 @@ async function main() {
       where: { name: "特別授業", parentId: null },
     })) ||
     (await prisma.classType.create({
-      data: { name: "特別授業", notes: "夏期講習やイベントなどの特別枠", order: 2 },
+      data: {
+        name: "特別授業",
+        notes: "夏期講習やイベントなどの特別枠",
+        order: 2,
+      },
     }));
   specialClassType = await prisma.classType.update({
     where: { classTypeId: specialClassType.classTypeId },
@@ -1217,7 +1223,7 @@ async function main() {
       notes: "定期勤務時間",
     })),
     skipDuplicates: true,
-  })
+  });
 
   // Add some exception availabilities
   await prisma.userAvailability.createMany({
@@ -1256,8 +1262,28 @@ async function main() {
       teacherId_date_startTime_endTime: {
         teacherId: teacher1.teacherId,
         date: getRelativeDateUTC(15),
-        startTime: new Date(Date.UTC(getRelativeDate(15).getFullYear(), getRelativeDate(15).getMonth(), getRelativeDate(15).getDate(), 9, 0, 0, 0)),
-        endTime: new Date(Date.UTC(getRelativeDate(15).getFullYear(), getRelativeDate(15).getMonth(), getRelativeDate(15).getDate(), 10, 30, 0, 0)),
+        startTime: new Date(
+          Date.UTC(
+            getRelativeDate(15).getFullYear(),
+            getRelativeDate(15).getMonth(),
+            getRelativeDate(15).getDate(),
+            9,
+            0,
+            0,
+            0,
+          ),
+        ),
+        endTime: new Date(
+          Date.UTC(
+            getRelativeDate(15).getFullYear(),
+            getRelativeDate(15).getMonth(),
+            getRelativeDate(15).getDate(),
+            10,
+            30,
+            0,
+            0,
+          ),
+        ),
       },
     },
     update: {
@@ -1276,8 +1302,28 @@ async function main() {
       classTypeId: regularClassType.classTypeId,
       boothId: booth1.boothId,
       date: getRelativeDateUTC(15),
-      startTime: new Date(Date.UTC(getRelativeDate(15).getFullYear(), getRelativeDate(15).getMonth(), getRelativeDate(15).getDate(), 9, 0, 0, 0)),
-      endTime: new Date(Date.UTC(getRelativeDate(15).getFullYear(), getRelativeDate(15).getMonth(), getRelativeDate(15).getDate(), 10, 30, 0, 0)),
+      startTime: new Date(
+        Date.UTC(
+          getRelativeDate(15).getFullYear(),
+          getRelativeDate(15).getMonth(),
+          getRelativeDate(15).getDate(),
+          9,
+          0,
+          0,
+          0,
+        ),
+      ),
+      endTime: new Date(
+        Date.UTC(
+          getRelativeDate(15).getFullYear(),
+          getRelativeDate(15).getMonth(),
+          getRelativeDate(15).getDate(),
+          10,
+          30,
+          0,
+          0,
+        ),
+      ),
       duration: 90,
       branchId: mainBranch.branchId,
       notes: "小学5年生 算数 分数の計算",
@@ -1289,8 +1335,28 @@ async function main() {
       teacherId_date_startTime_endTime: {
         teacherId: teacher2.teacherId,
         date: getRelativeDateUTC(16),
-        startTime: new Date(Date.UTC(getRelativeDate(16).getFullYear(), getRelativeDate(16).getMonth(), getRelativeDate(16).getDate(), 14, 0, 0, 0)),
-        endTime: new Date(Date.UTC(getRelativeDate(16).getFullYear(), getRelativeDate(16).getMonth(), getRelativeDate(16).getDate(), 15, 30, 0, 0)),
+        startTime: new Date(
+          Date.UTC(
+            getRelativeDate(16).getFullYear(),
+            getRelativeDate(16).getMonth(),
+            getRelativeDate(16).getDate(),
+            14,
+            0,
+            0,
+            0,
+          ),
+        ),
+        endTime: new Date(
+          Date.UTC(
+            getRelativeDate(16).getFullYear(),
+            getRelativeDate(16).getMonth(),
+            getRelativeDate(16).getDate(),
+            15,
+            30,
+            0,
+            0,
+          ),
+        ),
       },
     },
     update: {
@@ -1309,8 +1375,28 @@ async function main() {
       classTypeId: regularClassType.classTypeId,
       boothId: booth2.boothId,
       date: getRelativeDateUTC(16),
-      startTime: new Date(Date.UTC(getRelativeDate(16).getFullYear(), getRelativeDate(16).getMonth(), getRelativeDate(16).getDate(), 14, 0, 0, 0)),
-      endTime: new Date(Date.UTC(getRelativeDate(16).getFullYear(), getRelativeDate(16).getMonth(), getRelativeDate(16).getDate(), 15, 30, 0, 0)),
+      startTime: new Date(
+        Date.UTC(
+          getRelativeDate(16).getFullYear(),
+          getRelativeDate(16).getMonth(),
+          getRelativeDate(16).getDate(),
+          14,
+          0,
+          0,
+          0,
+        ),
+      ),
+      endTime: new Date(
+        Date.UTC(
+          getRelativeDate(16).getFullYear(),
+          getRelativeDate(16).getMonth(),
+          getRelativeDate(16).getDate(),
+          15,
+          30,
+          0,
+          0,
+        ),
+      ),
       duration: 90,
       branchId: mainBranch.branchId,
       notes: "中2英語 現在完了形",
@@ -1322,8 +1408,28 @@ async function main() {
       teacherId_date_startTime_endTime: {
         teacherId: teacher1.teacherId,
         date: getRelativeDateUTC(17),
-        startTime: new Date(Date.UTC(getRelativeDate(17).getFullYear(), getRelativeDate(17).getMonth(), getRelativeDate(17).getDate(), 16, 0, 0, 0)),
-        endTime: new Date(Date.UTC(getRelativeDate(17).getFullYear(), getRelativeDate(17).getMonth(), getRelativeDate(17).getDate(), 18, 0, 0, 0)),
+        startTime: new Date(
+          Date.UTC(
+            getRelativeDate(17).getFullYear(),
+            getRelativeDate(17).getMonth(),
+            getRelativeDate(17).getDate(),
+            16,
+            0,
+            0,
+            0,
+          ),
+        ),
+        endTime: new Date(
+          Date.UTC(
+            getRelativeDate(17).getFullYear(),
+            getRelativeDate(17).getMonth(),
+            getRelativeDate(17).getDate(),
+            18,
+            0,
+            0,
+            0,
+          ),
+        ),
       },
     },
     update: {
@@ -1342,8 +1448,28 @@ async function main() {
       classTypeId: testPrepClassType.classTypeId,
       boothId: booth3.boothId,
       date: getRelativeDateUTC(17),
-      startTime: new Date(Date.UTC(getRelativeDate(17).getFullYear(), getRelativeDate(17).getMonth(), getRelativeDate(17).getDate(), 16, 0, 0, 0)),
-      endTime: new Date(Date.UTC(getRelativeDate(17).getFullYear(), getRelativeDate(17).getMonth(), getRelativeDate(17).getDate(), 18, 0, 0, 0)),
+      startTime: new Date(
+        Date.UTC(
+          getRelativeDate(17).getFullYear(),
+          getRelativeDate(17).getMonth(),
+          getRelativeDate(17).getDate(),
+          16,
+          0,
+          0,
+          0,
+        ),
+      ),
+      endTime: new Date(
+        Date.UTC(
+          getRelativeDate(17).getFullYear(),
+          getRelativeDate(17).getMonth(),
+          getRelativeDate(17).getDate(),
+          18,
+          0,
+          0,
+          0,
+        ),
+      ),
       duration: 120,
       branchId: mainBranch.branchId,
       notes: "高3数学 大学受験対策 微分積分",
@@ -1355,8 +1481,28 @@ async function main() {
       teacherId_date_startTime_endTime: {
         teacherId: teacher4.teacherId,
         date: getRelativeDateUTC(18),
-        startTime: new Date(Date.UTC(getRelativeDate(18).getFullYear(), getRelativeDate(18).getMonth(), getRelativeDate(18).getDate(), 10, 0, 0, 0)),
-        endTime: new Date(Date.UTC(getRelativeDate(18).getFullYear(), getRelativeDate(18).getMonth(), getRelativeDate(18).getDate(), 12, 0, 0, 0)),
+        startTime: new Date(
+          Date.UTC(
+            getRelativeDate(18).getFullYear(),
+            getRelativeDate(18).getMonth(),
+            getRelativeDate(18).getDate(),
+            10,
+            0,
+            0,
+            0,
+          ),
+        ),
+        endTime: new Date(
+          Date.UTC(
+            getRelativeDate(18).getFullYear(),
+            getRelativeDate(18).getMonth(),
+            getRelativeDate(18).getDate(),
+            12,
+            0,
+            0,
+            0,
+          ),
+        ),
       },
     },
     update: {
@@ -1375,8 +1521,28 @@ async function main() {
       classTypeId: testPrepClassType.classTypeId,
       boothId: booth8.boothId,
       date: getRelativeDateUTC(18),
-      startTime: new Date(Date.UTC(getRelativeDate(18).getFullYear(), getRelativeDate(18).getMonth(), getRelativeDate(18).getDate(), 10, 0, 0, 0)),
-      endTime: new Date(Date.UTC(getRelativeDate(18).getFullYear(), getRelativeDate(18).getMonth(), getRelativeDate(18).getDate(), 12, 0, 0, 0)),
+      startTime: new Date(
+        Date.UTC(
+          getRelativeDate(18).getFullYear(),
+          getRelativeDate(18).getMonth(),
+          getRelativeDate(18).getDate(),
+          10,
+          0,
+          0,
+          0,
+        ),
+      ),
+      endTime: new Date(
+        Date.UTC(
+          getRelativeDate(18).getFullYear(),
+          getRelativeDate(18).getMonth(),
+          getRelativeDate(18).getDate(),
+          12,
+          0,
+          0,
+          0,
+        ),
+      ),
       duration: 120,
       branchId: eastBranch.branchId,
       notes: "高3化学 大学受験対策 有機化学",
@@ -1388,8 +1554,28 @@ async function main() {
       teacherId_date_startTime_endTime: {
         teacherId: teacher5.teacherId,
         date: getRelativeDateUTC(19),
-        startTime: new Date(Date.UTC(getRelativeDate(19).getFullYear(), getRelativeDate(19).getMonth(), getRelativeDate(19).getDate(), 19, 0, 0, 0)),
-        endTime: new Date(Date.UTC(getRelativeDate(19).getFullYear(), getRelativeDate(19).getMonth(), getRelativeDate(19).getDate(), 21, 0, 0, 0)),
+        startTime: new Date(
+          Date.UTC(
+            getRelativeDate(19).getFullYear(),
+            getRelativeDate(19).getMonth(),
+            getRelativeDate(19).getDate(),
+            19,
+            0,
+            0,
+            0,
+          ),
+        ),
+        endTime: new Date(
+          Date.UTC(
+            getRelativeDate(19).getFullYear(),
+            getRelativeDate(19).getMonth(),
+            getRelativeDate(19).getDate(),
+            21,
+            0,
+            0,
+            0,
+          ),
+        ),
       },
     },
     update: {
@@ -1408,8 +1594,28 @@ async function main() {
       classTypeId: specialClassType.classTypeId,
       boothId: booth15.boothId,
       date: getRelativeDateUTC(19),
-      startTime: new Date(Date.UTC(getRelativeDate(19).getFullYear(), getRelativeDate(19).getMonth(), getRelativeDate(19).getDate(), 19, 0, 0, 0)),
-      endTime: new Date(Date.UTC(getRelativeDate(19).getFullYear(), getRelativeDate(19).getMonth(), getRelativeDate(19).getDate(), 21, 0, 0, 0)),
+      startTime: new Date(
+        Date.UTC(
+          getRelativeDate(19).getFullYear(),
+          getRelativeDate(19).getMonth(),
+          getRelativeDate(19).getDate(),
+          19,
+          0,
+          0,
+          0,
+        ),
+      ),
+      endTime: new Date(
+        Date.UTC(
+          getRelativeDate(19).getFullYear(),
+          getRelativeDate(19).getMonth(),
+          getRelativeDate(19).getDate(),
+          21,
+          0,
+          0,
+          0,
+        ),
+      ),
       duration: 120,
       branchId: westBranch.branchId,
       notes: "JavaScript基礎 社会人向け",
@@ -1421,8 +1627,28 @@ async function main() {
       teacherId_date_startTime_endTime: {
         teacherId: teacher2.teacherId,
         date: getRelativeDateUTC(20),
-        startTime: new Date(Date.UTC(getRelativeDate(20).getFullYear(), getRelativeDate(20).getMonth(), getRelativeDate(20).getDate(), 11, 0, 0, 0)),
-        endTime: new Date(Date.UTC(getRelativeDate(20).getFullYear(), getRelativeDate(20).getMonth(), getRelativeDate(20).getDate(), 12, 0, 0, 0)),
+        startTime: new Date(
+          Date.UTC(
+            getRelativeDate(20).getFullYear(),
+            getRelativeDate(20).getMonth(),
+            getRelativeDate(20).getDate(),
+            11,
+            0,
+            0,
+            0,
+          ),
+        ),
+        endTime: new Date(
+          Date.UTC(
+            getRelativeDate(20).getFullYear(),
+            getRelativeDate(20).getMonth(),
+            getRelativeDate(20).getDate(),
+            12,
+            0,
+            0,
+            0,
+          ),
+        ),
       },
     },
     update: {
@@ -1441,8 +1667,28 @@ async function main() {
       classTypeId: regularClassType.classTypeId,
       boothId: booth4.boothId,
       date: getRelativeDateUTC(20),
-      startTime: new Date(Date.UTC(getRelativeDate(20).getFullYear(), getRelativeDate(20).getMonth(), getRelativeDate(20).getDate(), 11, 0, 0, 0)),
-      endTime: new Date(Date.UTC(getRelativeDate(20).getFullYear(), getRelativeDate(20).getMonth(), getRelativeDate(20).getDate(), 12, 0, 0, 0)),
+      startTime: new Date(
+        Date.UTC(
+          getRelativeDate(20).getFullYear(),
+          getRelativeDate(20).getMonth(),
+          getRelativeDate(20).getDate(),
+          11,
+          0,
+          0,
+          0,
+        ),
+      ),
+      endTime: new Date(
+        Date.UTC(
+          getRelativeDate(20).getFullYear(),
+          getRelativeDate(20).getMonth(),
+          getRelativeDate(20).getDate(),
+          12,
+          0,
+          0,
+          0,
+        ),
+      ),
       duration: 60,
       branchId: mainBranch.branchId,
       notes: "小3国語 音読練習",
@@ -1454,8 +1700,28 @@ async function main() {
       teacherId_date_startTime_endTime: {
         teacherId: teacher4.teacherId,
         date: getRelativeDateUTC(21),
-        startTime: new Date(Date.UTC(getRelativeDate(21).getFullYear(), getRelativeDate(21).getMonth(), getRelativeDate(21).getDate(), 15, 0, 0, 0)),
-        endTime: new Date(Date.UTC(getRelativeDate(21).getFullYear(), getRelativeDate(21).getMonth(), getRelativeDate(21).getDate(), 16, 30, 0, 0)),
+        startTime: new Date(
+          Date.UTC(
+            getRelativeDate(21).getFullYear(),
+            getRelativeDate(21).getMonth(),
+            getRelativeDate(21).getDate(),
+            15,
+            0,
+            0,
+            0,
+          ),
+        ),
+        endTime: new Date(
+          Date.UTC(
+            getRelativeDate(21).getFullYear(),
+            getRelativeDate(21).getMonth(),
+            getRelativeDate(21).getDate(),
+            16,
+            30,
+            0,
+            0,
+          ),
+        ),
       },
     },
     update: {
@@ -1474,8 +1740,28 @@ async function main() {
       classTypeId: regularClassType.classTypeId,
       boothId: booth9.boothId,
       date: getRelativeDateUTC(21),
-      startTime: new Date(Date.UTC(getRelativeDate(21).getFullYear(), getRelativeDate(21).getMonth(), getRelativeDate(21).getDate(), 15, 0, 0, 0)),
-      endTime: new Date(Date.UTC(getRelativeDate(21).getFullYear(), getRelativeDate(21).getMonth(), getRelativeDate(21).getDate(), 16, 30, 0, 0)),
+      startTime: new Date(
+        Date.UTC(
+          getRelativeDate(21).getFullYear(),
+          getRelativeDate(21).getMonth(),
+          getRelativeDate(21).getDate(),
+          15,
+          0,
+          0,
+          0,
+        ),
+      ),
+      endTime: new Date(
+        Date.UTC(
+          getRelativeDate(21).getFullYear(),
+          getRelativeDate(21).getMonth(),
+          getRelativeDate(21).getDate(),
+          16,
+          30,
+          0,
+          0,
+        ),
+      ),
       duration: 90,
       branchId: eastBranch.branchId,
       notes: "高1物理 力学の基礎",
@@ -1487,8 +1773,28 @@ async function main() {
       teacherId_date_startTime_endTime: {
         teacherId: teacher1.teacherId,
         date: getRelativeDateUTC(22),
-        startTime: new Date(Date.UTC(getRelativeDate(22).getFullYear(), getRelativeDate(22).getMonth(), getRelativeDate(22).getDate(), 9, 0, 0, 0)),
-        endTime: new Date(Date.UTC(getRelativeDate(22).getFullYear(), getRelativeDate(22).getMonth(), getRelativeDate(22).getDate(), 12, 0, 0, 0)),
+        startTime: new Date(
+          Date.UTC(
+            getRelativeDate(22).getFullYear(),
+            getRelativeDate(22).getMonth(),
+            getRelativeDate(22).getDate(),
+            9,
+            0,
+            0,
+            0,
+          ),
+        ),
+        endTime: new Date(
+          Date.UTC(
+            getRelativeDate(22).getFullYear(),
+            getRelativeDate(22).getMonth(),
+            getRelativeDate(22).getDate(),
+            12,
+            0,
+            0,
+            0,
+          ),
+        ),
       },
     },
     update: {
@@ -1507,8 +1813,28 @@ async function main() {
       classTypeId: testPrepClassType.classTypeId,
       boothId: booth5.boothId,
       date: getRelativeDateUTC(22),
-      startTime: new Date(Date.UTC(getRelativeDate(22).getFullYear(), getRelativeDate(22).getMonth(), getRelativeDate(22).getDate(), 9, 0, 0, 0)),
-      endTime: new Date(Date.UTC(getRelativeDate(22).getFullYear(), getRelativeDate(22).getMonth(), getRelativeDate(22).getDate(), 12, 0, 0, 0)),
+      startTime: new Date(
+        Date.UTC(
+          getRelativeDate(22).getFullYear(),
+          getRelativeDate(22).getMonth(),
+          getRelativeDate(22).getDate(),
+          9,
+          0,
+          0,
+          0,
+        ),
+      ),
+      endTime: new Date(
+        Date.UTC(
+          getRelativeDate(22).getFullYear(),
+          getRelativeDate(22).getMonth(),
+          getRelativeDate(22).getDate(),
+          12,
+          0,
+          0,
+          0,
+        ),
+      ),
       duration: 180,
       branchId: mainBranch.branchId,
       notes: "浪人生数学 医学部受験対策",
@@ -1570,7 +1896,7 @@ async function main() {
     monthsAgo: number,
     startHourUTC: number,
     endHourUTC: number,
-    notes: string
+    notes: string,
   ) => {
     const today = new Date();
     // Base date at midnight UTC today
@@ -1582,8 +1908,8 @@ async function main() {
         0,
         0,
         0,
-        0
-      )
+        0,
+      ),
     );
     // Move back by N months, preserving day-of-month when possible
     baseDateUTC.setUTCMonth(baseDateUTC.getUTCMonth() - monthsAgo);
@@ -1596,8 +1922,8 @@ async function main() {
         startHourUTC,
         0,
         0,
-        0
-      )
+        0,
+      ),
     );
     const end = new Date(
       Date.UTC(
@@ -1607,8 +1933,8 @@ async function main() {
         endHourUTC,
         0,
         0,
-        0
-      )
+        0,
+      ),
     );
 
     const session = await prisma.classSession.create({
@@ -1645,13 +1971,14 @@ async function main() {
 
   // Vacations and Holidays
   const vacations = [
+    // Main Branch Vacations
     {
       name: "夏期休暇",
       startDate: getRelativeDateUTC(60),
       endDate: getRelativeDateUTC(70),
       isRecurring: false,
       branchId: mainBranch.branchId,
-      notes: "全校舎夏期休暇",
+      notes: "川崎日航ホテルブース 夏期休暇",
       order: 1,
     },
     {
@@ -1659,6 +1986,7 @@ async function main() {
       startDate: getRelativeDateUTC(63),
       endDate: getRelativeDateUTC(66),
       isRecurring: true,
+      branchId: mainBranch.branchId,
       notes: "毎年恒例のお盆休み",
       order: 2,
     },
@@ -1667,9 +1995,21 @@ async function main() {
       startDate: getRelativeDateUTC(180),
       endDate: getRelativeDateUTC(185),
       isRecurring: true,
+      branchId: mainBranch.branchId,
       notes: "年末年始休暇",
       order: 3,
     },
+    {
+      name: "ゴールデンウィーク",
+      startDate: getRelativeDateUTC(100),
+      endDate: getRelativeDateUTC(106),
+      isRecurring: true,
+      branchId: mainBranch.branchId,
+      notes: "ゴールデンウィーク休暇",
+      order: 5,
+    },
+
+    // East Branch (Yokohama) Vacations
     {
       name: "横浜メンテナンス日",
       startDate: getRelativeDateUTC(45),
@@ -1680,10 +2020,58 @@ async function main() {
       order: 4,
     },
     {
+      name: "お盆休み",
+      startDate: getRelativeDateUTC(63),
+      endDate: getRelativeDateUTC(66),
+      isRecurring: true,
+      branchId: eastBranch.branchId,
+      notes: "毎年恒例のお盆休み",
+      order: 2,
+    },
+    {
+      name: "年末年始休暇",
+      startDate: getRelativeDateUTC(180),
+      endDate: getRelativeDateUTC(185),
+      isRecurring: true,
+      branchId: eastBranch.branchId,
+      notes: "年末年始休暇",
+      order: 3,
+    },
+    {
       name: "ゴールデンウィーク",
       startDate: getRelativeDateUTC(100),
       endDate: getRelativeDateUTC(106),
       isRecurring: true,
+      branchId: eastBranch.branchId,
+      notes: "ゴールデンウィーク休暇",
+      order: 5,
+    },
+
+    // West Branch (Kamiooka) Vacations
+    {
+      name: "お盆休み",
+      startDate: getRelativeDateUTC(63),
+      endDate: getRelativeDateUTC(66),
+      isRecurring: true,
+      branchId: westBranch.branchId,
+      notes: "毎年恒例のお盆休み",
+      order: 2,
+    },
+    {
+      name: "年末年始休暇",
+      startDate: getRelativeDateUTC(180),
+      endDate: getRelativeDateUTC(185),
+      isRecurring: true,
+      branchId: westBranch.branchId,
+      notes: "年末年始休暇",
+      order: 3,
+    },
+    {
+      name: "ゴールデンウィーク",
+      startDate: getRelativeDateUTC(100),
+      endDate: getRelativeDateUTC(106),
+      isRecurring: true,
+      branchId: westBranch.branchId,
       notes: "ゴールデンウィーク休暇",
       order: 5,
     },
@@ -1700,17 +2088,17 @@ async function main() {
   // Log summary
   console.log("📊  作成されたデータ:");
   console.log(`   • Branches: 3`);
-  console.log(`   • Booths: 6`);
+  console.log(`   • Booths: 20`);
   console.log(`   • Student Types: 6`);
-  console.log(`   • Class Types: 4`);
-  console.log(`   • Subject Types: 3`);
+  console.log(`   • Class Types: 5`);
+  console.log(`   • Subject Types: 4`);
   console.log(`   • Subjects: 7`);
-  console.log(`   • Users: 13`);
+  console.log(`   • Users: 16`);
   console.log(`   • Teachers: 5`);
   console.log(`   • Students: 8`);
-  console.log(`   • Class Sessions: 8`);
+  console.log(`   • Class Sessions: 14`);
   console.log(`   • User Availabilities: ${teacherAvailabilities.length + 2}`);
-  console.log(`   • Vacations: 5`);
+  console.log(`   • Vacations: ${vacations.length}`);
 }
 
 main()

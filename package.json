@@ -9,10 +9,18 @@
     "lint": "next lint",
     "watch": "tsc --noEmit --skipLibCheck --watch",
     "postinstall": "prisma generate",
-    "check-errors": "tsc --noEmit --skipLibCheck"
+    "check-errors": "tsc --noEmit --skipLibCheck",
+    "format": "prettier --write ."
   },
   "prisma": {
     "seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts"
+  },
+  "prettier": {
+    "printWidth": 80,
+    "tabWidth": 2,
+    "trailingComma": "es5",
+    "singleQuote": false,
+    "semi": true
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.8.0",
@@ -92,6 +100,7 @@
     "eslint": "^9",
     "eslint-config-next": "15.2.3",
     "prisma": "^6.8.2",
+    "prettier": "^3.3.2",
     "shadcn": "^2.4.0-canary.17",
     "tailwindcss": "^4",
     "typescript": "^5.8.3"

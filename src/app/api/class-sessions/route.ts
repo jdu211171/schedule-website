@@ -128,22 +128,42 @@ const createUTCDateForFilter = (dateStr: string): Date => {
   return new Date(Date.UTC(year, month, day, 0, 0, 0, 0));
 };
 
-// Helper function to check if a date conflicts with any vacations
+// Helper function to check if a date conflicts with any vacations (handles recurring by month/day)
 const checkVacationConflict = async (
   date: Date,
   branchId: string
 ): Promise<boolean> => {
+  // Fetch only vacations for the branch (global vacations no longer supported)
   const vacations = await prisma.vacation.findMany({
     where: {
-      OR: [
-        { branchId: branchId },
-        { branchId: null }, // Global vacations
-      ],
-      AND: [{ startDate: { lte: date } }, { endDate: { gte: date } }],
+      branchId,
+    },
+    select: {
+      startDate: true,
+      endDate: true,
+      isRecurring: true,
     },
   });
 
-  return vacations.length > 0;
+  const md = (d: Date) => (d.getUTCMonth() + 1) * 100 + d.getUTCDate();
+  const targetMD = md(date);
+
+  for (const v of vacations) {
+    if (!v.isRecurring) {
+      if (v.startDate <= date && v.endDate >= date) return true;
+    } else {
+      const startMD = md(v.startDate);
+      const endMD = md(v.endDate);
+      if (startMD <= endMD) {
+        if (targetMD >= startMD && targetMD <= endMD) return true;
+      } else {
+        // Wrap around year (e.g., Dec 20 - Jan 5)
+        if (targetMD >= startMD || targetMD <= endMD) return true;
+      }
+    }
+  }
+
+  return false;
 };
 
 // Helper function to get day of week from date
@@ -663,19 +683,27 @@ export const POST = withBranchAccess(
           effectiveEndDateTime = createDateTime(date, effectiveEndTime);
         }
 
-        // Check vacation conflict
+        // Check vacation conflict — silently skip if vacation
         const hasVacationConflict = await checkVacationConflict(
           dateObj,
           sessionBranchId
         );
 
         if (hasVacationConflict) {
-          conflicts.push({
-            date: format(dateObj, "yyyy-MM-dd"),
-            dayOfWeek: getDayOfWeekFromDate(dateObj),
-            type: "VACATION",
-            details: "指定された日付は休日期間中です",
-          });
+          return NextResponse.json(
+            {
+              data: [],
+              message: "この日の授業は休日期間のためスキップされました",
+              skipped: true,
+              pagination: {
+                total: 0,
+                page: 1,
+                limit: 0,
+                pages: 0,
+              },
+            },
+            { status: 200 }
+          );
         }
 
         // Enhanced availability check with effective times
@@ -1074,19 +1102,15 @@ export const POST = withBranchAccess(
             }
           }
 
-          // Check vacation conflict
+          // Check vacation conflict — silently skip this date if vacation
           const hasVacationConflict = await checkVacationConflict(
             sessionDate,
             sessionBranchId
           );
 
           if (hasVacationConflict) {
-            dateConflicts.push({
-              date: formattedSessionDate,
-              dayOfWeek: getDayOfWeekFromDate(sessionDate),
-              type: "VACATION",
-              details: "指定された日付は休日期間中です",
-            });
+            skippedDates.push(sessionDate);
+            continue;
           }
 
           // Enhanced availability check

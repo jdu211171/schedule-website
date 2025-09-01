@@ -32,15 +32,15 @@ export class LineChannelService {
   private static getBaseUrl(): string {
     const nextAuthUrl = process.env.NEXTAUTH_URL;
     const baseUrl = process.env.BASE_URL;
-    
+
     if (nextAuthUrl) {
       return nextAuthUrl;
     }
-    
+
     if (baseUrl) {
       return baseUrl;
     }
-    
+
     // Fallback with warning
     console.warn('BASE_URL environment variable not set. Using default fallback URL.');
     return 'https://your-domain.com';
@@ -163,7 +163,7 @@ export class LineChannelService {
     // Only test if non-empty credentials are provided
     const hasNewAccessToken = data.channelAccessToken && data.channelAccessToken.trim().length > 0;
     const hasNewSecret = data.channelSecret && data.channelSecret.trim().length > 0;
-    
+
     if (hasNewAccessToken || hasNewSecret) {
       // Get access token - handle both encrypted and unencrypted data
       let accessToken: string;
@@ -177,7 +177,7 @@ export class LineChannelService {
           accessToken = existingChannel.channelAccessToken;
         }
       }
-      
+
       // Get secret - handle both encrypted and unencrypted data
       let secret: string;
       if (hasNewSecret) {
@@ -204,7 +204,7 @@ export class LineChannelService {
     // If setting as default, unset other defaults
     if (data.isDefault) {
       await prisma.lineChannel.updateMany({
-        where: { 
+        where: {
           isDefault: true,
           NOT: { channelId }
         },
@@ -281,7 +281,7 @@ export class LineChannelService {
     // Decrypt to generate previews - handle both encrypted and unencrypted data
     let decryptedToken: string;
     let decryptedSecret: string;
-    
+
     try {
       // Check if data is encrypted before attempting to decrypt
       if (isEncrypted(channel.channelAccessToken)) {
@@ -291,7 +291,7 @@ export class LineChannelService {
         decryptedToken = channel.channelAccessToken;
         console.warn(`LINE channel ${channel.channelId} has unencrypted access token`);
       }
-      
+
       if (isEncrypted(channel.channelSecret)) {
         decryptedSecret = decrypt(channel.channelSecret);
       } else {
@@ -356,7 +356,7 @@ export class LineChannelService {
       // Decrypt to generate previews - handle both encrypted and unencrypted data
       let decryptedToken: string;
       let decryptedSecret: string;
-      
+
       try {
         // Check if data is encrypted before attempting to decrypt
         if (isEncrypted(channel.channelAccessToken)) {
@@ -372,7 +372,7 @@ export class LineChannelService {
           decryptedToken = channel.channelAccessToken;
           console.warn(`LINE channel ${channel.channelId} has unencrypted access token`);
         }
-        
+
         if (isEncrypted(channel.channelSecret)) {
           try {
             decryptedSecret = decrypt(channel.channelSecret);
@@ -391,7 +391,7 @@ export class LineChannelService {
         // Skip this channel
         return null;
       }
-      
+
       return {
         id: channel.channelId,
         ...channel,
@@ -405,7 +405,7 @@ export class LineChannelService {
         branchLineChannels: undefined
       };
     });
-    
+
     // Filter out any channels that couldn't be processed (null values)
     return processedChannels.filter(channel => channel !== null);
   }
@@ -435,7 +435,7 @@ export class LineChannelService {
     // Decrypt to generate previews - handle both encrypted and unencrypted data
     let decryptedToken: string;
     let decryptedSecret: string;
-    
+
     try {
       // Check if data is encrypted before attempting to decrypt
       if (isEncrypted(channel.channelAccessToken)) {
@@ -445,7 +445,7 @@ export class LineChannelService {
         decryptedToken = channel.channelAccessToken;
         console.warn(`LINE channel ${channel.channelId} has unencrypted access token`);
       }
-      
+
       if (isEncrypted(channel.channelSecret)) {
         decryptedSecret = decrypt(channel.channelSecret);
       } else {
@@ -646,7 +646,7 @@ export class LineChannelService {
     // Decrypt credentials - handle both encrypted and unencrypted data
     let channelAccessToken: string;
     let channelSecret: string;
-    
+
     try {
       // Check if data is encrypted before attempting to decrypt
       if (isEncrypted(channel.channelAccessToken)) {
@@ -656,7 +656,7 @@ export class LineChannelService {
         channelAccessToken = channel.channelAccessToken;
         console.warn(`LINE channel ${channelId} has unencrypted access token`);
       }
-      
+
       if (isEncrypted(channel.channelSecret)) {
         channelSecret = decrypt(channel.channelSecret);
       } else {
@@ -668,7 +668,7 @@ export class LineChannelService {
       console.error(`Failed to decrypt credentials for channel ${channelId}:`, error);
       throw new Error('Failed to decrypt channel credentials');
     }
-    
+
     const credentials = {
       channelAccessToken,
       channelSecret
@@ -688,7 +688,7 @@ export class LineChannelService {
         // Create a notification record
         const { createNotification } = await import('@/lib/notification/notification-service');
         const testMessage = `🔔 テストメッセージ\n\nこれは「${channel.name}」チャンネルからのテストメッセージです。\n\n正常に受信できていれば、このチャンネルは正しく設定されています。`;
-        
+
         const notification = await createNotification({
           recipientId: testUserId,
           recipientType: 'TEACHER', // Assuming TEACHER for channel testing
@@ -698,7 +698,7 @@ export class LineChannelService {
           sentVia: 'LINE',
           targetDate: new Date(new Date().toISOString().split('T')[0] + 'T00:00:00.000Z'), // Today's date at midnight UTC
         });
-        
+
         if (notification) {
           try {
             // Send the LINE message
@@ -708,17 +708,17 @@ export class LineChannelService {
               testMessage,
               credentials
             );
-            
+
             // Update notification status to SENT
             await prisma.notification.update({
               where: { notificationId: notification.notificationId },
-              data: { 
+              data: {
                 status: 'SENT',
                 sentAt: new Date()
               }
             });
-            
-            messageResult = { 
+
+            messageResult = {
               success: true,
               notificationId: notification.notificationId
             };
@@ -726,7 +726,7 @@ export class LineChannelService {
             // If LINE message fails, update notification status to FAILED
             await prisma.notification.update({
               where: { notificationId: notification.notificationId },
-              data: { 
+              data: {
                 status: 'FAILED',
                 logs: { error: (lineError as Error).message || 'Failed to send test message', timestamp: new Date().toISOString() }
               }
@@ -734,15 +734,15 @@ export class LineChannelService {
             throw lineError;
           }
         } else {
-          messageResult = { 
+          messageResult = {
             success: true,
             message: 'Test message already sent (duplicate notification)'
           };
         }
       } catch (error) {
         console.error('Error sending test message:', error);
-        messageResult = { 
-          success: false, 
+        messageResult = {
+          success: false,
           error: 'Failed to send test message. Please check the LINE user ID.'
         };
       }

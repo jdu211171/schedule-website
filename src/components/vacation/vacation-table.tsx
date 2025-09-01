@@ -55,22 +55,19 @@ export function VacationTable() {
   const [page, setPage] = useState(1);
   const [isSortMode, setIsSortMode] = useState(false);
   const [localVacations, setLocalVacations] = useState<Vacation[]>([]);
-  const [includeGlobal, setIncludeGlobal] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return true;
-    const saved = localStorage.getItem('vacation_include_global');
-    return saved ? saved === 'true' : true;
-  });
   const pageSize = 10;
   const queryClient = useQueryClient();
+
+  const { data: session } = useSession();
+  const selectedBranchId = session?.user?.selectedBranchId;
 
   const { data: vacations, isLoading } = useVacations({
     page,
     limit: pageSize,
     name: searchTerm || undefined,
-    includeGlobal,
+    branchId: selectedBranchId,
   });
 
-  const { data: session } = useSession();
   const isAdmin = session?.user?.role === "ADMIN";
 
   const deleteVacationMutation = useVacationDelete();
@@ -87,12 +84,7 @@ export function VacationTable() {
     }
   }, [vacations?.data, isSortMode]);
 
-  // Persist includeGlobal preference
-  React.useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('vacation_include_global', includeGlobal ? 'true' : 'false');
-    }
-  }, [includeGlobal]);
+  // no-op: includeGlobal removed; vacations are branch-specific
 
   const [vacationToEdit, setVacationToEdit] = useState<Vacation | null>(null);
   const [vacationToDelete, setVacationToDelete] = useState<Vacation | null>(
@@ -239,7 +231,7 @@ export function VacationTable() {
       .filter(key => key) as string[];
     exportToCSV({
       columns: exportColumns,
-      query: { name: searchTerm || "", includeGlobal: includeGlobal ? 'true' : 'false' },
+      query: { name: searchTerm || "", branchId: selectedBranchId || "" },
     });
   };
 

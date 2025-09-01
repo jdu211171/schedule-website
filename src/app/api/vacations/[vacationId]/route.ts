@@ -4,6 +4,7 @@ import { withBranchAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { vacationUpdateSchema } from "@/schemas/vacation.schema";
 import { Vacation } from "@prisma/client";
+import { format } from "date-fns";
 
 type FormattedVacation = {
   id: string;
@@ -154,7 +155,7 @@ export const PATCH = withBranchAccess(
         );
       }
 
-      const { name, startDate, endDate, isRecurring, notes, order } =
+      const { name, startDate, endDate, isRecurring, notes, order, branchId: newBranchId, branchIds } =
         result.data;
 
       // Convert dates to UTC if they are provided
@@ -176,17 +177,182 @@ export const PATCH = withBranchAccess(
         );
       }
 
-      // Update vacation
+      // Prepare update payload
+      const data: any = {
+        name,
+        startDate: startDateUTC,
+        endDate: endDateUTC,
+        isRecurring,
+        notes,
+        order,
+      };
+
+      // Allow branch assignment change
+      if (typeof newBranchId !== "undefined") {
+        if (session.user?.role === "ADMIN") {
+          data.branchId = newBranchId || branchId; // Admin can reassign freely (required branch)
+        } else {
+          // Staff/Teacher: allow reassignment only within assigned branches
+          const assignedBranchIds = session.user?.branches?.map((b: any) => b.branchId) || [];
+          if (newBranchId && assignedBranchIds.includes(newBranchId)) {
+            data.branchId = newBranchId;
+          }
+        }
+      }
+
+      // If syncing across multiple branches
+      if (branchIds && Array.isArray(branchIds) && branchIds.length > 0) {
+        // Access control for non-admins
+        if (session.user?.role !== "ADMIN") {
+          const allowed = (session.user?.branches || []).map((b: any) => b.branchId);
+          const allAllowed = branchIds.every((b) => allowed.includes(b));
+          if (!allAllowed) {
+            return NextResponse.json(
+              { error: "指定された校舎の一部にアクセス権がありません" },
+              { status: 403 }
+            );
+          }
+        }
+
+        // Final values to apply
+        const finalName = data.name ?? existingVacation.name;
+        const finalStart = data.startDate ?? existingVacation.startDate;
+        const finalEnd = data.endDate ?? existingVacation.endDate;
+        const finalRecurring =
+          typeof data.isRecurring === "boolean"
+            ? data.isRecurring
+            : existingVacation.isRecurring;
+        const finalNotes = data.notes ?? existingVacation.notes;
+        const finalOrder = typeof data.order !== "undefined" ? data.order : existingVacation.order;
+
+        // Old group key (before changes) to find existing duplicates across branches
+        const oldKey = {
+          name: existingVacation.name,
+          startDate: existingVacation.startDate,
+          endDate: existingVacation.endDate,
+          isRecurring: existingVacation.isRecurring,
+        } as const;
+
+        await prisma.$transaction(async (tx) => {
+          // Upsert/update target branches
+          for (const bId of branchIds) {
+            const match = await tx.vacation.findFirst({
+              where: {
+                branchId: bId,
+                name: oldKey.name,
+                startDate: oldKey.startDate,
+                endDate: oldKey.endDate,
+                isRecurring: oldKey.isRecurring,
+              },
+              select: { id: true },
+            });
+
+            if (match) {
+              await tx.vacation.update({
+                where: { id: match.id },
+                data: {
+                  name: finalName,
+                  startDate: finalStart,
+                  endDate: finalEnd,
+                  isRecurring: finalRecurring,
+                  notes: finalNotes,
+                  order: finalOrder,
+                },
+              });
+            } else {
+              await tx.vacation.create({
+                data: {
+                  name: finalName,
+                  startDate: finalStart,
+                  endDate: finalEnd,
+                  isRecurring: finalRecurring,
+                  notes: finalNotes ?? undefined,
+                  order: finalOrder ?? undefined,
+                  branchId: bId,
+                },
+              });
+            }
+          }
+
+          // Delete extras from branches not selected (that still have old key)
+          await tx.vacation.deleteMany({
+            where: {
+              branchId: { notIn: branchIds },
+              name: oldKey.name,
+              startDate: oldKey.startDate,
+              endDate: oldKey.endDate,
+              isRecurring: oldKey.isRecurring,
+            },
+          });
+        });
+
+        // Fetch all synced vacations for selected branches
+        const updatedVacations = await prisma.vacation.findMany({
+          where: {
+            branchId: { in: branchIds },
+            name: finalName,
+            startDate: finalStart,
+            endDate: finalEnd,
+            isRecurring: finalRecurring,
+          },
+          include: { branch: { select: { name: true } } },
+        });
+
+        if (updatedVacations.length === 0) {
+          return NextResponse.json(
+            { error: "休日の同期後にデータが見つかりませんでした" },
+            { status: 500 }
+          );
+        }
+
+        // Retroactive conflict detection across all selected branches
+        const vacationIds = updatedVacations.map((v) => v.id);
+        const conflicts = await prisma.classSession.findMany({
+          where: {
+            branchId: { in: branchIds },
+            date: { gte: finalStart, lte: finalEnd },
+          },
+          select: {
+            classId: true,
+            date: true,
+            startTime: true,
+            endTime: true,
+            teacher: { select: { name: true } },
+            student: { select: { name: true } },
+          },
+        });
+
+        if (conflicts.length > 0) {
+          return NextResponse.json(
+            {
+              data: updatedVacations.map(formatVacation),
+              vacationIds,
+              conflicts: conflicts.map((s) => ({
+                classId: s.classId,
+                date: format(s.date, "yyyy-MM-dd"),
+                startTime: format(s.startTime, "HH:mm"),
+                endTime: format(s.endTime, "HH:mm"),
+                teacherName: s.teacher?.name ?? null,
+                studentName: s.student?.name ?? null,
+              })),
+              requiresConfirmation: true,
+            },
+            { status: 409 }
+          );
+        }
+
+        // No conflicts; return success
+        return NextResponse.json({
+          data: updatedVacations.map(formatVacation),
+          message: "休日を更新しました",
+          pagination: { total: updatedVacations.length, page: 1, limit: updatedVacations.length, pages: 1 },
+        });
+      }
+
+      // Fallback: simple single-record update
       const updatedVacation = await prisma.vacation.update({
         where: { id: vacationId },
-        data: {
-          name,
-          startDate: startDateUTC,
-          endDate: endDateUTC,
-          isRecurring,
-          notes,
-          order,
-        },
+        data,
         include: {
           branch: {
             select: {
@@ -198,6 +364,49 @@ export const PATCH = withBranchAccess(
 
       // Format response
       const formattedVacation = formatVacation(updatedVacation);
+
+      // Retroactive conflict detection after update
+      const conflictBranchId = updatedVacation.branchId!;
+      const conflictStart = updatedVacation.startDate;
+      const conflictEnd = updatedVacation.endDate;
+
+      const conflictingSessions = await prisma.classSession.findMany({
+        where: {
+          branchId: conflictBranchId,
+          date: {
+            gte: conflictStart,
+            lte: conflictEnd,
+          },
+        },
+        select: {
+          classId: true,
+          date: true,
+          startTime: true,
+          endTime: true,
+          teacher: { select: { name: true } },
+          student: { select: { name: true } },
+        },
+      });
+
+      if (conflictingSessions.length > 0) {
+        return NextResponse.json(
+          {
+            data: [formattedVacation],
+            message:
+              "この休日期間と重複する授業が見つかりました。キャンセルを確認してください。",
+            conflicts: conflictingSessions.map((s) => ({
+              classId: s.classId,
+              date: format(s.date, "yyyy-MM-dd"),
+              startTime: format(s.startTime, "HH:mm"),
+              endTime: format(s.endTime, "HH:mm"),
+              teacherName: s.teacher?.name ?? null,
+              studentName: s.student?.name ?? null,
+            })),
+            requiresConfirmation: true,
+          },
+          { status: 409 }
+        );
+      }
 
       return NextResponse.json({
         data: [formattedVacation],

@@ -21,12 +21,12 @@ export const POST = withRole(['ADMIN'], async (req: NextRequest) => {
       validatedData.channelType
     );
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       message: `Channel type set to ${validatedData.channelType} successfully`
     });
   } catch (error) {
     console.error('Error setting channel type:', error);
-    
+
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Invalid request data', details: error.errors },

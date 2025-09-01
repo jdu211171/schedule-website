@@ -28,7 +28,6 @@ type UseVacationsParams = {
   endDate?: Date;
   isRecurring?: boolean;
   branchId?: string;
-  includeGlobal?: boolean;
   sortBy?: VacationSortField;
   sortOrder?: "asc" | "desc";
 };
@@ -56,7 +55,6 @@ export function useVacations(params: UseVacationsParams = {}) {
     endDate,
     isRecurring,
     branchId,
-    includeGlobal,
     sortBy = "order",
     sortOrder = "asc",
   } = params;
@@ -69,7 +67,6 @@ export function useVacations(params: UseVacationsParams = {}) {
     endDate,
     isRecurring,
     branchId,
-    includeGlobal,
     sortBy,
     sortOrder,
   });
@@ -98,7 +95,6 @@ export function useVacations(params: UseVacationsParams = {}) {
       endDate,
       isRecurring,
       branchId,
-      includeGlobal,
       sortBy,
       sortOrder,
     ],

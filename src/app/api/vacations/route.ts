@@ -7,6 +7,7 @@ import {
   vacationFilterSchema,
 } from "@/schemas/vacation.schema";
 import { Vacation, Prisma } from "@prisma/client";
+import { format } from "date-fns";
 
 type FormattedVacation = {
   id: string;
@@ -71,39 +72,16 @@ export const GET = withBranchAccess(
       );
     }
 
-    const {
-      page,
-      limit,
-      name,
-      startDate,
-      endDate,
-      isRecurring,
-      includeGlobal,
-      sortBy,
-      sortOrder,
-    } = result.data;
+    const { page, limit, name, startDate, endDate, isRecurring, sortBy, sortOrder } = result.data;
 
     // Build filter conditions
     const where: any = {};
 
-    // If a specific branchId is provided in the request, use that
+    // If a specific branchId is provided in the request, use that; otherwise staff/teachers use selected branch
     if (result.data.branchId) {
-      // Explicit branch target
-      if (includeGlobal) {
-        where.OR = [{ branchId: result.data.branchId }, { branchId: null }];
-      } else {
-        where.branchId = result.data.branchId;
-      }
+      where.branchId = result.data.branchId;
     } else if (session.user?.role !== "ADMIN") {
-      // Staff/Teacher: default to selected branch
-      if (includeGlobal) {
-        where.OR = [{ branchId }, { branchId: null }];
-      } else {
-        where.branchId = branchId;
-      }
-    } else if (includeGlobal === false) {
-      // Admin without specific branch: exclude global if requested
-      where.NOT = { branchId: null };
+      where.branchId = branchId;
     }
 
     if (name) {
@@ -208,11 +186,24 @@ export const POST = withBranchAccess(
         );
       }
 
-      // For admin users, allow specifying branch. For others, use current branch
-      const vacationBranchId =
-        session.user?.role === "ADMIN" && result.data.branchId
-          ? result.data.branchId
-          : branchId;
+      // For admin users, allow specifying branch explicitly, including global (null) via empty string
+      // Determine branchId (always required now)
+      let vacationBranchId: string = branchId;
+      if (session.user?.role === "ADMIN") {
+        const hasBranchField = Object.prototype.hasOwnProperty.call(
+          result.data,
+          "branchId"
+        );
+        if (hasBranchField && result.data.branchId) {
+          vacationBranchId = result.data.branchId;
+        }
+      } else {
+        // Staff/Teacher: allow specifying a branchId only if it's assigned to the user
+        const assignedBranchIds = session.user?.branches?.map((b: any) => b.branchId) || [];
+        if (result.data.branchId && assignedBranchIds.includes(result.data.branchId)) {
+          vacationBranchId = result.data.branchId;
+        }
+      }
 
       // Determine the order value
       let finalOrder = order;
@@ -253,6 +244,45 @@ export const POST = withBranchAccess(
 
       // Format response
       const formattedVacation = formatVacation(newVacation);
+
+      // Retroactive conflict detection: find existing class sessions overlapping this vacation
+      const conflictingSessions = await prisma.classSession.findMany({
+        where: {
+          branchId: vacationBranchId,
+          date: {
+            gte: startDateUTC,
+            lte: endDateUTC,
+          },
+        },
+        select: {
+          classId: true,
+          date: true,
+          startTime: true,
+          endTime: true,
+          teacher: { select: { name: true } },
+          student: { select: { name: true } },
+        },
+      });
+
+      if (conflictingSessions.length > 0) {
+        return NextResponse.json(
+          {
+            data: [formattedVacation],
+            message:
+              "この休日期間と重複する授業が見つかりました。キャンセルを確認してください。",
+            conflicts: conflictingSessions.map((s) => ({
+              classId: s.classId,
+              date: format(s.date, "yyyy-MM-dd"),
+              startTime: format(s.startTime, "HH:mm"),
+              endTime: format(s.endTime, "HH:mm"),
+              teacherName: s.teacher?.name ?? null,
+              studentName: s.student?.name ?? null,
+            })),
+            requiresConfirmation: true,
+          },
+          { status: 409 }
+        );
+      }
 
       return NextResponse.json(
         {

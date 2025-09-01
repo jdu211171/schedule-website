@@ -1,19 +1,47 @@
-# EditorConfig helps maintain consistent coding styles
-# across different editors and IDEs
+# EditorConfig helps maintain consistent coding styles across various editors and IDEs.
 # https://editorconfig.org/
 
+# Set as the root directory for EditorConfig.
 root = true
 
+# General rules for all files
 [*]
-charset = utf-8
+# Use 'lf' for line endings (Unix style).
 end_of_line = lf
+
+# Use UTF-8 character set.
+charset = utf-8
+
+# Indent with spaces, not tabs.
 indent_style = space
+
+# Use 2 spaces for indentation.
 indent_size = 2
+
+# Ensure files end with a single newline.
 insert_final_newline = true
+
+# Remove any whitespace characters at the end of lines.
 trim_trailing_whitespace = true
 
-[*.{json,yml,yaml}]
+# Specific overrides for different file types
+
+# JavaScript, TypeScript, JSX, TSX, JSON
+[*.{js,jsx,ts,tsx,json,jsonc}]
 indent_size = 2
 
+# HTML, CSS, SCSS
+[*.{html,css,scss}]
+indent_size = 2
+
+# Markdown files
 [*.md]
+# Do not trim trailing whitespace for Markdown as it can be significant (e.g., for line breaks).
 trim_trailing_whitespace = false
+indent_style = space
+indent_size = 2
+
+# YAML files
+[*.{yml,yaml}]
+indent_style = space
+indent_size = 2
