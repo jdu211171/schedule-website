@@ -5,29 +5,22 @@ import { prisma } from "@/lib/prisma";
 import {
   teacherImportSchema,
   teacherUpdateImportSchema,
-  TEACHER_CSV_HEADERS,
-  REQUIRED_TEACHER_CSV_HEADERS,
   type TeacherImportData,
   type TeacherUpdateImportData,
   type ImportResult,
   formatValidationErrors,
 } from "@/schemas/import";
-import {
-  TEACHER_COLUMN_RULES,
-  getRequiredFields,
-  csvHeaderToDbField
-} from "@/schemas/import/teacher-column-rules";
+import { TEACHER_COLUMN_RULES, csvHeaderToDbField } from "@/schemas/import/teacher-column-rules";
 import { z } from "zod";
 import { handleImportError } from "@/lib/import-error-handler";
-import { ImportMode } from "@/types/import";
+// Strict variant: ImportMode unused
 
 async function handleImport(req: NextRequest, session: any, branchId: string) {
   try {
     // Get the form data
     const formData = await req.formData();
     const file = formData.get("file");
-    const importMode =
-      (formData.get("importMode") as ImportMode) || ImportMode.CREATE_ONLY;
+    // Strict variant: per-row decision by presence of ID only
 
     if (!file || typeof file === "string") {
       return NextResponse.json(
@@ -65,25 +58,7 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
 
     const actualHeaders = Object.keys(parseResult.data[0]);
 
-    // Get required headers based on import mode and column rules
-    const isUpdateMode = importMode === ImportMode.UPDATE_ONLY;
-    const requiredFields = getRequiredFields(isUpdateMode ? 'update' : 'create');
-    const requiredHeaders = requiredFields
-      .map(field => TEACHER_COLUMN_RULES[field]?.csvHeader)
-      .filter(Boolean) as string[];
-
-    const missingHeaders = requiredHeaders.filter(
-      (h) => !actualHeaders.includes(h),
-    );
-
-    if (missingHeaders.length > 0) {
-      return NextResponse.json(
-        {
-          error: `必須列が不足しています: ${missingHeaders.join(", ")}`,
-        },
-        { status: 400 },
-      );
-    }
+    // No global required header enforcement; validate per row
 
     // Process and validate each row
     const validatedData: ((TeacherImportData | TeacherUpdateImportData) & {
@@ -122,13 +97,8 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
       const rowNumber = i + 2; // +1 for header, +1 for 1-based indexing
 
       try {
-        // If an ID (teacherId) is provided, prefer updating that record
-        let forcedExistingUserId: string | undefined;
+        // Detect update by presence of ID
         const importTeacherId = ((row as any).id || (row as any).ID) as string | undefined;
-        if (importTeacherId) {
-          const t = await prisma.teacher.findUnique({ where: { teacherId: importTeacherId }, include: { user: true } });
-          if (t) forcedExistingUserId = t.userId;
-        }
 
         // Map CSV data to DB fields and filter ignored columns
         const filteredRow: Record<string, string> = {};
@@ -141,9 +111,8 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
           const rule = Object.values(TEACHER_COLUMN_RULES).find(r => r.dbField === dbField);
           if (!rule) continue;
 
-          // Skip ignored columns
-          const ruleType = isUpdateMode ? rule.updateRule : rule.createRule;
-          if (ruleType === 'ignore') continue;
+          // Skip columns ignored for both create and update
+          if (rule.createRule === 'ignore' && rule.updateRule === 'ignore') continue;
 
           // Map to internal field name for schema validation
           filteredRow[dbField] = csvValue;
@@ -151,25 +120,13 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
         }
 
         // Validate row data with filtered columns using appropriate schema
-        const validated =
-          importMode === ImportMode.UPDATE_ONLY
-            ? teacherUpdateImportSchema.parse(filteredRow)
-            : teacherImportSchema.parse(filteredRow);
+        const isUpdateRow = !!importTeacherId;
+        const validated = isUpdateRow
+          ? teacherUpdateImportSchema.parse(filteredRow)
+          : teacherImportSchema.parse(filteredRow);
 
-        // Check if user with same username or email already exists
-        const existingUser = forcedExistingUserId
-          ? await prisma.user.findUnique({ where: { id: forcedExistingUserId }, include: { teacher: true } })
-          : await prisma.user.findFirst({
-            where: {
-              OR: [
-                { username: validated.username },
-                ...(validated.email ? [{ email: validated.email }] : []),
-              ],
-            },
-            include: {
-              teacher: true,
-            },
-          });
+        // Strict variant: don't match by username/email here
+        const existingUser = null as any;
 
         // Validate branches
         let branchIds: string[] = [];
@@ -185,41 +142,19 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
             continue;
           }
           branchIds = validated.branches.map((name) => branchMap.get(name)!);
-        } else if (!isUpdateMode && !existingUser) {
+        } else if (!isUpdateRow) {
           // Branches are required for create mode if no existing user
           branchIds = [branchId]; // Default to current branch
         }
 
-        // Handle based on import mode
-        if (existingUser) {
-            // For updates, user must be a teacher
-            if (!existingUser.teacher) {
-              result.errors.push({
-                row: rowNumber,
-                errors: [
-                  `ユーザー「${existingUser.username}」は講師ではありません`,
-                ],
-              });
-              continue;
-            }
-            // Mark for update
-            validatedData.push({
-              ...validated,
-              branchIds,
-              existingUserId: existingUser.id,
-              fieldsInRow,
-              rowNumber,
-            });
-        } else {
-          // No existing user
-          // CREATE_ONLY will create new records
-          validatedData.push({
-            ...validated,
-            branchIds,
-            fieldsInRow,
-            rowNumber,
-          });
-        }
+        // Push row with strict marker
+        validatedData.push({
+          ...validated,
+          branchIds,
+          fieldsInRow,
+          rowNumber,
+          ...(isUpdateRow ? { teacherId: importTeacherId } : {} as any),
+        } as any);
       } catch (error) {
         if (error instanceof z.ZodError) {
           result.errors.push(formatValidationErrors(error.errors, rowNumber));
@@ -241,178 +176,114 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
       return NextResponse.json(result, { status: 400 });
     }
 
-    // Import valid data in a transaction
+    // Import valid data in batches (to avoid timeouts)
     if (validatedData.length > 0) {
-      await prisma.$transaction(async (tx) => {
-        for (const data of validatedData) {
-          if (data.existingUserId) {
-            // Update existing teacher
-            const existingTeacher = await tx.teacher.findUnique({
-              where: { userId: data.existingUserId },
-              include: { user: true },
-            });
+      const batchSize = 100;
+      for (let start = 0; start < validatedData.length; start += batchSize) {
+        const batch = validatedData.slice(start, start + batchSize);
+        await prisma.$transaction(async (tx) => {
+          for (const data of batch) {
+            if ((data as any).teacherId) {
+              // Update strictly by ID
+              const fieldsInRow = data.fieldsInRow || new Set();
+              const userUpdates: any = {};
+              if (fieldsInRow.has("email")) userUpdates.email = data.email ?? null;
+              if (fieldsInRow.has("name")) userUpdates.name = data.name ?? null;
+              if (fieldsInRow.has("password") && data.password && data.password.trim() !== "") {
+                userUpdates.passwordHash = data.password;
+              }
 
-            if (!existingTeacher) {
-              continue; // Should not happen
-            }
+              const teacherUpdates: any = {};
+              if (fieldsInRow.has("name")) teacherUpdates.name = data.name || null;
+              if (fieldsInRow.has("kanaName")) teacherUpdates.kanaName = data.kanaName || null;
+              if (fieldsInRow.has("notes")) teacherUpdates.notes = data.notes || null;
+              if (fieldsInRow.has("birthDate")) teacherUpdates.birthDate = data.birthDate || null;
+              if (fieldsInRow.has("lineId")) teacherUpdates.lineId = data.lineId || null;
 
-            // Update user fields if provided
-            const userUpdates: any = {};
-            const fieldsInRow = data.fieldsInRow || new Set();
+              try {
+                const updated = await tx.teacher.update({
+                  where: { teacherId: (data as any).teacherId },
+                  data: {
+                    ...teacherUpdates,
+                    ...(Object.keys(userUpdates).length > 0 ? { user: { update: userUpdates } } : {}),
+                  },
+                  select: { userId: true },
+                });
 
-            if (
-              fieldsInRow.has("email") &&
-              data.email !== existingTeacher.user.email
-            ) {
-              userUpdates.email = data.email;
-            }
-            if (
-              fieldsInRow.has("name") &&
-              data.name !== existingTeacher.user.name
-            ) {
-              userUpdates.name = data.name;
-            }
-            // Only update password if explicitly provided in CSV with a non-empty value
-            if (
-              fieldsInRow.has("password") &&
-              data.password &&
-              data.password.trim() !== ""
-            ) {
-              // For teachers, use the password directly (no hashing)
-              userUpdates.passwordHash = data.password;
-            }
-
-            if (Object.keys(userUpdates).length > 0) {
-              await tx.user.update({
-                where: { id: data.existingUserId },
-                data: userUpdates,
-              });
-            }
-
-            // Update teacher fields - only update fields that were present in the CSV
-            const teacherUpdates: any = {};
-            const fields = data.fieldsInRow || new Set();
-
-            // Only update fields that were present in the CSV row
-            if (fields.has("name")) teacherUpdates.name = data.name || null;
-            if (fields.has("kanaName"))
-              teacherUpdates.kanaName = data.kanaName || null;
-            if (fields.has("notes")) teacherUpdates.notes = data.notes || null;
-            if (fields.has("birthDate"))
-              teacherUpdates.birthDate = data.birthDate || null;
-            // Skip phoneNumber and phoneNotes as they are now ignored in import
-
-            // LINE ID - update if provided
-            if (fields.has("lineId"))
-              teacherUpdates.lineId = data.lineId || null;
-
-            await tx.teacher.update({
-              where: { userId: data.existingUserId },
-              data: teacherUpdates,
-            });
-
-            // Update branch assignments if provided
-            if (fields.has("branches") && data.branchIds) {
-              // Remove existing branch assignments
-              await tx.userBranch.deleteMany({
-                where: { userId: data.existingUserId },
-              });
-
-              // Add new branch assignments
-              if (data.branchIds.length > 0) {
-                for (const branchId of data.branchIds) {
-                  await tx.userBranch.create({
-                    data: {
-                      userId: data.existingUserId,
-                      branchId: branchId,
-                    },
+                if (fieldsInRow.has("branches") && data.branchIds) {
+                  await tx.userBranch.deleteMany({ where: { userId: updated.userId } });
+                  if (data.branchIds.length > 0) {
+                    for (const bId of data.branchIds) {
+                      await tx.userBranch.create({ data: { userId: updated.userId, branchId: bId } });
+                    }
+                  } else {
+                    await tx.userBranch.create({ data: { userId: updated.userId, branchId } });
+                  }
+                }
+                result.updated!++;
+              } catch (e) {
+                result.errors.push({ row: data.rowNumber, errors: ["指定されたIDの講師が見つかりません"] });
+                continue;
+              }
+            } else {
+              // Create new teacher
+              try {
+                let hashedPassword: string;
+                if (data.password && data.password.trim() !== "") {
+                  hashedPassword = data.password;
+                } else {
+                  const defaultPassword = `${data.username}@123`;
+                  hashedPassword = defaultPassword;
+                  result.warnings.push({
+                    message: `行 ${data.rowNumber}: パスワードが指定されていないため、デフォルトパスワード（${defaultPassword}）を設定しました`,
+                    type: "default_password",
                   });
                 }
-              } else {
-                // If branches field was empty, assign to current branch
-                await tx.userBranch.create({
+
+                const user = await tx.user.create({
                   data: {
-                    userId: data.existingUserId,
-                    branchId: branchId,
+                    username: data.username,
+                    email: data.email || null,
+                    passwordHash: hashedPassword,
+                    name: data.name!,
+                    role: "TEACHER",
+                    isRestrictedAdmin: false,
                   },
                 });
-              }
-            }
 
-            result.updated!++;
-          } else {
-            // Create new teacher
-            // For create mode, password is optional - generate a default if not provided
-            let hashedPassword: string;
-            if (data.password && data.password.trim() !== "") {
-              // For teachers, use the password directly (no hashing)
-              hashedPassword = data.password;
-            } else {
-              // Generate a default password if not provided
-              const defaultPassword = `${data.username}@123`;
-              // Use default password directly without hashing
-              hashedPassword = defaultPassword;
-              result.warnings.push({
-                message: `行 ${data.rowNumber}: パスワードが指定されていないため、デフォルトパスワード（${defaultPassword}）を設定しました`,
-                type: "default_password",
-              });
-            }
-
-            // Create user
-            const user = await tx.user.create({
-              data: {
-                username: data.username,
-                email: data.email || null,
-                passwordHash: hashedPassword,
-                name: data.name!,
-                role: "TEACHER",
-                isRestrictedAdmin: false,
-              },
-            });
-
-            // Create teacher with all fields
-            await tx.teacher.create({
-              data: {
-                userId: user.id,
-                name: data.name!,
-                kanaName: data.kanaName || null,
-                email: data.email || null,
-                lineId: data.lineId || null,
-                notes: data.notes || null,
-                status: "ACTIVE",
-                birthDate: data.birthDate || null,
-                // phoneNumber and phoneNotes are ignored in import
-                lineNotificationsEnabled: true,
-              },
-            });
-
-            // Assign teacher to branches
-            if (data.branchIds && data.branchIds.length > 0) {
-              // Use branches from CSV
-              for (const branchId of data.branchIds) {
-                await tx.userBranch.create({
+                await tx.teacher.create({
                   data: {
                     userId: user.id,
-                    branchId: branchId,
+                    name: data.name!,
+                    kanaName: data.kanaName || null,
+                    email: data.email || null,
+                    lineId: data.lineId || null,
+                    notes: data.notes || null,
+                    status: "ACTIVE",
+                    birthDate: data.birthDate || null,
+                    lineNotificationsEnabled: true,
                   },
                 });
+
+                if (data.branchIds && data.branchIds.length > 0) {
+                  for (const bId of data.branchIds) {
+                    await tx.userBranch.create({ data: { userId: user.id, branchId: bId } });
+                  }
+                } else {
+                  await tx.userBranch.create({ data: { userId: user.id, branchId } });
+                }
+
+                result.created!++;
+              } catch (e) {
+                result.errors.push({ row: data.rowNumber, errors: ["新規作成中にエラーが発生しました（重複や無効な値の可能性）"] });
+                continue;
               }
-            } else {
-              // Default to current branch if no branches specified
-              await tx.userBranch.create({
-                data: {
-                  userId: user.id,
-                  branchId: branchId,
-                },
-              });
             }
 
-            result.created!++;
+            result.success++;
           }
-
-          result.success++;
-        }
-      });
+        });
+      }
     }
 
     return NextResponse.json(result);

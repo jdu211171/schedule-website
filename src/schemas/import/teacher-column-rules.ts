@@ -58,7 +58,7 @@ export const TEACHER_COLUMN_RULES: Record<string, ColumnRule> = {
   password: {
     csvHeader: 'パスワード',
     dbField: 'password',
-    createRule: 'required',
+    createRule: 'optional',
     updateRule: 'optional',
     description: 'パスワード（6文字以上）'
   },

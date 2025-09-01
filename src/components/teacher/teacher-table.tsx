@@ -776,6 +776,11 @@ export function TeacherTable() {
       )
       .map((col) => col.id);
 
+    // Ensure branch info is always included in export
+    if (!visibleColumns.includes("branches")) {
+      visibleColumns.push("branches");
+    }
+
     exportToCSV({
       name: debouncedName || undefined,
       status: filters.status.length > 0 ? filters.status : undefined,

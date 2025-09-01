@@ -18,8 +18,15 @@ export const teacherImportSchema = z.object({
     }),
   password: z
     .string()
-    .min(6, "パスワードは6文字以上で入力してください")
-    .max(100, "パスワードは100文字以下で入力してください"),
+    .transform(val => val === "" ? null : val)
+    .nullable()
+    .optional()
+    .refine(val => !val || val.length >= 6, {
+      message: "パスワードは6文字以上で入力してください"
+    })
+    .refine(val => !val || val.length <= 100, {
+      message: "パスワードは100文字以下で入力してください"
+    }),
   name: z
     .string()
     .min(1, "名前は必須です")
@@ -76,7 +83,8 @@ export const teacherUpdateImportSchema = z.object({
   username: z
     .string()
     .min(3, "ユーザー名は3文字以上で入力してください")
-    .max(50, "ユーザー名は50文字以下で入力してください"),
+    .max(50, "ユーザー名は50文字以下で入力してください")
+    .optional(),
   email: z
     .string()
     .transform(val => val === "" ? null : val)

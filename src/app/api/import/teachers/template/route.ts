@@ -1,37 +1,37 @@
 import { NextResponse } from "next/server";
 import { CSVParser } from "@/lib/csv-parser";
-import { TEACHER_CSV_HEADERS } from "@/schemas/import";
 
 export async function GET() {
   try {
-    // Sample data for template
+    // Align template with teacher export default columns
+    const columns = ["ID", "名前", "カナ", "ステータス", "ユーザー名", "メールアドレス", "校舎", "担当科目"] as const;
+
+    // Sample data for template using localized headers
     const sampleData = [
       {
-        username: "teacher1",
-        email: "teacher1@example.com",
-        password: "password123",
-        name: "田中太郎",
-        kanaName: "タナカタロウ",
-        lineId: "line_tanaka",
-        subjects: "数学,物理",
-        subjectTypes: "個別指導,グループ指導",
-        notes: "数学と物理の専門講師"
+        ID: "",
+        名前: "田中太郎",
+        カナ: "タナカタロウ",
+        ステータス: "在籍",
+        ユーザー名: "teacher1",
+        メールアドレス: "teacher1@example.com",
+        校舎: "メイン校; サブ校",
+        担当科目: "数学 - 個別指導; 物理 - グループ指導",
       },
       {
-        username: "teacher2",
-        email: "teacher2@example.com",
-        password: "password456",
-        name: "John Smith",
-        kanaName: "ジョンスミス",
-        lineId: "",
-        subjects: "英語",
-        subjectTypes: "個別指導",
-        notes: "ネイティブ英語講師"
-      }
+        ID: "",
+        名前: "John Smith",
+        カナ: "ジョンスミス",
+        ステータス: "在籍",
+        ユーザー名: "teacher2",
+        メールアドレス: "teacher2@example.com",
+        校舎: "メイン校",
+        担当科目: "英語 - 個別指導",
+      },
     ];
 
-    // Generate CSV with headers
-    const csv = CSVParser.generateCSV(sampleData, [...TEACHER_CSV_HEADERS]);
+    // Generate CSV with headers matching export
+    const csv = CSVParser.generateCSV(sampleData, [...columns]);
 
     // Return CSV file
     return new NextResponse(csv, {
