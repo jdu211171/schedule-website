@@ -85,6 +85,41 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
       );
     }
 
+    // Prefetch existing users and students to reduce per-row DB lookups
+    const candidateUsernames = new Set<string>();
+    const candidateEmails = new Set<string>();
+    const candidateStudentIds = new Set<string>();
+    for (const row of parseResult.data) {
+      const id = ((row as any).id || (row as any).ID) as string | undefined;
+      const username = ((row as any)['ユーザー名'] || (row as any).username) as string | undefined;
+      const email = ((row as any)['メールアドレス'] || (row as any).email) as string | undefined;
+      if (id) candidateStudentIds.add(id);
+      if (username) candidateUsernames.add(username);
+      if (email) candidateEmails.add(email);
+    }
+
+    const [existingUsers, existingStudentsById] = await Promise.all([
+      prisma.user.findMany({
+        where: {
+          OR: [
+            ...(candidateUsernames.size > 0 ? [{ username: { in: Array.from(candidateUsernames) } }] : []),
+            ...(candidateEmails.size > 0 ? [{ email: { in: Array.from(candidateEmails) } }] : []),
+          ],
+        },
+        include: { student: true },
+      }),
+      candidateStudentIds.size > 0
+        ? prisma.student.findMany({
+            where: { studentId: { in: Array.from(candidateStudentIds) } },
+            include: { user: true },
+          })
+        : Promise.resolve([] as any[]),
+    ]);
+
+    const userByUsername = new Map(existingUsers.map(u => [u.username, u]));
+    const userByEmail = new Map(existingUsers.filter(u => !!u.email).map(u => [u.email!, u]));
+    const studentById = new Map(existingStudentsById.map(s => [s.studentId, s]));
+
     // Process and validate each row
     const validatedData: ((StudentImportData | StudentUpdateImportData) & {
       studentTypeId?: string | null;
@@ -193,22 +228,12 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
         let existingUser: any | null = null;
         const importStudentId = ((row as any).id || (row as any).ID) as string | undefined;
         if (importStudentId) {
-          const s = await prisma.student.findUnique({ where: { studentId: importStudentId }, include: { user: true } });
-          if (s) {
-            existingUser = await prisma.user.findUnique({ where: { id: s.userId }, include: { student: true } });
-          }
+          const s = studentById.get(importStudentId) || null;
+          if (s?.user) existingUser = s.user;
         }
         if (!existingUser) {
-          // Fallback: username/email
-          existingUser = await prisma.user.findFirst({
-            where: {
-              OR: [
-                { username: validated.username },
-                ...(validated.email ? [{ email: validated.email }] : []),
-              ],
-            },
-            include: { student: true },
-          });
+          // Fallback: username/email from prefetch maps
+          existingUser = userByUsername.get(validated.username) || (validated.email ? userByEmail.get(validated.email) : null) || null;
         }
 
         // Validate branches
@@ -283,11 +308,14 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
       return NextResponse.json(result, { status: 400 });
     }
 
-    // Import valid data in a transaction
+    // Import valid data in batches to avoid long transactions/timeouts
     if (validatedData.length > 0) {
-      await prisma.$transaction(async (tx) => {
-        for (const data of validatedData) {
-          if (data.existingUserId) {
+      const batchSize = 100;
+      for (let start = 0; start < validatedData.length; start += batchSize) {
+        const batch = validatedData.slice(start, start + batchSize);
+        await prisma.$transaction(async (tx) => {
+          for (const data of batch) {
+            if (data.existingUserId) {
             // Update existing student
             const existingStudent = await tx.student.findUnique({
               where: { userId: data.existingUserId },
@@ -496,7 +524,8 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
 
           result.success++;
         }
-      });
+        });
+      }
     }
 
     return NextResponse.json(result);

@@ -123,7 +123,7 @@ export const STUDENT_COLUMN_RULES: Record<string, ColumnRule> = {
   password: {
     csvHeader: 'パスワード',
     dbField: 'password',
-    createRule: 'required',
+    createRule: 'optional',
     updateRule: 'optional',
     exportOrder: 17,
   },
@@ -158,7 +158,7 @@ export const STUDENT_COLUMN_RULES: Record<string, ColumnRule> = {
   branches: {
     csvHeader: '校舎',
     dbField: 'branches',
-    createRule: 'required',
+    createRule: 'optional',
     updateRule: 'optional',
     exportOrder: 22,
   },
