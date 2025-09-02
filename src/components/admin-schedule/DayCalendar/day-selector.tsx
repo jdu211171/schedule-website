@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useMemo, useState } from "react"
-import { format, addDays, isSameDay, startOfDay, addMonths } from "date-fns"
+import { format, addDays, isSameDay, startOfDay, addMonths, startOfWeek, isSameWeek } from "date-fns"
 import { ja } from "date-fns/locale"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -36,6 +36,8 @@ export const DaySelector: React.FC<DaySelectorProps> = ({
     const date = new Date()
     return startOfDay(date)
   }, [])
+
+  const currentWeekStart = useMemo(() => startOfWeek(today, { weekStartsOn: 1 }), [today])
 
   const maxDate = useMemo(() => {
     return addMonths(today, 3)
@@ -73,11 +75,13 @@ export const DaySelector: React.FC<DaySelectorProps> = ({
   }
 
   const handleTodayClick = () => {
+    // Focus current day (parent will anchor week to Monday and select today)
     onStartDateChange(today)
     setCalendarOpen(false)
   }
 
-  const isViewingToday = isSameDay(startDate, today)
+  // Disable/Hide controls if the current startDate is already in this week
+  const isViewingCurrentWeek = isSameWeek(startDate, today, { weekStartsOn: 1 })
 
   return (
     <div className="flex items-center gap-4">
@@ -126,7 +130,8 @@ export const DaySelector: React.FC<DaySelectorProps> = ({
                 variant="outline"
                 className="w-full"
                 onClick={handleTodayClick}
-                disabled={isViewingToday}
+                // Always allow jumping to today to re-focus selection
+                disabled={false}
               >
                 今日
               </Button>
@@ -134,11 +139,9 @@ export const DaySelector: React.FC<DaySelectorProps> = ({
           </PopoverContent>
         </Popover>
 
-        {!isViewingToday && (
-          <Button size="sm" variant="ghost" className="h-8 px-2 text-xs" onClick={handleTodayClick}>
-            今日に戻る
-          </Button>
-        )}
+        <Button size="sm" variant="ghost" className="h-8 px-2 text-xs" onClick={handleTodayClick}>
+          今日に戻る
+        </Button>
       </div>
 
       <div className="flex items-center gap-2">

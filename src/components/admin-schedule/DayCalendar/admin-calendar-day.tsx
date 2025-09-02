@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { startOfDay } from 'date-fns';
+import { startOfDay, startOfWeek, isSameWeek } from 'date-fns';
 import { toast } from 'sonner';
 import { useBooths } from '@/hooks/useBoothQuery';
 import { useTeachers, useTeacher } from '@/hooks/useTeacherQuery';
@@ -84,9 +84,10 @@ const TIME_SLOTS: TimeSlot[] = Array.from({ length: 57 }, (_el, i) => {
 
 export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayProps) {
   const today = useMemo(() => startOfDay(new Date()), []);
+  const currentWeekStart = useMemo(() => startOfWeek(today, { weekStartsOn: 1 }), [today]);
 
-  const [viewStartDate, setViewStartDate] = useState<Date>(today);
-  const [selectedDays, setSelectedDays] = useState<Date[]>([today]);
+  const [viewStartDate, setViewStartDate] = useState<Date>(() => currentWeekStart);
+  const [selectedDays, setSelectedDays] = useState<Date[]>([currentWeekStart]);
   const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
@@ -94,9 +95,18 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
       const saved = localStorage.getItem(VIEW_START_DATE_KEY);
       if (saved) {
         const date = new Date(saved);
-        if (!isNaN(date.getTime()) && date >= today) {
-          setViewStartDate(startOfDay(date));
+        if (!isNaN(date.getTime())) {
+          // Use saved start only if it's in the same week as today; otherwise reset to current week
+          if (isSameWeek(date, today, { weekStartsOn: 1 })) {
+            setViewStartDate(startOfWeek(startOfDay(date), { weekStartsOn: 1 }));
+          } else {
+            setViewStartDate(currentWeekStart);
+          }
+        } else {
+          setViewStartDate(currentWeekStart);
         }
+      } else {
+        setViewStartDate(currentWeekStart);
       }
 
       const savedDaysJson = localStorage.getItem(SELECTED_DAYS_KEY);
@@ -108,17 +118,24 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
               .map((dateStr: string) => new Date(dateStr))
               .filter((date: Date) => !isNaN(date.getTime()));
 
-            const validDates = parsedDates.filter(date => {
-              return date >= today;
-            });
+            // Only restore if at least one date is in the same week as the viewStartDate (after it's set above)
+            const base = startOfWeek(viewStartDate, { weekStartsOn: 1 });
+            const inSameWeek = parsedDates.filter(date => isSameWeek(date, base, { weekStartsOn: 1 }));
 
-            if (validDates.length > 0) {
-              setSelectedDays(validDates);
+            if (inSameWeek.length > 0) {
+              setSelectedDays(inSameWeek.sort((a,b) => a.getTime() - b.getTime()));
+            } else {
+              setSelectedDays([base]);
             }
+          } else {
+            setSelectedDays([startOfWeek(viewStartDate, { weekStartsOn: 1 })]);
           }
         } catch (error) {
           console.error('Error parsing saved selected days:', error);
+          setSelectedDays([startOfWeek(viewStartDate, { weekStartsOn: 1 })]);
         }
+      } else {
+        setSelectedDays([startOfWeek(viewStartDate, { weekStartsOn: 1 })]);
       }
 
       setIsInitialized(true);
@@ -253,8 +270,10 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
   }, [classSessionQueries, selectedDatesStrings, newLessonData, selectedLesson]);
 
   const handleStartDateChange = useCallback((newStartDate: Date) => {
-    setViewStartDate(newStartDate);
-    setSelectedDays([newStartDate]);
+    const day = startOfDay(newStartDate);
+    const weekStart = startOfWeek(day, { weekStartsOn: 1 });
+    setViewStartDate(weekStart);
+    setSelectedDays([day]);
     setDayFilters({});
   }, []);
 
