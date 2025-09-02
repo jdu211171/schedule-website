@@ -265,6 +265,7 @@ export const PATCH = withBranchAccess(
         endTime,
         duration,
         notes,
+        fromClassId,
       } = result.data;
 
       // Prepare update data
@@ -277,9 +278,26 @@ export const PATCH = withBranchAccess(
         notes,
       };
 
-      // Check today's date to only update future sessions
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      // Determine pivot date: either from the specified instance or today (fallback)
+      let pivotDate = new Date();
+      pivotDate.setHours(0, 0, 0, 0);
+
+      if (fromClassId) {
+        const pivotSession = await prisma.classSession.findFirst({
+          where: { classId: fromClassId, seriesId },
+          select: { date: true },
+        });
+        if (!pivotSession) {
+          return NextResponse.json(
+            { error: "指定された授業インスタンスが見つかりません" },
+            { status: 400 }
+          );
+        }
+        // Normalize to start of day in UTC to match storage/formatting behavior
+        const d = new Date(pivotSession.date);
+        d.setUTCHours(0, 0, 0, 0);
+        pivotDate = d;
+      }
 
       // Time handling
       const hasTimeUpdate = startTime !== undefined || endTime !== undefined;
@@ -308,19 +326,19 @@ export const PATCH = withBranchAccess(
         updateData.duration = duration;
       }
 
-      // Get all future sessions in the series
+      // Get all sessions in the series from the pivot date (inclusive)
       const futureSessions = await prisma.classSession.findMany({
         where: {
           seriesId,
           date: {
-            gte: today,
+            gte: pivotDate,
           },
         },
       });
 
       if (futureSessions.length === 0) {
         return NextResponse.json(
-          { error: "更新可能な未来のセッションがありません" },
+          { error: "更新対象のセッションがありません" },
           { status: 400 }
         );
       }

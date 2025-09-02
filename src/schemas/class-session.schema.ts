@@ -63,6 +63,8 @@ export const classSessionSeriesUpdateSchema = z.object({
   endTime: z.string().optional(), // Format: "HH:MM"
   duration: z.number().int().optional().nullable(),
   notes: z.string().max(255).optional().nullable(),
+  // Pivot for applying updates from a specific instance forward
+  fromClassId: z.string().optional(),
 });
 
 // Schema for bulk deleting class sessions

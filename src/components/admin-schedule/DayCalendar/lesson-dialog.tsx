@@ -321,8 +321,10 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
         boothId?: string;
         notes?: string | null;
         classTypeId?: string;
+        fromClassId?: string;
       } = {
-        seriesId: lesson.seriesId
+        seriesId: lesson.seriesId,
+        fromClassId: editedLesson.classId,
       };
 
       if (editedLesson.teacherId !== undefined) {
@@ -519,24 +521,24 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
           <div className="grid gap-4 py-4">
             {mode === 'edit' && isRecurringLesson && (
               <div className="p-3 border rounded-lg bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
-                <RadioGroup
-                  value={editMode}
-                  onValueChange={(value: EditMode) => setEditMode(value)}
-                  className="flex flex-row space-x-6"
-                >
-                  <div className="flex items-center space-x-2" >
-                    <RadioGroupItem value="single" id="single" />
-                    <Label htmlFor="single" className="text-sm font-normal cursor-pointer">
-                      この授業のみ編集
-                    </Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="series" id="series" />
-                    <Label htmlFor="series" className="text-sm font-normal cursor-pointer">
-                      シリーズ全体を編集
-                    </Label>
-                  </div>
-                </RadioGroup>
+            <RadioGroup
+              value={editMode}
+              onValueChange={(value: EditMode) => setEditMode(value)}
+              className="flex flex-row space-x-6"
+            >
+              <div className="flex items-center space-x-2" >
+                <RadioGroupItem value="single" id="single" />
+                <Label htmlFor="single" className="text-sm font-normal cursor-pointer">
+                  この授業のみ編集
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="series" id="series" />
+                <Label htmlFor="series" className="text-sm font-normal cursor-pointer">
+                  この回以降を編集
+                </Label>
+              </div>
+            </RadioGroup>
               </div>
             )}
 

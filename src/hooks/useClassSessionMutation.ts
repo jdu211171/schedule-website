@@ -834,12 +834,9 @@ export function useClassSessionSeriesUpdate() {
       });
     },
     onSuccess: (response) => {
-      toast.success(
-        `${response.data.length}件の未来の授業を更新しました`,
-        {
-          id: "class-session-series-update-success",
-        }
-      );
+      toast.success(`${response.data.length}件の授業を更新しました`, {
+        id: "class-session-series-update-success",
+      });
     },
     onSettled: (_, __, variables) => {
       const { seriesId } = variables;

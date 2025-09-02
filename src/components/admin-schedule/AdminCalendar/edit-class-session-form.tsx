@@ -75,6 +75,8 @@ export function EditClassSessionForm({ session, onComplete, onError }: EditClass
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(
     session.date ? new Date(session.date) : undefined
   )
+  // Edit scope: single instance or from this instance forward (if part of a series)
+  const [editScope, setEditScope] = useState<'single' | 'future'>("single")
 
   const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || ""
 
@@ -129,7 +131,7 @@ export function EditClassSessionForm({ session, onComplete, onError }: EditClass
     },
   })
 
-  // Direct update without session check
+  // Submit: update single or future-in-series based on scope
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -155,52 +157,74 @@ export function EditClassSessionForm({ session, onComplete, onError }: EditClass
       formData.duration = duration;
     }
 
-    // Try direct update without session check
+    // Decide endpoint based on scope
     try {
-      const updateUrl = `${baseUrl}/api/class-sessions/${formData.classId}`;
-      console.log("Direct update URL:", updateUrl);
-      console.log("Update payload:", JSON.stringify(formData, null, 2));
-
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000);
 
+      if (editScope === 'future' && session.seriesId) {
+        // Build minimal series update payload
+        const payload: any = {
+          teacherId: formData.teacherId || undefined,
+          studentId: formData.studentId || undefined,
+          subjectId: formData.subjectId || undefined,
+          classTypeId: formData.classTypeId || undefined,
+          boothId: formData.boothId || undefined,
+          startTime: formData.startTime,
+          endTime: formData.endTime,
+          duration: formData.duration,
+          notes: formData.notes,
+          fromClassId: session.classId,
+        };
+
+        const url = `${baseUrl}/api/class-sessions/series/${session.seriesId}`;
+        const res = await fetch(url, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+        if (!res.ok) {
+          let msg = "授業シリーズの更新に失敗しました";
+          try {
+            const data = await res.json();
+            console.error("Series update failed:", data);
+            msg = `${msg}: ${res.status} ${JSON.stringify(data)}`;
+          } catch {}
+          toast.error(msg);
+          onError(new Error(msg));
+          return;
+        }
+        toast.success("この回以降の授業を更新しました");
+        onComplete();
+        return;
+      }
+
+      // Fallback: single instance update
+      const updateUrl = `${baseUrl}/api/class-sessions/${formData.classId}`;
       const response = await fetch(updateUrl, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
-        signal: controller.signal
+        signal: controller.signal,
       });
-
       clearTimeout(timeoutId);
-
-      console.log("Direct update response:", {
-        ok: response.ok,
-        status: response.status,
-        statusText: response.statusText
-      });
-
       if (!response.ok) {
         let errorMessage = "授業の更新に失敗しました";
-
         try {
           const errorData = await response.json();
           console.error("Direct update failed with data:", errorData);
           errorMessage = `授業の更新に失敗しました: ${response.status} ${JSON.stringify(errorData)}`;
-        } catch (parseError) {
-          console.error("Direct update failed but couldn't parse response:", parseError);
-        }
-
+        } catch {}
         toast.error(errorMessage);
         onError(new Error(errorMessage));
         return;
       }
-
       toast.success("授業情報が正常に更新されました");
       onComplete();
     } catch (error) {
-      console.error("Direct update error:", error);
+      console.error("Update error:", error);
       const errorMessage = error instanceof Error ? error.message : "授業の更新に失敗しました";
       toast.error(errorMessage);
       onError(new Error(errorMessage));
@@ -264,6 +288,33 @@ export function EditClassSessionForm({ session, onComplete, onError }: EditClass
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {session.seriesId && (
+        <div className="p-3 border rounded-lg bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+          <Label className="text-sm font-medium text-foreground">編集範囲を選択</Label>
+          <div className="flex items-center gap-4 mt-2">
+            <label className="flex items-center gap-2 text-sm cursor-pointer">
+              <input
+                type="radio"
+                name="editScope"
+                value="single"
+                checked={editScope === 'single'}
+                onChange={() => setEditScope('single')}
+              />
+              この授業のみ編集
+            </label>
+            <label className="flex items-center gap-2 text-sm cursor-pointer">
+              <input
+                type="radio"
+                name="editScope"
+                value="future"
+                checked={editScope === 'future'}
+                onChange={() => setEditScope('future')}
+              />
+              この回以降を編集
+            </label>
+          </div>
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="teacherId">講師</Label>
