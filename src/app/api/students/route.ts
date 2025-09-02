@@ -6,7 +6,7 @@ import {
   studentCreateSchema,
   studentFilterSchema,
 } from "@/schemas/student.schema";
-import { Student, DayOfWeek } from "@prisma/client";
+import { Student, DayOfWeek, Prisma } from "@prisma/client";
 
 type StudentWithIncludes = Student & {
   studentType: {
@@ -65,8 +65,15 @@ type StudentWithIncludes = Student & {
     notes: string | null;
     order: number;
   }[];
+  contactEmails?: {
+    id: string;
+    email: string;
+    notes: string | null;
+    order: number;
+  }[];
 };
 
+// Shape returned by formatStudent
 type FormattedStudent = {
   studentId: string;
   userId: string;
@@ -135,6 +142,13 @@ type FormattedStudent = {
     id: string;
     phoneType: string;
     phoneNumber: string;
+    notes: string | null;
+    order: number;
+  }[];
+  // Contact emails (non-login)
+  contactEmails: {
+    id: string;
+    email: string;
     notes: string | null;
     order: number;
   }[];
@@ -266,7 +280,7 @@ const formatStudent = (student: StudentWithIncludes): FormattedStudent => {
       const dateStr = avail.date.toISOString().split('T')[0];
 
       // Check if we already have an entry for this date
-      let dateEntry = exceptionalAvailability.find(ea => ea.date === dateStr);
+      let dateEntry = exceptionalAvailability.find((ea: FormattedStudent['exceptionalAvailability'][number]) => ea.date === dateStr);
 
       if (!dateEntry) {
         dateEntry = {
@@ -309,7 +323,7 @@ const formatStudent = (student: StudentWithIncludes): FormattedStudent => {
     status: student.status,
     username: student.user.username,
     email: student.user.email,
-    password: student.user.passwordHash || null,
+    password: student.user.passwordHash,
     branches:
       student.user.branches?.map((ub) => ({
         branchId: ub.branch.branchId,
@@ -342,6 +356,13 @@ const formatStudent = (student: StudentWithIncludes): FormattedStudent => {
       notes: phone.notes,
       order: phone.order,
     })) || [],
+    // Contact emails (non-login)
+    contactEmails: student.contactEmails?.map(e => ({
+      id: e.id,
+      email: e.email,
+      notes: e.notes,
+      order: e.order,
+    })) || [],
     createdAt: student.createdAt,
     updatedAt: student.updatedAt,
   };
@@ -353,24 +374,26 @@ export const GET = withBranchAccess(
   async (request: NextRequest, session, branchId) => {
     // Parse query parameters
     const url = new URL(request.url);
-    const params: Record<string, any> = {};
+    const params: Record<string, string | string[]> = {};
 
     // Handle both single values and arrays
     const arrayParams = ['studentTypeIds', 'gradeYears', 'statuses', 'branchIds', 'subjectIds', 'lineConnection', 'schoolTypes', 'examCategories', 'examCategoryTypes'];
 
     url.searchParams.forEach((value, key) => {
+      const existing = params[key];
       if (arrayParams.includes(key)) {
-        // Collect array parameters
-        if (!params[key]) {
-          params[key] = [];
-        }
-        params[key].push(value);
-      } else if (params[key]) {
-        // If key already exists, convert to array
-        if (Array.isArray(params[key])) {
-          params[key].push(value);
+        if (Array.isArray(existing)) {
+          existing.push(value);
+        } else if (typeof existing === 'string') {
+          params[key] = [existing, value];
         } else {
-          params[key] = [params[key], value];
+          params[key] = [value];
+        }
+      } else if (existing !== undefined) {
+        if (Array.isArray(existing)) {
+          existing.push(value);
+        } else {
+          params[key] = [existing, value];
         }
       } else {
         params[key] = value;
@@ -412,7 +435,7 @@ export const GET = withBranchAccess(
     } = result.data;
 
     // Build filter conditions
-    const where: Record<string, any> = {};
+    const where: Prisma.StudentWhereInput = {};
 
     if (name) {
       where.OR = [
@@ -609,44 +632,18 @@ export const GET = withBranchAccess(
     const students = await prisma.student.findMany({
       where,
       include: {
-        studentType: {
-          select: {
-            studentTypeId: true,
-            name: true,
-            maxYears: true,
-          },
-        },
+        studentType: true,
         user: {
-          select: {
-            username: true,
-            email: true,
-            passwordHash: true,
+          include: {
             branches: {
               include: {
-                branch: {
-                  select: {
-                    branchId: true,
-                    name: true,
-                  },
-                },
+                branch: true,
               },
             },
             subjectPreferences: {
-              select: {
-                subjectId: true,
-                subjectTypeId: true,
-                subject: {
-                  select: {
-                    subjectId: true,
-                    name: true,
-                  },
-                },
-                subjectType: {
-                  select: {
-                    subjectTypeId: true,
-                    name: true,
-                  },
-                },
+              include: {
+                subject: true,
+                subjectType: true,
               },
             },
             availability: {
@@ -681,14 +678,17 @@ export const GET = withBranchAccess(
         contactPhones: {
           orderBy: { order: "asc" },
         },
+        contactEmails: {
+          orderBy: { order: "asc" },
+        },
       },
       skip,
       take: limit,
       orderBy: [
-        { 
-          studentType: { 
-            order: { sort: "asc", nulls: "last" } 
-          } 
+        {
+          studentType: {
+            order: { sort: "asc", nulls: "last" }
+          }
         },
         { name: "asc" }
       ],
@@ -720,7 +720,7 @@ export const POST = withBranchAccess(
       const result = studentCreateSchema.safeParse(body);
       if (!result.success) {
         return NextResponse.json(
-          { error: "入力データが無効です" }, // "Invalid input data"
+          { error: "入力データが無効です" },
           { status: 400 }
         );
       }
@@ -735,6 +735,7 @@ export const POST = withBranchAccess(
         regularAvailability = [],
         exceptionalAvailability = [],
         contactPhones = [],
+        contactEmails = [],
         ...studentData
       } = result.data;
 
@@ -779,7 +780,7 @@ export const POST = withBranchAccess(
       if (session.user?.role !== "ADMIN") {
         // Staff can only assign students to branches they have access to
         const userBranches =
-          session.user?.branches?.map((b: any) => b.branchId) || [];
+          (session.user?.branches as Array<{ branchId: string }> | undefined)?.map((b) => b.branchId) || [];
 
         // Verify staff has access to all requested branches
         const unauthorizedBranches = finalBranchIds.filter(
@@ -866,16 +867,7 @@ export const POST = withBranchAccess(
       const passwordHash = password;
 
       // Clean up optional fields - convert empty strings to null
-      const cleanedStudentData = {
-        ...studentData,
-        lineUserId: studentData.lineUserId || null,
-        kanaName: studentData.kanaName || null,
-        notes: studentData.notes || null,
-        schoolName: studentData.schoolName || null,
-        firstChoice: studentData.firstChoice || null,
-        secondChoice: studentData.secondChoice || null,
-        parentEmail: studentData.parentEmail || null,
-      };
+      // (applied inline below when creating the student record)
 
       // Create user, student and all related data in a transaction
       const newStudent = await prisma.$transaction(async (tx) => {
@@ -892,7 +884,16 @@ export const POST = withBranchAccess(
         // Create student record
         const student = await tx.student.create({
           data: {
-            ...cleanedStudentData,
+            ...{
+              ...studentData,
+              lineUserId: studentData.lineUserId || null,
+              kanaName: studentData.kanaName || null,
+              notes: studentData.notes || null,
+              schoolName: studentData.schoolName || null,
+              firstChoice: studentData.firstChoice || null,
+              secondChoice: studentData.secondChoice || null,
+              parentEmail: studentData.parentEmail || null,
+            },
             studentTypeId: studentTypeId || null,
             userId: user.id,
           },
@@ -1066,6 +1067,18 @@ export const POST = withBranchAccess(
           });
         }
 
+        // Create contact emails if provided
+        if (contactEmails.length > 0) {
+          await tx.contactEmail.createMany({
+            data: contactEmails.map((e, index) => ({
+              studentId: student.studentId,
+              email: e.email,
+              notes: e.notes || null,
+              order: e.order ?? index,
+            })),
+          });
+        }
+
         // Return student with all associations
         return tx.student.findUnique({
           where: { studentId: student.studentId },
@@ -1140,6 +1153,9 @@ export const POST = withBranchAccess(
               },
             },
             contactPhones: {
+              orderBy: { order: "asc" },
+            },
+            contactEmails: {
               orderBy: { order: "asc" },
             },
           },

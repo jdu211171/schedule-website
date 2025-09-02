@@ -160,6 +160,7 @@ model Student {
   studentType              StudentType?               @relation(fields: [studentTypeId], references: [studentTypeId])
   user                     User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
   lineLinks                StudentLineLink[]
+  contactEmails            ContactEmail[]
 
   @@index([studentTypeId])
   @@map("students")
@@ -179,6 +180,21 @@ model ContactPhone {
   @@index([studentId])
   @@index([order])
   @@map("contact_phones")
+}
+
+model ContactEmail {
+  id        String   @id @default(cuid())
+  studentId String   @map("student_id")
+  email     String   @db.VarChar(100)
+  notes     String?  @db.VarChar(255)
+  order     Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  student   Student  @relation(fields: [studentId], references: [studentId], onDelete: Cascade)
+
+  @@index([studentId])
+  @@index([order])
+  @@map("contact_emails")
 }
 
 model UserAvailability {
@@ -272,6 +288,7 @@ model Teacher {
   contactPhones            TeacherContactPhone[]
   user                     User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
   lineLinks                TeacherLineLink[]
+  contactEmails            TeacherContactEmail[]
 
   @@map("teachers")
 }
@@ -290,6 +307,21 @@ model TeacherContactPhone {
   @@index([teacherId])
   @@index([order])
   @@map("teacher_contact_phones")
+}
+
+model TeacherContactEmail {
+  id        String   @id @default(cuid())
+  teacherId String   @map("teacher_id")
+  email     String   @db.VarChar(100)
+  notes     String?  @db.VarChar(255)
+  order     Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  teacher   Teacher  @relation(fields: [teacherId], references: [teacherId], onDelete: Cascade)
+
+  @@index([teacherId])
+  @@index([order])
+  @@map("teacher_contact_emails")
 }
 
 model SubjectType {

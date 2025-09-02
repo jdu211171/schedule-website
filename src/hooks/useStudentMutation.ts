@@ -135,6 +135,13 @@ export function useStudentCreate() {
                   notes: phone.notes || null,
                   order: phone.order ?? index,
                 })),
+                // Contact emails
+                contactEmails: (newStudent.contactEmails || []).map((e, index) => ({
+                  id: e.id || crypto.randomUUID(),
+                  email: e.email,
+                  notes: e.notes || null,
+                  order: e.order ?? index,
+                })),
                 createdAt: new Date(),
                 updatedAt: new Date(),
                 _optimistic: true,
@@ -285,7 +292,7 @@ export function useStudentUpdate() {
                               };
                             })
                           : student.exceptionalAvailability,
-                        contactPhones: updatedStudent.contactPhones 
+                        contactPhones: updatedStudent.contactPhones
                           ? updatedStudent.contactPhones.map((phone, index) => ({
                               id: phone.id || crypto.randomUUID(),
                               phoneType: phone.phoneType,
@@ -294,6 +301,14 @@ export function useStudentUpdate() {
                               order: phone.order ?? index,
                             }))
                           : student.contactPhones || [],
+                        contactEmails: updatedStudent.contactEmails
+                          ? updatedStudent.contactEmails.map((e, index) => ({
+                              id: e.id || crypto.randomUUID(),
+                              email: e.email,
+                              notes: e.notes || null,
+                              order: e.order ?? index,
+                            }))
+                          : student.contactEmails || [],
                         updatedAt: new Date(),
                       }
                     : student
@@ -333,7 +348,7 @@ export function useStudentUpdate() {
                     };
                   })
                 : previousStudent.exceptionalAvailability,
-              contactPhones: updatedStudent.contactPhones 
+              contactPhones: updatedStudent.contactPhones
                 ? updatedStudent.contactPhones.map((phone, index) => ({
                     id: phone.id || crypto.randomUUID(),
                     phoneType: phone.phoneType,
@@ -342,6 +357,14 @@ export function useStudentUpdate() {
                     order: phone.order ?? index,
                   }))
                 : previousStudent.contactPhones || [],
+              contactEmails: updatedStudent.contactEmails
+                ? updatedStudent.contactEmails.map((e, index) => ({
+                    id: e.id || crypto.randomUUID(),
+                    email: e.email,
+                    notes: e.notes || null,
+                    order: e.order ?? index,
+                  }))
+                : previousStudent.contactEmails || [],
               updatedAt: new Date(),
             };
             queryClient.setQueryData<Student>(["student", resolvedId], updatedData);

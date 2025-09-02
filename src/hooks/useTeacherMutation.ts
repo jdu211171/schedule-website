@@ -37,8 +37,13 @@ export function getResolvedTeacherId(id: string): string {
   return tempToServerIdMap.get(id) || id;
 }
 
+type ExceptionalInput = Array<
+  | { date: string | Date; fullDay: boolean; reason?: string | null; notes?: string | null; timeSlots: { id: string; startTime: string; endTime: string }[] }
+  | { date: string | Date; fullDay: boolean; startTime?: string | null; endTime?: string | null; reason?: string | null; notes?: string | null }
+>;
+
 const convertExceptionalAvailability = (
-  availability: any[]
+  availability: ExceptionalInput
 ): Teacher['exceptionalAvailability'] => {
   if (!availability || !Array.isArray(availability)) return [];
 
@@ -56,7 +61,7 @@ const convertExceptionalAvailability = (
 
     // Convert from schema format (startTime/endTime) to interface format (timeSlots)
     const timeSlots = [];
-    if (!item.fullDay && item.startTime && item.endTime) {
+    if (!('timeSlots' in item) && !item.fullDay && item.startTime && item.endTime) {
       timeSlots.push({
         id: crypto.randomUUID(),
         startTime: item.startTime,
@@ -124,6 +129,12 @@ export function useTeacherCreate() {
               phoneNumber: phone.phoneNumber,
               notes: phone.notes || null,
               order: phone.order ?? 0,
+            })),
+            contactEmails: (newTeacher.contactEmails || []).map((e, index) => ({
+              id: e.id || `temp-${Date.now()}-${Math.random()}`,
+              email: e.email,
+              notes: e.notes || null,
+              order: e.order ?? index,
             })),
             branches: [],
             subjectPreferences: newTeacher.subjectPreferences || [],
@@ -261,6 +272,14 @@ export function useTeacherUpdate() {
                           order: phone.order ?? 0,
                         }))
                       : teacher.contactPhones,
+                    contactEmails: updatedTeacher.contactEmails !== undefined
+                      ? (updatedTeacher.contactEmails || []).map((e, index) => ({
+                          id: e.id || `temp-${Date.now()}-${Math.random()}`,
+                          email: e.email,
+                          notes: e.notes || null,
+                          order: e.order ?? index,
+                        }))
+                      : teacher.contactEmails,
                     subjectPreferences:
                       updatedTeacher.subjectPreferences !== undefined
                         ? updatedTeacher.subjectPreferences
@@ -297,6 +316,14 @@ export function useTeacherUpdate() {
                 order: phone.order ?? 0,
               }))
             : previousTeacher.contactPhones,
+          contactEmails: updatedTeacher.contactEmails !== undefined
+            ? (updatedTeacher.contactEmails || []).map((e, index) => ({
+                id: e.id || `temp-${Date.now()}-${Math.random()}`,
+                email: e.email,
+                notes: e.notes || null,
+                order: e.order ?? index,
+              }))
+            : previousTeacher.contactEmails,
           subjectPreferences:
             updatedTeacher.subjectPreferences !== undefined
               ? updatedTeacher.subjectPreferences

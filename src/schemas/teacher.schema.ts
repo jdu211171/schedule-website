@@ -4,6 +4,18 @@ import { z } from "zod";
 // Phone type enum
 export const phoneTypeEnum = z.enum(["HOME", "DAD", "MOM", "OTHER"]);
 
+// Contact email schema for teacher
+export const contactEmailSchema = z.object({
+  id: z.string().optional(),
+  email: z.string().email("有効なメールアドレスを入力してください"),
+  notes: z
+    .string()
+    .max(255, "備考は255文字以内で入力してください")
+    .optional()
+    .nullable(),
+  order: z.number().optional().default(0),
+});
+
 // Contact phone schema for teacher
 export const contactPhoneSchema = z.object({
   id: z.string().optional(),
@@ -165,6 +177,8 @@ const teacherBaseSchema = z.object({
     .nullable(),
   // New contact phones array
   contactPhones: z.array(contactPhoneSchema).optional().default([]),
+  // New contact emails array (non-login informational emails)
+  contactEmails: z.array(contactEmailSchema).optional().default([]),
   username: z.string().min(3, "ユーザー名は3文字以上で入力してください"),
   // パスワードはフォーム上は任意、作成時は必須
   password: z

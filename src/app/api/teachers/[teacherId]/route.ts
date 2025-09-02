@@ -14,6 +14,12 @@ type TeacherWithIncludes = Teacher & {
     notes: string | null;
     order: number;
   }[];
+  contactEmails?: {
+    id: string;
+    email: string;
+    notes: string | null;
+    order: number;
+  }[];
   user: {
     username: string | null;
     email: string | null;
@@ -72,6 +78,12 @@ type FormattedTeacher = {
     id: string;
     phoneType: string;
     phoneNumber: string;
+    notes: string | null;
+    order: number;
+  }[];
+  contactEmails?: {
+    id: string;
+    email: string;
     notes: string | null;
     order: number;
   }[];
@@ -260,6 +272,7 @@ const formatTeacher = (teacher: TeacherWithIncludes): FormattedTeacher => {
     createdAt: teacher.createdAt,
     updatedAt: teacher.updatedAt,
     contactPhones: teacher.contactPhones?.sort((a, b) => a.order - b.order) || [],
+    contactEmails: teacher.contactEmails?.sort((a, b) => a.order - b.order) || [],
   };
 };
 
@@ -284,6 +297,17 @@ export const GET = withBranchAccess(
             id: true,
             phoneType: true,
             phoneNumber: true,
+            notes: true,
+            order: true,
+          },
+          orderBy: {
+            order: 'asc',
+          },
+        },
+        contactEmails: {
+          select: {
+            id: true,
+            email: true,
             notes: true,
             order: true,
           },
@@ -408,6 +432,7 @@ export const PATCH = withBranchAccess(
         regularAvailability = [],
         exceptionalAvailability = [],
         contactPhones,
+        contactEmails,
         ...teacherData
       } = result.data;
 
@@ -500,9 +525,9 @@ export const PATCH = withBranchAccess(
         }
 
         // Clean up optional fields - convert empty strings to null
-        const cleanedTeacherData: any = {};
+        const cleanedTeacherData: Record<string, unknown> = {};
         for (const [key, value] of Object.entries(teacherData)) {
-          if (key === 'lineUserId' || key === 'kanaName' || key === 'notes' || 
+          if (key === 'lineUserId' || key === 'kanaName' || key === 'notes' ||
               key === 'phoneNumber' || key === 'phoneNotes') {
             cleanedTeacherData[key] = value || null;
           } else {
@@ -535,6 +560,26 @@ export const PATCH = withBranchAccess(
                 phoneNumber: phone.phoneNumber,
                 notes: phone.notes || null,
                 order: phone.order ?? index,
+              })),
+            });
+          }
+        }
+
+        // Update contact emails if provided
+        if (contactEmails !== undefined) {
+          // Delete existing contact emails
+          await tx.teacherContactEmail.deleteMany({
+            where: { teacherId },
+          });
+
+          // Create new contact emails
+          if (contactEmails.length > 0) {
+            await tx.teacherContactEmail.createMany({
+              data: contactEmails.map((e, index) => ({
+                teacherId,
+                email: e.email,
+                notes: e.notes || null,
+                order: e.order ?? index,
               })),
             });
           }
@@ -741,6 +786,17 @@ export const PATCH = withBranchAccess(
                 order: 'asc',
               },
             },
+            contactEmails: {
+              select: {
+                id: true,
+                email: true,
+                notes: true,
+                order: true,
+              },
+              orderBy: {
+                order: 'asc',
+              },
+            },
             user: {
               select: {
                 username: true,
@@ -835,7 +891,7 @@ export const DELETE = withBranchAccess(
 
     // Get selected branch from headers
     const selectedBranchId = request.headers.get("X-Selected-Branch");
-    
+
     // Require branch context for deletion
     if (!selectedBranchId) {
       return NextResponse.json(
@@ -843,7 +899,7 @@ export const DELETE = withBranchAccess(
         { status: 400 }
       );
     }
-    
+
     try {
       // Check if teacher exists
       const teacher = await prisma.teacher.findUnique({
@@ -860,7 +916,7 @@ export const DELETE = withBranchAccess(
 
       // Check for dependencies in the selected branch only
       const classSessionCount = await prisma.classSession.count({
-        where: { 
+        where: {
           teacherId,
           branchId: selectedBranchId
         }
@@ -874,7 +930,7 @@ export const DELETE = withBranchAccess(
       if (classSessionCount > 0) {
         // Get branch information for class sessions
         const sessions = await prisma.classSession.findMany({
-          where: { 
+          where: {
             teacherId,
             branchId: selectedBranchId
           },
@@ -883,15 +939,15 @@ export const DELETE = withBranchAccess(
           },
           distinct: ['branchId']
         });
-        
+
         const branchNames = [...new Set(sessions
           .map(s => s.branch?.name)
           .filter(Boolean))];
-        
+
         const branchText = branchNames.length > 0 ? `（${branchNames.join('、')}）` : '';
-        
+
         return NextResponse.json(
-          { 
+          {
             error: `この講師は${classSessionCount}件の授業セッション${branchText}に関連付けられているため削除できません。`,
             details: {
               classSessions: classSessionCount,
@@ -931,22 +987,28 @@ export const DELETE = withBranchAccess(
             where: { teacherId },
           });
 
+          // Delete contact emails
+          await tx.teacherContactEmail.deleteMany({
+            where: { teacherId },
+          });
+
           // Delete teacher
           await tx.teacher.delete({ where: { teacherId } });
 
           // Delete associated user
           await tx.user.delete({ where: { id: teacher.userId } });
         });
-      } catch (error: any) {
+      } catch (error: unknown) {
         // Handle foreign key constraint violations
-        if (error?.code === 'P2003') {
+        const code = (error as { code?: string })?.code;
+        if (code === 'P2003') {
           console.error("Foreign key constraint error:", error);
           return NextResponse.json(
-            { 
-              error: "講師を削除できません。関連するデータが存在します。", 
-              details: { 
+            {
+              error: "講師を削除できません。関連するデータが存在します。",
+              details: {
                 message: "削除前に関連する授業セッションや設定を確認してください。",
-                code: error.code 
+                code
               }
             },
             { status: 400 }

@@ -8,6 +8,7 @@ import {
 } from "@/schemas/teacher.schema";
 import { Teacher, DayOfWeek } from "@prisma/client";
 
+// Define a type for the teacher with includes
 type TeacherWithIncludes = Teacher & {
   contactPhones?: {
     id: string;
@@ -16,10 +17,16 @@ type TeacherWithIncludes = Teacher & {
     notes: string | null;
     order: number;
   }[];
+  contactEmails?: {
+    id: string;
+    email: string;
+    notes: string | null;
+    order: number;
+  }[];
   user: {
     username: string | null;
     email: string | null;
-    passwordHash?: string | null;
+    passwordHash: string | null;
     branches?: {
       branch: {
         branchId: string;
@@ -53,6 +60,7 @@ type TeacherWithIncludes = Teacher & {
   };
 };
 
+// Define the return type for the formatted teacher
 type FormattedTeacher = {
   teacherId: string;
   userId: string;
@@ -73,6 +81,12 @@ type FormattedTeacher = {
     id: string;
     phoneType: string;
     phoneNumber: string;
+    notes: string | null;
+    order: number;
+  }[];
+  contactEmails?: {
+    id: string;
+    email: string;
     notes: string | null;
     order: number;
   }[];
@@ -253,7 +267,7 @@ const formatTeacher = (teacher: TeacherWithIncludes): FormattedTeacher => {
     phoneNumber: teacher.phoneNumber,
     phoneNotes: teacher.phoneNotes,
     username: teacher.user.username,
-    password: teacher.user.passwordHash || null,
+    password: teacher.user.passwordHash,
     branches:
       teacher.user.branches?.map((ub) => ({
         branchId: ub.branch.branchId,
@@ -265,6 +279,7 @@ const formatTeacher = (teacher: TeacherWithIncludes): FormattedTeacher => {
     createdAt: teacher.createdAt,
     updatedAt: teacher.updatedAt,
     contactPhones: teacher.contactPhones?.sort((a, b) => a.order - b.order) || [],
+    contactEmails: teacher.contactEmails?.sort((a, b) => a.order - b.order) || [],
   };
 };
 
@@ -306,7 +321,7 @@ export const GET = withBranchAccess(
 
     // Add birthDate filter
     if (birthDateFrom || birthDateTo) {
-      const dateFilter: any = {};
+      const dateFilter: { gte?: Date; lte?: Date } = {};
       if (birthDateFrom) {
         dateFilter.gte = new Date(birthDateFrom);
       }
@@ -351,6 +366,17 @@ export const GET = withBranchAccess(
             id: true,
             phoneType: true,
             phoneNumber: true,
+            notes: true,
+            order: true,
+          },
+          orderBy: {
+            order: 'asc',
+          },
+        },
+        contactEmails: {
+          select: {
+            id: true,
+            email: true,
             notes: true,
             order: true,
           },
@@ -439,7 +465,7 @@ export const POST = withBranchAccess(
       const result = teacherCreateSchema.safeParse(body);
       if (!result.success) {
         return NextResponse.json(
-          { error: "入力データが無効です" }, // "Invalid input data"
+          { error: "入力データが無効です" },
           { status: 400 }
         );
       }
@@ -453,6 +479,7 @@ export const POST = withBranchAccess(
         regularAvailability = [],
         exceptionalAvailability = [],
         contactPhones = [],
+        contactEmails = [],
         ...teacherData
       } = result.data;
 
@@ -590,6 +617,18 @@ export const POST = withBranchAccess(
               phoneNumber: phone.phoneNumber,
               notes: phone.notes || null,
               order: phone.order ?? index,
+            })),
+          });
+        }
+
+        // Create contact emails if provided
+        if (contactEmails.length > 0) {
+          await tx.teacherContactEmail.createMany({
+            data: contactEmails.map((e, index) => ({
+              teacherId: teacher.teacherId,
+              email: e.email,
+              notes: e.notes || null,
+              order: e.order ?? index,
             })),
           });
         }
@@ -740,6 +779,17 @@ export const POST = withBranchAccess(
                 id: true,
                 phoneType: true,
                 phoneNumber: true,
+                notes: true,
+                order: true,
+              },
+              orderBy: {
+                order: 'asc',
+              },
+            },
+            contactEmails: {
+              select: {
+                id: true,
+                email: true,
                 notes: true,
                 order: true,
               },

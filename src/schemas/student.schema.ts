@@ -4,6 +4,14 @@ import { z } from "zod";
 // Phone type enum matching Prisma schema
 export const phoneTypeEnum = z.enum(["HOME", "DAD", "MOM", "OTHER"]);
 
+// Contact email schema
+export const contactEmailSchema = z.object({
+  id: z.string().optional(),
+  email: z.string().email("有効なメールアドレスを入力してください"),
+  notes: z.string().max(255, "備考は255文字以内で入力してください").optional().nullable(),
+  order: z.number().optional(),
+});
+
 export const phoneTypeLabels = {
   HOME: "自宅",
   DAD: "父",
@@ -255,6 +263,8 @@ export const studentBaseSchema = z.object({
   birthDate: z.coerce.date().optional().nullable(),
   // Contact phones
   contactPhones: z.array(contactPhoneSchema).optional().default([]),
+  // Contact emails (non-login informational emails)
+  contactEmails: z.array(contactEmailSchema).optional().default([]),
 });
 
 // Dynamic form schema that accepts student types for validation

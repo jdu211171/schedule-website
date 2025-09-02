@@ -268,6 +268,8 @@ export function StudentFormDialog({
       birthDate: undefined,
       // Contact phones
       contactPhones: [],
+     // Contact emails (non-login informational emails)
+     contactEmails: [],
     },
   });
 
@@ -342,6 +344,13 @@ export function StudentFormDialog({
           ...phone,
           phoneType: phone.phoneType as "HOME" | "DAD" | "MOM" | "OTHER",
         })) || [],
+       // Contact emails
+       contactEmails: student.contactEmails?.map((e, index) => ({
+         id: e.id,
+         email: e.email,
+         notes: e.notes || "",
+         order: e.order ?? index,
+       })) || [],
       });
 
       // Initialize subject preferences if they exist
@@ -407,6 +416,7 @@ export function StudentFormDialog({
         email: "",
         branchIds: defaultBranchId ? [defaultBranchId] : [],
         studentId: undefined,
+        contactEmails: [],
       });
       setStudentSubjects([]);
       setRegularAvailability([]);
@@ -478,7 +488,7 @@ export function StudentFormDialog({
 
   function onSubmit(values: StudentFormValues) {
     console.log("onSubmit called with values:", values);
-    
+
     // Check for availability errors before submitting
     if (availabilityErrors.length > 0) {
       console.error("Availability errors:", availabilityErrors);
@@ -585,12 +595,12 @@ export function StudentFormDialog({
   // Enhanced state button async handler
   const handleEnhancedSubmit = async () => {
     const isValid = await form.trigger();
-    
+
     // Log form errors for debugging
     if (!isValid) {
       const errors = form.formState.errors;
       console.error("Form validation errors:", errors);
-      
+
       // Create a detailed error message
       const errorMessages: string[] = [];
       Object.entries(errors).forEach(([field, error]) => {
@@ -598,14 +608,14 @@ export function StudentFormDialog({
           errorMessages.push(`${field}: ${error.message}`);
         }
       });
-      
+
       if (errorMessages.length > 0) {
         throw new Error(`フォームの入力内容に問題があります:\n${errorMessages.join('\n')}`);
       } else {
         throw new Error("フォームの入力内容に問題があります");
       }
     }
-    
+
     if (availabilityErrors.length > 0) {
       throw new Error(`利用可能時間にエラーがあります:\n${availabilityErrors.join('\n')}`);
     }
@@ -891,19 +901,7 @@ export function StudentFormDialog({
       email: "",
       branchIds: defaultBranchId ? [defaultBranchId] : [],
       studentId: undefined,
-      // School information
-      schoolName: "",
-      schoolType: undefined,
-      // Exam information
-      examCategory: undefined,
-      examCategoryType: undefined,
-      firstChoice: "",
-      secondChoice: "",
-      examDate: undefined,
-      // Contact information
-      parentEmail: "",
-      // Personal information
-      birthDate: undefined,
+      contactEmails: [],
     });
     setStudentSubjects([]);
     setRegularAvailability([]);
@@ -1651,6 +1649,98 @@ export function StudentFormDialog({
                           )}
                         />
 
+                        {/* Dynamic Contact Emails */}
+                        <FormField
+                          control={form.control}
+                          name="contactEmails"
+                          render={({ field }) => (
+                            <FormItem>
+                              <div className="space-y-4">
+                                {(field.value || []).map((email, index) => (
+                                  <div key={index} className="flex gap-4 items-start">
+                                    <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                      <FormField
+                                        control={form.control}
+                                        name={`contactEmails.${index}.email`}
+                                        render={({ field }) => (
+                                          <FormItem>
+                                            {index === 0 && (
+                                              <FormLabel className="text-sm font-medium">
+                                                連絡用メールアドレス
+                                              </FormLabel>
+                                            )}
+                                            <FormControl>
+                                              <Input
+                                                type="email"
+                                                placeholder="example@example.com"
+                                                className="h-11"
+                                                {...field}
+                                                value={field.value || ""}
+                                              />
+                                            </FormControl>
+                                            <FormMessage />
+                                          </FormItem>
+                                        )}
+                                      />
+                                      <FormField
+                                        control={form.control}
+                                        name={`contactEmails.${index}.notes`}
+                                        render={({ field }) => (
+                                          <FormItem>
+                                            {index === 0 && (
+                                              <FormLabel className="text-sm font-medium">
+                                                備考
+                                              </FormLabel>
+                                            )}
+                                            <FormControl>
+                                              <Input
+                                                placeholder="例: 連絡は夜可"
+                                                className="h-11"
+                                                {...field}
+                                                value={field.value || ""}
+                                              />
+                                            </FormControl>
+                                            <FormMessage />
+                                          </FormItem>
+                                        )}
+                                      />
+                                    </div>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      className={index === 0 ? "mt-9" : ""}
+                                      onClick={() => {
+                                        const newEmails = (field.value || []).filter((_, i) => i !== index);
+                                        field.onChange(newEmails);
+                                      }}
+                                    >
+                                      <X className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                ))}
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    field.onChange([
+                                      ...(field.value || []),
+                                      {
+                                        email: "",
+                                        notes: "",
+                                      },
+                                    ]);
+                                  }}
+                                >
+                                  <Plus className="h-4 w-4 mr-2" />
+                                  メールアドレスを追加
+                                </Button>
+                              </div>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
                         {/* Keep parent email */}
                         <FormField
                           control={form.control}

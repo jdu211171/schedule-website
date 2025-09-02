@@ -1,7 +1,6 @@
 // src/hooks/useTeacherQuery.ts
 import { fetcher } from "@/lib/fetcher";
 import { useQuery } from "@tanstack/react-query";
-import { teacherFilterSchema } from "@/schemas/teacher.schema";
 
 export type Teacher = {
   teacherId: string;
@@ -23,6 +22,13 @@ export type Teacher = {
     id: string;
     phoneType: string;
     phoneNumber: string;
+    notes: string | null;
+    order: number;
+  }[];
+  // Contact emails (non-login informational emails)
+  contactEmails?: {
+    id: string;
+    email: string;
     notes: string | null;
     order: number;
   }[];

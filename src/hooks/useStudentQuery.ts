@@ -73,6 +73,13 @@ export type Student = {
     notes: string | null;
     order: number;
   }[];
+  // Contact emails (non-login informational emails)
+  contactEmails: {
+    id: string;
+    email: string;
+    notes: string | null;
+    order: number;
+  }[];
   createdAt: Date;
   updatedAt: Date;
   _optimistic?: boolean;

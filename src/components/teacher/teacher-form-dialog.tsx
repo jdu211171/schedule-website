@@ -205,6 +205,8 @@ export function TeacherFormDialog({
       password: "",
       branchIds: [],
       teacherId: undefined,
+      // Contact emails (non-login informational emails)
+      contactEmails: [],
     },
   });
 
@@ -239,6 +241,12 @@ export function TeacherFormDialog({
         birthDate: teacher.birthDate ? new Date(teacher.birthDate) : undefined,
         phoneNumber: teacher.phoneNumber || "",
         phoneNotes: teacher.phoneNotes || "",
+        contactEmails: teacher.contactEmails?.map((e, index) => ({
+          id: e.id,
+          email: e.email,
+          notes: e.notes || "",
+          order: e.order ?? index,
+        })) || [],
       });
 
       // Initialize subject preferences if they exist
@@ -306,6 +314,7 @@ export function TeacherFormDialog({
         birthDate: undefined,
         phoneNumber: "",
         phoneNotes: "",
+        contactEmails: [],
       });
       setTeacherSubjects([]);
       setRegularAvailability([]);
@@ -620,6 +629,7 @@ export function TeacherFormDialog({
       birthDate: undefined,
       phoneNumber: "",
       phoneNotes: "",
+      contactEmails: [],
     });
     setTeacherSubjects([]);
     setRegularAvailability([]);
@@ -978,28 +988,100 @@ export function TeacherFormDialog({
                               )}
                             />
                           </div>
-                        </div>
 
-                        <FormField
-                          control={form.control}
-                          name="notes"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-sm font-medium">
-                                備考
-                              </FormLabel>
-                              <FormControl>
-                                <Textarea
-                                  placeholder="特記事項や備考があれば入力してください..."
-                                  className="min-h-[80px] resize-none"
-                                  {...field}
-                                  value={field.value || ""}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
+                          {/* Dynamic Contact Emails */}
+                          <FormField
+                            control={form.control}
+                            name="contactEmails"
+                            render={({ field }) => (
+                              <FormItem>
+                                <div className="space-y-4">
+                                  {(field.value || []).map((email, index) => (
+                                    <div key={index} className="flex gap-4 items-start">
+                                      <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                        <FormField
+                                          control={form.control}
+                                          name={`contactEmails.${index}.email`}
+                                          render={({ field }) => (
+                                            <FormItem>
+                                              {index === 0 && (
+                                                <FormLabel className="text-sm font-medium">
+                                                  連絡用メールアドレス
+                                                </FormLabel>
+                                              )}
+                                              <FormControl>
+                                                <Input
+                                                  type="email"
+                                                  placeholder="example@example.com"
+                                                  className="h-11"
+                                                  {...field}
+                                                  value={field.value || ""}
+                                                />
+                                              </FormControl>
+                                              <FormMessage />
+                                            </FormItem>
+                                          )}
+                                        />
+                                        <FormField
+                                          control={form.control}
+                                          name={`contactEmails.${index}.notes`}
+                                          render={({ field }) => (
+                                            <FormItem>
+                                              {index === 0 && (
+                                                <FormLabel className="text-sm font-medium">
+                                                  備考
+                                                </FormLabel>
+                                              )}
+                                              <FormControl>
+                                                <Input
+                                                  placeholder="例: メール配信可"
+                                                  className="h-11"
+                                                  {...field}
+                                                  value={field.value || ""}
+                                                />
+                                              </FormControl>
+                                              <FormMessage />
+                                            </FormItem>
+                                          )}
+                                        />
+                                      </div>
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className={index === 0 ? "mt-9" : ""}
+                                        onClick={() => {
+                                          const newEmails = (field.value || []).filter((_, i) => i !== index);
+                                          field.onChange(newEmails);
+                                        }}
+                                      >
+                                        <X className="h-4 w-4" />
+                                      </Button>
+                                    </div>
+                                  ))}
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      field.onChange([
+                                        ...(field.value || []),
+                                        {
+                                          email: "",
+                                          notes: "",
+                                        },
+                                      ]);
+                                    }}
+                                  >
+                                    <Plus className="h-4 w-4 mr-2" />
+                                    メールアドレスを追加
+                                  </Button>
+                                </div>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
                       </CardContent>
                     </Card>
                   </TabsContent>

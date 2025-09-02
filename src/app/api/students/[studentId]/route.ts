@@ -59,6 +59,12 @@ type StudentWithIncludes = Student & {
     notes: string | null;
     order: number;
   }[];
+  contactEmails?: {
+    id: string;
+    email: string;
+    notes: string | null;
+    order: number;
+  }[];
 };
 
 // Define the return type for the formatted student
@@ -129,6 +135,13 @@ export type FormattedStudent = {
     id: string;
     phoneType: string;
     phoneNumber: string;
+    notes: string | null;
+    order: number;
+  }[];
+  // Contact emails
+  contactEmails: {
+    id: string;
+    email: string;
     notes: string | null;
     order: number;
   }[];
@@ -331,6 +344,13 @@ const formatStudent = (student: StudentWithIncludes): FormattedStudent => {
       notes: phone.notes,
       order: phone.order,
     })) || [],
+    // Contact emails
+    contactEmails: student.contactEmails?.map(e => ({
+      id: e.id,
+      email: e.email,
+      notes: e.notes,
+      order: e.order,
+    })) || [],
     createdAt: student.createdAt,
     updatedAt: student.updatedAt,
   };
@@ -339,7 +359,7 @@ const formatStudent = (student: StudentWithIncludes): FormattedStudent => {
 // GET a specific student
 export const GET = withBranchAccess(
   ["ADMIN", "STAFF"],
-  async (request: NextRequest, session) => {
+  async (request: NextRequest) => {
     const studentId = request.url.split("/").pop();
 
     if (!studentId) {
@@ -418,6 +438,9 @@ export const GET = withBranchAccess(
         contactPhones: {
           orderBy: { order: "asc" },
         },
+        contactEmails: {
+          orderBy: { order: "asc" },
+        },
       },
     });
 
@@ -443,7 +466,7 @@ export const GET = withBranchAccess(
 // PATCH - Update a student
 export const PATCH = withBranchAccess(
   ["ADMIN", "STAFF"],
-  async (request: NextRequest, session) => {
+  async (request: NextRequest) => {
     try {
       const studentId = request.url.split("/").pop();
       if (!studentId) {
@@ -486,6 +509,7 @@ export const PATCH = withBranchAccess(
         regularAvailability = [],
         exceptionalAvailability = [],
         contactPhones = [],
+        contactEmails = [],
         ...studentData
       } = result.data;
 
@@ -597,11 +621,11 @@ export const PATCH = withBranchAccess(
         }
 
         // Clean up optional fields - convert empty strings to null
-        const cleanedStudentData: any = {};
+        const cleanedStudentData: Record<string, unknown> = {};
         for (const [key, value] of Object.entries(studentData)) {
-          if (key === 'lineUserId' || key === 'kanaName' || key === 'notes' || 
-              key === 'schoolName' || key === 'firstChoice' || key === 'secondChoice' || 
-              key === 'parentEmail' || key === 'homePhone' || key === 'parentPhone' || 
+          if (key === 'lineUserId' || key === 'kanaName' || key === 'notes' ||
+              key === 'schoolName' || key === 'firstChoice' || key === 'secondChoice' ||
+              key === 'parentEmail' || key === 'homePhone' || key === 'parentPhone' ||
               key === 'studentPhone') {
             cleanedStudentData[key] = value || null;
           } else {
@@ -845,6 +869,26 @@ export const PATCH = withBranchAccess(
           }
         }
 
+        // Update contact emails if provided
+        if (contactEmails !== undefined) {
+          // Delete existing contact emails
+          await tx.contactEmail.deleteMany({
+            where: { studentId },
+          });
+
+          // Create new contact emails
+          if (contactEmails.length > 0) {
+            await tx.contactEmail.createMany({
+              data: contactEmails.map((e, index) => ({
+                studentId,
+                email: e.email,
+                notes: e.notes || null,
+                order: e.order ?? index,
+              })),
+            });
+          }
+        }
+
         // Return updated student with user and branch associations
         return tx.student.findUnique({
           where: { studentId },
@@ -915,6 +959,9 @@ export const PATCH = withBranchAccess(
             contactPhones: {
               orderBy: { order: "asc" },
             },
+            contactEmails: {
+              orderBy: { order: "asc" },
+            },
           },
         });
       });
@@ -938,7 +985,7 @@ export const PATCH = withBranchAccess(
     } catch (error) {
       console.error("Error updating student:", error);
       return NextResponse.json(
-        { error: "Failed to update student" },
+        { error: "生徒の更新に失敗しました" },
         { status: 500 }
       );
     }
@@ -990,7 +1037,7 @@ export const DELETE = withBranchAccess(
           branchId: selectedBranchId,
           OR: [
             { studentId }, // Primary student
-            { 
+            {
               studentClassEnrollments: {
                 some: { studentId } // Enrolled student
               }
@@ -1015,11 +1062,11 @@ export const DELETE = withBranchAccess(
         const branchNames = [...new Set(classSessions
           .map(s => s.branch?.name)
           .filter(Boolean))];
-        
+
         const branchText = branchNames.length > 0 ? `（${branchNames.join('、')}）` : '';
-        
+
         return NextResponse.json(
-          { 
+          {
             error: `この生徒は${uniqueClassSessionCount}件の授業${branchText}に関連付けられているため削除できません。`,
             details: {
               classSessions: uniqueClassSessionCount,
@@ -1059,22 +1106,28 @@ export const DELETE = withBranchAccess(
             where: { studentId },
           });
 
+          // Delete contact emails
+          await tx.contactEmail.deleteMany({
+            where: { studentId },
+          });
+
           // Delete student
           await tx.student.delete({ where: { studentId } });
 
           // Delete associated user
           await tx.user.delete({ where: { id: student.userId } });
         });
-      } catch (error: any) {
+      } catch (error: unknown) {
         // Handle foreign key constraint violations
-        if (error?.code === 'P2003') {
+        const err = error as { code?: string };
+        if (err?.code === 'P2003') {
           console.error("Foreign key constraint error:", error);
           return NextResponse.json(
-            { 
-              error: "生徒を削除できません。関連するデータが存在します。", 
-              details: { 
+            {
+              error: "生徒を削除できません。関連するデータが存在します。",
+              details: {
                 message: "削除前に関連する授業セッションや設定を確認してください。",
-                code: error.code 
+                code: err.code
               }
             },
             { status: 400 }
