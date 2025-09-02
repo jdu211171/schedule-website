@@ -216,6 +216,23 @@ const teacherBaseSchema = z.object({
     )
     .optional()
     .default([]),
+  // Absence (exceptional unavailability) for specific dates
+  absenceAvailability: z
+    .array(
+      z.object({
+        userId: z.string().optional(),
+        date: z.coerce.date(),
+        endDate: z.coerce.date().optional(),
+        fullDay: z.boolean().default(false),
+        type: z.literal("ABSENCE"),
+        startTime: z.string().optional().nullable(),
+        endTime: z.string().optional().nullable(),
+        reason: z.string().optional().nullable(),
+        notes: z.string().optional().nullable(),
+      })
+    )
+    .optional()
+    .default([]),
 });
 
 // フォーム用の統一スキーマ（teacherIdは任意）
@@ -233,6 +250,41 @@ export const teacherCreateSchema = teacherBaseSchema.extend({
 // 更新用スキーマ（teacherId必須、他は任意）
 export const teacherUpdateSchema = teacherBaseSchema.partial().extend({
   teacherId: z.string({ required_error: "更新には講師IDが必要です" }),
+  // Override array fields to avoid defaulting to [] on update
+  subjectPreferences: z.array(subjectPreferenceSchema).optional(),
+  regularAvailability: z.array(regularAvailabilitySchema).optional(),
+  exceptionalAvailability: z
+    .array(
+      z.object({
+        userId: z.string().optional(),
+        date: z.coerce.date(),
+        endDate: z.coerce.date().optional(), // Added for date range support
+        fullDay: z.boolean().default(false),
+        type: z.literal("EXCEPTION"),
+        startTime: z.string().optional().nullable(),
+        endTime: z.string().optional().nullable(),
+        reason: z.string().optional().nullable(),
+        notes: z.string().optional().nullable(),
+      })
+    )
+    .optional(),
+  absenceAvailability: z
+    .array(
+      z.object({
+        userId: z.string().optional(),
+        date: z.coerce.date(),
+        endDate: z.coerce.date().optional(),
+        fullDay: z.boolean().default(false),
+        type: z.literal("ABSENCE"),
+        startTime: z.string().optional().nullable(),
+        endTime: z.string().optional().nullable(),
+        reason: z.string().optional().nullable(),
+        notes: z.string().optional().nullable(),
+      })
+    )
+    .optional(),
+  contactPhones: z.array(contactPhoneSchema).optional(),
+  contactEmails: z.array(contactEmailSchema).optional(),
 });
 
 export const teacherFilterSchema = z.object({

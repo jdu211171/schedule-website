@@ -49,6 +49,17 @@ export type Student = {
     reason?: string | null;
     notes?: string | null;
   }[];
+  absenceAvailability: {
+    date: string;
+    timeSlots: {
+      id: string;
+      startTime: string;
+      endTime: string;
+    }[];
+    fullDay: boolean;
+    reason?: string | null;
+    notes?: string | null;
+  }[];
   // School information
   schoolName: string | null;
   schoolType: string | null;

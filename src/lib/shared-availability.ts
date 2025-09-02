@@ -37,16 +37,26 @@ export async function findSharedAvailability(
   // Step 1: Check for exceptional availability
   const user1Exceptions = await getUserExceptionAvailability(user1Id, date);
   const user2Exceptions = await getUserExceptionAvailability(user2Id, date);
+  const user1Absences = await getUserAbsenceAvailability(user1Id, date);
+  const user2Absences = await getUserAbsenceAvailability(user2Id, date);
 
   if (user1Exceptions.length > 0 || user2Exceptions.length > 0) {
     // At least one user has exceptions - use exception-based intersection
-    const user1Slots = user1Exceptions.length > 0
+    let user1Slots = user1Exceptions.length > 0
       ? user1Exceptions
       : await getUserRegularAvailability(user1Id, date);
 
-    const user2Slots = user2Exceptions.length > 0
+    let user2Slots = user2Exceptions.length > 0
       ? user2Exceptions
       : await getUserRegularAvailability(user2Id, date);
+
+    // Apply absences
+    if (user1Absences.length > 0) {
+      user1Slots = subtractTimeSlots(user1Slots, user1Absences);
+    }
+    if (user2Absences.length > 0) {
+      user2Slots = subtractTimeSlots(user2Slots, user2Absences);
+    }
 
     const intersection = findTimeSlotIntersection(user1Slots, user2Slots);
 
@@ -60,8 +70,16 @@ export async function findSharedAvailability(
   }
 
   // Step 2: Fall back to regular availability
-  const user1Regular = await getUserRegularAvailability(user1Id, date);
-  const user2Regular = await getUserRegularAvailability(user2Id, date);
+  let user1Regular = await getUserRegularAvailability(user1Id, date);
+  let user2Regular = await getUserRegularAvailability(user2Id, date);
+
+  // Apply absences to regular baseline too
+  if (user1Absences.length > 0) {
+    user1Regular = subtractTimeSlots(user1Regular, user1Absences);
+  }
+  if (user2Absences.length > 0) {
+    user2Regular = subtractTimeSlots(user2Regular, user2Absences);
+  }
 
   const regularIntersection = findTimeSlotIntersection(user1Regular, user2Regular);
 
@@ -100,6 +118,26 @@ async function getUserExceptionAvailability(
   });
 
   return convertAvailabilityToTimeSlots(exceptions);
+}
+
+/**
+ * Get user's absence (date-specific unavailability) for a specific date
+ */
+async function getUserAbsenceAvailability(
+  userId: string,
+  date: Date
+): Promise<TimeSlot[]> {
+  const absences = await prisma.userAvailability.findMany({
+    where: {
+      userId,
+      type: "ABSENCE",
+      status: "APPROVED",
+      date,
+    },
+    orderBy: { startTime: "asc" },
+  });
+
+  return convertAvailabilityToTimeSlots(absences);
 }
 
 /**
@@ -216,6 +254,58 @@ function mergeOverlappingSlots(slots: TimeSlot[]): TimeSlot[] {
   }
 
   return merged;
+}
+
+/**
+ * Subtract one set of time slots from another
+ */
+function subtractTimeSlots(base: TimeSlot[], toSubtract: TimeSlot[]): TimeSlot[] {
+  if (base.length === 0) return [];
+  if (toSubtract.length === 0) return base;
+
+  let remaining = mergeOverlappingSlots(base);
+  const subtractors = mergeOverlappingSlots(toSubtract);
+
+  for (const sub of subtractors) {
+    const sStart = timeToMinutes(sub.startTime);
+    const sEnd = timeToMinutes(sub.endTime);
+    const nextRemaining: TimeSlot[] = [];
+
+    for (const b of remaining) {
+      const bStart = timeToMinutes(b.startTime);
+      const bEnd = timeToMinutes(b.endTime);
+
+      if (sEnd <= bStart || sStart >= bEnd) {
+        nextRemaining.push(b);
+        continue;
+      }
+
+      if (sStart <= bStart && sEnd >= bEnd) {
+        continue;
+      }
+
+      if (sStart <= bStart && sEnd < bEnd) {
+        nextRemaining.push({ startTime: minutesToTime(sEnd), endTime: minutesToTime(bEnd) });
+        continue;
+      }
+
+      if (sStart > bStart && sEnd >= bEnd) {
+        nextRemaining.push({ startTime: minutesToTime(bStart), endTime: minutesToTime(sStart) });
+        continue;
+      }
+
+      if (sStart > bStart && sEnd < bEnd) {
+        nextRemaining.push({ startTime: minutesToTime(bStart), endTime: minutesToTime(sStart) });
+        nextRemaining.push({ startTime: minutesToTime(sEnd), endTime: minutesToTime(bEnd) });
+        continue;
+      }
+    }
+
+    remaining = mergeOverlappingSlots(nextRemaining);
+    if (remaining.length === 0) break;
+  }
+
+  return remaining;
 }
 
 /**

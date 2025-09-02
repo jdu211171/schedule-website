@@ -30,7 +30,7 @@ export async function getDetailedUserAvailability(
   const dayOfWeek = getDayOfWeekFromDate(date);
 
   // Get both exception and regular availability
-  const [exceptionAvailability, regularAvailability] = await Promise.all([
+  const [exceptionAvailability, regularAvailability, absenceAvailability] = await Promise.all([
     prisma.userAvailability.findMany({
       where: {
         userId,
@@ -48,14 +48,29 @@ export async function getDetailedUserAvailability(
         dayOfWeek: dayOfWeek as DayOfWeek,
       },
       orderBy: { startTime: "asc" },
+    }),
+    prisma.userAvailability.findMany({
+      where: {
+        userId,
+        type: "ABSENCE",
+        status: "APPROVED",
+        date,
+      },
+      orderBy: { startTime: "asc" },
     })
   ]);
 
   const exceptionSlots = convertAvailabilityToTimeSlots(exceptionAvailability);
   const regularSlots = convertAvailabilityToTimeSlots(regularAvailability);
+  const absenceSlots = convertAvailabilityToTimeSlots(absenceAvailability);
   
   // Determine effective slots (exceptions override regular)
-  const effectiveSlots = exceptionSlots.length > 0 ? exceptionSlots : regularSlots;
+  let effectiveSlots = exceptionSlots.length > 0 ? exceptionSlots : regularSlots;
+
+  // Apply absences by subtracting them from effective slots
+  if (absenceSlots.length > 0) {
+    effectiveSlots = subtractTimeSlots(effectiveSlots, absenceSlots);
+  }
   
   // Check if requested time is available (if provided)
   let available = effectiveSlots.length > 0;
@@ -263,6 +278,62 @@ function mergeOverlappingSlots(slots: TimeSlot[]): TimeSlot[] {
   }
 
   return merged;
+}
+
+// Subtract `toSubtract` intervals from `base` intervals
+function subtractTimeSlots(base: TimeSlot[], toSubtract: TimeSlot[]): TimeSlot[] {
+  if (base.length === 0) return [];
+  if (toSubtract.length === 0) return base;
+
+  // Normalize/merge both sets
+  let remaining = mergeOverlappingSlots(base);
+  const subtractors = mergeOverlappingSlots(toSubtract);
+
+  for (const sub of subtractors) {
+    const sStart = timeToMinutes(sub.startTime);
+    const sEnd = timeToMinutes(sub.endTime);
+    const nextRemaining: TimeSlot[] = [];
+
+    for (const b of remaining) {
+      const bStart = timeToMinutes(b.startTime);
+      const bEnd = timeToMinutes(b.endTime);
+
+      // No overlap
+      if (sEnd <= bStart || sStart >= bEnd) {
+        nextRemaining.push(b);
+        continue;
+      }
+
+      // Sub fully covers base -> remove entirely
+      if (sStart <= bStart && sEnd >= bEnd) {
+        continue;
+      }
+
+      // Overlap at start -> trim start
+      if (sStart <= bStart && sEnd < bEnd) {
+        nextRemaining.push({ startTime: minutesToTime(sEnd), endTime: minutesToTime(bEnd) });
+        continue;
+      }
+
+      // Overlap at end -> trim end
+      if (sStart > bStart && sEnd >= bEnd) {
+        nextRemaining.push({ startTime: minutesToTime(bStart), endTime: minutesToTime(sStart) });
+        continue;
+      }
+
+      // Middle split -> two intervals
+      if (sStart > bStart && sEnd < bEnd) {
+        nextRemaining.push({ startTime: minutesToTime(bStart), endTime: minutesToTime(sStart) });
+        nextRemaining.push({ startTime: minutesToTime(sEnd), endTime: minutesToTime(bEnd) });
+        continue;
+      }
+    }
+
+    remaining = mergeOverlappingSlots(nextRemaining);
+    if (remaining.length === 0) break;
+  }
+
+  return remaining;
 }
 
 function timeToMinutes(time: string): number {

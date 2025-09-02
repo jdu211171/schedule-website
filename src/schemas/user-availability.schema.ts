@@ -11,7 +11,7 @@ export const dayOfWeekEnum = z.enum([
   "SUNDAY",
 ]);
 
-export const availabilityTypeEnum = z.enum(["REGULAR", "EXCEPTION"]);
+export const availabilityTypeEnum = z.enum(["REGULAR", "EXCEPTION", "ABSENCE"]);
 export const availabilityStatusEnum = z.enum([
   "PENDING",
   "APPROVED",
@@ -41,7 +41,7 @@ export const userAvailabilityCreateSchema = z
         );
       }
       // For EXCEPTION type, date is required and dayOfWeek should be null/undefined
-      if (data.type === "EXCEPTION") {
+      if (data.type === "EXCEPTION" || data.type === "ABSENCE") {
         return (
           data.date !== null &&
           data.date !== undefined &&
@@ -52,7 +52,7 @@ export const userAvailabilityCreateSchema = z
     },
     {
       message:
-        "REGULAR availability requires dayOfWeek, EXCEPTION availability requires date",
+        "REGULAR availability requires dayOfWeek, EXCEPTION/ABSENCE availability requires date",
     }
   )
   .refine(

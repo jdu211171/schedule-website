@@ -230,6 +230,23 @@ export const studentBaseSchema = z.object({
     )
     .optional()
     .default([]),
+  // Absence (exceptional unavailability) for specific dates
+  absenceAvailability: z
+    .array(
+      z.object({
+        userId: z.string().optional(),
+        date: z.coerce.date(),
+        endDate: z.coerce.date().optional(),
+        fullDay: z.boolean().default(false),
+        type: z.literal("ABSENCE"),
+        startTime: z.string().optional().nullable(),
+        endTime: z.string().optional().nullable(),
+        reason: z.string().optional().nullable(),
+        notes: z.string().optional().nullable(),
+      })
+    )
+    .optional()
+    .default([]),
   // School information
   schoolName: z
     .string()
@@ -311,6 +328,41 @@ export const studentUpdateSchema = studentBaseSchema
     studentId: z.string({ required_error: "更新には生徒IDが必要です" }),
     // Password from studentBaseSchema.partial() is now correctly optional
     // and allows an empty string (for no change) or a min 6 char string if provided.
+    // Override array fields to avoid defaulting to [] on update
+    subjectPreferences: z.array(subjectPreferenceSchema).optional(),
+    regularAvailability: z.array(regularAvailabilitySchema).optional(),
+    exceptionalAvailability: z
+      .array(
+        z.object({
+          userId: z.string().optional(),
+          date: z.coerce.date(),
+          endDate: z.coerce.date().optional(), // Added for date range support
+          fullDay: z.boolean().default(false),
+          type: z.literal("EXCEPTION"),
+          startTime: z.string().optional().nullable(),
+          endTime: z.string().optional().nullable(),
+          reason: z.string().optional().nullable(),
+          notes: z.string().optional().nullable(),
+        })
+      )
+      .optional(),
+    absenceAvailability: z
+      .array(
+        z.object({
+          userId: z.string().optional(),
+          date: z.coerce.date(),
+          endDate: z.coerce.date().optional(),
+          fullDay: z.boolean().default(false),
+          type: z.literal("ABSENCE"),
+          startTime: z.string().optional().nullable(),
+          endTime: z.string().optional().nullable(),
+          reason: z.string().optional().nullable(),
+          notes: z.string().optional().nullable(),
+        })
+      )
+      .optional(),
+    contactPhones: z.array(contactPhoneSchema).optional(),
+    contactEmails: z.array(contactEmailSchema).optional(),
   });
 
 export const studentFilterSchema = z.object({

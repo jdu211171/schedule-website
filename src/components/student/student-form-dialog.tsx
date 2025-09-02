@@ -226,6 +226,9 @@ export function StudentFormDialog({
   const [irregularAvailability, setIrregularAvailability] = useState<
     IrregularAvailability[]
   >([]);
+  const [absenceIrregularAvailability, setAbsenceIrregularAvailability] = useState<
+    IrregularAvailability[]
+  >([]);
   const [availabilityErrors, setAvailabilityErrors] = useState<string[]>([]);
 
   // Create dynamic schema using student types data for grade year validation
@@ -374,6 +377,17 @@ export function StudentFormDialog({
           reason?: string | null;
           notes?: string | null;
         }[];
+        absenceAvailability?: {
+          date: string;
+          timeSlots: {
+            id: string;
+            startTime: string;
+            endTime: string;
+          }[];
+          fullDay: boolean;
+          reason?: string | null;
+          notes?: string | null;
+        }[];
       };
 
       if (
@@ -401,6 +415,21 @@ export function StudentFormDialog({
       } else {
         setIrregularAvailability([]);
       }
+
+      // Initialize absence availability if it exists
+      if (
+        studentWithAvailability.absenceAvailability &&
+        studentWithAvailability.absenceAvailability.length > 0
+      ) {
+        const absenceData = studentWithAvailability.absenceAvailability.map((ea) => ({
+          date: new Date(ea.date),
+          timeSlots: ea.timeSlots,
+          fullDay: ea.fullDay,
+        }));
+        setAbsenceIrregularAvailability(absenceData);
+      } else {
+        setAbsenceIrregularAvailability([]);
+      }
     } else {
       // For create, default to defaultBranchId only
       form.reset({
@@ -421,6 +450,7 @@ export function StudentFormDialog({
       setStudentSubjects([]);
       setRegularAvailability([]);
       setIrregularAvailability([]);
+      setAbsenceIrregularAvailability([]);
       setLineState({
         lineId: null,
         parentLineId1: null,
@@ -554,6 +584,38 @@ export function StudentFormDialog({
         exceptionalAvailabilityData;
     }
 
+    // Prepare absence availability data for submission
+    if (absenceIrregularAvailability.length > 0) {
+      const absenceAvailabilityData = absenceIrregularAvailability.flatMap((item) => {
+        if (item.fullDay) {
+          return [
+            {
+              userId: submissionData.studentId || undefined,
+              date: item.date,
+              fullDay: true,
+              type: "ABSENCE" as const,
+              startTime: null as string | null,
+              endTime: null as string | null,
+              reason: null as string | null,
+              notes: null as string | null,
+            },
+          ];
+        } else {
+          return item.timeSlots.map((slot) => ({
+            userId: submissionData.studentId || undefined,
+            date: item.date,
+            fullDay: false,
+            type: "ABSENCE" as const,
+            startTime: slot.startTime as string | null,
+            endTime: slot.endTime as string | null,
+            reason: null as string | null,
+            notes: null as string | null,
+          }));
+        }
+      });
+      (submissionData as any).absenceAvailability = absenceAvailabilityData;
+    }
+
     if (isEditing && student) {
       if (!submissionData.password || submissionData.password === "") {
         delete submissionData.password;
@@ -680,6 +742,38 @@ export function StudentFormDialog({
         // Add exceptional availability to submission data for backend processing
         (submissionData as any).exceptionalAvailability =
           exceptionalAvailabilityData;
+      }
+
+      // Prepare absence availability data for submission
+      if (absenceIrregularAvailability.length > 0) {
+        const absenceAvailabilityData = absenceIrregularAvailability.flatMap((item) => {
+          if (item.fullDay) {
+            return [
+              {
+                userId: submissionData.studentId || undefined,
+                date: item.date,
+                fullDay: true,
+                type: "ABSENCE" as const,
+                startTime: null as string | null,
+                endTime: null as string | null,
+                reason: null as string | null,
+                notes: null as string | null,
+              },
+            ];
+          } else {
+            return item.timeSlots.map((slot) => ({
+              userId: submissionData.studentId || undefined,
+              date: item.date,
+              fullDay: false,
+              type: "ABSENCE" as const,
+              startTime: slot.startTime as string | null,
+              endTime: slot.endTime as string | null,
+              reason: null as string | null,
+              notes: null as string | null,
+            }));
+          }
+        });
+        (submissionData as any).absenceAvailability = absenceAvailabilityData;
       }
 
       if (isEditing && student) {
@@ -949,7 +1043,7 @@ export function StudentFormDialog({
                 onValueChange={setActiveTab}
                 className="w-full"
               >
-                <TabsList className="grid w-full grid-cols-6 mb-6">
+                <TabsList className="grid w-full grid-cols-7 mb-6">
                   <TabsTrigger
                     value="basic"
                     className="flex items-center gap-2 "
@@ -984,6 +1078,13 @@ export function StudentFormDialog({
                   >
                     <Clock className="h-4 w-4" />
                     特別日程
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="availabilityAbsence"
+                    className="flex items-center gap-2"
+                  >
+                    <Clock className="h-4 w-4" />
+                    欠席日程
                   </TabsTrigger>
                   <TabsTrigger
                     value="branches"
@@ -2314,12 +2415,12 @@ export function StudentFormDialog({
                           定期利用可能時間
                         </CardTitle>
                         <p className="text-sm text-muted-foreground">
-                          生徒の通常の利用可能時間を曜日ごとに設定してください。各曜日に複数の時間帯を設定することができます。
-                          特別な日程については、後で例外設定で管理できます。
+                          生徒の通常の利用可能時間を曜日ごとに設定してください。各曜日に複数の時間帯を設定できます。
+                          特別な日付の希望は、次のタブ「特別日程」で設定できます。
                         </p>
                       </CardHeader>
-                      <CardContent>
-                        {availabilityErrors.length > 0 && (
+                  <CardContent>
+                    {availabilityErrors.length > 0 && (
                           <Alert variant="destructive" className="mb-4">
                             <AlertTriangle className="h-4 w-4" />
                             <AlertDescription>
@@ -2332,22 +2433,20 @@ export function StudentFormDialog({
                           </Alert>
                         )}
 
-                        <EnhancedAvailabilityRegularSelector
-                          availability={regularAvailability}
-                          onChange={setRegularAvailability}
-                        />
+                        {activeTab === 'availabilityRegular' && (
+                          <EnhancedAvailabilityRegularSelector
+                            availability={regularAvailability}
+                            onChange={setRegularAvailability}
+                          />
+                        )}
 
                         {isEditing && (
                           <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mt-6">
                             <div className="flex items-start gap-2">
                               <Calendar className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5" />
                               <div className="text-sm">
-                                <p className="font-medium text-blue-900 dark:text-blue-100">
-                                  例外的な利用可能時間
-                                </p>
-                                <p className="text-blue-700 dark:text-blue-300 mt-1">
-                                  特定の日付での利用可能時間の変更は、生徒詳細ページの「例外設定」タブで管理できます。
-                                </p>
+                                <p className="font-medium text-blue-900 dark:text-blue-100">ヒント</p>
+                                <p className="text-blue-700 dark:text-blue-300 mt-1">特別な日付の希望は次のタブ「特別日程」で設定できます。</p>
                               </div>
                             </div>
                           </div>
@@ -2366,8 +2465,8 @@ export function StudentFormDialog({
                           例外的な利用可能時間
                         </CardTitle>
                         <p className="text-sm text-muted-foreground">
-                          特定の日付での利用可能時間を設定してください。各日付に複数の時間帯を設定することができます。
-                          ここで設定した例外的な利用可能時間は、通常の利用可能時間より優先されます。
+                          特定の日付での利用可能時間を設定してください。各日付に複数の時間帯を設定できます。
+                          欠席の設定は次のタブ「欠席日程」で行えます。
                         </p>
                       </CardHeader>
                       <CardContent>
@@ -2384,25 +2483,49 @@ export function StudentFormDialog({
                           </Alert>
                         )}
 
-                        <EnhancedAvailabilityIrregularSelector
-                          availability={irregularAvailability}
-                          onChange={setIrregularAvailability}
-                        />
+                        {activeTab === 'availabilityIrregular' && (
+                          <EnhancedAvailabilityIrregularSelector
+                            availability={irregularAvailability}
+                            onChange={setIrregularAvailability}
+                          />
+                        )}
 
                         {isEditing && (
                           <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mt-6">
                             <div className="flex items-start gap-2">
                               <Calendar className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5" />
                               <div className="text-sm">
-                                <p className="font-medium text-blue-900 dark:text-blue-100">
-                                  例外的な利用可能時間の管理
-                                </p>
-                                <p className="text-blue-700 dark:text-blue-300 mt-1">
-                                  保存後、より詳細な例外的な利用可能時間の管理は、生徒詳細ページの「例外設定」タブで行うことができます。
-                                </p>
+                                <p className="font-medium text-blue-900 dark:text-blue-100">ヒント</p>
+                                <p className="text-blue-700 dark:text-blue-300 mt-1">欠席の設定は次のタブ「欠席日程」で行えます。</p>
                               </div>
                             </div>
                           </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+
+                  <TabsContent
+                    value="availabilityAbsence"
+                    className="space-y-6 mt-0"
+                  >
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg flex items-center gap-2">
+                          <Clock className="h-5 w-5" />
+                          欠席日程
+                        </CardTitle>
+                        <p className="text-sm text-muted-foreground">
+                          欠席時間を特定の日付に設定します。例外日程と同様の入力スタイルです。
+                        </p>
+                      </CardHeader>
+                      <CardContent>
+                        {activeTab === 'availabilityAbsence' && (
+                          <EnhancedAvailabilityIrregularSelector
+                            availability={absenceIrregularAvailability}
+                            onChange={setAbsenceIrregularAvailability}
+                            variant="absence"
+                          />
                         )}
                       </CardContent>
                     </Card>

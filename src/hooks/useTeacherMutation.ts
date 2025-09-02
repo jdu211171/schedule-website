@@ -79,6 +79,34 @@ const convertExceptionalAvailability = (
   });
 };
 
+const convertAbsenceAvailability = (
+  availability: ExceptionalInput
+): Teacher['absenceAvailability'] => {
+  if (!availability || !Array.isArray(availability)) return [];
+  return availability.map((item) => {
+    if ('timeSlots' in item && Array.isArray(item.timeSlots)) {
+      return {
+        date: item.date instanceof Date ? item.date.toISOString().split('T')[0] : item.date,
+        timeSlots: item.timeSlots,
+        fullDay: item.fullDay,
+        reason: (item as any).reason || null,
+        notes: (item as any).notes || null,
+      };
+    }
+    const timeSlots = [] as { id: string; startTime: string; endTime: string }[];
+    if (!('timeSlots' in item) && !item.fullDay && item.startTime && item.endTime) {
+      timeSlots.push({ id: crypto.randomUUID(), startTime: item.startTime, endTime: item.endTime });
+    }
+    return {
+      date: item.date instanceof Date ? item.date.toISOString().split('T')[0] : item.date,
+      timeSlots,
+      fullDay: item.fullDay || false,
+      reason: (item as any).reason || null,
+      notes: (item as any).notes || null,
+    };
+  });
+};
+
 export function useTeacherCreate() {
   const queryClient = useQueryClient();
   return useMutation<
@@ -140,6 +168,7 @@ export function useTeacherCreate() {
             subjectPreferences: newTeacher.subjectPreferences || [],
             regularAvailability: newTeacher.regularAvailability || [],
             exceptionalAvailability: convertExceptionalAvailability(newTeacher.exceptionalAvailability || []),
+            absenceAvailability: convertAbsenceAvailability((newTeacher as any).absenceAvailability || []),
             createdAt: new Date(),
             updatedAt: new Date(),
             _optimistic: true,
@@ -292,6 +321,10 @@ export function useTeacherUpdate() {
                       updatedTeacher.exceptionalAvailability !== undefined
                         ? convertExceptionalAvailability(updatedTeacher.exceptionalAvailability)
                         : teacher.exceptionalAvailability,
+                    absenceAvailability:
+                      (updatedTeacher as any).absenceAvailability !== undefined
+                        ? convertAbsenceAvailability((updatedTeacher as any).absenceAvailability)
+                        : (teacher as any).absenceAvailability,
                     updatedAt: new Date(),
                   }
                 : teacher
@@ -336,6 +369,10 @@ export function useTeacherUpdate() {
             updatedTeacher.exceptionalAvailability !== undefined
               ? convertExceptionalAvailability(updatedTeacher.exceptionalAvailability)
               : previousTeacher.exceptionalAvailability,
+          absenceAvailability:
+            (updatedTeacher as any).absenceAvailability !== undefined
+              ? convertAbsenceAvailability((updatedTeacher as any).absenceAvailability)
+              : (previousTeacher as any).absenceAvailability,
           updatedAt: new Date(),
         });
       }

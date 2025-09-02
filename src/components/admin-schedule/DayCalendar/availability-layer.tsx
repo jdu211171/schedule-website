@@ -162,6 +162,17 @@ export interface AvailabilityResponse {
     reason?: string | null;
     notes?: string | null;
   }[];
+  absenceAvailability?: {
+    date: string;
+    timeSlots: {
+      id: string;
+      startTime: string;
+      endTime: string;
+    }[];
+    fullDay: boolean;
+    reason?: string | null;
+    notes?: string | null;
+  }[];
 }
 
 // Обновленная функция с поддержкой режима
@@ -184,10 +195,8 @@ export function getAvailabilityForDate(
   
   // В режиме "только обычные" игнорируем особые предпочтения (токубецу кибоу)
   if (exceptional && mode === 'with-special') {
-    return {
-      timeSlots: exceptional.timeSlots,
-      fullDay: exceptional.fullDay
-    };
+    const base = { timeSlots: exceptional.timeSlots, fullDay: exceptional.fullDay };
+    return applyAbsences(base, availability.absenceAvailability, dateStr);
   }
   
   const dayOfWeek = date.getDay();
@@ -199,13 +208,69 @@ export function getAvailabilityForDate(
   );
   
   if (regular) {
-    return {
-      timeSlots: regular.timeSlots,
-      fullDay: regular.fullDay
-    };
+    const base = { timeSlots: regular.timeSlots, fullDay: regular.fullDay };
+    return applyAbsences(base, availability.absenceAvailability, dateStr);
   }
   
   return null;
+}
+
+function applyAbsences(
+  base: { timeSlots: { startTime: string; endTime: string }[]; fullDay: boolean },
+  absences: AvailabilityResponse['absenceAvailability'] | undefined,
+  dateStr: string
+) {
+  if (!absences || absences.length === 0) return base;
+  const absence = absences.find(a => a.date === dateStr);
+  if (!absence) return base;
+
+  if (absence.fullDay) {
+    return { timeSlots: [], fullDay: false };
+  }
+
+  const remaining = subtractSlots(base.timeSlots, absence.timeSlots);
+  return { timeSlots: remaining, fullDay: false };
+}
+
+function toMin(t: string) { const [h,m] = t.split(':').map(Number); return h*60+m; }
+function fromMin(n: number) {
+  const h = Math.floor(n/60); const m = n%60;
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+}
+
+function subtractSlots(base: { startTime: string; endTime: string }[], sub: { startTime: string; endTime: string }[]) {
+  let remaining = mergeSlots(base);
+  const subtractors = mergeSlots(sub);
+  for (const s of subtractors) {
+    const sStart = toMin(s.startTime); const sEnd = toMin(s.endTime);
+    const next: { startTime: string; endTime: string }[] = [];
+    for (const b of remaining) {
+      const bStart = toMin(b.startTime); const bEnd = toMin(b.endTime);
+      if (sEnd <= bStart || sStart >= bEnd) { next.push(b); continue; }
+      if (sStart <= bStart && sEnd >= bEnd) { continue; }
+      if (sStart <= bStart && sEnd < bEnd) { next.push({ startTime: fromMin(sEnd), endTime: fromMin(bEnd) }); continue; }
+      if (sStart > bStart && sEnd >= bEnd) { next.push({ startTime: fromMin(bStart), endTime: fromMin(sStart) }); continue; }
+      if (sStart > bStart && sEnd < bEnd) { next.push({ startTime: fromMin(bStart), endTime: fromMin(sStart) }); next.push({ startTime: fromMin(sEnd), endTime: fromMin(bEnd) }); continue; }
+    }
+    remaining = mergeSlots(next);
+    if (remaining.length === 0) break;
+  }
+  return remaining;
+}
+
+function mergeSlots(slots: { startTime: string; endTime: string }[]) {
+  if (slots.length <= 1) return [...slots];
+  const sorted = [...slots].sort((a,b) => toMin(a.startTime) - toMin(b.startTime));
+  const merged: { startTime: string; endTime: string }[] = [sorted[0]];
+  for (let i=1;i<sorted.length;i++){
+    const last = merged[merged.length-1];
+    if (toMin(sorted[i].startTime) <= toMin(last.endTime)) {
+      last.endTime = fromMin(Math.max(toMin(last.endTime), toMin(sorted[i].endTime)));
+    } else {
+      merged.push(sorted[i]);
+    }
+  }
+  return merged;
 }
 
 // Обновленный хук с поддержкой режима
@@ -224,7 +289,8 @@ export function useAvailability(
     
     const availability = getAvailabilityForDate(date, {
       regularAvailability: teacher.regularAvailability || [],
-      exceptionalAvailability: teacher.exceptionalAvailability || []
+      exceptionalAvailability: teacher.exceptionalAvailability || [],
+      absenceAvailability: (teacher as any).absenceAvailability || []
     }, availabilityMode);
     
     return convertAvailabilityToSlots(availability, timeSlots);
@@ -235,7 +301,8 @@ export function useAvailability(
     
     const availability = getAvailabilityForDate(date, {
       regularAvailability: student.regularAvailability || [],
-      exceptionalAvailability: student.exceptionalAvailability || []
+      exceptionalAvailability: student.exceptionalAvailability || [],
+      absenceAvailability: (student as any).absenceAvailability || []
     }, availabilityMode);
     
     return convertAvailabilityToSlots(availability, timeSlots);

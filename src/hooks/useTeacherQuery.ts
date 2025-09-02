@@ -60,6 +60,17 @@ export type Teacher = {
     reason?: string | null;
     notes?: string | null;
   }[];
+  absenceAvailability: {
+    date: string;
+    timeSlots: {
+      id: string;
+      startTime: string;
+      endTime: string;
+    }[];
+    fullDay: boolean;
+    reason?: string | null;
+    notes?: string | null;
+  }[];
   createdAt: Date;
   updatedAt: Date;
   _optimistic?: boolean;

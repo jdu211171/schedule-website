@@ -90,6 +90,7 @@ const checkAvailabilityConflicts = async (
   startTime: Date | null,
   endTime: Date | null,
   fullDay: boolean,
+  currentType: "REGULAR" | "EXCEPTION" | "ABSENCE",
   excludeId?: string
 ): Promise<{
   hasConflict: boolean;
@@ -131,6 +132,10 @@ const checkAvailabilityConflicts = async (
   } else {
     // If trying to create time-specific availability
     for (const existing of existingAvailability) {
+      // Allow ABSENCE to overlap with any type and don't treat as conflict
+      if (currentType === "ABSENCE" || existing.type === "ABSENCE") {
+        continue;
+      }
       // Check if there's already a full-day availability
       if (existing.fullDay) {
         const dayRef = dayOfWeek || date?.toISOString().split("T")[0];
@@ -419,7 +424,8 @@ export const POST = withBranchAccess(
         dateUTC,
         startTimeUTC,
         endTimeUTC,
-        fullDay || false
+        fullDay || false,
+        type
       );
 
       if (conflictCheck.hasConflict) {

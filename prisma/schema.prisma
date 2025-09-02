@@ -616,6 +616,7 @@ enum AvailabilityStatus {
 enum AvailabilityType {
   REGULAR
   EXCEPTION
+  ABSENCE
 }
 
 enum DayOfWeek {

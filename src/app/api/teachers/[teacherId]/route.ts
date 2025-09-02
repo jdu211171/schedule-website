@@ -115,6 +115,17 @@ type FormattedTeacher = {
     reason?: string | null;
     notes?: string | null;
   }[];
+  absenceAvailability: {
+    date: string;
+    timeSlots: {
+      id: string;
+      startTime: string;
+      endTime: string;
+    }[];
+    fullDay: boolean;
+    reason?: string | null;
+    notes?: string | null;
+  }[];
   createdAt: Date;
   updatedAt: Date;
 };
@@ -245,6 +256,45 @@ const formatTeacher = (teacher: TeacherWithIncludes): FormattedTeacher => {
     }
   });
 
+  // Process absence availability data - filter out past dates
+  const absenceAvailability: FormattedTeacher['absenceAvailability'] = [];
+  teacher.user.availability?.forEach((avail) => {
+    if (
+      avail.type === "ABSENCE" &&
+      avail.status === "APPROVED" &&
+      avail.date
+    ) {
+      const availDate = new Date(avail.date);
+      availDate.setHours(0, 0, 0, 0);
+      if (availDate < today) {
+        return;
+      }
+
+      const dateStr = avail.date.toISOString().split('T')[0];
+      let dateEntry = absenceAvailability.find(ea => ea.date === dateStr);
+      if (!dateEntry) {
+        dateEntry = {
+          date: dateStr,
+          timeSlots: [],
+          fullDay: false,
+          reason: avail.reason,
+          notes: avail.notes
+        };
+        absenceAvailability.push(dateEntry);
+      }
+      if (avail.fullDay) {
+        dateEntry.fullDay = true;
+        dateEntry.timeSlots = [];
+      } else if (avail.startTime && avail.endTime && !dateEntry.fullDay) {
+        dateEntry.timeSlots.push({
+          id: avail.id,
+          startTime: `${String(avail.startTime.getUTCHours()).padStart(2, "0")}:${String(avail.startTime.getUTCMinutes()).padStart(2, "0")}`,
+          endTime: `${String(avail.endTime.getUTCHours()).padStart(2, "0")}:${String(avail.endTime.getUTCMinutes()).padStart(2, "0")}`
+        });
+      }
+    }
+  });
+
   return {
     teacherId: teacher.teacherId,
     userId: teacher.userId,
@@ -269,6 +319,7 @@ const formatTeacher = (teacher: TeacherWithIncludes): FormattedTeacher => {
     subjectPreferences,
     regularAvailability,
     exceptionalAvailability,
+    absenceAvailability,
     createdAt: teacher.createdAt,
     updatedAt: teacher.updatedAt,
     contactPhones: teacher.contactPhones?.sort((a, b) => a.order - b.order) || [],
@@ -430,7 +481,8 @@ export const PATCH = withBranchAccess(
         branchIds,
         subjectPreferences,
         regularAvailability = [],
-        exceptionalAvailability = [],
+        exceptionalAvailability,
+        absenceAvailability,
         contactPhones,
         contactEmails,
         ...teacherData
@@ -766,6 +818,72 @@ export const PATCH = withBranchAccess(
               await tx.userAvailability.createMany({
                 data: exceptionalRecords,
               });
+            }
+          }
+        }
+
+        // Update absence availability if provided or if empty array (to clear all)
+        if (absenceAvailability !== undefined) {
+          await tx.userAvailability.deleteMany({
+            where: {
+              userId: existingTeacher.userId,
+              type: "ABSENCE",
+            },
+          });
+
+          if (absenceAvailability.length > 0) {
+            const absenceRecords = [] as any[];
+
+            for (const absenceItem of absenceAvailability) {
+              const { date, fullDay, startTime, endTime, reason, notes } = absenceItem;
+
+              const createUTCDate = (dateInput: Date): Date => {
+                const year = dateInput.getFullYear();
+                const month = dateInput.getMonth();
+                const day = dateInput.getDate();
+                return new Date(Date.UTC(year, month, day, 0, 0, 0, 0));
+              };
+
+              const dateUTC = createUTCDate(date);
+
+              if (fullDay) {
+                absenceRecords.push({
+                  userId: existingTeacher.userId,
+                  dayOfWeek: null,
+                  type: "ABSENCE" as const,
+                  status: "APPROVED" as const,
+                  fullDay: true,
+                  startTime: null,
+                  endTime: null,
+                  date: dateUTC,
+                  reason: reason || null,
+                  notes: notes || null,
+                });
+              } else if (startTime && endTime) {
+                const [startHours, startMinutes] = startTime.split(":").map(Number);
+                const [endHours, endMinutes] = endTime.split(":").map(Number);
+
+                absenceRecords.push({
+                  userId: existingTeacher.userId,
+                  dayOfWeek: null,
+                  type: "ABSENCE" as const,
+                  status: "APPROVED" as const,
+                  fullDay: false,
+                  startTime: new Date(
+                    Date.UTC(2000, 0, 1, startHours, startMinutes, 0, 0)
+                  ),
+                  endTime: new Date(
+                    Date.UTC(2000, 0, 1, endHours, endMinutes, 0, 0)
+                  ),
+                  date: dateUTC,
+                  reason: reason || null,
+                  notes: notes || null,
+                });
+              }
+            }
+
+            if (absenceRecords.length > 0) {
+              await tx.userAvailability.createMany({ data: absenceRecords });
             }
           }
         }

@@ -6,7 +6,7 @@ import { availabilityConflictCheckSchema } from "@/schemas/user-availability.sch
 import { DayOfWeek } from "@prisma/client";
 
 type AvailabilitySlot = {
-  type: "REGULAR" | "EXCEPTION";
+  type: "REGULAR" | "EXCEPTION" | "ABSENCE";
   startTime: string | null;
   endTime: string | null;
   fullDay?: boolean | null;
@@ -82,6 +82,17 @@ const checkUserAvailability = async (
     where: {
       userId,
       type: "EXCEPTION",
+      status: "APPROVED",
+      date,
+    },
+    orderBy: { startTime: "asc" },
+  });
+
+  // Fetch absence (date-specific unavailability) for this user/date
+  const absenceAvailability = await prisma.userAvailability.findMany({
+    where: {
+      userId,
+      type: "ABSENCE",
       status: "APPROVED",
       date,
     },
@@ -179,6 +190,50 @@ const checkUserAvailability = async (
     }
   }
 
+  // Check absence conflicts (any overlap with absence means conflict)
+  for (const absence of absenceAvailability) {
+    if (absence.fullDay) {
+      conflictingAvailability.push({
+        type: "ABSENCE" as const,
+        date: absence.date?.toISOString().split("T")[0],
+        startTime: null,
+        endTime: null,
+        fullDay: true,
+        reason: absence.reason,
+        notes: absence.notes,
+      });
+      continue;
+    }
+    if (!absence.startTime || !absence.endTime) continue;
+
+    const absStartHour = absence.startTime.getUTCHours();
+    const absStartMin = absence.startTime.getUTCMinutes();
+    const absEndHour = absence.endTime.getUTCHours();
+    const absEndMin = absence.endTime.getUTCMinutes();
+
+    const requestedStartHour = startTime.getUTCHours();
+    const requestedStartMin = startTime.getUTCMinutes();
+    const requestedEndHour = endTime.getUTCHours();
+    const requestedEndMin = endTime.getUTCMinutes();
+
+    const absStart = absStartHour * 60 + absStartMin;
+    const absEnd = absEndHour * 60 + absEndMin;
+    const requestedStart = requestedStartHour * 60 + requestedStartMin;
+    const requestedEnd = requestedEndHour * 60 + requestedEndMin;
+
+    if (requestedStart < absEnd && requestedEnd > absStart) {
+      conflictingAvailability.push({
+        type: "ABSENCE" as const,
+        date: absence.date?.toISOString().split("T")[0],
+        startTime: `${String(absStartHour).padStart(2, "0")}:${String(absStartMin).padStart(2, "0")}`,
+        endTime: `${String(absEndHour).padStart(2, "0")}:${String(absEndMin).padStart(2, "0")}`,
+        fullDay: absence.fullDay,
+        reason: absence.reason,
+        notes: absence.notes,
+      });
+    }
+  }
+
   // Check if user is actually available during the requested time
   let available = false;
 
@@ -251,9 +306,33 @@ const checkUserAvailability = async (
     }
   }
 
+  // Apply absences: any full-day absence or time-overlap absence makes the slot unavailable
+  if (absenceAvailability.length > 0) {
+    // Full-day absence
+    if (absenceAvailability.some((a) => a.fullDay)) {
+      available = false;
+    } else {
+      // Check overlap with requested time
+      for (const absence of absenceAvailability) {
+        if (!absence.startTime || !absence.endTime) continue;
+        const absStart = absence.startTime.getUTCHours() * 60 + absence.startTime.getUTCMinutes();
+        const absEnd = absence.endTime.getUTCHours() * 60 + absence.endTime.getUTCMinutes();
+        const requestedStart = startTime.getUTCHours() * 60 + startTime.getUTCMinutes();
+        const requestedEnd = endTime.getUTCHours() * 60 + endTime.getUTCMinutes();
+        if (requestedStart < absEnd && requestedEnd > absStart) {
+          available = false;
+          break;
+        }
+      }
+    }
+  }
+
   // Generate warnings
   if (!available) {
     warnings.push("ユーザーは指定された時間帯に利用可能ではありません");
+    if (absenceAvailability.length > 0) {
+      warnings.push("欠席時間により利用できません");
+    }
   }
 
   if (regularAvailability.length === 0) {

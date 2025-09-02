@@ -121,6 +121,17 @@ type FormattedStudent = {
     reason?: string | null;
     notes?: string | null;
   }[];
+  absenceAvailability: {
+    date: string;
+    timeSlots: {
+      id: string;
+      startTime: string;
+      endTime: string;
+    }[];
+    fullDay: boolean;
+    reason?: string | null;
+    notes?: string | null;
+  }[];
   // School information
   schoolName: string | null;
   schoolType: string | null;
@@ -306,6 +317,44 @@ const formatStudent = (student: StudentWithIncludes): FormattedStudent => {
     }
   });
 
+  // Process absence availability data - filter out past dates
+  const absenceAvailability: FormattedStudent['absenceAvailability'] = [];
+  student.user.availability?.forEach((avail) => {
+    if (
+      avail.type === "ABSENCE" &&
+      avail.status === "APPROVED" &&
+      avail.date
+    ) {
+      const availDate = new Date(avail.date);
+      availDate.setHours(0, 0, 0, 0);
+      if (availDate < today) {
+        return;
+      }
+      const dateStr = avail.date.toISOString().split('T')[0];
+      let dateEntry = absenceAvailability.find(ea => ea.date === dateStr);
+      if (!dateEntry) {
+        dateEntry = {
+          date: dateStr,
+          timeSlots: [],
+          fullDay: false,
+          reason: avail.reason,
+          notes: avail.notes
+        };
+        absenceAvailability.push(dateEntry);
+      }
+      if (avail.fullDay) {
+        dateEntry.fullDay = true;
+        dateEntry.timeSlots = [];
+      } else if (avail.startTime && avail.endTime && !dateEntry.fullDay) {
+        dateEntry.timeSlots.push({
+          id: avail.id,
+          startTime: `${String(avail.startTime.getUTCHours()).padStart(2, "0")}:${String(avail.startTime.getUTCMinutes()).padStart(2, "0")}`,
+          endTime: `${String(avail.endTime.getUTCHours()).padStart(2, "0")}:${String(avail.endTime.getUTCMinutes()).padStart(2, "0")}`
+        });
+      }
+    }
+  });
+
   return {
     studentId: student.studentId,
     userId: student.userId,
@@ -332,6 +381,7 @@ const formatStudent = (student: StudentWithIncludes): FormattedStudent => {
     subjectPreferences,
     regularAvailability,
     exceptionalAvailability,
+    absenceAvailability,
     // School information
     schoolName: student.schoolName,
     schoolType: student.schoolType,
@@ -734,6 +784,7 @@ export const POST = withBranchAccess(
         subjectPreferences = [],
         regularAvailability = [],
         exceptionalAvailability = [],
+        absenceAvailability = [],
         contactPhones = [],
         contactEmails = [],
         ...studentData
@@ -1050,6 +1101,56 @@ export const POST = withBranchAccess(
           if (exceptionalRecords.length > 0) {
             await tx.userAvailability.createMany({
               data: exceptionalRecords,
+            });
+          }
+        }
+
+        // Create absence availability records if provided
+        if (absenceAvailability.length > 0) {
+          const absenceRecords = [];
+
+          for (const absenceItem of absenceAvailability) {
+            const { date, fullDay, startTime, endTime, reason, notes } = absenceItem;
+
+            if (fullDay) {
+              absenceRecords.push({
+                userId: user.id,
+                dayOfWeek: null,
+                type: "ABSENCE" as const,
+                status: "APPROVED" as const,
+                fullDay: true,
+                startTime: null,
+                endTime: null,
+                date: date,
+                reason: reason || null,
+                notes: notes || null,
+              });
+            } else if (startTime && endTime) {
+              const [startHours, startMinutes] = startTime.split(":").map(Number);
+              const [endHours, endMinutes] = endTime.split(":").map(Number);
+
+              absenceRecords.push({
+                userId: user.id,
+                dayOfWeek: null,
+                type: "ABSENCE" as const,
+                status: "APPROVED" as const,
+                fullDay: false,
+                startTime: new Date(
+                  Date.UTC(2000, 0, 1, startHours, startMinutes, 0, 0)
+                ),
+                endTime: new Date(
+                  Date.UTC(2000, 0, 1, endHours, endMinutes, 0, 0)
+                ),
+                date: date,
+                reason: reason || null,
+                notes: notes || null,
+              });
+            }
+          }
+
+          if (absenceRecords.length > 0) {
+            await tx.userAvailability.createMany({
+              data: absenceRecords,
             });
           }
         }

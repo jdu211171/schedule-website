@@ -111,6 +111,25 @@ export function useStudentCreate() {
                     notes: ea.notes || null
                   };
                 }),
+                absenceAvailability: (newStudent as any).absenceAvailability
+                  ? (newStudent as any).absenceAvailability.map((ea: any) => {
+                      const timeSlots = [] as { id: string; startTime: string; endTime: string }[];
+                      if (!ea.fullDay && ea.startTime && ea.endTime) {
+                        timeSlots.push({
+                          id: crypto.randomUUID(),
+                          startTime: ea.startTime,
+                          endTime: ea.endTime
+                        });
+                      }
+                      return {
+                        date: ea.date instanceof Date ? ea.date.toISOString().split('T')[0] : ea.date,
+                        timeSlots,
+                        fullDay: ea.fullDay,
+                        reason: ea.reason || null,
+                        notes: ea.notes || null
+                      };
+                    })
+                  : [],
                 // School information
                 schoolName: newStudent.schoolName || null,
                 schoolType: newStudent.schoolType || null,
@@ -292,6 +311,25 @@ export function useStudentUpdate() {
                               };
                             })
                           : student.exceptionalAvailability,
+                        absenceAvailability: (updatedStudent as any).absenceAvailability
+                          ? (updatedStudent as any).absenceAvailability.map((ea: any) => {
+                              const timeSlots = [] as { id: string; startTime: string; endTime: string }[];
+                              if (!ea.fullDay && ea.startTime && ea.endTime) {
+                                timeSlots.push({
+                                  id: crypto.randomUUID(),
+                                  startTime: ea.startTime,
+                                  endTime: ea.endTime
+                                });
+                              }
+                              return {
+                                date: ea.date instanceof Date ? ea.date.toISOString().split('T')[0] : ea.date,
+                                timeSlots,
+                                fullDay: ea.fullDay,
+                                reason: ea.reason || null,
+                                notes: ea.notes || null
+                              };
+                            })
+                          : (student as any).absenceAvailability || [],
                         contactPhones: updatedStudent.contactPhones
                           ? updatedStudent.contactPhones.map((phone, index) => ({
                               id: phone.id || crypto.randomUUID(),
@@ -317,37 +355,56 @@ export function useStudentUpdate() {
             }
           });
           if (previousStudent) {
-            const updatedData = {
-              ...previousStudent,
-              ...updatedStudent,
-              name: updatedStudent.name || previousStudent.name,
-              // Convert availability data to match Student interface
-              regularAvailability: updatedStudent.regularAvailability
-                ? updatedStudent.regularAvailability.map(ra => ({
-                    dayOfWeek: ra.dayOfWeek,
-                    timeSlots: ra.timeSlots || [],
-                    fullDay: ra.fullDay
-                  }))
-                : previousStudent.regularAvailability,
-              exceptionalAvailability: updatedStudent.exceptionalAvailability
-                ? updatedStudent.exceptionalAvailability.map(ea => {
-                    const timeSlots = [];
-                    if (!ea.fullDay && ea.startTime && ea.endTime) {
-                      timeSlots.push({
-                        id: crypto.randomUUID(),
-                        startTime: ea.startTime,
-                        endTime: ea.endTime
-                      });
-                    }
-                    return {
-                      date: ea.date instanceof Date ? ea.date.toISOString().split('T')[0] : ea.date,
-                      timeSlots,
-                      fullDay: ea.fullDay,
-                      reason: ea.reason || null,
-                      notes: ea.notes || null
-                    };
-                  })
-                : previousStudent.exceptionalAvailability,
+          const updatedData = {
+            ...previousStudent,
+            ...updatedStudent,
+            name: updatedStudent.name || previousStudent.name,
+            // Convert availability data to match Student interface
+            regularAvailability: updatedStudent.regularAvailability
+              ? updatedStudent.regularAvailability.map(ra => ({
+                  dayOfWeek: ra.dayOfWeek,
+                  timeSlots: ra.timeSlots || [],
+                  fullDay: ra.fullDay
+                }))
+              : previousStudent.regularAvailability,
+            exceptionalAvailability: updatedStudent.exceptionalAvailability
+              ? updatedStudent.exceptionalAvailability.map(ea => {
+                  const timeSlots = [];
+                  if (!ea.fullDay && ea.startTime && ea.endTime) {
+                    timeSlots.push({
+                      id: crypto.randomUUID(),
+                      startTime: ea.startTime,
+                      endTime: ea.endTime
+                    });
+                  }
+                  return {
+                    date: ea.date instanceof Date ? ea.date.toISOString().split('T')[0] : ea.date,
+                    timeSlots,
+                    fullDay: ea.fullDay,
+                    reason: ea.reason || null,
+                    notes: ea.notes || null
+                  };
+                })
+              : previousStudent.exceptionalAvailability,
+            absenceAvailability: (updatedStudent as any).absenceAvailability
+              ? (updatedStudent as any).absenceAvailability.map((ea: any) => {
+                  const timeSlots = [] as { id: string; startTime: string; endTime: string }[];
+                  if (!ea.fullDay && ea.startTime && ea.endTime) {
+                    timeSlots.push({
+                      id: crypto.randomUUID(),
+                      startTime: ea.startTime,
+                      endTime: ea.endTime
+                    });
+                  }
+                  return {
+                    date: ea.date instanceof Date ? ea.date.toISOString().split('T')[0] : ea.date,
+                    timeSlots,
+                    fullDay: ea.fullDay,
+                    reason: ea.reason || null,
+                    notes: ea.notes || null
+                  };
+                })
+              : (previousStudent as any).absenceAvailability || [],
               contactPhones: updatedStudent.contactPhones
                 ? updatedStudent.contactPhones.map((phone, index) => ({
                     id: phone.id || crypto.randomUUID(),
