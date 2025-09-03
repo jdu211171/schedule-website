@@ -154,7 +154,9 @@ async function processNotifications(skipTimeCheck: boolean = false) {
             where: { date: targetDate },
             orderBy: { startTime: 'asc' },
             include: {
+              // Include BOTH sides so names are present in templates
               student: { select: { studentId: true, name: true } },
+              teacher: { select: { teacherId: true, name: true } },
               subject: { select: { name: true } },
               booth: { select: { name: true } },
               branch: { select: { name: true } }
@@ -183,7 +185,9 @@ async function processNotifications(skipTimeCheck: boolean = false) {
             where: { date: targetDate },
             orderBy: { startTime: 'asc' },
             include: {
+              // Include BOTH sides so names are present in templates
               teacher: { select: { teacherId: true, name: true } },
+              student: { select: { studentId: true, name: true } },
               subject: { select: { name: true } },
               booth: { select: { name: true } },
               branch: { select: { name: true } }
@@ -267,18 +271,12 @@ async function processNotifications(skipTimeCheck: boolean = false) {
             const endTime = `${String(endDate.getUTCHours()).padStart(2, '0')}:${String(endDate.getUTCMinutes()).padStart(2, '0')}`;
             const durationMinutes = (new Date(session.endTime).getTime() - new Date(session.startTime).getTime()) / (1000 * 60);
             const duration = `${durationMinutes}分`;
-            const studentName = session.student?.name || '生徒未設定';
-            const teacherName = session.teacher?.name || '講師未設定';
+            // Names are guaranteed present by data constraints; avoid placeholder fallbacks
+            const studentName = session.student?.name ?? '';
+            const teacherName = session.teacher?.name ?? '';
 
-            // Modify the template based on recipient type to avoid showing redundant information
-            let recipientSpecificTemplate = itemTemplate;
-            if (recipient.recipientType === 'TEACHER') {
-              // For teachers, remove their own name from the template
-              recipientSpecificTemplate = itemTemplate.replace(/講師: {{teacherName}}\n?/g, '');
-            } else if (recipient.recipientType === 'STUDENT') {
-              // For students, remove their own name from the template
-              recipientSpecificTemplate = itemTemplate.replace(/生徒: {{studentName}}\n?/g, '');
-            }
+            // Show all fields (teacher and student names) for all recipients
+            const recipientSpecificTemplate = itemTemplate;
 
             const classItemVariables = { 
               classNumber: String(index + 1), 

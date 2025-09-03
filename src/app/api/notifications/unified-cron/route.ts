@@ -194,7 +194,9 @@ async function processNotifications(reset: boolean = false, templateId?: string)
               },
               orderBy: { startTime: 'asc' },
               include: {
+                // Include BOTH student and teacher so names are always present
                 student: { select: { studentId: true, name: true } },
+                teacher: { select: { teacherId: true, name: true } },
                 subject: { select: { name: true } },
                 booth: { select: { name: true } },
                 branch: { select: { branchId: true, name: true } }
@@ -230,7 +232,9 @@ async function processNotifications(reset: boolean = false, templateId?: string)
               },
               orderBy: { startTime: 'asc' },
               include: {
+                // Include BOTH teacher and student so names are always present
                 teacher: { select: { teacherId: true, name: true } },
+                student: { select: { studentId: true, name: true } },
                 subject: { select: { name: true } },
                 booth: { select: { name: true } },
                 branch: { select: { branchId: true, name: true } }
@@ -303,17 +307,14 @@ async function processNotifications(reset: boolean = false, templateId?: string)
                 const endTime = `${String(endDate.getUTCHours()).padStart(2, '0')}:${String(endDate.getUTCMinutes()).padStart(2, '0')}`;
                 const durationMinutes = (endDate.getTime() - startDate.getTime()) / (1000 * 60);
                 const duration = `${durationMinutes}分`;
-                const studentName = session.student?.name || '生徒未設定';
-                const teacherName = session.teacher?.name || '講師未設定';
+                // Names are guaranteed present by data constraints; avoid placeholder fallbacks
+                const studentName = session.student?.name ?? '';
+                const teacherName = session.teacher?.name ?? '';
                 if (!session.student?.name || !session.teacher?.name) {
                   console.warn(`⚠️ Class session ${session.classId} is missing ${!session.student?.name ? 'student' : 'teacher'} information`);
                 }
-                let recipientSpecificTemplate = itemTemplate;
-                if (recipient.recipientType === 'TEACHER') {
-                  recipientSpecificTemplate = itemTemplate.replace(/講師: {{teacherName}}\n?/g, '');
-                } else if (recipient.recipientType === 'STUDENT') {
-                  recipientSpecificTemplate = itemTemplate.replace(/生徒: {{studentName}}\n?/g, '');
-                }
+              // Show all fields for all recipients (no recipient-specific filtering)
+              const recipientSpecificTemplate = itemTemplate;
                 const classItemVariables = {
                   classNumber: String(index + 1),
                   subjectName: session.subject?.name || '科目未設定',
