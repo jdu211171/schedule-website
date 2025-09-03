@@ -110,7 +110,8 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
   } = useSmartSelection({
     selectedTeacherId,
     selectedStudentId,
-    selectedSubjectId: subjectId
+    selectedSubjectId: subjectId,
+    activeOnly: true,
   });
 
   // Availability hook
@@ -203,7 +204,7 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
     setCurrentPayload(null);
   };
 
-  // Create enhanced items for SearchableSelect components
+  // Create enhanced items for SearchableSelect components (active-only already fetched)
   const teacherItems: SearchableSelectItem[] = enhancedTeachers.map((teacher) => {
     let description = '';
     let matchingSubjectsCount = 0;

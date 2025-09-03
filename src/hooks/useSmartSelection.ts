@@ -8,6 +8,7 @@ interface SmartSelectionOptions {
   selectedTeacherId?: string;
   selectedStudentId?: string;
   selectedSubjectId?: string;
+  activeOnly?: boolean; // when true, fetch only ACTIVE users
 }
 
 export interface EnhancedTeacher extends Teacher {
@@ -89,10 +90,10 @@ function getMatches(teacherPrefs: any[], studentPrefs: any[]) {
 }
 
 export const useSmartSelection = (options: SmartSelectionOptions = {}) => {
-  const { selectedTeacherId, selectedStudentId, selectedSubjectId } = options;
+  const { selectedTeacherId, selectedStudentId, selectedSubjectId, activeOnly = false } = options;
 
-  const { data: teachersResponse } = useTeachers({ limit: 100 });
-  const { data: studentsResponse } = useStudents({ limit: 100 });
+  const { data: teachersResponse } = useTeachers({ limit: 100, status: activeOnly ? 'ACTIVE' : undefined });
+  const { data: studentsResponse } = useStudents({ limit: 100, status: activeOnly ? 'ACTIVE' : undefined });
   const { data: subjectsResponse } = useSubjects({ limit: 100 });
   const { data: subjectTypesResponse } = useSubjectTypes({ limit: 100 });
 
