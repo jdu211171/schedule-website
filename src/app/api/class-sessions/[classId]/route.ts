@@ -267,6 +267,8 @@ export const PATCH = withBranchAccess(
         endTime,
         duration,
         notes,
+        isCancelled,
+        cancellationReason,
       } = result.data;
 
       // Prepare update data
@@ -281,6 +283,10 @@ export const PATCH = withBranchAccess(
         startTime?: Date;
         endTime?: Date;
         duration?: number | null;
+        isCancelled?: boolean;
+        cancellationReason?: 'SICK' | 'PERMANENTLY_LEFT' | 'ADMIN_CANCELLED' | null;
+        cancelledAt?: Date | null;
+        cancelledByUserId?: string | null;
       } = {
         teacherId,
         studentId,
@@ -289,6 +295,21 @@ export const PATCH = withBranchAccess(
         boothId,
         notes,
       };
+
+      // Handle cancellation updates
+      if (typeof isCancelled === 'boolean') {
+        updateData.isCancelled = isCancelled;
+        if (isCancelled) {
+          updateData.cancellationReason = cancellationReason ?? null;
+          updateData.cancelledAt = new Date();
+          updateData.cancelledByUserId = session.user?.id ?? null;
+        } else {
+          // Clearing cancellation
+          updateData.cancellationReason = null;
+          updateData.cancelledAt = null;
+          updateData.cancelledByUserId = null;
+        }
+      }
 
       // Handle date updates and check for event conflicts
       if (date) {
@@ -368,6 +389,7 @@ export const PATCH = withBranchAccess(
           classId: { not: classId },
           teacherId: effectiveTeacherId,
           date: effectiveDate,
+          isCancelled: false,
           OR: [
             { AND: [{ startTime: { lte: effectiveStart } }, { endTime: { gt: effectiveStart } }] },
             { AND: [{ startTime: { lt: effectiveEnd } }, { endTime: { gte: effectiveEnd } }] },
@@ -396,6 +418,7 @@ export const PATCH = withBranchAccess(
           classId: { not: classId },
           studentId: effectiveStudentId,
           date: effectiveDate,
+          isCancelled: false,
           OR: [
             { AND: [{ startTime: { lte: effectiveStart } }, { endTime: { gt: effectiveStart } }] },
             { AND: [{ startTime: { lt: effectiveEnd } }, { endTime: { gte: effectiveEnd } }] },

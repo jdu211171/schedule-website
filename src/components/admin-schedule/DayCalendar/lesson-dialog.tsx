@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { ExtendedClassSessionWithRelations } from '@/hooks/useClassSessionQuery';
-import { useClassSessionDelete, useClassSessionUpdate, useClassSessionSeriesUpdate, useClassSessionSeriesDelete } from '@/hooks/useClassSessionMutation';
+import { useClassSessionDelete, useClassSessionUpdate, useClassSessionSeriesUpdate, useClassSessionSeriesDelete, useClassSessionCancel } from '@/hooks/useClassSessionMutation';
 import { SearchableSelect, SearchableSelectItem } from '../searchable-select';
 import { TimeInput } from '@/components/ui/time-input';
 import { ConfirmDeleteDialog } from '../confirm-delete-dialog';
@@ -168,6 +168,7 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
   const deleteSeriesMutation = useClassSessionSeriesDelete();
   const updateClassMutation = useClassSessionUpdate();
   const updateSeriesMutation = useClassSessionSeriesUpdate();
+  const cancelMutation = useClassSessionCancel();
 
   const isRecurringLesson = lesson.seriesId !== null;
 
@@ -437,7 +438,8 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
     if (!lesson.classId) return;
 
     if (deleteMode === 'series' && lesson.seriesId) {
-      deleteSeriesMutation.mutate(lesson.seriesId, {
+      // Delete from this instance forward
+      deleteSeriesMutation.mutate({ seriesId: lesson.seriesId, fromClassId: lesson.classId }, {
         onSuccess: () => {
           onDelete(lesson.classId);
         },
@@ -561,7 +563,7 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="series" id="delete-series" />
                     <Label htmlFor="delete-series" className="text-sm font-normal cursor-pointer">
-                      シリーズ全体を削除 (本日以降の全授業)
+                      この回以降を削除
                     </Label>
                   </div>
                 </RadioGroup>
@@ -802,6 +804,21 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
               <>
                 <div />
                 <div className="flex space-x-2">
+                   <Button
+                      variant="destructive"
+                      className="transition-all duration-200 hover:brightness-110 active:scale-[0.98] focus:ring-2 focus:ring-destructive/30 focus:outline-none"
+                      onClick={() => {
+                        if (window.confirm('この授業をキャンセルしますか？')) {
+                          cancelMutation.mutate({ classIds: [lesson.classId], reason: 'ADMIN_CANCELLED' }, {
+                            onSuccess: () => {
+                              onOpenChange(false);
+                            }
+                          });
+                        }
+                      }}
+                    >
+                      キャンセル
+                    </Button>
                    <Button
                       variant="outline"
                       className="transition-all duration-200 hover:bg-accent hover:text-accent-foreground active:scale-[0.98] focus:ring-2 focus:ring-primary/30 focus:outline-none"

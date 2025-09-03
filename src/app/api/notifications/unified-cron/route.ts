@@ -176,6 +176,7 @@ async function processNotifications(reset: boolean = false, templateId?: string)
             classSessions: {
               some: {
                 date: targetDate,
+                isCancelled: false,
                 // Only include sessions with both teacher and student assigned
                 studentId: { not: null }
               }
@@ -188,6 +189,7 @@ async function processNotifications(reset: boolean = false, templateId?: string)
             classSessions: {
               where: { 
                 date: targetDate,
+                isCancelled: false,
                 studentId: { not: null }
               },
               orderBy: { startTime: 'asc' },
@@ -210,6 +212,7 @@ async function processNotifications(reset: boolean = false, templateId?: string)
             classSessions: {
               some: {
                 date: targetDate,
+                isCancelled: false,
                 // Only include sessions with both teacher and student assigned
                 teacherId: { not: null }
               }
@@ -222,6 +225,7 @@ async function processNotifications(reset: boolean = false, templateId?: string)
             classSessions: {
               where: { 
                 date: targetDate,
+                isCancelled: false,
                 teacherId: { not: null }
               },
               orderBy: { startTime: 'asc' },

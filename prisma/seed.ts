@@ -203,6 +203,24 @@ async function main() {
     },
   });
 
+  // 1-e. Cancelled Class Session type (top-level)
+  let cancelledClassType =
+    (await prisma.classType.findFirst({
+      where: { name: "キャンセル", parentId: null },
+    })) ||
+    (await prisma.classType.create({
+      data: {
+        name: "キャンセル",
+        notes: "キャンセルされた授業",
+        order: 99,
+        color: 'slate',
+      },
+    }));
+  cancelledClassType = await prisma.classType.update({
+    where: { classTypeId: cancelledClassType.classTypeId },
+    data: { notes: "キャンセルされた授業", order: 99, color: 'slate' },
+  });
+
   // 1‑d. Subject Types
   const elementarySubjectType = await prisma.subjectType.upsert({
     where: { name: "小学生" },
@@ -544,7 +562,7 @@ async function main() {
       name: "山田 太郎",
       email: "teacher@example.com",
       username: "TEACHER01",
-      passwordHash: "teacher123",
+      passwordHash: hashSync("teacher123"),
       role: UserRole.TEACHER,
       order: 4,
     },
@@ -557,7 +575,7 @@ async function main() {
       name: "佐々木 花子",
       email: "teacher2@example.com",
       username: "TEACHER02",
-      passwordHash: "teacher123",
+      passwordHash: hashSync("teacher123"),
       role: UserRole.TEACHER,
       order: 5,
     },
@@ -570,7 +588,7 @@ async function main() {
       name: "高橋 誠",
       email: "teacher3@example.com",
       username: "TEACHER03",
-      passwordHash: "teacher123",
+      passwordHash: hashSync("teacher123"),
       role: UserRole.TEACHER,
       order: 6,
     },
@@ -583,7 +601,7 @@ async function main() {
       name: "伊藤 理恵",
       email: "teacher4@example.com",
       username: "TEACHER04",
-      passwordHash: "teacher123",
+      passwordHash: hashSync("teacher123"),
       role: UserRole.TEACHER,
       order: 7,
     },
@@ -596,7 +614,7 @@ async function main() {
       name: "松本 和也",
       email: "teacher5@example.com",
       username: "TEACHER05",
-      passwordHash: "teacher123",
+      passwordHash: hashSync("teacher123"),
       role: UserRole.TEACHER,
       order: 8,
     },
@@ -610,7 +628,7 @@ async function main() {
       name: "佐藤 花子",
       email: "student@example.com",
       username: "STUDENT01",
-      passwordHash: "student123",
+      passwordHash: hashSync("student123"),
       role: UserRole.STUDENT,
       order: 9,
     },
@@ -623,7 +641,7 @@ async function main() {
       name: "田村 健太",
       email: "student2@example.com",
       username: "STUDENT02",
-      passwordHash: "student123",
+      passwordHash: hashSync("student123"),
       role: UserRole.STUDENT,
       order: 10,
     },
@@ -636,7 +654,7 @@ async function main() {
       name: "中島 愛美",
       email: "student3@example.com",
       username: "STUDENT03",
-      passwordHash: "student123",
+      passwordHash: hashSync("student123"),
       role: UserRole.STUDENT,
       order: 11,
     },
@@ -649,7 +667,7 @@ async function main() {
       name: "木村 大輔",
       email: "student4@example.com",
       username: "STUDENT04",
-      passwordHash: "student123",
+      passwordHash: hashSync("student123"),
       role: UserRole.STUDENT,
       order: 12,
     },
@@ -662,7 +680,7 @@ async function main() {
       name: "小林 由香",
       email: "student5@example.com",
       username: "STUDENT05",
-      passwordHash: "student123",
+      passwordHash: hashSync("student123"),
       role: UserRole.STUDENT,
       order: 13,
     },
@@ -675,7 +693,7 @@ async function main() {
       name: "渡辺 翔太",
       email: "student6@example.com",
       username: "STUDENT06",
-      passwordHash: "student123",
+      passwordHash: hashSync("student123"),
       role: UserRole.STUDENT,
       order: 14,
     },
@@ -688,7 +706,7 @@ async function main() {
       name: "加藤 美里",
       email: "student7@example.com",
       username: "STUDENT07",
-      passwordHash: "student123",
+      passwordHash: hashSync("student123"),
       role: UserRole.STUDENT,
       order: 15,
     },
@@ -701,7 +719,7 @@ async function main() {
       name: "吉田 拓海",
       email: "student8@example.com",
       username: "STUDENT08",
-      passwordHash: "student123",
+      passwordHash: hashSync("student123"),
       role: UserRole.STUDENT,
       order: 16,
     },
@@ -1259,7 +1277,7 @@ async function main() {
   // Create multiple class sessions
   const classSession1 = await prisma.classSession.upsert({
     where: {
-      teacherId_date_startTime_endTime: {
+      teacherId_date_startTime_endTime_isCancelled: {
         teacherId: teacher1.teacherId,
         date: getRelativeDateUTC(15),
         startTime: new Date(
@@ -1284,6 +1302,7 @@ async function main() {
             0,
           ),
         ),
+        isCancelled: false,
       },
     },
     update: {
@@ -1332,7 +1351,7 @@ async function main() {
 
   const classSession2 = await prisma.classSession.upsert({
     where: {
-      teacherId_date_startTime_endTime: {
+      teacherId_date_startTime_endTime_isCancelled: {
         teacherId: teacher2.teacherId,
         date: getRelativeDateUTC(16),
         startTime: new Date(
@@ -1357,6 +1376,7 @@ async function main() {
             0,
           ),
         ),
+        isCancelled: false,
       },
     },
     update: {
@@ -1405,7 +1425,7 @@ async function main() {
 
   const classSession3 = await prisma.classSession.upsert({
     where: {
-      teacherId_date_startTime_endTime: {
+      teacherId_date_startTime_endTime_isCancelled: {
         teacherId: teacher1.teacherId,
         date: getRelativeDateUTC(17),
         startTime: new Date(
@@ -1430,6 +1450,7 @@ async function main() {
             0,
           ),
         ),
+        isCancelled: false,
       },
     },
     update: {
@@ -1478,7 +1499,7 @@ async function main() {
 
   const classSession4 = await prisma.classSession.upsert({
     where: {
-      teacherId_date_startTime_endTime: {
+      teacherId_date_startTime_endTime_isCancelled: {
         teacherId: teacher4.teacherId,
         date: getRelativeDateUTC(18),
         startTime: new Date(
@@ -1503,6 +1524,7 @@ async function main() {
             0,
           ),
         ),
+        isCancelled: false,
       },
     },
     update: {
@@ -1551,7 +1573,7 @@ async function main() {
 
   const classSession5 = await prisma.classSession.upsert({
     where: {
-      teacherId_date_startTime_endTime: {
+      teacherId_date_startTime_endTime_isCancelled: {
         teacherId: teacher5.teacherId,
         date: getRelativeDateUTC(19),
         startTime: new Date(
@@ -1576,6 +1598,7 @@ async function main() {
             0,
           ),
         ),
+        isCancelled: false,
       },
     },
     update: {
@@ -1624,7 +1647,7 @@ async function main() {
 
   const classSession6 = await prisma.classSession.upsert({
     where: {
-      teacherId_date_startTime_endTime: {
+      teacherId_date_startTime_endTime_isCancelled: {
         teacherId: teacher2.teacherId,
         date: getRelativeDateUTC(20),
         startTime: new Date(
@@ -1649,6 +1672,7 @@ async function main() {
             0,
           ),
         ),
+        isCancelled: false,
       },
     },
     update: {
@@ -1697,7 +1721,7 @@ async function main() {
 
   const classSession7 = await prisma.classSession.upsert({
     where: {
-      teacherId_date_startTime_endTime: {
+      teacherId_date_startTime_endTime_isCancelled: {
         teacherId: teacher4.teacherId,
         date: getRelativeDateUTC(21),
         startTime: new Date(
@@ -1722,6 +1746,7 @@ async function main() {
             0,
           ),
         ),
+        isCancelled: false,
       },
     },
     update: {
@@ -1770,7 +1795,7 @@ async function main() {
 
   const classSession8 = await prisma.classSession.upsert({
     where: {
-      teacherId_date_startTime_endTime: {
+      teacherId_date_startTime_endTime_isCancelled: {
         teacherId: teacher1.teacherId,
         date: getRelativeDateUTC(22),
         startTime: new Date(
@@ -1795,6 +1820,7 @@ async function main() {
             0,
           ),
         ),
+        isCancelled: false,
       },
     },
     update: {

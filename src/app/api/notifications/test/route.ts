@@ -24,10 +24,11 @@ export async function GET(req: NextRequest) {
     const date30m = format(nowJST, 'yyyy-MM-dd');
 
     // Find sessions that would be notified
-    const sessions24h = await prisma.classSession.findMany({
-      where: {
-        date: new Date(date24h),
-        AND: [
+  const sessions24h = await prisma.classSession.findMany({
+    where: {
+      date: new Date(date24h),
+      isCancelled: false,
+      AND: [
           {
             startTime: {
               gte: new Date(`1970-01-01T${format(target24hStart, 'HH:mm:ss')}`)
@@ -61,10 +62,11 @@ export async function GET(req: NextRequest) {
       }
     });
 
-    const sessions30m = await prisma.classSession.findMany({
-      where: {
-        date: new Date(date30m),
-        AND: [
+  const sessions30m = await prisma.classSession.findMany({
+    where: {
+      date: new Date(date30m),
+      isCancelled: false,
+      AND: [
           {
             startTime: {
               gte: new Date(`1970-01-01T${format(target30mStart, 'HH:mm:ss')}`)
@@ -99,38 +101,39 @@ export async function GET(req: NextRequest) {
     });
 
     // Get some upcoming sessions for context
-    const upcomingSessions = await prisma.classSession.findMany({
-      where: {
-        date: {
-          gte: new Date(format(nowJST, 'yyyy-MM-dd')),
-          lte: new Date(format(addHours(nowJST, 48), 'yyyy-MM-dd'))
-        }
+  const upcomingSessions = await prisma.classSession.findMany({
+    where: {
+      date: {
+        gte: new Date(format(nowJST, 'yyyy-MM-dd')),
+        lte: new Date(format(addHours(nowJST, 48), 'yyyy-MM-dd')),
       },
-      orderBy: [
-        { date: 'asc' },
-        { startTime: 'asc' }
-      ],
-      include: {
-        teacher: {
-          select: {
-            name: true,
-            lineId: true
-          }
+      isCancelled: false,
+    },
+    orderBy: [
+      { date: 'asc' },
+      { startTime: 'asc' },
+    ],
+    include: {
+      teacher: {
+        select: {
+          name: true,
+          lineId: true,
         },
-        student: {
-          select: {
-            name: true,
-            lineId: true
-          }
-        },
-        subject: {
-          select: {
-            name: true
-          }
-        }
       },
-      take: 10
-    });
+      student: {
+        select: {
+          name: true,
+          lineId: true,
+        },
+      },
+      subject: {
+        select: {
+          name: true,
+        },
+      },
+    },
+    take: 10,
+  });
 
     return NextResponse.json({
       currentTime: format(nowJST, 'yyyy-MM-dd HH:mm:ss'),

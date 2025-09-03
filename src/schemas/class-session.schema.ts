@@ -49,6 +49,9 @@ export const classSessionUpdateSchema = z.object({
   endTime: z.string().optional(), // Format: "HH:MM"
   duration: z.number().int().optional().nullable(),
   notes: z.string().max(255).optional().nullable(),
+  // Cancellation updates
+  isCancelled: z.boolean().optional(),
+  cancellationReason: z.enum(["SICK", "PERMANENTLY_LEFT", "ADMIN_CANCELLED"]).optional(),
 });
 
 // Schema for updating a recurring class session series
@@ -93,6 +96,7 @@ export const classSessionFilterSchema = z.object({
   hasStudent: z.coerce.boolean().optional(),
   hasSubject: z.coerce.boolean().optional(),
   hasBooth: z.coerce.boolean().optional(),
+  includeCancelled: z.coerce.boolean().optional().default(false),
 });
 
 // Enhanced response types for conflict information with shared availability

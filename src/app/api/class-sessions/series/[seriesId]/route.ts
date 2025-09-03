@@ -382,6 +382,7 @@ export const PATCH = withBranchAccess(
                 classId: { not: session.classId },
                 teacherId: effTeacherId,
                 date: effDate,
+                isCancelled: false,
                 OR: [
                   { AND: [{ startTime: { lte: effStart } }, { endTime: { gt: effStart } }] },
                   { AND: [{ startTime: { lt: effEnd } }, { endTime: { gte: effEnd } }] },
@@ -402,6 +403,7 @@ export const PATCH = withBranchAccess(
                 classId: { not: session.classId },
                 studentId: effStudentId,
                 date: effDate,
+                isCancelled: false,
                 OR: [
                   { AND: [{ startTime: { lte: effStart } }, { endTime: { gt: effStart } }] },
                   { AND: [{ startTime: { lt: effEnd } }, { endTime: { gte: effEnd } }] },
@@ -531,16 +533,47 @@ export const DELETE = withBranchAccess(
         );
       }
 
-      // Check today's date to only delete future sessions
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      // Optionally accept a pivot instance to define deletion start date
+      let fromClassId: string | undefined;
+      try {
+        const contentType = request.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          const body = await request.json().catch(() => null);
+          if (body && typeof body.fromClassId === 'string') {
+            fromClassId = body.fromClassId;
+          }
+        }
+      } catch (_) {
+        // Ignore body parse errors; default behavior applies
+      }
+
+      // Determine pivot date: either from the specified instance or today (fallback)
+      let pivotDate = new Date();
+      pivotDate.setHours(0, 0, 0, 0);
+
+      if (fromClassId) {
+        const pivotSession = await prisma.classSession.findFirst({
+          where: { classId: fromClassId, seriesId },
+          select: { date: true },
+        });
+        if (!pivotSession) {
+          return NextResponse.json(
+            { error: "指定された授業インスタンスが見つかりません" },
+            { status: 400 }
+          );
+        }
+        // Normalize to start of day in UTC to match storage/formatting behavior
+        const d = new Date(pivotSession.date);
+        d.setUTCHours(0, 0, 0, 0);
+        pivotDate = d;
+      }
 
       // Count future sessions
       const futureSessionsCount = await prisma.classSession.count({
         where: {
           seriesId,
           date: {
-            gte: today,
+            gte: pivotDate,
           },
         },
       });
@@ -559,7 +592,7 @@ export const DELETE = withBranchAccess(
           where: {
             seriesId,
             date: {
-              gte: today,
+              gte: pivotDate,
             },
           },
           select: {
@@ -585,7 +618,7 @@ export const DELETE = withBranchAccess(
           where: {
             seriesId,
             date: {
-              gte: today,
+              gte: pivotDate,
             },
           },
         });

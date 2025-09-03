@@ -38,6 +38,8 @@ type FormattedClassSession = {
   endTime: string;
   duration: number | null;
   notes: string | null;
+  isCancelled?: boolean;
+  cancellationReason?: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -95,6 +97,8 @@ const formatClassSession = (
     endTime: formattedEndTime,
     duration: classSession.duration,
     notes: classSession.notes,
+    isCancelled: (classSession as any).isCancelled ?? false,
+    cancellationReason: ((classSession as any).cancellationReason as string | null) ?? null,
     createdAt: format(classSession.createdAt, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"),
     updatedAt: format(classSession.updatedAt, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"),
   };
@@ -511,6 +515,11 @@ export const GET = withBranchAccess(
       }
     }
 
+    // Exclude cancelled by default unless explicitly included
+    if (result.data.includeCancelled !== true) {
+      where.isCancelled = false;
+    }
+
     // Calculate pagination
     const skip = (page - 1) * limit;
 
@@ -755,6 +764,7 @@ export const POST = withBranchAccess(
             date: dateObj,
             startTime: effectiveStartDateTime,
             endTime: effectiveEndDateTime,
+            isCancelled: false,
           },
         });
 
@@ -771,6 +781,7 @@ export const POST = withBranchAccess(
             where: {
               boothId,
               date: dateObj,
+              isCancelled: false,
               OR: [
                 // Session starts during existing session
                 {

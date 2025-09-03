@@ -273,12 +273,15 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
   const studentTypeLabel =
     studentType && gradeYear ? `${studentType.charAt(0)}${gradeYear}` : "";
 
+  const isCancelled = Boolean((lesson as any)?.isCancelled);
+
   return (
     <div
       className={`
         absolute rounded border shadow-sm cursor-pointer
         transition-colors duration-100 ease-in-out transform
         ${colorClasses ? `${colorClasses.background} ${colorClasses.border} ${colorClasses.text} ${colorClasses.hover}` : ''}
+        ${isCancelled ? 'opacity-60 grayscale' : ''}
         active:scale-[0.98] hover:shadow-md
         overflow-hidden truncate pointer-events-auto
       `}
@@ -286,6 +289,9 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
       onClick={() => onClick(lesson)}
     >
       <div className="text-[11px] p-1 flex flex-col h-full justify-between relative">
+        {isCancelled && (
+          <span className="absolute top-1 right-1 text-[10px] bg-slate-700 text-white rounded px-1 py-0.5">キャンセル</span>
+        )}
         {/* Top row */}
         <div className="flex justify-between items-start">
           <div className="flex items-center gap-1">

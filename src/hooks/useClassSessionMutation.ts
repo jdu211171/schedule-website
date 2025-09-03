@@ -859,13 +859,27 @@ export function useClassSessionSeriesUpdate() {
 // Hook for deleting all future sessions in a series
 export function useClassSessionSeriesDelete() {
   const queryClient = useQueryClient();
-  return useMutation<void, Error, string, { previousData?: ClassSession[] }>({
-    mutationFn: (seriesId) => {
+  return useMutation<
+    void,
+    Error,
+    string | { seriesId: string; fromClassId?: string },
+    { previousData?: ClassSession[]; seriesId?: string }
+  >({
+    mutationFn: (input) => {
+      if (typeof input === 'string') {
+        // Backward-compatible: delete from today onward
+        return fetcher(`/api/class-sessions/series/${input}`, {
+          method: "DELETE",
+        });
+      }
+      const { seriesId, fromClassId } = input;
       return fetcher(`/api/class-sessions/series/${seriesId}`, {
         method: "DELETE",
+        body: fromClassId ? JSON.stringify({ fromClassId }) : undefined,
       });
     },
-    onMutate: async (seriesId) => {
+    onMutate: async (input) => {
+      const seriesId = typeof input === 'string' ? input : input.seriesId;
       // Cancel any outgoing refetches for the series
       await queryClient.cancelQueries({
         queryKey: ["classSessionSeries", seriesId],
@@ -880,12 +894,12 @@ export function useClassSessionSeriesDelete() {
       // We're not doing optimistic updates for series deletion since it's complex
       // to determine which sessions are in the future
 
-      return { previousData };
+      return { previousData, seriesId };
     },
-    onError: (error, seriesId, context) => {
-      if (context?.previousData) {
+    onError: (error, _input, context) => {
+      if (context?.previousData && context.seriesId) {
         queryClient.setQueryData(
-          ["classSessionSeries", seriesId],
+          ["classSessionSeries", context.seriesId],
           context.previousData
         );
       }
@@ -900,7 +914,8 @@ export function useClassSessionSeriesDelete() {
         id: "class-session-series-delete-success",
       });
     },
-    onSettled: (_, __, seriesId) => {
+    onSettled: (_, __, input) => {
+      const seriesId = typeof input === 'string' ? input : input.seriesId;
       // Invalidate the series query
       queryClient.invalidateQueries({
         queryKey: ["classSessionSeries", seriesId],
@@ -912,6 +927,32 @@ export function useClassSessionSeriesDelete() {
         queryKey: ["classSessions"],
         refetchType: "none",
       });
+    },
+  });
+}
+
+// Hook for cancelling class sessions (single or batch, or by series)
+export function useClassSessionCancel() {
+  const queryClient = useQueryClient();
+  return useMutation<
+    { data: []; message: string; updatedCount: number; pagination: { total: number; page: number; limit: number; pages: number } },
+    Error,
+    { classIds?: string[]; seriesId?: string; fromDate?: string; reason?: 'SICK' | 'PERMANENTLY_LEFT' | 'ADMIN_CANCELLED' }
+  >({
+    mutationFn: (payload) =>
+      fetcher('/api/class-sessions/cancel', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }),
+    onSuccess: (response) => {
+      toast.success(response.message || '授業をキャンセルしました');
+    },
+    onError: (error) => {
+      const message = getErrorMessage(error);
+      toast.error('授業のキャンセルに失敗しました', { description: message });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['classSessions'] });
     },
   });
 }

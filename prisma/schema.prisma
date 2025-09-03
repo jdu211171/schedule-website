@@ -40,12 +40,12 @@ model UserBranch {
 }
 
 model BranchSettings {
-  id                        String   @id @default(cuid())
-  branchId                  String?  @unique @map("branch_id")
-  archiveRetentionMonths    Int      @default(6) @map("archive_retention_months")
-  createdAt                 DateTime @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt                 DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
-  branch                    Branch?  @relation(fields: [branchId], references: [branchId], onDelete: Cascade)
+  id                     String   @id @default(cuid())
+  branchId               String?  @unique @map("branch_id")
+  archiveRetentionMonths Int      @default(6) @map("archive_retention_months")
+  createdAt              DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt              DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  branch                 Branch?  @relation(fields: [branchId], references: [branchId], onDelete: Cascade)
 
   @@index([branchId])
   @@map("branch_settings")
@@ -84,6 +84,11 @@ model ClassSession {
   endTime                 DateTime                 @map("end_time") @db.Time(6)
   duration                Int?                     @map("duration")
   notes                   String?                  @db.VarChar(255)
+  // Cancellation fields
+  isCancelled             Boolean                  @default(false) @map("is_cancelled")
+  cancellationReason      CancellationReason?      @map("cancellation_reason")
+  cancelledAt             DateTime?                @map("cancelled_at") @db.Timestamp(6)
+  cancelledByUserId       String?                  @map("cancelled_by_user_id")
   createdAt               DateTime                 @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt               DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
   booth                   Booth?                   @relation(fields: [boothId], references: [boothId], onDelete: Restrict)
@@ -93,12 +98,15 @@ model ClassSession {
   subject                 Subject?                 @relation(fields: [subjectId], references: [subjectId], onDelete: Restrict)
   teacher                 Teacher?                 @relation(fields: [teacherId], references: [teacherId], onDelete: Restrict)
   studentClassEnrollments StudentClassEnrollment[]
+  cancelledBy             User?                    @relation(fields: [cancelledByUserId], references: [id])
 
-  @@unique([teacherId, date, startTime, endTime])
+  // Allow overlapping when one is cancelled by including isCancelled in the unique constraint
+  @@unique([teacherId, date, startTime, endTime, isCancelled])
   @@index([date])
   @@index([teacherId])
   @@index([branchId])
   @@index([seriesId])
+  @@index([isCancelled])
   @@map("class_sessions")
 }
 
@@ -462,23 +470,23 @@ model NotificationArchive {
 }
 
 model LineMessageTemplate {
-  id                      String   @id @default(cuid()) @map("id")
-  name                    String   @db.VarChar(100)
-  description             String?  @db.VarChar(255)
-  templateType            String   @map("template_type") @db.VarChar(50)
-  timingType              String   @map("timing_type") @db.VarChar(20) @default("days")
-  timingValue             Int      @map("timing_value")
-  timingHour              Int      @default(9) @map("timing_hour") // Hour (0-23) when notification should be sent
-  timingMinute            Int      @default(0) @map("timing_minute") // Minute (0-59) when notification should be sent
-  content                 String
-  variables               Json
-  classListItemTemplate   String?  @map("class_list_item_template") @db.Text // Template for each class item
-  classListSummaryTemplate String? @map("class_list_summary_template") @db.Text // Template for summary line
-  isActive                Boolean  @default(true) @map("is_active")
-  branchId                String?  @map("branch_id")
-  createdAt               DateTime @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt               DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
-  branch                  Branch?  @relation(fields: [branchId], references: [branchId], onDelete: Restrict)
+  id                       String   @id @default(cuid()) @map("id")
+  name                     String   @db.VarChar(100)
+  description              String?  @db.VarChar(255)
+  templateType             String   @map("template_type") @db.VarChar(50)
+  timingType               String   @default("days") @map("timing_type") @db.VarChar(20)
+  timingValue              Int      @map("timing_value")
+  timingHour               Int      @default(9) @map("timing_hour") // Hour (0-23) when notification should be sent
+  timingMinute             Int      @default(0) @map("timing_minute") // Minute (0-59) when notification should be sent
+  content                  String
+  variables                Json
+  classListItemTemplate    String?  @map("class_list_item_template") @db.Text // Template for each class item
+  classListSummaryTemplate String?  @map("class_list_summary_template") @db.Text // Template for summary line
+  isActive                 Boolean  @default(true) @map("is_active")
+  branchId                 String?  @map("branch_id")
+  createdAt                DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt                DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  branch                   Branch?  @relation(fields: [branchId], references: [branchId], onDelete: Restrict)
 
   @@index([branchId])
   @@index([templateType])
@@ -508,27 +516,29 @@ model Vacation {
 }
 
 model User {
-  id                 String                  @id @default(cuid())
-  name               String?
-  email              String?                 @unique
-  emailVerified      DateTime?               @map("email_verified")
-  image              String?
-  username           String?                 @unique
-  passwordHash       String?
-  role               UserRole                @default(STUDENT)
-  createdAt          DateTime                @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt          DateTime                @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
-  order              Int?                    @map("order")
-  isRestrictedAdmin  Boolean                 @default(false) @map("is_restricted_admin")
-  defaultBranchId    String?                 @map("default_branch_id")
-  subjectPreferences UserSubjectPreference[]
-  accounts           Account[]
-  sessions           Session[]
-  student            Student?
-  teacher            Teacher?
-  availability       UserAvailability[]
-  branches           UserBranch[]
-  defaultBranch      Branch?                 @relation("UserDefaultBranch", fields: [defaultBranchId], references: [branchId])
+  id                     String                  @id @default(cuid())
+  name                   String?
+  email                  String?                 @unique
+  emailVerified          DateTime?               @map("email_verified")
+  image                  String?
+  username               String?                 @unique
+  passwordHash           String?
+  role                   UserRole                @default(STUDENT)
+  createdAt              DateTime                @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt              DateTime                @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  order                  Int?                    @map("order")
+  isRestrictedAdmin      Boolean                 @default(false) @map("is_restricted_admin")
+  defaultBranchId        String?                 @map("default_branch_id")
+  subjectPreferences     UserSubjectPreference[]
+  accounts               Account[]
+  sessions               Session[]
+  student                Student?
+  teacher                Teacher?
+  availability           UserAvailability[]
+  branches               UserBranch[]
+  defaultBranch          Branch?                 @relation("UserDefaultBranch", fields: [defaultBranchId], references: [branchId])
+  // Reverse relation for ClassSession.cancelledBy
+  cancelledClassSessions ClassSession[]
 
   @@index([order])
   @@index([defaultBranchId])
@@ -676,6 +686,13 @@ enum ChannelType {
   STUDENT
 }
 
+// Reasons for cancelling a class session
+enum CancellationReason {
+  SICK
+  PERMANENTLY_LEFT
+  ADMIN_CANCELLED
+}
+
 // Account slots for student-linked LINE IDs
 enum LineAccountSlot {
   student
@@ -686,20 +703,20 @@ enum LineAccountSlot {
 /// * LINE Channel configuration for multi-channel support
 /// * Stores encrypted LINE channel credentials
 model LineChannel {
-  channelId            String              @id @default(cuid()) @map("channel_id")
-  name                 String              @db.VarChar(100)
-  description          String?             @db.VarChar(255)
-  channelAccessToken   String              @db.Text // Encrypted
-  channelSecret        String              @db.Text // Encrypted
-  webhookUrl           String?             @map("webhook_url") @db.VarChar(255)
-  isActive             Boolean             @default(true) @map("is_active")
-  isDefault            Boolean             @default(false) @map("is_default")
-  createdAt            DateTime            @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt            DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
-  lastRotatedAt        DateTime?           @map("last_rotated_at") @db.Timestamp(6)
-  branchLineChannels   BranchLineChannel[]
-  teacherLineLinks     TeacherLineLink[]
-  studentLineLinks     StudentLineLink[]
+  channelId          String              @id @default(cuid()) @map("channel_id")
+  name               String              @db.VarChar(100)
+  description        String?             @db.VarChar(255)
+  channelAccessToken String              @db.Text // Encrypted
+  channelSecret      String              @db.Text // Encrypted
+  webhookUrl         String?             @map("webhook_url") @db.VarChar(255)
+  isActive           Boolean             @default(true) @map("is_active")
+  isDefault          Boolean             @default(false) @map("is_default")
+  createdAt          DateTime            @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt          DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  lastRotatedAt      DateTime?           @map("last_rotated_at") @db.Timestamp(6)
+  branchLineChannels BranchLineChannel[]
+  teacherLineLinks   TeacherLineLink[]
+  studentLineLinks   StudentLineLink[]
 
   @@index([isActive])
   @@index([isDefault])
@@ -710,13 +727,13 @@ model LineChannel {
 /// * Junction table linking branches to LINE channels
 /// * Supports many-to-many relationship for flexible channel assignment
 model BranchLineChannel {
-  id           String      @id @default(cuid())
-  branchId     String      @map("branch_id")
-  channelId    String      @map("channel_id")
-  channelType  ChannelType @default(UNSPECIFIED) @map("channel_type")
-  createdAt    DateTime    @default(now()) @map("created_at") @db.Timestamp(6)
-  branch       Branch      @relation(fields: [branchId], references: [branchId], onDelete: Cascade)
-  lineChannel  LineChannel @relation(fields: [channelId], references: [channelId], onDelete: Cascade)
+  id          String      @id @default(cuid())
+  branchId    String      @map("branch_id")
+  channelId   String      @map("channel_id")
+  channelType ChannelType @default(UNSPECIFIED) @map("channel_type")
+  createdAt   DateTime    @default(now()) @map("created_at") @db.Timestamp(6)
+  branch      Branch      @relation(fields: [branchId], references: [branchId], onDelete: Cascade)
+  lineChannel LineChannel @relation(fields: [channelId], references: [channelId], onDelete: Cascade)
 
   @@index([branchId])
   @@index([channelId])

@@ -34,6 +34,8 @@ export interface ApiClassSessionFields {
   branchName?: string | null;
   seriesId?: string | null;
   duration?: number;
+  isCancelled?: boolean;
+  cancellationReason?: string | null;
 }
 
 export type ExtendedClassSessionWithRelations = ClassSessionWithRelations & ApiClassSessionFields;
@@ -72,6 +74,7 @@ export type DayFilters = {
   teacherId?: string;
   studentId?: string;
   branchId?: string;
+  includeCancelled?: boolean;
 };
 
 export function useClassSessions(params: UseClassSessionsParams = { page: 1, limit: 10 }) {
@@ -137,6 +140,9 @@ export function useMultipleDaysClassSessions(
         }
         if (dateFilters?.branchId) {
           params.append('branchId', dateFilters.branchId);
+        }
+        if (dateFilters?.includeCancelled) {
+          params.append('includeCancelled', String(dateFilters.includeCancelled));
         }
 
         const url = `/api/class-sessions?${params.toString()}`;

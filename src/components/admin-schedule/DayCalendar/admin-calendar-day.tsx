@@ -148,6 +148,7 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
 
   const [globalAvailabilityMode, setGlobalAvailabilityMode] = useState<AvailabilityMode>('with-special');
   const [dayAvailabilitySettings, setDayAvailabilitySettings] = useState<Record<string, AvailabilityMode>>({});
+  const [showCancelled, setShowCancelled] = useState<boolean>(false);
 
   const [dayFilters, setDayFilters] = useState<Record<string, DayFilters>>({});
   const [showCreateDialog, setShowCreateDialog] = useState<boolean>(false);
@@ -173,6 +174,22 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
       }
     }
   }, [selectedDays, isInitialized]);
+
+  // Persist showCancelled preference
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('admin_calendar_show_cancelled');
+      if (saved !== null) {
+        setShowCancelled(saved === 'true');
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('admin_calendar_show_cancelled', String(showCancelled));
+    }
+  }, [showCancelled]);
 
   const { data: boothsResponse, isLoading: isLoadingBooths } = useBooths({ limit: 100, status: true });
   const { data: teachersResponse, isLoading: isLoadingTeachers } = useTeachers({ limit: 100 });
@@ -216,10 +233,12 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
       if (selectedBranchId) {
         enhanced[dateStr].branchId = selectedBranchId;
       }
+      // Apply cancel filter from global toggle
+      enhanced[dateStr].includeCancelled = showCancelled;
     });
 
     return enhanced;
-  }, [dayFilters, selectedDatesStrings, selectedBranchId]);
+  }, [dayFilters, selectedDatesStrings, selectedBranchId, showCancelled]);
 
   const classSessionQueries = useMultipleDaysClassSessions(
     selectedDatesStrings,
@@ -603,6 +622,16 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
               ? '特別希望を除外して通常希望のみ表示します'
               : '特別希望を優先して表示します（デフォルト）'
             }
+          </div>
+          <div className="flex items-center space-x-2 ml-4">
+            <Switch
+              id="show-cancelled-toggle"
+              checked={showCancelled}
+              onCheckedChange={setShowCancelled}
+            />
+            <Label htmlFor="show-cancelled-toggle" className="text-sm font-medium">
+              キャンセル授業を表示
+            </Label>
           </div>
         </div>
 

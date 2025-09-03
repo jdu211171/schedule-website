@@ -106,6 +106,7 @@ export const GET = withRole(
       // Build filter conditions - always filter by the authenticated student's ID
       const where: Record<string, any> = {
         studentId: student.studentId, // Use the authenticated student's ID from session
+        isCancelled: false, // Do not include cancelled sessions in student self-view
       };
 
       // Apply additional filters
