@@ -26,7 +26,10 @@ type FormattedClassType = {
 // Helper function to check if a class type is protected (root level types)
 const isProtectedClassType = (classType: { name: string; parentId: string | null }): boolean => {
   // Protected class types are root level types (no parent) with specific names
-  return !classType.parentId && (classType.name === "通常授業" || classType.name === "特別授業");
+  return (
+    !classType.parentId &&
+    (classType.name === "通常授業" || classType.name === "特別授業" || classType.name === "キャンセル")
+  );
 };
 
 // Helper function to format classType response

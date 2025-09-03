@@ -49,10 +49,13 @@ function getClassTypeLevel(classType: ClassType, allClassTypes: ClassType[]): nu
   return 1 + getClassTypeLevel(parent, allClassTypes);
 }
 
-// Helper function to check if a class type is protected from deletion (root level types like 通常授業 and 特別授業)
+// Helper function to check if a class type is protected from deletion (root level types like 通常授業, 特別授業, キャンセル)
 function isProtectedFromDeletion(classType: ClassType): boolean {
   // Protected class types are root level types (no parent) with specific names
-  return !classType.parentId && (classType.name === "通常授業" || classType.name === "特別授業");
+  return (
+    !classType.parentId &&
+    (classType.name === "通常授業" || classType.name === "特別授業" || classType.name === "キャンセル")
+  );
 }
 
 export function ClassTypeTable() {
