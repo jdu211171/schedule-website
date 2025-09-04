@@ -134,6 +134,36 @@ const createUTCDateForFilter = (dateStr: string): Date => {
   return new Date(Date.UTC(year, month, day, 0, 0, 0, 0));
 };
 
+// Optimized vacation helpers (prefetch once per request)
+type BranchVacation = { startDate: Date; endDate: Date; isRecurring: boolean };
+
+const getBranchVacations = async (branchId: string): Promise<BranchVacation[]> => {
+  return prisma.vacation.findMany({
+    where: { branchId },
+    select: { startDate: true, endDate: true, isRecurring: true },
+  });
+};
+
+const hasVacationConflictCached = (date: Date, vacations: BranchVacation[]): boolean => {
+  const md = (d: Date) => (d.getUTCMonth() + 1) * 100 + d.getUTCDate();
+  const targetMD = md(date);
+  for (const v of vacations) {
+    if (!v.isRecurring) {
+      if (v.startDate <= date && v.endDate >= date) return true;
+    } else {
+      const startMD = md(v.startDate);
+      const endMD = md(v.endDate);
+      if (startMD <= endMD) {
+        if (targetMD >= startMD && targetMD <= endMD) return true;
+      } else {
+        // Wrap-around (e.g., Dec 20 - Jan 5)
+        if (targetMD >= startMD || targetMD <= endMD) return true;
+      }
+    }
+  }
+  return false;
+};
+
 // Helper function to check if a date conflicts with any vacations (handles recurring by month/day)
 const checkVacationConflict = async (
   date: Date,
@@ -244,7 +274,8 @@ const checkEnhancedAvailabilityConflicts = async (
       student.userId,
       date,
       startTime,
-      endTime
+      endTime,
+      { skipVacationCheck: true }
     );
 
     if (!availabilityDetails.available) {
@@ -672,6 +703,12 @@ export const POST = withBranchAccess(
         notes,
       };
 
+      // Compute flags and caches used across both single and recurring flows
+      const specialClassType = await isSpecialClassType(classTypeId);
+      const branchVacations = specialClassType
+        ? []
+        : await getBranchVacations(sessionBranchId);
+
       // Handle one-time or recurring sessions
       if (!isRecurring) {
         // Handle single session
@@ -717,25 +754,88 @@ export const POST = withBranchAccess(
           effectiveEndDateTime = createDateTime(date, effectiveEndTime);
         }
 
-        // Check vacation conflict — but allow for 特別授業 (and its descendants)
-        const isSpecial = await isSpecialClassType(classTypeId);
-        if (!isSpecial) {
-          const hasVacationConflict = await checkVacationConflict(
-            dateObj,
-            sessionBranchId
+        // Autoskip: vacation (for non-special types) using preloaded vacations
+        if (!specialClassType && hasVacationConflictCached(dateObj, branchVacations)) {
+          return NextResponse.json(
+            {
+              data: [],
+              message: "この日の授業は休日期間のためスキップされました",
+              skipped: true,
+              pagination: { total: 0, page: 1, limit: 0, pages: 0 },
+            },
+            { status: 200 }
           );
-          if (hasVacationConflict) {
+        }
+
+        // Autoskip: user absence at requested time
+        if (teacherId || studentId) {
+          const [tUser, sUser] = await Promise.all([
+            teacherId
+              ? prisma.teacher.findUnique({ where: { teacherId }, select: { userId: true } })
+              : Promise.resolve(null),
+            studentId
+              ? prisma.student.findUnique({ where: { studentId }, select: { userId: true } })
+              : Promise.resolve(null),
+          ]);
+          const userIds = [tUser?.userId, sUser?.userId].filter(Boolean) as string[];
+          if (userIds.length > 0) {
+            const absences = await prisma.userAvailability.findMany({
+              where: {
+                userId: { in: userIds },
+                type: "ABSENCE",
+                status: "APPROVED",
+                date: dateObj,
+              },
+              select: { fullDay: true, startTime: true, endTime: true },
+            });
+            const absent = absences.some((a) => {
+              if (a.fullDay) return true;
+              if (!a.startTime || !a.endTime) return false;
+              return a.startTime < effectiveEndDateTime && a.endTime > effectiveStartDateTime;
+            });
+            if (absent) {
+              return NextResponse.json(
+                {
+                  data: [],
+                  message: "選択された時間帯に欠勤があるためスキップしました",
+                  skipped: true,
+                  pagination: { total: 0, page: 1, limit: 0, pages: 0 },
+                },
+                { status: 200 }
+              );
+            }
+          }
+        }
+
+        // Autoskip: prefetch same-day sessions once and skip if any participant overlaps
+        if (teacherId || studentId || boothId) {
+          const sameDaySessions = await prisma.classSession.findMany({
+            where: {
+              isCancelled: false,
+              date: dateObj,
+              OR: [
+                teacherId ? { teacherId } : undefined,
+                studentId ? { studentId } : undefined,
+                boothId ? { boothId } : undefined,
+              ].filter(Boolean) as any,
+            },
+            select: { startTime: true, endTime: true, teacherId: true, studentId: true, boothId: true },
+          });
+          const hasOverlap = sameDaySessions.some((s) => {
+            const overlaps = s.startTime < effectiveEndDateTime && s.endTime > effectiveStartDateTime;
+            if (!overlaps) return false;
+            if (teacherId && s.teacherId === teacherId) return true;
+            if (studentId && s.studentId === studentId) return true;
+            if (boothId && s.boothId === boothId) return true;
+            return false;
+          });
+          if (hasOverlap) {
             return NextResponse.json(
               {
                 data: [],
-                message: "この日の授業は休日期間のためスキップされました",
+                message: "重複する授業またはブース利用があるためスキップしました",
                 skipped: true,
-                pagination: {
-                  total: 0,
-                  page: 1,
-                  limit: 0,
-                  pages: 0,
-                },
+                pagination: { total: 0, page: 1, limit: 0, pages: 0 },
               },
               { status: 200 }
             );
@@ -757,150 +857,7 @@ export const POST = withBranchAccess(
           }
         }
 
-        // Check for existing session with same teacher, date, and time
-        const existingSession = await prisma.classSession.findFirst({
-          where: {
-            teacherId,
-            date: dateObj,
-            startTime: effectiveStartDateTime,
-            endTime: effectiveEndDateTime,
-            isCancelled: false,
-          },
-        });
-
-        if (existingSession) {
-          return NextResponse.json(
-            { error: "同じ講師、日付、時間の授業が既に存在します" },
-            { status: 409 }
-          );
-        }
-
-        // Check for booth conflicts if booth is specified
-        if (boothId) {
-          const boothConflict = await prisma.classSession.findFirst({
-            where: {
-              boothId,
-              date: dateObj,
-              isCancelled: false,
-              OR: [
-                // Session starts during existing session
-                {
-                  AND: [
-                    { startTime: { lte: effectiveStartDateTime } },
-                    { endTime: { gt: effectiveStartDateTime } },
-                  ],
-                },
-                // Session ends during existing session
-                {
-                  AND: [
-                    { startTime: { lt: effectiveEndDateTime } },
-                    { endTime: { gte: effectiveEndDateTime } },
-                  ],
-                },
-                // Session completely contains existing session
-                {
-                  AND: [
-                    { startTime: { gte: effectiveStartDateTime } },
-                    { endTime: { lte: effectiveEndDateTime } },
-                  ],
-                },
-              ],
-            },
-            include: {
-              teacher: {
-                select: { name: true },
-              },
-              student: {
-                select: { name: true },
-              },
-              booth: {
-                select: { name: true },
-              },
-            },
-          });
-
-          if (boothConflict) {
-            const conflictStartTime = format(boothConflict.startTime, "HH:mm");
-            const conflictEndTime = format(boothConflict.endTime, "HH:mm");
-            const boothName = boothConflict.booth?.name || "不明なブース";
-
-            if (!shouldForceCreate) {
-              conflicts.push({
-                date: format(dateObj, "yyyy-MM-dd"),
-                dayOfWeek: getDayOfWeekFromDate(dateObj),
-                type: "BOOTH_CONFLICT",
-                details: `ブース「${boothName}」は${conflictStartTime}-${conflictEndTime}に既に使用されています`,
-                conflictingSession: {
-                  classId: boothConflict.classId,
-                  teacherName: boothConflict.teacher?.name || "不明",
-                  studentName: boothConflict.student?.name || "不明",
-                  startTime: conflictStartTime,
-                  endTime: conflictEndTime,
-                },
-              });
-            }
-          }
-        }
-
-        // Check teacher time overlap
-        if (teacherId) {
-          const t = await findOverlapConflict(
-            "teacher",
-            teacherId,
-            dateObj,
-            effectiveStartDateTime,
-            effectiveEndDateTime
-          );
-          if (t) {
-            const conflictStartTime = format(t.conflict.startTime, "HH:mm");
-            const conflictEndTime = format(t.conflict.endTime, "HH:mm");
-            if (!shouldForceCreate) {
-              conflicts.push({
-                date: format(dateObj, "yyyy-MM-dd"),
-                dayOfWeek: getDayOfWeekFromDate(dateObj),
-                type: t.type,
-                details: `講師は${conflictStartTime}-${conflictEndTime}に別の授業があります`,
-                conflictingSession: {
-                  classId: t.conflict.classId,
-                  teacherName: t.conflict.teacher?.name || "不明",
-                  studentName: t.conflict.student?.name || "不明",
-                  startTime: conflictStartTime,
-                  endTime: conflictEndTime,
-                },
-              });
-            }
-          }
-        }
-
-        // Check student time overlap
-        if (studentId) {
-          const s = await findOverlapConflict(
-            "student",
-            studentId,
-            dateObj,
-            effectiveStartDateTime,
-            effectiveEndDateTime
-          );
-          if (s) {
-            const conflictStartTime = format(s.conflict.startTime, "HH:mm");
-            const conflictEndTime = format(s.conflict.endTime, "HH:mm");
-            if (!shouldForceCreate) {
-              conflicts.push({
-                date: format(dateObj, "yyyy-MM-dd"),
-                dayOfWeek: getDayOfWeekFromDate(dateObj),
-                type: s.type,
-                details: `生徒は${conflictStartTime}-${conflictEndTime}に別の授業があります`,
-                conflictingSession: {
-                  classId: s.conflict.classId,
-                  teacherName: s.conflict.teacher?.name || "不明",
-                  studentName: s.conflict.student?.name || "不明",
-                  startTime: conflictStartTime,
-                  endTime: conflictEndTime,
-                },
-              });
-            }
-          }
-        }
+        // Note: overlap conflicts already autoskipped above
 
         // Handle conflicts based on user preference
         if (conflicts.length > 0 && !shouldForceCreate) {
@@ -1064,7 +1021,60 @@ export const POST = withBranchAccess(
           });
         }
 
-        // Check for conflicts on all dates
+        // Prefetch related data to avoid per-date queries
+        const [teacherUser, studentUser] = await Promise.all([
+          teacherId
+            ? prisma.teacher.findUnique({ where: { teacherId }, select: { userId: true } })
+            : Promise.resolve(null),
+          studentId
+            ? prisma.student.findUnique({ where: { studentId }, select: { userId: true } })
+            : Promise.resolve(null),
+        ]);
+
+        const participantUserIds = [teacherUser?.userId, studentUser?.userId].filter(Boolean) as string[];
+        const absences = participantUserIds.length > 0
+          ? await prisma.userAvailability.findMany({
+              where: {
+                userId: { in: participantUserIds },
+                type: "ABSENCE",
+                status: "APPROVED",
+                date: { in: sessionDates },
+              },
+              select: { userId: true, date: true, fullDay: true, startTime: true, endTime: true },
+            })
+          : [];
+
+        const absencesByDate = new Map<string, typeof absences>();
+        for (const a of absences) {
+          if (!a.date) continue; // date can be nullable in Prisma type
+          const k = format(a.date, "yyyy-MM-dd");
+          const arr = absencesByDate.get(k) || [];
+          arr.push(a);
+          absencesByDate.set(k, arr);
+        }
+
+        const sameDaySessions = await prisma.classSession.findMany({
+          where: {
+            isCancelled: false,
+            date: { in: sessionDates },
+            OR: [
+              teacherId ? { teacherId } : undefined,
+              studentId ? { studentId } : undefined,
+              boothId ? { boothId } : undefined,
+            ].filter(Boolean) as any,
+          },
+          select: { date: true, startTime: true, endTime: true, teacherId: true, studentId: true, boothId: true },
+        });
+
+        const sessionsByDate = new Map<string, typeof sameDaySessions>();
+        for (const s of sameDaySessions) {
+          const k = format(s.date, "yyyy-MM-dd");
+          const arr = sessionsByDate.get(k) || [];
+          arr.push(s);
+          sessionsByDate.set(k, arr);
+        }
+
+        // Check for conflicts on all dates (autoskip when possible)
         const allConflicts: ConflictInfo[] = [];
         const sessionConflictMap = new Map<string, ConflictInfo[]>();
         const validSessionDates: Date[] = [];
@@ -1141,20 +1151,40 @@ export const POST = withBranchAccess(
             }
           }
 
-          // Check vacation conflict — but allow for 特別授業 (and its descendants)
-          const isSpecial = await isSpecialClassType(classTypeId);
-          if (!isSpecial) {
-            const hasVacationConflict = await checkVacationConflict(
-              sessionDate,
-              sessionBranchId
-            );
-            if (hasVacationConflict) {
-              skippedDates.push(sessionDate);
-              continue;
-            }
+          // Autoskip 1: vacation (for non-special types) using preloaded vacations
+          if (!specialClassType && hasVacationConflictCached(sessionDate, branchVacations)) {
+            skippedDates.push(sessionDate);
+            continue;
           }
 
-          // Enhanced availability check
+          // Autoskip 2: user absences overlapping requested time
+          const dayAbsences = absencesByDate.get(formattedSessionDate) || [];
+          const hasAbsence = dayAbsences.some((a) => {
+            if (a.fullDay) return true;
+            if (!a.startTime || !a.endTime) return false;
+            return a.startTime < sessionEndTime && a.endTime > sessionStartTime;
+          });
+          if (hasAbsence) {
+            skippedDates.push(sessionDate);
+            continue;
+          }
+
+          // Autoskip 3: existing overlaps for teacher/student/booth
+          const daySessions = sessionsByDate.get(formattedSessionDate) || [];
+          const hasOverlap = daySessions.some((s) => {
+            const overlaps = s.startTime < sessionEndTime && s.endTime > sessionStartTime;
+            if (!overlaps) return false;
+            if (teacherId && s.teacherId === teacherId) return true;
+            if (studentId && s.studentId === studentId) return true;
+            if (boothId && s.boothId === boothId) return true;
+            return false;
+          });
+          if (hasOverlap) {
+            skippedDates.push(sessionDate);
+            continue;
+          }
+
+          // Enhanced availability check (skip if either participant missing)
           if (checkAvailability && teacherId && studentId) {
             const availabilityConflict =
               await checkEnhancedAvailabilityConflicts(
@@ -1169,141 +1199,7 @@ export const POST = withBranchAccess(
               dateConflicts.push(availabilityConflict);
             }
           }
-
-          // Check for existing session conflict
-          const existingSession = await prisma.classSession.findFirst({
-            where: {
-              teacherId,
-              date: sessionDate,
-              startTime: sessionStartTime,
-              endTime: sessionEndTime,
-            },
-          });
-
-          if (existingSession) {
-            skippedDates.push(sessionDate);
-            continue;
-          }
-
-          // Check for booth conflicts if booth is specified
-          if (boothId) {
-            const boothConflict = await prisma.classSession.findFirst({
-              where: {
-                boothId,
-                date: sessionDate,
-                OR: [
-                  {
-                    AND: [
-                      { startTime: { lte: sessionStartTime } },
-                      { endTime: { gt: sessionStartTime } },
-                    ],
-                  },
-                  {
-                    AND: [
-                      { startTime: { lt: sessionEndTime } },
-                      { endTime: { gte: sessionEndTime } },
-                    ],
-                  },
-                  {
-                    AND: [
-                      { startTime: { gte: sessionStartTime } },
-                      { endTime: { lte: sessionEndTime } },
-                    ],
-                  },
-                ],
-              },
-              include: {
-                teacher: {
-                  select: { name: true },
-                },
-                student: {
-                  select: { name: true },
-                },
-                booth: {
-                  select: { name: true },
-                },
-              },
-            });
-
-            if (boothConflict) {
-              const conflictStartTime = format(
-                boothConflict.startTime,
-                "HH:mm"
-              );
-              const conflictEndTime = format(boothConflict.endTime, "HH:mm");
-              const boothName = boothConflict.booth?.name || "不明なブース";
-
-              dateConflicts.push({
-                date: formattedSessionDate,
-                dayOfWeek: getDayOfWeekFromDate(sessionDate),
-                type: "BOOTH_CONFLICT",
-                details: `ブース「${boothName}」は${conflictStartTime}-${conflictEndTime}に既に使用されています`,
-                conflictingSession: {
-                  classId: boothConflict.classId,
-                  teacherName: boothConflict.teacher?.name || "不明",
-                  studentName: boothConflict.student?.name || "不明",
-                  startTime: conflictStartTime,
-                  endTime: conflictEndTime,
-                },
-              });
-            }
-          }
-
-          // Teacher overlap per date/time
-          if (teacherId) {
-            const t = await findOverlapConflict(
-              "teacher",
-              teacherId,
-              sessionDate,
-              sessionStartTime,
-              sessionEndTime
-            );
-            if (t) {
-              const conflictStartTime = format(t.conflict.startTime, "HH:mm");
-              const conflictEndTime = format(t.conflict.endTime, "HH:mm");
-              dateConflicts.push({
-                date: formattedSessionDate,
-                dayOfWeek: getDayOfWeekFromDate(sessionDate),
-                type: t.type,
-                details: `講師は${conflictStartTime}-${conflictEndTime}に別の授業があります`,
-                conflictingSession: {
-                  classId: t.conflict.classId,
-                  teacherName: t.conflict.teacher?.name || "不明",
-                  studentName: t.conflict.student?.name || "不明",
-                  startTime: conflictStartTime,
-                  endTime: conflictEndTime,
-                },
-              });
-            }
-          }
-
-          // Student overlap per date/time
-          if (studentId) {
-            const s = await findOverlapConflict(
-              "student",
-              studentId,
-              sessionDate,
-              sessionStartTime,
-              sessionEndTime
-            );
-            if (s) {
-              const conflictStartTime = format(s.conflict.startTime, "HH:mm");
-              const conflictEndTime = format(s.conflict.endTime, "HH:mm");
-              dateConflicts.push({
-                date: formattedSessionDate,
-                dayOfWeek: getDayOfWeekFromDate(sessionDate),
-                type: s.type,
-                details: `生徒は${conflictStartTime}-${conflictEndTime}に別の授業があります`,
-                conflictingSession: {
-                  classId: s.conflict.classId,
-                  teacherName: s.conflict.teacher?.name || "不明",
-                  studentName: s.conflict.student?.name || "不明",
-                  startTime: conflictStartTime,
-                  endTime: conflictEndTime,
-                },
-              });
-            }
-          }
+          // Note: teacher/student/booth overlaps handled by autoskip above
 
           // Handle conflicts
           if (dateConflicts.length > 0) {

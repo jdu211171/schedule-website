@@ -113,7 +113,8 @@ export async function getDetailedSharedAvailability(
   user2Id: string,
   date: Date,
   requestedStartTime?: Date,
-  requestedEndTime?: Date
+  requestedEndTime?: Date,
+  options?: { skipVacationCheck?: boolean }
 ): Promise<{
   user1: AvailabilityDetails;
   user2: AvailabilityDetails;
@@ -122,10 +123,11 @@ export async function getDetailedSharedAvailability(
   strategy: "EXCEPTION" | "REGULAR" | "MIXED" | "NONE";
   message?: string;
 }> {
-  // Check vacation conflicts first
-  const vacationConflict = await checkVacationConflicts(date);
-  if (vacationConflict.hasConflict) {
-    const emptyDetails: AvailabilityDetails = {
+  // Check vacation conflicts first (can be disabled if caller already handled it)
+  if (!options?.skipVacationCheck) {
+    const vacationConflict = await checkVacationConflicts(date);
+    if (vacationConflict.hasConflict) {
+      const emptyDetails: AvailabilityDetails = {
       available: false,
       hasExceptions: false,
       hasRegular: false,
@@ -135,14 +137,15 @@ export async function getDetailedSharedAvailability(
       conflictType: "UNAVAILABLE"
     };
     
-    return {
-      user1: emptyDetails,
-      user2: emptyDetails,
-      sharedSlots: [],
-      available: false,
-      strategy: "NONE",
-      message: vacationConflict.message
-    };
+      return {
+        user1: emptyDetails,
+        user2: emptyDetails,
+        sharedSlots: [],
+        available: false,
+        strategy: "NONE",
+        message: vacationConflict.message
+      };
+    }
   }
 
   // Get detailed availability for both users
