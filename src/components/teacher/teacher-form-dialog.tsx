@@ -93,6 +93,7 @@ import { useAllSubjects } from "@/hooks/useSubjectQuery";
 import { useAllSubjectTypes } from "@/hooks/useSubjectTypeQuery";
 import { EnhancedAvailabilityRegularSelector } from "../student/enhanced-availability-regular-selector";
 import { EnhancedAvailabilityIrregularSelector } from "../student/enhanced-availability-irregular-selector";
+import { parseYMDToLocalDate, toUTCDateOnly } from "@/lib/date";
 import { SearchableMultiSelect } from "@/components/admin-schedule/searchable-multi-select";
 import { useAllBranchesOrdered } from "@/hooks/useBranchQuery";
 import { EnhancedStateButton } from "../ui/enhanced-state-button";
@@ -304,7 +305,7 @@ export function TeacherFormDialog({
         // Convert date strings to Date objects
         const irregularAvailabilityData =
           teacherWithAvailability.exceptionalAvailability.map((ea) => ({
-            date: new Date(ea.date),
+            date: parseYMDToLocalDate(ea.date),
             timeSlots: ea.timeSlots,
             fullDay: ea.fullDay,
           }));
@@ -319,7 +320,7 @@ export function TeacherFormDialog({
         teacherWithAvailability.absenceAvailability.length > 0
       ) {
         const absenceData = teacherWithAvailability.absenceAvailability.map((ea) => ({
-          date: new Date(ea.date),
+          date: parseYMDToLocalDate(ea.date),
           timeSlots: ea.timeSlots,
           fullDay: ea.fullDay,
         }));
@@ -427,30 +428,30 @@ export function TeacherFormDialog({
         (item) => {
           if (item.fullDay) {
             // Full day availability
-            return [
-              {
+              return [
+                {
+                  userId: submissionData.teacherId || undefined,
+                  date: toUTCDateOnly(item.date),
+                  fullDay: true,
+                  type: "EXCEPTION" as const,
+                  startTime: null as string | null,
+                  endTime: null as string | null,
+                  reason: null as string | null,
+                  notes: null as string | null,
+                },
+              ];
+            } else {
+              // Time slot based availability
+              return item.timeSlots.map((slot) => ({
                 userId: submissionData.teacherId || undefined,
-                date: item.date, // Keep as Date object
-                fullDay: true,
+                date: toUTCDateOnly(item.date),
+                fullDay: false,
                 type: "EXCEPTION" as const,
-                startTime: null as string | null,
-                endTime: null as string | null,
+                startTime: slot.startTime as string | null,
+                endTime: slot.endTime as string | null,
                 reason: null as string | null,
                 notes: null as string | null,
-              },
-            ];
-          } else {
-            // Time slot based availability
-            return item.timeSlots.map((slot) => ({
-              userId: submissionData.teacherId || undefined,
-              date: item.date, // Keep as Date object
-              fullDay: false,
-              type: "EXCEPTION" as const,
-              startTime: slot.startTime as string | null,
-              endTime: slot.endTime as string | null,
-              reason: null as string | null,
-              notes: null as string | null,
-            }));
+              }));
           }
         }
       );
@@ -464,7 +465,7 @@ export function TeacherFormDialog({
           return [
             {
               userId: submissionData.teacherId || undefined,
-              date: item.date,
+              date: toUTCDateOnly(item.date),
               fullDay: true,
               type: "ABSENCE" as const,
               startTime: null as string | null,
@@ -476,7 +477,7 @@ export function TeacherFormDialog({
         } else {
           return item.timeSlots.map((slot) => ({
             userId: submissionData.teacherId || undefined,
-            date: item.date,
+            date: toUTCDateOnly(item.date),
             fullDay: false,
             type: "ABSENCE" as const,
             startTime: slot.startTime as string | null,
@@ -547,7 +548,7 @@ export function TeacherFormDialog({
               return [
                 {
                   userId: submissionData.teacherId || undefined,
-                  date: item.date,
+                  date: toUTCDateOnly(item.date),
                   fullDay: true,
                   type: "EXCEPTION" as const,
                   startTime: null as string | null,
@@ -559,7 +560,7 @@ export function TeacherFormDialog({
             } else {
               return item.timeSlots.map((slot) => ({
                 userId: submissionData.teacherId || undefined,
-                date: item.date,
+                date: toUTCDateOnly(item.date),
                 fullDay: false,
                 type: "EXCEPTION" as const,
                 startTime: slot.startTime as string | null,
@@ -580,7 +581,7 @@ export function TeacherFormDialog({
             return [
               {
                 userId: submissionData.teacherId || undefined,
-                date: item.date,
+                date: toUTCDateOnly(item.date),
                 fullDay: true,
                 type: "ABSENCE" as const,
                 startTime: null as string | null,
@@ -592,7 +593,7 @@ export function TeacherFormDialog({
           } else {
             return item.timeSlots.map((slot) => ({
               userId: submissionData.teacherId || undefined,
-              date: item.date,
+              date: toUTCDateOnly(item.date),
               fullDay: false,
               type: "ABSENCE" as const,
               startTime: slot.startTime as string | null,

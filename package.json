@@ -99,8 +99,8 @@
     "dotenv": "^17.2.1",
     "eslint": "^9",
     "eslint-config-next": "15.2.3",
+    "prettier": "^3.6.2",
     "prisma": "^6.8.2",
-    "prettier": "^3.3.2",
     "shadcn": "^2.4.0-canary.17",
     "tailwindcss": "^4",
     "typescript": "^5.8.3"

@@ -86,6 +86,7 @@ import {
 } from "@/components/ui/popover";
 import { EnhancedAvailabilityRegularSelector } from "./enhanced-availability-regular-selector";
 import { EnhancedAvailabilityIrregularSelector } from "./enhanced-availability-irregular-selector";
+import { parseYMDToLocalDate, toUTCDateOnly } from "@/lib/date";
 import { LineLinking } from "@/components/shared/line-linking";
 import { LineManagementDialog } from "@/components/shared/line-management-dialog";
 import { AlertCircle } from "lucide-react";
@@ -407,7 +408,7 @@ export function StudentFormDialog({
         // Convert date strings to Date objects
         const irregularAvailabilityData =
           studentWithAvailability.exceptionalAvailability.map((ea) => ({
-            date: new Date(ea.date),
+            date: parseYMDToLocalDate(ea.date),
             timeSlots: ea.timeSlots,
             fullDay: ea.fullDay,
           }));
@@ -422,7 +423,7 @@ export function StudentFormDialog({
         studentWithAvailability.absenceAvailability.length > 0
       ) {
         const absenceData = studentWithAvailability.absenceAvailability.map((ea) => ({
-          date: new Date(ea.date),
+          date: parseYMDToLocalDate(ea.date),
           timeSlots: ea.timeSlots,
           fullDay: ea.fullDay,
         }));
@@ -554,7 +555,7 @@ export function StudentFormDialog({
             return [
               {
                 userId: submissionData.studentId || undefined,
-                date: item.date,
+                date: toUTCDateOnly(item.date),
                 fullDay: true,
                 type: "EXCEPTION" as const,
                 startTime: null as string | null,
@@ -567,7 +568,7 @@ export function StudentFormDialog({
             // Time slot based availability
             return item.timeSlots.map((slot) => ({
               userId: submissionData.studentId || undefined,
-              date: item.date,
+              date: toUTCDateOnly(item.date),
               fullDay: false,
               type: "EXCEPTION" as const,
               startTime: slot.startTime as string | null,
@@ -591,7 +592,7 @@ export function StudentFormDialog({
           return [
             {
               userId: submissionData.studentId || undefined,
-              date: item.date,
+              date: toUTCDateOnly(item.date),
               fullDay: true,
               type: "ABSENCE" as const,
               startTime: null as string | null,
@@ -603,7 +604,7 @@ export function StudentFormDialog({
         } else {
           return item.timeSlots.map((slot) => ({
             userId: submissionData.studentId || undefined,
-            date: item.date,
+            date: toUTCDateOnly(item.date),
             fullDay: false,
             type: "ABSENCE" as const,
             startTime: slot.startTime as string | null,
@@ -714,7 +715,7 @@ export function StudentFormDialog({
               return [
                 {
                   userId: submissionData.studentId || undefined,
-                  date: item.date,
+                  date: toUTCDateOnly(item.date),
                   fullDay: true,
                   type: "EXCEPTION" as const,
                   startTime: null as string | null,
@@ -727,7 +728,7 @@ export function StudentFormDialog({
               // Time slot based availability
               return item.timeSlots.map((slot) => ({
                 userId: submissionData.studentId || undefined,
-                date: item.date,
+                date: toUTCDateOnly(item.date),
                 fullDay: false,
                 type: "EXCEPTION" as const,
                 startTime: slot.startTime as string | null,
@@ -751,7 +752,7 @@ export function StudentFormDialog({
             return [
               {
                 userId: submissionData.studentId || undefined,
-                date: item.date,
+                date: toUTCDateOnly(item.date),
                 fullDay: true,
                 type: "ABSENCE" as const,
                 startTime: null as string | null,
@@ -763,7 +764,7 @@ export function StudentFormDialog({
           } else {
             return item.timeSlots.map((slot) => ({
               userId: submissionData.studentId || undefined,
-              date: item.date,
+              date: toUTCDateOnly(item.date),
               fullDay: false,
               type: "ABSENCE" as const,
               startTime: slot.startTime as string | null,
