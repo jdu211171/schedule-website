@@ -48,6 +48,7 @@ import {
   useVacationUpdate,
 } from "@/hooks/useVacationMutation";
 import { useAllBranchesOrdered } from "@/hooks/useBranchQuery";
+import { parseYMDToLocalDate } from "@/lib/date";
 
 // Vacation type matching the API response
 type Vacation = {
@@ -126,10 +127,19 @@ export function VacationFormDialog({
     defaultValues: {
       name: vacation?.name || "",
       dateRange: {
-        from: vacation?.startDate
-          ? new Date(vacation.startDate)
-          : new Date(),
-        to: vacation?.endDate ? new Date(vacation.endDate) : undefined,
+        from: (() => {
+          const base = vacation?.startDate
+            ? normalizeIncomingDate(vacation.startDate)
+            : new Date()
+          base.setHours(12, 0, 0, 0)
+          return base
+        })(),
+        to: (() => {
+          if (!vacation?.endDate) return undefined
+          const d = normalizeIncomingDate(vacation.endDate)
+          d.setHours(12, 0, 0, 0)
+          return d
+        })(),
       },
       isRecurring: vacation?.isRecurring ?? false,
       notes: vacation?.notes ?? "",
@@ -160,10 +170,19 @@ export function VacationFormDialog({
       form.reset({
         name: vacation.name || "",
         dateRange: {
-          from: vacation.startDate
-            ? new Date(vacation.startDate)
-            : new Date(),
-          to: vacation.endDate ? new Date(vacation.endDate) : undefined,
+          from: (() => {
+            const base = vacation.startDate
+              ? normalizeIncomingDate(vacation.startDate)
+              : new Date()
+            base.setHours(12, 0, 0, 0)
+            return base
+          })(),
+          to: (() => {
+            if (!vacation.endDate) return undefined
+            const d = normalizeIncomingDate(vacation.endDate)
+            d.setHours(12, 0, 0, 0)
+            return d
+          })(),
         },
         isRecurring: vacation.isRecurring ?? false,
         notes: vacation.notes ?? "",
@@ -174,7 +193,7 @@ export function VacationFormDialog({
       form.reset({
         name: "",
         dateRange: {
-          from: new Date(),
+          from: (() => { const d = new Date(); d.setHours(12,0,0,0); return d })(),
           to: undefined,
         },
         isRecurring: false,
@@ -184,6 +203,16 @@ export function VacationFormDialog({
       });
     }
   }, [vacation, form, defaultBranchId]);
+
+  // Normalize incoming API date (string or Date) to a local date object (date-only semantics)
+  function normalizeIncomingDate(input: string | Date): Date {
+    if (typeof input === "string") {
+      // If ISO string, take YMD part; if already YMD, use as-is
+      const ymd = input.includes("T") ? input.slice(0, 10) : input
+      return parseYMDToLocalDate(ymd)
+    }
+    return new Date(input)
+  }
 
   async function onSubmit(values: z.infer<typeof vacationFormSchema>) {
     // Transform the date range to individual start and end dates for the API

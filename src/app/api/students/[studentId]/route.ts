@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withBranchAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { adjustOppositeAvailabilityForNew } from "@/lib/user-availability-adjust";
 import { studentUpdateSchema } from "@/schemas/student.schema";
 import { Student, StudentType, DayOfWeek } from "@prisma/client";
 
@@ -894,9 +895,18 @@ export const PATCH = withBranchAccess(
             }
 
             if (exceptionalRecords.length > 0) {
-              await tx.userAvailability.createMany({
-                data: exceptionalRecords,
-              });
+              // Adjust opposite-type (ABSENCE) records before inserting exceptions
+              for (const rec of exceptionalRecords) {
+                await adjustOppositeAvailabilityForNew(tx, {
+                  userId: rec.userId,
+                  dateUTC: rec.date!,
+                  newType: "EXCEPTION",
+                  newFullDay: rec.fullDay,
+                  newStartTime: rec.startTime,
+                  newEndTime: rec.endTime,
+                });
+              }
+              await tx.userAvailability.createMany({ data: exceptionalRecords });
             }
           }
         }
@@ -962,6 +972,17 @@ export const PATCH = withBranchAccess(
             }
 
             if (absenceRecords.length > 0) {
+              // Adjust opposite-type (EXCEPTION) records before inserting absences
+              for (const rec of absenceRecords) {
+                await adjustOppositeAvailabilityForNew(tx, {
+                  userId: rec.userId,
+                  dateUTC: rec.date!,
+                  newType: "ABSENCE",
+                  newFullDay: rec.fullDay,
+                  newStartTime: rec.startTime,
+                  newEndTime: rec.endTime,
+                });
+              }
               await tx.userAvailability.createMany({ data: absenceRecords });
             }
           }

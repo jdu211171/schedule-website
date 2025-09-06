@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withBranchAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { adjustOppositeAvailabilityForNew } from "@/lib/user-availability-adjust";
 import {
   userAvailabilityCreateSchema,
   userAvailabilityFilterSchema,
@@ -444,27 +445,33 @@ export const POST = withBranchAccess(
           ? "APPROVED"
           : "PENDING";
 
-      // Create availability record
-      const newAvailability = await prisma.userAvailability.create({
-        data: {
-          userId: targetUserId,
-          dayOfWeek,
-          date: dateUTC,
-          startTime: startTimeUTC,
-          endTime: endTimeUTC,
-          fullDay,
-          type,
-          status,
-          reason,
-          notes,
-        },
-        include: {
-          user: {
-            select: {
-              name: true,
-            },
+      // Create availability record with ladder adjustment for EXCEPTION/ABSENCE
+      const newAvailability = await prisma.$transaction(async (tx) => {
+        if ((type === "EXCEPTION" || type === "ABSENCE") && dateUTC) {
+          await adjustOppositeAvailabilityForNew(tx, {
+            userId: targetUserId,
+            dateUTC,
+            newType: type,
+            newFullDay: fullDay,
+            newStartTime: startTimeUTC,
+            newEndTime: endTimeUTC,
+          });
+        }
+        return tx.userAvailability.create({
+          data: {
+            userId: targetUserId,
+            dayOfWeek,
+            date: dateUTC,
+            startTime: startTimeUTC,
+            endTime: endTimeUTC,
+            fullDay,
+            type,
+            status,
+            reason,
+            notes,
           },
-        },
+          include: { user: { select: { name: true } } },
+        });
       });
 
       // Format response

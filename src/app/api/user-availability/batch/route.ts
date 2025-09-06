@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withBranchAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { adjustOppositeAvailabilityForNew } from "@/lib/user-availability-adjust";
 import {
   userAvailabilityBatchCreateSchema,
   userAvailabilityBatchUpdateStatusSchema,
@@ -429,21 +430,30 @@ export const POST = withBranchAccess(
         );
       }
 
-      // Create records in a transaction
-      const createdRecords = await prisma.$transaction(
-        recordsToCreate.map((record) =>
-          prisma.userAvailability.create({
+      // Create records in a transaction with ladder adjustment for EXCEPTION/ABSENCE
+      const createdRecords = await prisma.$transaction(async (tx) => {
+        const created: (UserAvailability & { user?: { name: string | null } | null })[] = [] as any;
+        for (const record of recordsToCreate) {
+          if ((record.type === "EXCEPTION" || record.type === "ABSENCE") && record.date) {
+            await adjustOppositeAvailabilityForNew(tx, {
+              userId: record.userId,
+              dateUTC: record.date as Date,
+              newType: record.type as any,
+              newFullDay: !!record.fullDay,
+              newStartTime: (record.startTime as Date | null) ?? null,
+              newEndTime: (record.endTime as Date | null) ?? null,
+            });
+          }
+          const createdRecord = await tx.userAvailability.create({
             data: record,
             include: {
-              user: {
-                select: {
-                  name: true,
-                },
-              },
+              user: { select: { name: true } },
             },
-          })
-        )
-      );
+          });
+          created.push(createdRecord);
+        }
+        return created;
+      });
 
       // Format response
       const formattedRecords = createdRecords.map(formatUserAvailability);

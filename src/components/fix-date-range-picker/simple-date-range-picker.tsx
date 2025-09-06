@@ -101,10 +101,25 @@ export const SimpleDateRangePicker: React.FC<SimpleDateRangePickerProps> = ({
   const [open, setOpen] = React.useState(false)
   const [tempRange, setTempRange] = React.useState<DateRange | undefined>(value)
 
+  // Helper: normalize a Date to local noon to avoid timezone day shifts
+  const toLocalNoon = React.useCallback((d: Date | undefined) => {
+    if (!d) return undefined
+    const nd = new Date(d)
+    nd.setHours(12, 0, 0, 0)
+    return nd
+  }, [])
+
   // Update temp range when value changes
   React.useEffect(() => {
-    setTempRange(value)
-  }, [value])
+    if (!value) {
+      setTempRange(undefined)
+      return
+    }
+    setTempRange({
+      from: toLocalNoon(value.from!),
+      to: toLocalNoon(value.to),
+    })
+  }, [value, toLocalNoon])
 
   // Format the selected date range for display
   const formatDateRange = (range: DateRange | undefined) => {
@@ -131,7 +146,11 @@ export const SimpleDateRangePicker: React.FC<SimpleDateRangePickerProps> = ({
 
   // Handle date selection - work with temp range
   const handleSelect = (range: DateRange | undefined) => {
-    setTempRange(range)
+    if (!range) {
+      setTempRange(undefined)
+      return
+    }
+    setTempRange({ from: toLocalNoon(range.from!), to: toLocalNoon(range.to) })
   }
 
   // Handle preset selection - work with temp range
@@ -139,7 +158,7 @@ export const SimpleDateRangePicker: React.FC<SimpleDateRangePickerProps> = ({
     if (!tempRange?.from) return // Require start date first
     
     const range = preset.getValue(tempRange.from)
-    setTempRange(range)
+    setTempRange({ from: toLocalNoon(range.from)!, to: toLocalNoon(range.to) })
   }
 
   // Handle popover open/close
@@ -160,7 +179,15 @@ export const SimpleDateRangePicker: React.FC<SimpleDateRangePickerProps> = ({
   // Handle apply button
   const handleApply = () => {
     setOpen(false)
-    onValueChange?.(tempRange)
+    if (!tempRange) {
+      onValueChange?.(undefined)
+      return
+    }
+    const normalized: DateRange = {
+      from: toLocalNoon(tempRange.from!)!,
+      to: toLocalNoon(tempRange.to),
+    }
+    onValueChange?.(normalized)
   }
 
   // Handle cancel button
