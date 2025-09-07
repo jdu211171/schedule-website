@@ -1045,101 +1045,101 @@ export function StudentTable() {
     }
   }, [table.getState().columnVisibility]);
 
-  // Sync table column filters with local filters state
+  // Sync table column filters with local filters state (only when values change)
+  const prevFiltersRef = React.useRef<typeof filters | null>(null);
   React.useEffect(() => {
     const columnFilters = table.getState().columnFilters;
-    
-    // If no column filters, this is a reset
-    if (columnFilters.length === 0) {
-      const defaultFilters = {
-        name: "",
-        status: [],
-        studentType: [],
-        gradeYear: [],
-        branch: [],
-        subject: [],
-        lineConnection: [],
-        schoolType: [],
-        examCategory: [],
-        examCategoryType: [],
-        birthDateRange: undefined,
-        examDateRange: undefined,
-      };
-      setFilters(defaultFilters);
-      // Clear localStorage when resetting
-      if (typeof window !== "undefined") {
-        localStorage.removeItem(FILTERS_STORAGE_KEY);
-      }
-      setPage(1);
-      return;
-    }
 
-    // Build new filters from column filters
-    const newFilters = {
-      name: "",
-      status: [] as string[],
-      studentType: [] as string[],
-      gradeYear: [] as string[],
-      branch: [] as string[],
-      subject: [] as string[],
-      lineConnection: [] as string[],
-      schoolType: [] as string[],
-      examCategory: [] as string[],
-      examCategoryType: [] as string[],
-      birthDateRange: undefined as { from?: Date; to?: Date } | undefined,
-      examDateRange: undefined as { from?: Date; to?: Date } | undefined,
+    const buildFilters = () => {
+      // If no column filters, treat as reset to defaults
+      if (columnFilters.length === 0) {
+        return {
+          name: "",
+          status: [] as string[],
+          studentType: [] as string[],
+          gradeYear: [] as string[],
+          branch: [] as string[],
+          subject: [] as string[],
+          lineConnection: [] as string[],
+          schoolType: [] as string[],
+          examCategory: [] as string[],
+          examCategoryType: [] as string[],
+          birthDateRange: undefined as { from?: Date; to?: Date } | undefined,
+          examDateRange: undefined as { from?: Date; to?: Date } | undefined,
+        };
+      }
+
+      const next = {
+        name: "",
+        status: [] as string[],
+        studentType: [] as string[],
+        gradeYear: [] as string[],
+        branch: [] as string[],
+        subject: [] as string[],
+        lineConnection: [] as string[],
+        schoolType: [] as string[],
+        examCategory: [] as string[],
+        examCategoryType: [] as string[],
+        birthDateRange: undefined as { from?: Date; to?: Date } | undefined,
+        examDateRange: undefined as { from?: Date; to?: Date } | undefined,
+      };
+
+      columnFilters.forEach((filter) => {
+        switch (filter.id) {
+          case 'name':
+            next.name = filter.value as string;
+            break;
+          case 'status':
+            next.status = filter.value as string[];
+            break;
+          case 'studentTypeName':
+            next.studentType = filter.value as string[];
+            break;
+          case 'gradeYear':
+            next.gradeYear = filter.value as string[];
+            break;
+          case 'branches':
+            next.branch = filter.value as string[];
+            break;
+          case 'subjectPreferences':
+            next.subject = filter.value as string[];
+            break;
+          case 'lineConnection':
+            next.lineConnection = filter.value as string[];
+            break;
+          case 'schoolType':
+            next.schoolType = filter.value as string[];
+            break;
+          case 'examCategory':
+            next.examCategory = filter.value as string[];
+            break;
+          case 'examCategoryType':
+            next.examCategoryType = filter.value as string[];
+            break;
+          case 'birthDate':
+            next.birthDateRange = filter.value as { from?: Date; to?: Date };
+            break;
+          case 'examDate':
+            next.examDateRange = filter.value as { from?: Date; to?: Date };
+            break;
+        }
+      });
+      return next;
     };
 
-    columnFilters.forEach((filter) => {
-      switch (filter.id) {
-        case 'name':
-          newFilters.name = filter.value as string;
-          break;
-        case 'status':
-          newFilters.status = filter.value as string[];
-          break;
-        case 'studentTypeName':
-          newFilters.studentType = filter.value as string[];
-          break;
-        case 'gradeYear':
-          newFilters.gradeYear = filter.value as string[];
-          break;
-        case 'branches':
-          newFilters.branch = filter.value as string[];
-          break;
-        case 'subjectPreferences':
-          newFilters.subject = filter.value as string[];
-          break;
-        case 'lineConnection':
-          newFilters.lineConnection = filter.value as string[];
-          break;
-        case 'schoolType':
-          newFilters.schoolType = filter.value as string[];
-          break;
-        case 'examCategory':
-          newFilters.examCategory = filter.value as string[];
-          break;
-        case 'examCategoryType':
-          newFilters.examCategoryType = filter.value as string[];
-          break;
-        case 'birthDate':
-          newFilters.birthDateRange = filter.value as { from?: Date; to?: Date };
-          break;
-        case 'examDate':
-          newFilters.examDateRange = filter.value as { from?: Date; to?: Date };
-          break;
+    const newFilters = buildFilters();
+
+    // Shallow-deep compare of arrays/strings/objects to avoid redundant updates
+    const prev = prevFiltersRef.current;
+    const same = prev && JSON.stringify(prev) === JSON.stringify(newFilters);
+    if (!same) {
+      setFilters(newFilters);
+      prevFiltersRef.current = newFilters;
+      if (columnFilters.length === 0 && typeof window !== "undefined") {
+        localStorage.removeItem(FILTERS_STORAGE_KEY);
       }
-    });
-
-    setFilters(newFilters);
+    }
   }, [table.getState().columnFilters]);
-
-  // Reset page when filters change
-  React.useEffect(() => {
-    setPage(1);
-  }, [debouncedName, filters.status, filters.studentType, filters.gradeYear, filters.branch, 
-      filters.subject, filters.lineConnection, filters.schoolType, filters.examCategory, 
-      filters.examCategoryType, filters.birthDateRange, filters.examDateRange]);
 
   // Handle pagination changes from the table
   const tablePagination = table.getState().pagination;

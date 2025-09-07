@@ -6,6 +6,7 @@ import { studentFilterSchema } from "@/schemas/student.schema";
 import { STUDENT_CSV_HEADERS } from "@/schemas/import/student-import.schema";
 import { getOrderedCsvHeaders, getExportColumns, STUDENT_COLUMN_RULES } from "@/schemas/import/student-column-rules";
 import { format } from "date-fns";
+import { formatLocalYMD } from "@/lib/date";
 
 // Helper function to format date for CSV
 function formatDateForCSV(date: Date | null): string {
@@ -40,6 +41,7 @@ export const GET = withBranchAccess(
   ["ADMIN", "STAFF"],
   async (request: NextRequest, session, selectedBranchId) => {
     const searchParams = request.nextUrl.searchParams;
+    const streamMode = searchParams.get("stream") === "1";
     const filters = studentFilterSchema.parse({
       page: searchParams.get("page") || 1,
       limit: searchParams.get("limit") || 10000, // Large limit for export
@@ -296,6 +298,10 @@ export const GET = withBranchAccess(
       }
     }
 
+    // Map subject preferences column to Japanese header
+    columnIdToHeader['subjectPreferences'] = '選択科目';
+    headerToColumnId['選択科目'] = 'subjectPreferences';
+
     // Add ID header mapping
     columnIdToHeader['id'] = 'ID';
     headerToColumnId['ID'] = 'id';
@@ -305,112 +311,148 @@ export const GET = withBranchAccess(
       .map((col) => columnIdToHeader[col] || col)
       .join(",");
 
-    // Build CSV rows based on visible columns
+    // Helper to format one row value by column id
+    const formatValue = (student: any, col: string): string => {
+      switch (col) {
+        case "id":
+          return student.studentId || "";
+        case "name":
+          return student.name || "";
+        case "kanaName":
+          return student.kanaName || "";
+        case "status": {
+          const statusLabels: Record<string, string> = {
+            ACTIVE: "在籍",
+            SICK: "休会",
+            PERMANENTLY_LEFT: "退会",
+          };
+          return statusLabels[student.status || "ACTIVE"] || student.status || "";
+        }
+        case "studentTypeName":
+          return student.studentType?.name || "";
+        case "gradeYear":
+          return student.gradeYear?.toString() || "";
+        case "birthDate":
+          return formatDateForCSV(student.birthDate);
+        case "schoolName":
+          return student.schoolName || "";
+        case "schoolType":
+          return formatEnumForCSV(student.schoolType, "schoolType");
+        case "examCategory":
+          return formatEnumForCSV(student.examCategory, "examCategory");
+        case "examCategoryType":
+          return formatEnumForCSV(student.examCategoryType, "examCategoryType");
+        case "firstChoice":
+          return student.firstChoice || "";
+        case "secondChoice":
+          return student.secondChoice || "";
+        case "examDate":
+          return formatDateForCSV(student.examDate);
+        case "username":
+          return student.user?.username || "";
+        case "email":
+          return student.user?.email || "";
+        case "parentEmail":
+          return student.parentEmail || "";
+        case "password":
+          // Never export passwords
+          return "";
+        case "branches":
+          return (
+            student.user?.branches?.map((b: any) => b.branch.name).join("; ") || ""
+          );
+        case "subjectPreferences":
+          return (
+            student.user?.subjectPreferences
+              ?.map((sp: any) => `${sp.subject.name} - ${sp.subjectType.name}`)
+              .join("; ") || ""
+          );
+        case "notes":
+          return student.notes || "";
+        default:
+          return "";
+      }
+    };
+
+    // Streaming mode for large exports
+    if (streamMode) {
+      const pageSize = Number.parseInt(process.env.EXPORT_PAGE_SIZE || "1000", 10);
+      const filename = `students_${formatLocalYMD(new Date())}.csv`;
+      const encoder = new TextEncoder();
+
+      const stream = new ReadableStream<Uint8Array>({
+        async start(controller) {
+          // Write BOM + header
+          controller.enqueue(encoder.encode("\uFEFF" + headers + "\n"));
+
+          let cursor: string | undefined = undefined;
+          while (true) {
+            const page: any[] = await prisma.student.findMany({
+              where,
+              include: {
+                studentType: true,
+                user: {
+                  include: {
+                    branches: { include: { branch: true } },
+                    subjectPreferences: {
+                      include: { subject: true, subjectType: true },
+                    },
+                  },
+                },
+              },
+              orderBy: { studentId: "asc" },
+              ...(cursor
+                ? { cursor: { studentId: cursor }, skip: 1, take: pageSize }
+                : { take: pageSize }),
+            });
+
+            if (!page.length) break;
+
+            for (const student of page) {
+              const cols = allowedColumns.map((col) => {
+                const v = formatValue(student as any, col);
+                return v.includes(",") || v.includes("\n") || v.includes('"')
+                  ? `"${v.replace(/"/g, '""')}"`
+                  : v;
+              });
+              controller.enqueue(encoder.encode(cols.join(",") + "\n"));
+            }
+
+            cursor = page[page.length - 1]?.studentId;
+          }
+
+          controller.close();
+        },
+      });
+
+      return new NextResponse(stream, {
+        headers: {
+          "Content-Type": "text/csv; charset=utf-8",
+          "Content-Disposition": `attachment; filename="${filename}"`,
+        },
+      });
+    }
+
+    // Non-streaming: build rows in memory (backward compatible)
     const rows = filteredStudents.map((student) => {
       const row = allowedColumns.map((col) => {
-        let value = "";
-        
-        switch (col) {
-          case "id":
-            value = student.studentId || "";
-            break;
-          case "name":
-            value = student.name || "";
-            break;
-          case "kanaName":
-            value = student.kanaName || "";
-            break;
-          case "status":
-            const statusLabels: Record<string, string> = {
-              ACTIVE: "在籍",
-              SICK: "休会",
-              PERMANENTLY_LEFT: "退会",
-            };
-            value = statusLabels[student.status || "ACTIVE"] || student.status || "";
-            break;
-          case "studentTypeName":
-            value = student.studentType?.name || "";
-            break;
-          case "gradeYear":
-            value = student.gradeYear?.toString() || "";
-            break;
-          case "birthDate":
-            value = formatDateForCSV(student.birthDate);
-            break;
-          case "schoolName":
-            value = student.schoolName || "";
-            break;
-          case "schoolType":
-            value = formatEnumForCSV(student.schoolType, "schoolType");
-            break;
-          case "examCategory":
-            value = formatEnumForCSV(student.examCategory, "examCategory");
-            break;
-          case "examCategoryType":
-            value = formatEnumForCSV(student.examCategoryType, "examCategoryType");
-            break;
-          case "firstChoice":
-            value = student.firstChoice || "";
-            break;
-          case "secondChoice":
-            value = student.secondChoice || "";
-            break;
-          case "examDate":
-            value = formatDateForCSV(student.examDate);
-            break;
-          case "username":
-            value = student.user?.username || "";
-            break;
-          case "email":
-            value = student.user?.email || "";
-            break;
-          case "parentEmail":
-            value = student.parentEmail || "";
-            break;
-          case "password":
-            // Don't export passwords for security
-            value = "";
-            break;
-          case "branches":
-            value = student.user?.branches
-              ?.map((b: any) => b.branch.name)
-              .join("; ") || "";
-            break;
-          case "subjectPreferences":
-            value = student.user?.subjectPreferences
-              ?.map((sp: any) => `${sp.subject.name} - ${sp.subjectType.name}`)
-              .join("; ") || "";
-            break;
-          case "notes":
-            value = student.notes || "";
-            break;
-          default:
-            value = "";
-        }
-
-        // Escape CSV values
+        const value = formatValue(student as any, col);
         if (value.includes(",") || value.includes("\n") || value.includes('"')) {
-          // Escape quotes by doubling them
           return `"${value.replace(/"/g, '""')}"`;
         }
         return value;
       });
-
       return row.join(",");
     });
 
-    // Combine header and rows
     const csv = [headers, ...rows].join("\n");
-
-    // Add BOM for Excel to properly display UTF-8
     const bom = "\uFEFF";
     const csvContent = bom + csv;
 
-    // Return CSV response
     return new NextResponse(csvContent, {
       headers: {
         "Content-Type": "text/csv; charset=utf-8",
-        "Content-Disposition": `attachment; filename="students_${new Date().toISOString().split("T")[0]}.csv"`,
+        "Content-Disposition": `attachment; filename="students_${formatLocalYMD(new Date())}.csv"`,
       },
     });
   }

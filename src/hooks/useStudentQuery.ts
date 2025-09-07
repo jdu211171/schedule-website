@@ -1,6 +1,6 @@
 // src/hooks/useStudentQuery.ts
 import { fetcher } from "@/lib/fetcher";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 
 export type Student = {
   studentId: string;
@@ -199,6 +199,9 @@ export function useStudents(params: UseStudentsParams = {}) {
     queryKey: ["students", page, limit, name, studentTypeId, studentTypeIds, gradeYear, gradeYears, status, statuses, branchIds, subjectIds, lineConnection, schoolType, schoolTypes, examCategory, examCategories, examCategoryType, examCategoryTypes, birthDateFrom, birthDateTo, examDateFrom, examDateTo],
     queryFn: async () =>
       await fetcher<StudentsResponse>(`/api/students?${searchParams.toString()}`),
+    placeholderData: keepPreviousData,
+    staleTime: 15_000,
+    refetchOnWindowFocus: false,
   });
 }
 

@@ -128,6 +128,12 @@ export const studentImportSchema = z.object({
     .transform(val => val === "" ? null : val)
     .pipe(z.coerce.date().nullable().optional())
     .optional(),
+  // Contact phones aggregated column (e.g., "自宅:03-...; 父:090-...; 母:080-...")
+  contactPhones: z
+    .string()
+    .optional()
+    .default("")
+    .transform((v) => v ?? ""),
 });
 
 export type StudentImportData = z.infer<typeof studentImportSchema>;
@@ -263,6 +269,12 @@ export const studentUpdateImportSchema = z.object({
     .transform(val => val === "" ? null : val)
     .pipe(z.coerce.date().nullable().optional())
     .optional(),
+  // Contact phones aggregated column
+  contactPhones: z
+    .string()
+    .optional()
+    .default("")
+    .transform((v) => v ?? ""),
 });
 
 export type StudentUpdateImportData = z.infer<typeof studentUpdateImportSchema>;

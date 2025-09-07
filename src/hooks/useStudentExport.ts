@@ -1,5 +1,6 @@
 // src/hooks/useStudentExport.ts
 import { useState } from "react";
+import { formatLocalYMD } from "@/lib/date";
 import { fetcherWithAuth } from "@/lib/fetcher";
 import { toast } from "sonner";
 
@@ -90,7 +91,7 @@ export function useStudentExport() {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `students_${new Date().toISOString().split("T")[0]}.csv`;
+      link.download = `students_${formatLocalYMD(new Date())}.csv`;
       document.body.appendChild(link);
       link.click();
 

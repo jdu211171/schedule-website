@@ -27,6 +27,10 @@ export interface ImportResult {
   updated?: number;
   deleted?: number;
   skipped?: number;
+  // Optional error CSV attachment fields when `return=errors_csv` is requested
+  errorCsv?: string; // data URL (text/csv) with BOM
+  errorCsvFilename?: string; // suggested filename
+  errorCount?: number; // convenience counter (same as errors.length)
 }
 
 // Helper function to format validation errors

@@ -92,7 +92,11 @@ export function CSVImportDialog({
       formData.append("file", data.file);
       // Import mode no longer required; backend performs upsert
 
-      const response = await fetch(importUrl, {
+      // Request error CSV attachment in the JSON result when errors occur
+      const reqUrl = importUrl.includes("?")
+        ? `${importUrl}&return=errors_csv`
+        : `${importUrl}?return=errors_csv`;
+      const response = await fetch(reqUrl, {
         method: "POST",
         body: formData,
         headers: {
@@ -327,6 +331,17 @@ export function CSVImportDialog({
                 </TabsContent>
                 
                 <TabsContent value="errors" className="mt-4">
+                  <div className="mb-2 flex items-center justify-between">
+                    {importResult && (importResult as any).errorCsv && (
+                      <a
+                        href={(importResult as any).errorCsv as string}
+                        download={(importResult as any).errorCsvFilename || "student_import_errors.csv"}
+                        className="text-primary text-sm hover:underline"
+                      >
+                        エラー行CSVをダウンロード
+                      </a>
+                    )}
+                  </div>
                   <ScrollArea className="h-[300px]">
                     <div className="space-y-2 pr-4">
                       {importResult.errors.map((error, index) => (

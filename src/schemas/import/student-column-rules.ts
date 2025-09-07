@@ -169,6 +169,14 @@ export const STUDENT_COLUMN_RULES: Record<string, ColumnRule> = {
     updateRule: 'ignore',
     exportOrder: 23,
   },
+  contactPhones: {
+    csvHeader: '連絡先電話',
+    dbField: 'contactPhones',
+    createRule: 'optional',
+    updateRule: 'optional',
+    // Placed after 備考 in export order to avoid reordering existing columns
+    exportOrder: 25,
+  },
   notes: {
     csvHeader: '備考',
     dbField: 'notes',
