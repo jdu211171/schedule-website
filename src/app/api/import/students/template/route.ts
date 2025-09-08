@@ -22,8 +22,6 @@ export async function GET() {
       'username',
       'email',
       'parentEmail',
-      // Include aggregated contact phones column
-      'contactPhones',
       'branches',
       'notes',
     ];
@@ -50,7 +48,6 @@ export async function GET() {
         ユーザー名: "student1",
         メールアドレス: "student1@example.com",
         保護者メール: "parent1@example.com",
-        連絡先電話: "自宅:03-1234-5678; 父:090-1111-2222; 母:080-3333-4444",
         校舎: "メイン校; サブ校",
         備考: "成績優秀",
       },
@@ -72,7 +69,6 @@ export async function GET() {
         ユーザー名: "student2",
         メールアドレス: "student2@example.com",
         保護者メール: "",
-        連絡先電話: "父:090-1111-2222",
         校舎: "メイン校",
         備考: "",
       },

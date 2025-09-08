@@ -1,6 +1,22 @@
 import { z } from "zod";
 
 export const studentImportSchema = z.object({
+  // Status (import from export): 在籍/休会/退会 or ACTIVE/SICK/PERMANENTLY_LEFT
+  status: z
+    .string()
+    .optional()
+    .transform((val) => {
+      if (!val) return undefined;
+      const s = String(val).trim();
+      if (s === "") return null;
+      const upper = s.toUpperCase();
+      if (upper === "ACTIVE" || s === "在籍") return "ACTIVE" as const;
+      if (upper === "SICK" || s === "休会") return "SICK" as const;
+      if (upper === "PERMANENTLY_LEFT" || s === "退会") return "PERMANENTLY_LEFT" as const;
+      return null; // unknown → null (warning will be added by importer)
+    })
+    .nullable()
+    .optional(),
   username: z
     .string()
     .min(3, "ユーザー名は3文字以上で入力してください")
@@ -57,6 +73,12 @@ export const studentImportSchema = z.object({
     .pipe(z.array(z.string().min(1)))
     .optional()
     .default(""),
+  // Subject preferences (e.g., "数学 - 文系; 英語 - 受験")
+  subjects: z
+    .string()
+    .optional()
+    .default("")
+    .transform((v) => v ?? ""),
   notes: z
     .string()
     .transform(val => val === "" ? null : val)
@@ -134,12 +156,34 @@ export const studentImportSchema = z.object({
     .optional()
     .default("")
     .transform((v) => v ?? ""),
+  // Contact emails aggregated column (e.g., "taro@example.com:本人; mother@example.com:母")
+  contactEmails: z
+    .string()
+    .optional()
+    .default("")
+    .transform((v) => v ?? ""),
 });
 
 export type StudentImportData = z.infer<typeof studentImportSchema>;
 
 // Schema for update operations - all fields except username are optional
 export const studentUpdateImportSchema = z.object({
+  // Status (import from export): 在籍/休会/退会 or ACTIVE/SICK/PERMANENTLY_LEFT
+  status: z
+    .string()
+    .optional()
+    .transform((val) => {
+      if (!val) return undefined;
+      const s = String(val).trim();
+      if (s === "") return null;
+      const upper = s.toUpperCase();
+      if (upper === "ACTIVE" || s === "在籍") return "ACTIVE" as const;
+      if (upper === "SICK" || s === "休会") return "SICK" as const;
+      if (upper === "PERMANENTLY_LEFT" || s === "退会") return "PERMANENTLY_LEFT" as const;
+      return null; // unknown → null (warning will be added by importer)
+    })
+    .nullable()
+    .optional(),
   username: z
     .string()
     .min(3, "ユーザー名は3文字以上で入力してください")
@@ -198,6 +242,12 @@ export const studentUpdateImportSchema = z.object({
     .pipe(z.array(z.string().min(1)))
     .optional()
     .default(""),
+  // Subject preferences (e.g., "数学 - 文系; 英語 - 受験")
+  subjects: z
+    .string()
+    .optional()
+    .default("")
+    .transform((v) => v ?? ""),
   notes: z
     .string()
     .transform(val => val === "" ? null : val)
@@ -271,6 +321,12 @@ export const studentUpdateImportSchema = z.object({
     .optional(),
   // Contact phones aggregated column
   contactPhones: z
+    .string()
+    .optional()
+    .default("")
+    .transform((v) => v ?? ""),
+  // Contact emails aggregated column
+  contactEmails: z
     .string()
     .optional()
     .default("")

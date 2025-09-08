@@ -25,8 +25,8 @@ export const STUDENT_COLUMN_RULES: Record<string, ColumnRule> = {
   status: {
     csvHeader: 'ステータス',
     dbField: 'status',
-    createRule: 'ignore',
-    updateRule: 'ignore',
+    createRule: 'optional',
+    updateRule: 'optional',
     exportOrder: 3,
   },
   studentTypeName: {
@@ -120,6 +120,13 @@ export const STUDENT_COLUMN_RULES: Record<string, ColumnRule> = {
     updateRule: 'optional',
     exportOrder: 16,
   },
+  contactEmails: {
+    csvHeader: '連絡先メール',
+    dbField: 'contactEmails',
+    createRule: 'optional',
+    updateRule: 'optional',
+    exportOrder: 16.5 as any, // keep near parentEmail; order handled by sort
+  },
   password: {
     csvHeader: 'パスワード',
     dbField: 'password',
@@ -165,8 +172,8 @@ export const STUDENT_COLUMN_RULES: Record<string, ColumnRule> = {
   subjects: {
     csvHeader: '選択科目',
     dbField: 'subjects',
-    createRule: 'ignore',
-    updateRule: 'ignore',
+    createRule: 'optional',
+    updateRule: 'optional',
     exportOrder: 23,
   },
   contactPhones: {

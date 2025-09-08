@@ -301,6 +301,9 @@ export const GET = withBranchAccess(
     // Map subject preferences column to Japanese header
     columnIdToHeader['subjectPreferences'] = '選択科目';
     headerToColumnId['選択科目'] = 'subjectPreferences';
+    // Map contact emails aggregated column
+    columnIdToHeader['contactEmails'] = '連絡先メール';
+    headerToColumnId['連絡先メール'] = 'contactEmails';
 
     // Add ID header mapping
     columnIdToHeader['id'] = 'ID';
@@ -365,6 +368,13 @@ export const GET = withBranchAccess(
           return (
             student.user?.subjectPreferences
               ?.map((sp: any) => `${sp.subject.name} - ${sp.subjectType.name}`)
+              .join("; ") || ""
+          );
+        case "contactEmails":
+          return (
+            student.contactEmails
+              ?.sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0))
+              .map((e: any) => (e.notes ? `${e.email}:${e.notes}` : e.email))
               .join("; ") || ""
           );
         case "notes":

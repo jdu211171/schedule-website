@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+// Ensure Node.js runtime on Vercel (Prisma, Buffer, csv-parse require Node)
+export const runtime = "nodejs";
 import { withBranchAccess } from "@/lib/auth";
 import { CSVParser } from "@/lib/csv-parser";
 import { prisma } from "@/lib/prisma";
@@ -32,6 +34,36 @@ function parseContactPhones(raw: string | undefined): ParsedPhone[] {
     const number = rest.join(":").trim();
     if (!number) continue;
     out.push({ type: mapType(label || ""), number });
+  }
+  return out;
+}
+// Parse subject preferences from "科目 - 種別; ..." into pairs of names
+type ParsedSubjectPair = { subjectName: string; subjectTypeName: string };
+function parseSubjectsRaw(raw: string | undefined): ParsedSubjectPair[] {
+  const s = (raw || "").trim();
+  if (!s) return [];
+  return s
+    .split(/\s*;\s*/)
+    .filter(Boolean)
+    .map((entry) => {
+      const [left, right] = entry.split(/\s*-\s*/);
+      return { subjectName: (left || "").trim(), subjectTypeName: (right || "").trim() };
+    })
+    .filter((p) => p.subjectName.length > 0 && p.subjectTypeName.length > 0);
+}
+// Parse contact emails: "email[:notes]; email2[:notes2]"
+type ParsedEmail = { email: string; notes?: string | null };
+function parseContactEmails(raw: string | undefined): ParsedEmail[] {
+  const s = (raw || "").trim();
+  if (!s) return [];
+  const items = s.split(/\s*;\s*/).filter(Boolean);
+  const out: ParsedEmail[] = [];
+  for (const it of items) {
+    const [email, ...noteParts] = it.split(":");
+    const e = (email || "").trim();
+    if (!e) continue;
+    const notes = noteParts.join(":").trim();
+    out.push({ email: e, notes: notes ? notes : null });
   }
   return out;
 }
@@ -101,6 +133,22 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
       skipped: 0,
     };
 
+    // Validate/normalize headers against known export headers
+    const knownHeaders = new Set<string>(["ID", ...Object.values(STUDENT_COLUMN_RULES).map(r => r.csvHeader)]);
+    const unknownHeaders = actualHeaders.filter(h => !knownHeaders.has(h));
+    if (unknownHeaders.length > 0) {
+      // Non-fatal: continue but record a warning
+      result.warnings.push({ message: `未対応の列が含まれています: ${unknownHeaders.join(", ")}` });
+      // eslint-disable-next-line no-console
+      console.warn("Unknown CSV headers:", unknownHeaders);
+    }
+    if (!actualHeaders.includes("ID") && !actualHeaders.includes("ユーザー名")) {
+      return NextResponse.json(
+        { error: "CSVにIDまたはユーザー名の列が必要です" },
+        { status: 400 },
+      );
+    }
+
     // Pre-fetch all student types and subjects for validation
     const allStudentTypes = await prisma.studentType.findMany({
       select: { studentTypeId: true, name: true, maxYears: true },
@@ -111,6 +159,10 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
       select: { subjectId: true, name: true },
     });
     const subjectMap = new Map(allSubjects.map((s) => [s.name, s.subjectId]));
+    const allSubjectTypes = await prisma.subjectType.findMany({
+      select: { subjectTypeId: true, name: true },
+    });
+    const subjectTypeMap = new Map(allSubjectTypes.map((t) => [t.name, t.subjectTypeId]));
 
     const allBranches = await prisma.branch.findMany({
       select: { branchId: true, name: true },
@@ -156,6 +208,38 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
         const validated = isUpdateRow
           ? studentUpdateImportSchema.parse(filteredRow)
           : studentImportSchema.parse(filteredRow);
+
+        // If status present but unmapped, add a row-level warning (non-fatal)
+        if (fieldsInRow.has("status")) {
+          const original = filteredRow["status"];
+          const parsed = (validated as any).status;
+          if (original && original.trim() !== "" && parsed === null) {
+            result.warnings.push({ row: rowNumber, message: `不明なステータス値を無視しました: ${original}` });
+          }
+        }
+
+        // Parse subjects if provided; validate subject and subjectType names
+        let subjectPrefTuples: Array<{ subjectId: string; subjectTypeId: string }> | undefined;
+        if (fieldsInRow.has("subjects")) {
+          const raw = filteredRow["subjects"]; // e.g., "数学 - 文系; 英語 - 受験"
+          const pairs = parseSubjectsRaw(raw);
+          const invalids: string[] = [];
+          const tuples: Array<{ subjectId: string; subjectTypeId: string }> = [];
+          for (const p of pairs) {
+            const sid = subjectMap.get(p.subjectName);
+            const stid = subjectTypeMap.get(p.subjectTypeName);
+            if (!sid || !stid) {
+              invalids.push(`${p.subjectName} - ${p.subjectTypeName}`);
+            } else {
+              tuples.push({ subjectId: sid, subjectTypeId: stid });
+            }
+          }
+          if (invalids.length > 0) {
+            result.errors.push({ row: rowNumber, errors: [ `選択科目が不正です: ${invalids.join(", ")}` ] });
+            continue;
+          }
+          subjectPrefTuples = tuples; // empty array means clear
+        }
 
         // If no explicit ID, try to find an existing user by username/email for tolerant upsert
         // This aligns behavior with metadata_ja.md v2 and the teachers importer
@@ -231,6 +315,7 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
             fieldsInRow,
             rowNumber,
             studentId: importStudentId,
+            subjectPrefTuples,
           } as any);
         } else if (existingUser) {
           // Fallback: update by username/email when ID is missing
@@ -242,6 +327,7 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
             fieldsInRow,
             rowNumber,
             existingUserId: existingUser.id,
+            subjectPrefTuples,
           } as any);
         } else {
           // Create new user + student
@@ -251,6 +337,7 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
             branchIds,
             fieldsInRow,
             rowNumber,
+            subjectPrefTuples,
           } as any);
         }
       } catch (error) {
@@ -353,6 +440,7 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
               if (fieldsInRow.has("parentEmail")) studentUpdates.parentEmail = data.parentEmail || null;
               if (fieldsInRow.has("birthDate")) studentUpdates.birthDate = data.birthDate || null;
               if (fieldsInRow.has("lineId")) studentUpdates.lineId = data.lineId || null;
+              if (fieldsInRow.has("status") && (data as any).status !== null) studentUpdates.status = (data as any).status;
 
               try {
                 // Pre-check existence to provide accurate error messages
@@ -401,6 +489,17 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
                   });
                 }
 
+                if (fieldsInRow.has("contactEmails")) {
+                  const emails = parseContactEmails((data as any).contactEmails as string);
+                  await tx.contactEmail.deleteMany({ where: { studentId: (data as any).studentId } });
+                  if (emails.length > 0) {
+                    for (let i = 0; i < emails.length; i++) {
+                      const e = emails[i];
+                      await tx.contactEmail.create({ data: { studentId: (data as any).studentId, email: e.email, notes: e.notes ?? null, order: i } });
+                    }
+                  }
+                }
+
                 if (fieldsInRow.has("branches") && data.branchIds) {
                   await tx.userBranch.deleteMany({ where: { userId: updated.userId } });
                   if (data.branchIds.length > 0) {
@@ -409,6 +508,17 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
                     }
                   } else {
                     await tx.userBranch.create({ data: { userId: updated.userId, branchId } });
+                  }
+                }
+
+                // Replace subject preferences when provided
+                if (fieldsInRow.has("subjects")) {
+                  const tuples = (data as any).subjectPrefTuples as Array<{ subjectId: string; subjectTypeId: string }> | undefined;
+                  await tx.userSubjectPreference.deleteMany({ where: { userId: updated.userId } });
+                  if (tuples && tuples.length > 0) {
+                    for (const t of tuples) {
+                      await tx.userSubjectPreference.create({ data: { userId: updated.userId, subjectId: t.subjectId, subjectTypeId: t.subjectTypeId } });
+                    }
                   }
                 }
                 result.updated!++;
@@ -478,6 +588,7 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
                   if (fieldsInRow.has("parentEmail")) studentUpdates.parentEmail = data.parentEmail || null;
                   if (fieldsInRow.has("birthDate")) studentUpdates.birthDate = data.birthDate || null;
                   if (fieldsInRow.has("lineId")) studentUpdates.lineId = data.lineId || null;
+                  if (fieldsInRow.has("status") && (data as any).status !== null) studentUpdates.status = (data as any).status;
 
                   await tx.student.update({ where: { studentId: existingStudent.studentId }, data: studentUpdates });
                   if (fieldsInRow.has("contactPhones")) {
@@ -505,6 +616,17 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
                       where: { studentId: existingStudent.studentId },
                       data: { homePhone: home, parentPhone: parent, studentPhone: studentSelf },
                     });
+                  }
+
+                  if (fieldsInRow.has("contactEmails")) {
+                    const emails = parseContactEmails((data as any).contactEmails as string);
+                    await tx.contactEmail.deleteMany({ where: { studentId: existingStudent.studentId } });
+                    if (emails.length > 0) {
+                      for (let i = 0; i < emails.length; i++) {
+                        const e = emails[i];
+                        await tx.contactEmail.create({ data: { studentId: existingStudent.studentId, email: e.email, notes: e.notes ?? null, order: i } });
+                      }
+                    }
                   }
                   result.updated!++;
                 } else {
@@ -561,20 +683,45 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
                       });
                     }
                   }
+                  // Set contact emails if provided
+                  if (fieldsInRow.has("contactEmails")) {
+                    const emails = parseContactEmails((data as any).contactEmails as string);
+                    const created = await tx.student.findFirst({ where: { userId }, select: { studentId: true } });
+                    if (created?.studentId) {
+                      await tx.contactEmail.deleteMany({ where: { studentId: created.studentId } });
+                      if (emails.length > 0) {
+                        for (let i = 0; i < emails.length; i++) {
+                          const e = emails[i];
+                          await tx.contactEmail.create({ data: { studentId: created.studentId, email: e.email, notes: e.notes ?? null, order: i } });
+                        }
+                      }
+                    }
+                  }
                   result.created!++;
                 }
 
                 // Update branches if provided
-                if (fieldsInRow.has("branches") && data.branchIds) {
-                  await tx.userBranch.deleteMany({ where: { userId } });
-                  if (data.branchIds.length > 0) {
-                    for (const bId of data.branchIds) {
-                      await tx.userBranch.create({ data: { userId, branchId: bId } });
+                  if (fieldsInRow.has("branches") && data.branchIds) {
+                    await tx.userBranch.deleteMany({ where: { userId } });
+                    if (data.branchIds.length > 0) {
+                      for (const bId of data.branchIds) {
+                        await tx.userBranch.create({ data: { userId, branchId: bId } });
+                      }
+                    } else {
+                      await tx.userBranch.create({ data: { userId, branchId } });
                     }
-                  } else {
-                    await tx.userBranch.create({ data: { userId, branchId } });
                   }
-                }
+
+                  // Replace subject preferences when provided
+                  if (fieldsInRow.has("subjects")) {
+                    const tuples = (data as any).subjectPrefTuples as Array<{ subjectId: string; subjectTypeId: string }> | undefined;
+                    await tx.userSubjectPreference.deleteMany({ where: { userId } });
+                    if (tuples && tuples.length > 0) {
+                      for (const t of tuples) {
+                        await tx.userSubjectPreference.create({ data: { userId, subjectId: t.subjectId, subjectTypeId: t.subjectTypeId } });
+                      }
+                    }
+                  }
               } catch (e: any) {
                 if (e instanceof Prisma.PrismaClientKnownRequestError) {
                   if (e.code === "P2002") {
@@ -639,7 +786,7 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
                 gradeYear: data.gradeYear || null,
                 lineId: data.lineId || null,
                 notes: data.notes || null,
-                status: "ACTIVE",
+                status: (data as any).status ?? "ACTIVE",
                 // School information
                 schoolName: data.schoolName || null,
                 schoolType: data.schoolType || null,
@@ -660,6 +807,7 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
               }
 
               await tx.student.create({ data: studentCreateData });
+              const createdStudent = await tx.student.findFirst({ where: { userId: user.id }, select: { studentId: true } });
 
               // Assign student to branches
               if (data.branchIds && data.branchIds.length > 0) {
@@ -680,6 +828,57 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
                     branchId: branchId,
                   },
                 });
+              }
+
+              // Set subject preferences if provided
+              if ((data as any).fieldsInRow?.has("subjects")) {
+                const tuples = (data as any).subjectPrefTuples as Array<{ subjectId: string; subjectTypeId: string }> | undefined;
+                await tx.userSubjectPreference.deleteMany({ where: { userId: user.id } });
+                if (tuples && tuples.length > 0) {
+                  for (const t of tuples) {
+                    await tx.userSubjectPreference.create({ data: { userId: user.id, subjectId: t.subjectId, subjectTypeId: t.subjectTypeId } });
+                  }
+                }
+              }
+
+              // Set contact phones if provided
+              if ((data as any).fieldsInRow?.has("contactPhones") && createdStudent?.studentId) {
+                const phones = parseContactPhones((data as any).contactPhones as string);
+                await tx.contactPhone.deleteMany({ where: { studentId: createdStudent.studentId } });
+                let home: string | null = null;
+                let parent: string | null = null;
+                let studentSelf: string | null = null;
+                for (let i = 0; i < phones.length; i++) {
+                  const p = phones[i];
+                  await tx.contactPhone.create({
+                    data: {
+                      studentId: createdStudent.studentId,
+                      phoneType: p.type as any,
+                      phoneNumber: p.number,
+                      notes: p.notes ?? null,
+                      order: i,
+                    },
+                  });
+                  if (p.type === "HOME" && !home) home = p.number;
+                  if ((p.type === "DAD" || p.type === "MOM") && !parent) parent = p.number;
+                  if (p.type === "OTHER" && !studentSelf) studentSelf = p.number;
+                }
+                await tx.student.update({
+                  where: { studentId: createdStudent.studentId },
+                  data: { homePhone: home, parentPhone: parent, studentPhone: studentSelf },
+                });
+              }
+
+              // Set contact emails if provided
+              if ((data as any).fieldsInRow?.has("contactEmails") && createdStudent?.studentId) {
+                const emails = parseContactEmails((data as any).contactEmails as string);
+                await tx.contactEmail.deleteMany({ where: { studentId: createdStudent.studentId } });
+                if (emails.length > 0) {
+                  for (let i = 0; i < emails.length; i++) {
+                    const e = emails[i];
+                    await tx.contactEmail.create({ data: { studentId: createdStudent.studentId, email: e.email, notes: e.notes ?? null, order: i } });
+                  }
+                }
               }
 
               result.created!++;
