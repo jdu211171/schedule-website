@@ -282,7 +282,7 @@ model Teacher {
   email                    String?                    @db.VarChar(100)
   lineId                   String?                    @unique @map("line_id") @db.VarChar(50)
   notes                    String?                    @db.VarChar(255)
-  status                   UserStatus                 @default(ACTIVE)
+  status                   String                     @default("ACTIVE") @db.VarChar(50)
   createdAt                DateTime                   @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt                DateTime                   @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
   linkingCode              String?                    @unique @map("linking_code") @db.VarChar(10)
@@ -304,7 +304,6 @@ model Teacher {
 model TeacherContactPhone {
   id          String    @id @default(cuid())
   teacherId   String    @map("teacher_id")
-  phoneType   PhoneType @map("phone_type")
   phoneNumber String    @map("phone_number") @db.VarChar(50)
   notes       String?   @db.VarChar(255)
   order       Int       @default(0)

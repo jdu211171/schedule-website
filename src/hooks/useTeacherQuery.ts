@@ -20,7 +20,6 @@ export type Teacher = {
   password: string | null;
   contactPhones?: {
     id: string;
-    phoneType: string;
     phoneNumber: string;
     notes: string | null;
     order: number;

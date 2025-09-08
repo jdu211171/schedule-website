@@ -211,6 +211,8 @@ export function TeacherFormDialog({
       teacherId: undefined,
       // Contact emails (non-login informational emails)
       contactEmails: [],
+      // Multiple contact phones (no type)
+      contactPhones: [],
     },
   });
 
@@ -250,6 +252,12 @@ export function TeacherFormDialog({
           email: e.email,
           notes: e.notes || "",
           order: e.order ?? index,
+        })) || [],
+        contactPhones: teacher.contactPhones?.map((p, index) => ({
+          id: p.id,
+          phoneNumber: p.phoneNumber,
+          notes: p.notes || "",
+          order: p.order ?? index,
         })) || [],
       });
 
@@ -345,6 +353,7 @@ export function TeacherFormDialog({
         phoneNumber: "",
         phoneNotes: "",
         contactEmails: [],
+        contactPhones: [],
       });
       setTeacherSubjects([]);
       setRegularAvailability([]);
@@ -1090,6 +1099,98 @@ export function TeacherFormDialog({
                               )}
                             />
                           </div>
+
+                          {/* Dynamic Contact Phones (no type) */}
+                          <FormField
+                            control={form.control}
+                            name="contactPhones"
+                            render={({ field }) => (
+                              <FormItem>
+                                <div className="space-y-4">
+                                  {(field.value || []).map((phone, index) => (
+                                    <div key={index} className="flex gap-4 items-start">
+                                      <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                        <FormField
+                                          control={form.control}
+                                          name={`contactPhones.${index}.phoneNumber`}
+                                          render={({ field }) => (
+                                            <FormItem>
+                                              {index === 0 && (
+                                                <FormLabel className="text-sm font-medium">
+                                                  連絡先電話番号
+                                                </FormLabel>
+                                              )}
+                                              <FormControl>
+                                                <Input
+                                                  type="tel"
+                                                  placeholder="090-1234-5678"
+                                                  className="h-11"
+                                                  {...field}
+                                                />
+                                              </FormControl>
+                                              <FormMessage />
+                                            </FormItem>
+                                          )}
+                                        />
+                                        <FormField
+                                          control={form.control}
+                                          name={`contactPhones.${index}.notes`}
+                                          render={({ field }) => (
+                                            <FormItem>
+                                              {index === 0 && (
+                                                <FormLabel className="text-sm font-medium">
+                                                  備考（連絡可能時間など）
+                                                </FormLabel>
+                                              )}
+                                              <FormControl>
+                                                <Input
+                                                  placeholder="例: 平日18時以降、職場"
+                                                  className="h-11"
+                                                  {...field}
+                                                  value={field.value || ""}
+                                                />
+                                              </FormControl>
+                                              <FormMessage />
+                                            </FormItem>
+                                          )}
+                                        />
+                                      </div>
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className={index === 0 ? "mt-9" : ""}
+                                        onClick={() => {
+                                          const newPhones = (field.value || []).filter((_, i) => i !== index);
+                                          field.onChange(newPhones);
+                                        }}
+                                      >
+                                        <X className="h-4 w-4" />
+                                      </Button>
+                                    </div>
+                                  ))}
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      field.onChange([
+                                        ...(field.value || []),
+                                        {
+                                          phoneNumber: "",
+                                          notes: "",
+                                        },
+                                      ]);
+                                    }}
+                                  >
+                                    <Plus className="h-4 w-4 mr-2" />
+                                    連絡先電話を追加
+                                  </Button>
+                                </div>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
 
                           {/* Dynamic Contact Emails */}
                           <FormField

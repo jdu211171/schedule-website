@@ -13,7 +13,6 @@ import { Teacher, DayOfWeek } from "@prisma/client";
 type TeacherWithIncludes = Teacher & {
   contactPhones?: {
     id: string;
-    phoneType: string;
     phoneNumber: string;
     notes: string | null;
     order: number;
@@ -80,7 +79,6 @@ type FormattedTeacher = {
   password: string | null;
   contactPhones?: {
     id: string;
-    phoneType: string;
     phoneNumber: string;
     notes: string | null;
     order: number;
@@ -417,7 +415,6 @@ export const GET = withBranchAccess(
         contactPhones: {
           select: {
             id: true,
-            phoneType: true,
             phoneNumber: true,
             notes: true,
             order: true,
@@ -667,7 +664,6 @@ export const POST = withBranchAccess(
           await tx.teacherContactPhone.createMany({
             data: contactPhones.map((phone, index) => ({
               teacherId: teacher.teacherId,
-              phoneType: phone.phoneType,
               phoneNumber: phone.phoneNumber,
               notes: phone.notes || null,
               order: phone.order ?? index,
@@ -899,7 +895,6 @@ export const POST = withBranchAccess(
             contactPhones: {
               select: {
                 id: true,
-                phoneType: true,
                 phoneNumber: true,
                 notes: true,
                 order: true,

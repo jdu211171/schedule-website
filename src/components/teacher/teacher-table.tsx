@@ -479,16 +479,15 @@ export function TeacherTable() {
         },
       },
       {
-        id: "contactPhones",
-        accessorKey: "contactPhones",
-        header: "連絡先電話",
+        id: "phoneNumber",
+        accessorKey: "phoneNumber",
+        header: "携帯番号",
         meta: {
-          label: "連絡先電話",
+          label: "携帯番号",
         },
         cell: ({ row }) => {
           const phoneNumber = row.original.phoneNumber;
           const phoneNotes = row.original.phoneNotes;
-          // For now, use legacy phoneNumber field for editing
           return (
             <div className="space-y-1">
               <GenericInlineEditableCell
@@ -498,9 +497,7 @@ export function TeacherTable() {
                 readOnly={true}
               />
               {phoneNotes && (
-                <div className="text-xs text-muted-foreground">
-                  {phoneNotes}
-                </div>
+                <div className="text-xs text-muted-foreground">{phoneNotes}</div>
               )}
             </div>
           );
@@ -552,6 +549,30 @@ export function TeacherTable() {
             legacyNotificationsEnabled={row.original.lineNotificationsEnabled}
           />
         ),
+      },
+      {
+        id: "contactPhones",
+        accessorKey: "contactPhones",
+        header: "連絡先電話",
+        cell: ({ row }) => {
+          const phones = row.original.contactPhones;
+          if (!phones || phones.length === 0) return "-";
+          return (
+            <div className="space-y-1">
+              {phones.map((phone: any, index: number) => (
+                <div key={index} className="text-sm">
+                  {phone.phoneNumber}
+                  {phone.notes && (
+                    <span className="text-muted-foreground ml-1">({phone.notes})</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          );
+        },
+        meta: {
+          label: "連絡先電話",
+        },
       },
       {
         id: "branches",

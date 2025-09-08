@@ -3,28 +3,41 @@ import { NextRequest, NextResponse } from "next/server";
 import { withBranchAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { teacherFilterSchema } from "@/schemas/teacher.schema";
+import { getTeacherExportColumns, TEACHER_COLUMN_RULES } from "@/schemas/import/teacher-column-rules";
+import { formatLocalYMD } from "@/lib/date";
 
-// CSV export handler for teachers
+// Helper: format date as YYYY-MM-DD
+function formatDateForCSV(date: Date | null): string {
+  if (!date) return "";
+  const d = new Date(date);
+  const y = d.getFullYear();
+  const m = `${d.getMonth() + 1}`.padStart(2, "0");
+  const day = `${d.getDate()}`.padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+// CSV export handler for teachers (mirrors student export style)
 export const GET = withBranchAccess(
   ["ADMIN", "STAFF"],
   async (request: NextRequest, session, selectedBranchId) => {
     const searchParams = request.nextUrl.searchParams;
+    const streamMode = searchParams.get("stream") === "1";
     const filters = teacherFilterSchema.parse({
       page: searchParams.get("page") || 1,
-      limit: searchParams.get("limit") || 10000, // Large limit for export
+      limit: searchParams.get("limit") || 10000,
       name: searchParams.get("name") || undefined,
-      status: searchParams.get("status")?.split(",")[0] || undefined, // Take first status for API
+      status: searchParams.get("status")?.split(",")[0] || undefined,
     });
 
     const { name, status } = filters;
 
-    // Get additional filters from query params
+    // Additional filters from query
     const statusList = searchParams.get("status")?.split(",") || [];
     const branchList = searchParams.get("branch")?.split(",") || [];
     const subjectList = searchParams.get("subject")?.split(",") || [];
     const lineConnectionList = searchParams.get("lineConnection")?.split(",") || [];
 
-    // Build where clause
+    // Build where clause (branch scoped)
     const where: any = {
       user: {
         branches: selectedBranchId
@@ -40,192 +53,210 @@ export const GET = withBranchAccess(
       ];
     }
 
-    // Only apply single status filter to DB query if exactly one status is selected
     if (status && statusList.length === 1) {
       where.status = status;
     }
 
-    // Fetch teachers with all related data
+    // Pre-fetch teachers with necessary relations
     const teachers = await prisma.teacher.findMany({
       where,
       include: {
         user: {
           include: {
-            branches: {
-              include: {
-                branch: true,
-              },
-            },
-            subjectPreferences: {
-              include: {
-                subject: true,
-                subjectType: true,
-              },
-            },
+            branches: { include: { branch: true } },
+            subjectPreferences: { include: { subject: true, subjectType: true } },
           },
         },
+        contactEmails: true,
+        contactPhones: true,
       },
       orderBy: { name: "asc" },
     });
 
-    // Apply client-side filters (same logic as in the table component)
+    // Client-side filters (same as table)
     let filteredTeachers = teachers;
 
-    // Filter by multiple statuses if needed
     if (statusList.length > 1) {
       const statusSet = new Set(statusList);
-      filteredTeachers = filteredTeachers.filter(teacher =>
-        statusSet.has(teacher.status || "ACTIVE")
-      );
+      filteredTeachers = filteredTeachers.filter(t => statusSet.has(t.status || "ACTIVE"));
     }
 
-    // Filter by branches
     if (branchList.length > 0) {
       const branchSet = new Set(branchList);
-      filteredTeachers = filteredTeachers.filter(teacher =>
-        teacher.user?.branches?.some((b: any) => branchSet.has(b.branch.name))
-      );
+      filteredTeachers = filteredTeachers.filter(t => t.user?.branches?.some((b: any) => branchSet.has(b.branch.name)));
     }
 
-    // Filter by subjects
     if (subjectList.length > 0) {
       const subjectSet = new Set(subjectList);
-      filteredTeachers = filteredTeachers.filter(teacher => {
-        if (!teacher.user?.subjectPreferences) return false;
-
-        return teacher.user.subjectPreferences.some((pref: any) =>
-          subjectSet.has(pref.subject.name)
-        );
-      });
+      filteredTeachers = filteredTeachers.filter(t => t.user?.subjectPreferences?.some((sp: any) => subjectSet.has(sp.subject.name)));
     }
 
-    // Filter by LINE connection status
     if (lineConnectionList.length > 0) {
-      const lineConnectionSet = new Set(lineConnectionList);
-      filteredTeachers = filteredTeachers.filter(teacher => {
-        const hasLine = !!teacher.lineId;
-        const notificationsEnabled = teacher.lineNotificationsEnabled ?? true;
-
-        let connectionStatus: string;
-        if (!hasLine) {
-          connectionStatus = "not_connected";
-        } else if (notificationsEnabled) {
-          connectionStatus = "connected_enabled";
-        } else {
-          connectionStatus = "connected_disabled";
-        }
-
-        return lineConnectionSet.has(connectionStatus);
+      const set = new Set(lineConnectionList);
+      filteredTeachers = filteredTeachers.filter(t => {
+        const hasLine = !!t.lineId;
+        const notificationsEnabled = t.lineNotificationsEnabled ?? true;
+        const s = !hasLine ? "not_connected" : notificationsEnabled ? "connected_enabled" : "connected_disabled";
+        return set.has(s);
       });
     }
 
-    // Get visible columns from query params and ensure ID is included
+    // Determine visible columns (from query) and ensure ID first
     const rawColumns = searchParams.get("columns")?.split(",") || [
       "id",
       "name",
       "kanaName",
       "status",
+      "birthDate",
       "username",
       "email",
+      "contactPhones",
+      "contactEmails",
+      "phoneNumber",
+      "password",
       "branches",
-      "subjectPreferences",
+      "subjects",
+      "notes",
     ];
     const visibleColumns = rawColumns.includes("id") ? rawColumns : ["id", ...rawColumns];
 
-    // Filter out LINE-related fields, phone fields, and contactPhones for security/privacy
+    // Filter out privacy/ignored columns same as student export style
     const allowedColumns = visibleColumns.filter(col =>
-      !["lineId", "lineConnection", "lineNotificationsEnabled", "phoneNumber", "phoneNotes", "contactPhones"].includes(col)
+      !["lineId", "lineConnection", "lineNotificationsEnabled", "phoneNotes"].includes(col)
     );
 
-    // Column headers mapping
-    const columnHeaders: Record<string, string> = {
-      id: "ID",
-      name: "名前",
-      kanaName: "カナ",
-      status: "ステータス",
-      birthDate: "生年月日",
-      username: "ユーザー名",
-      email: "メールアドレス",
-      password: "パスワード",
-      phoneNumber: "携帯番号",
-      phoneNotes: "電話番号備考",
-      branches: "校舎",
-      subjectPreferences: "担当科目",
-      notes: "備考",
-    };
+    // Build column -> header mapping from rules
+    const columnIdToHeader: Record<string, string> = { id: 'ID' };
+    for (const [key, rule] of Object.entries(TEACHER_COLUMN_RULES)) {
+      columnIdToHeader[key] = rule.csvHeader;
+    }
+    // Accept UI alias for subjects column
+    columnIdToHeader['subjectPreferences'] = '選択科目';
 
-    // Status labels
-    const statusLabels: Record<string, string> = {
-      ACTIVE: "在籍",
-      SICK: "休会",
-      PERMANENTLY_LEFT: "退会",
-    };
+    // Build header line
+    const headers = allowedColumns.map(col => columnIdToHeader[col] || col).join(",");
 
-    // Build CSV header
-    const headers = allowedColumns
-      .map((col) => columnHeaders[col] || col)
-      .join(",");
+    const statusLabels: Record<string, string> = { ACTIVE: '在籍', SICK: '休会', PERMANENTLY_LEFT: '退会' };
 
-    // Build CSV rows - use filtered teachers
-    const rows = filteredTeachers.map((teacher) => {
-      const row = allowedColumns.map((col) => {
-        switch (col) {
-          case "id":
-            return teacher.teacherId || "";
-          case "name":
-            return teacher.name || "";
-          case "kanaName":
-            return teacher.kanaName || "";
-          case "status":
-            return statusLabels[teacher.status || "ACTIVE"] || teacher.status || "";
-          case "birthDate":
-            if (!teacher.birthDate) return "";
-            return new Date(teacher.birthDate).toISOString().split('T')[0];
-          case "username":
-            return teacher.user?.username || "";
-          case "email":
-            return teacher.user?.email || "";
-          case "password":
-            // Don't export passwords for security
-            return "";
-          case "branches":
-            return teacher.user?.branches
-              ?.map((b: any) => b.branch.name)
-              .join("; ") || "";
-          case "subjectPreferences":
-            return teacher.user?.subjectPreferences
-              ?.map((sp: any) => `${sp.subject.name} - ${sp.subjectType.name}`)
-              .join("; ") || "";
-          case "notes":
-            return teacher.notes || "";
-          default:
-            return "";
+    // Row formatter
+    const formatValue = (t: any, col: string): string => {
+      switch (col) {
+        case 'id':
+          return t.teacherId || '';
+        case 'name':
+          return t.name || '';
+        case 'kanaName':
+          return t.kanaName || '';
+        case 'status':
+          return statusLabels[t.status || 'ACTIVE'] || t.status || '';
+        case 'birthDate':
+          return formatDateForCSV(t.birthDate || null);
+        case 'username':
+          return t.user?.username || '';
+        case 'email':
+          return t.user?.email || '';
+        case 'password':
+          return '';
+        case 'phoneNumber':
+          return t.phoneNumber || '';
+        case 'branches':
+          return t.user?.branches?.map((b: any) => b.branch.name).join('; ') || '';
+        case 'subjects':
+        case 'subjectPreferences':
+          return t.user?.subjectPreferences?.map((sp: any) => `${sp.subject.name} - ${sp.subjectType.name}`).join('; ') || '';
+        case 'contactEmails':
+          return (
+            t.contactEmails
+              ?.sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0))
+              .map((e: any) => (e.notes ? `${e.email}:${e.notes}` : e.email))
+              .join('; ') || ''
+          );
+        case 'contactPhones': {
+          return (
+            t.contactPhones
+              ?.sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0))
+              .map((p: any) => (p.notes ? `${p.phoneNumber}:${p.notes}` : `${p.phoneNumber}`))
+              .join('; ') || ''
+          );
         }
+        case 'notes':
+          return t.notes || '';
+        default:
+          return '';
+      }
+    };
+
+    // Streaming export for large datasets (mirrors student style)
+    if (streamMode) {
+      const pageSize = Number.parseInt(process.env.EXPORT_PAGE_SIZE || "1000", 10);
+      const filename = `teachers_${formatLocalYMD(new Date())}.csv`;
+      const encoder = new TextEncoder();
+
+      const stream = new ReadableStream<Uint8Array>({
+        async start(controller) {
+          controller.enqueue(encoder.encode("\uFEFF" + headers + "\n"));
+
+          let cursor: string | undefined = undefined;
+          while (true) {
+            const chunk: any[] = await prisma.teacher.findMany({
+              where,
+              include: {
+                user: {
+                  include: {
+                    branches: { include: { branch: true } },
+                    subjectPreferences: { include: { subject: true, subjectType: true } },
+                  },
+                },
+                contactEmails: true,
+                contactPhones: true,
+              },
+              orderBy: { teacherId: 'asc' },
+              ...(cursor ? { cursor: { teacherId: cursor }, skip: 1, take: pageSize } : { take: pageSize }),
+            });
+
+            if (!chunk.length) break;
+
+            for (const t of chunk) {
+              const cols = allowedColumns.map((col) => {
+                const v = formatValue(t as any, col);
+                return v.includes(",") || v.includes("\n") || v.includes('"') ? `"${v.replace(/"/g, '""')}"` : v;
+              });
+              controller.enqueue(encoder.encode(cols.join(",") + "\n"));
+            }
+
+            cursor = chunk[chunk.length - 1]?.teacherId;
+          }
+
+          controller.close();
+        },
       });
 
-      // Escape CSV values
-      return row.map((value) => {
-        // If value contains comma, newline, or quotes, wrap in quotes
+      return new NextResponse(stream, {
+        headers: {
+          "Content-Type": "text/csv; charset=utf-8",
+          "Content-Disposition": `attachment; filename="${filename}"`,
+        },
+      });
+    }
+
+    // Non-streaming: build rows eagerly
+    const rows = filteredTeachers.map((t) => {
+      const row = allowedColumns.map((col) => {
+        const value = formatValue(t as any, col);
         if (value.includes(",") || value.includes("\n") || value.includes('"')) {
-          // Escape quotes by doubling them
           return `"${value.replace(/"/g, '""')}"`;
         }
         return value;
-      }).join(",");
+      });
+      return row.join(",");
     });
 
-    // Combine header and rows
     const csv = [headers, ...rows].join("\n");
-
-    // Add BOM for Excel to properly display UTF-8
-    const bom = "\uFEFF";
-    const csvContent = bom + csv;
-
-    // Return CSV response
+    const csvContent = "\uFEFF" + csv;
     return new NextResponse(csvContent, {
       headers: {
         "Content-Type": "text/csv; charset=utf-8",
-        "Content-Disposition": `attachment; filename="teachers_${new Date().toISOString().split("T")[0]}.csv"`,
+        "Content-Disposition": `attachment; filename="teachers_${formatLocalYMD(new Date())}.csv"`,
       },
     });
   }

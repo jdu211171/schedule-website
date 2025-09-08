@@ -16,6 +16,12 @@ export const teacherImportSchema = z.object({
     .refine(val => !val || val.length <= 100, {
       message: "メールアドレスは100文字以下で入力してください"
     }),
+  // Aggregated contact emails: "email[:notes]; email2[:notes2]"
+  contactEmails: z
+    .string()
+    .optional()
+    .default("")
+    .transform((v) => v ?? ""),
   password: z
     .string()
     .transform(val => val === "" ? null : val)
@@ -47,6 +53,12 @@ export const teacherImportSchema = z.object({
     .pipe(z.array(z.string().min(1)))
     .optional()
     .default(""),
+  // Aggregated contact phones: "自宅:03-...; 父:090-...; 母:080-...; その他:..."
+  contactPhones: z
+    .string()
+    .optional()
+    .default("")
+    .transform((v) => v ?? ""),
   notes: z
     .string()
     .transform(val => val === "" ? null : val)
@@ -96,6 +108,12 @@ export const teacherUpdateImportSchema = z.object({
     .refine(val => !val || val.length <= 100, {
       message: "メールアドレスは100文字以下で入力してください"
     }),
+  // Aggregated contact emails (optional on update)
+  contactEmails: z
+    .string()
+    .optional()
+    .default("")
+    .transform((v) => v ?? ""),
   password: z
     .string()
     .transform(val => val === "" ? null : val)
@@ -128,6 +146,12 @@ export const teacherUpdateImportSchema = z.object({
     .pipe(z.array(z.string().min(1)))
     .optional()
     .default(""),
+  // Aggregated contact phones (optional on update)
+  contactPhones: z
+    .string()
+    .optional()
+    .default("")
+    .transform((v) => v ?? ""),
   notes: z
     .string()
     .transform(val => val === "" ? null : val)

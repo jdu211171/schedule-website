@@ -1,151 +1,143 @@
-// Teacher CSV Import Column Rules
-// This file defines how each CSV column maps to database fields and import behavior
-
-export interface ColumnRule {
+// Column rules for teacher CSV import/export (mirrors student style)
+export type TeacherColumnRule = {
   csvHeader: string;
   dbField: string;
   createRule: 'required' | 'optional' | 'ignore';
-  updateRule: 'required' | 'optional' | 'ignore' | 'updateOnly';
-  description?: string;
-}
+  updateRule: 'required' | 'optional' | 'ignore';
+  exportOrder: number;
+};
 
-export const TEACHER_COLUMN_RULES: Record<string, ColumnRule> = {
-  // Basic Information
+export const TEACHER_COLUMN_RULES: Record<string, TeacherColumnRule> = {
   name: {
     csvHeader: '名前',
     dbField: 'name',
     createRule: 'required',
-    updateRule: 'optional',
-    description: '講師の名前'
+    updateRule: 'required',
+    exportOrder: 1,
   },
   kanaName: {
     csvHeader: 'カナ',
     dbField: 'kanaName',
     createRule: 'optional',
     updateRule: 'optional',
-    description: '講師の名前（カナ）'
+    exportOrder: 2,
   },
   status: {
     csvHeader: 'ステータス',
     dbField: 'status',
-    createRule: 'ignore',
-    updateRule: 'ignore',
-    description: 'ステータス（在籍/休会/退会）- システムで管理'
+    createRule: 'optional',
+    updateRule: 'optional',
+    exportOrder: 3,
   },
   birthDate: {
     csvHeader: '生年月日',
     dbField: 'birthDate',
     createRule: 'optional',
     updateRule: 'optional',
-    description: '生年月日（YYYY-MM-DD形式）'
+    exportOrder: 4,
   },
-
-  // Account Information
   username: {
     csvHeader: 'ユーザー名',
     dbField: 'username',
     createRule: 'required',
     updateRule: 'required',
-    description: 'ログイン用ユーザー名（英数字）'
+    exportOrder: 5,
   },
   email: {
     csvHeader: 'メールアドレス',
     dbField: 'email',
     createRule: 'optional',
     updateRule: 'optional',
-    description: 'メールアドレス'
+    exportOrder: 6,
+  },
+  contactEmails: {
+    csvHeader: '連絡先メール',
+    dbField: 'contactEmails',
+    createRule: 'optional',
+    updateRule: 'optional',
+    exportOrder: 6.5 as any, // keep near primary email
   },
   password: {
     csvHeader: 'パスワード',
     dbField: 'password',
     createRule: 'optional',
     updateRule: 'optional',
-    description: 'パスワード（6文字以上）'
+    exportOrder: 7,
   },
-
-  // LINE Integration
-  lineId: {
+  lineConnection: {
     csvHeader: 'メッセージ連携',
-    dbField: 'lineId',
+    dbField: 'lineConnection',
     createRule: 'ignore',
     updateRule: 'ignore',
-    description: 'LINE連携ID - システムで管理'
+    exportOrder: 8,
   },
-
-  // Contact Information
   phoneNumber: {
     csvHeader: '携帯番号',
     dbField: 'phoneNumber',
-    createRule: 'ignore',
-    updateRule: 'ignore',
-    description: '携帯電話番号'
+    createRule: 'optional',
+    updateRule: 'optional',
+    exportOrder: 9,
   },
   phoneNotes: {
     csvHeader: '電話番号備考',
     dbField: 'phoneNotes',
-    createRule: 'ignore',
-    updateRule: 'ignore',
-    description: '電話番号に関する備考（連絡可能時間など）'
+    createRule: 'optional',
+    updateRule: 'optional',
+    exportOrder: 10,
   },
-
-  // Organization
   branches: {
     csvHeader: '校舎',
     dbField: 'branches',
     createRule: 'optional',
     updateRule: 'optional',
-    description: '所属校舎（セミコロン区切りで複数指定可）'
+    exportOrder: 11,
   },
-
-  // Subjects
   subjects: {
     csvHeader: '選択科目',
     dbField: 'subjects',
-    createRule: 'ignore',
-    updateRule: 'ignore',
-    description: '担当科目 - 別途管理画面で設定'
+    createRule: 'optional',
+    updateRule: 'optional',
+    exportOrder: 12,
   },
-
-  // Other
+  contactPhones: {
+    csvHeader: '連絡先電話',
+    dbField: 'contactPhones',
+    createRule: 'optional',
+    updateRule: 'optional',
+    // Placed after 備考 to avoid reordering existing columns by default
+    exportOrder: 13.5 as any,
+  },
   notes: {
     csvHeader: '備考',
     dbField: 'notes',
     createRule: 'optional',
     updateRule: 'optional',
-    description: '備考'
-  }
+    exportOrder: 13,
+  },
 };
 
-// Get ordered CSV headers based on column rules
-export function getOrderedCsvHeaders(): string[] {
-  return Object.values(TEACHER_COLUMN_RULES).map(rule => rule.csvHeader);
-}
+// Get CSV headers in the correct order
+export const getTeacherOrderedCsvHeaders = (): string[] => {
+  return Object.values(TEACHER_COLUMN_RULES)
+    .sort((a, b) => a.exportOrder - b.exportOrder)
+    .map(rule => rule.csvHeader);
+};
 
-// Get required fields based on operation mode
-export function getRequiredFields(mode: 'create' | 'update'): string[] {
-  return Object.entries(TEACHER_COLUMN_RULES)
-    .filter(([_, rule]) => {
-      if (mode === 'create') {
-        return rule.createRule === 'required';
-      } else {
-        return rule.updateRule === 'required';
-      }
-    })
-    .map(([field, _]) => field);
-}
+// Get columns to export (exclude ignored columns)
+export const getTeacherExportColumns = (): TeacherColumnRule[] => {
+  return Object.values(TEACHER_COLUMN_RULES)
+    .filter(rule => rule.createRule !== 'ignore' || rule.updateRule !== 'ignore')
+    .sort((a, b) => a.exportOrder - b.exportOrder);
+};
 
-// Map CSV header to database field
-export function csvHeaderToDbField(csvHeader: string): string | undefined {
-  const rule = Object.values(TEACHER_COLUMN_RULES).find(r => r.csvHeader === csvHeader);
-  return rule?.dbField;
-}
+// Map CSV header to DB field
+export const teacherCsvHeaderToDbField = (csvHeader: string): string | undefined => {
+  const entry = Object.values(TEACHER_COLUMN_RULES).find(rule => rule.csvHeader === csvHeader);
+  return entry?.dbField;
+};
 
-// Get columns to include in export
-export function getExportColumns(): string[] {
-  return Object.entries(TEACHER_COLUMN_RULES)
-    .filter(([_, rule]) =>
-      rule.createRule !== 'ignore' ||
-      rule.updateRule !== 'ignore'
-    )
-    .map(([field, _]) => field);
-}
+// Map DB field to CSV header
+export const teacherDbFieldToCsvHeader = (dbField: string): string | undefined => {
+  const entry = Object.values(TEACHER_COLUMN_RULES).find(rule => rule.dbField === dbField);
+  return entry?.csvHeader;
+};

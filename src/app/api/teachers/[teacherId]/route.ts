@@ -10,7 +10,6 @@ import { Teacher, DayOfWeek } from "@prisma/client";
 type TeacherWithIncludes = Teacher & {
   contactPhones?: {
     id: string;
-    phoneType: string;
     phoneNumber: string;
     notes: string | null;
     order: number;
@@ -77,7 +76,6 @@ type FormattedTeacher = {
   password: string | null;
   contactPhones?: {
     id: string;
-    phoneType: string;
     phoneNumber: string;
     notes: string | null;
     order: number;
@@ -347,7 +345,6 @@ export const GET = withBranchAccess(
         contactPhones: {
           select: {
             id: true,
-            phoneType: true,
             phoneNumber: true,
             notes: true,
             order: true,
@@ -604,18 +601,17 @@ export const PATCH = withBranchAccess(
             where: { teacherId },
           });
 
-          // Create new contact phones
-          if (contactPhones.length > 0) {
-            await tx.teacherContactPhone.createMany({
-              data: contactPhones.map((phone, index) => ({
-                teacherId,
-                phoneType: phone.phoneType,
-                phoneNumber: phone.phoneNumber,
-                notes: phone.notes || null,
-                order: phone.order ?? index,
-              })),
-            });
-          }
+        // Create new contact phones
+        if (contactPhones.length > 0) {
+          await tx.teacherContactPhone.createMany({
+            data: contactPhones.map((phone, index) => ({
+              teacherId,
+              phoneNumber: phone.phoneNumber,
+              notes: phone.notes || null,
+              order: phone.order ?? index,
+            })),
+          });
+        }
         }
 
         // Update contact emails if provided
@@ -916,7 +912,6 @@ export const PATCH = withBranchAccess(
             contactPhones: {
               select: {
                 id: true,
-                phoneType: true,
                 phoneNumber: true,
                 notes: true,
                 order: true,

@@ -1,9 +1,6 @@
 // src/schemas/teacher.schema.ts
 import { z } from "zod";
 
-// Phone type enum
-export const phoneTypeEnum = z.enum(["HOME", "DAD", "MOM", "OTHER"]);
-
 // Contact email schema for teacher
 export const contactEmailSchema = z.object({
   id: z.string().optional(),
@@ -16,10 +13,9 @@ export const contactEmailSchema = z.object({
   order: z.number().optional().default(0),
 });
 
-// Contact phone schema for teacher
+// Contact phone schema for teacher (no type)
 export const contactPhoneSchema = z.object({
   id: z.string().optional(),
-  phoneType: phoneTypeEnum,
   phoneNumber: z
     .string()
     .min(1, "電話番号は必須です")

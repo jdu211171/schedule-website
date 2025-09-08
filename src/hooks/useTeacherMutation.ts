@@ -153,7 +153,6 @@ export function useTeacherCreate() {
             password: newTeacher.password || null,
             contactPhones: (newTeacher.contactPhones || []).map(phone => ({
               id: phone.id || `temp-${Date.now()}-${Math.random()}`,
-              phoneType: phone.phoneType,
               phoneNumber: phone.phoneNumber,
               notes: phone.notes || null,
               order: phone.order ?? 0,
@@ -292,15 +291,14 @@ export function useTeacherUpdate() {
                     birthDate: updatedTeacher.birthDate !== undefined
                       ? (updatedTeacher.birthDate ? new Date(updatedTeacher.birthDate).toISOString() : null)
                       : teacher.birthDate,
-                    contactPhones: updatedTeacher.contactPhones !== undefined
-                      ? (updatedTeacher.contactPhones || []).map(phone => ({
-                          id: phone.id || `temp-${Date.now()}-${Math.random()}`,
-                          phoneType: phone.phoneType,
-                          phoneNumber: phone.phoneNumber,
-                          notes: phone.notes || null,
-                          order: phone.order ?? 0,
-                        }))
-                      : teacher.contactPhones,
+          contactPhones: updatedTeacher.contactPhones !== undefined
+            ? (updatedTeacher.contactPhones || []).map(phone => ({
+                id: phone.id || `temp-${Date.now()}-${Math.random()}`,
+                phoneNumber: phone.phoneNumber,
+                notes: phone.notes || null,
+                order: phone.order ?? 0,
+              }))
+            : teacher.contactPhones,
                     contactEmails: updatedTeacher.contactEmails !== undefined
                       ? (updatedTeacher.contactEmails || []).map((e, index) => ({
                           id: e.id || `temp-${Date.now()}-${Math.random()}`,
@@ -343,7 +341,6 @@ export function useTeacherUpdate() {
           contactPhones: updatedTeacher.contactPhones !== undefined
             ? (updatedTeacher.contactPhones || []).map(phone => ({
                 id: phone.id || `temp-${Date.now()}-${Math.random()}`,
-                phoneType: phone.phoneType,
                 phoneNumber: phone.phoneNumber,
                 notes: phone.notes || null,
                 order: phone.order ?? 0,

@@ -86,6 +86,7 @@ export const GET = withBranchAccess(
       "username",
       "email",
       "parentEmail",
+      "contactPhones",
       "branches",
       "notes",
     ];
@@ -95,7 +96,7 @@ export const GET = withBranchAccess(
 
     // Filter out LINE-related fields, phone fields, and contactPhones for security/privacy
     const allowedColumns = visibleColumns.filter(col =>
-      !["lineId", "lineConnection", "lineNotificationsEnabled", "homePhone", "parentPhone", "studentPhone", "contactPhones"].includes(col)
+      !["lineId", "lineConnection", "lineNotificationsEnabled", "homePhone", "parentPhone", "studentPhone"].includes(col)
     );
 
     // Build where clause
@@ -139,6 +140,8 @@ export const GET = withBranchAccess(
             },
           },
         },
+        contactPhones: true,
+        contactEmails: true,
       },
       orderBy: [
         { 
@@ -377,6 +380,15 @@ export const GET = withBranchAccess(
               .map((e: any) => (e.notes ? `${e.email}:${e.notes}` : e.email))
               .join("; ") || ""
           );
+        case "contactPhones": {
+          const label = (t: string) => (t === 'HOME' ? '自宅' : t === 'DAD' ? '父' : t === 'MOM' ? '母' : 'その他');
+          return (
+            student.contactPhones
+              ?.sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0))
+              .map((p: any) => `${label(p.phoneType)}:${p.phoneNumber}`)
+              .join("; ") || ""
+          );
+        }
         case "notes":
           return student.notes || "";
         default:
@@ -409,6 +421,8 @@ export const GET = withBranchAccess(
                     },
                   },
                 },
+                contactPhones: true,
+                contactEmails: true,
               },
               orderBy: { studentId: "asc" },
               ...(cursor
