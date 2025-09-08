@@ -40,6 +40,14 @@
 - Maintain `TODO.md` for tasks/progress. Start sessions by reviewing `TODO.md`, running `git status`, and checking recent commits.
 - Before writing new code, search the repo for similar/related implementations and reference them. Reuse established patterns (APIs, hooks, components, dialogs) and align naming, props, and behavior. Prefer `rg` for fast code search.
 
+### Local Database Surf (psql)
+- When you need to run direct DB reads/writes for ops or validation, use local Postgres via psql (not Prisma) per project policy:
+  - `PGPASSWORD=postgres psql -h localhost -U postgres -d schedulewebsite -c "<your_command_here>"`
+- Examples:
+  - `PGPASSWORD=postgres psql -h localhost -U postgres -d schedulewebsite -c "SELECT 1;"`
+  - `PGPASSWORD=postgres psql -h localhost -U postgres -d schedulewebsite -c "SELECT COUNT(*) FROM students;"`
+- Be careful with destructive commands; prefer explicit transactions for any changes.
+
 
 🚨 **MANDATORY AI CODING ASSISTANT RULES - NO EXCEPTIONS** 🚨
 
