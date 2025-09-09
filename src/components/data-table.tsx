@@ -54,6 +54,11 @@ interface DataTableProps<TData, TValue> {
   isExporting?: boolean;
   // Import functionality
   onImport?: () => void;
+  // Optional grouping by key to render section headers
+  groupBy?: {
+    getKey: (row: TData) => string | null | undefined;
+    renderHeader?: (args: { groupKey: string; firstRow: TData }) => React.ReactNode;
+  };
 }
 
 export function DataTable<TData, TValue>({
@@ -80,6 +85,7 @@ export function DataTable<TData, TValue>({
   onExport,
   isExporting = false,
   onImport,
+  groupBy,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [localSearchValue, setLocalSearchValue] = useState(searchValue);
@@ -311,37 +317,62 @@ export function DataTable<TData, TValue>({
                 </TableCell>
               </TableRow>
             ) : table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() ? "selected" : undefined}
-                  className={row.getIsSelected() ? "bg-muted/50" : ""}
-                >
-                  {row.getVisibleCells().map((cell) => {
-                    const meta = cell.column.columnDef.meta as {
-                      align?: "left" | "center" | "right";
-                      headerClassName?: string;
-                      cellClassName?: string;
-                      hidden?: boolean;
-                    } | undefined;
-                    return (
-                      <TableCell
-                        key={cell.id}
-                        className={`${meta?.cellClassName || ""} ${
-                          meta?.align === "right" ? "text-right" :
-                          meta?.align === "center" ? "text-center" :
-                          "text-left"
-                        }`}
-                      >
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext()
-                        )}
-                      </TableCell>
-                    );
-                  })}
-                </TableRow>
-              ))
+              (() => {
+                const rows = table.getRowModel().rows;
+                const elements: React.ReactNode[] = [];
+                let prevKey: string | null = null;
+                rows.forEach((row) => {
+                  if (groupBy) {
+                    const keyRaw = groupBy.getKey(row.original as TData);
+                    const key = keyRaw ?? '未分類';
+                    if (prevKey !== key) {
+                      prevKey = key;
+                      elements.push(
+                        <TableRow key={`group-${row.id}-${key}`}
+                          className="bg-muted/50 hover:bg-muted/50">
+                          <TableCell colSpan={columnsWithSelection.length} className="py-1">
+                            {groupBy.renderHeader
+                              ? groupBy.renderHeader({ groupKey: key, firstRow: row.original as TData })
+                              : <div className="text-xs font-semibold text-muted-foreground">{key}</div>}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    }
+                  }
+                  elements.push(
+                    <TableRow
+                      key={row.id}
+                      data-state={row.getIsSelected() ? "selected" : undefined}
+                      className={row.getIsSelected() ? "bg-muted/50" : ""}
+                    >
+                      {row.getVisibleCells().map((cell) => {
+                        const meta = cell.column.columnDef.meta as {
+                          align?: "left" | "center" | "right";
+                          headerClassName?: string;
+                          cellClassName?: string;
+                          hidden?: boolean;
+                        } | undefined;
+                        return (
+                          <TableCell
+                            key={cell.id}
+                            className={`${meta?.cellClassName || ""} ${
+                              meta?.align === "right" ? "text-right" :
+                              meta?.align === "center" ? "text-center" :
+                              "text-left"
+                            }`}
+                          >
+                            {flexRender(
+                              cell.column.columnDef.cell,
+                              cell.getContext()
+                            )}
+                          </TableCell>
+                        );
+                      })}
+                    </TableRow>
+                  );
+                });
+                return elements;
+              })()
             ) : (
               <TableRow>
                 <TableCell

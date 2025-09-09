@@ -44,6 +44,7 @@ import { useClassTypes } from "@/hooks/useClassTypeQuery";
 import { useSession } from "next-auth/react";
 import type { ClassSession, UserStatus } from "@prisma/client";
 import { ClassSessionFilter } from "./class-session-filter";
+import { classTypeColorClasses, isValidClassTypeColor, isHexColor, rgba, getContrastText, ClassTypeColor } from "@/lib/class-type-colors";
 
 // Import types to ensure proper column meta support
 import "@/components/data-table/types";
@@ -56,6 +57,7 @@ interface ExtendedClassSession extends ClassSession {
   studentTypeName?: string | null;
   subjectName?: string;
   classTypeName?: string;
+  classTypeColor?: string | null;
   boothName?: string;
   branchName?: string | null;
   _optimistic?: boolean;
@@ -210,12 +212,39 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
     {
       accessorKey: "classTypeName",
       header: "授業タイプ",
-      cell: ({ row }) =>
-        (row.original as ExtendedClassSession).classTypeName ? (
-          <Badge variant="secondary">{(row.original as ExtendedClassSession).classTypeName}</Badge>
-        ) : (
-          "-"
-        ),
+      cell: ({ row }) => {
+        const session = row.original as ExtendedClassSession;
+        const label = session.classTypeName || "-";
+        const colorKey = session.classTypeColor || (session as any)?.classType?.color || null;
+        if (!session.classTypeName) return "-";
+        if (isValidClassTypeColor(colorKey)) {
+          const cls = classTypeColorClasses[colorKey as ClassTypeColor];
+          return (
+            <span className={`inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded border ${cls.background} ${cls.border} ${cls.text}`}>
+              <span className={`inline-block h-2 w-2 rounded-full ${cls.dot}`} />
+              {label}
+            </span>
+          );
+        }
+        if (isHexColor(colorKey || '')) {
+          const bg = rgba(colorKey!, 0.14) || undefined;
+          const border = rgba(colorKey!, 0.4) || undefined;
+          const textColor = getContrastText(colorKey!);
+          return (
+            <span
+              className={`inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded border`}
+              style={{ backgroundColor: bg, borderColor: border, color: textColor === 'white' ? '#f8fafc' : '#0f172a' }}
+            >
+              <span
+                className={`inline-block h-2 w-2 rounded-full`}
+                style={{ backgroundColor: colorKey! }}
+              />
+              {label}
+            </span>
+          );
+        }
+        return <Badge variant="secondary">{label}</Badge>;
+      },
     },
     {
       accessorKey: "boothName",
@@ -457,6 +486,31 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
         filterComponent={filterComponent}
         enableRowSelection={true}
         onBatchDelete={handleBulkDelete}
+        groupBy={{
+          getKey: (row: ExtendedClassSession) => row.classTypeName || '未分類',
+          renderHeader: ({ groupKey, firstRow }) => {
+            const colorKey = (firstRow as ExtendedClassSession).classTypeColor || (firstRow as any)?.classType?.color || null;
+            if (isValidClassTypeColor(colorKey)) {
+              const cls = classTypeColorClasses[colorKey as ClassTypeColor];
+              return (
+                <div className={`flex items-center gap-2 text-sm font-semibold ${cls.text}`}>
+                  <span className={`inline-block h-2.5 w-2.5 rounded-full ${cls.dot}`} />
+                  {groupKey}
+                </div>
+              );
+            }
+            if (isHexColor(colorKey || '')) {
+              const textColor = getContrastText(colorKey!);
+              return (
+                <div className={`flex items-center gap-2 text-sm font-semibold`} style={{ color: textColor === 'white' ? '#f8fafc' : '#0f172a' }}>
+                  <span className={`inline-block h-2.5 w-2.5 rounded-full`} style={{ backgroundColor: colorKey! }} />
+                  {groupKey}
+                </div>
+              );
+            }
+            return <div className="text-sm font-semibold">{groupKey}</div>;
+          }
+        }}
       />
 
       {/* Edit Session Dialog */}
