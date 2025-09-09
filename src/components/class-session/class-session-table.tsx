@@ -122,6 +122,16 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
   // Remove the create dialog state - no longer needed
   // const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
+  // Default to today's sessions when no date range filter is applied
+  useEffect(() => {
+    if (!filters.startDate && !filters.endDate) {
+      const todayStr = format(new Date(), "yyyy-MM-dd");
+      setFilters((prev) => ({ ...prev, startDate: todayStr, endDate: todayStr }));
+    }
+    // run once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleFilterChange = (
     field: keyof typeof filters,
     value: string | undefined
@@ -146,8 +156,8 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
       subjectId: undefined,
       classTypeId: undefined,
       boothId: undefined,
-      startDate: undefined,
-      endDate: undefined,
+      startDate: format(new Date(), "yyyy-MM-dd"),
+      endDate: format(new Date(), "yyyy-MM-dd"),
     };
     setFilters(defaultFilters);
     setPage(1);
