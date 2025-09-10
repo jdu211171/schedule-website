@@ -11,11 +11,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/data-table";
 import { useClassSessions } from "@/hooks/useClassSessionQuery";
+import { useQueryClient } from "@tanstack/react-query";
 import {
-  useClassSessionDelete,
   useClassSessionSeriesDelete,
   useClassSessionBulkDelete,
-  getResolvedClassSessionId,
 } from "@/hooks/useClassSessionMutation";
 import {
   AlertDialog,
@@ -35,7 +34,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ClassSessionFormDialog } from "./class-session-form-dialog";
+import { LessonDialog } from "@/components/admin-schedule/DayCalendar/lesson-dialog";
+import { useClassSession } from "@/hooks/useClassSessionQuery";
 import { useTeachers } from "@/hooks/useTeacherQuery";
 import { useStudents } from "@/hooks/useStudentQuery";
 import { useSubjects } from "@/hooks/useSubjectQuery";
@@ -105,22 +105,32 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
   const { data: studentsData } = useStudents({ limit: 100 });
   const { data: subjectsData } = useSubjects({ limit: 100 });
   const { data: classTypesData } = useClassTypes({ limit: 100 });
-  const { data: boothsData } = useBooths({ limit: 100 });  const totalCount = classSessions?.pagination.total || 0;
-  const deleteClassSessionMutation = useClassSessionDelete();
+  const { data: boothsData } = useBooths({ limit: 100 });
+  const totalCount = classSessions?.pagination.total || 0;
   const deleteClassSessionSeriesMutation = useClassSessionSeriesDelete();
   const bulkDeleteClassSessionMutation = useClassSessionBulkDelete();
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "ADMIN";
-  const [sessionToEdit, setSessionToEdit] = useState<ExtendedClassSession | null>(null);
-  const [sessionToDelete, setSessionToDelete] = useState<ExtendedClassSession | null>(
-    null
-  );
+  const queryClient = useQueryClient();
+  const [isLessonDialogOpen, setIsLessonDialogOpen] = useState(false);
+  const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
+  const [dialogMode, setDialogMode] = useState<"view" | "edit">("edit");
+  // Single delete is handled inside LessonDialog; remove standalone delete flow from toolbar
   const [seriesToDelete, setSeriesToDelete] = useState<{
     seriesId: string;
     sessionInfo: ExtendedClassSession;
   } | null>(null);
   // Remove the create dialog state - no longer needed
   // const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+
+  // Option lists for shared edit dialog
+  const booths = boothsData?.data || [];
+  const teachers = teachersData?.data || [];
+  const students = studentsData?.data || [];
+  const subjects = subjectsData?.data || [];
+
+  // Fetch full lesson details when an item is selected
+  const { data: selectedLesson } = useClassSession(selectedLessonId || undefined);
 
   // Default to today's sessions when no date range filter is applied
   useEffect(() => {
@@ -312,18 +322,13 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuLabel>アクション</DropdownMenuLabel>
-                <DropdownMenuItem onClick={() => setSessionToEdit(session)}>
+                <DropdownMenuItem onClick={() => {
+                  setSelectedLessonId(session.classId);
+                  setDialogMode("edit");
+                  setIsLessonDialogOpen(true);
+                }}>
                   <Pencil className="mr-2 h-4 w-4" />
                   編集
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  className="text-destructive focus:text-destructive"
-                  onClick={() => setSessionToDelete(session)}
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  削除
                 </DropdownMenuItem>
                 {session.seriesId && (
                   <>
@@ -371,16 +376,6 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
     const meta = col.meta;
     return !meta?.hidden;
   });
-
-  const handleDeleteClassSession = () => {
-    if (sessionToDelete) {
-      // Close the dialog immediately for better UX
-      // Use getResolvedClassSessionId to resolve temp/server IDs
-      const classId = getResolvedClassSessionId(sessionToDelete.classId);
-      setSessionToDelete(null);
-      deleteClassSessionMutation.mutate(classId);
-    }
-  };
 
   const handleDeleteSeries = () => {
     if (seriesToDelete) {
@@ -523,13 +518,31 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
         }}
       />
 
-      {/* Edit Session Dialog */}
-      {sessionToEdit && (
-        <ClassSessionFormDialog
-          open={!!sessionToEdit}
-          onOpenChange={(open) => !open && setSessionToEdit(null)}
-          classSession={sessionToEdit}
-          filters={filters}
+      {/* Edit Session Dialog (shared with 日次 view) */}
+      {isLessonDialogOpen && selectedLesson && (
+        <LessonDialog
+          open={isLessonDialogOpen}
+          onOpenChange={(open) => {
+            setIsLessonDialogOpen(open);
+            if (!open) setSelectedLessonId(null);
+          }}
+          lesson={selectedLesson}
+          mode={dialogMode}
+          onModeChange={setDialogMode}
+          onSave={() => {
+            setIsLessonDialogOpen(false);
+            setSelectedLessonId(null);
+            queryClient.invalidateQueries({ queryKey: ["classSessions"] });
+          }}
+          onDelete={() => {
+            setIsLessonDialogOpen(false);
+            setSelectedLessonId(null);
+            queryClient.invalidateQueries({ queryKey: ["classSessions"] });
+          }}
+          booths={booths}
+          teachers={teachers}
+          students={students}
+          subjects={subjects}
         />
       )}
 
@@ -541,48 +554,6 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
       />
       */}
 
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog
-        open={!!sessionToDelete}
-        onOpenChange={(open) => !open && setSessionToDelete(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>本当に削除しますか？</AlertDialogTitle>
-            <AlertDialogDescription>
-              この操作は元に戻せません。
-              {sessionToDelete?.date &&
-                (typeof sessionToDelete.date === 'string'
-                  ? sessionToDelete.date
-                  : format(sessionToDelete.date, "yyyy/MM/dd"))}{" "}
-              {sessionToDelete?.startTime &&
-                (typeof sessionToDelete.startTime === 'string'
-                  ? sessionToDelete.startTime
-                  : format(sessionToDelete.startTime, "HH:mm"))}の
-              {(sessionToDelete as ExtendedClassSession)?.teacherName
-                ? `${(sessionToDelete as ExtendedClassSession).teacherName}先生の`
-                : ""}
-              授業を完全に削除します。
-              {sessionToDelete?.seriesId && (
-                <strong className="block mt-2">
-                  注意:
-                  これは繰り返しシリーズの一部です。この操作は現在の授業のみを削除します。
-                </strong>
-              )}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>キャンセル</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteClassSession}
-              disabled={deleteClassSessionMutation.isPending}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {deleteClassSessionMutation.isPending ? "削除中..." : "削除"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       {/* Series Delete Confirmation Dialog */}
       <AlertDialog

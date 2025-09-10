@@ -4,7 +4,6 @@ import { useState, useEffect, useMemo } from "react"
 import { useQuery, useMutation } from "@tanstack/react-query"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
@@ -12,7 +11,12 @@ import { format } from "date-fns"
 import { ja } from "date-fns/locale"
 import { CalendarIcon, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 import { cn } from "@/lib/utils"
-import { EditClassSessionForm } from "./edit-class-session-form"
+import { LessonDialog } from "../DayCalendar/lesson-dialog"
+import { useClassSession } from "@/hooks/useClassSessionQuery"
+import { useBooths } from "@/hooks/useBoothQuery"
+import { useTeachers } from "@/hooks/useTeacherQuery"
+import { useStudents } from "@/hooks/useStudentQuery"
+import { useSubjects } from "@/hooks/useSubjectQuery"
 import { FilterCombobox } from "./filter-combobox"
 import { toast } from "sonner"
 
@@ -43,8 +47,9 @@ interface ClassSession {
 type SortOrder = "asc" | "desc" | null
 
 export const AdminCalendarList = () => {
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
-  const [selectedSession, setSelectedSession] = useState<ClassSession | null>(null)
+  const [isLessonDialogOpen, setIsLessonDialogOpen] = useState(false)
+  const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null)
+  const [dialogMode, setDialogMode] = useState<"view" | "edit">("edit")
   const [filters, setFilters] = useState({
     teacherName: "",
     studentName: "",
@@ -61,6 +66,20 @@ export const AdminCalendarList = () => {
   useEffect(() => {
     console.log("API Base URL:", process.env.NEXT_PUBLIC_API_BASE_URL || "(empty)");
   }, []);
+
+  // Fetch option data for LessonDialog (same as 日次 view)
+  const { data: boothsResponse } = useBooths({ limit: 100, status: true })
+  const { data: teachersResponse } = useTeachers({ limit: 100 })
+  const { data: studentsResponse } = useStudents({ limit: 100 })
+  const { data: subjectsResponse } = useSubjects({ limit: 100 })
+
+  const booths = useMemo(() => boothsResponse?.data || [], [boothsResponse])
+  const teachers = useMemo(() => teachersResponse?.data || [], [teachersResponse])
+  const students = useMemo(() => studentsResponse?.data || [], [studentsResponse])
+  const subjects = useMemo(() => subjectsResponse?.data || [], [subjectsResponse])
+
+  // Fetch the currently selected session with relations for the shared dialog
+  const { data: selectedLesson } = useClassSession(selectedLessonId || undefined)
 
   // GET - Fetch ALL class sessions
   const { isLoading, refetch } = useQuery({
@@ -271,9 +290,10 @@ export const AdminCalendarList = () => {
       const exists = await checkSessionExists(session.classId) // Changed from id to classId
 
       if (exists) {
-        console.log("Session exists, opening edit modal for session ID:", session.classId)
-        setSelectedSession(session)
-        setIsEditModalOpen(true)
+        console.log("Session exists, opening LessonDialog for session ID:", session.classId)
+        setSelectedLessonId(session.classId)
+        setDialogMode("edit")
+        setIsLessonDialogOpen(true)
       } else {
         console.error("Session not found before editing:", session.classId)
         toast.error("このセッションは既に削除されています。ページを更新します。")
@@ -285,16 +305,17 @@ export const AdminCalendarList = () => {
     }
   }
 
-  const onEditComplete = () => {
-    setIsEditModalOpen(false)
-    setSelectedSession(null)
+  // Callbacks for shared LessonDialog
+  const handleDialogSave = (_lessonId: string) => {
+    setIsLessonDialogOpen(false)
+    setSelectedLessonId(null)
     refetch()
   }
 
-  const onEditError = (error: Error) => {
-    console.error("Edit error:", error)
-    toast.error(error.message || "授業の更新に失敗しました")
-    // Keep the modal open so the user can try again
+  const handleDialogDelete = (_lessonId: string) => {
+    setIsLessonDialogOpen(false)
+    setSelectedLessonId(null)
+    refetch()
   }
 
   // フィルターをリセットする (Reset filters)
@@ -546,20 +567,26 @@ export const AdminCalendarList = () => {
         )}
       </CardContent>
 
-      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>授業情報の編集</DialogTitle>
-          </DialogHeader>
-          {selectedSession && (
-            <EditClassSessionForm
-              session={selectedSession}
-              onComplete={onEditComplete}
-              onError={onEditError}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
+      {isLessonDialogOpen && selectedLesson && (
+        <LessonDialog
+          open={isLessonDialogOpen}
+          onOpenChange={(open) => {
+            setIsLessonDialogOpen(open)
+            if (!open) {
+              setSelectedLessonId(null)
+            }
+          }}
+          lesson={selectedLesson}
+          mode={dialogMode}
+          onModeChange={setDialogMode}
+          onSave={handleDialogSave}
+          onDelete={handleDialogDelete}
+          booths={booths}
+          teachers={teachers}
+          students={students}
+          subjects={subjects}
+        />
+      )}
     </Card>
   )
 }
