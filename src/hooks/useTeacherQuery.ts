@@ -80,6 +80,7 @@ type UseTeachersParams = {
   limit?: number;
   name?: string;
   status?: string;
+  statuses?: string[]; // Support multiple statuses
   birthDateFrom?: Date;
   birthDateTo?: Date;
 };
@@ -95,30 +96,24 @@ type TeachersResponse = {
 };
 
 export function useTeachers(params: UseTeachersParams = {}) {
-  const { page = 1, limit = 10, name, status, birthDateFrom, birthDateTo } = params;
+  const { page = 1, limit = 10, name, status, statuses, birthDateFrom, birthDateTo } = params;
 
-  const queryParams: Record<string, string | undefined> = {
-    page: page.toString(),
-    limit: limit.toString(),
-    name,
-    status,
-    birthDateFrom: birthDateFrom?.toISOString(),
-    birthDateTo: birthDateTo?.toISOString(),
-  };
-
-  const searchParams = new URLSearchParams(
-    Object.entries(queryParams).reduce((acc, [key, value]) => {
-      if (value !== undefined) {
-        acc[key] = value;
-      }
-      return acc;
-    }, {} as Record<string, string>)
-  ).toString();
+  // Build search params manually to handle arrays
+  const searchParams = new URLSearchParams();
+  searchParams.append("page", page.toString());
+  searchParams.append("limit", limit.toString());
+  if (name) searchParams.append("name", name);
+  if (status) searchParams.append("status", status);
+  if (statuses && statuses.length > 0) {
+    statuses.forEach((s) => searchParams.append("statuses", s));
+  }
+  if (birthDateFrom) searchParams.append("birthDateFrom", birthDateFrom.toISOString());
+  if (birthDateTo) searchParams.append("birthDateTo", birthDateTo.toISOString());
 
   return useQuery<TeachersResponse>({
-    queryKey: ["teachers", page, limit, name, status, birthDateFrom, birthDateTo],
+    queryKey: ["teachers", page, limit, name, status, statuses, birthDateFrom, birthDateTo],
     queryFn: async () =>
-      await fetcher<TeachersResponse>(`/api/teachers?${searchParams}`),
+      await fetcher<TeachersResponse>(`/api/teachers?${searchParams.toString()}`),
   });
 }
 

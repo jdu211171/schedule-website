@@ -322,7 +322,7 @@ export function TeacherTable() {
     page,
     limit: pageSize,
     name: debouncedName || undefined,
-    status: filters.status.length > 0 ? filters.status[0] : undefined,
+    statuses: filters.status.length > 0 ? filters.status : undefined,
   });
 
   // Handle inline cell updates
@@ -417,6 +417,8 @@ export function TeacherTable() {
         header: "ステータス",
         meta: {
           label: "ステータス",
+          variant: "multiSelect",
+          options: Object.entries(userStatusLabels).map(([value, label]) => ({ value, label })),
         },
         cell: ({ row }) => {
           const status = row.original.status || "ACTIVE";
@@ -428,6 +430,7 @@ export function TeacherTable() {
             />
           );
         },
+        enableColumnFilter: true,
       },
       {
         id: "username",

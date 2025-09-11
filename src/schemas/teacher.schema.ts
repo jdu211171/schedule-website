@@ -288,6 +288,7 @@ export const teacherFilterSchema = z.object({
   limit: z.coerce.number().int().positive().default(10),
   name: z.string().optional(),
   status: userStatusEnum.optional(),
+  statuses: z.array(userStatusEnum).optional(),
   birthDateFrom: z.string().optional(),
   birthDateTo: z.string().optional(),
 });

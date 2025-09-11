@@ -338,9 +338,31 @@ const formatTeacher = (teacher: TeacherWithIncludes): FormattedTeacher => {
 export const GET = withBranchAccess(
   ["ADMIN", "STAFF"],
   async (request: NextRequest, session, branchId) => {
-    // Parse query parameters
+    // Parse query parameters (support arrays similar to students API)
     const url = new URL(request.url);
-    const params = Object.fromEntries(url.searchParams.entries());
+    const params: Record<string, string | string[]> = {};
+    const arrayParams = ["statuses"]; // extend in future if needed
+
+    url.searchParams.forEach((value, key) => {
+      const existing = params[key];
+      if (arrayParams.includes(key)) {
+        if (Array.isArray(existing)) {
+          existing.push(value);
+        } else if (typeof existing === "string") {
+          params[key] = [existing, value];
+        } else {
+          params[key] = [value];
+        }
+      } else if (existing !== undefined) {
+        if (Array.isArray(existing)) {
+          existing.push(value);
+        } else {
+          params[key] = [existing, value];
+        }
+      } else {
+        params[key] = value;
+      }
+    });
 
     // Validate and parse filter parameters
     const result = teacherFilterSchema.safeParse(params);
@@ -351,7 +373,7 @@ export const GET = withBranchAccess(
       );
     }
 
-    const { page, limit, name, status, birthDateFrom, birthDateTo } = result.data;
+    const { page, limit, name, status, statuses, birthDateFrom, birthDateTo } = result.data;
 
     // Build filter conditions
     const where: Record<string, unknown> = {};
@@ -366,7 +388,10 @@ export const GET = withBranchAccess(
 
     // No student-linked search here; teacher name search remains consistent with students table
 
-    if (status) {
+    // Support both single status and multiple statuses
+    if (statuses && statuses.length > 0) {
+      where.status = { in: statuses } as any;
+    } else if (status) {
       where.status = status;
     }
 
