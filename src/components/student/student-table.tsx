@@ -299,7 +299,10 @@ export function StudentTable() {
           // Ensure all properties have default values
           return {
             name: parsed.name || "",
-            status: parsed.status || [],
+            status:
+              Array.isArray(parsed.status) && parsed.status.length > 0
+                ? parsed.status
+                : ["ACTIVE"],
             studentType: parsed.studentType || [],
             gradeYear: parsed.gradeYear || [],
             branch: parsed.branch || [],
@@ -336,7 +339,7 @@ export function StudentTable() {
     }
     return {
       name: "",
-      status: [] as string[],
+      status: ["ACTIVE"] as string[],
       studentType: [] as string[],
       gradeYear: [] as string[],
       branch: [] as string[],
@@ -1032,6 +1035,10 @@ export function StudentTable() {
           ? [{ id: "examDate", value: filters.examDateRange }]
           : []),
       ],
+      // Match backend default order: status asc; keep UI indicator consistent
+      sorting: [
+        { id: "status", desc: false },
+      ],
     },
     getRowId: (row) => row.studentId,
     enableColumnFilters: true,
@@ -1055,7 +1062,7 @@ export function StudentTable() {
       if (columnFilters.length === 0) {
         return {
           name: "",
-          status: [] as string[],
+          status: ["ACTIVE"] as string[],
           studentType: [] as string[],
           gradeYear: [] as string[],
           branch: [] as string[],

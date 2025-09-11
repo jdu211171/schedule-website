@@ -736,12 +736,13 @@ export const GET = withBranchAccess(
       skip,
       take: limit,
       orderBy: [
+        { status: "asc" }, // ACTIVE first (alphabetical)
         {
           studentType: {
-            order: { sort: "asc", nulls: "last" }
-          }
+            order: { sort: "asc", nulls: "last" },
+          },
         },
-        { name: "asc" }
+        { name: "asc" },
       ],
     });
 

@@ -511,7 +511,10 @@ export const GET = withBranchAccess(
       },
       skip,
       take: limit,
-      orderBy: { name: "asc" },
+      orderBy: [
+        { status: "asc" }, // ACTIVE first (alphabetical)
+        { name: "asc" },
+      ],
     });
 
     // Format teachers using the helper function

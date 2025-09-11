@@ -240,7 +240,10 @@ export function TeacherTable() {
           // Ensure all properties have default values
           return {
             name: parsed.name || "",
-            status: parsed.status || [],
+            status:
+              Array.isArray(parsed.status) && parsed.status.length > 0
+                ? parsed.status
+                : ["ACTIVE"],
             branch: parsed.branch || [],
             subject: parsed.subject || [],
             lineConnection: parsed.lineConnection || [],
@@ -252,7 +255,7 @@ export function TeacherTable() {
     }
     return {
       name: "",
-      status: [] as string[],
+      status: ["ACTIVE"] as string[],
       branch: [] as string[],
       subject: [] as string[],
       lineConnection: [] as string[],
@@ -701,6 +704,11 @@ export function TeacherTable() {
         ...(filters.subject.length > 0 ? [{ id: 'subjectPreferences', value: filters.subject }] : []),
         ...(filters.lineConnection.length > 0 ? [{ id: 'lineConnection', value: filters.lineConnection }] : []),
       ],
+      // Match backend default order: status asc, then name asc
+      sorting: [
+        { id: 'status', desc: false },
+        { id: 'name', desc: false },
+      ],
     },
     getRowId: (row) => row.teacherId,
     enableColumnFilters: true,
@@ -717,7 +725,24 @@ export function TeacherTable() {
   // Sync table column filters with local filters state
   React.useEffect(() => {
     const columnFilters = table.getState().columnFilters;
-    const newFilters = {
+
+    // If no filters are applied in the table, treat as reset to defaults (ACTIVE)
+    if (columnFilters.length === 0) {
+      const defaults = {
+        name: "",
+        status: ["ACTIVE"] as string[],
+        branch: [] as string[],
+        subject: [] as string[],
+        lineConnection: [] as string[],
+      };
+      setFilters(defaults);
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem(FILTERS_STORAGE_KEY);
+      }
+      return;
+    }
+
+    const next = {
       name: "",
       status: [] as string[],
       branch: [] as string[],
@@ -728,24 +753,24 @@ export function TeacherTable() {
     columnFilters.forEach((filter) => {
       switch (filter.id) {
         case 'name':
-          newFilters.name = filter.value as string;
+          next.name = filter.value as string;
           break;
         case 'status':
-          newFilters.status = filter.value as string[];
+          next.status = filter.value as string[];
           break;
         case 'branches':
-          newFilters.branch = filter.value as string[];
+          next.branch = filter.value as string[];
           break;
         case 'subjectPreferences':
-          newFilters.subject = filter.value as string[];
+          next.subject = filter.value as string[];
           break;
         case 'lineConnection':
-          newFilters.lineConnection = filter.value as string[];
+          next.lineConnection = filter.value as string[];
           break;
       }
     });
 
-    setFilters(newFilters);
+    setFilters(next);
   }, [table.getState().columnFilters]);
 
   // Reset page when filters change

@@ -163,10 +163,20 @@ export function useStateDataTable<TData>(props: UseDataTableProps<TData>) {
     return columns.filter((column) => column.enableColumnFilter);
   }, [columns, enableAdvancedFilter]);
 
+  // Seed initial filter values from provided initialState.columnFilters (if any)
+  const initialFilterValuesFromProps = React.useMemo(() => {
+    const cf = initialState?.columnFilters as ColumnFiltersState | undefined;
+    if (!cf || cf.length === 0) return {};
+    return cf.reduce<Record<string, string | string[]>>((acc, f) => {
+      acc[f.id] = f.value as string | string[];
+      return acc;
+    }, {});
+  }, [initialState?.columnFilters]);
+
   // ✅ Filters are now local state (hidden from URL)
   const [filterValues, setFilterValues] = React.useState<
     Record<string, string | string[]>
-  >({});
+  >(initialFilterValuesFromProps);
 
   const debouncedSetFilterValues = useDebouncedCallback(
     (values: typeof filterValues) => {
