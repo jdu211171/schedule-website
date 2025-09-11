@@ -20,6 +20,7 @@ import { GenericPasswordEditableCell } from "@/components/data-table-v0/generic-
 import { SubjectPreferencesCell } from "@/components/ui/subject-preferences-cell";
 import { TypeBadge } from "@/components/data-table-v0/type-badge-v0";
 import { flexRender } from "@tanstack/react-table";
+import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -432,6 +433,12 @@ export function StudentTable() {
       .map((subject) => subject.subjectId);
   }, [filters.subject, subjects]);
 
+  // Backend sort params, driven by table sorting (set later once table is created)
+  const [sortParams, setSortParams] = React.useState<{
+    studentTypeOrder?: "asc" | "desc";
+    gradeYearOrder?: "asc" | "desc";
+  }>({});
+
   const { data: students, isLoading } = useStudents({
     page,
     limit: pageSize,
@@ -454,6 +461,8 @@ export function StudentTable() {
     birthDateTo: filters.birthDateRange?.to,
     examDateFrom: filters.examDateRange?.from,
     examDateTo: filters.examDateRange?.to,
+    studentTypeOrder: sortParams.studentTypeOrder,
+    gradeYearOrder: sortParams.gradeYearOrder,
   });
 
   // Extract unique branches from current data
@@ -569,7 +578,10 @@ export function StudentTable() {
       {
         id: "studentTypeName",
         accessorKey: "studentTypeName",
-        header: "生徒タイプ",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="生徒タイプ" />
+        ),
+        enableSorting: true,
         cell: ({ row }) => {
           const typeName = row.original.studentTypeName;
           if (!typeName) return "-";
@@ -588,7 +600,10 @@ export function StudentTable() {
       {
         id: "gradeYear",
         accessorKey: "gradeYear",
-        header: "学年",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="学年" />
+        ),
+        enableSorting: true,
         cell: ({ row }) => {
           const gradeYear = row.original.gradeYear;
           if (!gradeYear) return "-";
@@ -1043,6 +1058,27 @@ export function StudentTable() {
     getRowId: (row) => row.studentId,
     enableColumnFilters: true,
   });
+
+  // Keep sort params in sync with table sorting for server-side sorting
+  const sortingKey = React.useMemo(() => {
+    return JSON.stringify(table.getState().sorting || []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [table.getState().sorting]);
+
+  React.useEffect(() => {
+    const sorting = table.getState().sorting;
+    const st = sorting?.find((s) => s.id === "studentTypeName");
+    const gr = sorting?.find((s) => s.id === "gradeYear");
+    const next = {
+      studentTypeOrder: (st ? (st.desc ? "desc" : "asc") : undefined) as "asc" | "desc" | undefined,
+      gradeYearOrder: (gr ? (gr.desc ? "desc" : "asc") : undefined) as "asc" | "desc" | undefined,
+    };
+    setSortParams((prev) =>
+      prev.studentTypeOrder !== next.studentTypeOrder || prev.gradeYearOrder !== next.gradeYearOrder
+        ? next
+        : prev,
+    );
+  }, [sortingKey, table]);
 
   // Save column visibility to localStorage whenever it changes
   React.useEffect(() => {

@@ -482,7 +482,11 @@ export const GET = withBranchAccess(
       birthDateFrom,
       birthDateTo,
       examDateFrom,
-      examDateTo
+      examDateTo,
+      sortBy,
+      sortOrder,
+      studentTypeOrder,
+      gradeYearOrder,
     } = result.data;
 
     // Build filter conditions
@@ -680,6 +684,33 @@ export const GET = withBranchAccess(
     const total = await prisma.student.count({ where });
 
     // Fetch students with branch associations
+    // Build dynamic ordering
+    const orderBy: Prisma.StudentOrderByWithRelationInput[] = [];
+    // Always keep ACTIVE first
+    orderBy.push({ status: "asc" });
+
+    // Determine independent sort directions
+    const effectiveStudentTypeOrder = (studentTypeOrder
+      ?? (sortBy === "studentTypeName" ? sortOrder : undefined)
+      ?? "asc") as Prisma.SortOrder;
+    const effectiveGradeOrder = (gradeYearOrder
+      ?? (sortBy === "gradeYear" ? sortOrder : undefined)) as Prisma.SortOrder | undefined;
+
+    // Always order by configured student type sequence (not alphabetical)
+    orderBy.push({
+      studentType: {
+        order: { sort: effectiveStudentTypeOrder, nulls: "last" },
+      },
+    });
+
+    // Optionally order by grade within each student type group
+    if (effectiveGradeOrder) {
+      orderBy.push({ gradeYear: { sort: effectiveGradeOrder, nulls: "last" } });
+    }
+
+    // Stable tie-breaker
+    orderBy.push({ name: "asc" });
+
     const students = await prisma.student.findMany({
       where,
       include: {
@@ -735,15 +766,7 @@ export const GET = withBranchAccess(
       },
       skip,
       take: limit,
-      orderBy: [
-        { status: "asc" }, // ACTIVE first (alphabetical)
-        {
-          studentType: {
-            order: { sort: "asc", nulls: "last" },
-          },
-        },
-        { name: "asc" },
-      ],
+      orderBy,
     });
 
     // Format students using the helper function

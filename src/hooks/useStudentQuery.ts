@@ -119,6 +119,10 @@ type UseStudentsParams = {
   birthDateTo?: Date;
   examDateFrom?: Date; // Filter by exam date range
   examDateTo?: Date;
+  sortBy?: "studentTypeName" | "gradeYear";
+  sortOrder?: "asc" | "desc";
+  studentTypeOrder?: "asc" | "desc";
+  gradeYearOrder?: "asc" | "desc";
 };
 
 type StudentsResponse = {
@@ -155,6 +159,10 @@ export function useStudents(params: UseStudentsParams = {}) {
     birthDateTo,
     examDateFrom,
     examDateTo,
+    sortBy,
+    sortOrder,
+    studentTypeOrder,
+    gradeYearOrder,
   } = params;
 
   const queryParams: Record<string, string | string[] | undefined> = {
@@ -180,6 +188,10 @@ export function useStudents(params: UseStudentsParams = {}) {
     birthDateTo: birthDateTo?.toISOString(),
     examDateFrom: examDateFrom?.toISOString(),
     examDateTo: examDateTo?.toISOString(),
+    sortBy,
+    sortOrder,
+    studentTypeOrder,
+    gradeYearOrder,
   };
 
   // Build search params manually to handle arrays
@@ -196,7 +208,7 @@ export function useStudents(params: UseStudentsParams = {}) {
   });
 
   return useQuery<StudentsResponse>({
-    queryKey: ["students", page, limit, name, studentTypeId, studentTypeIds, gradeYear, gradeYears, status, statuses, branchIds, subjectIds, lineConnection, schoolType, schoolTypes, examCategory, examCategories, examCategoryType, examCategoryTypes, birthDateFrom, birthDateTo, examDateFrom, examDateTo],
+    queryKey: ["students", page, limit, name, studentTypeId, studentTypeIds, gradeYear, gradeYears, status, statuses, branchIds, subjectIds, lineConnection, schoolType, schoolTypes, examCategory, examCategories, examCategoryType, examCategoryTypes, birthDateFrom, birthDateTo, examDateFrom, examDateTo, sortBy, sortOrder, studentTypeOrder, gradeYearOrder],
     queryFn: async () =>
       await fetcher<StudentsResponse>(`/api/students?${searchParams.toString()}`),
     placeholderData: keepPreviousData,

@@ -261,6 +261,7 @@ export function useStateDataTable<TData>(props: UseDataTableProps<TData>) {
       rowSelection,
       columnFilters,
     },
+    enableMultiSort: true,
     defaultColumn: {
       ...tableProps.defaultColumn,
       enableColumnFilter: false,
