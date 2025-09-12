@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Pencil, Trash2, CalendarIcon, MoreHorizontal } from "lucide-react";
+import { Pencil, Trash2, MoreHorizontal } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { ja } from "date-fns/locale";
 import { DateRange } from "react-day-picker";
@@ -201,7 +201,7 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
       cell: ({ row }) => {
         const session = row.original as ExtendedClassSession;
         if (!session.studentName) return "-";
-        
+
         const parts = [session.studentName];
         if (session.studentGradeYear) {
           parts.push(`${session.studentGradeYear}年`);
@@ -209,7 +209,7 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
         if (session.studentTypeName) {
           parts.push(session.studentTypeName);
         }
-        
+
         return (
           <div className="flex flex-col">
             <Badge variant="outline">{session.studentName}</Badge>
@@ -333,16 +333,6 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
                 {session.seriesId && (
                   <>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onClick={() => {
-                        // Navigate to series view or open series modal
-                        // Implementation depends on your UI flow
-                        window.location.href = `/class-sessions/series/${session.seriesId}`;
-                      }}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      シリーズを表示
-                    </DropdownMenuItem>
                     <DropdownMenuItem
                       className="text-destructive focus:text-destructive"
                       onClick={() => {
