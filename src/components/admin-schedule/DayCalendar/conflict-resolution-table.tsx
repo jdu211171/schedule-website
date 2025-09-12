@@ -471,65 +471,48 @@ export const ConflictResolutionTable: React.FC<ConflictResolutionTableProps> = (
                         </TableCell>
                         <TableCell>
                           {rowState.isEditing ? (
-                            <div className="flex items-center gap-2">
-                              <div className="flex items-center gap-2">
-                                {(() => {
-                                  const startTime = rowState.tempStartTime || originalTime.startTime;
-                                  const endTime = rowState.tempEndTime || originalTime.endTime;
-                                  const isInvalidTime = startTime >= endTime;
+                            <div className="flex items-start gap-3">
+                              {(() => {
+                                const startTime = rowState.tempStartTime || originalTime.startTime;
+                                const endTime = rowState.tempEndTime || originalTime.endTime;
+                                const isInvalidTime = startTime >= endTime;
 
-                                  return (
-                                    <>
+                                return (
+                                  <div className="flex flex-col gap-3">
+                                    <div className="flex flex-col gap-1">
+                                      <span className="text-[11px] text-muted-foreground pl-0.5">開始</span>
                                       <div className={`${isInvalidTime ? 'ring-2 ring-red-500 rounded-md' : ''}`}>
                                         <TimeInput
                                           value={startTime}
                                           onChange={(value) => handleTimeChange(dateKey, 'start', value)}
-                                          className="w-24"
+                                          className="w-28"
                                           teacherAvailability={convertSlotsToAvailability(aggregatedTeacherSlots)}
                                           studentAvailability={convertSlotsToAvailability(aggregatedStudentSlots)}
                                           timeSlots={timeSlots}
                                           usePortal={true}
                                         />
                                       </div>
-                                      <span className={`text-muted-foreground ${isInvalidTime ? 'text-red-500' : ''}`}>-</span>
+                                    </div>
+                                    <div className="flex flex-col gap-1">
+                                      <span className="text-[11px] text-muted-foreground pl-0.5">終了</span>
                                       <div className={`${isInvalidTime ? 'ring-2 ring-red-500 rounded-md' : ''}`}>
                                         <TimeInput
                                           value={endTime}
                                           onChange={(value) => handleTimeChange(dateKey, 'end', value)}
-                                          className="w-24"
+                                          className="w-28"
                                           teacherAvailability={convertSlotsToAvailability(aggregatedTeacherSlots)}
                                           studentAvailability={convertSlotsToAvailability(aggregatedStudentSlots)}
                                           timeSlots={timeSlots}
                                           usePortal={true}
                                         />
                                       </div>
-                                    </>
-                                  );
-                                })()}
-                              </div>
-                              <div className="flex flex-col gap-1 ml-2">
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => handleSaveTimeEdit(dateKey)}
-                                  className="h-6 w-6 p-0 hover:bg-green-100 text-green-600"
-                                  disabled={(() => {
-                                    const startTime = rowState.tempStartTime || originalTime.startTime;
-                                    const endTime = rowState.tempEndTime || originalTime.endTime;
-                                    return startTime >= endTime;
-                                  })()}
-                                >
-                                  <Check className="w-4 h-4" />
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => handleCancelTimeEdit(dateKey)}
-                                  className="h-6 w-6 p-0 hover:bg-red-100 text-red-600"
-                                >
-                                  <XIcon className="w-4 h-4" />
-                                </Button>
-                              </div>
+                                    </div>
+                                    {isInvalidTime && (
+                                      <span className="text-xs text-red-500">終了は開始より後にしてください</span>
+                                    )}
+                                  </div>
+                                );
+                              })()}
                             </div>
                           ) : (
                             <div className="flex items-center gap-2">
@@ -548,12 +531,54 @@ export const ConflictResolutionTable: React.FC<ConflictResolutionTableProps> = (
                           )}
                         </TableCell>
                         <TableCell>
-                          {conflictsForDate.length === 1 ? (
-                            <span className={`px-1 py-0.5 rounded text-xs border ${getConflictTypeColor(conflictsForDate[0].type)}`}>
-                              {getConflictTypeLabel(conflictsForDate[0].type)}
-                            </span>
+                          {rowState.isEditing ? (
+                            <div className="flex flex-col items-start gap-2">
+                              {conflictsForDate.length === 1 ? (
+                                <span className={`px-1 py-0.5 rounded text-xs border ${getConflictTypeColor(conflictsForDate[0].type)}`}>
+                                  {getConflictTypeLabel(conflictsForDate[0].type)}
+                                </span>
+                              ) : (
+                                <span className={`px-1 py-0.5 rounded text-xs border`}>複数の競合</span>
+                              )}
+                              {(() => {
+                                const startTime = rowState.tempStartTime || originalTime.startTime;
+                                const endTime = rowState.tempEndTime || originalTime.endTime;
+                                const isInvalidTime = startTime >= endTime;
+                                return (
+                                  <div className="flex items-center gap-2">
+                                    <Button
+                                      aria-label="保存"
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => handleSaveTimeEdit(dateKey)}
+                                      className="h-6 w-6 p-0 hover:bg-green-100 text-green-600"
+                                      disabled={isInvalidTime}
+                                    >
+                                      <Check className="w-4 h-4" />
+                                    </Button>
+                                    <Button
+                                      aria-label="キャンセル"
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => handleCancelTimeEdit(dateKey)}
+                                      className="h-6 w-6 p-0 hover:bg-red-100 text-red-600"
+                                    >
+                                      <XIcon className="w-4 h-4" />
+                                    </Button>
+                                  </div>
+                                );
+                              })()}
+                            </div>
                           ) : (
-                            <span className={`px-1 py-0.5 rounded text-xs border`}>複数の競合</span>
+                            <>
+                              {conflictsForDate.length === 1 ? (
+                                <span className={`px-1 py-0.5 rounded text-xs border ${getConflictTypeColor(conflictsForDate[0].type)}`}>
+                                  {getConflictTypeLabel(conflictsForDate[0].type)}
+                                </span>
+                              ) : (
+                                <span className={`px-1 py-0.5 rounded text-xs border`}>複数の競合</span>
+                              )}
+                            </>
                           )}
                         </TableCell>
                         <TableCell>
