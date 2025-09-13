@@ -112,7 +112,7 @@ GOOGLE_CLIENT_SECRET=
 
   - Use Bun for package management.
   - Fix TypeScript errors after changes.
-  - For local database operations, use local Postgres with psql (not Prisma CLI). Example: PGPASSWORD=postgres psql -h localhost -U postgres -d schedulewebsite -c "<your_command_here>"
+  - For local database operations, use local Postgres with psql (not Prisma CLI). Example: `PGPASSWORD=postgres psql -h localhost -U postgres -d schedulewebsite -c "<your_command_here>"`
 
 - **Code Changes**
 
@@ -120,14 +120,30 @@ GOOGLE_CLIENT_SECRET=
   - Preserve formatting, names, and documentation unless specified.
   - Output complete code if modified.
 
-- **Project Management**
+- **Spec Kit (Project Management)**
 
-  - Use TODO.md for tasks, progress, and issues. Update regularly.
-  - At session start: review TODO.md, run `git status`, check recent commits.
+  - Treat `specs/<id>-<slug>/` as the source of truth for scope and progress.
+  - At session start: open the active spec’s `plan.md` and `tasks.md`, then run `git status` and review recent commits.
+  - Track progress in `tasks.md`; keep `plan.md` in sync; update `spec.md` and contracts when scope changes.
+  - Log questions/assumptions in `research.md`.
+
+- **Active Spec by Branch**
+
+  - Convention: branch suffix `NNN-slug` maps to folder `specs/NNN-slug/`.
+  - Helper snippet:
+    ```bash
+    branch=$(git branch --show-current)
+    spec_slug=$(echo "$branch" | rg -oi '(?:^|/)(\d{3}-[a-z0-9-]+)$' -r '$1' | head -n1)
+    if [ -z "$spec_slug" ]; then
+      spec_slug=$(ls -1d specs/* 2>/dev/null | xargs -I{} bash -lc 'printf "%T@ %s\n" $(stat -c %Y {}) {}' | sort -n | awk '{print $2}' | sed 's#^specs/##' | tail -n1)
+    fi
+    export ACTIVE_SPEC="specs/${spec_slug}"
+    echo "Active spec: $ACTIVE_SPEC"
+    ```
 
 - **Git Practices**
 
-  - Work on main branch with conventional commits.
+  - Work on a feature branch tied to the spec slug (e.g., `001-create-taskify` or `feat/001-create-taskify`).
   - Run pre-commit checks.
   - Commit regularly with permission.
 
@@ -136,7 +152,7 @@ GOOGLE_CLIENT_SECRET=
   - Plan and discuss approaches before coding.
   - Make small, testable changes.
   - Eliminate duplicates.
-  - Log recurring issues in TODO.md.
+  - Keep spec artifacts updated alongside code.
 
 - **Code Quality**
 

@@ -124,15 +124,25 @@ GOOGLE_CLIENT_SECRET=
 
 - **📋 PROJECT MANAGEMENT - ABSOLUTELY REQUIRED**
 
-  - 🔴 **MANDATORY**: Use TODO.md for tasks, progress, and issues. Update regularly - NO EXCEPTIONS
-  - 🔴 **SESSION START CHECKLIST**: review TODO.md, run `git status`, check recent commits - DO NOT SKIP
+  - 🔴 **MANDATORY**: Use Spec Kit specs for tasks, progress, and issues. Update `specs/<id>-<slug>/plan.md` and `tasks.md` regularly — NO EXCEPTIONS
+  - 🔴 **SESSION START CHECKLIST**: review the active spec in `specs/`, run `git status`, check recent commits — DO NOT SKIP
+  - Active spec by branch:
+    ```bash
+    branch=$(git branch --show-current)
+    spec_slug=$(echo "$branch" | rg -oi '(?:^|/)(\d{3}-[a-z0-9-]+)$' -r '$1' | head -n1)
+    if [ -z "$spec_slug" ]; then
+      spec_slug=$(ls -1d specs/* 2>/dev/null | xargs -I{} bash -lc 'printf "%T@ %s\n" $(stat -c %Y {}) {}' | sort -n | awk '{print $2}' | sed 's#^specs/##' | tail -n1)
+    fi
+    export ACTIVE_SPEC="specs/${spec_slug}"
+    echo "Active spec: $ACTIVE_SPEC"
+    ```
 
 - **⚡ DEVELOPMENT PROCESS - ENFORCE STRICTLY**
 
   - 🛑 **REQUIRED**: Plan and discuss approaches before coding - NO RUSHING
   - 🛑 **REQUIRED**: Make small, testable changes - NO BIG CHANGES
   - 🛑 **REQUIRED**: Eliminate duplicates proactively
-  - 🛑 **REQUIRED**: Log recurring issues in TODO.md - ALWAYS DOCUMENT
+  - 🛑 **REQUIRED**: Keep spec artifacts updated (`tasks.md`, `plan.md`, `spec.md`, contracts) and log questions in `research.md` — ALWAYS DOCUMENT
 
 - **🔒 CODE QUALITY - NON-NEGOTIABLE STANDARDS**
 

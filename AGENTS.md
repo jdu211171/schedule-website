@@ -37,7 +37,7 @@
 
 ## Agent & Ops Notes
 - Use Bun only for packages; fix TS errors after changes.
-- Maintain `TODO.md` for tasks/progress. Start sessions by reviewing `TODO.md`, running `git status`, and checking recent commits.
+- Use Spec Kit for planning and tracking. Start sessions by reviewing the active spec under `specs/<id>-<slug>/` (especially `plan.md` and `tasks.md`), then run `git status` and check recent commits.
 - Before writing new code, search the repo for similar/related implementations and reference them. Reuse established patterns (APIs, hooks, components, dialogs) and align naming, props, and behavior. Prefer `rg` for fast code search.
 
 ### Local Database Surf (psql)
@@ -67,15 +67,56 @@
 
 - **📋 PROJECT MANAGEMENT - ABSOLUTELY REQUIRED**
 
-  - 🔴 **MANDATORY**: Use TODO.md for tasks, progress, and issues. Update regularly - NO EXCEPTIONS
-  - 🔴 **SESSION START CHECKLIST**: review TODO.md, run `git status`, check recent commits - DO NOT SKIP
+  - 🔴 **MANDATORY**: Use Spec Kit specs for tasks, progress, and issues. Update `specs/<id>-<slug>/plan.md` and `tasks.md` regularly — NO EXCEPTIONS
+  - 🔴 **SESSION START CHECKLIST**: review the active spec in `specs/`, run `git status`, check recent commits — DO NOT SKIP
 
 - **⚡ DEVELOPMENT PROCESS - ENFORCE STRICTLY**
 
   - 🛑 **REQUIRED**: Plan and discuss approaches before coding - NO RUSHING
   - 🛑 **REQUIRED**: Make small, testable changes - NO BIG CHANGES
   - 🛑 **REQUIRED**: Eliminate duplicates proactively
-  - 🛑 **REQUIRED**: Log recurring issues in TODO.md - ALWAYS DOCUMENT
+  - 🛑 **REQUIRED**: Log questions, assumptions, and research in the spec: update `specs/<id>-<slug>/research.md` (and assumptions sections) — ALWAYS DOCUMENT
+
+## Spec-Driven Development (Spec Kit)
+- Specs live in `specs/<id>-<slug>/` and are the single source of truth for scope and progress.
+- Key files per spec:
+  - `spec.md` — problem statement, goals, acceptance criteria
+  - `plan.md` — implementation plan and milestones
+  - `tasks.md` — actionable task list for day‑to‑day tracking
+  - `quickstart.md` — how to run or demo the feature
+  - `research.md` — notes, questions, and decisions
+  - `data-model.md` — entities, relationships, migrations impact
+  - `contracts/` — API contracts (OpenAPI/JSON/YAML) + related tests
+  - `integration-tests.ts` / `contract-tests.ts` — spec‑driven tests
+- Session flow:
+  - Start by opening the active spec folder and reading `plan.md` and `tasks.md`.
+  - Update tasks as you work; keep `plan.md` synced with the actual approach.
+  - When scope or acceptance criteria change, update `spec.md` and contracts.
+  - Prefer adding or updating tests in the spec folder as you implement.
+- Initializing Spec Kit (if missing):
+  - Requires Python 3.11+ and `uv` (https://docs.astral.sh/uv/). Then run:
+    - `uvx --from git+https://github.com/github/spec-kit.git specify init --here --ai claude --ignore-agent-tools`
+  - This scaffolds `CLAUDE.md`, `GEMINI.md`, and `specs/` templates. If `specs/` already exists, skip init.
+
+### Active Spec Selection (by Branch)
+- Convention: branches and spec folders share the same slug, e.g., `001-create-taskify` → `specs/001-create-taskify/`.
+- If working on a feature branch, pick the spec whose folder name matches the branch suffix `NNN-slug`.
+- Helper snippet to resolve the active spec from the current branch:
+  ```bash
+  branch=$(git branch --show-current)
+  spec_slug=$(echo "$branch" | rg -oi '(?:^|/)(\d{3}-[a-z0-9-]+)$' -r '$1' | head -n1)
+  if [ -z "$spec_slug" ]; then
+    # Fallback: most recently touched spec directory
+    spec_slug=$(ls -1d specs/* 2>/dev/null | xargs -I{} bash -lc 'printf "%T@ %s\n" $(stat -c %Y {}) {}' \
+      | sort -n | awk '{print $2}' | sed 's#^specs/##' | tail -n1)
+  fi
+  export ACTIVE_SPEC="specs/${spec_slug}"
+  echo "Active spec: $ACTIVE_SPEC"
+  ```
+- Day-to-day:
+  - Edit `$ACTIVE_SPEC/tasks.md` as you progress.
+  - Keep `$ACTIVE_SPEC/plan.md` consistent with implementation.
+  - Update `$ACTIVE_SPEC/spec.md` and contracts if scope changes.
 
 - **🔒 CODE QUALITY - NON-NEGOTIABLE STANDARDS**
 
