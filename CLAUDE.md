@@ -126,16 +126,9 @@ GOOGLE_CLIENT_SECRET=
 
   - 🔴 **MANDATORY**: Use Spec Kit specs for tasks, progress, and issues. Update `specs/<id>-<slug>/plan.md` and `tasks.md` regularly — NO EXCEPTIONS
   - 🔴 **SESSION START CHECKLIST**: review the active spec in `specs/`, run `git status`, check recent commits — DO NOT SKIP
-  - Active spec by branch:
-    ```bash
-    branch=$(git branch --show-current)
-    spec_slug=$(echo "$branch" | rg -oi '(?:^|/)(\d{3}-[a-z0-9-]+)$' -r '$1' | head -n1)
-    if [ -z "$spec_slug" ]; then
-      spec_slug=$(ls -1d specs/* 2>/dev/null | xargs -I{} bash -lc 'printf "%T@ %s\n" $(stat -c %Y {}) {}' | sort -n | awk '{print $2}' | sed 's#^specs/##' | tail -n1)
-    fi
-    export ACTIVE_SPEC="specs/${spec_slug}"
-    echo "Active spec: $ACTIVE_SPEC"
-    ```
+  - Active spec by branch: use `scripts/active-spec.sh`
+    - Export: `export ACTIVE_SPEC=$(scripts/active-spec.sh)`
+    - Or: `. scripts/active-spec.sh` (prints and exports `ACTIVE_SPEC`)
 
 - **⚡ DEVELOPMENT PROCESS - ENFORCE STRICTLY**
 

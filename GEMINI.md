@@ -130,16 +130,9 @@ GOOGLE_CLIENT_SECRET=
 - **Active Spec by Branch**
 
   - Convention: branch suffix `NNN-slug` maps to folder `specs/NNN-slug/`.
-  - Helper snippet:
-    ```bash
-    branch=$(git branch --show-current)
-    spec_slug=$(echo "$branch" | rg -oi '(?:^|/)(\d{3}-[a-z0-9-]+)$' -r '$1' | head -n1)
-    if [ -z "$spec_slug" ]; then
-      spec_slug=$(ls -1d specs/* 2>/dev/null | xargs -I{} bash -lc 'printf "%T@ %s\n" $(stat -c %Y {}) {}' | sort -n | awk '{print $2}' | sed 's#^specs/##' | tail -n1)
-    fi
-    export ACTIVE_SPEC="specs/${spec_slug}"
-    echo "Active spec: $ACTIVE_SPEC"
-    ```
+  - Use `scripts/active-spec.sh` to resolve the active spec:
+    - Export: `export ACTIVE_SPEC=$(scripts/active-spec.sh)`
+    - Or: `. scripts/active-spec.sh` (prints and exports `ACTIVE_SPEC`)
 
 - **Git Practices**
 

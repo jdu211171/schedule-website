@@ -13,14 +13,32 @@
   - ✅ **FOLLOW EXISTING PATTERNS**: Refer to existing similar code structure when generating new code (components, API routes, utilities, types, assets)
 
 - **📋 PROJECT MANAGEMENT - ABSOLUTELY REQUIRED**
-  - 🔴 **MANDATORY**: Use TODO.md for tasks, progress, and issues. Update regularly - NO EXCEPTIONS
-  - 🔴 **SESSION START CHECKLIST**: review TODO.md, run `git status`, check recent commits - DO NOT SKIP
+  - 🔴 **MANDATORY**: Use Spec Kit specs for tasks, progress, and issues. Update `specs/<id>-<slug>/plan.md` and `tasks.md` regularly — NO EXCEPTIONS
+  - 🔴 **SESSION START CHECKLIST**: review the active spec in `specs/`, run `git status`, check recent commits — DO NOT SKIP
+  - Active spec by branch (convention: branch suffix `NNN-slug` → folder `specs/NNN-slug/`): use `scripts/active-spec.sh`
+    - Export: `export ACTIVE_SPEC=$(scripts/active-spec.sh)`
+    - Or: `. scripts/active-spec.sh` (prints and exports `ACTIVE_SPEC`)
 
 - **⚡ DEVELOPMENT PROCESS - ENFORCE STRICTLY**
   - 🛑 **REQUIRED**: Plan and discuss approaches before coding - NO RUSHING
   - 🛑 **REQUIRED**: Make small, testable changes - NO BIG CHANGES
   - 🛑 **REQUIRED**: Eliminate duplicates proactively
-  - 🛑 **REQUIRED**: Log recurring issues in TODO.md - ALWAYS DOCUMENT
+  - 🛑 **REQUIRED**: Keep spec artifacts updated: `tasks.md`, `plan.md`, `spec.md`, contracts; log questions/assumptions in `research.md` — ALWAYS DOCUMENT
+
+---
+
+## Spec-Driven Development (Spec Kit)
+- Specs live in `specs/<id>-<slug>/` and are the single source of truth for scope and progress.
+- Key files:
+  - `spec.md` — problem statement, goals, acceptance criteria
+  - `plan.md` — implementation plan and milestones
+  - `tasks.md` — actionable task list for day‑to‑day tracking
+  - `research.md` — questions, decisions, and assumptions
+  - `contracts/` — API contracts + related tests
+- Copilot usage guidance:
+  - Prefer suggestions aligned with the active spec’s `plan.md` and `tasks.md`.
+  - When generating tests or routes, mirror contracts and acceptance criteria from the spec.
+  - Surface uncertainties as comments in `research.md` rather than inventing behavior.
 
 - **🔒 CODE QUALITY - NON-NEGOTIABLE STANDARDS**
   - ✅ **MANDATORY**: Handle errors and validate inputs - NO EXCEPTIONS

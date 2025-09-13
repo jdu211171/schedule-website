@@ -98,21 +98,12 @@
     - `uvx --from git+https://github.com/github/spec-kit.git specify init --here --ai claude --ignore-agent-tools`
   - This scaffolds `CLAUDE.md`, `GEMINI.md`, and `specs/` templates. If `specs/` already exists, skip init.
 
-### Active Spec Selection (by Branch)
+-### Active Spec Selection (by Branch)
 - Convention: branches and spec folders share the same slug, e.g., `001-create-taskify` → `specs/001-create-taskify/`.
 - If working on a feature branch, pick the spec whose folder name matches the branch suffix `NNN-slug`.
-- Helper snippet to resolve the active spec from the current branch:
-  ```bash
-  branch=$(git branch --show-current)
-  spec_slug=$(echo "$branch" | rg -oi '(?:^|/)(\d{3}-[a-z0-9-]+)$' -r '$1' | head -n1)
-  if [ -z "$spec_slug" ]; then
-    # Fallback: most recently touched spec directory
-    spec_slug=$(ls -1d specs/* 2>/dev/null | xargs -I{} bash -lc 'printf "%T@ %s\n" $(stat -c %Y {}) {}' \
-      | sort -n | awk '{print $2}' | sed 's#^specs/##' | tail -n1)
-  fi
-  export ACTIVE_SPEC="specs/${spec_slug}"
-  echo "Active spec: $ACTIVE_SPEC"
-  ```
+- Helper script: `scripts/active-spec.sh`
+  - Export for current shell: `export ACTIVE_SPEC=$(scripts/active-spec.sh)`
+  - Or source it: `. scripts/active-spec.sh` (prints and exports `ACTIVE_SPEC`)
 - Day-to-day:
   - Edit `$ACTIVE_SPEC/tasks.md` as you progress.
   - Keep `$ACTIVE_SPEC/plan.md` consistent with implementation.
