@@ -54,6 +54,9 @@ export const POST = withBranchAccess(['ADMIN', 'STAFF'], async (req: NextRequest
       return NextResponse.json({ data: [], message: '対象の授業がありません', updatedCount: 0, pagination: { total: 0, page: 1, limit: 0, pages: 0 } });
     }
 
+    // Optional: set class type to 'キャンセル' if defined
+    const cancelType = await prisma.classType.findFirst({ where: { name: 'キャンセル', parentId: null }, select: { classTypeId: true } });
+
     const result = await prisma.classSession.updateMany({
       where: {
         classId: { in: targetIds },
@@ -65,6 +68,7 @@ export const POST = withBranchAccess(['ADMIN', 'STAFF'], async (req: NextRequest
         cancellationReason: reason ?? 'ADMIN_CANCELLED',
         cancelledAt: now,
         cancelledByUserId: userId,
+        ...(cancelType ? { classTypeId: cancelType.classTypeId } : {}),
       },
     });
 
@@ -79,4 +83,3 @@ export const POST = withBranchAccess(['ADMIN', 'STAFF'], async (req: NextRequest
     return NextResponse.json({ error: '授業のキャンセルに失敗しました' }, { status: 500 });
   }
 });
-

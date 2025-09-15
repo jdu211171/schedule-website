@@ -3,6 +3,10 @@
     {
       "path": "/api/notifications/unified-cron",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/class-series/advance/cron",
+      "schedule": "0 * * * *"
     }
   ]
 }

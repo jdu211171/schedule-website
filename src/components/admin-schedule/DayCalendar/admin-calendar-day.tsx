@@ -86,8 +86,9 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
   const today = useMemo(() => startOfDay(new Date()), []);
   const currentWeekStart = useMemo(() => startOfWeek(today, { weekStartsOn: 1 }), [today]);
 
-  const [viewStartDate, setViewStartDate] = useState<Date>(() => currentWeekStart);
-  const [selectedDays, setSelectedDays] = useState<Date[]>([currentWeekStart]);
+  // Default focus on 'today' instead of week start
+  const [viewStartDate, setViewStartDate] = useState<Date>(() => today);
+  const [selectedDays, setSelectedDays] = useState<Date[]>([today]);
   const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
@@ -96,17 +97,18 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
       if (saved) {
         const date = new Date(saved);
         if (!isNaN(date.getTime())) {
-          // Use saved start only if it's in the same week as today; otherwise reset to current week
+          // If saved date is in the same week as today, use the saved day itself.
+          // Otherwise, focus today.
           if (isSameWeek(date, today, { weekStartsOn: 1 })) {
-            setViewStartDate(startOfWeek(startOfDay(date), { weekStartsOn: 1 }));
+            setViewStartDate(startOfDay(date));
           } else {
-            setViewStartDate(currentWeekStart);
+            setViewStartDate(today);
           }
         } else {
-          setViewStartDate(currentWeekStart);
+          setViewStartDate(today);
         }
       } else {
-        setViewStartDate(currentWeekStart);
+        setViewStartDate(today);
       }
 
       const savedDaysJson = localStorage.getItem(SELECTED_DAYS_KEY);
@@ -118,8 +120,8 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
               .map((dateStr: string) => new Date(dateStr))
               .filter((date: Date) => !isNaN(date.getTime()));
 
-            // Only restore if at least one date is in the same week as the viewStartDate (after it's set above)
-            const base = startOfWeek(viewStartDate, { weekStartsOn: 1 });
+            // Only restore if at least one date is in the same week as the current viewStartDate
+            const base = viewStartDate;
             const inSameWeek = parsedDates.filter(date => isSameWeek(date, base, { weekStartsOn: 1 }));
 
             if (inSameWeek.length > 0) {
@@ -128,14 +130,14 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
               setSelectedDays([base]);
             }
           } else {
-            setSelectedDays([startOfWeek(viewStartDate, { weekStartsOn: 1 })]);
+            setSelectedDays([viewStartDate]);
           }
         } catch (error) {
           console.error('Error parsing saved selected days:', error);
-          setSelectedDays([startOfWeek(viewStartDate, { weekStartsOn: 1 })]);
+          setSelectedDays([viewStartDate]);
         }
       } else {
-        setSelectedDays([startOfWeek(viewStartDate, { weekStartsOn: 1 })]);
+        setSelectedDays([viewStartDate]);
       }
 
       setIsInitialized(true);
@@ -390,13 +392,16 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
       if (lessonData.forceCreate) {
         requestBody.forceCreate = true;
       }
+      // NEW: Respect caller preference to include or skip availability-based checks
+      if (typeof lessonData.checkAvailability === 'boolean') {
+        requestBody.checkAvailability = lessonData.checkAvailability;
+      }
 
       // ВАЖНО: Добавляем sessionActions!!!
       if (lessonData.sessionActions && lessonData.sessionActions.length > 0) {
         requestBody.sessionActions = lessonData.sessionActions;
       }
 
-      console.log("Final request body:", JSON.stringify(requestBody, null, 2));
 
       const response = await fetch('/api/class-sessions', {
         method: 'POST',
@@ -464,7 +469,6 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
         }
       }
 
-      console.log('Lesson created successfully');
 
       // Show success toast
       toast.success('授業が正常に作成されました');

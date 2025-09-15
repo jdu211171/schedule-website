@@ -7,6 +7,7 @@ import { Archive } from "@prisma/client";
 type FormattedArchive = {
   archiveId: string;
   classId: string;
+  seriesId: string | null;
   teacherName: string | null;
   studentName: string | null;
   subjectName: string | null;
@@ -26,6 +27,7 @@ type FormattedArchive = {
 const formatArchive = (archive: Archive): FormattedArchive => ({
   archiveId: archive.archiveId,
   classId: archive.classId,
+  seriesId: (archive as any).seriesId ?? null,
   teacherName: archive.teacherName,
   studentName: archive.studentName,
   subjectName: archive.subjectName,

@@ -149,7 +149,16 @@ const WeekLessonCard: React.FC<WeekLessonCardProps> = ({
             </div>
 
             {lesson.notes && (
-              <div className="text-xs opacity-90 pt-1 border-t">
+              <div
+                className="text-xs opacity-90 pt-1 border-t"
+                style={{
+                  display: "-webkit-box",
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: "vertical" as const,
+                  overflow: "hidden",
+                  wordBreak: "break-word",
+                }}
+              >
                 {lesson.notes}
               </div>
             )}

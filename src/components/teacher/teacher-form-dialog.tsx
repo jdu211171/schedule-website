@@ -99,6 +99,7 @@ import { useAllBranchesOrdered } from "@/hooks/useBranchQuery";
 import { EnhancedStateButton } from "../ui/enhanced-state-button";
 import { LineLinking } from "@/components/shared/line-linking";
 import { LineManagementDialog } from "@/components/shared/line-management-dialog";
+import TeacherRegularExceptionalSummary from "./teacher-regular-exceptional-summary";
 
 interface TimeSlot {
   id: string;
@@ -779,7 +780,7 @@ export function TeacherFormDialog({
                 onValueChange={setActiveTab}
                 className="w-full"
               >
-                <TabsList className="grid w-full grid-cols-7 mb-6">
+                <TabsList className="grid w-full grid-cols-8 mb-6">
                   <TabsTrigger
                     value="basic"
                     className="flex items-center gap-2"
@@ -829,6 +830,13 @@ export function TeacherFormDialog({
                   >
                     <MapPin className="h-4 w-4" />
                     校舎
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="commute"
+                    className="flex items-center gap-2"
+                  >
+                    <Clock className="h-4 w-4" />
+                    担当のシリーズ
                   </TabsTrigger>
                 </TabsList>
 
@@ -1287,6 +1295,15 @@ export function TeacherFormDialog({
                         </div>
                       </CardContent>
                     </Card>
+                  </TabsContent>
+
+                  {/* Regular vs Exceptional Summary */}
+                  <TabsContent value="commute" className="space-y-4 mt-0">
+                    {teacher?.teacherId ? (
+                      <TeacherRegularExceptionalSummary teacherId={teacher.teacherId} days={90} />
+                    ) : (
+                      <div className="text-sm text-muted-foreground">作成モードではシリーズ概要は表示されません</div>
+                    )}
                   </TabsContent>
 
                   {/* アカウントタブは削除され、項目は基本情報の上部に移動しました */}
