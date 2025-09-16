@@ -15,6 +15,11 @@ import { v4 as uuidv4 } from "uuid";
 import { z } from "zod";
 import { getDetailedSharedAvailability } from "@/lib/enhanced-availability";
 import { hasHardConflict } from "@/lib/conflict-types";
+import { SPECIAL_CLASS_COLOR_HEX } from "@/lib/special-class-constants";
+import {
+  applySpecialClassColor,
+  isSpecialClassType,
+} from "@/lib/special-class-server";
 
 type FormattedClassSession = {
   classId: string;
@@ -200,28 +205,6 @@ const checkVacationConflict = async (
     }
   }
 
-  return false;
-};
-
-// Helper to determine if a class type is "特別授業" or a child of it
-const isSpecialClassType = async (classTypeId?: string | null): Promise<boolean> => {
-  if (!classTypeId) return false;
-  try {
-    // Walk up the hierarchy up to a reasonable depth
-    let currentId: string | null | undefined = classTypeId;
-    for (let i = 0; i < 10 && currentId; i++) {
-      const ct: { name: string; parentId: string | null } | null = await prisma.classType.findUnique({
-        where: { classTypeId: currentId },
-        select: { name: true, parentId: true },
-      });
-      if (!ct) return false;
-      if (ct.name === "特別授業") return true;
-      currentId = ct.parentId;
-    }
-  } catch (e) {
-    // If schema or data missing, default to not special
-    return false;
-  }
   return false;
 };
 
@@ -607,6 +590,7 @@ export const GET = withBranchAccess(
 
     // Format class sessions
     const formattedClassSessions = classSessions.map(formatClassSession);
+    await applySpecialClassColor(classSessions, formattedClassSessions);
 
     return NextResponse.json({
       data: formattedClassSessions,
@@ -949,6 +933,9 @@ export const POST = withBranchAccess(
         });
 
         const formattedSession = formatClassSession(newClassSession);
+        if (await isSpecialClassType(newClassSession.classTypeId)) {
+          formattedSession.classTypeColor = SPECIAL_CLASS_COLOR_HEX;
+        }
 
         return NextResponse.json(
           {
@@ -1390,6 +1377,7 @@ export const POST = withBranchAccess(
         );
 
         const formattedSessions = createdSessions.map(formatClassSession);
+        await applySpecialClassColor(createdSessions, formattedSessions);
 
         // Create response message based on what happened
         let message = `${formattedSessions.length}件の繰り返し授業を作成しました`;

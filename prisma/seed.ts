@@ -173,7 +173,7 @@ async function main() {
     }));
   specialClassType = await prisma.classType.update({
     where: { classTypeId: specialClassType.classTypeId },
-    data: { notes: "夏期講習やイベントなどの特別枠", order: 2, color: 'red' },
+    data: { notes: "夏期講習やイベントなどの特別枠", order: 2, color: '#FDC5F5' },
   });
 
   let rescheduleClassType =

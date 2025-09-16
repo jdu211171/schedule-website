@@ -195,10 +195,14 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
     lesson.boothId,
   ]);
 
-  const { colorClasses, colorStyle } = useMemo(() => {
+  const { colorClasses, colorStyle, textClass } = useMemo(() => {
     const colorKey = ((lesson as any)?.classType?.color ?? (lesson as any)?.classTypeColor) as string | undefined;
     if (isValidClassTypeColor(colorKey)) {
-      return { colorClasses: classTypeColorClasses[colorKey], colorStyle: undefined as React.CSSProperties | undefined };
+      return {
+        colorClasses: classTypeColorClasses[colorKey],
+        colorStyle: undefined as React.CSSProperties | undefined,
+        textClass: undefined,
+      };
     }
     if (isHexColor(colorKey || '')) {
       const bg = rgba(colorKey!, 0.18) || undefined;
@@ -207,9 +211,11 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
       const style: React.CSSProperties = {
         backgroundColor: bg,
         borderColor: border,
-        color: textColor === 'white' ? '#f8fafc' : '#0f172a',
       };
-      return { colorClasses: undefined, colorStyle: style };
+      const customTextClass = textColor === 'white'
+        ? 'text-white dark:!text-white'
+        : 'text-slate-900 dark:!text-white';
+      return { colorClasses: undefined, colorStyle: style, textClass: customTextClass };
     }
     // fallback to previous behavior (series-based)
     const isRecurringLesson = lesson.seriesId !== null && lesson.seriesId !== undefined;
@@ -217,16 +223,16 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
       ? {
           background: "bg-indigo-100 dark:bg-indigo-900/70",
           border: "border-indigo-300 dark:border-indigo-700",
-          text: "text-indigo-800 dark:text-indigo-100",
+          text: "text-indigo-800 dark:!text-white",
           hover: "hover:bg-indigo-200 dark:hover:bg-indigo-800",
         }
       : {
-          background: "bg-red-100 dark:bg-red-900/70",
-          border: "border-red-300 dark:border-red-700",
-          text: "text-red-800 dark:text-red-100",
-          hover: "hover:bg-red-200 dark:hover:bg-red-800",
+          background: "bg-slate-100 dark:bg-slate-800/60",
+          border: "border-slate-300 dark:border-slate-600",
+          text: "text-slate-800 dark:!text-white",
+          hover: "hover:bg-slate-200 dark:hover:bg-slate-700",
         };
-    return { colorClasses: fallback, colorStyle: undefined };
+    return { colorClasses: fallback, colorStyle: undefined, textClass: undefined };
   }, [lesson.seriesId, (lesson as any)?.classTypeColor, (lesson as any)?.classType?.color]);
 
   const style = useMemo(
@@ -281,9 +287,11 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
         absolute rounded border shadow-sm cursor-pointer
         transition-colors duration-100 ease-in-out transform
         ${colorClasses ? `${colorClasses.background} ${colorClasses.border} ${colorClasses.text} ${colorClasses.hover}` : ''}
+        ${textClass ?? ''}
         ${isCancelled ? 'opacity-60 grayscale' : ''}
         active:scale-[0.98] hover:shadow-md
         overflow-hidden truncate pointer-events-auto
+        dark:!text-white
       `}
       style={{ ...style, ...(colorStyle || {}) }}
       onClick={() => onClick(lesson)}
@@ -297,14 +305,14 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
           <div className="flex items-center gap-1">
             <span className="truncate font-medium">{studentName}</span>
             {studentTypeLabel && (
-              <span className="text-[8px] px-1 bg-gray-600 dark:bg-gray-400 text-white dark:text-gray-900 rounded flex-shrink-0">
+              <span className="text-[8px] px-1 bg-gray-600 dark:bg-gray-700 text-white dark:!text-white rounded flex-shrink-0">
                 {studentTypeLabel}
               </span>
             )}
           </div>
           <span className="truncate text-right ml-2">
             {teacherName}
-            <span className="text-[10px] px-1 bg-gray-600 dark:bg-gray-400 text-white dark:text-gray-900 rounded flex-shrink-0">
+            <span className="text-[10px] px-1 bg-gray-600 dark:bg-gray-700 text-white dark:!text-white rounded flex-shrink-0">
               T
             </span>
           </span>

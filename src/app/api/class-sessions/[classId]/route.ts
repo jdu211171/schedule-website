@@ -5,6 +5,8 @@ import { prisma } from "@/lib/prisma";
 import { classSessionUpdateSchema } from "@/schemas/class-session.schema";
 import { ClassSession } from "@prisma/client";
 import { parse, format, parseISO } from "date-fns";
+import { SPECIAL_CLASS_COLOR_HEX } from "@/lib/special-class-constants";
+import { isSpecialClassType } from "@/lib/special-class-server";
 
 type FormattedClassSession = {
   classId: string;
@@ -28,6 +30,7 @@ type FormattedClassSession = {
   endTime: string;
   duration: number | null;
   notes: string | null;
+  classTypeColor?: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -75,6 +78,7 @@ const formatClassSession = (
     subjectName: classSession.subject?.name || null,
     classTypeId: classSession.classTypeId,
     classTypeName: classSession.classType?.name || null,
+    classTypeColor: (classSession as any).classType?.color ?? null,
     boothId: classSession.boothId,
     boothName: classSession.booth?.name || null,
     branchId: classSession.branchId,
@@ -162,11 +166,12 @@ export const GET = withBranchAccess(
             name: true,
           },
         },
-        classType: {
-          select: {
-            name: true,
+          classType: {
+            select: {
+              name: true,
+              color: true,
+            },
           },
-        },
         booth: {
           select: {
             name: true,
@@ -201,6 +206,9 @@ export const GET = withBranchAccess(
 
     // Format response
     const formattedClassSession = formatClassSession(classSession);
+    if (await isSpecialClassType(classSession.classTypeId)) {
+      formattedClassSession.classTypeColor = SPECIAL_CLASS_COLOR_HEX;
+    }
 
     return NextResponse.json({
       data: formattedClassSession,
@@ -466,11 +474,12 @@ export const PATCH = withBranchAccess(
               name: true,
             },
           },
-          classType: {
-            select: {
-              name: true,
-            },
+        classType: {
+          select: {
+            name: true,
+            color: true,
           },
+        },
           booth: {
             select: {
               name: true,
@@ -486,6 +495,9 @@ export const PATCH = withBranchAccess(
 
       // Format response
       const formattedClassSession = formatClassSession(updatedClassSession);
+      if (await isSpecialClassType(updatedClassSession.classTypeId)) {
+        formattedClassSession.classTypeColor = SPECIAL_CLASS_COLOR_HEX;
+      }
 
       return NextResponse.json({
         data: formattedClassSession,

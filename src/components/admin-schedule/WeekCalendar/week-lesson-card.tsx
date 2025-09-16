@@ -63,12 +63,12 @@ const useLessonColors = (lesson: ExtendedClassSessionWithRelations) => {
           compactText: 'text-indigo-800 dark:text-indigo-100',
         }
       : {
-          background: 'bg-red-100 dark:bg-red-900/70',
-          border: 'border-red-300 dark:border-red-700',
-          text: 'text-red-800 dark:text-red-100',
-          hover: 'hover:bg-red-200 dark:hover:bg-red-800',
-          compactBg: 'bg-red-100 dark:bg-red-900/70 hover:bg-red-200 dark:hover:bg-red-800',
-          compactText: 'text-red-800 dark:text-red-100',
+          background: 'bg-slate-100 dark:bg-slate-800/60',
+          border: 'border-slate-300 dark:border-slate-600',
+          text: 'text-slate-800 dark:text-slate-100',
+          hover: 'hover:bg-slate-200 dark:hover:bg-slate-700',
+          compactBg: 'bg-slate-100 dark:bg-slate-800/60 hover:bg-slate-200 dark:hover:bg-slate-700',
+          compactText: 'text-slate-800 dark:text-slate-100',
         };
     return { classes: fallback, style: undefined, compactStyle: undefined };
   }, [lesson]);

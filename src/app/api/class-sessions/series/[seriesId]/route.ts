@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { classSessionSeriesUpdateSchema } from "@/schemas/class-session.schema";
 import { ClassSession } from "@prisma/client";
 import { parse, format, parseISO } from "date-fns";
+import { applySpecialClassColor } from "@/lib/special-class-server";
 
 type FormattedClassSession = {
   classId: string;
@@ -31,6 +32,7 @@ type FormattedClassSession = {
   status: string | null;
   isCancelled: boolean;
   cancellationReason: string | null;
+  classTypeColor?: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -78,6 +80,7 @@ const formatClassSession = (
     subjectName: classSession.subject?.name || null,
     classTypeId: classSession.classTypeId,
     classTypeName: classSession.classType?.name || null,
+    classTypeColor: (classSession as any).classType?.color ?? null,
     boothId: classSession.boothId,
     boothName: classSession.booth?.name || null,
     branchId: classSession.branchId,
@@ -179,6 +182,7 @@ export const GET = withBranchAccess(
         classType: {
           select: {
             name: true,
+            color: true,
           },
         },
         booth: {
@@ -197,6 +201,7 @@ export const GET = withBranchAccess(
 
     // Format response
     const formattedClassSessions = classSessions.map(formatClassSession);
+    await applySpecialClassColor(classSessions, formattedClassSessions);
 
     return NextResponse.json({
       data: formattedClassSessions,
@@ -452,6 +457,7 @@ export const PATCH = withBranchAccess(
               classType: {
                 select: {
                   name: true,
+                  color: true,
                 },
               },
               booth: {
@@ -475,6 +481,7 @@ export const PATCH = withBranchAccess(
 
       // Format response
       const formattedSessions = updatedSessions.map(formatClassSession);
+      await applySpecialClassColor(updatedSessions, formattedSessions);
 
       return NextResponse.json({
         data: formattedSessions,

@@ -17,6 +17,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { SearchableSelect, SearchableSelectItem } from '../searchable-select';
 import { X } from 'lucide-react';
+import { SPECIAL_CLASS_COLOR_CLASSES } from '@/lib/special-class-constants';
 import {
   getDateKey,
 } from '../date';
@@ -748,8 +749,8 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
             <div className="text-xs text-muted-foreground">授業タイプ表示:</div>
             <div className="flex items-center gap-3 text-xs">
               <div className="flex items-center gap-1">
-                <div className="w-3 h-3 rounded-sm bg-red-100 border border-red-300 dark:bg-red-900/70 dark:border-red-700"></div>
-                <span className="text-red-700 dark:text-red-300">特別希望</span>
+                <div className={`w-3 h-3 rounded-sm ${SPECIAL_CLASS_COLOR_CLASSES.legendFill}`}></div>
+                <span className={SPECIAL_CLASS_COLOR_CLASSES.legendText}>特別希望</span>
               </div>
               <div className="flex items-center gap-1">
                 <div className="w-3 h-3 rounded-sm bg-indigo-100 border border-indigo-300 dark:bg-indigo-900/70 dark:border-indigo-700"></div>
