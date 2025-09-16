@@ -21,6 +21,7 @@ type FormattedClassSession = {
   subjectName: string | null;
   classTypeId: string | null;
   classTypeName: string | null;
+  status: ClassSession["status"];
   boothId: string | null;
   boothName: string | null;
   branchId: string | null;
@@ -79,6 +80,7 @@ const formatClassSession = (
     classTypeId: classSession.classTypeId,
     classTypeName: classSession.classType?.name || null,
     classTypeColor: (classSession as any).classType?.color ?? null,
+    status: classSession.status,
     boothId: classSession.boothId,
     boothName: classSession.booth?.name || null,
     branchId: classSession.branchId,

@@ -29,7 +29,7 @@ type FormattedClassSession = {
   endTime: string;
   duration: number | null;
   notes: string | null;
-  status: string | null;
+  status: ClassSession["status"];
   isCancelled: boolean;
   cancellationReason: string | null;
   classTypeColor?: string | null;
@@ -90,7 +90,7 @@ const formatClassSession = (
     endTime: formattedEndTime,
     duration: classSession.duration,
     notes: classSession.notes,
-    status: (classSession as any).status ?? null,
+    status: classSession.status,
     isCancelled: (classSession as any).isCancelled ?? false,
     cancellationReason: (classSession as any).cancellationReason ?? null,
     createdAt: format(classSession.createdAt, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"),

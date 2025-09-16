@@ -113,6 +113,8 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
   const isValidPosition =
     startSlotIndex >= 0 && endSlotIndex > startSlotIndex && boothIndex >= 0;
 
+  const isConflicted = (lesson as any)?.status === "CONFLICTED";
+
   const { effectiveStartIndex, effectiveDuration } = useMemo(() => {
     if (isValidPosition) {
       return {
@@ -196,6 +198,18 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
   ]);
 
   const { colorClasses, colorStyle, textClass } = useMemo(() => {
+    if (isConflicted) {
+      return {
+        colorClasses: {
+          background: "bg-destructive/15 dark:bg-destructive/25",
+          border: "border-destructive/80 dark:border-destructive/70",
+          text: "text-destructive dark:!text-white",
+          hover: "hover:bg-destructive/25 dark:hover:bg-destructive/30",
+        },
+        colorStyle: undefined as React.CSSProperties | undefined,
+        textClass: "font-semibold",
+      };
+    }
     const colorKey = ((lesson as any)?.classType?.color ?? (lesson as any)?.classTypeColor) as string | undefined;
     if (isValidClassTypeColor(colorKey)) {
       return {
@@ -233,7 +247,7 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
           hover: "hover:bg-slate-200 dark:hover:bg-slate-700",
         };
     return { colorClasses: fallback, colorStyle: undefined, textClass: undefined };
-  }, [lesson.seriesId, (lesson as any)?.classTypeColor, (lesson as any)?.classType?.color]);
+  }, [isConflicted, lesson.seriesId, (lesson as any)?.classTypeColor, (lesson as any)?.classType?.color]);
 
   const style = useMemo(
     () =>
@@ -299,6 +313,9 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
       <div className="text-[11px] p-1 flex flex-col h-full justify-between relative">
         {isCancelled && (
           <span className="absolute top-1 right-1 text-[10px] bg-slate-700 text-white rounded px-1 py-0.5">キャンセル</span>
+        )}
+        {isConflicted && !isCancelled && (
+          <span className="absolute top-1 right-1 text-[10px] bg-destructive text-white dark:!text-white rounded px-1 py-0.5">コンフリクト</span>
         )}
         {/* Top row */}
         <div className="flex justify-between items-start">
