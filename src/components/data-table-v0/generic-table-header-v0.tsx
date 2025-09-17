@@ -14,7 +14,7 @@ export function GenericTableHeader<TData>({ table }: GenericTableHeaderProps<TDa
   return (
     <UITableHeader>
       {table.getHeaderGroups().map((headerGroup) => (
-        <TableRow key={headerGroup.id}>
+        <TableRow key={headerGroup.id} className="bg-background">
           {headerGroup.headers.map((header) => {
             const columnMeta = header.column.columnDef.meta as
               | { headerClassName?: string }
@@ -36,11 +36,14 @@ export function GenericTableHeader<TData>({ table }: GenericTableHeaderProps<TDa
                 data-pinned={isPinned || undefined}
                 style={pinnedStyle}
                 className={cn(
-                  "bg-background",
+                  "bg-inherit",
+                  isPinned &&
+                    // Solid paint layer to prevent bleed-through from scrolled cells
+                    "relative isolate before:absolute before:inset-0 before:bg-background before:content-[''] before:pointer-events-none",
                   columnMeta?.headerClassName,
                 )}
               >
-                <div className="relative flex min-h-[2.75rem] w-full items-center bg-background">
+                <div className="relative flex min-h-[2.75rem] w-full items-center bg-inherit">
                   {header.isPlaceholder
                     ? null
                     : flexRender(header.column.columnDef.header, header.getContext())}

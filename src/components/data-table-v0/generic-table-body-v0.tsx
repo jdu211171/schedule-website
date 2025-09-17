@@ -28,6 +28,7 @@ export function GenericTableBody<TData>({
         table.getRowModel().rows.map((row) => (
           <TableRow
             key={row.id}
+            className="bg-background"
             data-state={row.getIsSelected() && "selected"}
           >
             {row.getVisibleCells().map((cell) => {
@@ -47,14 +48,16 @@ export function GenericTableBody<TData>({
                   data-pinned={isPinned || undefined}
                   style={pinnedStyle}
                   className={cn(
-                    isPinned && "bg-background",
+                    "bg-inherit",
+                    isPinned &&
+                      // Solid paint layer to prevent bleed-through from scrolled cells
+                      "relative isolate before:absolute before:inset-0 before:bg-background before:content-[''] before:pointer-events-none",
                     columnMeta?.cellClassName,
                   )}
                 >
                   <div
                     className={cn(
-                      "relative flex min-h-[2.5rem] w-full items-center",
-                      isPinned && "bg-background",
+                      "relative flex min-h-[2.5rem] w-full items-center bg-inherit",
                     )}
                   >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
