@@ -2,7 +2,10 @@
 
 import { flexRender, type Table as ReactTable } from "@tanstack/react-table"
 import type { UniqueIdentifier } from "@dnd-kit/core"
+
 import { TableBody as UITableBody, TableCell, TableRow } from "@/components/ui/table"
+import { getPinnedCellStyles } from "@/lib/data-table"
+import { cn } from "@/lib/utils"
 
 interface GenericTableBodyProps<TData> {
   table: ReactTable<TData>
@@ -27,11 +30,38 @@ export function GenericTableBody<TData>({
             key={row.id}
             data-state={row.getIsSelected() && "selected"}
           >
-            {row.getVisibleCells().map((cell) => (
-              <TableCell key={cell.id}>
-                {flexRender(cell.column.columnDef.cell, cell.getContext())}
-              </TableCell>
-            ))}
+            {row.getVisibleCells().map((cell) => {
+              const columnMeta = cell.column.columnDef.meta as
+                | { cellClassName?: string }
+                | undefined
+              const pinnedStyle = getPinnedCellStyles({
+                column: cell.column,
+                zIndex: 30,
+                withBorder: true,
+              })
+              const isPinned = cell.column.getIsPinned()
+
+              return (
+                <TableCell
+                  key={cell.id}
+                  data-pinned={isPinned || undefined}
+                  style={pinnedStyle}
+                  className={cn(
+                    isPinned && "bg-background",
+                    columnMeta?.cellClassName,
+                  )}
+                >
+                  <div
+                    className={cn(
+                      "relative flex min-h-[2.5rem] w-full items-center",
+                      isPinned && "bg-background",
+                    )}
+                  >
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </div>
+                </TableCell>
+              )
+            })}
           </TableRow>
         ))
       ) : (

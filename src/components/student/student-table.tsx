@@ -1012,7 +1012,7 @@ export function StudentTable() {
     pageCount: totalPages,
     initialState: {
       pagination: { pageSize, pageIndex: page - 1 },
-      columnPinning: { right: ["actions"] },
+      columnPinning: { left: ["select", "name"] },
       columnVisibility: getSavedColumnVisibility(),
       columnFilters: [
         ...(filters.name ? [{ id: "name", value: filters.name }] : []),
