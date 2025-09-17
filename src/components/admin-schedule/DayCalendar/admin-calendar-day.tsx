@@ -16,6 +16,14 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { SearchableSelect, SearchableSelectItem } from '../searchable-select';
+import { Combobox } from '@/components/ui/combobox';
+import { useDebounce } from '@/hooks/use-debounce';
+import { useSmartSelection, EnhancedTeacher, EnhancedStudent } from '@/hooks/useSmartSelection';
+import {
+  CompatibilityComboboxItem,
+  getCompatibilityPriority,
+  renderCompatibilityComboboxItem,
+} from "../compatibility-combobox-utils";
 import { X } from 'lucide-react';
 import {
   getDateKey,
@@ -145,6 +153,10 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
   const [selectedClassTypeId, setSelectedClassTypeId] = useState<string>('');
   const [selectedTeacherId, setSelectedTeacherId] = useState<string>('');
   const [selectedStudentId, setSelectedStudentId] = useState<string>('');
+  const [teacherSearchQuery, setTeacherSearchQuery] = useState<string>('');
+  const [studentSearchQuery, setStudentSearchQuery] = useState<string>('');
+  const debouncedTeacherSearchQuery = useDebounce(teacherSearchQuery, 300);
+  const debouncedStudentSearchQuery = useDebounce(studentSearchQuery, 300);
 
   const [globalAvailabilityMode, setGlobalAvailabilityMode] = useState<AvailabilityMode>('with-special');
   const [dayAvailabilitySettings, setDayAvailabilitySettings] = useState<Record<string, AvailabilityMode>>({});
@@ -208,6 +220,25 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
   const students = useMemo(() => studentsResponse?.data || [], [studentsResponse]);
   const subjects = useMemo(() => subjectsResponse?.data || [], [subjectsResponse]);
   const classTypes = useMemo(() => classTypesResponse?.data || [], [classTypesResponse]);
+
+  // Smart selection aligned with dialog
+  const {
+    enhancedTeachers,
+    enhancedStudents,
+    hasTeacherSelected,
+    hasStudentSelected,
+    isFetchingStudents,
+    isLoadingStudents: isLoadingStudentsSmart,
+    isFetchingTeachers,
+    isLoadingTeachers: isLoadingTeachersSmart,
+  } = useSmartSelection({
+    selectedTeacherId,
+    selectedStudentId,
+    selectedSubjectId: undefined,
+    activeOnly: true,
+    teacherSearchTerm: debouncedTeacherSearchQuery,
+    studentSearchTerm: debouncedStudentSearchQuery,
+  });
 
   // Фильтруем только родительские типы для селекта в настройках
   const parentClassTypes = useMemo(() => {
@@ -540,15 +571,97 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
     label: type.name,
   }));
 
-  const teacherItems: SearchableSelectItem[] = teachers.map((teacher) => ({
-    value: teacher.teacherId,
-    label: teacher.name,
-  }));
+  const teacherComboItems: CompatibilityComboboxItem[] = enhancedTeachers
+    .map((teacher) => {
+      let description = '';
+      let matchingSubjectsCount = 0;
+      let partialMatchingSubjectsCount = 0;
 
-  const studentItems: SearchableSelectItem[] = students.map((student) => ({
-    value: student.studentId,
-    label: student.name,
-  }));
+      if (teacher.compatibilityType === 'perfect') {
+        description = `${teacher.matchingSubjectsCount}件の完全一致`;
+        matchingSubjectsCount = teacher.matchingSubjectsCount;
+        if (teacher.partialMatchingSubjectsCount > 0) {
+          description += `, ${teacher.partialMatchingSubjectsCount}件の部分一致`;
+          partialMatchingSubjectsCount = teacher.partialMatchingSubjectsCount;
+        }
+      } else if (teacher.compatibilityType === 'subject-only') {
+        description = `${teacher.partialMatchingSubjectsCount}件の部分一致`;
+        partialMatchingSubjectsCount = teacher.partialMatchingSubjectsCount;
+      } else if (teacher.compatibilityType === 'mismatch') {
+        description = '共通科目なし';
+      } else if (teacher.compatibilityType === 'teacher-no-prefs') {
+        description = '科目設定なし';
+      } else if (teacher.compatibilityType === 'student-no-prefs') {
+        description = '生徒の設定なし（全対応可）';
+      }
+
+      const keywords = [teacher.name, teacher.kanaName, teacher.email, teacher.username]
+        .filter((k): k is string => Boolean(k))
+        .map((k) => k.toLowerCase());
+
+      return {
+        value: teacher.teacherId,
+        label: teacher.name,
+        description,
+        compatibilityType: teacher.compatibilityType,
+        matchingSubjectsCount,
+        partialMatchingSubjectsCount,
+        keywords,
+      } as CompatibilityComboboxItem;
+    })
+    .sort((a, b) => {
+      const priorityDiff = getCompatibilityPriority(b.compatibilityType) - getCompatibilityPriority(a.compatibilityType);
+      if (priorityDiff !== 0) return priorityDiff;
+      const labelA = typeof a.label === 'string' ? a.label : String(a.label ?? '');
+      const labelB = typeof b.label === 'string' ? b.label : String(b.label ?? '');
+      return labelA.localeCompare(labelB, 'ja');
+    });
+
+  const studentComboItems: CompatibilityComboboxItem[] = enhancedStudents
+    .map((student) => {
+      let description = '';
+      let matchingSubjectsCount = 0;
+      let partialMatchingSubjectsCount = 0;
+
+      if (student.compatibilityType === 'perfect') {
+        description = `${student.matchingSubjectsCount}件の完全一致`;
+        matchingSubjectsCount = student.matchingSubjectsCount;
+        if (student.partialMatchingSubjectsCount > 0) {
+          description += `, ${student.partialMatchingSubjectsCount}件の部分一致`;
+          partialMatchingSubjectsCount = student.partialMatchingSubjectsCount;
+        }
+      } else if (student.compatibilityType === 'subject-only') {
+        description = `${student.partialMatchingSubjectsCount}件の部分一致`;
+        partialMatchingSubjectsCount = student.partialMatchingSubjectsCount;
+      } else if (student.compatibilityType === 'mismatch') {
+        description = '共通科目なし';
+      } else if (student.compatibilityType === 'student-no-prefs') {
+        description = '科目設定なし';
+      } else if (student.compatibilityType === 'teacher-no-prefs') {
+        description = '講師の設定なし（全対応可）';
+      }
+
+      const keywords = [student.name, student.kanaName, student.email, student.username]
+        .filter((k): k is string => Boolean(k))
+        .map((k) => k.toLowerCase());
+
+      return {
+        value: student.studentId,
+        label: student.name,
+        description,
+        compatibilityType: student.compatibilityType,
+        matchingSubjectsCount,
+        partialMatchingSubjectsCount,
+        keywords,
+      } as CompatibilityComboboxItem;
+    })
+    .sort((a, b) => {
+      const priorityDiff = getCompatibilityPriority(b.compatibilityType) - getCompatibilityPriority(a.compatibilityType);
+      if (priorityDiff !== 0) return priorityDiff;
+      const labelA = typeof a.label === 'string' ? a.label : String(a.label ?? '');
+      const labelB = typeof b.label === 'string' ? b.label : String(b.label ?? '');
+      return labelA.localeCompare(labelB, 'ja');
+    });
 
   const clearClassType = () => setSelectedClassTypeId('');
   const clearTeacher = () => setSelectedTeacherId('');
@@ -663,15 +776,29 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
 
           <div className="flex items-end gap-1">
             <div className="flex-1">
-              <label className="text-sm font-medium mb-1 block">講師</label>
-              <SearchableSelect
+              <label className="text-sm font-medium mb-1 block">
+                講師
+                {hasStudentSelected && (
+                  <span className="text-xs text-muted-foreground ml-1">
+                    ({enhancedTeachers.filter((t: EnhancedTeacher) => t.compatibilityType === 'perfect').length} 完全一致)
+                  </span>
+                )}
+              </label>
+              <Combobox<CompatibilityComboboxItem>
+                items={teacherComboItems}
                 value={selectedTeacherId}
                 onValueChange={setSelectedTeacherId}
-                items={teacherItems}
                 placeholder="講師を選択"
                 searchPlaceholder="講師を検索..."
                 emptyMessage="講師が見つかりません"
-                disabled={isLoadingTeachers}
+                disabled={false}
+                clearable
+                searchValue={teacherSearchQuery}
+                onSearchChange={setTeacherSearchQuery}
+                loading={isLoadingTeachersSmart || isFetchingTeachers}
+                triggerClassName="h-10"
+                onOpenChange={(open) => { if (!open) setTeacherSearchQuery(''); }}
+                renderItem={renderCompatibilityComboboxItem}
               />
             </div>
             {selectedTeacherId && (
@@ -688,15 +815,29 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
 
           <div className="flex items-end gap-1">
             <div className="flex-1">
-              <label className="text-sm font-medium mb-1 block">生徒</label>
-              <SearchableSelect
+              <label className="text-sm font-medium mb-1 block">
+                生徒
+                {hasTeacherSelected && (
+                  <span className="text-xs text-muted-foreground ml-1">
+                    ({enhancedStudents.filter((s: EnhancedStudent) => s.compatibilityType === 'perfect').length} 完全一致)
+                  </span>
+                )}
+              </label>
+              <Combobox<CompatibilityComboboxItem>
+                items={studentComboItems}
                 value={selectedStudentId}
                 onValueChange={setSelectedStudentId}
-                items={studentItems}
                 placeholder="生徒を選択"
                 searchPlaceholder="生徒を検索..."
                 emptyMessage="生徒が見つかりません"
-                disabled={isLoadingStudents}
+                disabled={false}
+                clearable
+                searchValue={studentSearchQuery}
+                onSearchChange={setStudentSearchQuery}
+                loading={isLoadingStudentsSmart || isFetchingStudents}
+                triggerClassName="h-10"
+                onOpenChange={(open) => { if (!open) setStudentSearchQuery(''); }}
+                renderItem={renderCompatibilityComboboxItem}
               />
             </div>
             {selectedStudentId && (
