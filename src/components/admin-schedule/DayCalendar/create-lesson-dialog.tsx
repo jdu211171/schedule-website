@@ -318,7 +318,7 @@ const FormContent: React.FC<{
 
   return (
     <div className="grid gap-3 py-2">
-      <div className="grid grid-cols-2 gap-4">
+      {/* Top section: Date + Booth, followed by Start/End time in the same 2-col grid */}
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="text-sm font-medium text-foreground">日付</label>
@@ -327,7 +327,8 @@ const FormContent: React.FC<{
           </div>
         </div>
 
-        {/* UPDATED: Booth Field - Conditional selector or static display */}          <div>
+        {/* UPDATED: Booth Field - Conditional selector or static display */}
+        <div>
             <label className="text-sm font-medium text-foreground">
               ブース <span className="text-destructive">*</span>
             </label>
@@ -365,9 +366,7 @@ const FormContent: React.FC<{
             </div>
           )}
         </div>
-      </div>
-
-      
+        
         <div>
           <label className="text-sm font-medium text-foreground">
             開始時間 <span className="text-destructive">*</span>
