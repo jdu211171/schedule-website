@@ -112,6 +112,7 @@ import { useAllSubjectTypes } from "@/hooks/useSubjectTypeQuery";
 import { useTeachersBySubjectPreference } from "@/hooks/useTeachersBySubjectPreference";
 import { useTeachers } from "@/hooks/useTeacherQuery";
 import { useAllBranchesOrdered } from "@/hooks/useBranchQuery";
+import StudentRegularExceptionalSummary from "./student-regular-exceptional-summary";
 
 interface TimeSlot {
   id: string;
@@ -1044,7 +1045,7 @@ export function StudentFormDialog({
                 onValueChange={setActiveTab}
                 className="w-full"
               >
-                <TabsList className="grid w-full grid-cols-7 mb-6">
+                <TabsList className="grid w-full grid-cols-8 mb-6">
                   <TabsTrigger
                     value="basic"
                     className="flex items-center gap-2 "
@@ -1093,6 +1094,13 @@ export function StudentFormDialog({
                   >
                     <MapPin className="h-4 w-4" />
                     校舎
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="commute"
+                    className="flex items-center gap-2"
+                  >
+                    <Clock className="h-4 w-4" />
+                    通塾まとめ
                   </TabsTrigger>
                 </TabsList>
 
@@ -1902,6 +1910,15 @@ export function StudentFormDialog({
                         />
                       </CardContent>
                     </Card>
+                  </TabsContent>
+
+                  {/* Regular vs Exceptional Summary */}
+                  <TabsContent value="commute" className="space-y-4 mt-0">
+                    {student?.studentId ? (
+                      <StudentRegularExceptionalSummary studentId={student.studentId} days={90} />
+                    ) : (
+                      <div className="text-sm text-muted-foreground">作成モードでは通塾まとめは表示されません</div>
+                    )}
                   </TabsContent>
 
                   {/* アカウントタブは削除され、項目は基本情報の上部に移動しました */}

@@ -13,6 +13,7 @@ import {
 } from "date-fns";
 import React from "react";
 import { GetColorFunction } from "./student-schedule-week-viewer";
+import { SPECIAL_CLASS_COLOR_CLASSES } from "@/lib/special-class-constants";
 
 type MonthViewerProps = {
   lessons: ExtendedClassSessionWithRelations[];
@@ -183,8 +184,8 @@ export const StudentScheduleMonthViewer: React.FC<MonthViewerProps> = ({
           <span>通常授業</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-2 h-2 bg-red-100 dark:bg-red-900/70 border border-red-300 dark:border-red-700 rounded-full"></div>
-          <span>特別授業</span>
+          <div className={`w-2 h-2 rounded-full ${SPECIAL_CLASS_COLOR_CLASSES.legendFill}`}></div>
+          <span className={SPECIAL_CLASS_COLOR_CLASSES.legendText}>特別授業</span>
         </div>
       </div>
     </div>

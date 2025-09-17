@@ -2,6 +2,40 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// Blueprint for recurring class series
+model ClassSeries {
+  seriesId             String    @id @map("series_id")
+  // Default assignments
+  branchId             String?   @map("branch_id")
+  teacherId            String?   @map("teacher_id")
+  studentId            String?   @map("student_id")
+  subjectId            String?   @map("subject_id")
+  classTypeId          String?   @map("class_type_id")
+  boothId              String?   @map("booth_id")
+  // Cadence & scope
+  startDate            DateTime  @map("start_date") @db.Date
+  endDate              DateTime? @map("end_date") @db.Date
+  startTime            DateTime  @map("start_time") @db.Time(6)
+  endTime              DateTime  @map("end_time") @db.Time(6)
+  duration             Int? // minutes
+  daysOfWeek           Json      @map("days_of_week") // e.g. [1,3,5]
+  // Lifecycle & automation
+  status               String    @default("ACTIVE")
+  generationMode       String    @default("ON_DEMAND") @map("generation_mode")
+  lastGeneratedThrough DateTime? @map("last_generated_through") @db.Date
+  conflictPolicy       Json?     @map("conflict_policy")
+  notes                String?   @db.VarChar(255)
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt            DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  @@index([studentId])
+  @@index([teacherId])
+  @@index([branchId])
+  @@index([classTypeId])
+  @@index([status])
+  @@map("class_series")
+}
+
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
@@ -84,6 +118,8 @@ model ClassSession {
   endTime                 DateTime                 @map("end_time") @db.Time(6)
   duration                Int?                     @map("duration")
   notes                   String?                  @db.VarChar(255)
+  // Session lifecycle/status (e.g., CONFIRMED, CONFLICTED)
+  status                  String?                  @db.VarChar(20)
   // Cancellation fields
   isCancelled             Boolean                  @default(false) @map("is_cancelled")
   cancellationReason      CancellationReason?      @map("cancellation_reason")
@@ -100,8 +136,9 @@ model ClassSession {
   studentClassEnrollments StudentClassEnrollment[]
   cancelledBy             User?                    @relation(fields: [cancelledByUserId], references: [id])
 
-  // Allow overlapping when one is cancelled by including isCancelled in the unique constraint
-  @@unique([teacherId, date, startTime, endTime, isCancelled])
+  // Note: Hard overlaps (teacher/student/booth) are allowed and recorded as CONFLICTED.
+  // We intentionally do not enforce a unique constraint on (teacherId, date, startTime, endTime)
+  // to permit creating conflicting sessions for review and manual resolution.
   @@index([date])
   @@index([teacherId])
   @@index([branchId])
@@ -302,14 +339,14 @@ model Teacher {
 }
 
 model TeacherContactPhone {
-  id          String    @id @default(cuid())
-  teacherId   String    @map("teacher_id")
-  phoneNumber String    @map("phone_number") @db.VarChar(50)
-  notes       String?   @db.VarChar(255)
-  order       Int       @default(0)
-  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
-  teacher     Teacher   @relation(fields: [teacherId], references: [teacherId], onDelete: Cascade)
+  id          String   @id @default(cuid())
+  teacherId   String   @map("teacher_id")
+  phoneNumber String   @map("phone_number") @db.VarChar(50)
+  notes       String?  @db.VarChar(255)
+  order       Int      @default(0)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  teacher     Teacher  @relation(fields: [teacherId], references: [teacherId], onDelete: Cascade)
 
   @@index([teacherId])
   @@index([order])
@@ -547,6 +584,7 @@ model User {
 model Archive {
   archiveId        String   @id @default(cuid()) @map("archive_id")
   classId          String   @unique @map("class_id")
+  seriesId         String?  @map("series_id")
   teacherName      String?  @map("teacher_name") @db.VarChar(100)
   studentName      String?  @map("student_name") @db.VarChar(100)
   subjectName      String?  @map("subject_name") @db.VarChar(100)

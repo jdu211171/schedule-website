@@ -14,6 +14,12 @@ import { addDays, format, parseISO, differenceInDays, getDay } from "date-fns";
 import { v4 as uuidv4 } from "uuid";
 import { z } from "zod";
 import { getDetailedSharedAvailability } from "@/lib/enhanced-availability";
+import { hasHardConflict } from "@/lib/conflict-types";
+import { SPECIAL_CLASS_COLOR_HEX } from "@/lib/special-class-constants";
+import {
+  applySpecialClassColor,
+  isSpecialClassType,
+} from "@/lib/special-class-server";
 
 type FormattedClassSession = {
   classId: string;
@@ -28,6 +34,7 @@ type FormattedClassSession = {
   subjectName: string | null;
   classTypeId: string | null;
   classTypeName: string | null;
+  status: ClassSession["status"];
   classTypeColor?: string | null;
   boothId: string | null;
   boothName: string | null;
@@ -87,6 +94,7 @@ const formatClassSession = (
     subjectName: classSession.subject?.name || null,
     classTypeId: classSession.classTypeId,
     classTypeName: classSession.classType?.name || null,
+    status: classSession.status,
     classTypeColor: (classSession as any).classType?.color ?? null,
     boothId: classSession.boothId,
     boothName: classSession.booth?.name || null,
@@ -199,28 +207,6 @@ const checkVacationConflict = async (
     }
   }
 
-  return false;
-};
-
-// Helper to determine if a class type is "特別授業" or a child of it
-const isSpecialClassType = async (classTypeId?: string | null): Promise<boolean> => {
-  if (!classTypeId) return false;
-  try {
-    // Walk up the hierarchy up to a reasonable depth
-    let currentId: string | null | undefined = classTypeId;
-    for (let i = 0; i < 10 && currentId; i++) {
-      const ct: { name: string; parentId: string | null } | null = await prisma.classType.findUnique({
-        where: { classTypeId: currentId },
-        select: { name: true, parentId: true },
-      });
-      if (!ct) return false;
-      if (ct.name === "特別授業") return true;
-      currentId = ct.parentId;
-    }
-  } catch (e) {
-    // If schema or data missing, default to not special
-    return false;
-  }
   return false;
 };
 
@@ -606,6 +592,7 @@ export const GET = withBranchAccess(
 
     // Format class sessions
     const formattedClassSessions = classSessions.map(formatClassSession);
+    await applySpecialClassColor(classSessions, formattedClassSessions);
 
     return NextResponse.json({
       data: formattedClassSessions,
@@ -807,8 +794,10 @@ export const POST = withBranchAccess(
           }
         }
 
-        // Autoskip: prefetch same-day sessions once and skip if any participant overlaps
+        // Hard overlap conflicts (TEACHER/STUDENT/BOOTH) → do NOT autoskip; surface as conflicts
         if (teacherId || studentId || boothId) {
+          const reqStartM = effectiveStartDateTime.getUTCHours() * 60 + effectiveStartDateTime.getUTCMinutes();
+          const reqEndM = effectiveEndDateTime.getUTCHours() * 60 + effectiveEndDateTime.getUTCMinutes();
           const sameDaySessions = await prisma.classSession.findMany({
             where: {
               isCancelled: false,
@@ -821,24 +810,36 @@ export const POST = withBranchAccess(
             },
             select: { startTime: true, endTime: true, teacherId: true, studentId: true, boothId: true },
           });
-          const hasOverlap = sameDaySessions.some((s) => {
-            const overlaps = s.startTime < effectiveEndDateTime && s.endTime > effectiveStartDateTime;
-            if (!overlaps) return false;
-            if (teacherId && s.teacherId === teacherId) return true;
-            if (studentId && s.studentId === studentId) return true;
-            if (boothId && s.boothId === boothId) return true;
-            return false;
-          });
-          if (hasOverlap) {
-            return NextResponse.json(
-              {
-                data: [],
-                message: "重複する授業またはブース利用があるためスキップしました",
-                skipped: true,
-                pagination: { total: 0, page: 1, limit: 0, pages: 0 },
-              },
-              { status: 200 }
-            );
+
+          for (const s of sameDaySessions) {
+            const sStartM = s.startTime.getUTCHours() * 60 + s.startTime.getUTCMinutes();
+            const sEndM = s.endTime.getUTCHours() * 60 + s.endTime.getUTCMinutes();
+            const overlaps = sStartM < reqEndM && sEndM > reqStartM;
+            if (!overlaps) continue;
+            if (teacherId && s.teacherId === teacherId) {
+              conflicts.push({
+                date: format(dateObj, "yyyy-MM-dd"),
+                dayOfWeek: getDayOfWeekFromDate(dateObj),
+                type: "TEACHER_CONFLICT",
+                details: "同一講師の同時間帯に別の授業が存在します。",
+              } as any);
+            }
+            if (studentId && s.studentId === studentId) {
+              conflicts.push({
+                date: format(dateObj, "yyyy-MM-dd"),
+                dayOfWeek: getDayOfWeekFromDate(dateObj),
+                type: "STUDENT_CONFLICT",
+                details: "同一生徒の同時間帯に別の授業が存在します。",
+              } as any);
+            }
+            if (boothId && s.boothId === boothId) {
+              conflicts.push({
+                date: format(dateObj, "yyyy-MM-dd"),
+                dayOfWeek: getDayOfWeekFromDate(dateObj),
+                type: "BOOTH_CONFLICT",
+                details: "同一ブースが同時間帯に予約済みです。",
+              } as any);
+            }
           }
         }
 
@@ -888,6 +889,9 @@ export const POST = withBranchAccess(
             startTime: effectiveStartDateTime,
             endTime: effectiveEndDateTime,
             duration: effectiveDuration,
+            // Mark CONFLICTED only when a hard overlap exists (teacher/student/booth).
+            // Availability-derived issues (e.g., WRONG_TIME/UNAVAILABLE/NO_SHARED_AVAILABILITY) do not flip status.
+            status: hasHardConflict(conflicts) ? 'CONFLICTED' : 'CONFIRMED',
           },
           include: {
             teacher: {
@@ -931,6 +935,9 @@ export const POST = withBranchAccess(
         });
 
         const formattedSession = formatClassSession(newClassSession);
+        if (await isSpecialClassType(newClassSession.classTypeId)) {
+          formattedSession.classTypeColor = SPECIAL_CLASS_COLOR_HEX;
+        }
 
         return NextResponse.json(
           {
@@ -1169,19 +1176,43 @@ export const POST = withBranchAccess(
             continue;
           }
 
-          // Autoskip 3: existing overlaps for teacher/student/booth
+          // Hard overlap conflicts (TEACHER/STUDENT/BOOTH) → collect for resolution (do NOT autoskip)
           const daySessions = sessionsByDate.get(formattedSessionDate) || [];
-          const hasOverlap = daySessions.some((s) => {
-            const overlaps = s.startTime < sessionEndTime && s.endTime > sessionStartTime;
-            if (!overlaps) return false;
-            if (teacherId && s.teacherId === teacherId) return true;
-            if (studentId && s.studentId === studentId) return true;
-            if (boothId && s.boothId === boothId) return true;
-            return false;
-          });
-          if (hasOverlap) {
-            skippedDates.push(sessionDate);
-            continue;
+          const reqStartM = sessionStartTime.getUTCHours() * 60 + sessionStartTime.getUTCMinutes();
+          const reqEndM = sessionEndTime.getUTCHours() * 60 + sessionEndTime.getUTCMinutes();
+          const addedTypes = new Set<string>();
+          for (const s of daySessions) {
+            const sStartM = s.startTime.getUTCHours() * 60 + s.startTime.getUTCMinutes();
+            const sEndM = s.endTime.getUTCHours() * 60 + s.endTime.getUTCMinutes();
+            const overlaps = sStartM < reqEndM && sEndM > reqStartM;
+            if (!overlaps) continue;
+            if (teacherId && s.teacherId === teacherId && !addedTypes.has("TEACHER_CONFLICT")) {
+              dateConflicts.push({
+                date: formattedSessionDate,
+                dayOfWeek: getDayOfWeekFromDate(sessionDate),
+                type: "TEACHER_CONFLICT",
+                details: "同一講師の同時間帯に別の授業が存在します。",
+              } as any);
+              addedTypes.add("TEACHER_CONFLICT");
+            }
+            if (studentId && s.studentId === studentId && !addedTypes.has("STUDENT_CONFLICT")) {
+              dateConflicts.push({
+                date: formattedSessionDate,
+                dayOfWeek: getDayOfWeekFromDate(sessionDate),
+                type: "STUDENT_CONFLICT",
+                details: "同一生徒の同時間帯に別の授業が存在します。",
+              } as any);
+              addedTypes.add("STUDENT_CONFLICT");
+            }
+            if (boothId && s.boothId === boothId && !addedTypes.has("BOOTH_CONFLICT")) {
+              dateConflicts.push({
+                date: formattedSessionDate,
+                dayOfWeek: getDayOfWeekFromDate(sessionDate),
+                type: "BOOTH_CONFLICT",
+                details: "同一ブースが同時間帯に予約済みです。",
+              } as any);
+              addedTypes.add("BOOTH_CONFLICT");
+            }
           }
 
           // Enhanced availability check (skip if either participant missing)
@@ -1292,6 +1323,9 @@ export const POST = withBranchAccess(
               effectiveEndTime
             );
 
+            const dateHasConflicts = hasHardConflict(
+              sessionConflictMap.get(formattedSessionDate) || []
+            );
             return prisma.classSession.create({
               data: {
                 ...sessionData,
@@ -1299,6 +1333,7 @@ export const POST = withBranchAccess(
                 date: sessionDate,
                 startTime: sessionStartTime,
                 endTime: sessionEndTime,
+                status: dateHasConflicts ? 'CONFLICTED' : 'CONFIRMED',
               },
               include: {
                 teacher: {
@@ -1344,6 +1379,7 @@ export const POST = withBranchAccess(
         );
 
         const formattedSessions = createdSessions.map(formatClassSession);
+        await applySpecialClassColor(createdSessions, formattedSessions);
 
         // Create response message based on what happened
         let message = `${formattedSessions.length}件の繰り返し授業を作成しました`;

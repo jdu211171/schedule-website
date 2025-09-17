@@ -32,6 +32,7 @@ export interface ApiClassSessionFields {
   classTypeName?: string;
   // Color key or HEX for the class type (from API)
   classTypeColor?: string | null;
+  status?: string | null;
   boothName?: string;
   branchName?: string | null;
   seriesId?: string | null;

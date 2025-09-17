@@ -68,6 +68,7 @@ BEGIN
         INSERT INTO archives (
             archive_id,
             class_id,
+            series_id,
             teacher_name,
             student_name,
             subject_name,
@@ -85,6 +86,7 @@ BEGIN
         SELECT
             gen_random_uuid()::text,
             cs.class_id,
+            cs.series_id,
             t.name AS teacher_name,
             s.name AS student_name,
             sub.name AS subject_name,

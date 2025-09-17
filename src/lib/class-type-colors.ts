@@ -1,3 +1,8 @@
+import {
+  SPECIAL_CLASS_COLOR_CLASSES,
+  SPECIAL_CLASS_COLOR_HEX,
+} from "./special-class-constants";
+
 // Default palette for class type colors and their Tailwind class mappings
 // Keys are stored in DB (string), values map to Tailwind classes for Day View
 export const CLASS_TYPE_DEFAULT_COLORS = [
@@ -80,15 +85,15 @@ export const classTypeColorClasses: Record<ClassTypeColor, {
     dot: 'bg-yellow-500',
   },
   'red': {
-    background: 'bg-red-100 dark:bg-red-900/70',
-    border: 'border-red-300 dark:border-red-700',
-    text: 'text-red-800 dark:text-red-100',
-    hover: 'hover:bg-red-200 dark:hover:bg-red-800',
-    swatch: 'bg-red-500',
-    chipBg: 'bg-red-100',
-    chipBorder: 'border-red-300',
-    chipText: 'text-red-700',
-    dot: 'bg-red-500',
+    background: SPECIAL_CLASS_COLOR_CLASSES.background,
+    border: SPECIAL_CLASS_COLOR_CLASSES.border,
+    text: SPECIAL_CLASS_COLOR_CLASSES.text,
+    hover: SPECIAL_CLASS_COLOR_CLASSES.hover,
+    swatch: SPECIAL_CLASS_COLOR_CLASSES.swatch,
+    chipBg: SPECIAL_CLASS_COLOR_CLASSES.chipBg,
+    chipBorder: SPECIAL_CLASS_COLOR_CLASSES.chipBorder,
+    chipText: SPECIAL_CLASS_COLOR_CLASSES.chipText,
+    dot: SPECIAL_CLASS_COLOR_CLASSES.dot,
   },
   'dark green': {
     background: 'bg-emerald-100 dark:bg-emerald-900/70',
@@ -120,7 +125,7 @@ export const classTypeColorJaLabels: Record<ClassTypeColor, string> = {
   'cyan': '水色',
   'orange': 'オレンジ',
   'yellow': '黄色',
-  'red': '赤',
+  'red': '特別ピンク',
   'dark green': '濃い緑',
   'lighter green': '明るい緑',
 };
@@ -132,7 +137,7 @@ export const CLASS_TYPE_COLOR_HEX: Record<ClassTypeColor, string> = {
   'cyan': '#06b6d4',          // cyan-500
   'orange': '#f97316',        // orange-500
   'yellow': '#f59e0b',        // amber/yellow-500
-  'red': '#ef4444',           // red-500
+  'red': SPECIAL_CLASS_COLOR_HEX, // special pink (#FDC5F5)
   'dark green': '#059669',    // emerald-600
   'lighter green': '#4ade80', // green-400
 };

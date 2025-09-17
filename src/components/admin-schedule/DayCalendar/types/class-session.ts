@@ -26,6 +26,10 @@ export interface CreateClassSessionWithConflictsPayload extends CreateClassSessi
   skipConflicts?: boolean;
   forceCreate?: boolean;
   sessionActions?: SessionAction[];
+  // Whether to run availability checks that produce soft errors
+  // (e.g. 講師不在 / 生徒不在). When false, server should only consider
+  // hard overlaps like TEACHER_CONFLICT / STUDENT_CONFLICT / BOOTH_CONFLICT.
+  checkAvailability?: boolean;
 }
 
 export interface UpdateClassSessionPayload {

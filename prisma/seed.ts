@@ -30,6 +30,38 @@ const getRelativeDateUTC = (daysFromNow: number): Date => {
 
 async function main() {
   console.log("🌱  シード処理開始");
+  // Helper: emulate upsert for ClassSession without a composite unique index
+  // Looks up by (teacherId, date, startTime, endTime, isCancelled) and updates or creates accordingly.
+  async function upsertClassSessionByKey(params: {
+    where: {
+      teacherId: string | null;
+      date: Date;
+      startTime: Date;
+      endTime: Date;
+      isCancelled: boolean;
+    };
+    update: any;
+    create: any;
+  }) {
+    const existing = await prisma.classSession.findFirst({
+      where: {
+        teacherId: params.where.teacherId || undefined,
+        date: params.where.date,
+        startTime: params.where.startTime,
+        endTime: params.where.endTime,
+        isCancelled: params.where.isCancelled,
+      },
+      select: { classId: true },
+    });
+
+    if (existing) {
+      return prisma.classSession.update({
+        where: { classId: existing.classId },
+        data: params.update,
+      });
+    }
+    return prisma.classSession.create({ data: params.create });
+  }
 
   /* ------------------------------------------------------------------
    * 1. 基本マスター
@@ -141,7 +173,7 @@ async function main() {
     }));
   specialClassType = await prisma.classType.update({
     where: { classTypeId: specialClassType.classTypeId },
-    data: { notes: "夏期講習やイベントなどの特別枠", order: 2, color: 'red' },
+    data: { notes: "夏期講習やイベントなどの特別枠", order: 2, color: '#FDC5F5' },
   });
 
   let rescheduleClassType =
@@ -1275,35 +1307,23 @@ async function main() {
    * 6. 授業 (ClassSession) と関連テーブル
    * ----------------------------------------------------------------*/
   // Create multiple class sessions
-  const classSession1 = await prisma.classSession.upsert({
+  const classSession1 = await upsertClassSessionByKey({
     where: {
-      teacherId_date_startTime_endTime_isCancelled: {
-        teacherId: teacher1.teacherId,
-        date: getRelativeDateUTC(15),
-        startTime: new Date(
-          Date.UTC(
-            getRelativeDate(15).getFullYear(),
-            getRelativeDate(15).getMonth(),
-            getRelativeDate(15).getDate(),
-            9,
-            0,
-            0,
-            0,
-          ),
-        ),
-        endTime: new Date(
-          Date.UTC(
-            getRelativeDate(15).getFullYear(),
-            getRelativeDate(15).getMonth(),
-            getRelativeDate(15).getDate(),
-            10,
-            30,
-            0,
-            0,
-          ),
-        ),
-        isCancelled: false,
-      },
+      teacherId: teacher1.teacherId,
+      date: getRelativeDateUTC(15),
+      startTime: new Date(Date.UTC(
+        getRelativeDate(15).getFullYear(),
+        getRelativeDate(15).getMonth(),
+        getRelativeDate(15).getDate(),
+        9, 0, 0, 0
+      )),
+      endTime: new Date(Date.UTC(
+        getRelativeDate(15).getFullYear(),
+        getRelativeDate(15).getMonth(),
+        getRelativeDate(15).getDate(),
+        10, 30, 0, 0
+      )),
+      isCancelled: false,
     },
     update: {
       studentId: student1.studentId,
@@ -1321,63 +1341,41 @@ async function main() {
       classTypeId: regularClassType.classTypeId,
       boothId: booth1.boothId,
       date: getRelativeDateUTC(15),
-      startTime: new Date(
-        Date.UTC(
-          getRelativeDate(15).getFullYear(),
-          getRelativeDate(15).getMonth(),
-          getRelativeDate(15).getDate(),
-          9,
-          0,
-          0,
-          0,
-        ),
-      ),
-      endTime: new Date(
-        Date.UTC(
-          getRelativeDate(15).getFullYear(),
-          getRelativeDate(15).getMonth(),
-          getRelativeDate(15).getDate(),
-          10,
-          30,
-          0,
-          0,
-        ),
-      ),
+      startTime: new Date(Date.UTC(
+        getRelativeDate(15).getFullYear(),
+        getRelativeDate(15).getMonth(),
+        getRelativeDate(15).getDate(),
+        9, 0, 0, 0
+      )),
+      endTime: new Date(Date.UTC(
+        getRelativeDate(15).getFullYear(),
+        getRelativeDate(15).getMonth(),
+        getRelativeDate(15).getDate(),
+        10, 30, 0, 0
+      )),
       duration: 90,
       branchId: mainBranch.branchId,
       notes: "小学5年生 算数 分数の計算",
     },
   });
 
-  const classSession2 = await prisma.classSession.upsert({
+  const classSession2 = await upsertClassSessionByKey({
     where: {
-      teacherId_date_startTime_endTime_isCancelled: {
-        teacherId: teacher2.teacherId,
-        date: getRelativeDateUTC(16),
-        startTime: new Date(
-          Date.UTC(
-            getRelativeDate(16).getFullYear(),
-            getRelativeDate(16).getMonth(),
-            getRelativeDate(16).getDate(),
-            14,
-            0,
-            0,
-            0,
-          ),
-        ),
-        endTime: new Date(
-          Date.UTC(
-            getRelativeDate(16).getFullYear(),
-            getRelativeDate(16).getMonth(),
-            getRelativeDate(16).getDate(),
-            15,
-            30,
-            0,
-            0,
-          ),
-        ),
-        isCancelled: false,
-      },
+      teacherId: teacher2.teacherId,
+      date: getRelativeDateUTC(16),
+      startTime: new Date(Date.UTC(
+        getRelativeDate(16).getFullYear(),
+        getRelativeDate(16).getMonth(),
+        getRelativeDate(16).getDate(),
+        14, 0, 0, 0
+      )),
+      endTime: new Date(Date.UTC(
+        getRelativeDate(16).getFullYear(),
+        getRelativeDate(16).getMonth(),
+        getRelativeDate(16).getDate(),
+        15, 30, 0, 0
+      )),
+      isCancelled: false,
     },
     update: {
       studentId: student2.studentId,
@@ -1395,63 +1393,41 @@ async function main() {
       classTypeId: regularClassType.classTypeId,
       boothId: booth2.boothId,
       date: getRelativeDateUTC(16),
-      startTime: new Date(
-        Date.UTC(
-          getRelativeDate(16).getFullYear(),
-          getRelativeDate(16).getMonth(),
-          getRelativeDate(16).getDate(),
-          14,
-          0,
-          0,
-          0,
-        ),
-      ),
-      endTime: new Date(
-        Date.UTC(
-          getRelativeDate(16).getFullYear(),
-          getRelativeDate(16).getMonth(),
-          getRelativeDate(16).getDate(),
-          15,
-          30,
-          0,
-          0,
-        ),
-      ),
+      startTime: new Date(Date.UTC(
+        getRelativeDate(16).getFullYear(),
+        getRelativeDate(16).getMonth(),
+        getRelativeDate(16).getDate(),
+        14, 0, 0, 0
+      )),
+      endTime: new Date(Date.UTC(
+        getRelativeDate(16).getFullYear(),
+        getRelativeDate(16).getMonth(),
+        getRelativeDate(16).getDate(),
+        15, 30, 0, 0
+      )),
       duration: 90,
       branchId: mainBranch.branchId,
       notes: "中2英語 現在完了形",
     },
   });
 
-  const classSession3 = await prisma.classSession.upsert({
+  const classSession3 = await upsertClassSessionByKey({
     where: {
-      teacherId_date_startTime_endTime_isCancelled: {
-        teacherId: teacher1.teacherId,
-        date: getRelativeDateUTC(17),
-        startTime: new Date(
-          Date.UTC(
-            getRelativeDate(17).getFullYear(),
-            getRelativeDate(17).getMonth(),
-            getRelativeDate(17).getDate(),
-            16,
-            0,
-            0,
-            0,
-          ),
-        ),
-        endTime: new Date(
-          Date.UTC(
-            getRelativeDate(17).getFullYear(),
-            getRelativeDate(17).getMonth(),
-            getRelativeDate(17).getDate(),
-            18,
-            0,
-            0,
-            0,
-          ),
-        ),
-        isCancelled: false,
-      },
+      teacherId: teacher1.teacherId,
+      date: getRelativeDateUTC(17),
+      startTime: new Date(Date.UTC(
+        getRelativeDate(17).getFullYear(),
+        getRelativeDate(17).getMonth(),
+        getRelativeDate(17).getDate(),
+        16, 0, 0, 0
+      )),
+      endTime: new Date(Date.UTC(
+        getRelativeDate(17).getFullYear(),
+        getRelativeDate(17).getMonth(),
+        getRelativeDate(17).getDate(),
+        18, 0, 0, 0
+      )),
+      isCancelled: false,
     },
     update: {
       studentId: student3.studentId,
@@ -1469,63 +1445,41 @@ async function main() {
       classTypeId: testPrepClassType.classTypeId,
       boothId: booth3.boothId,
       date: getRelativeDateUTC(17),
-      startTime: new Date(
-        Date.UTC(
-          getRelativeDate(17).getFullYear(),
-          getRelativeDate(17).getMonth(),
-          getRelativeDate(17).getDate(),
-          16,
-          0,
-          0,
-          0,
-        ),
-      ),
-      endTime: new Date(
-        Date.UTC(
-          getRelativeDate(17).getFullYear(),
-          getRelativeDate(17).getMonth(),
-          getRelativeDate(17).getDate(),
-          18,
-          0,
-          0,
-          0,
-        ),
-      ),
+      startTime: new Date(Date.UTC(
+        getRelativeDate(17).getFullYear(),
+        getRelativeDate(17).getMonth(),
+        getRelativeDate(17).getDate(),
+        16, 0, 0, 0
+      )),
+      endTime: new Date(Date.UTC(
+        getRelativeDate(17).getFullYear(),
+        getRelativeDate(17).getMonth(),
+        getRelativeDate(17).getDate(),
+        18, 0, 0, 0
+      )),
       duration: 120,
       branchId: mainBranch.branchId,
       notes: "高3数学 大学受験対策 微分積分",
     },
   });
 
-  const classSession4 = await prisma.classSession.upsert({
+  const classSession4 = await upsertClassSessionByKey({
     where: {
-      teacherId_date_startTime_endTime_isCancelled: {
-        teacherId: teacher4.teacherId,
-        date: getRelativeDateUTC(18),
-        startTime: new Date(
-          Date.UTC(
-            getRelativeDate(18).getFullYear(),
-            getRelativeDate(18).getMonth(),
-            getRelativeDate(18).getDate(),
-            10,
-            0,
-            0,
-            0,
-          ),
-        ),
-        endTime: new Date(
-          Date.UTC(
-            getRelativeDate(18).getFullYear(),
-            getRelativeDate(18).getMonth(),
-            getRelativeDate(18).getDate(),
-            12,
-            0,
-            0,
-            0,
-          ),
-        ),
-        isCancelled: false,
-      },
+      teacherId: teacher4.teacherId,
+      date: getRelativeDateUTC(18),
+      startTime: new Date(Date.UTC(
+        getRelativeDate(18).getFullYear(),
+        getRelativeDate(18).getMonth(),
+        getRelativeDate(18).getDate(),
+        10, 0, 0, 0
+      )),
+      endTime: new Date(Date.UTC(
+        getRelativeDate(18).getFullYear(),
+        getRelativeDate(18).getMonth(),
+        getRelativeDate(18).getDate(),
+        12, 0, 0, 0
+      )),
+      isCancelled: false,
     },
     update: {
       studentId: student3.studentId,
@@ -1543,63 +1497,41 @@ async function main() {
       classTypeId: testPrepClassType.classTypeId,
       boothId: booth8.boothId,
       date: getRelativeDateUTC(18),
-      startTime: new Date(
-        Date.UTC(
-          getRelativeDate(18).getFullYear(),
-          getRelativeDate(18).getMonth(),
-          getRelativeDate(18).getDate(),
-          10,
-          0,
-          0,
-          0,
-        ),
-      ),
-      endTime: new Date(
-        Date.UTC(
-          getRelativeDate(18).getFullYear(),
-          getRelativeDate(18).getMonth(),
-          getRelativeDate(18).getDate(),
-          12,
-          0,
-          0,
-          0,
-        ),
-      ),
+      startTime: new Date(Date.UTC(
+        getRelativeDate(18).getFullYear(),
+        getRelativeDate(18).getMonth(),
+        getRelativeDate(18).getDate(),
+        10, 0, 0, 0
+      )),
+      endTime: new Date(Date.UTC(
+        getRelativeDate(18).getFullYear(),
+        getRelativeDate(18).getMonth(),
+        getRelativeDate(18).getDate(),
+        12, 0, 0, 0
+      )),
       duration: 120,
       branchId: eastBranch.branchId,
       notes: "高3化学 大学受験対策 有機化学",
     },
   });
 
-  const classSession5 = await prisma.classSession.upsert({
+  const classSession5 = await upsertClassSessionByKey({
     where: {
-      teacherId_date_startTime_endTime_isCancelled: {
-        teacherId: teacher5.teacherId,
-        date: getRelativeDateUTC(19),
-        startTime: new Date(
-          Date.UTC(
-            getRelativeDate(19).getFullYear(),
-            getRelativeDate(19).getMonth(),
-            getRelativeDate(19).getDate(),
-            19,
-            0,
-            0,
-            0,
-          ),
-        ),
-        endTime: new Date(
-          Date.UTC(
-            getRelativeDate(19).getFullYear(),
-            getRelativeDate(19).getMonth(),
-            getRelativeDate(19).getDate(),
-            21,
-            0,
-            0,
-            0,
-          ),
-        ),
-        isCancelled: false,
-      },
+      teacherId: teacher5.teacherId,
+      date: getRelativeDateUTC(19),
+      startTime: new Date(Date.UTC(
+        getRelativeDate(19).getFullYear(),
+        getRelativeDate(19).getMonth(),
+        getRelativeDate(19).getDate(),
+        19, 0, 0, 0
+      )),
+      endTime: new Date(Date.UTC(
+        getRelativeDate(19).getFullYear(),
+        getRelativeDate(19).getMonth(),
+        getRelativeDate(19).getDate(),
+        21, 0, 0, 0
+      )),
+      isCancelled: false,
     },
     update: {
       studentId: student5.studentId,
@@ -1617,63 +1549,41 @@ async function main() {
       classTypeId: specialClassType.classTypeId,
       boothId: booth15.boothId,
       date: getRelativeDateUTC(19),
-      startTime: new Date(
-        Date.UTC(
-          getRelativeDate(19).getFullYear(),
-          getRelativeDate(19).getMonth(),
-          getRelativeDate(19).getDate(),
-          19,
-          0,
-          0,
-          0,
-        ),
-      ),
-      endTime: new Date(
-        Date.UTC(
-          getRelativeDate(19).getFullYear(),
-          getRelativeDate(19).getMonth(),
-          getRelativeDate(19).getDate(),
-          21,
-          0,
-          0,
-          0,
-        ),
-      ),
+      startTime: new Date(Date.UTC(
+        getRelativeDate(19).getFullYear(),
+        getRelativeDate(19).getMonth(),
+        getRelativeDate(19).getDate(),
+        19, 0, 0, 0
+      )),
+      endTime: new Date(Date.UTC(
+        getRelativeDate(19).getFullYear(),
+        getRelativeDate(19).getMonth(),
+        getRelativeDate(19).getDate(),
+        21, 0, 0, 0
+      )),
       duration: 120,
       branchId: westBranch.branchId,
       notes: "JavaScript基礎 社会人向け",
     },
   });
 
-  const classSession6 = await prisma.classSession.upsert({
+  const classSession6 = await upsertClassSessionByKey({
     where: {
-      teacherId_date_startTime_endTime_isCancelled: {
-        teacherId: teacher2.teacherId,
-        date: getRelativeDateUTC(20),
-        startTime: new Date(
-          Date.UTC(
-            getRelativeDate(20).getFullYear(),
-            getRelativeDate(20).getMonth(),
-            getRelativeDate(20).getDate(),
-            11,
-            0,
-            0,
-            0,
-          ),
-        ),
-        endTime: new Date(
-          Date.UTC(
-            getRelativeDate(20).getFullYear(),
-            getRelativeDate(20).getMonth(),
-            getRelativeDate(20).getDate(),
-            12,
-            0,
-            0,
-            0,
-          ),
-        ),
-        isCancelled: false,
-      },
+      teacherId: teacher2.teacherId,
+      date: getRelativeDateUTC(20),
+      startTime: new Date(Date.UTC(
+        getRelativeDate(20).getFullYear(),
+        getRelativeDate(20).getMonth(),
+        getRelativeDate(20).getDate(),
+        11, 0, 0, 0
+      )),
+      endTime: new Date(Date.UTC(
+        getRelativeDate(20).getFullYear(),
+        getRelativeDate(20).getMonth(),
+        getRelativeDate(20).getDate(),
+        12, 0, 0, 0
+      )),
+      isCancelled: false,
     },
     update: {
       studentId: student6.studentId,
@@ -1691,63 +1601,41 @@ async function main() {
       classTypeId: regularClassType.classTypeId,
       boothId: booth4.boothId,
       date: getRelativeDateUTC(20),
-      startTime: new Date(
-        Date.UTC(
-          getRelativeDate(20).getFullYear(),
-          getRelativeDate(20).getMonth(),
-          getRelativeDate(20).getDate(),
-          11,
-          0,
-          0,
-          0,
-        ),
-      ),
-      endTime: new Date(
-        Date.UTC(
-          getRelativeDate(20).getFullYear(),
-          getRelativeDate(20).getMonth(),
-          getRelativeDate(20).getDate(),
-          12,
-          0,
-          0,
-          0,
-        ),
-      ),
+      startTime: new Date(Date.UTC(
+        getRelativeDate(20).getFullYear(),
+        getRelativeDate(20).getMonth(),
+        getRelativeDate(20).getDate(),
+        11, 0, 0, 0
+      )),
+      endTime: new Date(Date.UTC(
+        getRelativeDate(20).getFullYear(),
+        getRelativeDate(20).getMonth(),
+        getRelativeDate(20).getDate(),
+        12, 0, 0, 0
+      )),
       duration: 60,
       branchId: mainBranch.branchId,
       notes: "小3国語 音読練習",
     },
   });
 
-  const classSession7 = await prisma.classSession.upsert({
+  const classSession7 = await upsertClassSessionByKey({
     where: {
-      teacherId_date_startTime_endTime_isCancelled: {
-        teacherId: teacher4.teacherId,
-        date: getRelativeDateUTC(21),
-        startTime: new Date(
-          Date.UTC(
-            getRelativeDate(21).getFullYear(),
-            getRelativeDate(21).getMonth(),
-            getRelativeDate(21).getDate(),
-            15,
-            0,
-            0,
-            0,
-          ),
-        ),
-        endTime: new Date(
-          Date.UTC(
-            getRelativeDate(21).getFullYear(),
-            getRelativeDate(21).getMonth(),
-            getRelativeDate(21).getDate(),
-            16,
-            30,
-            0,
-            0,
-          ),
-        ),
-        isCancelled: false,
-      },
+      teacherId: teacher4.teacherId,
+      date: getRelativeDateUTC(21),
+      startTime: new Date(Date.UTC(
+        getRelativeDate(21).getFullYear(),
+        getRelativeDate(21).getMonth(),
+        getRelativeDate(21).getDate(),
+        15, 0, 0, 0
+      )),
+      endTime: new Date(Date.UTC(
+        getRelativeDate(21).getFullYear(),
+        getRelativeDate(21).getMonth(),
+        getRelativeDate(21).getDate(),
+        16, 30, 0, 0
+      )),
+      isCancelled: false,
     },
     update: {
       studentId: student7.studentId,
@@ -1765,63 +1653,41 @@ async function main() {
       classTypeId: regularClassType.classTypeId,
       boothId: booth9.boothId,
       date: getRelativeDateUTC(21),
-      startTime: new Date(
-        Date.UTC(
-          getRelativeDate(21).getFullYear(),
-          getRelativeDate(21).getMonth(),
-          getRelativeDate(21).getDate(),
-          15,
-          0,
-          0,
-          0,
-        ),
-      ),
-      endTime: new Date(
-        Date.UTC(
-          getRelativeDate(21).getFullYear(),
-          getRelativeDate(21).getMonth(),
-          getRelativeDate(21).getDate(),
-          16,
-          30,
-          0,
-          0,
-        ),
-      ),
+      startTime: new Date(Date.UTC(
+        getRelativeDate(21).getFullYear(),
+        getRelativeDate(21).getMonth(),
+        getRelativeDate(21).getDate(),
+        15, 0, 0, 0
+      )),
+      endTime: new Date(Date.UTC(
+        getRelativeDate(21).getFullYear(),
+        getRelativeDate(21).getMonth(),
+        getRelativeDate(21).getDate(),
+        16, 30, 0, 0
+      )),
       duration: 90,
       branchId: eastBranch.branchId,
       notes: "高1物理 力学の基礎",
     },
   });
 
-  const classSession8 = await prisma.classSession.upsert({
+  const classSession8 = await upsertClassSessionByKey({
     where: {
-      teacherId_date_startTime_endTime_isCancelled: {
-        teacherId: teacher1.teacherId,
-        date: getRelativeDateUTC(22),
-        startTime: new Date(
-          Date.UTC(
-            getRelativeDate(22).getFullYear(),
-            getRelativeDate(22).getMonth(),
-            getRelativeDate(22).getDate(),
-            9,
-            0,
-            0,
-            0,
-          ),
-        ),
-        endTime: new Date(
-          Date.UTC(
-            getRelativeDate(22).getFullYear(),
-            getRelativeDate(22).getMonth(),
-            getRelativeDate(22).getDate(),
-            12,
-            0,
-            0,
-            0,
-          ),
-        ),
-        isCancelled: false,
-      },
+      teacherId: teacher1.teacherId,
+      date: getRelativeDateUTC(22),
+      startTime: new Date(Date.UTC(
+        getRelativeDate(22).getFullYear(),
+        getRelativeDate(22).getMonth(),
+        getRelativeDate(22).getDate(),
+        9, 0, 0, 0
+      )),
+      endTime: new Date(Date.UTC(
+        getRelativeDate(22).getFullYear(),
+        getRelativeDate(22).getMonth(),
+        getRelativeDate(22).getDate(),
+        12, 0, 0, 0
+      )),
+      isCancelled: false,
     },
     update: {
       studentId: student8.studentId,
@@ -1839,28 +1705,18 @@ async function main() {
       classTypeId: testPrepClassType.classTypeId,
       boothId: booth5.boothId,
       date: getRelativeDateUTC(22),
-      startTime: new Date(
-        Date.UTC(
-          getRelativeDate(22).getFullYear(),
-          getRelativeDate(22).getMonth(),
-          getRelativeDate(22).getDate(),
-          9,
-          0,
-          0,
-          0,
-        ),
-      ),
-      endTime: new Date(
-        Date.UTC(
-          getRelativeDate(22).getFullYear(),
-          getRelativeDate(22).getMonth(),
-          getRelativeDate(22).getDate(),
-          12,
-          0,
-          0,
-          0,
-        ),
-      ),
+      startTime: new Date(Date.UTC(
+        getRelativeDate(22).getFullYear(),
+        getRelativeDate(22).getMonth(),
+        getRelativeDate(22).getDate(),
+        9, 0, 0, 0
+      )),
+      endTime: new Date(Date.UTC(
+        getRelativeDate(22).getFullYear(),
+        getRelativeDate(22).getMonth(),
+        getRelativeDate(22).getDate(),
+        12, 0, 0, 0
+      )),
       duration: 180,
       branchId: mainBranch.branchId,
       notes: "浪人生数学 医学部受験対策",
@@ -1994,6 +1850,140 @@ async function main() {
   await createPastSession(4, 10, 11, "過去レッスン（4ヶ月前）");
   await createPastSession(5, 10, 11, "過去レッスン（5ヶ月前）");
   await createPastSession(6, 10, 11, "過去レッスン（6ヶ月前）");
+
+  // --- Class Series (blueprint) seeding helpers and data ---
+  const enumerateDatesBetween = (startDate: Date, endDate: Date, daysOfWeek: number[]) => {
+    const out: Date[] = [];
+    const daySet = new Set(daysOfWeek.map((d) => ((d % 7) + 7) % 7));
+    const start = new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate(), 0, 0, 0, 0));
+    const end = new Date(Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth(), endDate.getUTCDate(), 0, 0, 0, 0));
+    for (let d = new Date(start); d <= end; d = new Date(d.getTime() + 24 * 3600 * 1000)) {
+      if (daySet.has(d.getUTCDay())) out.push(new Date(d));
+    }
+    return out;
+  };
+
+  const nextDaysUTC = (n: number) => {
+    const t = new Date();
+    const d = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), t.getUTCDate(), 0, 0, 0, 0));
+    d.setUTCDate(d.getUTCDate() + n);
+    return d;
+  };
+
+  async function createSeriesWithSessions(params: {
+    seriesId: string;
+    studentId: string;
+    teacherId: string;
+    subjectId: string | null;
+    classTypeId: string; // regular only
+    branchId: string | null;
+    boothId: string | null;
+    startDate: Date; // date-only UTC
+    endDate: Date;   // date-only UTC
+    startTime: Date; // time-only UTC
+    endTime: Date;   // time-only UTC
+    daysOfWeek: number[]; // 0..6
+    notes?: string | null;
+  }) {
+    const duration = Math.round((params.endTime.getTime() - params.startTime.getTime()) / 60000);
+
+    await prisma.classSeries.upsert({
+      where: { seriesId: params.seriesId },
+      update: {
+        branchId: params.branchId,
+        teacherId: params.teacherId,
+        studentId: params.studentId,
+        subjectId: params.subjectId,
+        classTypeId: params.classTypeId,
+        boothId: params.boothId,
+        startDate: params.startDate,
+        endDate: params.endDate,
+        startTime: params.startTime,
+        endTime: params.endTime,
+        duration,
+        daysOfWeek: params.daysOfWeek as any,
+        status: 'ACTIVE',
+        generationMode: 'ON_DEMAND',
+        lastGeneratedThrough: params.endDate,
+        notes: params.notes ?? null,
+      },
+      create: {
+        seriesId: params.seriesId,
+        branchId: params.branchId,
+        teacherId: params.teacherId,
+        studentId: params.studentId,
+        subjectId: params.subjectId,
+        classTypeId: params.classTypeId,
+        boothId: params.boothId,
+        startDate: params.startDate,
+        endDate: params.endDate,
+        startTime: params.startTime,
+        endTime: params.endTime,
+        duration,
+        daysOfWeek: params.daysOfWeek as any,
+        status: 'ACTIVE',
+        generationMode: 'ON_DEMAND',
+        lastGeneratedThrough: params.endDate,
+        notes: params.notes ?? null,
+      },
+    });
+
+    const dates = enumerateDatesBetween(params.startDate, params.endDate, params.daysOfWeek);
+    if (dates.length) {
+      await prisma.classSession.createMany({
+        data: dates.map((d) => ({
+          seriesId: params.seriesId,
+          teacherId: params.teacherId,
+          studentId: params.studentId,
+          subjectId: params.subjectId,
+          classTypeId: params.classTypeId,
+          boothId: params.boothId,
+          branchId: params.branchId,
+          date: d,
+          startTime: params.startTime,
+          endTime: params.endTime,
+          duration,
+          isCancelled: false,
+          notes: params.notes ?? null,
+          status: 'CONFIRMED',
+        })),
+        skipDuplicates: true,
+      });
+    }
+  }
+
+  // Seed two regular series for visibility in UI
+  await createSeriesWithSessions({
+    seriesId: 'SEED_SERIES_S1_MATH_MWF',
+    studentId: student1.studentId,
+    teacherId: teacher1.teacherId,
+    subjectId: mathSubject.subjectId,
+    classTypeId: regularClassType.classTypeId,
+    branchId: mainBranch.branchId,
+    boothId: booth1.boothId,
+    startDate: nextDaysUTC(0),
+    endDate: nextDaysUTC(42),
+    startTime: createTimeFromHour(16, 0),
+    endTime: createTimeFromHour(16, 50),
+    daysOfWeek: [1, 3, 5],
+    notes: 'seed series: math M/W/F',
+  });
+
+  await createSeriesWithSessions({
+    seriesId: 'SEED_SERIES_S2_ENG_TT',
+    studentId: student2.studentId,
+    teacherId: teacher2.teacherId,
+    subjectId: englishSubject.subjectId,
+    classTypeId: regularClassType.classTypeId,
+    branchId: mainBranch.branchId,
+    boothId: booth1.boothId,
+    startDate: nextDaysUTC(0),
+    endDate: nextDaysUTC(42),
+    startTime: createTimeFromHour(18, 0),
+    endTime: createTimeFromHour(18, 50),
+    daysOfWeek: [2, 4],
+    notes: 'seed series: english T/Th',
+  });
 
   // Vacations and Holidays
   const vacations = [

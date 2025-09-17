@@ -14,6 +14,7 @@ import {
   startOfWeek,
 } from "date-fns";
 import { useMemo, useState } from "react";
+import { SPECIAL_CLASS_COLOR_CLASSES } from "@/lib/special-class-constants";
 
 const daysOfWeek = ["月", "火", "水", "木", "金", "土", "日"];
 const getColor = (subjecType: "通常授業" | "特別授業") => {
@@ -25,15 +26,15 @@ const getColor = (subjecType: "通常授業" | "特別授業") => {
       hover: "hover:bg-blue-200 dark:hover:bg-blue-800",
       iconColor: "text-blue-600 dark:text-blue-400",
     };
-  } else {
-    return {
-      background: "bg-red-100 dark:bg-red-900/70",
-      border: "border-red-300 dark:border-red-700",
-      text: "text-red-800 dark:text-red-100",
-      hover: "hover:bg-red-200 dark:hover:bg-red-800",
-      iconColor: "text-red-600 dark:text-red-400",
-    };
   }
+
+  return {
+    background: SPECIAL_CLASS_COLOR_CLASSES.background,
+    border: SPECIAL_CLASS_COLOR_CLASSES.border,
+    text: SPECIAL_CLASS_COLOR_CLASSES.text,
+    hover: SPECIAL_CLASS_COLOR_CLASSES.hover,
+    iconColor: SPECIAL_CLASS_COLOR_CLASSES.icon,
+  };
 };
 
 export default function StudentPage() {
