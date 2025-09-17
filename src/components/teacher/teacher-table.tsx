@@ -223,6 +223,7 @@ export function TeacherTable() {
   // Storage keys for persistence
   const FILTERS_STORAGE_KEY = "teacher_filters";
   const COLUMN_VISIBILITY_STORAGE_KEY = "teacher_column_visibility";
+  const PAGE_SIZE_STORAGE_KEY = "teacher_page_size";
 
   // Initialize filters with localStorage values or defaults
   const [filters, setFilters] = React.useState<{
@@ -296,7 +297,29 @@ export function TeacherTable() {
   const queryClient = useQueryClient();
   const [isImportDialogOpen, setIsImportDialogOpen] = React.useState(false);
 
-  const [pageSize, setPageSize] = React.useState(10);
+  const [pageSize, setPageSize] = React.useState<number>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem(PAGE_SIZE_STORAGE_KEY);
+      if (saved) {
+        try {
+          const parsed = parseInt(saved, 10);
+          if (!isNaN(parsed) && parsed > 0) {
+            return parsed;
+          }
+        } catch (error) {
+          console.error("Failed to parse page size from localStorage", error);
+        }
+      }
+    }
+    return 10;
+  });
+
+  // Save page size to localStorage
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem(PAGE_SIZE_STORAGE_KEY, String(pageSize));
+    }
+  }, [pageSize]);
 
   // Load data
   const { data: subjects = [] } = useAllSubjects();
