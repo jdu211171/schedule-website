@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
-import { useTeachers, Teacher } from '@/hooks/useTeacherQuery';
-import { useStudents, Student } from '@/hooks/useStudentQuery';
+import { useTeachers, Teacher, useTeacher } from '@/hooks/useTeacherQuery';
+import { useStudents, Student, useStudent } from '@/hooks/useStudentQuery';
 import { useSubjects, Subject } from '@/hooks/useSubjectQuery';
 import { useSubjectTypes, SubjectType } from '@/hooks/useSubjectTypeQuery';
 
@@ -9,6 +9,8 @@ interface SmartSelectionOptions {
   selectedStudentId?: string;
   selectedSubjectId?: string;
   activeOnly?: boolean; // when true, fetch only ACTIVE users
+  studentSearchTerm?: string;
+  teacherSearchTerm?: string;
 }
 
 export interface EnhancedTeacher extends Teacher {
@@ -90,15 +92,67 @@ function getMatches(teacherPrefs: any[], studentPrefs: any[]) {
 }
 
 export const useSmartSelection = (options: SmartSelectionOptions = {}) => {
-  const { selectedTeacherId, selectedStudentId, selectedSubjectId, activeOnly = false } = options;
+  const {
+    selectedTeacherId,
+    selectedStudentId,
+    selectedSubjectId,
+    activeOnly = false,
+    studentSearchTerm,
+    teacherSearchTerm,
+  } = options;
 
-  const { data: teachersResponse } = useTeachers({ limit: 100, status: activeOnly ? 'ACTIVE' : undefined });
-  const { data: studentsResponse } = useStudents({ limit: 100, status: activeOnly ? 'ACTIVE' : undefined });
+  const normalizedStudentSearch = studentSearchTerm?.trim();
+  const normalizedTeacherSearch = teacherSearchTerm?.trim();
+
+  const {
+    data: teachersResponse,
+    isFetching: isFetchingTeachers,
+    isLoading: isLoadingTeachers,
+  } = useTeachers({
+    limit: 100,
+    status: activeOnly ? 'ACTIVE' : undefined,
+    name: normalizedTeacherSearch ? normalizedTeacherSearch : undefined,
+  });
+  const {
+    data: studentsResponse,
+    isFetching: isFetchingStudents,
+    isLoading: isLoadingStudents,
+  } = useStudents({
+    limit: 100,
+    status: activeOnly ? 'ACTIVE' : undefined,
+    name: normalizedStudentSearch ? normalizedStudentSearch : undefined,
+  });
+  const { data: selectedTeacherData } = useTeacher(selectedTeacherId ?? '');
+  const { data: selectedStudentData } = useStudent(selectedStudentId ?? '');
   const { data: subjectsResponse } = useSubjects({ limit: 100 });
   const { data: subjectTypesResponse } = useSubjectTypes({ limit: 100 });
 
-  const allTeachers = teachersResponse?.data || [];
-  const allStudents = studentsResponse?.data || [];
+  const allTeachers = useMemo(() => {
+    const map = new Map<string, Teacher>();
+
+    (teachersResponse?.data || []).forEach((teacher) => {
+      map.set(teacher.teacherId, teacher);
+    });
+
+    if (selectedTeacherData) {
+      map.set(selectedTeacherData.teacherId, selectedTeacherData);
+    }
+
+    return Array.from(map.values());
+  }, [teachersResponse?.data, selectedTeacherData]);
+  const allStudents = useMemo(() => {
+    const map = new Map<string, Student>();
+
+    (studentsResponse?.data || []).forEach((student) => {
+      map.set(student.studentId, student);
+    });
+
+    if (selectedStudentData) {
+      map.set(selectedStudentData.studentId, selectedStudentData);
+    }
+
+    return Array.from(map.values());
+  }, [studentsResponse?.data, selectedStudentData]);
   const allSubjects = subjectsResponse?.data || [];
   const allSubjectTypes = subjectTypesResponse?.data || [];
 
@@ -431,6 +485,10 @@ export const useSmartSelection = (options: SmartSelectionOptions = {}) => {
     hasSubjectSelected: !!selectedSubjectId,
 
     // Loading states
-    isLoadingPreferences: false // No separate requests needed
+    isLoadingPreferences: false, // No separate requests needed
+    isLoadingStudents,
+    isFetchingStudents,
+    isLoadingTeachers,
+    isFetchingTeachers,
   };
 };

@@ -23,6 +23,7 @@ interface SearchableSelectProps {
   className?: string;
   loading?: boolean;
   showCompatibilityIcons?: boolean;
+  onSearchChange?: (value: string) => void;
 }
 
 const getCompatibilityIcon = (compatibilityType?: string) => {
@@ -105,12 +106,21 @@ export function SearchableSelect({
   className = "",
   loading = false,
   showCompatibilityIcons = false,
+  onSearchChange,
 }: SearchableSelectProps) {
   const [open, setOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState("");
   const containerRef = React.useRef<HTMLDivElement>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
   const [highlightedIndex, setHighlightedIndex] = React.useState(0);
+
+  const handleSearchQueryUpdate = React.useCallback(
+    (nextValue: string) => {
+      setSearchQuery(nextValue);
+      onSearchChange?.(nextValue);
+    },
+    [onSearchChange]
+  );
 
   const selectedItem = React.useMemo(
     () => items.find((item) => item.value === value),
@@ -173,10 +183,10 @@ export function SearchableSelect({
         inputRef.current?.focus();
       });
     } else {
-      setSearchQuery("");
+      handleSearchQueryUpdate("");
       setHighlightedIndex(0);
     }
-  }, [open]);
+  }, [open, handleSearchQueryUpdate]);
 
   const handleSelect = (itemValue: string) => {
     onValueChange(itemValue);
@@ -265,7 +275,7 @@ export function SearchableSelect({
               type="text"
               placeholder={searchPlaceholder}
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => handleSearchQueryUpdate(e.target.value)}
               onKeyDown={handleKeyDown}
               className="flex h-10 w-full bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground"
               onClick={(e) => e.stopPropagation()}
@@ -275,7 +285,7 @@ export function SearchableSelect({
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  setSearchQuery("");
+                  handleSearchQueryUpdate("");
                   inputRef.current?.focus();
                 }}
                 className="ml-2 rounded-sm opacity-70 hover:opacity-100"

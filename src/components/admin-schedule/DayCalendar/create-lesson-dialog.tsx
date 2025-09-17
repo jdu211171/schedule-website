@@ -24,6 +24,8 @@ import { SimpleDateRangePicker } from '../../fix-date-range-picker/simple-date-r
 
 import { Teacher } from '@/hooks/useTeacherQuery';
 import { Student } from '@/hooks/useStudentQuery';
+import { useDebounce } from '@/hooks/use-debounce';
+import { Combobox, ComboboxItem, ComboboxRenderItemProps } from '@/components/ui/combobox';
 
 interface Booth {
   boothId: string;
@@ -57,6 +59,90 @@ interface ClassType {
   parentId?: string | null;
 }
 
+type CompatibilityType =
+  | EnhancedTeacher['compatibilityType']
+  | EnhancedStudent['compatibilityType']
+  | SubjectCompatibility['compatibilityType'];
+
+type CompatibilityComboboxItem = ComboboxItem & {
+  description?: string;
+  compatibilityType?: CompatibilityType;
+  matchingSubjectsCount?: number;
+  partialMatchingSubjectsCount?: number;
+};
+
+const getCompatibilityIcon = (type?: CompatibilityType) => {
+  switch (type) {
+    case 'perfect':
+      return <CheckCircle2 className="h-3 w-3 text-green-500" />;
+    case 'subject-only':
+      return <AlertTriangle className="h-3 w-3 text-orange-500" />;
+    case 'teacher-only':
+      return <Users className="h-3 w-3 text-blue-500" />;
+    case 'student-only':
+      return <Users className="h-3 w-3 text-orange-500" />;
+    case 'mismatch':
+      return <AlertTriangle className="h-3 w-3 text-amber-500" />;
+    case 'teacher-no-prefs':
+    case 'student-no-prefs':
+    case 'no-teacher-selected':
+    case 'no-student-selected':
+    case 'no-preferences':
+      return <Users className="h-3 w-3 text-muted-foreground" />;
+    default:
+      return null;
+  }
+};
+
+const getCompatibilityPriority = (type?: CompatibilityType) => {
+  switch (type) {
+    case 'perfect':
+      return 5;
+    case 'subject-only':
+      return 4;
+    case 'teacher-only':
+    case 'student-only':
+      return 3;
+    case 'teacher-no-prefs':
+    case 'student-no-prefs':
+      return 2;
+    case 'no-preferences':
+      return 1;
+    case 'mismatch':
+      return 0;
+    default:
+      return -1;
+  }
+};
+
+const renderCompatibilityComboboxItem = <T extends CompatibilityComboboxItem>({
+  item,
+  defaultIndicator,
+}: ComboboxRenderItemProps<T>) => {
+  return (
+    <div className="flex w-full flex-col">
+      <div className="flex items-center gap-2">
+        {getCompatibilityIcon(item.compatibilityType)}
+        <span className="flex-1 truncate">{item.label}</span>
+        {item.matchingSubjectsCount ? (
+          <span className="rounded-full bg-green-100 px-1.5 py-0.5 text-xs font-medium text-green-800">
+            {item.matchingSubjectsCount}
+          </span>
+        ) : null}
+        {item.partialMatchingSubjectsCount ? (
+          <span className="rounded-full bg-orange-100 px-1.5 py-0.5 text-xs font-medium text-orange-800">
+            ±{item.partialMatchingSubjectsCount}
+          </span>
+        ) : null}
+        {defaultIndicator}
+      </div>
+      {item.description && (
+        <span className="text-xs text-muted-foreground">{item.description}</span>
+      )}
+    </div>
+  );
+};
+
 export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
   open,
   onOpenChange,
@@ -86,6 +172,10 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
   const [endTime, setEndTime] = useState<string>('');
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [selectedDays, setSelectedDays] = useState<number[]>([]);
+  const [teacherSearchQuery, setTeacherSearchQuery] = useState<string>('');
+  const [studentSearchQuery, setStudentSearchQuery] = useState<string>('');
+  const debouncedTeacherSearchQuery = useDebounce(teacherSearchQuery, 300);
+  const debouncedStudentSearchQuery = useDebounce(studentSearchQuery, 300);
 
   // Class types and loading states
   const [classTypes, setClassTypes] = useState<ClassType[]>([]);
@@ -106,12 +196,18 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
     enhancedSubjects,
     getCompatibilityInfo,
     hasTeacherSelected,
-    hasStudentSelected
+    hasStudentSelected,
+    isFetchingStudents,
+    isLoadingStudents,
+    isFetchingTeachers,
+    isLoadingTeachers,
   } = useSmartSelection({
     selectedTeacherId,
     selectedStudentId,
     selectedSubjectId: subjectId,
     activeOnly: true,
+    teacherSearchTerm: debouncedTeacherSearchQuery,
+    studentSearchTerm: debouncedStudentSearchQuery,
   });
 
   // Availability hook
@@ -204,8 +300,8 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
     setCurrentPayload(null);
   };
 
-  // Create enhanced items for SearchableSelect components (active-only already fetched)
-  const teacherItems: SearchableSelectItem[] = enhancedTeachers.map((teacher) => {
+  // Create enhanced items for select components (active-only already fetched)
+  const teacherItems: CompatibilityComboboxItem[] = enhancedTeachers.map((teacher) => {
     let description = '';
     let matchingSubjectsCount = 0;
     let partialMatchingSubjectsCount = 0;
@@ -228,17 +324,31 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
       description = '生徒の設定なし（全対応可）';
     }
 
+    const keywords = [teacher.name, teacher.kanaName, teacher.email, teacher.username]
+      .filter((keyword): keyword is string => Boolean(keyword))
+      .map((keyword) => keyword.toLowerCase());
+
     return {
       value: teacher.teacherId,
       label: teacher.name,
       description,
       compatibilityType: teacher.compatibilityType,
       matchingSubjectsCount,
-      partialMatchingSubjectsCount
+      partialMatchingSubjectsCount,
+      keywords,
     };
+  }).sort((a, b) => {
+    const priorityDiff = getCompatibilityPriority(b.compatibilityType) - getCompatibilityPriority(a.compatibilityType);
+    if (priorityDiff !== 0) {
+      return priorityDiff;
+    }
+
+    const labelA = typeof a.label === 'string' ? a.label : String(a.label ?? '');
+    const labelB = typeof b.label === 'string' ? b.label : String(b.label ?? '');
+    return labelA.localeCompare(labelB, 'ja');
   });
 
-  const studentItems: SearchableSelectItem[] = enhancedStudents.map((student) => {
+  const studentItems: CompatibilityComboboxItem[] = enhancedStudents.map((student) => {
     let description = '';
     let matchingSubjectsCount = 0;
     let partialMatchingSubjectsCount = 0;
@@ -261,14 +371,28 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
       description = '講師の設定なし（全対応可）';
     }
 
+    const keywords = [student.name, student.kanaName, student.email, student.username]
+      .filter((keyword): keyword is string => Boolean(keyword))
+      .map((keyword) => keyword.toLowerCase());
+
     return {
       value: student.studentId,
       label: student.name,
       description,
       compatibilityType: student.compatibilityType,
       matchingSubjectsCount,
-      partialMatchingSubjectsCount
+      partialMatchingSubjectsCount,
+      keywords,
     };
+  }).sort((a, b) => {
+    const priorityDiff = getCompatibilityPriority(b.compatibilityType) - getCompatibilityPriority(a.compatibilityType);
+    if (priorityDiff !== 0) {
+      return priorityDiff;
+    }
+
+    const labelA = typeof a.label === 'string' ? a.label : String(a.label ?? '');
+    const labelB = typeof b.label === 'string' ? b.label : String(b.label ?? '');
+    return labelA.localeCompare(labelB, 'ja');
   });
 
   const subjectItems: SearchableSelectItem[] = enhancedSubjects.map((subject) => {
@@ -363,10 +487,12 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
   const clearTeacher = () => {
     if (isFormDisabled) return;
     setSelectedTeacherId('');
+    setTeacherSearchQuery('');
   };
   const clearStudent = () => {
     if (isFormDisabled) return;
     setSelectedStudentId('');
+    setStudentSearchQuery('');
   };
   const clearSubject = () => {
     if (isFormDisabled) return;
@@ -475,6 +601,13 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
       setCurrentPayload(null);
     }
   }, [open, classTypes.length, regularClassTypeId, lessonData, preselectedClassTypeId, preselectedTeacherId, preselectedStudentId]);
+
+  useEffect(() => {
+    if (!open) {
+      setTeacherSearchQuery('');
+      setStudentSearchQuery('');
+    }
+  }, [open]);
 
   // Update date range for non-recurring lessons
   useEffect(() => {
@@ -666,8 +799,8 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
     { label: '日', value: 0 }
   ];
 
-  // Form content component
-  const FormContent = ({ disabled }: { disabled: boolean }) => (
+  // Form content markup (rendered directly to avoid remounting between renders)
+  const renderFormContent = (disabled: boolean) => (
     <div className="grid gap-3 py-2">
       <div className="grid grid-cols-2 gap-4">
         <div>
@@ -872,15 +1005,25 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
           </label>
           <div className="flex items-center gap-2">
             <div className="flex-1">
-              <SearchableSelect
+              <Combobox<CompatibilityComboboxItem>
+                items={teacherItems}
                 value={selectedTeacherId}
                 onValueChange={handleTeacherChange}
-                items={teacherItems}
                 placeholder="講師を選択"
                 searchPlaceholder="講師を検索..."
                 emptyMessage="講師が見つかりません"
-                showCompatibilityIcons={hasStudentSelected}
                 disabled={disabled}
+                clearable
+                searchValue={teacherSearchQuery}
+                onSearchChange={setTeacherSearchQuery}
+                loading={isLoadingTeachers || isFetchingTeachers}
+                triggerClassName="h-10"
+                onOpenChange={(nextOpen) => {
+                  if (!nextOpen) {
+                    setTeacherSearchQuery('');
+                  }
+                }}
+                renderItem={renderCompatibilityComboboxItem}
               />
             </div>
             {selectedTeacherId && (
@@ -909,15 +1052,25 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
           </label>
           <div className="flex items-center gap-2">
             <div className="flex-1">
-              <SearchableSelect
+              <Combobox<CompatibilityComboboxItem>
+                items={studentItems}
                 value={selectedStudentId}
                 onValueChange={handleStudentChange}
-                items={studentItems}
                 placeholder="生徒を選択"
                 searchPlaceholder="生徒を検索..."
                 emptyMessage="生徒が見つかりません"
-                showCompatibilityIcons={hasTeacherSelected}
                 disabled={disabled}
+                clearable
+                searchValue={studentSearchQuery}
+                onSearchChange={setStudentSearchQuery}
+                loading={isLoadingStudents || isFetchingStudents}
+                triggerClassName="h-10"
+                onOpenChange={(nextOpen) => {
+                  if (!nextOpen) {
+                    setStudentSearchQuery('');
+                  }
+                }}
+                renderItem={renderCompatibilityComboboxItem}
               />
             </div>
             {selectedStudentId && (
@@ -1132,7 +1285,7 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
                   入力された情報:
                 </div>
                 <div className="px-1 opacity-60 pointer-events-none">
-                  <FormContent disabled={true} />
+                  {renderFormContent(true)}
                 </div>
               </div>
 
@@ -1152,7 +1305,7 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
           ) : (
             // Single column layout when no conflicts - original form
             <div className="px-1">
-              <FormContent disabled={false} />
+              {renderFormContent(false)}
             </div>
           )}
         </div>
