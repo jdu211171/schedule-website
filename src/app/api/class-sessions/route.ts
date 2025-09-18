@@ -47,6 +47,9 @@ type FormattedClassSession = {
   duration: number | null;
   notes: string | null;
   isCancelled?: boolean;
+  cancelledAt?: string | null;
+  cancelledByUserId?: string | null;
+  cancelledByName?: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -60,6 +63,7 @@ const formatClassSession = (
     classType?: { name: string; color?: string | null } | null;
     booth?: { name: string } | null;
     branch?: { name: string } | null;
+    cancelledBy?: { id: string; name: string | null; username: string | null; email: string | null } | null;
   }
 ): FormattedClassSession => {
   // Get UTC values from the date
@@ -106,6 +110,14 @@ const formatClassSession = (
     duration: classSession.duration,
     notes: classSession.notes,
     isCancelled: (classSession as any).isCancelled ?? false,
+    cancelledAt: (classSession as any).cancelledAt
+      ? format((classSession as any).cancelledAt, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
+      : null,
+    cancelledByUserId: (classSession as any).cancelledByUserId ?? null,
+    cancelledByName:
+      (classSession as any).cancelledByUserId
+        ? (classSession.cancelledBy?.name || classSession.cancelledBy?.username || classSession.cancelledBy?.email || null)
+        : null,
     createdAt: format(classSession.createdAt, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"),
     updatedAt: format(classSession.updatedAt, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"),
   };
@@ -586,6 +598,9 @@ export const GET = withBranchAccess(
           select: {
             name: true,
           },
+        },
+        cancelledBy: {
+          select: { id: true, name: true, username: true, email: true },
         },
       },
       skip,

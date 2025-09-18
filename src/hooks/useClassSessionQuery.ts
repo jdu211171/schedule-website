@@ -38,6 +38,10 @@ export interface ApiClassSessionFields {
   seriesId?: string | null;
   duration?: number;
   isCancelled?: boolean;
+  // Cancellation metadata (single fetch and list may provide these)
+  cancelledAt?: string | null;
+  cancelledByUserId?: string | null;
+  cancelledByName?: string | null;
 }
 
 export type ExtendedClassSessionWithRelations = ClassSessionWithRelations & ApiClassSessionFields;
@@ -55,6 +59,7 @@ export type UseClassSessionsParams = {
   endDate?: string;
   seriesId?: string;
   date?: string;
+  includeCancelled?: boolean;
 };
 
 export type ClassSessionsResponse = {

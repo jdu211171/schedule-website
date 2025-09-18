@@ -521,6 +521,16 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
+            {lesson.isCancelled && (
+              <div className="rounded-md border border-slate-300 bg-slate-100 text-slate-800 dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-100 p-3">
+                <div className="text-sm font-semibold">この授業はキャンセルされています</div>
+                <div className="text-xs mt-1 opacity-90">
+                  取消日: {lesson.cancelledAt ? format(new Date(lesson.cancelledAt), 'yyyy/MM/dd', { locale: ja }) : '-'}
+                  {" / "}
+                  取消者: {lesson.cancelledByName || '不明'}
+                </div>
+              </div>
+            )}
             {mode === 'edit' && isRecurringLesson && (
               <div className="p-3 border rounded-lg bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
             <RadioGroup

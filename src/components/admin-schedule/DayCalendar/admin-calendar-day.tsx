@@ -58,6 +58,7 @@ interface ApiErrorResponse {
 
 const VIEW_START_DATE_KEY = "admin_calendar_view_start_date";
 const SELECTED_DAYS_KEY = "admin_calendar_selected_days_v2";
+const SHOW_CANCELLED_KEY = "admin_calendar_show_cancelled";
 
 interface AdminCalendarDayProps {
   selectedBranchId?: string;
@@ -163,7 +164,11 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
 
   const [globalAvailabilityMode, setGlobalAvailabilityMode] = useState<AvailabilityMode>('with-special');
   const [dayAvailabilitySettings, setDayAvailabilitySettings] = useState<Record<string, AvailabilityMode>>({});
-  const [showCancelled, setShowCancelled] = useState<boolean>(false);
+  const [showCancelled, setShowCancelled] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    const saved = localStorage.getItem(SHOW_CANCELLED_KEY);
+    return saved === null ? false : saved === 'true';
+  });
 
   const [dayFilters, setDayFilters] = useState<Record<string, DayFilters>>({});
   const [showCreateDialog, setShowCreateDialog] = useState<boolean>(false);
@@ -193,16 +198,7 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
   // Persist showCancelled preference
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('admin_calendar_show_cancelled');
-      if (saved !== null) {
-        setShowCancelled(saved === 'true');
-      }
-    }
-  }, []);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('admin_calendar_show_cancelled', String(showCancelled));
+      localStorage.setItem(SHOW_CANCELLED_KEY, String(showCancelled));
     }
   }, [showCancelled]);
 

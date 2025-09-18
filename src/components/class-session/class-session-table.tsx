@@ -45,6 +45,7 @@ import { useSession } from "next-auth/react";
 import type { ClassSession, UserStatus } from "@prisma/client";
 import { ClassSessionFilter } from "./class-session-filter";
 import { classTypeColorClasses, isValidClassTypeColor, isHexColor, rgba, getContrastText, ClassTypeColor } from "@/lib/class-type-colors";
+import { CANCELLED_CLASS_COLOR_CLASSES } from "@/lib/cancelled-class-constants";
 
 // Import types to ensure proper column meta support
 import "@/components/data-table/types";
@@ -98,6 +99,7 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
     branchId: selectedBranchId,
     startDate: filters.startDate,
     endDate: filters.endDate,
+    includeCancelled: true,
   });
 
   // Fetch reference data for filters
@@ -234,6 +236,15 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
       header: "授業タイプ",
       cell: ({ row }) => {
         const session = row.original as ExtendedClassSession;
+        if (session.isCancelled) {
+          const cls = CANCELLED_CLASS_COLOR_CLASSES;
+          return (
+            <span className={`inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded border ${cls.background} ${cls.border} ${cls.text}`}>
+              <span className={`inline-block h-2 w-2 rounded-full ${cls.dot}`} />
+              キャンセル
+            </span>
+          );
+        }
         const label = session.classTypeName || "-";
         const colorKey = session.classTypeColor || (session as any)?.classType?.color || null;
         if (!session.classTypeName) return "-";
@@ -461,7 +472,7 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
       onFilterChange={handleFilterChange}
       onDateRangeChange={handleDateRangeChange}
       onResetFilters={resetFilters}
-    />
+      />
   );
 
   return (
