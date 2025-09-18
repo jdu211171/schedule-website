@@ -52,6 +52,7 @@ type ClassSeriesResponse = {
   notes: string | null;
   createdAt: string; // ISO
   updatedAt: string; // ISO
+  conflictCount?: number; // number of CONFLICTED sessions for this series
 };
 
 function fmtDate(d: Date | null): string | null {
@@ -126,31 +127,56 @@ export const GET = withBranchAccess(["ADMIN", "STAFF", "TEACHER"], async (reques
   const studentIds = Array.from(new Set(base.map((b) => b.studentId).filter(Boolean))) as string[];
   const subjectIds = Array.from(new Set(base.map((b) => b.subjectId).filter(Boolean))) as string[];
   const classTypeIds = Array.from(new Set(base.map((b) => b.classTypeId).filter(Boolean))) as string[];
+  const seriesIds = base.map((b) => b.seriesId);
 
-  const [teachers, students, subjects, classTypes] = await Promise.all([
+  const [teachers, students, subjects, classTypes, conflictedCounts] = await Promise.all([
     teacherIds.length ? prisma.teacher.findMany({ where: { teacherId: { in: teacherIds } }, select: { teacherId: true, name: true } }) : Promise.resolve([] as Array<{ teacherId: string; name: string }>),
     studentIds.length ? prisma.student.findMany({ where: { studentId: { in: studentIds } }, select: { studentId: true, name: true } }) : Promise.resolve([] as Array<{ studentId: string; name: string }>),
     subjectIds.length ? prisma.subject.findMany({ where: { subjectId: { in: subjectIds } }, select: { subjectId: true, name: true } }) : Promise.resolve([] as Array<{ subjectId: string; name: string }>),
     classTypeIds.length ? prisma.classType.findMany({ where: { classTypeId: { in: classTypeIds } }, select: { classTypeId: true, name: true } }) : Promise.resolve([] as Array<{ classTypeId: string; name: string }>),
+    seriesIds.length
+      ? prisma.classSession.groupBy({
+          by: ["seriesId"],
+          where: {
+            seriesId: { in: seriesIds },
+            status: "CONFLICTED",
+          },
+          _count: { _all: true },
+        })
+      : Promise.resolve([] as Array<{ seriesId: string | null; _count: { _all: number } }>),
   ]);
   const tMap = new Map(teachers.map((t) => [t.teacherId, t.name]));
   const sMap = new Map(students.map((s) => [s.studentId, s.name]));
   const subjMap = new Map(subjects.map((s) => [s.subjectId, s.name]));
   const ctMap = new Map(classTypes.map((c) => [c.classTypeId, c.name]));
+  const cMap = new Map<string, number>();
+  for (const g of conflictedCounts) {
+    if (g.seriesId) cMap.set(g.seriesId, g._count._all);
+  }
 
   const data = await Promise.all(
     base.map(async (b) => {
       const cfg = await getEffectiveSchedulingConfig(b.branchId);
-      return {
+      const item: ClassSeriesResponse = {
         ...b,
         conflictPolicy: toPolicyShape(cfg) as any,
         teacherName: b.teacherId ? tMap.get(b.teacherId) ?? null : null,
         studentName: b.studentId ? sMap.get(b.studentId) ?? null : null,
         subjectName: b.subjectId ? subjMap.get(b.subjectId) ?? null : null,
         classTypeName: b.classTypeId ? ctMap.get(b.classTypeId) ?? null : null,
+        conflictCount: cMap.get(b.seriesId) ?? 0,
       };
+      return item;
     })
   );
+
+  // Prioritize by conflictCount desc, then updatedAt desc
+  data.sort((a, b) => {
+    const ca = a.conflictCount ?? 0;
+    const cb = b.conflictCount ?? 0;
+    if (cb !== ca) return cb - ca;
+    return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+  });
 
   return NextResponse.json(data);
 });

@@ -5,17 +5,15 @@ import { useSession } from "next-auth/react";
 import { ColumnDef, flexRender, getCoreRowModel, getFilteredRowModel, getPaginationRowModel, getFacetedRowModel, getFacetedUniqueValues, useReactTable } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useClassSeriesList, useExtendClassSeries, useDeleteClassSeries } from "@/hooks/use-class-series";
+import { useClassSeriesList } from "@/hooks/use-class-series";
 import { DataTablePagination } from "@/components/new-table/data-table-pagination";
 import { DataTableColumnHeader } from "@/components/new-table/data-table-column-header";
-import SeriesDetailDialog from "@/components/class-series/series-detail-dialog";
 import ClassSeriesToolbar from "./class-series-toolbar";
 import { Checkbox } from "@/components/ui/checkbox";
 // import removed: generation mode editing no longer supported
-import { toast } from "sonner";
-import { useQueryClient } from "@tanstack/react-query";
+// import { toast } from "sonner";
+// import { useQueryClient } from "@tanstack/react-query";
 import SeriesSessionsTableDialog from "./series-sessions-table-dialog";
-import { ConfirmDeleteDialog } from "@/components/admin-schedule/confirm-delete-dialog";
 
 type Props = { selectedBranchId?: string };
 
@@ -23,11 +21,11 @@ export default function ClassSeriesTable({ selectedBranchId }: Props) {
   // Fetch all statuses; default filtering is handled client-side
   const { data = [], isLoading } = useClassSeriesList({ branchId: selectedBranchId });
   const [filter, setFilter] = useState("");
-  const [openSeriesId, setOpenSeriesId] = useState<string | null>(null);
+  // const [openSeriesId, setOpenSeriesId] = useState<string | null>(null);
   const [openSessionsId, setOpenSessionsId] = useState<string | null>(null);
   const { data: session } = useSession();
   const role = session?.user?.role as ("ADMIN" | "STAFF" | "TEACHER" | undefined);
-  const qc = useQueryClient();
+  // const qc = useQueryClient();
 
   const columns = useMemo<ColumnDef<any>[]>(() => [
     {
@@ -91,6 +89,17 @@ export default function ClassSeriesTable({ selectedBranchId }: Props) {
       },
     },
     {
+      id: "conflictCount",
+      accessorFn: (row: any) => row.conflictCount ?? 0,
+      header: ({ column }) => <DataTableColumnHeader column={column} title="競合" />,
+      cell: ({ row }) => {
+        const n = Number(row.original.conflictCount || 0);
+        const cls = n > 0 ? "text-red-600 dark:text-red-400 font-semibold" : "text-muted-foreground";
+        return <span className={`text-sm ${cls}`}>{n}</span>;
+      },
+      enableSorting: true,
+    },
+    {
       id: "time",
       accessorFn: (row: any) => `${row.startTime}–${row.endTime}`,
       header: ({ column }) => <DataTableColumnHeader column={column} title="時間" />,
@@ -129,7 +138,7 @@ export default function ClassSeriesTable({ selectedBranchId }: Props) {
     {
       id: "actions",
       header: () => <div className="text-right pr-2">操作</div>,
-      cell: ({ row }) => <RowActions seriesId={row.original.seriesId} onOpenDrawer={setOpenSeriesId} onOpenSessions={setOpenSessionsId} />,
+      cell: ({ row }) => <RowActions seriesId={row.original.seriesId} onOpenSessions={setOpenSessionsId} />,
       enableColumnFilter: false,
     },
   ], []);
@@ -137,7 +146,10 @@ export default function ClassSeriesTable({ selectedBranchId }: Props) {
   const [columnFilters, setColumnFilters] = useState<any[]>([]);
   const [rowSelection, setRowSelection] = useState({});
   const [columnVisibility, setColumnVisibility] = useState<any>({});
-  const [sorting, setSorting] = useState<any>([{ id: "updatedAt", desc: true }]);
+  const [sorting, setSorting] = useState<any>([
+    { id: "conflictCount", desc: true },
+    { id: "updatedAt", desc: true },
+  ]);
 
   const STORAGE_KEY = "series_table_state";
 
@@ -241,9 +253,6 @@ export default function ClassSeriesTable({ selectedBranchId }: Props) {
 
       <DataTablePagination table={table} />
 
-      {openSeriesId && (
-        <SeriesDetailDialog seriesId={openSeriesId} open={!!openSeriesId} onOpenChange={(open) => !open && setOpenSeriesId(null)} />
-      )}
       {openSessionsId && (
         <SeriesSessionsTableDialog seriesId={openSessionsId} open={!!openSessionsId} onOpenChange={(open) => !open && setOpenSessionsId(null)} />
       )}
@@ -251,66 +260,10 @@ export default function ClassSeriesTable({ selectedBranchId }: Props) {
   );
 }
 
-function RowActions({ seriesId, onOpenDrawer, onOpenSessions }: { seriesId: string; onOpenDrawer: (id: string) => void; onOpenSessions: (id: string) => void }) {
-  const extend = useExtendClassSeries(seriesId);
-  const del = useDeleteClassSeries(seriesId);
-  const { data: session } = useSession();
-  const role = session?.user?.role as ("ADMIN" | "STAFF" | "TEACHER" | undefined);
-  const [openDelete, setOpenDelete] = useState(false);
-  const [genMonths, setGenMonths] = useState<number>(1);
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch('/api/scheduling-config?scope=branch');
-        if (res.ok) {
-          const data = await res.json();
-          const m = Number(data?.effective?.generationMonths ?? 1) || 1;
-          setGenMonths(m);
-        }
-      } catch (_) {}
-    })();
-  }, []);
+function RowActions({ seriesId, onOpenSessions }: { seriesId: string; onOpenSessions: (id: string) => void }) {
   return (
     <div className="flex justify-end gap-2">
-      <Button variant="outline" size="sm" onClick={() => onOpenDrawer(seriesId)}>詳細</Button>
       <Button variant="outline" size="sm" onClick={() => onOpenSessions(seriesId)}>授業</Button>
-      <Button
-        variant="secondary"
-        size="sm"
-        disabled={extend.isPending}
-        onClick={async () => {
-          toast.promise(extend.mutateAsync(genMonths), {
-            loading: "生成中...",
-            success: `${genMonths}ヶ月分を生成しました`,
-            error: "生成に失敗しました",
-          });
-        }}
-      >
-        {genMonths}ヶ月分を生成
-      </Button>
-      <Button
-        variant="destructive"
-        size="sm"
-        disabled={role === "TEACHER" || del.isPending}
-        onClick={() => setOpenDelete(true)}
-      >
-        シリーズ全体を削除
-      </Button>
-      <ConfirmDeleteDialog
-        open={openDelete}
-        onOpenChange={setOpenDelete}
-        title="シリーズの削除"
-        description={"このシリーズの設計（ブループリント）のみを削除します。\n既に生成された授業は削除されません。"}
-        confirmText="シリーズ全体を削除"
-        onConfirm={() => {
-          toast.promise(del.mutateAsync(), {
-            loading: "削除中...",
-            success: "シリーズを削除しました",
-            error: "削除に失敗しました",
-          });
-        }}
-        isLoading={del.isPending}
-      />
     </div>
   );
 }

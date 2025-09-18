@@ -24,6 +24,7 @@ export type ClassSeries = {
   status: string;
   lastGeneratedThrough: string | null; // YYYY-MM-DD
   conflictPolicy: Record<string, any> | null;
+  conflictCount?: number;
   notes: string | null;
   createdAt: string; // ISO
   updatedAt: string; // ISO
