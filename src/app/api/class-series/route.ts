@@ -230,9 +230,11 @@ export const POST = withBranchAccess(["ADMIN", "STAFF"], async (request: NextReq
     daysOfWeek: input.daysOfWeek as any,
     status: input.status ?? "ACTIVE",
     generationMode: input.generationMode ?? "ADVANCE",
-    // Ignore client-provided lastGeneratedThrough on create; always start fresh
-    // This prevents skipping the first eligible occurrence (e.g., starting next week unintentionally).
-    lastGeneratedThrough: null,
+    // Restore behavior: honor client-provided lastGeneratedThrough on create.
+    // Caller can seed this when migrating or recreating series to avoid re-generation.
+    lastGeneratedThrough: input.lastGeneratedThrough
+      ? parseDateToUTC(input.lastGeneratedThrough)
+      : null,
     notes: input.notes ?? null,
   };
 
