@@ -22,7 +22,6 @@ export type ClassSeries = {
   duration: number | null;
   daysOfWeek: number[];
   status: string;
-  generationMode: string;
   lastGeneratedThrough: string | null; // YYYY-MM-DD
   conflictPolicy: Record<string, any> | null;
   notes: string | null;
@@ -135,7 +134,7 @@ export function useDeleteClassSeries(seriesId: string) {
         },
       });
       if (!res.ok) throw new Error("Failed to delete class series");
-      return res.json() as Promise<{ deletedSessions: number; deletedSeriesId: string }>;
+      return res.json() as Promise<{ deletedSeriesId: string }>;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["class-series"] });

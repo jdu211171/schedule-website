@@ -139,8 +139,8 @@ export async function advanceGenerateForSeries(
   );
 
   if (series.endDate && from > series.endDate) {
-    // Already beyond hard end → mark ENDED for clarity
-    await prisma.classSeries.update({ where: { seriesId: series.seriesId }, data: { status: 'ENDED' } }).catch(() => {});
+    // Already beyond hard end → delete the blueprint, keep generated sessions
+    await prisma.classSeries.delete({ where: { seriesId: series.seriesId } }).catch(() => {});
     return {
       seriesId,
       fromDate: fmtYMD(from),
@@ -289,13 +289,13 @@ export async function advanceGenerateForSeries(
     }
   }
 
-  // Update lastGeneratedThrough; flip to ENDED when hitting the hard end
+  // Update lastGeneratedThrough; if we reached hard end, delete the blueprint
   const last = candidateDates[candidateDates.length - 1];
-  const updateData: any = { lastGeneratedThrough: last };
   if (series.endDate && last.getTime() >= series.endDate.getTime()) {
-    updateData.status = 'ENDED';
+    await prisma.classSeries.delete({ where: { seriesId: series.seriesId } }).catch(() => {});
+  } else {
+    await prisma.classSeries.update({ where: { seriesId: series.seriesId }, data: { lastGeneratedThrough: last } });
   }
-  await prisma.classSeries.update({ where: { seriesId: series.seriesId }, data: updateData });
 
   return {
     seriesId,

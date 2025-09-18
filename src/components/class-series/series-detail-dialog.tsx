@@ -42,7 +42,6 @@ export default function SeriesDetailDialog({ seriesId, open, onOpenChange }: Pro
 
   // Local editable state with deferred save
   type FormState = {
-    generationMode: string;
     status: string;
     teacherId: string | null;
     studentId: string | null;
@@ -52,7 +51,6 @@ export default function SeriesDetailDialog({ seriesId, open, onOpenChange }: Pro
     daysOfWeek: number[];
   };
   const initialForm: FormState = useMemo(() => ({
-    generationMode: series?.generationMode ?? "ON_DEMAND",
     status: series?.status ?? "ACTIVE",
     teacherId: series?.teacherId ?? null,
     studentId: series?.studentId ?? null,
@@ -60,13 +58,12 @@ export default function SeriesDetailDialog({ seriesId, open, onOpenChange }: Pro
     startDate: series?.startDate ?? "",
     endDate: series?.endDate ?? null,
     daysOfWeek: (series?.daysOfWeek || []).slice(),
-  }), [series?.generationMode, series?.status, series?.teacherId, series?.studentId, series?.boothId, series?.startDate, series?.endDate, series?.conflictPolicy]);
+  }), [series?.status, series?.teacherId, series?.studentId, series?.boothId, series?.startDate, series?.endDate, series?.conflictPolicy]);
   const [form, setForm] = useState<FormState>(initialForm);
   useEffect(() => setForm(initialForm), [initialForm, open]);
 
   const isDirty = useMemo(() => {
     return (
-      form.generationMode !== (series?.generationMode ?? "ON_DEMAND") ||
       form.status !== (series?.status ?? "ACTIVE") ||
       form.teacherId !== (series?.teacherId ?? null) ||
       form.studentId !== (series?.studentId ?? null) ||
@@ -75,12 +72,11 @@ export default function SeriesDetailDialog({ seriesId, open, onOpenChange }: Pro
       form.endDate !== (series?.endDate ?? null) ||
       JSON.stringify(form.daysOfWeek) !== JSON.stringify(series?.daysOfWeek || [])
     );
-  }, [form, series?.generationMode, series?.status, series?.teacherId, series?.studentId, series?.boothId, series?.startDate, series?.endDate]);
+  }, [form, series?.status, series?.teacherId, series?.studentId, series?.boothId, series?.startDate, series?.endDate]);
 
   const save = async () => {
     if (!series) return;
     const patch: Record<string, any> = {};
-    if (form.generationMode !== series.generationMode) patch.generationMode = form.generationMode;
     if (form.status !== series.status) patch.status = form.status;
     if (form.teacherId !== series.teacherId) patch.teacherId = form.teacherId;
     if (form.studentId !== series.studentId) patch.studentId = form.studentId;
@@ -112,9 +108,9 @@ export default function SeriesDetailDialog({ seriesId, open, onOpenChange }: Pro
           <div className="text-sm text-muted-foreground">読み込み中…</div>
         ) : (
           <div className="space-y-5">
-            {/* Status / Mode */}
+            {/* Status */}
             <div className="text-sm">
-              <div className="text-muted-foreground">状態 / 生成モード</div>
+              <div className="text-muted-foreground">状態</div>
               <div className="flex items-center gap-2 mt-1">
                 <Select value={form.status} onValueChange={(v) => setForm((f) => ({ ...f, status: v }))}>
                   <SelectTrigger className="h-8 w-32">
@@ -124,15 +120,6 @@ export default function SeriesDetailDialog({ seriesId, open, onOpenChange }: Pro
                     <SelectItem value="ACTIVE">ACTIVE</SelectItem>
                     <SelectItem value="PAUSED">PAUSED</SelectItem>
                     <SelectItem value="ENDED">ENDED</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select value={form.generationMode} onValueChange={(v) => setForm((f) => ({ ...f, generationMode: v }))}>
-                  <SelectTrigger className="h-8 w-36">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ON_DEMAND">手動（ON_DEMAND）</SelectItem>
-                    <SelectItem value="ADVANCE">自動（ADVANCE）</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

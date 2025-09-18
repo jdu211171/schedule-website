@@ -24,10 +24,7 @@ export default function ClassSeriesToolbar<TData>({ table, globalSearchPlacehold
     { value: "ENDED", label: "ENDED" },
   ];
 
-  const modeOptions = [
-    { value: "ON_DEMAND", label: "ON_DEMAND" },
-    { value: "ADVANCE", label: "ADVANCE" },
-  ];
+  // generation mode removed (always ADVANCE globally)
 
   // Build dynamic options from faceted unique values
   function makeOptions(colId: string) {
@@ -60,7 +57,6 @@ export default function ClassSeriesToolbar<TData>({ table, globalSearchPlacehold
     : undefined;
 
   const selectedCount = table.getSelectedRowModel().rows.length;
-  const selectedSeriesIds = table.getSelectedRowModel().rows.map((r) => (r.original as any).seriesId as string);
 
   return (
     <>
@@ -99,9 +95,7 @@ export default function ClassSeriesToolbar<TData>({ table, globalSearchPlacehold
         {table.getColumn("status") && (
           <DataTableFacetedFilter column={table.getColumn("status")!} title="状態" options={statusOptions} />
         )}
-        {table.getColumn("generationMode") && (
-          <DataTableFacetedFilter column={table.getColumn("generationMode")!} title="生成モード" options={modeOptions} />
-        )}
+        {/* generationMode filter removed */}
         {table.getColumn("lastGeneratedThrough") && (
           <SimpleDateRangePicker
             value={lastGeneratedRange}
@@ -132,57 +126,11 @@ export default function ClassSeriesToolbar<TData>({ table, globalSearchPlacehold
       {/* Column visibility menu */}
       <DataTableViewOptions table={table} />
     </div>
-    {selectedCount > 0 && (
-      <BulkGenerationModeBar ids={selectedSeriesIds} onDone={() => table.resetRowSelection()} />
-    )}
+    {/* Bulk generation mode bar removed */}
     </>
   );
 }
 
 // presets are shown inside SimpleDateRangePicker
 
-function BulkGenerationModeBar({ ids, onDone }: { ids: string[]; onDone?: () => void }) {
-  const [mode, setMode] = React.useState<"ON_DEMAND" | "ADVANCE">("ADVANCE");
-  const [pending, setPending] = React.useState(false);
-
-  const apply = async () => {
-    try {
-      setPending(true);
-      await Promise.all(
-        ids.map((id) =>
-          fetch(`/api/class-series/${id}`, {
-            method: "PATCH",
-            headers: {
-              "Content-Type": "application/json",
-              "X-Selected-Branch": localStorage.getItem("selectedBranchId") || "",
-            },
-            body: JSON.stringify({ generationMode: mode }),
-          })
-        )
-      );
-    } finally {
-      setPending(false);
-      onDone?.();
-    }
-  };
-
-  return (
-    <div className="flex items-center justify-between gap-2 rounded-md border bg-muted/40 p-2">
-      <div className="text-sm">{ids.length}件選択中</div>
-      <div className="flex items-center gap-2">
-        <span className="text-sm text-muted-foreground">生成モード</span>
-        <select
-          className="h-8 rounded-md border bg-background px-2 text-sm"
-          value={mode}
-          onChange={(e) => setMode(e.target.value as any)}
-        >
-          <option value="ADVANCE">自動（ADVANCE）</option>
-          <option value="ON_DEMAND">手動（ON_DEMAND）</option>
-        </select>
-        <Button size="sm" onClick={apply} disabled={pending}>
-          適用
-        </Button>
-      </div>
-    </div>
-  );
-}
+// Bulk generation mode operations removed

@@ -1463,7 +1463,6 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
               endTime: payload.endTime,
               duration: undefined,
               daysOfWeek: payload.daysOfWeek,
-              generationMode: 'ADVANCE',
               notes: payload.notes || null,
               // centralized policy is used on the server; do not send per-series policy
             }),

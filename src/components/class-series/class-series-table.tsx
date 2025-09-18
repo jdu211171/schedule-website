@@ -11,8 +11,7 @@ import { DataTableColumnHeader } from "@/components/new-table/data-table-column-
 import SeriesDetailDialog from "@/components/class-series/series-detail-dialog";
 import ClassSeriesToolbar from "./class-series-toolbar";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useUpdateClassSeries } from "@/hooks/use-class-series";
+// import removed: generation mode editing no longer supported
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import SeriesSessionsTableDialog from "./series-sessions-table-dialog";
@@ -109,18 +108,7 @@ export default function ClassSeriesTable({ selectedBranchId }: Props) {
       cell: ({ row }) => <span className="text-xs rounded border px-2 py-0.5">{row.original.status}</span>,
       filterFn: (row, id, value) => (value as string[]).includes(row.getValue(id) as string),
     },
-    {
-      accessorKey: "generationMode",
-      header: ({ column }) => <DataTableColumnHeader column={column} title="生成モード" />,
-      cell: ({ row }) => (
-        <GenerationModeCell
-          seriesId={row.original.seriesId}
-          value={row.original.generationMode}
-          disabled={role === "TEACHER"}
-        />
-      ),
-      filterFn: (row, id, value) => (value as string[]).includes(row.getValue(id) as string),
-    },
+    // generation mode removed — system operates in ADVANCE by default
     {
       accessorKey: "lastGeneratedThrough",
       header: ({ column }) => <DataTableColumnHeader column={column} title="生成済み（最終）" />,
@@ -311,8 +299,8 @@ function RowActions({ seriesId, onOpenDrawer, onOpenSessions }: { seriesId: stri
       <ConfirmDeleteDialog
         open={openDelete}
         onOpenChange={setOpenDelete}
-        title="シリーズと関連授業の削除"
-        description={"このシリーズと関連するすべての通常授業を完全に削除します。\nこの操作は取り消せません。"}
+        title="シリーズの削除"
+        description={"このシリーズの設計（ブループリント）のみを削除します。\n既に生成された授業は削除されません。"}
         confirmText="シリーズ全体を削除"
         onConfirm={() => {
           toast.promise(del.mutateAsync(), {
@@ -327,30 +315,4 @@ function RowActions({ seriesId, onOpenDrawer, onOpenSessions }: { seriesId: stri
   );
 }
 
-function GenerationModeCell({ seriesId, value, disabled }: { seriesId: string; value: string; disabled?: boolean }) {
-  const update = useUpdateClassSeries(seriesId);
-  const [local, setLocal] = useState(value);
-  useEffect(() => setLocal(value), [value]);
-  const onChange = async (val: string) => {
-    const prev = local;
-    setLocal(val);
-    try {
-      await update.mutateAsync({ generationMode: val as any });
-      toast.success(`生成モードを${val}に更新しました`);
-    } catch (_) {
-      setLocal(prev);
-      toast.error("生成モードの更新に失敗しました");
-    }
-  };
-  return (
-    <Select disabled={disabled || update.isPending} value={local} onValueChange={onChange}>
-      <SelectTrigger className="h-8 w-36">
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="ON_DEMAND">手動（ON_DEMAND）</SelectItem>
-        <SelectItem value="ADVANCE">自動（ADVANCE）</SelectItem>
-      </SelectContent>
-    </Select>
-  );
-}
+// generation mode UI removed

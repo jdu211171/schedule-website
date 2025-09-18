@@ -30,7 +30,8 @@ export async function GET(request: NextRequest) {
   const branchId = url.searchParams.get("branchId") || undefined;
   const singleSeriesId = url.searchParams.get("seriesId") || undefined;
 
-  const where: any = { status: "ACTIVE", generationMode: "ADVANCE" };
+  // All ACTIVE series participate in advance generation (mode is fixed to ADVANCE globally)
+  const where: any = { status: "ACTIVE" };
   if (branchId) where.branchId = branchId;
   if (singleSeriesId) where.seriesId = singleSeriesId;
 

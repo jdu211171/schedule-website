@@ -274,9 +274,9 @@ export const POST = withBranchAccess(["ADMIN", "STAFF"], async (request: NextReq
     if (hardEnd && toDate > hardEnd) toDate = hardEnd;
 
     if (hardEnd && fromDate > hardEnd) {
-      // If we're entirely past the end, mark series as ENDED for clarity
-      await prisma.classSeries.update({ where: { seriesId }, data: { status: 'ENDED' } }).catch(() => {});
-      return NextResponse.json({ error: "Series endDate is in the past; nothing to generate" }, { status: 400 });
+      // Past the end: delete the blueprint, keep generated sessions
+      await prisma.classSeries.delete({ where: { seriesId } }).catch(() => {});
+      return NextResponse.json({ error: "Series has ended; blueprint deleted" }, { status: 400 });
     }
 
     // Build candidate dates matching series.daysOfWeek
@@ -465,14 +465,13 @@ export const POST = withBranchAccess(["ADMIN", "STAFF"], async (request: NextReq
       }
     }
 
-    // Update lastGeneratedThrough to the end of attempted window
+    // Update lastGeneratedThrough, or delete the series if we hit/passed the hard end
     const generatedThrough = candidateDates[candidateDates.length - 1];
-    // Update lastGeneratedThrough; flip to ENDED if we hit the hard end
-    const updates: any = { lastGeneratedThrough: generatedThrough };
     if (hardEnd && generatedThrough.getTime() >= hardEnd.getTime()) {
-      updates.status = 'ENDED';
+      await prisma.classSeries.delete({ where: { seriesId } }).catch(() => {});
+    } else {
+      await prisma.classSeries.update({ where: { seriesId }, data: { lastGeneratedThrough: generatedThrough } });
     }
-    await prisma.classSeries.update({ where: { seriesId }, data: updates });
 
     return NextResponse.json({ count: created.length, skipped: skipped.length, conflicts: conflicted.length, createdIds: created, skippedDetails: skipped, conflictDetails: conflicted, softWarnings });
   } catch (error) {

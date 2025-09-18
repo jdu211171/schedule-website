@@ -97,7 +97,7 @@ export function SchedulingConflictSettings() {
             value={config.generationMonths}
             onChange={(e)=> setConfig({ ...config!, generationMonths: Math.max(1, Number(e.target.value || 1)) })}
           />
-          <div className="text-xs text-muted-foreground">初回生成およびADVANCEモードの先行生成に共通</div>
+          <div className="text-xs text-muted-foreground">初回生成および先行生成に共通</div>
         </div>
       </div>
 

@@ -4,7 +4,7 @@ import { withBranchAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { classSeriesUpdateSchema } from "@/schemas/class-series.schema";
 import { classSessionSeriesUpdateSchema } from "@/schemas/class-session.schema";
-import { advanceGenerateForSeries } from "@/lib/series-advance";
+// generation mode removed; advance generation handled globally via cron/extend
 import { getEffectiveSchedulingConfig, toPolicyShape, upsertBranchPolicyFromSeriesPatch } from "@/lib/scheduling-config";
 
 type ClassSeriesRow = {
@@ -22,7 +22,6 @@ type ClassSeriesRow = {
   duration: number | null;
   daysOfWeek: unknown;
   status: string;
-  generationMode: string;
   lastGeneratedThrough: Date | null;
   // centralized; not stored on series
   notes: string | null;
@@ -45,7 +44,6 @@ type ClassSeriesResponse = {
   duration: number | null;
   daysOfWeek: number[];
   status: string;
-  generationMode: string;
   lastGeneratedThrough: string | null;
   conflictPolicy: Record<string, any> | null;
   notes: string | null;
@@ -88,7 +86,6 @@ function toResponse(row: ClassSeriesRow): ClassSeriesResponse {
     duration: row.duration,
     daysOfWeek: days,
     status: row.status,
-    generationMode: row.generationMode,
     lastGeneratedThrough: fmtDate(row.lastGeneratedThrough),
     conflictPolicy: null,
     notes: row.notes,
@@ -187,7 +184,6 @@ export const PATCH = withBranchAccess(
     if (input.duration !== undefined) data.duration = input.duration ?? null;
     if (input.daysOfWeek !== undefined) data.daysOfWeek = input.daysOfWeek as any;
     if (input.status !== undefined) data.status = input.status;
-    if (input.generationMode !== undefined) data.generationMode = input.generationMode;
     if (input.lastGeneratedThrough !== undefined)
       data.lastGeneratedThrough = input.lastGeneratedThrough
         ? parseDateToUTC(input.lastGeneratedThrough)
@@ -255,42 +251,19 @@ export const PATCH = withBranchAccess(
       }
     }
 
-    // If generationMode set to ADVANCE, trigger ahead-of-time generation now
-    let advanceResult: any = undefined;
-    if (input.generationMode === "ADVANCE") {
-      const cfg = await getEffectiveSchedulingConfig((data.branchId ?? await currentBranchIdOfSeries(seriesId)) as any).catch(() => null);
-      const months = Math.max(1, Number((cfg as any)?.generationMonths ?? 1));
-      const leadDays = months * 30;
-      try {
-        advanceResult = await advanceGenerateForSeries(prisma as any, seriesId, { leadDays });
-      } catch (e: any) {
-        advanceResult = { error: String(e?.message || e) };
-      }
-    }
-
     const base = toResponse(updated as unknown as ClassSeriesRow);
     const cfg = await getEffectiveSchedulingConfig(base.branchId);
     const response = {
       ...base,
       conflictPolicy: toPolicyShape(cfg) as any,
       _propagation: propagateResult ?? undefined,
-      _advance: advanceResult,
     };
 
     return NextResponse.json(response);
   }
 );
 
-async function currentBranchIdOfSeries(seriesId: string): Promise<string | null> {
-  try {
-    const row = await prisma.classSeries.findUnique({ where: { seriesId }, select: { branchId: true } });
-    return row?.branchId ?? null;
-  } catch {
-    return null;
-  }
-}
-
-// DELETE — delete a series blueprint and all related regular class sessions
+// DELETE — delete only the series blueprint; keep any generated class sessions
 export const DELETE = withBranchAccess(
   ["ADMIN", "STAFF"],
   async (request, session, selectedBranchId) => {
@@ -315,12 +288,7 @@ export const DELETE = withBranchAccess(
       }
     }
 
-    const result = await prisma.$transaction(async (tx) => {
-      const delSessions = await tx.classSession.deleteMany({ where: { seriesId } });
-      const delSeries = await tx.classSeries.delete({ where: { seriesId } });
-      return { sessions: delSessions.count, series: delSeries.seriesId };
-    });
-
-    return NextResponse.json({ deletedSessions: result.sessions, deletedSeriesId: result.series });
+    const delSeries = await prisma.classSeries.delete({ where: { seriesId } });
+    return NextResponse.json({ deletedSeriesId: delSeries.seriesId });
   }
 );

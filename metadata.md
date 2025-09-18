@@ -56,7 +56,7 @@ model ClassSeries {
   daysOfWeek            Json     @map("days_of_week") // [1,3,5] etc. Single series may cover multiple DOW
   // Lifecycle & automation
   status                String   @default("ACTIVE") // ACTIVE | PAUSED | ENDED | DISABLED
-  generationMode        String   @default("ON_DEMAND") @map("generation_mode") // ON_DEMAND | ADVANCE
+  // generationMode removed (2025-09-18): system always uses ADVANCE behavior
   lastGeneratedThrough  DateTime? @map("last_generated_through") @db.Date
   conflictPolicy        Json?    @map("conflict_policy") // e.g., { skipConflicts: true }
   notes                 String?  @db.VarChar(255)
@@ -152,28 +152,19 @@ Notes
 - RBAC mirrors current series PATCH/DELETE rules (ADMIN/STAFF for mutating).
 - Keep `/api/class-sessions` as‑is; v0 only orchestrates it from the new endpoints.
 
-## Generation Strategy (Supporting On-Demand and Advance Creation)
+## Generation Strategy (Always-Advance)
 
-The system will support two generation modes, configured per series via the `generationMode` field.
+As of 2025-09-18, the per-series generation mode is removed. The system always behaves as ADVANCE:
 
-### 1. On-Demand Generation (Default)
-- **Mode**: `generationMode = 'ON_DEMAND'`
-- **Behavior**: The system will not automatically generate sessions. Staff will create them as needed using the `POST /api/class-series/[seriesId]/extend` endpoint. This endpoint provides this option for generation:
-    - **Generate by Month Count**: Staff can specify the exact number of months they want to generate sessions for (e.g., create the next 1 or 3 months of classes). By default, it generates sessions for the next 1 month from the last generated date.
-- **Session Status**: All sessions created this way will be immediately marked as `'CONFIRMED'`, as the action is initiated manually. The existing conflict detection logic will run, and any overlaps will be flagged for staff to review.
+- A scheduled endpoint (`/api/class-series/advance/cron`) periodically ensures upcoming sessions are generated ahead based on the configured lead window (`generationMonths`).
+- For each target date, existing availability/overlap checks run:
+  - No conflicts: create `'CONFIRMED'` session.
+  - Conflicts: create `'CONFLICTED'` session for staff resolution.
+- `last_generated_through` on the series is updated accordingly.
+- Staff can still manually extend via `POST /api/class-series/[seriesId]/extend` when needed (e.g., immediate fill or controlled preview/resolution). This coexists with the automatic advance generation.
 
-### 2. Advance Generation (Opt-In)
-- **Mode**: `generationMode = 'ADVANCE'`
-- **Target**: For series with this mode enabled, the system aims to always have the next 1-2 months of sessions generated ahead of time. The exact lead time can be configurable, but a common default would be to ensure that sessions are generated at least 30 days in advance.
-- **Approach**: A scheduled script (`scripts/generate-from-series.ts`) will run periodically.
-  - It selects `class_series` where `generationMode = 'ADVANCE'` and `last_generated_through < :target_through_date`.
-  - For each potential session date, it runs the existing availability/overlap checks.
-    - **If no conflict is found**: It inserts the new `class_session` with its `status` set to `'CONFIRMED'`.
-    - **If a conflict is found**: It inserts a placeholder `class_session` with its `status` set to `'CONFLICTED'`. This session will be visible to staff in a dedicated conflict resolution UI but hidden from student/teacher calendars until resolved.
-  - It updates `last_generated_through` on the series blueprint.
-  - This creates a focused workflow where staff only need to manage the exceptions (the conflicts), not approve every single generated session.
-
-This dual-mode approach provides flexibility, with the default being a safe, manual process, while the opt-in automated process includes safeguards like the `'CONFLICTED'` status to ensure accuracy and a manageable workflow for staff.
+End-of-life behavior
+- When a series’ `endDate` is reached (or already in the past), the backend deletes the `class_series` blueprint automatically and leaves any previously generated `class_sessions` intact. No automatic status change to ENDED occurs any more.
 
 ## Backfill Plan (one‑time)
 

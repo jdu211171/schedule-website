@@ -9,7 +9,7 @@ This document describes the new recurring class “blueprint” model, APIs, and
 
 ## Data Model (DB)
 
-- `class_series(series_id PK, branch_id?, teacher_id?, student_id?, subject_id?, class_type_id?, booth_id?, start_date, end_date?, start_time, end_time, duration?, days_of_week JSON[int[]], status, generation_mode, last_generated_through?, conflict_policy?, notes?, created_at, updated_at)`
+- `class_series(series_id PK, branch_id?, teacher_id?, student_id?, subject_id?, class_type_id?, booth_id?, start_date, end_date?, start_time, end_time, duration?, days_of_week JSON[int[]], status, last_generated_through?, conflict_policy?, notes?, created_at, updated_at)`
 - `class_sessions.status VARCHAR(20)` — e.g., `CONFIRMED`, `CONFLICTED`
 - `archives.series_id` — preserved when sessions are archived
 
@@ -31,6 +31,7 @@ Roles:
 - GET `/api/class-series/{seriesId}` — returns one blueprint
 - PATCH `/api/class-series/{seriesId}` — update blueprint fields; also propagates to future sessions via existing `/api/class-sessions/series/{seriesId}` PATCH
 - POST `/api/class-series/{seriesId}/extend` — generate sessions for next `{ months: number }` months, default 1; on‑demand generation creates `CONFIRMED` sessions
+  - When the generation reaches or exceeds the series `endDate`, the backend deletes the `class_series` blueprint and keeps already generated sessions.
 - GET `/api/class-series/summary?studentId=...&days=90` — `{ totalRegular, bySubject[] }` for regular (non‑special) sessions
 
 Request headers:
@@ -89,4 +90,3 @@ All hooks add `X-Selected-Branch` automatically from `localStorage`.
 ## Manual Testing
 
 See `specs/001-class-series-metadata/manual-testing.md` for full step‑by‑step validation using psql + curl + UI.
-

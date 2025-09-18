@@ -382,7 +382,6 @@ export function ClassSessionFormDialog({
                 daysOfWeek: formattedValues.daysOfWeek && formattedValues.daysOfWeek.length > 0
                   ? formattedValues.daysOfWeek
                   : [new Date(formattedValues.date).getDay()],
-                generationMode: 'ON_DEMAND',
                 notes: formattedValues.notes ?? null,
               })
             });

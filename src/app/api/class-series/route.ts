@@ -20,7 +20,6 @@ type ClassSeriesRow = {
   duration: number | null;
   daysOfWeek: unknown; // JSON
   status: string;
-  generationMode: string;
   lastGeneratedThrough: Date | null;
   // centralized config; not stored on series
   // conflictPolicy removed from table
@@ -48,7 +47,6 @@ type ClassSeriesResponse = {
   duration: number | null;
   daysOfWeek: number[]; // [1,3,5]
   status: string;
-  generationMode: string;
   lastGeneratedThrough: string | null; // YYYY-MM-DD
   conflictPolicy: Record<string, any> | null;
   notes: string | null;
@@ -91,7 +89,6 @@ function toResponse(row: ClassSeriesRow): ClassSeriesResponse {
     duration: row.duration,
     daysOfWeek: days,
     status: row.status,
-    generationMode: row.generationMode,
     lastGeneratedThrough: fmtDate(row.lastGeneratedThrough),
     conflictPolicy: null,
     notes: row.notes,
@@ -229,7 +226,6 @@ export const POST = withBranchAccess(["ADMIN", "STAFF"], async (request: NextReq
     duration: input.duration ?? null,
     daysOfWeek: input.daysOfWeek as any,
     status: input.status ?? "ACTIVE",
-    generationMode: input.generationMode ?? "ADVANCE",
     // Restore behavior: honor client-provided lastGeneratedThrough on create.
     // Caller can seed this when migrating or recreating series to avoid re-generation.
     lastGeneratedThrough: input.lastGeneratedThrough

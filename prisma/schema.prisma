@@ -21,7 +21,6 @@ model ClassSeries {
   daysOfWeek           Json      @map("days_of_week") // e.g. [1,3,5]
   // Lifecycle & automation
   status               String    @default("ACTIVE")
-  generationMode       String    @default("ON_DEMAND") @map("generation_mode")
   lastGeneratedThrough DateTime? @map("last_generated_through") @db.Date
   notes                String?   @db.VarChar(255)
   createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamp(6)

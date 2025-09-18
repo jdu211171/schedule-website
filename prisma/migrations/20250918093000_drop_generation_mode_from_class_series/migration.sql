@@ -1,0 +1,1 @@
+-- Drop generation_mode column from class_series\nALTER TABLE "class_series" DROP COLUMN IF EXISTS "generation_mode";
