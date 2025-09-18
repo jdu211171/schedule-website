@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { SearchableSelect, SearchableSelectItem } from '../searchable-select';
 import { useSubjects } from '@/hooks/useSubjectQuery';
-import { useTeachers } from '@/hooks/useTeacherQuery';
-import { useStudents } from '@/hooks/useStudentQuery';
+import { useSmartSelection, EnhancedTeacher, EnhancedStudent } from '@/hooks/useSmartSelection';
+import { Combobox } from '@/components/ui/combobox';
+import { CompatibilityComboboxItem, getCompatibilityPriority, renderCompatibilityComboboxItem } from '../compatibility-combobox-utils';
+import { useDebounce } from '@/hooks/use-debounce';
 import { DayFilters } from '@/hooks/useClassSessionQuery';
 import { X } from 'lucide-react';
 
@@ -22,32 +24,129 @@ export const DayCalendarFilters: React.FC<DayCalendarFiltersProps> = ({
     limit: 100
   });
 
-  const { data: teachersResponse, isLoading: isLoadingTeachers } = useTeachers({
-    limit: 100
-  });
-
-  const { data: studentsResponse, isLoading: isLoadingStudents } = useStudents({
-    limit: 100
-  });
-
   const subjects = subjectsResponse?.data || [];
-  const teachers = teachersResponse?.data || [];
-  const students = studentsResponse?.data || [];
 
   const subjectItems: SearchableSelectItem[] = subjects.map((subject) => ({
     value: subject.subjectId,
     label: subject.name,
   }));
 
-  const teacherItems: SearchableSelectItem[] = teachers.map((teacher) => ({
-    value: teacher.teacherId,
-    label: teacher.name,
-  }));
+  // Smart matching + searchable combobox for teacher/student (same as admin-calendar-day)
+  const [teacherSearch, setTeacherSearch] = useState<string>('');
+  const [studentSearch, setStudentSearch] = useState<string>('');
+  const debouncedTeacher = useDebounce(teacherSearch, 300);
+  const debouncedStudent = useDebounce(studentSearch, 300);
 
-  const studentItems: SearchableSelectItem[] = students.map((student) => ({
-    value: student.studentId,
-    label: student.name,
-  }));
+  const {
+    enhancedTeachers,
+    enhancedStudents,
+    isFetchingTeachers,
+    isFetchingStudents,
+    isLoadingTeachers: isLoadingTeachersSmart,
+    isLoadingStudents: isLoadingStudentsSmart,
+  } = useSmartSelection({
+    selectedTeacherId: filters.teacherId,
+    selectedStudentId: filters.studentId,
+    activeOnly: true,
+    teacherSearchTerm: debouncedTeacher,
+    studentSearchTerm: debouncedStudent,
+  });
+
+  const teacherComboItems: CompatibilityComboboxItem[] = useMemo(() => {
+    return enhancedTeachers
+      .map((teacher: EnhancedTeacher) => {
+        let description = '';
+        let matchingSubjectsCount = 0;
+        let partialMatchingSubjectsCount = 0;
+
+        if (teacher.compatibilityType === 'perfect') {
+          description = `${teacher.matchingSubjectsCount}件の完全一致`;
+          matchingSubjectsCount = teacher.matchingSubjectsCount;
+          if (teacher.partialMatchingSubjectsCount > 0) {
+            description += `, ${teacher.partialMatchingSubjectsCount}件の部分一致`;
+            partialMatchingSubjectsCount = teacher.partialMatchingSubjectsCount;
+          }
+        } else if (teacher.compatibilityType === 'subject-only') {
+          description = `${teacher.partialMatchingSubjectsCount}件の部分一致`;
+          partialMatchingSubjectsCount = teacher.partialMatchingSubjectsCount;
+        } else if (teacher.compatibilityType === 'mismatch') {
+          description = '共通科目なし';
+        } else if (teacher.compatibilityType === 'teacher-no-prefs') {
+          description = '科目設定なし';
+        } else if (teacher.compatibilityType === 'student-no-prefs') {
+          description = '生徒の設定なし（全対応可）';
+        }
+
+        const keywords = [teacher.name, teacher.kanaName, teacher.email, teacher.username]
+          .filter((k): k is string => Boolean(k))
+          .map((k) => k.toLowerCase());
+
+        return {
+          value: teacher.teacherId,
+          label: teacher.name,
+          description,
+          compatibilityType: teacher.compatibilityType,
+          matchingSubjectsCount,
+          partialMatchingSubjectsCount,
+          keywords,
+        } as CompatibilityComboboxItem;
+      })
+      .sort((a, b) => {
+        const priorityDiff = getCompatibilityPriority(b.compatibilityType) - getCompatibilityPriority(a.compatibilityType);
+        if (priorityDiff !== 0) return priorityDiff;
+        const labelA = typeof a.label === 'string' ? a.label : String(a.label ?? '');
+        const labelB = typeof b.label === 'string' ? b.label : String(b.label ?? '');
+        return labelA.localeCompare(labelB, 'ja');
+      });
+  }, [enhancedTeachers]);
+
+  const studentComboItems: CompatibilityComboboxItem[] = useMemo(() => {
+    return enhancedStudents
+      .map((student: EnhancedStudent) => {
+        let description = '';
+        let matchingSubjectsCount = 0;
+        let partialMatchingSubjectsCount = 0;
+
+        if (student.compatibilityType === 'perfect') {
+          description = `${student.matchingSubjectsCount}件の完全一致`;
+          matchingSubjectsCount = student.matchingSubjectsCount;
+          if (student.partialMatchingSubjectsCount > 0) {
+            description += `, ${student.partialMatchingSubjectsCount}件の部分一致`;
+            partialMatchingSubjectsCount = student.partialMatchingSubjectsCount;
+          }
+        } else if (student.compatibilityType === 'subject-only') {
+          description = `${student.partialMatchingSubjectsCount}件の部分一致`;
+          partialMatchingSubjectsCount = student.partialMatchingSubjectsCount;
+        } else if (student.compatibilityType === 'mismatch') {
+          description = '共通科目なし';
+        } else if (student.compatibilityType === 'student-no-prefs') {
+          description = '科目設定なし';
+        } else if (student.compatibilityType === 'teacher-no-prefs') {
+          description = '講師の設定なし（全対応可）';
+        }
+
+        const keywords = [student.name, student.kanaName, student.email, student.username]
+          .filter((k): k is string => Boolean(k))
+          .map((k) => k.toLowerCase());
+
+        return {
+          value: student.studentId,
+          label: student.name,
+          description,
+          compatibilityType: student.compatibilityType,
+          matchingSubjectsCount,
+          partialMatchingSubjectsCount,
+          keywords,
+        } as CompatibilityComboboxItem;
+      })
+      .sort((a, b) => {
+        const priorityDiff = getCompatibilityPriority(b.compatibilityType) - getCompatibilityPriority(a.compatibilityType);
+        if (priorityDiff !== 0) return priorityDiff;
+        const labelA = typeof a.label === 'string' ? a.label : String(a.label ?? '');
+        const labelB = typeof b.label === 'string' ? b.label : String(b.label ?? '');
+        return labelA.localeCompare(labelB, 'ja');
+      });
+  }, [enhancedStudents]);
 
   const handleSubjectChange = (subjectId: string) => {
     onFiltersChange({
@@ -125,19 +224,25 @@ export const DayCalendarFilters: React.FC<DayCalendarFiltersProps> = ({
           )}
         </div>
 
-        <div className="flex items-center gap-1">
-          <SearchableSelect
-            value={filters.teacherId || ''}
-            onValueChange={handleTeacherChange}
-            items={teacherItems}
-            placeholder="講師を選択"
-            searchPlaceholder="講師を検索..."
-            emptyMessage="講師が見つかりません"
-            loading={isLoadingTeachers}
-            disabled={isLoadingTeachers}
-            className="w-[180px]"
-          />
-
+        <div className="flex items-end gap-1">
+          <div className="flex-1 min-w-[200px]">
+            <Combobox<CompatibilityComboboxItem>
+              items={teacherComboItems}
+              value={filters.teacherId || ''}
+              onValueChange={handleTeacherChange}
+              placeholder="講師を選択"
+              searchPlaceholder="講師を検索..."
+              emptyMessage="講師が見つかりません"
+              disabled={false}
+              clearable
+              searchValue={teacherSearch}
+              onSearchChange={setTeacherSearch}
+              loading={isLoadingTeachersSmart || isFetchingTeachers}
+              triggerClassName="h-8"
+              onOpenChange={(open) => { if (!open) setTeacherSearch(''); }}
+              renderItem={renderCompatibilityComboboxItem}
+            />
+          </div>
           {filters.teacherId && (
             <Button
               variant="ghost"
@@ -150,19 +255,25 @@ export const DayCalendarFilters: React.FC<DayCalendarFiltersProps> = ({
           )}
         </div>
 
-        <div className="flex items-center gap-1">
-          <SearchableSelect
-            value={filters.studentId || ''}
-            onValueChange={handleStudentChange}
-            items={studentItems}
-            placeholder="生徒を選択"
-            searchPlaceholder="生徒を検索..."
-            emptyMessage="生徒が見つかりません"
-            loading={isLoadingStudents}
-            disabled={isLoadingStudents}
-            className="w-[180px]"
-          />
-
+        <div className="flex items-end gap-1">
+          <div className="flex-1 min-w-[200px]">
+            <Combobox<CompatibilityComboboxItem>
+              items={studentComboItems}
+              value={filters.studentId || ''}
+              onValueChange={handleStudentChange}
+              placeholder="生徒を選択"
+              searchPlaceholder="生徒を検索..."
+              emptyMessage="生徒が見つかりません"
+              disabled={false}
+              clearable
+              searchValue={studentSearch}
+              onSearchChange={setStudentSearch}
+              loading={isLoadingStudentsSmart || isFetchingStudents}
+              triggerClassName="h-8"
+              onOpenChange={(open) => { if (!open) setStudentSearch(''); }}
+              renderItem={renderCompatibilityComboboxItem}
+            />
+          </div>
           {filters.studentId && (
             <Button
               variant="ghost"
