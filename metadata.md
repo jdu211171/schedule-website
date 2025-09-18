@@ -166,6 +166,11 @@ As of 2025-09-18, the per-series generation mode is removed. The system always b
 End-of-life behavior
 - When a series’ `endDate` is reached (or already in the past), the backend deletes the `class_series` blueprint automatically and leaves any previously generated `class_sessions` intact. No automatic status change to ENDED occurs any more.
 
+Mid-series truncation via calendar
+- If staff choose “この回以降を削除” on an instance:
+  - All sessions on/after that date are deleted for the series.
+  - The blueprint `endDate` is set to that date and `last_generated_through` is lifted to at least that date, ensuring future generation won’t recreate the deleted occurrence or later ones.
+
 ## Backfill Plan (one‑time)
 
 1) Create `class_series`, extend `archives` with `series_id`, and add the `status` column to `class_sessions`.

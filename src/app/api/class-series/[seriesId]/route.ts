@@ -153,6 +153,14 @@ export const PATCH = withBranchAccess(
       return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
     }
 
+    // Extended control flags (not part of zod schema):
+    // - skipPropagation: do not propagate to existing sessions (UI may have updated them separately)
+    // - propagateFromClassId: when propagating, apply from a specific instance forward
+    const skipPropagation = Boolean((body as any)?.skipPropagation);
+    const propagateFromClassId: string | undefined = typeof (body as any)?.propagateFromClassId === 'string'
+      ? (body as any).propagateFromClassId
+      : undefined;
+
     const parsed = classSeriesUpdateSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.message }, { status: 400 });
@@ -179,8 +187,10 @@ export const PATCH = withBranchAccess(
     if (input.boothId !== undefined) data.boothId = input.boothId ?? null;
     if (input.startDate !== undefined) data.startDate = parseDateToUTC(input.startDate);
     if (input.endDate !== undefined) data.endDate = input.endDate ? parseDateToUTC(input.endDate) : null;
-    if (input.startTime !== undefined) data.startTime = parseTimeToUTC(input.startTime);
-    if (input.endTime !== undefined) data.endTime = parseTimeToUTC(input.endTime);
+    const hasStartTime = input.startTime !== undefined;
+    const hasEndTime = input.endTime !== undefined;
+    if (hasStartTime) data.startTime = parseTimeToUTC(input.startTime as string);
+    if (hasEndTime) data.endTime = parseTimeToUTC(input.endTime as string);
     if (input.duration !== undefined) data.duration = input.duration ?? null;
     if (input.daysOfWeek !== undefined) data.daysOfWeek = input.daysOfWeek as any;
     if (input.status !== undefined) data.status = input.status;
@@ -202,6 +212,19 @@ export const PATCH = withBranchAccess(
     // If endDate was shortened before the previous lastGeneratedThrough, clamp it down
     if (data.endDate && current?.lastGeneratedThrough && current.lastGeneratedThrough > data.endDate) {
       (data as any).lastGeneratedThrough = data.endDate;
+    }
+
+    // If times changed and duration not explicitly provided, recompute duration from new times
+    if ((hasStartTime || hasEndTime) && (input.duration === undefined)) {
+      try {
+        const s = (hasStartTime ? (data.startTime as Date) : undefined) ?? (await prisma.classSeries.findUnique({ where: { seriesId }, select: { startTime: true } }))?.startTime;
+        const e = (hasEndTime ? (data.endTime as Date) : undefined) ?? (await prisma.classSeries.findUnique({ where: { seriesId }, select: { endTime: true } }))?.endTime;
+        if (s && e && e > s) {
+          (data as any).duration = Math.round((e.getTime() - s.getTime()) / (1000 * 60));
+        }
+      } catch {
+        // ignore
+      }
     }
 
     const updated = await prisma.classSeries.update({ where: { seriesId }, data });
@@ -228,7 +251,7 @@ export const PATCH = withBranchAccess(
     }
 
     let propagateResult: { ok: boolean; status?: number; error?: any } | null = null;
-    if (shouldPropagate) {
+    if (shouldPropagate && !skipPropagation) {
       // Validate against class-session series schema before sending
       const seriesPatch = classSessionSeriesUpdateSchema.safeParse(propagate);
       if (seriesPatch.success) {
@@ -242,7 +265,7 @@ export const PATCH = withBranchAccess(
               Cookie: request.headers.get("cookie") || "",
               "X-Selected-Branch": request.headers.get("X-Selected-Branch") || selectedBranchId,
             },
-            body: JSON.stringify(seriesPatch.data),
+            body: JSON.stringify({ ...seriesPatch.data, fromClassId: propagateFromClassId }),
           });
           propagateResult = { ok: res.ok, status: res.status };
         } catch (err) {

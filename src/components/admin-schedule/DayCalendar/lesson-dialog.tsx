@@ -7,6 +7,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { ExtendedClassSessionWithRelations } from '@/hooks/useClassSessionQuery';
 import { useClassSessionDelete, useClassSessionUpdate, useClassSessionSeriesUpdate, useClassSessionSeriesDelete, useClassSessionCancel } from '@/hooks/useClassSessionMutation';
+import { useUpdateClassSeries } from '@/hooks/use-class-series';
 import { SearchableSelect, SearchableSelectItem } from '../searchable-select';
 import { TimeInput } from '@/components/ui/time-input';
 import { ConfirmDeleteDialog } from '../confirm-delete-dialog';
@@ -172,6 +173,7 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
   const updateClassMutation = useClassSessionUpdate();
   const updateSeriesMutation = useClassSessionSeriesUpdate();
   const cancelMutation = useClassSessionCancel();
+  const updateSeriesMeta = lesson.seriesId ? useUpdateClassSeries(lesson.seriesId) : null;
 
   const isRecurringLesson = lesson.seriesId !== null;
 
@@ -363,8 +365,30 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
         seriesToSave.classTypeId = finalClassTypeId;
       }
 
+      // 1) Update future sessions from this instance forward
       updateSeriesMutation.mutate(seriesToSave, {
-        onSuccess: () => {
+        onSuccess: async () => {
+          // 2) Update series metadata so future generation stays in sync (skip propagation)
+          try {
+            if (updateSeriesMeta) {
+              const metaPatch: any = {};
+              if (seriesToSave.teacherId !== undefined) metaPatch.teacherId = seriesToSave.teacherId;
+              if (seriesToSave.studentId !== undefined) metaPatch.studentId = seriesToSave.studentId;
+              if (seriesToSave.subjectId !== undefined) metaPatch.subjectId = seriesToSave.subjectId;
+              if (seriesToSave.classTypeId !== undefined) metaPatch.classTypeId = seriesToSave.classTypeId;
+              if (seriesToSave.boothId !== undefined) metaPatch.boothId = seriesToSave.boothId || null;
+              if (seriesToSave.startTime) metaPatch.startTime = seriesToSave.startTime;
+              if (seriesToSave.endTime) metaPatch.endTime = seriesToSave.endTime;
+              if (seriesToSave.notes !== undefined) metaPatch.notes = seriesToSave.notes || null;
+              // Avoid re-propagation because we already updated sessions with a pivot
+              metaPatch.skipPropagation = true;
+              metaPatch.propagateFromClassId = editedLesson.classId;
+              await updateSeriesMeta.mutateAsync(metaPatch);
+            }
+          } catch (e) {
+            // Non-fatal: sessions already updated; log for diagnostics
+            console.error('シリーズメタデータの更新に失敗しました', e);
+          }
           onSave(editedLesson.classId, true);
           onModeChange('view');
         },

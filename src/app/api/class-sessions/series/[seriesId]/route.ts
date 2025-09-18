@@ -637,18 +637,31 @@ export const DELETE = withBranchAccess(
             },
           },
         });
+
+        // Finally, shorten the series blueprint so no future sessions regenerate
+        try {
+          // Fetch current lastGeneratedThrough to avoid regressions
+          const series = await tx.classSeries.findUnique({ where: { seriesId }, select: { lastGeneratedThrough: true } });
+          if (series) {
+            // Set endDate to pivotDate
+            const updates: any = { endDate: pivotDate };
+            // Ensure lastGeneratedThrough is at least pivotDate to prevent re-creating the deleted pivot
+            const cur = series.lastGeneratedThrough ? new Date(series.lastGeneratedThrough) : null;
+            if (!cur || cur.getTime() < pivotDate.getTime()) {
+              updates.lastGeneratedThrough = pivotDate;
+            }
+            await tx.classSeries.update({ where: { seriesId }, data: updates });
+          }
+        } catch (_) {
+          // Ignore; deleting sessions succeeded even if blueprint is missing
+        }
       });
 
       return NextResponse.json(
         {
           data: [],
-          message: `${futureSessionsCount}件の未来の授業を削除しました`,
-          pagination: {
-            total: 0,
-            page: 0,
-            limit: 0,
-            pages: 0,
-          },
+          message: `${futureSessionsCount}件の未来の授業を削除し、シリーズの終了日を更新しました`,
+          pagination: { total: 0, page: 0, limit: 0, pages: 0 },
         },
         { status: 200 }
       );
