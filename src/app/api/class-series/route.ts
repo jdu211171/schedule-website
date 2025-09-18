@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withBranchAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { classSeriesCreateSchema } from "@/schemas/class-series.schema";
-import { DEFAULT_MARK_AS_CONFLICTED } from "@/lib/conflict-types";
+import { getEffectiveSchedulingConfig, toPolicyShape } from "@/lib/scheduling-config";
 
 type ClassSeriesRow = {
   seriesId: string;
@@ -22,7 +22,8 @@ type ClassSeriesRow = {
   status: string;
   generationMode: string;
   lastGeneratedThrough: Date | null;
-  conflictPolicy: unknown | null;
+  // centralized config; not stored on series
+  // conflictPolicy removed from table
   notes: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -92,7 +93,7 @@ function toResponse(row: ClassSeriesRow): ClassSeriesResponse {
     status: row.status,
     generationMode: row.generationMode,
     lastGeneratedThrough: fmtDate(row.lastGeneratedThrough),
-    conflictPolicy: (row.conflictPolicy as any) ?? null,
+    conflictPolicy: null,
     notes: row.notes,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
@@ -140,13 +141,19 @@ export const GET = withBranchAccess(["ADMIN", "STAFF", "TEACHER"], async (reques
   const subjMap = new Map(subjects.map((s) => [s.subjectId, s.name]));
   const ctMap = new Map(classTypes.map((c) => [c.classTypeId, c.name]));
 
-  const data = base.map((b) => ({
-    ...b,
-    teacherName: b.teacherId ? tMap.get(b.teacherId) ?? null : null,
-    studentName: b.studentId ? sMap.get(b.studentId) ?? null : null,
-    subjectName: b.subjectId ? subjMap.get(b.subjectId) ?? null : null,
-    classTypeName: b.classTypeId ? ctMap.get(b.classTypeId) ?? null : null,
-  }));
+  const data = await Promise.all(
+    base.map(async (b) => {
+      const cfg = await getEffectiveSchedulingConfig(b.branchId);
+      return {
+        ...b,
+        conflictPolicy: toPolicyShape(cfg) as any,
+        teacherName: b.teacherId ? tMap.get(b.teacherId) ?? null : null,
+        studentName: b.studentId ? sMap.get(b.studentId) ?? null : null,
+        subjectName: b.subjectId ? subjMap.get(b.subjectId) ?? null : null,
+        classTypeName: b.classTypeId ? ctMap.get(b.classTypeId) ?? null : null,
+      };
+    })
+  );
 
   return NextResponse.json(data);
 });
@@ -222,10 +229,8 @@ export const POST = withBranchAccess(["ADMIN", "STAFF"], async (request: NextReq
     duration: input.duration ?? null,
     daysOfWeek: input.daysOfWeek as any,
     status: input.status ?? "ACTIVE",
-    generationMode: input.generationMode ?? "ON_DEMAND",
+    generationMode: input.generationMode ?? "ADVANCE",
     lastGeneratedThrough: input.lastGeneratedThrough ? parseDateToUTC(input.lastGeneratedThrough) : null,
-    conflictPolicy:
-      (input.conflictPolicy as any) ?? { markAsConflicted: DEFAULT_MARK_AS_CONFLICTED },
     notes: input.notes ?? null,
   };
 

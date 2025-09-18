@@ -13,8 +13,7 @@ import { useStudents } from "@/hooks/useStudentQuery";
 import { useClassSeries, useExtendClassSeries, useUpdateClassSeries } from "@/hooks/use-class-series";
 import { toast } from "sonner";
 import { DatePicker } from "@/components/date-picker";
-import { Switch } from "@/components/ui/switch";
-import { DEFAULT_MARK_AS_CONFLICTED, normalizeMarkAsConflicted } from "@/lib/conflict-types";
+import { /* Switch */ } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 
 type Props = { seriesId: string; open: boolean; onOpenChange: (open: boolean) => void };
@@ -50,7 +49,6 @@ export default function SeriesDetailDialog({ seriesId, open, onOpenChange }: Pro
     boothId: string | null;
     startDate: string; // YYYY-MM-DD
     endDate: string | null; // YYYY-MM-DD | null
-    markAsConflicted: Record<string, boolean>;
     daysOfWeek: number[];
   };
   const initialForm: FormState = useMemo(() => ({
@@ -61,7 +59,6 @@ export default function SeriesDetailDialog({ seriesId, open, onOpenChange }: Pro
     boothId: series?.boothId ?? null,
     startDate: series?.startDate ?? "",
     endDate: series?.endDate ?? null,
-    markAsConflicted: normalizeMarkAsConflicted(series?.conflictPolicy?.markAsConflicted as any),
     daysOfWeek: (series?.daysOfWeek || []).slice(),
   }), [series?.generationMode, series?.status, series?.teacherId, series?.studentId, series?.boothId, series?.startDate, series?.endDate, series?.conflictPolicy]);
   const [form, setForm] = useState<FormState>(initialForm);
@@ -76,10 +73,9 @@ export default function SeriesDetailDialog({ seriesId, open, onOpenChange }: Pro
       form.boothId !== (series?.boothId ?? null) ||
       form.startDate !== (series?.startDate ?? "") ||
       form.endDate !== (series?.endDate ?? null) ||
-      JSON.stringify(form.markAsConflicted) !== JSON.stringify(normalizeMarkAsConflicted(series?.conflictPolicy?.markAsConflicted as any))
-      || JSON.stringify(form.daysOfWeek) !== JSON.stringify(series?.daysOfWeek || [])
+      JSON.stringify(form.daysOfWeek) !== JSON.stringify(series?.daysOfWeek || [])
     );
-  }, [form, series?.generationMode, series?.status, series?.teacherId, series?.studentId, series?.boothId, series?.startDate, series?.endDate, series?.conflictPolicy]);
+  }, [form, series?.generationMode, series?.status, series?.teacherId, series?.studentId, series?.boothId, series?.startDate, series?.endDate]);
 
   const save = async () => {
     if (!series) return;
@@ -91,13 +87,6 @@ export default function SeriesDetailDialog({ seriesId, open, onOpenChange }: Pro
     if (form.boothId !== series.boothId) patch.boothId = form.boothId;
     if (form.startDate && form.startDate !== series.startDate) patch.startDate = form.startDate;
     if (form.endDate !== series.endDate) patch.endDate = form.endDate;
-    // conflictPolicy
-    if (JSON.stringify(form.markAsConflicted) !== JSON.stringify(normalizeMarkAsConflicted(series.conflictPolicy?.markAsConflicted as any))) {
-      patch.conflictPolicy = {
-        ...(series.conflictPolicy || {}),
-        markAsConflicted: form.markAsConflicted,
-      };
-    }
     if (JSON.stringify(form.daysOfWeek) !== JSON.stringify(series.daysOfWeek || [])) {
       patch.daysOfWeek = form.daysOfWeek;
     }
@@ -151,47 +140,7 @@ export default function SeriesDetailDialog({ seriesId, open, onOpenChange }: Pro
 
             <Separator />
 
-            {/* Conflict policy */}
-            <div className="space-y-2">
-              <div className="text-sm font-medium">コンフリクト設定（CONFLICTEDにする条件）</div>
-              <div className="text-xs text-muted-foreground">チェックを入れた種類のエラーが発生した日を「CONFLICTED」として生成します。未チェックは情報として表示のみ（ステータスはCONFIRMED）。VACATIONは常に自動スキップです。</div>
-              <div className="grid grid-cols-2 gap-x-6 gap-y-3 mt-2 text-sm">
-                {([
-                  ["TEACHER_CONFLICT","講師重複"],
-                  ["STUDENT_CONFLICT","生徒重複"],
-                  ["BOOTH_CONFLICT","ブース重複"],
-                  ["TEACHER_UNAVAILABLE","講師 利用不可(当日設定なし)"],
-                  ["STUDENT_UNAVAILABLE","生徒 利用不可(当日設定なし)"],
-                  ["TEACHER_WRONG_TIME","講師 時間外"],
-                  ["STUDENT_WRONG_TIME","生徒 時間外"],
-                  ["NO_SHARED_AVAILABILITY","共通時間なし"],
-                ] as Array<[keyof typeof DEFAULT_MARK_AS_CONFLICTED, string]>).map(([key, label]) => (
-                  <label key={key} className="flex items-center gap-3">
-                    <Switch
-                      checked={!!form.markAsConflicted[key]}
-                      onCheckedChange={(v) => setForm(f => ({ ...f, markAsConflicted: { ...f.markAsConflicted, [key]: Boolean(v) } }))}
-                    />
-                    <span>{label}</span>
-                  </label>
-                ))}
-              </div>
-              <div className="flex gap-2 mt-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setForm(f => ({ ...f, markAsConflicted: { ...DEFAULT_MARK_AS_CONFLICTED } }))}
-                >
-                  既定に戻す
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setForm(f => ({ ...f, markAsConflicted: normalizeMarkAsConflicted(series?.conflictPolicy?.markAsConflicted as any) }))}
-                >
-                  現在の設定を復元
-                </Button>
-              </div>
-            </div>
+            {/* コンフリクト設定はグローバル/ブランチ設定に移動済み */}
 
             {/* Core assignments */}
             <div className="grid grid-cols-3 gap-4">

@@ -2,13 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -27,12 +21,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Dialog as UiDialog, DialogContent as UiDialogContent, DialogHeader as UiDialogHeader, DialogTitle as UiDialogTitle } from "@/components/ui/dialog";
-import { ConflictResolutionTable } from "@/components/admin-schedule/DayCalendar/conflict-resolution-table";
-import type { ConflictResponse, SessionAction } from "@/components/admin-schedule/DayCalendar/types/class-session";
+// Single-table view now; we still fetch conflict preview to annotate rows
+import type { ConflictResponse } from "@/components/admin-schedule/DayCalendar/types/class-session";
+type ConflictData = ConflictResponse["conflicts"][number];
 import { Edit3, Trash2, XCircle, CheckCircle2, AlertTriangle } from "lucide-react";
-import { CreateLessonDialog } from "@/components/admin-schedule/DayCalendar/create-lesson-dialog";
+import { LessonDialog } from "@/components/admin-schedule/DayCalendar/lesson-dialog";
 import { useAllBoothsOrdered } from "@/hooks/useBoothQuery";
+import { useTeachers } from "@/hooks/useTeacherQuery";
+import { useStudents } from "@/hooks/useStudentQuery";
+import { useSubjects } from "@/hooks/useSubjectQuery";
+import type { ExtendedClassSessionWithRelations } from "@/hooks/useClassSessionQuery";
 
 type Props = {
   seriesId: string | null;
@@ -72,17 +70,27 @@ export default function SeriesSessionsTableDialog({ seriesId, open, onOpenChange
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [editTarget, setEditTarget] = useState<SeriesSession | null>(null);
+  const [selectedLesson, setSelectedLesson] = useState<ExtendedClassSessionWithRelations | null>(null);
+  const [lessonDialogMode, setLessonDialogMode] = useState<'view' | 'edit'>("edit");
   const [deleteTarget, setDeleteTarget] = useState<SeriesSession | null>(null);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [cancelTarget, setCancelTarget] = useState<SeriesSession | null>(null);
   const [bulkCancelOpen, setBulkCancelOpen] = useState(false);
-  // Resolve preview state
-  const [showResolve, setShowResolve] = useState(false);
-  const [resolveLoading, setResolveLoading] = useState(false);
+  // Integrated conflict preview state
   const [preview, setPreview] = useState<ConflictResponse | null>(null);
-  const [seriesStartEnd, setSeriesStartEnd] = useState<{ startTime: string; endTime: string } | null>(null);
+  const [resolveLoading, setResolveLoading] = useState(false);
+  const [generationMonths, setGenerationMonths] = useState<number>(1);
 
   const { data: booths } = useAllBoothsOrdered();
+  const { data: teachersRes } = useTeachers();
+  const { data: studentsRes } = useStudents();
+  const { data: subjectsRes } = useSubjects();
+  const teachers = teachersRes?.data || [];
+  const students = studentsRes?.data || [];
+  const subjects = subjectsRes?.data || [];
+  const [expandedDates, setExpandedDates] = useState<Record<string, boolean>>({});
+  const [rowConflicts, setRowConflicts] = useState<Record<string, ConflictData[]>>({});
+  const [rowLoading, setRowLoading] = useState<Record<string, boolean>>({});
 
   const selectedIds = useMemo(
     () => Object.keys(selected).filter((k) => selected[k]),
@@ -106,13 +114,35 @@ export default function SeriesSessionsTableDialog({ seriesId, open, onOpenChange
   };
 
   useEffect(() => {
-    if (open) {
-      fetchItems();
-    } else {
+    if (!open) {
       setSelected({});
       setEditTarget(null);
       setDeleteTarget(null);
+      setPreview(null);
+      return;
     }
+    (async () => {
+      // load generation window
+      try {
+        const conf = await fetch('/api/scheduling-config?scope=branch', { headers: { 'X-Selected-Branch': localStorage.getItem('selectedBranchId') || '' } });
+        if (conf.ok) {
+          const j = await conf.json();
+          const m = Number(j?.effective?.generationMonths ?? 1) || 1;
+          setGenerationMonths(m);
+        }
+      } catch (_) {}
+      await fetchItems();
+      // load preview
+      if (seriesId) {
+        try {
+          const pv = await fetch(`/api/class-series/${seriesId}/extend/preview?months=${generationMonths}`, { headers: { 'X-Selected-Branch': localStorage.getItem('selectedBranchId') || '' } });
+          if (pv.ok) {
+            const data = await pv.json();
+            setPreview(data as ConflictResponse);
+          }
+        } catch (_) {}
+      }
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, seriesId]);
 
@@ -126,6 +156,51 @@ export default function SeriesSessionsTableDialog({ seriesId, open, onOpenChange
   };
 
   const softSet = useMemo(() => new Set(softWarningDates || []), [softWarningDates]);
+
+  const conflictTypeLabel = (type: string): string => {
+    switch (type) {
+      case 'STUDENT_UNAVAILABLE':
+        return '生徒不在';
+      case 'TEACHER_UNAVAILABLE':
+        return '講師不在';
+      case 'STUDENT_WRONG_TIME':
+        return '生徒時間不一致';
+      case 'TEACHER_WRONG_TIME':
+        return '講師時間不一致';
+      case 'VACATION':
+        return '休暇期間';
+      case 'BOOTH_CONFLICT':
+        return 'ブース競合';
+      case 'TEACHER_CONFLICT':
+        return '講師重複';
+      case 'STUDENT_CONFLICT':
+        return '生徒重複';
+      case 'NO_SHARED_AVAILABILITY':
+        return '共有枠なし';
+      default:
+        return '競合';
+    }
+  };
+
+  const conflictTypeColor = (type: string): string => {
+    switch (type) {
+      case 'STUDENT_UNAVAILABLE':
+      case 'TEACHER_UNAVAILABLE':
+        return 'text-red-600 bg-red-50 border-red-200';
+      case 'STUDENT_WRONG_TIME':
+      case 'TEACHER_WRONG_TIME':
+        return 'text-orange-600 bg-orange-50 border-orange-200';
+      case 'VACATION':
+        return 'text-blue-600 bg-blue-50 border-blue-200';
+      case 'BOOTH_CONFLICT':
+        return 'text-purple-600 bg-purple-50 border-purple-200';
+      case 'TEACHER_CONFLICT':
+      case 'STUDENT_CONFLICT':
+        return 'text-purple-700 bg-purple-50 border-purple-300';
+      default:
+        return 'text-gray-600 bg-gray-50 border-gray-200';
+    }
+  };
 
   const statusBadge = (s: SeriesSession) => {
     if (s.isCancelled) {
@@ -167,6 +242,7 @@ export default function SeriesSessionsTableDialog({ seriesId, open, onOpenChange
       const j = await res.json();
       toast.success(j.message || "キャンセルしました");
       await fetchItems();
+      await refreshPreview();
     } catch {
       toast.error("キャンセルに失敗しました");
     } finally {
@@ -183,6 +259,7 @@ export default function SeriesSessionsTableDialog({ seriesId, open, onOpenChange
       if (!res.ok) throw new Error();
       toast.success("授業を削除しました");
       await fetchItems();
+      await refreshPreview();
     } catch {
       toast.error("削除に失敗しました");
     } finally {
@@ -206,6 +283,7 @@ export default function SeriesSessionsTableDialog({ seriesId, open, onOpenChange
       toast.success(`${selectedIds.length}件の授業を削除しました`);
       setSelected({});
       await fetchItems();
+      await refreshPreview();
     } catch (e: any) {
       toast.error(e?.message || "一括削除に失敗しました");
     } finally {
@@ -213,48 +291,16 @@ export default function SeriesSessionsTableDialog({ seriesId, open, onOpenChange
     }
   };
 
-  const loadSeriesInfo = async () => {
-    if (!seriesId) return null;
-    const r = await fetch(`/api/class-series/${seriesId}`, { headers: { 'X-Selected-Branch': localStorage.getItem('selectedBranchId') || '' } });
-    if (!r.ok) return null;
-    const j = await r.json();
-    return { startTime: j?.startTime as string, endTime: j?.endTime as string };
-  };
-
-  const openResolve = async () => {
+  const refreshPreview = async () => {
     if (!seriesId) return;
     setResolveLoading(true);
     try {
-      const info = await loadSeriesInfo();
-      setSeriesStartEnd(info || { startTime: '09:00', endTime: '10:00' });
-      const pv = await fetch(`/api/class-series/${seriesId}/extend/preview?months=1`, { headers: { 'X-Selected-Branch': localStorage.getItem('selectedBranchId') || '' } });
+      const pv = await fetch(`/api/class-series/${seriesId}/extend/preview?months=${generationMonths}`, { headers: { 'X-Selected-Branch': localStorage.getItem('selectedBranchId') || '' } });
       if (!pv.ok) throw new Error('プレビューに失敗しました');
       const data = await pv.json();
       setPreview(data as ConflictResponse);
-      setShowResolve(true);
     } catch (e) {
       toast.error('競合プレビューの取得に失敗しました');
-    } finally {
-      setResolveLoading(false);
-    }
-  };
-
-  const applyResolution = async (actions: SessionAction[]) => {
-    if (!seriesId) return;
-    setResolveLoading(true);
-    try {
-      const res = await fetch(`/api/class-series/${seriesId}/extend`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Selected-Branch': localStorage.getItem('selectedBranchId') || '' },
-        body: JSON.stringify({ months: 1, sessionActions: actions }),
-      });
-      if (!res.ok) throw new Error();
-      toast.success('拡張しました');
-      setShowResolve(false);
-      setPreview(null);
-      await fetchItems();
-    } catch {
-      toast.error('拡張に失敗しました');
     } finally {
       setResolveLoading(false);
     }
@@ -276,10 +322,12 @@ export default function SeriesSessionsTableDialog({ seriesId, open, onOpenChange
               {selectedIds.length > 0 && <div>選択: {selectedIds.length}件</div>}
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="secondary" size="sm" onClick={openResolve} disabled={resolveLoading || !seriesId}>
-                競合解決
-              </Button>
-              <Button variant="outline" size="sm" onClick={fetchItems} disabled={loading}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => { await fetchItems(); await refreshPreview(); }}
+                disabled={loading}
+              >
                 更新
               </Button>
               <DropdownMenu>
@@ -334,61 +382,146 @@ export default function SeriesSessionsTableDialog({ seriesId, open, onOpenChange
                     </TableCell>
                   </TableRow>
                 ) : items.length ? (
-                  items.map((s) => (
-                    <TableRow key={s.classId} className={s.status === 'CONFLICTED' ? 'bg-destructive/5' : ''}>
-                      <TableCell className="w-9">
-                        <div className="flex items-center justify-center">
-                          <Checkbox
-                            checked={!!selected[s.classId]}
-                            onCheckedChange={(v) => setSelected((prev) => ({ ...prev, [s.classId]: !!v }))}
-                            aria-label="行を選択"
-                          />
-                        </div>
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap text-sm">{s.date}</TableCell>
-                      <TableCell className="whitespace-nowrap text-sm">{s.startTime}–{s.endTime}</TableCell>
-                      <TableCell className="text-sm">{s.subjectName || s.subjectId || '—'}</TableCell>
-                      <TableCell className="text-sm">{s.teacherName || s.teacherId || '—'}</TableCell>
-                      <TableCell className="text-sm">{s.studentName || s.studentId || '—'}</TableCell>
-                      <TableCell className="text-sm">{s.boothName || s.boothId || '—'}</TableCell>
-                      <TableCell className="text-sm">{statusBadge(s)}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center justify-end gap-2">
-                        {/* Edit via CreateLessonDialog */}
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => setEditTarget(s)}
-                          title="編集"
-                        >
-                          <Edit3 className="h-4 w-4" />
-                        </Button>
-                        {/* Cancel */}
-                        <Button
-                          variant="secondary"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => setCancelTarget(s)}
-                          title="キャンセル"
-                        >
-                          <XCircle className="h-4 w-4" />
-                        </Button>
-                        {/* Delete */}
-                        <Button
-                          variant="destructive"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => setDeleteTarget(s)}
-                          title="削除"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
+                  items.flatMap((s) => {
+                    const conflictsForDate = preview?.conflictsByDate?.[s.date] || [];
+                    const hasConflicts = conflictsForDate.length > 0 || s.status === 'CONFLICTED';
+                    const expanded = !!expandedDates[s.date];
+                    const mainRow = (
+                      <TableRow key={s.classId} className={hasConflicts ? 'bg-destructive/5' : ''}>
+                        <TableCell className="w-9">
+                          <div className="flex items-center justify-center">
+                            <Checkbox
+                              checked={!!selected[s.classId]}
+                              onCheckedChange={(v) => setSelected((prev) => ({ ...prev, [s.classId]: !!v }))}
+                              aria-label="行を選択"
+                            />
+                          </div>
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-sm">{s.date}</TableCell>
+                        <TableCell className="whitespace-nowrap text-sm">{s.startTime}–{s.endTime}</TableCell>
+                        <TableCell className="text-sm">{s.subjectName || s.subjectId || '—'}</TableCell>
+                        <TableCell className="text-sm">{s.teacherName || s.teacherId || '—'}</TableCell>
+                        <TableCell className="text-sm">{s.studentName || s.studentId || '—'}</TableCell>
+                        <TableCell className="text-sm">{s.boothName || s.boothId || '—'}</TableCell>
+                        <TableCell className="text-sm">
+                          <div className="flex items-center gap-2">
+                            {statusBadge(s)}
+                            {hasConflicts && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 px-2 text-amber-700 hover:text-amber-800 hover:bg-amber-50"
+                                onClick={async () => {
+                                  const next = !expanded;
+                                  setExpandedDates((prev) => ({ ...prev, [s.date]: next }));
+                                  if (next) {
+                                    const previewConf = (preview?.conflictsByDate?.[s.date] || []).length;
+                                    if (!previewConf && !rowConflicts[s.classId] && s.status === 'CONFLICTED') {
+                                      try {
+                                        setRowLoading((p) => ({ ...p, [s.classId]: true }));
+                                        const r = await fetch(`/api/class-sessions/${s.classId}/conflicts`, { headers: { 'X-Selected-Branch': localStorage.getItem('selectedBranchId') || '' } });
+                                        if (r.ok) {
+                                          const j = await r.json();
+                                          setRowConflicts((p) => ({ ...p, [s.classId]: (j?.conflicts || []) as ConflictData[] }));
+                                        }
+                                      } catch (_) {
+                                        // ignore
+                                      } finally {
+                                        setRowLoading((p) => ({ ...p, [s.classId]: false }));
+                                      }
+                                    }
+                                  }
+                                }}
+                              >
+                                <AlertTriangle className="h-4 w-4 mr-1" />
+                                詳細{expanded ? 'を隠す' : 'を見る'}
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center justify-end gap-2">
+                            {/* Edit via CreateLessonDialog */}
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={async () => {
+                                try {
+                                  const res = await fetch(`/api/class-sessions/${s.classId}`, { headers: { 'X-Selected-Branch': localStorage.getItem('selectedBranchId') || '' } });
+                                  if (!res.ok) throw new Error();
+                                  const j = await res.json();
+                                  const lesson = (j?.data || j) as ExtendedClassSessionWithRelations;
+                                  setSelectedLesson(lesson);
+                                  setLessonDialogMode('edit');
+                                } catch (_) {
+                                  toast.error('授業詳細の取得に失敗しました');
+                                }
+                              }}
+                              title="編集"
+                            >
+                              <Edit3 className="h-4 w-4" />
+                            </Button>
+                            {/* Cancel */}
+                            <Button
+                              variant="secondary"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => setCancelTarget(s)}
+                              title="キャンセル"
+                            >
+                              <XCircle className="h-4 w-4" />
+                            </Button>
+                            {/* Delete */}
+                            <Button
+                              variant="destructive"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => setDeleteTarget(s)}
+                              title="削除"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+
+                    if (!hasConflicts || !expanded) return [mainRow];
+
+                    const detailsRow = (
+                      <TableRow key={`${s.classId}-details`}>
+                        <TableCell></TableCell>
+                        <TableCell colSpan={7} className="bg-muted/30 py-3">
+                          {(() => {
+                            const extra = rowConflicts[s.classId] || [];
+                            const list = conflictsForDate.length ? conflictsForDate : extra;
+                            if (rowLoading[s.classId]) {
+                              return <div className="text-sm text-muted-foreground">取得中…</div>;
+                            }
+                            return list.length ? (
+                              <div className="flex flex-col gap-2">
+                                {list.map((c, idx) => (
+                                  <div key={idx} className="flex items-start gap-2 text-sm">
+                                    <span className={`px-1 py-0.5 rounded text-xs border ${conflictTypeColor(c.type)}`}>
+                                      {conflictTypeLabel(c.type)}
+                                    </span>
+                                    <span className="text-muted-foreground">{c.details}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="text-sm text-muted-foreground">競合の詳細はありません</div>
+                            );
+                          })()}
+                        </TableCell>
+                        <TableCell></TableCell>
+                      </TableRow>
+                    );
+
+                    return [mainRow, detailsRow];
+                  })
+                ) : (
                 <TableRow>
                   <TableCell colSpan={9}>
                     <div className="py-6 text-center text-sm text-muted-foreground">授業はありません</div>
@@ -400,56 +533,30 @@ export default function SeriesSessionsTableDialog({ seriesId, open, onOpenChange
           </div>
         </div>
 
-        <DialogFooter className="mt-2 gap-2">
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>閉じる</Button>
-        </DialogFooter>
-
-        {/* Edit dialog (CreateLessonDialog) */}
-        {editTarget && (
-          <CreateLessonDialog
-            open={!!editTarget}
-            onOpenChange={(o) => !o && setEditTarget(null)}
-            lessonData={{
-              date: new Date(editTarget.date),
-              startTime: editTarget.startTime,
-              endTime: editTarget.endTime,
-              boothId: editTarget.boothId || "",
-              classTypeId: editTarget.classTypeId || undefined,
-              teacherId: editTarget.teacherId || undefined,
-              studentId: editTarget.studentId || undefined,
+        {/* Edit dialog (LessonDialog in edit mode) */}
+        {selectedLesson && (
+          <LessonDialog
+            open={!!selectedLesson}
+            onOpenChange={(o) => {
+              if (!o) setSelectedLesson(null);
+            }}
+            lesson={selectedLesson}
+            mode={lessonDialogMode}
+            onModeChange={setLessonDialogMode}
+            onSave={async () => {
+              setSelectedLesson(null);
+              await fetchItems();
+              await refreshPreview();
+            }}
+            onDelete={async () => {
+              setSelectedLesson(null);
+              await fetchItems();
+              await refreshPreview();
             }}
             booths={(booths || []).map((b) => ({ boothId: b.boothId, name: b.name }))}
-            onSave={async (payload) => {
-              try {
-                // Map CreateLessonDialog payload to PATCH for a single class
-                const res = await fetch(`/api/class-sessions/${editTarget.classId}`, {
-                  method: 'PATCH',
-                  headers: { 'Content-Type': 'application/json', 'X-Selected-Branch': localStorage.getItem('selectedBranchId') || '' },
-                  body: JSON.stringify({
-                    teacherId: payload.teacherId,
-                    studentId: payload.studentId,
-                    subjectId: payload.subjectId,
-                    classTypeId: payload.classTypeId,
-                    boothId: payload.boothId,
-                    date: payload.date ? (typeof payload.date === 'string' ? payload.date : (payload.date as Date).toISOString().slice(0,10)) : editTarget.date,
-                    startTime: payload.startTime,
-                    endTime: payload.endTime,
-                    notes: payload.notes,
-                  }),
-                });
-                if (!res.ok) {
-                  const j = await res.json().catch(() => ({}));
-                  throw new Error(j?.error || '更新に失敗しました');
-                }
-                toast.success('授業を更新しました');
-                setEditTarget(null);
-                await fetchItems();
-                return { success: true } as any;
-              } catch (e: any) {
-                toast.error(e?.message || '更新に失敗しました');
-                return { success: false } as any;
-              }
-            }}
+            teachers={teachers}
+            students={students}
+            subjects={subjects}
           />
         )}
 
@@ -466,25 +573,7 @@ export default function SeriesSessionsTableDialog({ seriesId, open, onOpenChange
           />
         )}
       </DialogContent>
-      {/* Resolve Conflicts Dialog */}
-      {showResolve && preview && seriesStartEnd && (
-        <UiDialog open={showResolve} onOpenChange={(o) => setShowResolve(o)}>
-          <UiDialogContent className="max-w-[min(1200px,100vw-2rem)] max-h-[90vh]">
-            <UiDialogHeader>
-              <UiDialogTitle>シリーズの競合解決</UiDialogTitle>
-            </UiDialogHeader>
-            <div className="min-h-0">
-              <ConflictResolutionTable
-                conflictData={preview}
-                originalTime={seriesStartEnd}
-                onSubmit={applyResolution}
-                onCancel={() => setShowResolve(false)}
-                isLoading={resolveLoading}
-              />
-            </div>
-          </UiDialogContent>
-        </UiDialog>
-      )}
+      {/* Embedded conflict resolution now handled inside the main content */}
       {/* Bulk delete confirm */}
       {bulkDeleteOpen && (
         <ConfirmDeleteDialog
@@ -527,6 +616,7 @@ export default function SeriesSessionsTableDialog({ seriesId, open, onOpenChange
               toast.success(j.message || 'キャンセルしました');
               setCancelTarget(null);
               await fetchItems();
+              await refreshPreview();
             } catch {
               toast.error('キャンセルに失敗しました');
             }

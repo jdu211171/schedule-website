@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { classSeriesUpdateSchema } from "@/schemas/class-series.schema";
 import { classSessionSeriesUpdateSchema } from "@/schemas/class-session.schema";
 import { advanceGenerateForSeries } from "@/lib/series-advance";
+import { getEffectiveSchedulingConfig, toPolicyShape, upsertBranchPolicyFromSeriesPatch } from "@/lib/scheduling-config";
 
 type ClassSeriesRow = {
   seriesId: string;
@@ -23,7 +24,7 @@ type ClassSeriesRow = {
   status: string;
   generationMode: string;
   lastGeneratedThrough: Date | null;
-  conflictPolicy: unknown | null;
+  // centralized; not stored on series
   notes: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -89,7 +90,7 @@ function toResponse(row: ClassSeriesRow): ClassSeriesResponse {
     status: row.status,
     generationMode: row.generationMode,
     lastGeneratedThrough: fmtDate(row.lastGeneratedThrough),
-    conflictPolicy: (row.conflictPolicy as any) ?? null,
+    conflictPolicy: null,
     notes: row.notes,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
@@ -120,7 +121,9 @@ export const GET = withBranchAccess(
       }
     }
 
-    return NextResponse.json(toResponse(row as unknown as ClassSeriesRow));
+    const base = toResponse(row as unknown as ClassSeriesRow);
+    const cfg = await getEffectiveSchedulingConfig(base.branchId);
+    return NextResponse.json({ ...base, conflictPolicy: toPolicyShape(cfg) as any });
   }
 );
 
@@ -189,7 +192,15 @@ export const PATCH = withBranchAccess(
       data.lastGeneratedThrough = input.lastGeneratedThrough
         ? parseDateToUTC(input.lastGeneratedThrough)
         : null;
-    if (input.conflictPolicy !== undefined) data.conflictPolicy = (input.conflictPolicy as any) ?? null;
+    // Centralized policy: update branch-level overrides when provided
+    if (input.conflictPolicy !== undefined) {
+      // Need branchId to persist overrides; fetch if not in patch
+      const seriesRow = await prisma.classSeries.findUnique({ where: { seriesId }, select: { branchId: true } });
+      const effectiveBranchId = (input.branchId ?? seriesRow?.branchId) || null;
+      if (effectiveBranchId) {
+        await upsertBranchPolicyFromSeriesPatch(effectiveBranchId, (input.conflictPolicy as any) || {});
+      }
+    }
     if (input.notes !== undefined) data.notes = input.notes ?? null;
 
     // If endDate was shortened before the previous lastGeneratedThrough, clamp it down
@@ -247,7 +258,9 @@ export const PATCH = withBranchAccess(
     // If generationMode set to ADVANCE, trigger ahead-of-time generation now
     let advanceResult: any = undefined;
     if (input.generationMode === "ADVANCE") {
-      const leadDays = Number(process.env.CLASS_SERIES_ADVANCE_LEAD_DAYS || 30);
+      const cfg = await getEffectiveSchedulingConfig((data.branchId ?? await currentBranchIdOfSeries(seriesId)) as any).catch(() => null);
+      const months = Math.max(1, Number((cfg as any)?.generationMonths ?? 1));
+      const leadDays = months * 30;
       try {
         advanceResult = await advanceGenerateForSeries(prisma as any, seriesId, { leadDays });
       } catch (e: any) {
@@ -255,8 +268,11 @@ export const PATCH = withBranchAccess(
       }
     }
 
+    const base = toResponse(updated as unknown as ClassSeriesRow);
+    const cfg = await getEffectiveSchedulingConfig(base.branchId);
     const response = {
-      ...toResponse(updated as unknown as ClassSeriesRow),
+      ...base,
+      conflictPolicy: toPolicyShape(cfg) as any,
       _propagation: propagateResult ?? undefined,
       _advance: advanceResult,
     };
@@ -264,6 +280,15 @@ export const PATCH = withBranchAccess(
     return NextResponse.json(response);
   }
 );
+
+async function currentBranchIdOfSeries(seriesId: string): Promise<string | null> {
+  try {
+    const row = await prisma.classSeries.findUnique({ where: { seriesId }, select: { branchId: true } });
+    return row?.branchId ?? null;
+  } catch {
+    return null;
+  }
+}
 
 // DELETE — delete a series blueprint and all related regular class sessions
 export const DELETE = withBranchAccess(

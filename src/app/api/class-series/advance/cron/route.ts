@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { advanceGenerateForSeries, computeAdvanceWindow } from "@/lib/series-advance";
+import { getEffectiveSchedulingConfig } from "@/lib/scheduling-config";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,10 +25,7 @@ export async function GET(request: NextRequest) {
   }
 
   const url = new URL(request.url);
-  const leadDays = Math.max(
-    1,
-    Number(url.searchParams.get("leadDays") ?? process.env.CLASS_SERIES_ADVANCE_LEAD_DAYS ?? 30)
-  );
+  const leadDaysOverride = url.searchParams.get("leadDays");
   const limit = url.searchParams.get("limit") ? Math.max(1, Number(url.searchParams.get("limit"))) : undefined;
   const branchId = url.searchParams.get("branchId") || undefined;
   const singleSeriesId = url.searchParams.get("seriesId") || undefined;
@@ -49,12 +47,14 @@ export async function GET(request: NextRequest) {
 
   for (const s of list) {
     processed++;
-    const { to } = computeAdvanceWindow(today, s.lastGeneratedThrough, s.startDate, s.endDate, leadDays);
+    const cfg = await getEffectiveSchedulingConfig(s.branchId || undefined);
+    const perSeriesLeadDays = leadDaysOverride ? Math.max(1, Number(leadDaysOverride)) : Math.max(1, (cfg as any).generationMonths * 30);
+    const { to } = computeAdvanceWindow(today, s.lastGeneratedThrough, s.startDate, s.endDate, perSeriesLeadDays);
     if (s.lastGeneratedThrough && s.lastGeneratedThrough >= to) {
       upToDate++;
       continue;
     }
-    const res = await advanceGenerateForSeries(prisma as any, s.seriesId, { leadDays });
+    const res = await advanceGenerateForSeries(prisma as any, s.seriesId, { leadDays: perSeriesLeadDays });
     confirmed += res.createdConfirmed;
     conflicted += res.createdConflicted;
     skipped += res.skipped;
@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
     upToDate,
     created: { confirmed, conflicted },
     skipped,
-    leadDays,
+    leadDays: leadDaysOverride ? Number(leadDaysOverride) : undefined,
     count: details.length,
     details,
   });

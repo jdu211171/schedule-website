@@ -4,6 +4,7 @@ import { withBranchAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import type { DayOfWeek } from "@prisma/client";
 import { normalizeMarkAsConflicted } from "@/lib/conflict-types";
+import { getEffectiveSchedulingConfig, toPolicyShape } from "@/lib/scheduling-config";
 
 type BranchVacation = { startDate: Date; endDate: Date; isRecurring: boolean };
 
@@ -355,8 +356,9 @@ export const POST = withBranchAccess(["ADMIN", "STAFF"], async (request: NextReq
         if (series.studentId && s.studentId === series.studentId) conflictReasons.push("STUDENT_CONFLICT");
       }
 
-      // Availability mismatch checks
-      const policy = (series.conflictPolicy as any) || {};
+      // Availability mismatch checks using centralized config
+      const effCfg = await getEffectiveSchedulingConfig(series.branchId || undefined);
+      const policy = toPolicyShape(effCfg);
       const allowOutside = policy.allowOutsideAvailability || {};
       const mark = normalizeMarkAsConflicted(policy.markAsConflicted);
       if (series.teacherId) {

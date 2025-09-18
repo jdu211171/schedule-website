@@ -835,6 +835,26 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
   const [seriesPreviewMode, setSeriesPreviewMode] = useState<boolean>(false);
   const [softWarningDates, setSoftWarningDates] = useState<string[]>([]);
 
+  // Effective initial generation window (months) from centralized config
+  const [generationMonths, setGenerationMonths] = useState<number>(1);
+  const generationMonthsRef = React.useRef<number>(1);
+  useEffect(() => {
+    if (!open) return;
+    (async () => {
+      try {
+        const res = await fetch('/api/scheduling-config?scope=branch');
+        if (res.ok) {
+          const data = await res.json();
+          const m = Number(data?.effective?.generationMonths ?? 1) || 1;
+          setGenerationMonths(m);
+          generationMonthsRef.current = m;
+        }
+      } catch {
+        // ignore, fallback remains 1
+      }
+    })();
+  }, [open]);
+
   // Use smart selection hook with enhanced data
   const {
     enhancedTeachers,
@@ -931,7 +951,7 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
         const res = await fetch(`/api/class-series/${generatedSeriesId}/extend`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ months: 1, sessionActions: actions }),
+          body: JSON.stringify({ months: generationMonthsRef.current || 1, sessionActions: actions }),
         });
         if (!res.ok) throw new Error('拡張に失敗しました');
         // Resolution succeeded: clear preview/conflict state and close the dialog.
@@ -940,7 +960,7 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
         setSeriesPreviewMode(false);
         setCurrentPayload(null);
         onOpenChange(false);
-        toast.success('1ヶ月分を生成しました');
+        toast.success(`${generationMonthsRef.current || 1}ヶ月分を生成しました`);
       } else {
         const finalPayload: CreateClassSessionWithConflictsPayload = { ...currentPayload, sessionActions: actions };
         const result = await onSave(finalPayload);
@@ -1423,10 +1443,9 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
 
     setIsSubmitting(true);
     try {
-      // Regular class blueprint path when only startDate is provided
+      // Regular class types (通常授業とその子孫) は常にクラスシリーズとして作成
       const isRegularType = selectedParentClassTypeId === regularClassTypeId;
-      const onlyStartSelected = Boolean(payload.isRecurring && payload.startDate && !payload.endDate);
-      if (isRegularType && onlyStartSelected) {
+      if (isRegularType) {
         try {
           const res = await fetch('/api/class-series', {
             method: 'POST',
@@ -1439,23 +1458,21 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
               branchId: undefined,
               boothId: finalBoothId || null,
               startDate: payload.startDate,
-              endDate: null,
+              endDate: payload.isRecurring && payload.endDate ? payload.endDate : null,
               startTime: payload.startTime,
               endTime: payload.endTime,
               duration: undefined,
               daysOfWeek: payload.daysOfWeek,
-              generationMode: 'ON_DEMAND',
+              generationMode: 'ADVANCE',
               notes: payload.notes || null,
-              conflictPolicy: includeAvailabilityConflicts ? undefined : {
-                allowOutsideAvailability: { teacher: true, student: true }
-              },
+              // centralized policy is used on the server; do not send per-series policy
             }),
           });
           if (!res.ok) throw new Error('シリーズの作成に失敗しました');
           const { seriesId } = await res.json();
           setGeneratedSeriesId(seriesId);
           // Always preview and show ConflictResolutionTable (unified pre-create UX)
-          const pv = await fetch(`/api/class-series/${seriesId}/extend/preview?months=1`);
+          const pv = await fetch(`/api/class-series/${seriesId}/extend/preview?months=${generationMonthsRef.current || 1}`);
           if (!pv.ok) throw new Error('プレビューに失敗しました');
           const preview = await pv.json();
           // Filter availability conflicts if user chose not to display them

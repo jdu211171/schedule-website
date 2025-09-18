@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withBranchAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getEffectiveSchedulingConfig, toPolicyShape } from "@/lib/scheduling-config";
 import { format, addMonths } from "date-fns";
 
 type ConflictType =
@@ -70,6 +71,11 @@ export const GET = withBranchAccess(["ADMIN", "STAFF"], async (request: NextRequ
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
     }
+
+    // Load centralized policy (affects availability conflicts only)
+    const effCfg = await getEffectiveSchedulingConfig(series.branchId || undefined);
+    const policy = toPolicyShape(effCfg);
+    const allowOutside = policy.allowOutsideAvailability || { teacher: false, student: false };
 
     // Determine range (same as extend)
     const today = new Date(); today.setUTCHours(0,0,0,0);
@@ -199,7 +205,9 @@ export const GET = withBranchAccess(["ADMIN", "STAFF"], async (request: NextRequ
       const inStudent = sSlots.some((sl) => reqS >= s2m(sl.startTime) && reqE <= s2m(sl.endTime));
       if (teacher && !inTeacher) {
         const reason = tSlots.length === 0 ? "TEACHER_UNAVAILABLE" : "TEACHER_WRONG_TIME";
-        conflicts.push({ date: dateStr, dayOfWeek: day, type: reason, details: `${teacher.name}先生は${reason === 'TEACHER_UNAVAILABLE' ? 'この日に利用可能時間が設定されていません' : '指定された時間帯に利用できません。'}`, participant: { id: series.teacherId!, name: teacher.name, role: "teacher" }, sharedAvailableSlots: [], teacherSlots: tSlots, studentSlots: sSlots });
+        if (!allowOutside.teacher) {
+          conflicts.push({ date: dateStr, dayOfWeek: day, type: reason, details: `${teacher.name}先生は${reason === 'TEACHER_UNAVAILABLE' ? 'この日に利用可能時間が設定されていません' : '指定された時間帯に利用できません。'}`, participant: { id: series.teacherId!, name: teacher.name, role: "teacher" }, sharedAvailableSlots: [], teacherSlots: tSlots, studentSlots: sSlots });
+        }
       }
       // NO_SHARED_AVAILABILITY (preview only, informational)
       if (teacher && student) {
@@ -215,7 +223,9 @@ export const GET = withBranchAccess(["ADMIN", "STAFF"], async (request: NextRequ
       }
       if (student && !inStudent) {
         const reason = sSlots.length === 0 ? "STUDENT_UNAVAILABLE" : "STUDENT_WRONG_TIME";
-        conflicts.push({ date: dateStr, dayOfWeek: day, type: reason, details: `${student.name}さんは${reason === 'STUDENT_UNAVAILABLE' ? 'この日に利用可能時間が設定されていません' : '指定された時間帯に利用できません。'}`, participant: { id: series.studentId!, name: student.name, role: "student" }, sharedAvailableSlots: [], teacherSlots: tSlots, studentSlots: sSlots });
+        if (!allowOutside.student) {
+          conflicts.push({ date: dateStr, dayOfWeek: day, type: reason, details: `${student.name}さんは${reason === 'STUDENT_UNAVAILABLE' ? 'この日に利用可能時間が設定されていません' : '指定された時間帯に利用できません。'}`, participant: { id: series.studentId!, name: student.name, role: "student" }, sharedAvailableSlots: [], teacherSlots: tSlots, studentSlots: sSlots });
+        }
       }
     }
 

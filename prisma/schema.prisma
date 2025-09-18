@@ -23,7 +23,6 @@ model ClassSeries {
   status               String    @default("ACTIVE")
   generationMode       String    @default("ON_DEMAND") @map("generation_mode")
   lastGeneratedThrough DateTime? @map("last_generated_through") @db.Date
-  conflictPolicy       Json?     @map("conflict_policy")
   notes                String?   @db.VarChar(255)
   createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt            DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
@@ -34,6 +33,50 @@ model ClassSeries {
   @@index([classTypeId])
   @@index([status])
   @@map("class_series")
+}
+
+// Centralized scheduling configuration (global defaults)
+model SchedulingConfig {
+  configId                        String   @id @default("GLOBAL") @map("config_id")
+  // Which conflicts mark sessions as CONFLICTED
+  markTeacherConflict             Boolean  @default(true)  @map("mark_teacher_conflict")
+  markStudentConflict             Boolean  @default(true)  @map("mark_student_conflict")
+  markBoothConflict               Boolean  @default(true)  @map("mark_booth_conflict")
+  markTeacherUnavailable          Boolean  @default(false) @map("mark_teacher_unavailable")
+  markStudentUnavailable          Boolean  @default(false) @map("mark_student_unavailable")
+  markTeacherWrongTime            Boolean  @default(false) @map("mark_teacher_wrong_time")
+  markStudentWrongTime            Boolean  @default(false) @map("mark_student_wrong_time")
+  markNoSharedAvailability        Boolean  @default(false) @map("mark_no_shared_availability")
+  // Availability allowance knobs
+  allowOutsideAvailabilityTeacher Boolean  @default(false) @map("allow_outside_availability_teacher")
+  allowOutsideAvailabilityStudent Boolean  @default(false) @map("allow_outside_availability_student")
+  generationMonths                Int      @default(1) @map("generation_months")
+  createdAt                       DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt                       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  @@map("scheduling_config")
+}
+
+// Optional per-branch overrides (NULL means inherit from global)
+model BranchSchedulingConfig {
+  branchId                        String   @id @map("branch_id")
+  markTeacherConflict             Boolean? @map("mark_teacher_conflict")
+  markStudentConflict             Boolean? @map("mark_student_conflict")
+  markBoothConflict               Boolean? @map("mark_booth_conflict")
+  markTeacherUnavailable          Boolean? @map("mark_teacher_unavailable")
+  markStudentUnavailable          Boolean? @map("mark_student_unavailable")
+  markTeacherWrongTime            Boolean? @map("mark_teacher_wrong_time")
+  markStudentWrongTime            Boolean? @map("mark_student_wrong_time")
+  markNoSharedAvailability        Boolean? @map("mark_no_shared_availability")
+  allowOutsideAvailabilityTeacher Boolean? @map("allow_outside_availability_teacher")
+  allowOutsideAvailabilityStudent Boolean? @map("allow_outside_availability_student")
+  generationMonths                Int?     @map("generation_months")
+  createdAt                       DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt                       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  branch                          Branch   @relation(fields: [branchId], references: [branchId], onDelete: Cascade)
+
+  @@map("branch_scheduling_config")
 }
 
 datasource db {
@@ -57,6 +100,7 @@ model Branch {
   vacations            Vacation[]
   branchLineChannels   BranchLineChannel[]
   branchSettings       BranchSettings?
+  schedulingConfig     BranchSchedulingConfig?
   defaultForUsers      User[]                @relation("UserDefaultBranch")
 
   @@index([order])

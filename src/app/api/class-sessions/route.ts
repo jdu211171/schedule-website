@@ -14,7 +14,7 @@ import { addDays, format, parseISO, differenceInDays, getDay } from "date-fns";
 import { v4 as uuidv4 } from "uuid";
 import { z } from "zod";
 import { getDetailedSharedAvailability } from "@/lib/enhanced-availability";
-import { hasHardConflict } from "@/lib/conflict-types";
+import { hasHardConflict, normalizeMarkAsConflicted } from "@/lib/conflict-types";
 import { SPECIAL_CLASS_COLOR_HEX } from "@/lib/special-class-constants";
 import {
   applySpecialClassColor,
@@ -655,6 +655,13 @@ export const POST = withBranchAccess(
           ? result.data.branchId
           : branchId;
 
+      // Centralized scheduling policy (global/branch effective)
+      const { getEffectiveSchedulingConfig, toPolicyShape } = await import("@/lib/scheduling-config");
+      const effCfg = await getEffectiveSchedulingConfig(sessionBranchId || undefined);
+      const policy = toPolicyShape(effCfg);
+      const allowOutside = policy.allowOutsideAvailability || { teacher: false, student: false };
+      const mark = normalizeMarkAsConflicted(policy.markAsConflicted);
+
       // Convert date string to Date object using UTC to avoid timezone issues
       const [year, month, day] = date.split("-").map(Number);
       const dateObj = new Date(Date.UTC(year, month - 1, day));
@@ -854,7 +861,15 @@ export const POST = withBranchAccess(
           );
 
           if (availabilityConflict) {
-            conflicts.push(availabilityConflict);
+            const t = availabilityConflict.type;
+            // Suppress teacher/student outside-availability conflicts if allowed centrally
+            const isTeacherType = t === 'TEACHER_UNAVAILABLE' || t === 'TEACHER_WRONG_TIME';
+            const isStudentType = t === 'STUDENT_UNAVAILABLE' || t === 'STUDENT_WRONG_TIME';
+            if ((isTeacherType && allowOutside.teacher) || (isStudentType && allowOutside.student)) {
+              // ignore
+            } else {
+              conflicts.push(availabilityConflict);
+            }
           }
         }
 
@@ -889,9 +904,14 @@ export const POST = withBranchAccess(
             startTime: effectiveStartDateTime,
             endTime: effectiveEndDateTime,
             duration: effectiveDuration,
-            // Mark CONFLICTED only when a hard overlap exists (teacher/student/booth).
-            // Availability-derived issues (e.g., WRONG_TIME/UNAVAILABLE/NO_SHARED_AVAILABILITY) do not flip status.
-            status: hasHardConflict(conflicts) ? 'CONFLICTED' : 'CONFIRMED',
+            // Mark as CONFLICTED when any hard conflict exists, or when a soft
+            // availability conflict is configured to mark as conflicted.
+            status: (() => {
+              const hard = hasHardConflict(conflicts);
+              if (hard) return 'CONFLICTED';
+              const softMarked = conflicts.some((c: any) => Boolean(mark[(c?.type as string) as any]));
+              return softMarked ? 'CONFLICTED' : 'CONFIRMED';
+            })(),
           },
           include: {
             teacher: {
@@ -1227,7 +1247,14 @@ export const POST = withBranchAccess(
               );
 
             if (availabilityConflict) {
-              dateConflicts.push(availabilityConflict);
+              const t = availabilityConflict.type;
+              const isTeacherType = t === 'TEACHER_UNAVAILABLE' || t === 'TEACHER_WRONG_TIME';
+              const isStudentType = t === 'STUDENT_UNAVAILABLE' || t === 'STUDENT_WRONG_TIME';
+              if ((isTeacherType && allowOutside.teacher) || (isStudentType && allowOutside.student)) {
+                // ignore
+              } else {
+                dateConflicts.push(availabilityConflict);
+              }
             }
           }
           // Note: teacher/student/booth overlaps handled by autoskip above
@@ -1323,9 +1350,10 @@ export const POST = withBranchAccess(
               effectiveEndTime
             );
 
-            const dateHasConflicts = hasHardConflict(
-              sessionConflictMap.get(formattedSessionDate) || []
-            );
+            const reasons = sessionConflictMap.get(formattedSessionDate) || [];
+            const hard = hasHardConflict(reasons);
+            const softMarked = reasons.some((r: any) => Boolean(mark[(r?.type as string) as any]));
+            const dateHasConflicts = hard || softMarked;
             return prisma.classSession.create({
               data: {
                 ...sessionData,

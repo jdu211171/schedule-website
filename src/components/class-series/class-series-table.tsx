@@ -269,6 +269,19 @@ function RowActions({ seriesId, onOpenDrawer, onOpenSessions }: { seriesId: stri
   const { data: session } = useSession();
   const role = session?.user?.role as ("ADMIN" | "STAFF" | "TEACHER" | undefined);
   const [openDelete, setOpenDelete] = useState(false);
+  const [genMonths, setGenMonths] = useState<number>(1);
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/api/scheduling-config?scope=branch');
+        if (res.ok) {
+          const data = await res.json();
+          const m = Number(data?.effective?.generationMonths ?? 1) || 1;
+          setGenMonths(m);
+        }
+      } catch (_) {}
+    })();
+  }, []);
   return (
     <div className="flex justify-end gap-2">
       <Button variant="outline" size="sm" onClick={() => onOpenDrawer(seriesId)}>詳細</Button>
@@ -278,14 +291,14 @@ function RowActions({ seriesId, onOpenDrawer, onOpenSessions }: { seriesId: stri
         size="sm"
         disabled={extend.isPending}
         onClick={async () => {
-          toast.promise(extend.mutateAsync(1), {
+          toast.promise(extend.mutateAsync(genMonths), {
             loading: "生成中...",
-            success: "1ヶ月分を生成しました",
+            success: `${genMonths}ヶ月分を生成しました`,
             error: "生成に失敗しました",
           });
         }}
       >
-        1ヶ月分を生成
+        {genMonths}ヶ月分を生成
       </Button>
       <Button
         variant="destructive"
@@ -293,14 +306,14 @@ function RowActions({ seriesId, onOpenDrawer, onOpenSessions }: { seriesId: stri
         disabled={role === "TEACHER" || del.isPending}
         onClick={() => setOpenDelete(true)}
       >
-        削除
+        シリーズ全体を削除
       </Button>
       <ConfirmDeleteDialog
         open={openDelete}
         onOpenChange={setOpenDelete}
         title="シリーズと関連授業の削除"
         description={"このシリーズと関連するすべての通常授業を完全に削除します。\nこの操作は取り消せません。"}
-        confirmText="削除"
+        confirmText="シリーズ全体を削除"
         onConfirm={() => {
           toast.promise(del.mutateAsync(), {
             loading: "削除中...",
