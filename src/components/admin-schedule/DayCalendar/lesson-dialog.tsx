@@ -804,7 +804,8 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
               <>
                 <div />
                 <div className="flex space-x-2">
-                   <Button
+                  {!lesson.isCancelled && (
+                    <Button
                       variant="destructive"
                       className="transition-all duration-200 hover:brightness-110 active:scale-[0.98] focus:ring-2 focus:ring-destructive/30 focus:outline-none"
                       onClick={() => {
@@ -819,7 +820,26 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
                     >
                       キャンセル
                     </Button>
-                   <Button
+                  )}
+                  {lesson.isCancelled && (
+                    <Button
+                      variant="secondary"
+                      className="transition-all duration-200 hover:brightness-110 active:scale-[0.98] focus:ring-2 focus:ring-secondary/30 focus:outline-none"
+                      onClick={async () => {
+                        try {
+                          await fetch('/api/class-sessions/reactivate', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ classIds: [lesson.classId] }),
+                          });
+                          onOpenChange(false);
+                        } catch (_) {}
+                      }}
+                    >
+                      再開
+                    </Button>
+                  )}
+                  <Button
                       variant="outline"
                       className="transition-all duration-200 hover:bg-accent hover:text-accent-foreground active:scale-[0.98] focus:ring-2 focus:ring-primary/30 focus:outline-none"
                       onClick={() => onOpenChange(false)}

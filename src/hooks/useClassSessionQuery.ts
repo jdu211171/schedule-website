@@ -38,7 +38,6 @@ export interface ApiClassSessionFields {
   seriesId?: string | null;
   duration?: number;
   isCancelled?: boolean;
-  cancellationReason?: string | null;
 }
 
 export type ExtendedClassSessionWithRelations = ClassSessionWithRelations & ApiClassSessionFields;

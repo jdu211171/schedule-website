@@ -62,7 +62,6 @@ type SeriesSession = {
   notes: string | null;
   status?: string | null; // e.g., 'CONFLICTED'
   isCancelled?: boolean;
-  cancellationReason?: string | null;
 };
 
 export default function SeriesSessionsTableDialog({ seriesId, open, onOpenChange, softWarningDates = [] }: Props) {
@@ -291,6 +290,78 @@ export default function SeriesSessionsTableDialog({ seriesId, open, onOpenChange
     }
   };
 
+  const confirmOne = async (classId: string) => {
+    try {
+      const res = await fetch('/api/class-sessions/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Selected-Branch': localStorage.getItem('selectedBranchId') || '' },
+        body: JSON.stringify({ classIds: [classId] }),
+      });
+      if (!res.ok) throw new Error();
+      const j = await res.json();
+      toast.success(j.message || '確認しました');
+      await fetchItems();
+      await refreshPreview();
+    } catch (_) {
+      toast.error('確認に失敗しました');
+    }
+  };
+
+  const confirmSelected = async () => {
+    if (selectedIds.length === 0) return;
+    try {
+      const res = await fetch('/api/class-sessions/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Selected-Branch': localStorage.getItem('selectedBranchId') || '' },
+        body: JSON.stringify({ classIds: selectedIds }),
+      });
+      if (!res.ok) throw new Error();
+      const j = await res.json();
+      toast.success(j.message || '確認しました');
+      setSelected({});
+      await fetchItems();
+      await refreshPreview();
+    } catch (_) {
+      toast.error('一括確認に失敗しました');
+    }
+  };
+
+  const reactivateOne = async (classId: string) => {
+    try {
+      const res = await fetch('/api/class-sessions/reactivate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Selected-Branch': localStorage.getItem('selectedBranchId') || '' },
+        body: JSON.stringify({ classIds: [classId] }),
+      });
+      if (!res.ok) throw new Error();
+      const j = await res.json();
+      toast.success(j.message || '再開しました');
+      await fetchItems();
+      await refreshPreview();
+    } catch (_) {
+      toast.error('再開に失敗しました');
+    }
+  };
+
+  const reactivateSelected = async () => {
+    if (selectedIds.length === 0) return;
+    try {
+      const res = await fetch('/api/class-sessions/reactivate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Selected-Branch': localStorage.getItem('selectedBranchId') || '' },
+        body: JSON.stringify({ classIds: selectedIds }),
+      });
+      if (!res.ok) throw new Error();
+      const j = await res.json();
+      toast.success(j.message || '再開しました');
+      setSelected({});
+      await fetchItems();
+      await refreshPreview();
+    } catch (_) {
+      toast.error('一括再開に失敗しました');
+    }
+  };
+
   const refreshPreview = async () => {
     if (!seriesId) return;
     setResolveLoading(true);
@@ -337,6 +408,12 @@ export default function SeriesSessionsTableDialog({ seriesId, open, onOpenChange
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
+                  <DropdownMenuItem onSelect={(e) => { e.preventDefault(); confirmSelected(); }}>
+                    選択を確認（ソフトのみ）
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={(e) => { e.preventDefault(); reactivateSelected(); }}>
+                    選択を再開
+                  </DropdownMenuItem>
                   <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setBulkCancelOpen(true); }}>
                     選択をキャンセル
                   </DropdownMenuItem>
@@ -441,6 +518,30 @@ export default function SeriesSessionsTableDialog({ seriesId, open, onOpenChange
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center justify-end gap-2">
+                            {/* Reactivate */}
+                            {s.isCancelled && (
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                className="h-8 px-2"
+                                onClick={() => reactivateOne(s.classId)}
+                                title="キャンセル解除"
+                              >
+                                再開
+                              </Button>
+                            )}
+                            {/* Confirm (soft-only) */}
+                            {s.status === 'CONFLICTED' && (
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                className="h-8 px-2"
+                                onClick={() => confirmOne(s.classId)}
+                                title="確認済みにする（ハード競合は不可）"
+                              >
+                                確認
+                              </Button>
+                            )}
                             {/* Edit via CreateLessonDialog */}
                             <Button
                               variant="outline"

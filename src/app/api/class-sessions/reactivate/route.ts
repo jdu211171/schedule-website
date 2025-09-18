@@ -3,24 +3,20 @@ import { z } from 'zod';
 import { withBranchAccess } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
-const batchCancelSchema = z.object({
+const batchReactivateSchema = z.object({
   classIds: z.array(z.string()).optional(),
   seriesId: z.string().optional(),
   fromDate: z.string().optional(), // YYYY-MM-DD, used with seriesId
-  reason: z.string().optional(), // free-form; stored in notes by UI if needed
 });
 
 export const POST = withBranchAccess(['ADMIN', 'STAFF'], async (req: NextRequest, session, branchId) => {
   try {
     const body = await req.json();
-    const parsed = batchCancelSchema.safeParse(body);
+    const parsed = batchReactivateSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json({ error: '無効な入力' }, { status: 400 });
     }
-    const { classIds, seriesId, fromDate, reason } = parsed.data;
-
-    const now = new Date();
-    const userId = session.user?.id ?? null;
+    const { classIds, seriesId, fromDate } = parsed.data;
 
     // Determine target class IDs
     let targetIds: string[] = [];
@@ -57,24 +53,23 @@ export const POST = withBranchAccess(['ADMIN', 'STAFF'], async (req: NextRequest
     const result = await prisma.classSession.updateMany({
       where: {
         classId: { in: targetIds },
-        // Do not touch already cancelled sessions to avoid bumping timestamps needlessly
-        isCancelled: false,
+        isCancelled: true,
       },
       data: {
-        isCancelled: true,
-        cancelledAt: now,
-        cancelledByUserId: userId,
+        isCancelled: false,
+        cancelledAt: null,
+        cancelledByUserId: null,
       },
     });
 
     return NextResponse.json({
       data: [],
-      message: `${result.count}件の授業をキャンセルしました`,
+      message: `${result.count}件の授業を再開しました`,
       updatedCount: result.count,
       pagination: { total: result.count, page: 1, limit: result.count, pages: 1 },
     });
   } catch (error) {
-    console.error('Error batch cancelling class sessions:', error);
-    return NextResponse.json({ error: '授業のキャンセルに失敗しました' }, { status: 500 });
+    console.error('Error reactivating class sessions:', error);
+    return NextResponse.json({ error: '授業の再開に失敗しました' }, { status: 500 });
   }
 });

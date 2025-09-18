@@ -6,6 +6,7 @@ import { classSessionSeriesUpdateSchema } from "@/schemas/class-session.schema";
 import { ClassSession } from "@prisma/client";
 import { parse, format, parseISO } from "date-fns";
 import { applySpecialClassColor } from "@/lib/special-class-server";
+import { CANCELLED_CLASS_COLOR_HEX } from "@/lib/cancelled-class-constants";
 
 type FormattedClassSession = {
   classId: string;
@@ -31,7 +32,6 @@ type FormattedClassSession = {
   notes: string | null;
   status: ClassSession["status"];
   isCancelled: boolean;
-  cancellationReason: string | null;
   classTypeColor?: string | null;
   createdAt: string;
   updatedAt: string;
@@ -67,7 +67,7 @@ const formatClassSession = (
   const endMinute = String(endUTC.getUTCMinutes()).padStart(2, "0");
   const formattedEndTime = `${endHour}:${endMinute}`;
 
-  return {
+  const out: FormattedClassSession = {
     classId: classSession.classId,
     seriesId: classSession.seriesId,
     teacherId: classSession.teacherId,
@@ -92,10 +92,13 @@ const formatClassSession = (
     notes: classSession.notes,
     status: classSession.status,
     isCancelled: (classSession as any).isCancelled ?? false,
-    cancellationReason: (classSession as any).cancellationReason ?? null,
     createdAt: format(classSession.createdAt, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"),
     updatedAt: format(classSession.updatedAt, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"),
   };
+  if ((classSession as any).isCancelled) {
+    out.classTypeColor = CANCELLED_CLASS_COLOR_HEX;
+  }
+  return out;
 };
 
 // Helper function to create a DateTime from date and time string

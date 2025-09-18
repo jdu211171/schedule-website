@@ -16,6 +16,7 @@ import { z } from "zod";
 import { getDetailedSharedAvailability } from "@/lib/enhanced-availability";
 import { hasHardConflict, normalizeMarkAsConflicted } from "@/lib/conflict-types";
 import { SPECIAL_CLASS_COLOR_HEX } from "@/lib/special-class-constants";
+import { CANCELLED_CLASS_COLOR_HEX } from "@/lib/cancelled-class-constants";
 import {
   applySpecialClassColor,
   isSpecialClassType,
@@ -46,7 +47,6 @@ type FormattedClassSession = {
   duration: number | null;
   notes: string | null;
   isCancelled?: boolean;
-  cancellationReason?: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -81,7 +81,7 @@ const formatClassSession = (
   const endMinute = String(endUTC.getUTCMinutes()).padStart(2, "0");
   const formattedEndTime = `${endHour}:${endMinute}`;
 
-  return {
+  const out: FormattedClassSession = {
     classId: classSession.classId,
     seriesId: classSession.seriesId,
     teacherId: classSession.teacherId,
@@ -106,10 +106,13 @@ const formatClassSession = (
     duration: classSession.duration,
     notes: classSession.notes,
     isCancelled: (classSession as any).isCancelled ?? false,
-    cancellationReason: ((classSession as any).cancellationReason as string | null) ?? null,
     createdAt: format(classSession.createdAt, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"),
     updatedAt: format(classSession.updatedAt, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"),
   };
+  if ((classSession as any).isCancelled) {
+    out.classTypeColor = CANCELLED_CLASS_COLOR_HEX;
+  }
+  return out;
 };
 
 // Helper function to create a DateTime from date and time string

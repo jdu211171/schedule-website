@@ -454,7 +454,6 @@ export const POST = withBranchAccess(["ADMIN", "STAFF"], async (request: NextReq
             // Mark statuses
             status: conflictReasons.length ? "CONFLICTED" : "CONFIRMED",
             isCancelled: shouldCancel ? true : false,
-            cancellationReason: shouldCancel ? "ADMIN_CANCELLED" : null,
           },
         });
         created.push(cs.classId);

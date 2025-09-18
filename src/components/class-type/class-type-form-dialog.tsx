@@ -39,12 +39,12 @@ import { ClassType, useAllClassTypes } from "@/hooks/useClassTypeQuery";
 import { CLASS_TYPE_DEFAULT_COLORS, classTypeColorClasses, classTypeColorJaLabels, ClassTypeColor, isHexColor, rgba, getContrastText, getHexForClassTypeColor } from "@/lib/class-type-colors";
 import { Switch } from "@/components/ui/switch";
 
-// Helper function to check if a class type is a root class type (通常授業, 特別授業, キャンセル)
+// Helper function to check if a class type is a root class type (通常授業, 特別授業)
 function isRootClassType(classType: ClassType): boolean {
   // Root class types are those without a parent with specific names
   return (
     !classType.parentId &&
-    (classType.name === "通常授業" || classType.name === "特別授業" || classType.name === "キャンセル")
+    (classType.name === "通常授業" || classType.name === "特別授業")
   );
 }
 
@@ -213,7 +213,7 @@ export function ClassTypeFormDialog({
                 // Reserve canonical colors for root types (blue, red, slate)
                 usedColors.add('blue');
                 usedColors.add('red');
-                usedColors.add('slate');
+                // removed: reserved slate for cancelled; now isCancelled uses fixed HEX color
                 return (
                   <FormItem>
                     <div className="flex items-center justify-between mb-2">

@@ -235,23 +235,7 @@ async function main() {
     },
   });
 
-  // 1-e. Cancelled Class Session type (top-level)
-  let cancelledClassType =
-    (await prisma.classType.findFirst({
-      where: { name: "キャンセル", parentId: null },
-    })) ||
-    (await prisma.classType.create({
-      data: {
-        name: "キャンセル",
-        notes: "キャンセルされた授業",
-        order: 99,
-        color: 'slate',
-      },
-    }));
-  cancelledClassType = await prisma.classType.update({
-    where: { classTypeId: cancelledClassType.classTypeId },
-    data: { notes: "キャンセルされた授業", order: 99, color: 'slate' },
-  });
+  // Removed: dedicated "キャンセル" class type. Cancellation uses isCancelled flag.
 
   // 1‑d. Subject Types
   const elementarySubjectType = await prisma.subjectType.upsert({

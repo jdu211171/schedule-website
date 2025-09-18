@@ -166,7 +166,7 @@ model ClassSession {
   status                  String?                  @db.VarChar(20)
   // Cancellation fields
   isCancelled             Boolean                  @default(false) @map("is_cancelled")
-  cancellationReason      CancellationReason?      @map("cancellation_reason")
+  // cancellationReason removed; reason should be kept in notes if needed
   cancelledAt             DateTime?                @map("cancelled_at") @db.Timestamp(6)
   cancelledByUserId       String?                  @map("cancelled_by_user_id")
   createdAt               DateTime                 @default(now()) @map("created_at") @db.Timestamp(6)
@@ -768,11 +768,7 @@ enum ChannelType {
 }
 
 // Reasons for cancelling a class session
-enum CancellationReason {
-  SICK
-  PERMANENTLY_LEFT
-  ADMIN_CANCELLED
-}
+// enum CancellationReason removed
 
 // Account slots for student-linked LINE IDs
 enum LineAccountSlot {
