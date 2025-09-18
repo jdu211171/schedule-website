@@ -16,7 +16,6 @@ import {
 import { ja } from "date-fns/locale";
 import { useCallback, useMemo, useState } from "react";
 import WeekLessonCard from "./week-lesson-card";
-import { classTypeColorClasses, isValidClassTypeColor, isHexColor, rgba, getContrastText, ClassTypeColor } from "@/lib/class-type-colors";
 import { DayCalendarFilters } from "../DayCalendar/day-calendar-filters";
 
 const weekDaysJa = ["月", "火", "水", "木", "金", "土", "日"];
@@ -105,42 +104,7 @@ export default function CalendarWeek({
     [allSessions]
   );
 
-  // Group by class type name first, then by time within the group
-  const groupLessonsByTypeThenTime = useCallback(
-    (dayLessons: ExtendedClassSessionWithRelations[]) => {
-      const byType = new Map<string, { typeName: string; colorKey: string | null; lessons: ExtendedClassSessionWithRelations[] }>();
-      for (const lesson of dayLessons) {
-        const typeName = (lesson.classTypeName || '未分類');
-        const colorKey = ((lesson as any)?.classType?.color ?? (lesson as any)?.classTypeColor ?? null) as string | null;
-        const key = typeName;
-        if (!byType.has(key)) {
-          byType.set(key, { typeName, colorKey, lessons: [] });
-        }
-        byType.get(key)!.lessons.push(lesson);
-      }
-      // Within each type, reuse time grouping
-      const result = Array.from(byType.values()).map(group => {
-        const grouped: { [timeSlot: string]: ExtendedClassSessionWithRelations[] } = {};
-        const sorted = [...group.lessons].sort((a, b) => {
-          const timeA = typeof a.startTime === 'string' ? a.startTime : format(a.startTime, 'HH:mm');
-          const timeB = typeof b.startTime === 'string' ? b.startTime : format(b.startTime, 'HH:mm');
-          return timeA.localeCompare(timeB);
-        });
-        for (const lesson of sorted) {
-          const start = typeof lesson.startTime === 'string' ? lesson.startTime : format(lesson.startTime, 'HH:mm');
-          const end = typeof lesson.endTime === 'string' ? lesson.endTime : format(lesson.endTime, 'HH:mm');
-          const slot = `${start} - ${end}`;
-          if (!grouped[slot]) grouped[slot] = [];
-          grouped[slot].push(lesson);
-        }
-        return { ...group, lessonsByTime: grouped };
-      });
-      // Stable sort by type name
-      result.sort((a, b) => a.typeName.localeCompare(b.typeName, 'ja'));
-      return result;
-    },
-    []
-  );
+  // Removed class-type grouping; 週次 view now groups only by time.
 
   const getWeekDays = (startDate: Date) => {
     return Array.from({ length: 7 }, (_, i) => {
@@ -259,7 +223,7 @@ export default function CalendarWeek({
                 <div className="grid grid-cols-7 min-h-[600px]">
                   {weekDays.map((day, ind) => {
                     const dayLessons = getLessonsForDay(day.date);
-                    const typeGroups = groupLessonsByTypeThenTime(dayLessons);
+                    const timeGroups = groupLessonsByTime(dayLessons);
 
                     return (
                       <div
@@ -269,97 +233,70 @@ export default function CalendarWeek({
                         }`}
                       >
                         <div className="flex-1 space-y-4">
-                          {typeGroups.map((group, gIdx) => {
-                            // Compute header styles from class type color
-                            const colorKey = group.colorKey || '';
-                            const classColors = isValidClassTypeColor(colorKey)
-                              ? classTypeColorClasses[colorKey as ClassTypeColor]
-                              : undefined;
-                            const headerStyle = (() => {
-                              if (!classColors && isHexColor(colorKey)) {
-                                const bg = rgba(colorKey!, 0.14) || undefined;
-                                const border = rgba(colorKey!, 0.4) || undefined;
-                                const textColor = getContrastText(colorKey!);
-                                return { backgroundColor: bg, borderColor: border, color: textColor === 'white' ? '#f8fafc' : '#0f172a' } as React.CSSProperties;
-                              }
-                              return undefined as React.CSSProperties | undefined;
-                            })();
-
+                          {Object.entries(timeGroups).map(([timeSlot, lessonsAtTime]) => {
+                            const { rows, itemsPerRow } = calculateLayout(lessonsAtTime.length);
                             return (
-                              <div key={`${group.typeName}-${gIdx}`} className="mb-4">
-                                <div className={`text-xs font-medium mb-2 px-2 py-1 border rounded ${classColors ? `${classColors.background} ${classColors.border} ${classColors.text}` : 'bg-muted/60 border-border'}`} style={headerStyle}>
-                                  <span className="align-middle">{group.typeName}</span>
-                                </div>
+                              <div key={timeSlot} className="mb-3">
+                                <div className="text-xs font-medium mb-1 pl-1">{timeSlot}</div>
+                                {expandedLessonId && lessonsAtTime.some((lesson) => lesson.classId === expandedLessonId) ? (
+                                  <div className="w-full">
+                                    <WeekLessonCard
+                                      lesson={lessonsAtTime.find((l) => l.classId === expandedLessonId)!}
+                                      isExpanded={true}
+                                      displayMode="full"
+                                      onClick={handleLessonClick}
+                                      onEdit={onEdit}
+                                      onDelete={onDelete}
+                                    />
+                                  </div>
+                                ) : (
+                                  <div>
+                                    {Array.from({ length: rows }).map((_, rowIndex) => {
+                                      let rowItemsCount = itemsPerRow;
+                                      if (lessonsAtTime.length === 7) {
+                                        rowItemsCount = rowIndex === 0 ? 4 : 3;
+                                      }
 
-                                {Object.entries(group.lessonsByTime).map(([timeSlot, lessonsAtTime]) => {
-                                  const { rows, itemsPerRow } = calculateLayout(lessonsAtTime.length);
-                                  return (
-                                    <div key={timeSlot} className="mb-3">
-                                      <div className="text-xs font-medium mb-1 pl-1">
-                                        {timeSlot}
-                                      </div>
-                                      {expandedLessonId && lessonsAtTime.some((lesson) => lesson.classId === expandedLessonId) ? (
-                                        <div className="w-full">
-                                          <WeekLessonCard
-                                            lesson={lessonsAtTime.find((l) => l.classId === expandedLessonId)!}
-                                            isExpanded={true}
-                                            displayMode="full"
-                                            onClick={handleLessonClick}
-                                            onEdit={onEdit}
-                                            onDelete={onDelete}
-                                          />
-                                        </div>
-                                      ) : (
-                                        <div>
-                                          {Array.from({ length: rows }).map((_, rowIndex) => {
-                                            let rowItemsCount = itemsPerRow;
-                                            if (lessonsAtTime.length === 7) {
-                                              rowItemsCount = rowIndex === 0 ? 4 : 3;
-                                            }
+                                      const startIdx = rowIndex === 0 ? 0 : (lessonsAtTime.length === 7 ? 4 : rowIndex * itemsPerRow);
+                                      const endIdx = rowIndex === 0 ? rowItemsCount : startIdx + rowItemsCount;
+                                      const rowLessons = lessonsAtTime.slice(startIdx, endIdx);
 
-                                            const startIdx = rowIndex === 0 ? 0 : (lessonsAtTime.length === 7 ? 4 : rowIndex * itemsPerRow);
-                                            const endIdx = rowIndex === 0 ? rowItemsCount : startIdx + rowItemsCount;
-                                            const rowLessons = lessonsAtTime.slice(startIdx, endIdx);
+                                      return (
+                                        <div
+                                          key={rowIndex}
+                                          className="grid mb-1"
+                                          style={{ gridTemplateColumns: `repeat(${rowItemsCount}, minmax(0, 1fr))`, gap: '2px' }}
+                                        >
+                                          {rowLessons.map((lesson) => {
+                                            let displayMode: "full" | "compact-2" | "compact-3" | "compact-5" | "compact-many" = "full";
+                                            if (itemsPerRow === 2 || rowItemsCount === 2) displayMode = "compact-2";
+                                            else if (itemsPerRow === 3 || rowItemsCount === 3) displayMode = "compact-3";
+                                            else if (itemsPerRow === 4 || rowItemsCount === 4) displayMode = "compact-3";
+                                            else if (itemsPerRow === 5 || rowItemsCount === 5) displayMode = "compact-5";
+                                            else if (itemsPerRow > 5) displayMode = "compact-many";
 
                                             return (
-                                              <div
-                                                key={rowIndex}
-                                                className="grid mb-1"
-                                                style={{ gridTemplateColumns: `repeat(${rowItemsCount}, minmax(0, 1fr))`, gap: '2px' }}
-                                              >
-                                                {rowLessons.map((lesson) => {
-                                                  let displayMode: "full" | "compact-2" | "compact-3" | "compact-5" | "compact-many" = "full";
-                                                  if (itemsPerRow === 2 || rowItemsCount === 2) displayMode = "compact-2";
-                                                  else if (itemsPerRow === 3 || rowItemsCount === 3) displayMode = "compact-3";
-                                                  else if (itemsPerRow === 4 || rowItemsCount === 4) displayMode = "compact-3";
-                                                  else if (itemsPerRow === 5 || rowItemsCount === 5) displayMode = "compact-5";
-                                                  else if (itemsPerRow > 5) displayMode = "compact-many";
-
-                                                  return (
-                                                    <WeekLessonCard
-                                                      key={lesson.classId}
-                                                      lesson={lesson}
-                                                      isExpanded={false}
-                                                      displayMode={displayMode}
-                                                      onClick={handleLessonClick}
-                                                      onEdit={onEdit}
-                                                      onDelete={onDelete}
-                                                    />
-                                                  );
-                                                })}
-                                              </div>
+                                              <WeekLessonCard
+                                                key={lesson.classId}
+                                                lesson={lesson}
+                                                isExpanded={false}
+                                                displayMode={displayMode}
+                                                onClick={handleLessonClick}
+                                                onEdit={onEdit}
+                                                onDelete={onDelete}
+                                              />
                                             );
                                           })}
                                         </div>
-                                      )}
-                                    </div>
-                                  );
-                                })}
+                                      );
+                                    })}
+                                  </div>
+                                )}
                               </div>
                             );
                           })}
 
-                          {typeGroups.length === 0 && (
+                          {Object.keys(timeGroups).length === 0 && (
                             <div className="text-center text-gray-400 py-8 text-sm">予定なし</div>
                           )}
                         </div>

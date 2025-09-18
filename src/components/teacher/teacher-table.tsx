@@ -224,6 +224,7 @@ export function TeacherTable() {
   const FILTERS_STORAGE_KEY = "teacher_filters";
   const COLUMN_VISIBILITY_STORAGE_KEY = "teacher_column_visibility";
   const PAGE_SIZE_STORAGE_KEY = "teacher_page_size";
+  const PAGE_INDEX_STORAGE_KEY = "teacher_page_index";
 
   // Initialize filters with localStorage values or defaults
   const [filters, setFilters] = React.useState<{
@@ -286,7 +287,16 @@ export function TeacherTable() {
   }, [filters]);
 
   const debouncedName = useDebounce(filters.name, 300);
-  const [page, setPage] = React.useState(1);
+  const [page, setPage] = React.useState<number>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem(PAGE_INDEX_STORAGE_KEY);
+      if (saved) {
+        const n = Number.parseInt(saved, 10);
+        if (!Number.isNaN(n) && n >= 1) return n;
+      }
+    }
+    return 1;
+  });
   const [teacherToEdit, setTeacherToEdit] = React.useState<Teacher | null>(
     null
   );
@@ -320,6 +330,13 @@ export function TeacherTable() {
       localStorage.setItem(PAGE_SIZE_STORAGE_KEY, String(pageSize));
     }
   }, [pageSize]);
+
+  // Persist current page index
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem(PAGE_INDEX_STORAGE_KEY, String(page));
+    }
+  }, [page]);
 
   // Load data
   const { data: subjects = [] } = useAllSubjects();

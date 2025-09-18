@@ -109,7 +109,7 @@ const WeekLessonCard: React.FC<WeekLessonCardProps> = ({
     return (
       <div className="w-full cursor-pointer" onClick={() => onClick(lesson.classId)}>
         <Card className={`p-2 space-y-2 ${colors ? `${colors.background} ${colors.border} ${colors.hover}` : ''} border h-full transition-colors duration-100`} style={style}>
-          <CardContent className={`p-1.5 space-y-2 ${colors ? colors.text : ''} relative`}>
+          <CardContent className={`p-1.5 space-y-2 dark:!text-white relative`}>
             {/* Edit button */}
             <div className="flex justify-end">
               <button
@@ -175,7 +175,7 @@ const WeekLessonCard: React.FC<WeekLessonCardProps> = ({
             onClick={() => onClick(lesson.classId)}
           >
             <div
-              className={`${colors ? `${colors.compactBg} ${colors.compactText}` : ''} p-1.5 px-2 rounded flex items-center justify-between mb-1 text-xs transition-colors duration-100`}
+              className={`${colors ? `${colors.compactBg}` : ''} p-1.5 px-2 rounded flex items-center justify-between mb-1 text-xs transition-colors duration-100 dark:!text-white`}
               style={compactStyle}
             >
               <div className="flex items-center gap-0.5 overflow-hidden">
@@ -196,7 +196,7 @@ const WeekLessonCard: React.FC<WeekLessonCardProps> = ({
             onClick={() => onClick(lesson.classId)}
           >
             <div
-              className={`${colors ? `${colors.compactBg} ${colors.compactText}` : ''} p-1 rounded flex items-center justify-center mb-1 transition-colors duration-100`}
+              className={`${colors ? `${colors.compactBg}` : ''} p-1 rounded flex items-center justify-center mb-1 transition-colors duration-100 dark:!text-white`}
               style={compactStyle}
             >
               <div className="text-xs truncate font-medium">{lesson.boothName}</div>
@@ -219,7 +219,7 @@ const WeekLessonCard: React.FC<WeekLessonCardProps> = ({
             onClick={() => onClick(lesson.classId)}
           >
             <div
-              className={`${colors ? `${colors.compactBg} ${colors.compactText}` : ''} p-0.5 px-1 rounded flex items-center justify-center mb-1 transition-colors duration-100`}
+              className={`${colors ? `${colors.compactBg}` : ''} p-0.5 px-1 rounded flex items-center justify-center mb-1 transition-colors duration-100 dark:!text-white`}
               style={compactStyle}
             >
               <div className="text-[11px] font-bold">
@@ -244,7 +244,7 @@ const WeekLessonCard: React.FC<WeekLessonCardProps> = ({
             onClick={() => onClick(lesson.classId)}
           >
             <div
-              className={`${colors ? `${colors.compactBg} ${colors.compactText}` : ''} h-6 rounded flex justify-center items-center mb-1 transition-colors duration-100`}
+              className={`${colors ? `${colors.compactBg}` : ''} h-6 rounded flex justify-center items-center mb-1 transition-colors duration-100 dark:!text-white`}
               style={compactStyle}
             >
               <div className="text-[10px] font-bold">
