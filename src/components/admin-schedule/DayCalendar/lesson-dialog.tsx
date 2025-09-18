@@ -11,6 +11,8 @@ import { SearchableSelect, SearchableSelectItem } from '../searchable-select';
 import { TimeInput } from '@/components/ui/time-input';
 import { ConfirmDeleteDialog } from '../confirm-delete-dialog';
 import { useAvailability } from './availability-layer';
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { fetcher } from '@/lib/fetcher';
 
 interface Booth {
@@ -157,6 +159,7 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
   const [editMode, setEditMode] = useState<EditMode>('single');
   const [deleteMode, setDeleteMode] = useState<DeleteMode>('single');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const queryClient = useQueryClient();
 
   // Состояния для типов уроков
   const [classTypes, setClassTypes] = useState<ClassType[]>([]);
@@ -837,13 +840,23 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
                       className="transition-all duration-200 hover:brightness-110 active:scale-[0.98] focus:ring-2 focus:ring-secondary/30 focus:outline-none"
                       onClick={async () => {
                         try {
-                          await fetch('/api/class-sessions/reactivate', {
+                          const res = await fetch('/api/class-sessions/reactivate', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ classIds: [lesson.classId] }),
                           });
-                          onOpenChange(false);
-                        } catch (_) {}
+                          const data = await res.json().catch(() => ({}));
+                          if (!res.ok) {
+                            toast.error(data?.error || '再開に失敗しました');
+                          } else {
+                            toast.success(data?.message || '再開しました');
+                            onOpenChange(false);
+                          }
+                        } catch (e: any) {
+                          toast.error('再開に失敗しました');
+                        } finally {
+                          queryClient.invalidateQueries({ queryKey: ['classSessions'] });
+                        }
                       }}
                     >
                       再開
