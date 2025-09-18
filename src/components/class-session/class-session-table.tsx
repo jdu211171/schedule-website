@@ -239,7 +239,7 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
         if (session.isCancelled) {
           const cls = CANCELLED_CLASS_COLOR_CLASSES;
           return (
-            <span className={`inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded border ${cls.background} ${cls.border} ${cls.text}`}>
+            <span className={`inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded border ${cls.background} ${cls.border} ${cls.text} dark:!text-white`}>
               <span className={`inline-block h-2 w-2 rounded-full ${cls.dot}`} />
               キャンセル
             </span>
@@ -251,7 +251,7 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
         if (isValidClassTypeColor(colorKey)) {
           const cls = classTypeColorClasses[colorKey as ClassTypeColor];
           return (
-            <span className={`inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded border ${cls.background} ${cls.border} ${cls.text}`}>
+            <span className={`inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded border ${cls.background} ${cls.border} ${cls.text} dark:!text-white`}>
               <span className={`inline-block h-2 w-2 rounded-full ${cls.dot}`} />
               {label}
             </span>
@@ -260,11 +260,10 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
         if (isHexColor(colorKey || '')) {
           const bg = rgba(colorKey!, 0.14) || undefined;
           const border = rgba(colorKey!, 0.4) || undefined;
-          const textColor = getContrastText(colorKey!);
           return (
             <span
-              className={`inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded border`}
-              style={{ backgroundColor: bg, borderColor: border, color: textColor === 'white' ? '#f8fafc' : '#0f172a' }}
+              className={`inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded border text-slate-900 dark:!text-white`}
+              style={{ backgroundColor: bg, borderColor: border }}
             >
               <span
                 className={`inline-block h-2 w-2 rounded-full`}
@@ -488,35 +487,10 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
         pageCount={totalPages || 1}
         onPageChange={handlePageChange}
         pageSize={pageSize}
-        totalItems={totalCount}
-        filterComponent={filterComponent}
-        enableRowSelection={true}
-        onBatchDelete={handleBulkDelete}
-        groupBy={{
-          getKey: (row: ExtendedClassSession) => row.classTypeName || '未分類',
-          renderHeader: ({ groupKey, firstRow }) => {
-            const colorKey = (firstRow as ExtendedClassSession).classTypeColor || (firstRow as any)?.classType?.color || null;
-            if (isValidClassTypeColor(colorKey)) {
-              const cls = classTypeColorClasses[colorKey as ClassTypeColor];
-              return (
-                <div className={`flex items-center gap-2 text-sm font-semibold ${cls.text}`}>
-                  <span className={`inline-block h-2.5 w-2.5 rounded-full ${cls.dot}`} />
-                  {groupKey}
-                </div>
-              );
-            }
-            if (isHexColor(colorKey || '')) {
-              const textColor = getContrastText(colorKey!);
-              return (
-                <div className={`flex items-center gap-2 text-sm font-semibold`} style={{ color: textColor === 'white' ? '#f8fafc' : '#0f172a' }}>
-                  <span className={`inline-block h-2.5 w-2.5 rounded-full`} style={{ backgroundColor: colorKey! }} />
-                  {groupKey}
-                </div>
-              );
-            }
-            return <div className="text-sm font-semibold">{groupKey}</div>;
-          }
-        }}
+      totalItems={totalCount}
+      filterComponent={filterComponent}
+      enableRowSelection={true}
+      onBatchDelete={handleBulkDelete}
       />
 
       {/* Edit Session Dialog (shared with 日次 view) */}

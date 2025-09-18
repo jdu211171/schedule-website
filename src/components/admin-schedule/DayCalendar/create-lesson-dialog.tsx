@@ -1472,7 +1472,8 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
           const { seriesId } = await res.json();
           setGeneratedSeriesId(seriesId);
           // Always preview and show ConflictResolutionTable (unified pre-create UX)
-          const pv = await fetch(`/api/class-series/${seriesId}/extend/preview?months=${generationMonthsRef.current || 1}`);
+          const months = generationMonthsRef.current || 1;
+          const pv = await fetch(`/api/class-series/${seriesId}/extend/preview?months=${months}`);
           if (!pv.ok) throw new Error('プレビューに失敗しました');
           const preview = await pv.json();
           // Filter availability conflicts if user chose not to display them
@@ -1484,9 +1485,25 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
               return acc;
             }, {} as Record<string, any[]>);
           }
-          setConflictData(preview);
-          setCurrentPayload({ ...payload });
-          setSeriesPreviewMode(true);
+          const hasConflicts = Array.isArray(preview.conflicts) && preview.conflicts.length > 0;
+          const needsConfirm = Boolean(preview.requiresConfirmation);
+          if (hasConflicts || needsConfirm) {
+            // Only show table when there are conflicts or confirmation is required
+            setConflictData(preview);
+            setCurrentPayload({ ...payload });
+            setSeriesPreviewMode(true);
+            return;
+          }
+          // No conflicts → directly extend (generate) and close
+          const extendRes = await fetch(`/api/class-series/${seriesId}/extend`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ months }),
+          });
+          if (!extendRes.ok) throw new Error('授業の生成に失敗しました');
+          const extendJson = await extendRes.json();
+          toast.success(`${extendJson.count ?? 0}件の授業を作成しました`);
+          onOpenChange(false);
           return;
         } catch (e: any) {
           toast.error(e?.message || 'シリーズの作成に失敗しました');
