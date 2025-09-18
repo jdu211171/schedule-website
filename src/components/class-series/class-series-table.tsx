@@ -10,8 +10,11 @@ import { DataTablePagination } from "@/components/new-table/data-table-paginatio
 import { DataTableColumnHeader } from "@/components/new-table/data-table-column-header";
 import ClassSeriesToolbar from "./class-series-toolbar";
 import { Checkbox } from "@/components/ui/checkbox";
-// import removed: generation mode editing no longer supported
-// import { toast } from "sonner";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { Calendar as CalendarIcon, X as XIcon } from "lucide-react";
+import { useUpdateClassSeries } from "@/hooks/use-class-series";
+import { toast } from "sonner";
 // import { useQueryClient } from "@tanstack/react-query";
 import SeriesSessionsTableDialog from "./series-sessions-table-dialog";
 
@@ -109,7 +112,17 @@ export default function ClassSeriesTable({ selectedBranchId }: Props) {
       id: "range",
       accessorFn: (row: any) => `${row.startDate} ${row.endDate ?? ""}`,
       header: ({ column }) => <DataTableColumnHeader column={column} title="期間" />,
-      cell: ({ row }) => <span className="text-sm">{row.original.startDate} → {row.original.endDate ?? "—"}</span>,
+      cell: ({ row }) => (
+        <div className="flex items-center gap-2 text-sm">
+          <span>{row.original.startDate}</span>
+          <span>→</span>
+          <InlineEndDateCell
+            seriesId={row.original.seriesId}
+            startDate={row.original.startDate}
+            endDate={row.original.endDate}
+          />
+        </div>
+      ),
     },
     {
       accessorKey: "status",
@@ -269,3 +282,86 @@ function RowActions({ seriesId, onOpenSessions }: { seriesId: string; onOpenSess
 }
 
 // generation mode UI removed
+
+function InlineEndDateCell({ seriesId, startDate, endDate }: { seriesId: string; startDate: string; endDate: string | null }) {
+  const update = useUpdateClassSeries(seriesId);
+  const [open, setOpen] = useState(false);
+  const [selected, setSelected] = useState<Date | undefined>(() => (endDate ? new Date(`${endDate}T00:00:00Z`) : undefined));
+  const todayUTC = useMemo(() => { const t = new Date(); t.setUTCHours(0,0,0,0); return t; }, []);
+
+  useEffect(() => {
+    setSelected(endDate ? new Date(`${endDate}T00:00:00Z`) : undefined);
+  }, [endDate]);
+
+  const fmt = (d?: Date) => {
+    if (!d) return "—";
+    const y = d.getUTCFullYear();
+    const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+    const da = String(d.getUTCDate()).padStart(2, "0");
+    return `${y}-${m}-${da}`;
+  };
+
+  const onSelect = async (d?: Date) => {
+    if (!d) return;
+    const ymd = fmt(d);
+    // guard: endDate should be >= startDate
+    if (new Date(`${ymd}T00:00:00Z`) < new Date(`${startDate}T00:00:00Z`)) {
+      // use a lightweight toast pattern in this project
+      toast.error("終了日は開始日以降である必要があります");
+      return;
+    }
+    try {
+      await update.mutateAsync({ endDate: ymd } as any);
+      setSelected(d);
+      setOpen(false);
+      toast.success("終了日を更新しました");
+    } catch (_) {
+      toast.error("終了日の更新に失敗しました");
+    }
+  };
+
+  const clear = async () => {
+    try {
+      await update.mutateAsync({ endDate: null } as any);
+      setSelected(undefined);
+      setOpen(false);
+      toast.success("終了日をクリアしました");
+    } catch (_) {
+      toast.error("終了日のクリアに失敗しました");
+    }
+  };
+
+  return (
+    <Popover open={open} onOpenChange={(o) => {
+      setOpen(o);
+      if (o && !selected) {
+        // When opening with no current endDate, preselect today for convenience (no update yet)
+        setSelected(todayUTC);
+      }
+    }}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" className="h-7 px-2 text-xs">
+          <CalendarIcon className="mr-1 h-3 w-3" />
+          {selected ? fmt(selected) : "—"}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-2" align="start">
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-xs text-muted-foreground">終了日を選択</div>
+          {selected && (
+            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={clear} disabled={update.isPending}>
+              <XIcon className="h-3 w-3" />
+            </Button>
+          )}
+        </div>
+        <Calendar
+          mode="single"
+          selected={selected}
+          onSelect={onSelect}
+          initialFocus
+          defaultMonth={selected ?? new Date(`${startDate}T00:00:00Z`)}
+        />
+      </PopoverContent>
+    </Popover>
+  );
+}
