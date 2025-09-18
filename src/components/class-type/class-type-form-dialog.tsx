@@ -210,9 +210,6 @@ export function ClassTypeFormDialog({
                     .filter(t => t.color && (!isEditing || t.classTypeId !== classType?.classTypeId))
                     .map(t => t.color as string)
                 );
-                // Reserve canonical colors for root types (blue, red, slate)
-                usedColors.add('blue');
-                usedColors.add('red');
                 // removed: reserved slate for cancelled; now isCancelled uses fixed HEX color
                 return (
                   <FormItem>
@@ -226,12 +223,11 @@ export function ClassTypeFormDialog({
                             setColorEnabled(v);
                             if (!v) field.onChange(null);
                           }}
-                          disabled={isRoot}
                         />
                       </div>
                     </div>
                     <FormControl>
-                      <div className={`grid grid-cols-2 gap-2 ${(!colorEnabled || isRoot) ? 'opacity-50 pointer-events-none' : ''}`}>
+                      <div className={`grid grid-cols-2 gap-2 ${(!colorEnabled) ? 'opacity-50 pointer-events-none' : ''}`}>
                         {CLASS_TYPE_DEFAULT_COLORS.map((c) => {
                           const disabled = usedColors.has(c);
                           const selected = field.value === c;
@@ -240,14 +236,14 @@ export function ClassTypeFormDialog({
                             <button
                               key={c}
                               type="button"
-                              className={`h-9 rounded-md border px-2 flex items-center gap-2 ${cls.chipBg} ${cls.chipBorder} ${cls.chipText} ${selected ? 'ring-2 ring-offset-1 ring-primary' : ''} ${(disabled || isRoot) ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90'}`}
+                              className={`h-9 rounded-md border px-2 flex items-center gap-2 ${cls.chipBg} ${cls.chipBorder} ${cls.chipText} ${selected ? 'ring-2 ring-offset-1 ring-primary' : ''} ${(disabled) ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90'}`}
                               aria-pressed={selected}
                               onClick={() => {
-                                if (disabled || isRoot || !colorEnabled) return;
+                                if (disabled || !colorEnabled) return;
                                 field.onChange(selected ? null : c);
                               }}
                               title={classTypeColorJaLabels[c as ClassTypeColor]}
-                              disabled={disabled || isRoot || !colorEnabled}
+                              disabled={disabled || !colorEnabled}
                             >
                               <span className={`inline-block h-4 w-4 rounded-full border ${cls.dot} ${cls.chipBorder}`} />
                               <span className="text-sm">{classTypeColorJaLabels[c as ClassTypeColor]}</span>
@@ -262,44 +258,42 @@ export function ClassTypeFormDialog({
               }}
             />
 
-            {/* Custom color picker (HEX). Only for non-root types */}
-            {!isRoot && (
-              <FormField
-                control={form.control}
-                name="color"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>カスタムカラー（HEX）</FormLabel>
-                    <FormControl>
-                      <div className={`flex flex-col gap-2 ${!colorEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="color"
-                            aria-label="カスタムカラー"
-                            className="h-9 w-9 rounded border"
-                            value={currentHex}
-                            onChange={(e) => colorEnabled && field.onChange(e.target.value)}
-                          />
-                          <input
-                            type="text"
-                            inputMode="text"
-                            placeholder="例: #4f46e5"
-                            className="flex-1 h-9 rounded-md border px-2 bg-background"
-                            value={currentHex}
-                            onChange={(e) => colorEnabled && field.onChange(e.target.value)}
-                          />
-                        </div>
-                        {/* Preview chip showing current selection; hide when no selection */}
-                        <CustomColorPreview hex={selectedHex || null} label={
-                          (typeof field.value === 'string' && !field.value.startsWith('#') && classTypeColorJaLabels[field.value as ClassTypeColor]) || '選択中の色'
-                        } />
+            {/* Custom color picker (HEX) */}
+            <FormField
+              control={form.control}
+              name="color"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>カスタムカラー（HEX）</FormLabel>
+                  <FormControl>
+                    <div className={`flex flex-col gap-2 ${!colorEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          aria-label="カスタムカラー"
+                          className="h-9 w-9 rounded border"
+                          value={currentHex}
+                          onChange={(e) => colorEnabled && field.onChange(e.target.value)}
+                        />
+                        <input
+                          type="text"
+                          inputMode="text"
+                          placeholder="例: #4f46e5"
+                          className="flex-1 h-9 rounded-md border px-2 bg-background"
+                          value={currentHex}
+                          onChange={(e) => colorEnabled && field.onChange(e.target.value)}
+                        />
                       </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
+                      {/* Preview chip showing current selection; hide when no selection */}
+                      <CustomColorPreview hex={selectedHex || null} label={
+                        (typeof field.value === 'string' && !field.value.startsWith('#') && classTypeColorJaLabels[field.value as ClassTypeColor]) || '選択中の色'
+                      } />
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <FormField
               control={form.control}
               name="name"

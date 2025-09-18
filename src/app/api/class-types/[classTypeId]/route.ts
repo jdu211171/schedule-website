@@ -173,19 +173,40 @@ export const PATCH = withRole(
       const isProtected = isProtectedClassType(existingClassType);
       
       if (isProtected) {
-        // For protected class types, only allow updating notes. Color is reserved and cannot be changed.
-        const allowedFields = Object.keys(body);
-        const hasDisallowedFields = allowedFields.some((field) => field !== "notes");
-        if (hasDisallowedFields) {
+        // For protected class types, allow updating only notes and color.
+        const allowed = new Set(["notes", "color", "classTypeId"]);
+        const hasDisallowed = Object.keys(body).some((k) => !allowed.has(k));
+        if (hasDisallowed) {
           return NextResponse.json(
-            { error: "基本クラスタイプはメモのみ編集可能です" },
+            { error: "基本クラスタイプでは色とメモのみ編集可能です" },
             { status: 403 }
           );
         }
+
+        // Optional uniqueness check for color
+        if (color !== undefined && color !== null) {
+          try {
+            const colorInUse = await prisma.classType.findFirst({
+              where: {
+                color: { equals: color, mode: 'insensitive' } as any,
+                classTypeId: { not: classTypeId },
+              },
+              select: { classTypeId: true },
+            });
+            if (colorInUse) {
+              return NextResponse.json(
+                { error: "この色は別のクラスタイプで利用されています" },
+                { status: 409 }
+              );
+            }
+          } catch {}
+        }
+
         const updatedClassType = await prisma.classType.update({
           where: { classTypeId },
           data: {
             notes: notes !== undefined ? notes : existingClassType.notes,
+            ...(color !== undefined ? { color } : {} as any),
           },
           include: {
             parent: true,
@@ -200,7 +221,7 @@ export const PATCH = withRole(
 
         return NextResponse.json({
           data: [formattedClassType],
-          message: "クラスタイプのメモを更新しました",
+          message: "クラスタイプを更新しました",
           pagination: {
             total: 1,
             page: 1,

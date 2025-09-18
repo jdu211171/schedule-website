@@ -610,7 +610,6 @@ export const GET = withBranchAccess(
 
     // Format class sessions
     const formattedClassSessions = classSessions.map(formatClassSession);
-    await applySpecialClassColor(classSessions, formattedClassSessions);
 
     return NextResponse.json({
       data: formattedClassSessions,
@@ -973,9 +972,6 @@ export const POST = withBranchAccess(
         });
 
         const formattedSession = formatClassSession(newClassSession);
-        if (await isSpecialClassType(newClassSession.classTypeId)) {
-          formattedSession.classTypeColor = SPECIAL_CLASS_COLOR_HEX;
-        }
 
         return NextResponse.json(
           {

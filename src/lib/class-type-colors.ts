@@ -85,15 +85,15 @@ export const classTypeColorClasses: Record<ClassTypeColor, {
     dot: 'bg-yellow-500',
   },
   'red': {
-    background: SPECIAL_CLASS_COLOR_CLASSES.background,
-    border: SPECIAL_CLASS_COLOR_CLASSES.border,
-    text: SPECIAL_CLASS_COLOR_CLASSES.text,
-    hover: SPECIAL_CLASS_COLOR_CLASSES.hover,
-    swatch: SPECIAL_CLASS_COLOR_CLASSES.swatch,
-    chipBg: SPECIAL_CLASS_COLOR_CLASSES.chipBg,
-    chipBorder: SPECIAL_CLASS_COLOR_CLASSES.chipBorder,
-    chipText: SPECIAL_CLASS_COLOR_CLASSES.chipText,
-    dot: SPECIAL_CLASS_COLOR_CLASSES.dot,
+    background: 'bg-red-100 dark:bg-red-900/70',
+    border: 'border-red-300 dark:border-red-700',
+    text: 'text-red-800 dark:text-red-100',
+    hover: 'hover:bg-red-200 dark:hover:bg-red-800',
+    swatch: 'bg-red-500',
+    chipBg: 'bg-red-100',
+    chipBorder: 'border-red-300',
+    chipText: 'text-red-700',
+    dot: 'bg-red-500',
   },
   'dark green': {
     background: 'bg-emerald-100 dark:bg-emerald-900/70',
@@ -137,7 +137,7 @@ export const CLASS_TYPE_COLOR_HEX: Record<ClassTypeColor, string> = {
   'cyan': '#06b6d4',          // cyan-500
   'orange': '#f97316',        // orange-500
   'yellow': '#f59e0b',        // amber/yellow-500
-  'red': SPECIAL_CLASS_COLOR_HEX, // special pink (#FDC5F5)
+  'red': '#ef4444', // red-500
   'dark green': '#059669',    // emerald-600
   'lighter green': '#4ade80', // green-400
 };

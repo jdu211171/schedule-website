@@ -204,7 +204,6 @@ export const GET = withBranchAccess(
 
     // Format response
     const formattedClassSessions = classSessions.map(formatClassSession);
-    await applySpecialClassColor(classSessions, formattedClassSessions);
 
     return NextResponse.json({
       data: formattedClassSessions,
@@ -484,7 +483,7 @@ export const PATCH = withBranchAccess(
 
       // Format response
       const formattedSessions = updatedSessions.map(formatClassSession);
-      await applySpecialClassColor(updatedSessions, formattedSessions);
+      // Do not override special class colors
 
       return NextResponse.json({
         data: formattedSessions,

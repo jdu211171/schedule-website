@@ -228,9 +228,7 @@ export const GET = withBranchAccess(
 
     // Format response
     const formattedClassSession = formatClassSession(classSession);
-    if (await isSpecialClassType(classSession.classTypeId)) {
-      formattedClassSession.classTypeColor = SPECIAL_CLASS_COLOR_HEX;
-    }
+    // Do not override class type color for special classes; use stored color
     if ((classSession as any).isCancelled) {
       formattedClassSession.classTypeColor = CANCELLED_CLASS_COLOR_HEX;
     }
@@ -608,9 +606,7 @@ export const PATCH = withBranchAccess(
 
       // Format response
       const formattedClassSession = formatClassSession(updatedClassSession);
-      if (await isSpecialClassType(updatedClassSession.classTypeId)) {
-        formattedClassSession.classTypeColor = SPECIAL_CLASS_COLOR_HEX;
-      }
+      // Do not override class type color for special classes; use stored color
       if ((updatedClassSession as any).isCancelled) {
         formattedClassSession.classTypeColor = CANCELLED_CLASS_COLOR_HEX;
       }
