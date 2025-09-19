@@ -302,7 +302,7 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
         transition-colors duration-100 ease-in-out transform
         ${colorClasses ? `${colorClasses.background} ${colorClasses.border} ${colorClasses.text} ${colorClasses.hover}` : ''}
         ${textClass ?? ''}
-        ${isCancelled ? 'opacity-60 grayscale' : ''}
+        ${isCancelled ? 'opacity-60 grayscale !text-black dark:!text-white' : ''}
         active:scale-[0.98] hover:shadow-md
         overflow-hidden truncate pointer-events-auto
         dark:!text-white
