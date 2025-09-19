@@ -1483,9 +1483,21 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
               (acc[c.date] ||= []).push(c);
               return acc;
             }, {} as Record<string, any[]>);
+            // Keep flags and summary consistent after filtering
+            const sessionsWithConflicts = Object.keys(preview.conflictsByDate).length;
+            if (preview.summary && typeof preview.summary === 'object') {
+              try {
+                const total = Number((preview.summary as any).totalSessions) || undefined;
+                (preview.summary as any).sessionsWithConflicts = sessionsWithConflicts;
+                if (typeof total === 'number') {
+                  (preview.summary as any).validSessions = Math.max(0, total - sessionsWithConflicts);
+                }
+              } catch {}
+            }
+            preview.requiresConfirmation = sessionsWithConflicts > 0;
           }
           const hasConflicts = Array.isArray(preview.conflicts) && preview.conflicts.length > 0;
-          const needsConfirm = Boolean(preview.requiresConfirmation);
+          const needsConfirm = hasConflicts;
           if (hasConflicts || needsConfirm) {
             // Only show table when there are conflicts or confirmation is required
             setConflictData(preview);
@@ -1794,20 +1806,17 @@ const isLoading = isLoadingClassTypes || isSubmitting;
       </DialogContent>
     </Dialog>
 
-    {/* Availability confirm modal */}
+    {/* Availability confirm modal (force-create) */}
     <Dialog open={showAvailabilityConfirm} onOpenChange={setShowAvailabilityConfirm}>
       <DialogContent className="sm:max-w-[520px]">
         <DialogHeader>
-          <DialogTitle>利用可能エラーの表示</DialogTitle>
+          <DialogTitle>強制作成の確認</DialogTitle>
           <DialogDescription>
             現在の時間帯は
             {softTeacherConflict && softStudentConflict ? '講師/生徒' : softTeacherConflict ? '講師' : '生徒'}
-            の希望時間外です。『講師不在』『生徒不在』などのエラーを表示しますか？
+            の利用可能時間外です。強制的に作成しますか？
           </DialogDescription>
         </DialogHeader>
-        <div className="text-sm text-muted-foreground">
-          いいえを選ぶと、重複系の競合（講師重複/生徒重複/ブース競合）のみ確認します。
-        </div>
         <DialogFooter className="pt-2">
           <Button
             variant="outline"
@@ -1817,23 +1826,14 @@ const isLoading = isLoadingClassTypes || isSubmitting;
             キャンセル
           </Button>
           <Button
-            variant="secondary"
             onClick={async () => {
-              setShowAvailabilityConfirm(false);
-              await proceedCreate(true);
-            }}
-            disabled={isSubmitting}
-          >
-            はい、表示する
-          </Button>
-          <Button
-            onClick={async () => {
+              // 強制作成: 利用可能エラーは事前に無視して進める
               setShowAvailabilityConfirm(false);
               await proceedCreate(false);
             }}
             disabled={isSubmitting}
           >
-            いいえ、表示しない
+            強制作成
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -17,7 +17,11 @@ import { useBooths } from "@/hooks/useBoothQuery"
 import { useTeachers } from "@/hooks/useTeacherQuery"
 import { useStudents } from "@/hooks/useStudentQuery"
 import { useSubjects } from "@/hooks/useSubjectQuery"
-import { FilterCombobox } from "./filter-combobox"
+import { Combobox } from "@/components/ui/combobox"
+import { useSmartSelection, EnhancedTeacher, EnhancedStudent } from "@/hooks/useSmartSelection"
+import { useDebounce } from "@/hooks/use-debounce"
+import { CompatibilityComboboxItem, getCompatibilityPriority, renderCompatibilityComboboxItem } from "../compatibility-combobox-utils"
+import { X } from "lucide-react"
 import { toast } from "sonner"
 
 interface ClassSession {
@@ -50,13 +54,14 @@ export const AdminCalendarList = () => {
   const [isLessonDialogOpen, setIsLessonDialogOpen] = useState(false)
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null)
   const [dialogMode, setDialogMode] = useState<"view" | "edit">("edit")
-  const [filters, setFilters] = useState({
-    teacherName: "",
-    studentName: "",
-    subjectName: "",
-    boothName: "",
-    date: null as Date | null,
-  })
+  // Date filter is retained; teacher/student filters replaced with compatibility comboboxes
+  const [dateFilter, setDateFilter] = useState<Date | null>(null)
+  const [selectedTeacherId, setSelectedTeacherId] = useState<string>("")
+  const [selectedStudentId, setSelectedStudentId] = useState<string>("")
+  const [teacherSearch, setTeacherSearch] = useState<string>("")
+  const [studentSearch, setStudentSearch] = useState<string>("")
+  const debouncedTeacherSearch = useDebounce(teacherSearch, 300)
+  const debouncedStudentSearch = useDebounce(studentSearch, 300)
   const [timeSort, setTimeSort] = useState<SortOrder>(null)
   const [page, setPage] = useState(1)
   const [limit] = useState(10)
@@ -80,6 +85,24 @@ export const AdminCalendarList = () => {
 
   // Fetch the currently selected session with relations for the shared dialog
   const { data: selectedLesson } = useClassSession(selectedLessonId || undefined)
+
+  // Smart matching: provide compatibility-aware teacher/student lists matching 日次 view
+  const {
+    enhancedTeachers,
+    enhancedStudents,
+    hasTeacherSelected,
+    hasStudentSelected,
+    isFetchingTeachers,
+    isFetchingStudents,
+    isLoadingTeachers: isLoadingTeachersSmart,
+    isLoadingStudents: isLoadingStudentsSmart,
+  } = useSmartSelection({
+    selectedTeacherId,
+    selectedStudentId,
+    activeOnly: true,
+    teacherSearchTerm: debouncedTeacherSearch,
+    studentSearchTerm: debouncedStudentSearch,
+  })
 
   // GET - Fetch ALL class sessions
   const { isLoading, refetch } = useQuery({
@@ -186,25 +209,20 @@ export const AdminCalendarList = () => {
     }
   }
 
-  // Применяем фильтры на клиентской стороне
+  // Client-side filtering: by selected teacher/student IDs and optional date
   const filteredSessions = useMemo(() => {
     return allSessions.filter((session) => {
-      // Проверяем каждый фильтр
-      if (filters.teacherName && session.teacherName !== filters.teacherName) return false
-      if (filters.studentName && session.studentName !== filters.studentName) return false
-      if (filters.subjectName && session.subjectName !== filters.subjectName) return false
-      if (filters.boothName && session.boothName !== filters.boothName) return false
+      if (selectedTeacherId && session.teacherId !== selectedTeacherId) return false
+      if (selectedStudentId && session.studentId !== selectedStudentId) return false
 
-      // Проверяем фильтр по дате
-      if (filters.date) {
-        const filterDate = format(filters.date, "yyyy-MM-dd")
-        const sessionDate = session.date.split("T")[0] // Убираем время из даты
+      if (dateFilter) {
+        const filterDate = format(dateFilter, "yyyy-MM-dd")
+        const sessionDate = session.date.split("T")[0]
         if (sessionDate !== filterDate) return false
       }
-
       return true
     })
-  }, [allSessions, filters])
+  }, [allSessions, selectedTeacherId, selectedStudentId, dateFilter])
 
   // Пагинация на клиентской стороне
   const paginatedSessions = useMemo(() => {
@@ -318,24 +336,7 @@ export const AdminCalendarList = () => {
     refetch()
   }
 
-  // フィルターをリセットする (Reset filters)
-  const resetFilters = () => {
-    setFilters({
-      teacherName: "",
-      studentName: "",
-      subjectName: "",
-      boothName: "",
-      date: null,
-    })
-    setTimeSort(null)
-    setPage(1) // Сбрасываем страницу при сбросе фильтров
-  }
-
-  // Unique values for filters - получаем из всех сессий
-  const uniqueTeachers = Array.from(new Set(allSessions.map((session) => session.teacherName)))
-  const uniqueStudents = Array.from(new Set(allSessions.map((session) => session.studentName)))
-  const uniqueSubjects = Array.from(new Set(allSessions.map((session) => session.subjectName)))
-  const uniqueBooths = Array.from(new Set(allSessions.map((session) => session.boothName)))
+  // Reset handled inline in UI; list-specific unique option lists removed
 
   // Сортировка сессий по времени, если необходимо
   const sortedSessions = [...paginatedSessions].sort((a, b) => {
@@ -380,61 +381,198 @@ export const AdminCalendarList = () => {
       </CardHeader>
 
       <CardContent>
-        {/* Фильтры над таблицей */}
+        {/* フィルター: replace with 日次 view's 講師/生徒 comboboxes; keep 日付 */}
         <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* 講師 */}
           <div className="w-full">
-            <FilterCombobox
-              label="講師"
-              options={uniqueTeachers.map((name) => ({ label: name, value: name }))}
-              value={filters.teacherName}
-              onChange={(value) => setFilters({ ...filters, teacherName: value })}
-            />
+            <label className="text-sm font-medium mb-1 block">
+              講師
+              {hasStudentSelected && (
+                <span className="text-xs text-muted-foreground ml-1">
+                  ({enhancedTeachers.filter((t: EnhancedTeacher) => t.compatibilityType === 'perfect').length} 完全一致)
+                </span>
+              )}
+            </label>
+            <div className="flex items-end gap-1">
+              <div className="flex-1">
+                <Combobox<CompatibilityComboboxItem>
+                  items={enhancedTeachers
+                    .map((teacher) => {
+                      let description = ''
+                      let matchingSubjectsCount = 0
+                      let partialMatchingSubjectsCount = 0
+
+                      if (teacher.compatibilityType === 'perfect') {
+                        description = `${teacher.matchingSubjectsCount}件の完全一致`
+                        matchingSubjectsCount = teacher.matchingSubjectsCount
+                        if (teacher.partialMatchingSubjectsCount > 0) {
+                          description += `, ${teacher.partialMatchingSubjectsCount}件の部分一致`
+                          partialMatchingSubjectsCount = teacher.partialMatchingSubjectsCount
+                        }
+                      } else if (teacher.compatibilityType === 'subject-only') {
+                        description = `${teacher.partialMatchingSubjectsCount}件の部分一致`
+                        partialMatchingSubjectsCount = teacher.partialMatchingSubjectsCount
+                      } else if (teacher.compatibilityType === 'mismatch') {
+                        description = '共通科目なし'
+                      } else if (teacher.compatibilityType === 'teacher-no-prefs') {
+                        description = '科目設定なし'
+                      } else if (teacher.compatibilityType === 'student-no-prefs') {
+                        description = '生徒の設定なし（全対応可）'
+                      }
+
+                      const keywords = [teacher.name, teacher.kanaName, teacher.email, teacher.username]
+                        .filter((k): k is string => Boolean(k))
+                        .map((k) => k.toLowerCase())
+
+                      return {
+                        value: teacher.teacherId,
+                        label: teacher.name,
+                        description,
+                        compatibilityType: teacher.compatibilityType,
+                        matchingSubjectsCount,
+                        partialMatchingSubjectsCount,
+                        keywords,
+                      } as CompatibilityComboboxItem
+                    })
+                    .sort((a, b) => {
+                      const priorityDiff = getCompatibilityPriority(b.compatibilityType) - getCompatibilityPriority(a.compatibilityType)
+                      if (priorityDiff !== 0) return priorityDiff
+                      const labelA = typeof a.label === 'string' ? a.label : String(a.label ?? '')
+                      const labelB = typeof b.label === 'string' ? b.label : String(b.label ?? '')
+                      return labelA.localeCompare(labelB, 'ja')
+                    })}
+                  value={selectedTeacherId}
+                  onValueChange={setSelectedTeacherId}
+                  placeholder="講師を選択"
+                  searchPlaceholder="講師を検索..."
+                  emptyMessage="講師が見つかりません"
+                  disabled={false}
+                  clearable
+                  searchValue={teacherSearch}
+                  onSearchChange={setTeacherSearch}
+                  loading={isLoadingTeachersSmart || isFetchingTeachers}
+                  triggerClassName="h-10"
+                  onOpenChange={(open) => { if (!open) setTeacherSearch('') }}
+                  renderItem={renderCompatibilityComboboxItem}
+                />
+              </div>
+              {selectedTeacherId && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedTeacherId("")}
+                  className="h-10 w-10 p-0 hover:bg-destructive/10 hover:text-destructive"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
           </div>
 
+          {/* 生徒 */}
           <div className="w-full">
-            <FilterCombobox
-              label="生徒"
-              options={uniqueStudents.map((name) => ({ label: name, value: name }))}
-              value={filters.studentName}
-              onChange={(value) => setFilters({ ...filters, studentName: value })}
-            />
+            <label className="text-sm font-medium mb-1 block">
+              生徒
+              {hasTeacherSelected && (
+                <span className="text-xs text-muted-foreground ml-1">
+                  ({enhancedStudents.filter((s: EnhancedStudent) => s.compatibilityType === 'perfect').length} 完全一致)
+                </span>
+              )}
+            </label>
+            <div className="flex items-end gap-1">
+              <div className="flex-1">
+                <Combobox<CompatibilityComboboxItem>
+                  items={enhancedStudents
+                    .map((student) => {
+                      let description = ''
+                      let matchingSubjectsCount = 0
+                      let partialMatchingSubjectsCount = 0
+
+                      if (student.compatibilityType === 'perfect') {
+                        description = `${student.matchingSubjectsCount}件の完全一致`
+                        matchingSubjectsCount = student.matchingSubjectsCount
+                        if (student.partialMatchingSubjectsCount > 0) {
+                          description += `, ${student.partialMatchingSubjectsCount}件の部分一致`
+                          partialMatchingSubjectsCount = student.partialMatchingSubjectsCount
+                        }
+                      } else if (student.compatibilityType === 'subject-only') {
+                        description = `${student.partialMatchingSubjectsCount}件の部分一致`
+                        partialMatchingSubjectsCount = student.partialMatchingSubjectsCount
+                      } else if (student.compatibilityType === 'mismatch') {
+                        description = '共通科目なし'
+                      } else if (student.compatibilityType === 'student-no-prefs') {
+                        description = '科目設定なし'
+                      } else if (student.compatibilityType === 'teacher-no-prefs') {
+                        description = '講師の設定なし（全対応可）'
+                      }
+
+                      const keywords = [student.name, student.kanaName, student.email, student.username]
+                        .filter((k): k is string => Boolean(k))
+                        .map((k) => k.toLowerCase())
+
+                      return {
+                        value: student.studentId,
+                        label: student.name,
+                        description,
+                        compatibilityType: student.compatibilityType,
+                        matchingSubjectsCount,
+                        partialMatchingSubjectsCount,
+                        keywords,
+                      } as CompatibilityComboboxItem
+                    })
+                    .sort((a, b) => {
+                      const priorityDiff = getCompatibilityPriority(b.compatibilityType) - getCompatibilityPriority(a.compatibilityType)
+                      if (priorityDiff !== 0) return priorityDiff
+                      const labelA = typeof a.label === 'string' ? a.label : String(a.label ?? '')
+                      const labelB = typeof b.label === 'string' ? b.label : String(b.label ?? '')
+                      return labelA.localeCompare(labelB, 'ja')
+                    })}
+                  value={selectedStudentId}
+                  onValueChange={setSelectedStudentId}
+                  placeholder="生徒を選択"
+                  searchPlaceholder="生徒を検索..."
+                  emptyMessage="生徒が見つかりません"
+                  disabled={false}
+                  clearable
+                  searchValue={studentSearch}
+                  onSearchChange={setStudentSearch}
+                  loading={isLoadingStudentsSmart || isFetchingStudents}
+                  triggerClassName="h-10"
+                  onOpenChange={(open) => { if (!open) setStudentSearch('') }}
+                  renderItem={renderCompatibilityComboboxItem}
+                />
+              </div>
+              {selectedStudentId && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedStudentId("")}
+                  className="h-10 w-10 p-0 hover:bg-destructive/10 hover:text-destructive"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
           </div>
 
-          <div className="w-full">
-            <FilterCombobox
-              label="科目"
-              options={uniqueSubjects.map((name) => ({ label: name, value: name }))}
-              value={filters.subjectName}
-              onChange={(value) => setFilters({ ...filters, subjectName: value })}
-            />
-          </div>
-
-          <div className="w-full">
-            <FilterCombobox
-              label="ブース"
-              options={uniqueBooths.map((name) => ({ label: name, value: name }))}
-              value={filters.boothName}
-              onChange={(value) => setFilters({ ...filters, boothName: value })}
-            />
-          </div>
-
+          {/* 日付 */}
           <div>
             <label className="text-sm font-medium block mb-2">日付</label>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
-                  className={cn("w-full justify-start text-left font-normal", !filters.date && "text-muted-foreground")}
+                  className={cn("w-full justify-start text-left font-normal", !dateFilter && "text-muted-foreground")}
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
-                  {filters.date ? format(filters.date, "yyyy年MM月dd日", { locale: ja }) : "日付を選択"}
+                  {dateFilter ? format(dateFilter, "yyyy年MM月dd日", { locale: ja }) : "日付を選択"}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0">
                 <Calendar
                   mode="single"
-                  selected={filters.date || undefined}
-                  onSelect={(date) => setFilters({ ...filters, date: date || null })}
+                  selected={dateFilter || undefined}
+                  onSelect={(date) => setDateFilter(date || null)}
                   initialFocus
                   locale={ja}
                 />
@@ -444,7 +582,19 @@ export const AdminCalendarList = () => {
         </div>
 
         <div className="flex justify-end mb-4">
-          <Button onClick={resetFilters} variant="outline" className="mr-2">
+          <Button
+            onClick={() => {
+              setSelectedTeacherId("")
+              setSelectedStudentId("")
+              setTeacherSearch("")
+              setStudentSearch("")
+              setDateFilter(null)
+              setTimeSort(null)
+              setPage(1)
+            }}
+            variant="outline"
+            className="mr-2"
+          >
             フィルターをリセット
           </Button>
         </div>

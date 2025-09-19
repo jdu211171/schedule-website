@@ -133,6 +133,10 @@ export function useMultipleDaysClassSessions(
         const params = new URLSearchParams({
           startDate: dateStr,
           endDate: dateStr,
+          // Ensure we fetch enough rows for a full day view
+          // Default API limit is 10; that can hide sessions.
+          limit: '500',
+          page: '1',
         });
 
         const dateFilters = filters[dateStr];
