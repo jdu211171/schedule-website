@@ -291,6 +291,9 @@ export const teacherFilterSchema = z.object({
   statuses: z.array(userStatusEnum).optional(),
   birthDateFrom: z.string().optional(),
   birthDateTo: z.string().optional(),
+  // Sorting (minimal: kana only)
+  sortBy: z.enum(["kanaName"]).optional(),
+  sortOrder: z.enum(["asc", "desc"]).optional(),
 });
 
 export type TeacherCreate = z.infer<typeof teacherCreateSchema>;

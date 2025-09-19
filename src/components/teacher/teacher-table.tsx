@@ -17,6 +17,7 @@ import { GenericPasswordEditableCell } from "@/components/data-table-v0/generic-
 import { SubjectPreferencesCell } from "@/components/ui/subject-preferences-cell";
 import { flexRender } from "@tanstack/react-table";
 import { Input } from "@/components/ui/input";
+import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import type { Column, Table } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -361,10 +362,15 @@ export function TeacherTable() {
       .map((subject) => subject.subjectId);
   }, [filters.subject, subjects]);
 
+  // Optional generic sort state (e.g., kana sorting)
+  const [tableSort, setTableSort] = React.useState<{ sortBy?: "kanaName"; sortOrder?: "asc" | "desc" }>({});
+
   const { data: teachers, isLoading } = useTeachers({
     page,
     limit: pageSize,
     name: debouncedName || undefined,
+    sortBy: tableSort.sortBy,
+    sortOrder: tableSort.sortOrder,
     statuses: filters.status.length > 0 ? filters.status : undefined,
   });
 
@@ -442,7 +448,10 @@ export function TeacherTable() {
       {
         id: "kanaName",
         accessorKey: "kanaName",
-        header: "カナ",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="カナ" />
+        ),
+        enableSorting: true,
         meta: {
           label: "カナ",
         },
@@ -753,6 +762,24 @@ export function TeacherTable() {
     getRowId: (row) => row.teacherId,
     enableColumnFilters: true,
   });
+
+  // Keep kana sort in sync with table sorting
+  const sortingKey = React.useMemo(() => {
+    return JSON.stringify(table.getState().sorting || []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [table.getState().sorting]);
+
+  React.useEffect(() => {
+    const sorting = table.getState().sorting;
+    const kn = sorting?.find((s) => s.id === "kanaName");
+    if (kn) {
+      const order: "asc" | "desc" = kn.desc ? "desc" : "asc";
+      const next = { sortBy: "kanaName" as const, sortOrder: order };
+      setTableSort((prev) => (prev.sortBy !== next.sortBy || prev.sortOrder !== next.sortOrder ? next : prev));
+    } else if (tableSort.sortBy === "kanaName") {
+      setTableSort({});
+    }
+  }, [sortingKey, table]);
 
   // Save column visibility to localStorage whenever it changes
   React.useEffect(() => {

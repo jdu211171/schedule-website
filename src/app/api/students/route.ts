@@ -695,6 +695,7 @@ export const GET = withBranchAccess(
       ?? "asc") as Prisma.SortOrder;
     const effectiveGradeOrder = (gradeYearOrder
       ?? (sortBy === "gradeYear" ? sortOrder : undefined)) as Prisma.SortOrder | undefined;
+    const effectiveKanaOrder = (sortBy === "kanaName" ? (sortOrder ?? "asc") : undefined) as Prisma.SortOrder | undefined;
 
     // Always order by configured student type sequence (not alphabetical)
     orderBy.push({
@@ -706,6 +707,11 @@ export const GET = withBranchAccess(
     // Optionally order by grade within each student type group
     if (effectiveGradeOrder) {
       orderBy.push({ gradeYear: { sort: effectiveGradeOrder, nulls: "last" } });
+    }
+
+    // If sorting by kana, apply kana order (hiragana/katakana mixed)
+    if (effectiveKanaOrder) {
+      orderBy.push({ kanaName: { sort: effectiveKanaOrder, nulls: "last" } });
     }
 
     // Stable tie-breaker

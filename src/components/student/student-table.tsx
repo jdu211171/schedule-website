@@ -479,6 +479,12 @@ export function StudentTable() {
     gradeYearOrder?: "asc" | "desc";
   }>({});
 
+  // Generic sort state for backend (single-column sorting)
+  const [tableSort, setTableSort] = React.useState<{
+    sortBy?: "studentTypeName" | "gradeYear" | "kanaName";
+    sortOrder?: "asc" | "desc";
+  }>({});
+
   const { data: students, isLoading } = useStudents({
     page,
     limit: pageSize,
@@ -503,6 +509,8 @@ export function StudentTable() {
     examDateTo: filters.examDateRange?.to,
     studentTypeOrder: sortParams.studentTypeOrder,
     gradeYearOrder: sortParams.gradeYearOrder,
+    sortBy: tableSort.sortBy,
+    sortOrder: tableSort.sortOrder,
   });
 
   // Extract unique branches from current data
@@ -579,7 +587,10 @@ export function StudentTable() {
       {
         id: "kanaName",
         accessorKey: "kanaName",
-        header: "カナ",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="カナ" />
+        ),
+        enableSorting: true,
         meta: {
           label: "カナ",
         },
@@ -1109,6 +1120,7 @@ export function StudentTable() {
     const sorting = table.getState().sorting;
     const st = sorting?.find((s) => s.id === "studentTypeName");
     const gr = sorting?.find((s) => s.id === "gradeYear");
+    const kn = sorting?.find((s) => s.id === "kanaName");
     const next = {
       studentTypeOrder: (st ? (st.desc ? "desc" : "asc") : undefined) as "asc" | "desc" | undefined,
       gradeYearOrder: (gr ? (gr.desc ? "desc" : "asc") : undefined) as "asc" | "desc" | undefined,
@@ -1118,6 +1130,18 @@ export function StudentTable() {
         ? next
         : prev,
     );
+    if (kn) {
+      const order: "asc" | "desc" = kn.desc ? "desc" : "asc";
+      const nextSort = {
+        sortBy: "kanaName" as const,
+        sortOrder: order,
+      };
+      setTableSort((prev) =>
+        prev.sortBy !== nextSort.sortBy || prev.sortOrder !== nextSort.sortOrder ? nextSort : prev
+      );
+    } else if (tableSort.sortBy === "kanaName") {
+      setTableSort({});
+    }
   }, [sortingKey, table]);
 
   // Save column visibility to localStorage whenever it changes

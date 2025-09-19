@@ -119,7 +119,7 @@ type UseStudentsParams = {
   birthDateTo?: Date;
   examDateFrom?: Date; // Filter by exam date range
   examDateTo?: Date;
-  sortBy?: "studentTypeName" | "gradeYear";
+  sortBy?: "studentTypeName" | "gradeYear" | "kanaName";
   sortOrder?: "asc" | "desc";
   studentTypeOrder?: "asc" | "desc";
   gradeYearOrder?: "asc" | "desc";

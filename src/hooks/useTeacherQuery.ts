@@ -83,6 +83,8 @@ type UseTeachersParams = {
   statuses?: string[]; // Support multiple statuses
   birthDateFrom?: Date;
   birthDateTo?: Date;
+  sortBy?: "kanaName";
+  sortOrder?: "asc" | "desc";
 };
 
 type TeachersResponse = {
@@ -96,7 +98,7 @@ type TeachersResponse = {
 };
 
 export function useTeachers(params: UseTeachersParams = {}) {
-  const { page = 1, limit = 10, name, status, statuses, birthDateFrom, birthDateTo } = params;
+  const { page = 1, limit = 10, name, status, statuses, birthDateFrom, birthDateTo, sortBy, sortOrder } = params;
 
   // Build search params manually to handle arrays
   const searchParams = new URLSearchParams();
@@ -109,9 +111,11 @@ export function useTeachers(params: UseTeachersParams = {}) {
   }
   if (birthDateFrom) searchParams.append("birthDateFrom", birthDateFrom.toISOString());
   if (birthDateTo) searchParams.append("birthDateTo", birthDateTo.toISOString());
+  if (sortBy) searchParams.append("sortBy", sortBy);
+  if (sortOrder) searchParams.append("sortOrder", sortOrder);
 
   return useQuery<TeachersResponse>({
-    queryKey: ["teachers", page, limit, name, status, statuses, birthDateFrom, birthDateTo],
+    queryKey: ["teachers", page, limit, name, status, statuses, birthDateFrom, birthDateTo, sortBy, sortOrder],
     queryFn: async () =>
       await fetcher<TeachersResponse>(`/api/teachers?${searchParams.toString()}`),
   });

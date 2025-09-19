@@ -7,7 +7,7 @@ import {
   teacherCreateSchema,
   teacherFilterSchema,
 } from "@/schemas/teacher.schema";
-import { Teacher, DayOfWeek } from "@prisma/client";
+import { Teacher, DayOfWeek, Prisma } from "@prisma/client";
 
 // Define a type for the teacher with includes
 type TeacherWithIncludes = Teacher & {
@@ -373,7 +373,7 @@ export const GET = withBranchAccess(
       );
     }
 
-    const { page, limit, name, status, statuses, birthDateFrom, birthDateTo } = result.data;
+    const { page, limit, name, status, statuses, birthDateFrom, birthDateTo, sortBy, sortOrder } = result.data;
 
     // Build filter conditions
     const where: Record<string, unknown> = {};
@@ -434,6 +434,16 @@ export const GET = withBranchAccess(
     const total = await prisma.teacher.count({ where });
 
     // Fetch teachers with branch associations
+    const orderBy: Prisma.TeacherOrderByWithRelationInput[] = [];
+    // Always keep ACTIVE first
+    orderBy.push({ status: "asc" });
+    // Apply kanaName sort when requested
+    if (sortBy === "kanaName") {
+      orderBy.push({ kanaName: { sort: (sortOrder ?? "asc") as Prisma.SortOrder, nulls: "last" } });
+    }
+    // Stable tie-breaker
+    orderBy.push({ name: "asc" });
+
     const teachers = await prisma.teacher.findMany({
       where,
       include: {
@@ -511,10 +521,7 @@ export const GET = withBranchAccess(
       },
       skip,
       take: limit,
-      orderBy: [
-        { status: "asc" }, // ACTIVE first (alphabetical)
-        { name: "asc" },
-      ],
+      orderBy,
     });
 
     // Format teachers using the helper function
