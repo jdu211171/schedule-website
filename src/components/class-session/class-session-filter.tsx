@@ -41,8 +41,9 @@ interface ClassSessionFilterProps {
     boothId?: string;
     startDate?: string;
     endDate?: string;
+    isCancelled?: boolean;
   };
-  onFilterChange: (field: "teacherId" | "studentId" | "subjectId" | "classTypeId" | "boothId" | "startDate" | "endDate", value: string | undefined) => void;
+  onFilterChange: (field: "teacherId" | "studentId" | "subjectId" | "classTypeId" | "boothId" | "startDate" | "endDate" | "isCancelled", value: string | boolean | undefined) => void;
   onDateRangeChange: (range: DateRange | undefined) => void;
   onResetFilters: () => void;
 }
@@ -125,6 +126,7 @@ export function ClassSessionFilter({
     filters.boothId,
     filters.startDate,
     filters.endDate,
+    filters.isCancelled ? "1" : "",
   ].filter(Boolean).length;
 
   // Smart teacher/student selection with search (matching 日次 view behavior)
@@ -247,11 +249,14 @@ export function ClassSessionFilter({
     keywords: [String((subject as any).name || '').toLowerCase()],
   }));
 
-  const classTypeComboItems: CompatibilityComboboxItem[] = (classTypes || []).map((ct) => ({
-    value: (ct as any).classTypeId,
-    label: (ct as any).name,
-    keywords: [String((ct as any).name || '').toLowerCase()],
-  }));
+  const classTypeComboItems: CompatibilityComboboxItem[] = [
+    { value: "__CANCELLED__", label: "キャンセル", keywords: ["キャンセル", "cancelled", "canceled"] },
+    ...((classTypes || []).map((ct) => ({
+      value: (ct as any).classTypeId,
+      label: (ct as any).name,
+      keywords: [String((ct as any).name || '').toLowerCase()],
+    })))
+  ];
 
   const boothComboItems: CompatibilityComboboxItem[] = (booths || []).map((b) => ({
     value: (b as any).boothId,
@@ -387,8 +392,16 @@ export function ClassSessionFilter({
             <label className="text-xs font-medium">授業タイプ</label>
             <Combobox<CompatibilityComboboxItem>
               items={classTypeComboItems}
-              value={filters.classTypeId || ""}
-              onValueChange={(val) => onFilterChange("classTypeId", val || undefined)}
+              value={filters.isCancelled ? "__CANCELLED__" : (filters.classTypeId || "")}
+              onValueChange={(val) => {
+                if (val === "__CANCELLED__") {
+                  onFilterChange("isCancelled", true);
+                  onFilterChange("classTypeId", undefined);
+                } else {
+                  onFilterChange("isCancelled", undefined);
+                  onFilterChange("classTypeId", val || undefined);
+                }
+              }}
               placeholder="授業タイプを選択"
               searchPlaceholder="授業タイプを検索..."
               emptyMessage="授業タイプが見つかりません"

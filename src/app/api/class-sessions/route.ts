@@ -547,8 +547,11 @@ export const GET = withBranchAccess(
       }
     }
 
-    // Exclude cancelled by default unless explicitly included
-    if (result.data.includeCancelled !== true) {
+    // Cancellation filtering
+    if (typeof result.data.isCancelled === 'boolean') {
+      where.isCancelled = result.data.isCancelled;
+    } else if (result.data.includeCancelled !== true) {
+      // Exclude cancelled by default unless explicitly included
       where.isCancelled = false;
     }
 

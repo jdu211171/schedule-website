@@ -95,6 +95,8 @@ export const classSessionFilterSchema = z.object({
   hasStudent: z.coerce.boolean().optional(),
   hasSubject: z.coerce.boolean().optional(),
   hasBooth: z.coerce.boolean().optional(),
+  // When provided, filter by cancellation status explicitly
+  isCancelled: z.coerce.boolean().optional(),
   includeCancelled: z.coerce.boolean().optional().default(false),
 });
 

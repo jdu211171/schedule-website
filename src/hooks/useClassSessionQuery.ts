@@ -60,6 +60,7 @@ export type UseClassSessionsParams = {
   seriesId?: string;
   date?: string;
   includeCancelled?: boolean;
+  isCancelled?: boolean;
 };
 
 export type ClassSessionsResponse = {

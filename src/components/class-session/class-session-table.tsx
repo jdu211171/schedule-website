@@ -81,6 +81,7 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
     boothId: undefined as string | undefined,
     startDate: undefined as string | undefined,
     endDate: undefined as string | undefined,
+    isCancelled: undefined as boolean | undefined,
   });
 
   // Row selection state for multiselect
@@ -99,7 +100,8 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
     branchId: selectedBranchId,
     startDate: filters.startDate,
     endDate: filters.endDate,
-    includeCancelled: true,
+    includeCancelled: filters.isCancelled === true,
+    isCancelled: filters.isCancelled,
   });
 
   // Fetch reference data for filters
@@ -146,9 +148,9 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
 
   const handleFilterChange = (
     field: keyof typeof filters,
-    value: string | undefined
+    value: string | boolean | undefined
   ) => {
-    setFilters({ ...filters, [field]: value });
+    setFilters((prev) => ({ ...prev, [field]: value }));
     setPage(1); // Reset to first page when filter changes
   };
 
@@ -170,6 +172,7 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
       boothId: undefined,
       startDate: format(new Date(), "yyyy-MM-dd"),
       endDate: format(new Date(), "yyyy-MM-dd"),
+      isCancelled: undefined,
     };
     setFilters(defaultFilters);
     setPage(1);
