@@ -118,12 +118,12 @@ export function ClassTypeTable() {
           if (hex) {
             circle = (
               <span
-                className={"inline-block h-3 w-3 rounded-full border border-white shadow"}
+                className={"inline-block h-4 w-4 rounded-full border border-white shadow"}
                 style={{ backgroundColor: hex }}
               />
             );
           } else {
-            circle = <span className="inline-block h-3 w-3 rounded-full border border-muted bg-muted/60" />;
+            circle = <span className="inline-block h-4 w-4 rounded-full border border-muted bg-muted/60" />;
           }
         }
         return <div className="flex items-center justify-center">{circle}</div>;
