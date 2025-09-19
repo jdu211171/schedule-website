@@ -7,13 +7,7 @@ import { format, parseISO } from "date-fns";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+// Note: Select filters for subject/classType/booth removed in favor of compatibility comboboxes
 import { Badge } from "@/components/ui/badge";
 import {
   Collapsible,
@@ -21,6 +15,10 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { SimpleDateRangePicker } from "../fix-date-range-picker/simple-date-range-picker";
+import { Combobox } from "@/components/ui/combobox";
+import { useSmartSelection, EnhancedTeacher, EnhancedStudent } from "@/hooks/useSmartSelection";
+import { useDebounce } from "@/hooks/use-debounce";
+import { CompatibilityComboboxItem, getCompatibilityPriority, renderCompatibilityComboboxItem } from "@/components/admin-schedule/compatibility-combobox-utils";
 import type {
   Teacher,
   Student,
@@ -118,8 +116,148 @@ export function ClassSessionFilter({
     onDateRangeChange(range);
   };
 
-  // Count active filters
-  const activeFilterCount = Object.values(filters).filter(Boolean).length;
+  // Count active filters (presented in UI)
+  const activeFilterCount = [
+    filters.teacherId,
+    filters.studentId,
+    filters.subjectId,
+    filters.classTypeId,
+    filters.boothId,
+    filters.startDate,
+    filters.endDate,
+  ].filter(Boolean).length;
+
+  // Smart teacher/student selection with search (matching 日次 view behavior)
+  const [teacherSearch, setTeacherSearch] = useState<string>("");
+  const [studentSearch, setStudentSearch] = useState<string>("");
+  const debouncedTeacher = useDebounce(teacherSearch, 300);
+  const debouncedStudent = useDebounce(studentSearch, 300);
+
+  const {
+    enhancedTeachers,
+    enhancedStudents,
+    isFetchingTeachers,
+    isFetchingStudents,
+    isLoadingTeachers: isLoadingTeachersSmart,
+    isLoadingStudents: isLoadingStudentsSmart,
+  } = useSmartSelection({
+    selectedTeacherId: filters.teacherId,
+    selectedStudentId: filters.studentId,
+    activeOnly: true,
+    teacherSearchTerm: debouncedTeacher,
+    studentSearchTerm: debouncedStudent,
+  });
+
+  const teacherComboItems: CompatibilityComboboxItem[] = enhancedTeachers
+    .map((teacher: EnhancedTeacher) => {
+      let description = "";
+      let matchingSubjectsCount = 0;
+      let partialMatchingSubjectsCount = 0;
+
+      if (teacher.compatibilityType === "perfect") {
+        description = `${teacher.matchingSubjectsCount}件の完全一致`;
+        matchingSubjectsCount = teacher.matchingSubjectsCount;
+        if (teacher.partialMatchingSubjectsCount > 0) {
+          description += `, ${teacher.partialMatchingSubjectsCount}件の部分一致`;
+          partialMatchingSubjectsCount = teacher.partialMatchingSubjectsCount;
+        }
+      } else if (teacher.compatibilityType === "subject-only") {
+        description = `${teacher.partialMatchingSubjectsCount}件の部分一致`;
+        partialMatchingSubjectsCount = teacher.partialMatchingSubjectsCount;
+      } else if (teacher.compatibilityType === "mismatch") {
+        description = "共通科目なし";
+      } else if (teacher.compatibilityType === "teacher-no-prefs") {
+        description = "科目設定なし";
+      } else if (teacher.compatibilityType === "student-no-prefs") {
+        description = "生徒の設定なし（全対応可）";
+      }
+
+      const keywords = [teacher.name, teacher.kanaName, teacher.email, teacher.username]
+        .filter((k): k is string => Boolean(k))
+        .map((k) => k.toLowerCase());
+
+      return {
+        value: teacher.teacherId,
+        label: teacher.name,
+        description,
+        compatibilityType: teacher.compatibilityType,
+        matchingSubjectsCount,
+        partialMatchingSubjectsCount,
+        keywords,
+      } as CompatibilityComboboxItem;
+    })
+    .sort((a, b) => {
+      const priorityDiff = getCompatibilityPriority(b.compatibilityType) - getCompatibilityPriority(a.compatibilityType);
+      if (priorityDiff !== 0) return priorityDiff;
+      const labelA = typeof a.label === "string" ? a.label : String(a.label ?? "");
+      const labelB = typeof b.label === "string" ? b.label : String(b.label ?? "");
+      return labelA.localeCompare(labelB, "ja");
+    });
+
+  const studentComboItems: CompatibilityComboboxItem[] = enhancedStudents
+    .map((student: EnhancedStudent) => {
+      let description = "";
+      let matchingSubjectsCount = 0;
+      let partialMatchingSubjectsCount = 0;
+
+      if (student.compatibilityType === "perfect") {
+        description = `${student.matchingSubjectsCount}件の完全一致`;
+        matchingSubjectsCount = student.matchingSubjectsCount;
+        if (student.partialMatchingSubjectsCount > 0) {
+          description += `, ${student.partialMatchingSubjectsCount}件の部分一致`;
+          partialMatchingSubjectsCount = student.partialMatchingSubjectsCount;
+        }
+      } else if (student.compatibilityType === "subject-only") {
+        description = `${student.partialMatchingSubjectsCount}件の部分一致`;
+        partialMatchingSubjectsCount = student.partialMatchingSubjectsCount;
+      } else if (student.compatibilityType === "mismatch") {
+        description = "共通科目なし";
+      } else if (student.compatibilityType === "student-no-prefs") {
+        description = "科目設定なし";
+      } else if (student.compatibilityType === "teacher-no-prefs") {
+        description = "講師の設定なし（全対応可）";
+      }
+
+      const keywords = [student.name, student.kanaName, student.email, student.username]
+        .filter((k): k is string => Boolean(k))
+        .map((k) => k.toLowerCase());
+
+      return {
+        value: student.studentId,
+        label: student.name,
+        description,
+        compatibilityType: student.compatibilityType,
+        matchingSubjectsCount,
+        partialMatchingSubjectsCount,
+        keywords,
+      } as CompatibilityComboboxItem;
+    })
+    .sort((a, b) => {
+      const priorityDiff = getCompatibilityPriority(b.compatibilityType) - getCompatibilityPriority(a.compatibilityType);
+      if (priorityDiff !== 0) return priorityDiff;
+      const labelA = typeof a.label === "string" ? a.label : String(a.label ?? "");
+      const labelB = typeof b.label === "string" ? b.label : String(b.label ?? "");
+      return labelA.localeCompare(labelB, "ja");
+    });
+
+  // Simple searchable combobox items for Subject / ClassType / Booth
+  const subjectComboItems: CompatibilityComboboxItem[] = (subjects || []).map((subject) => ({
+    value: (subject as any).subjectId,
+    label: (subject as any).name,
+    keywords: [String((subject as any).name || '').toLowerCase()],
+  }));
+
+  const classTypeComboItems: CompatibilityComboboxItem[] = (classTypes || []).map((ct) => ({
+    value: (ct as any).classTypeId,
+    label: (ct as any).name,
+    keywords: [String((ct as any).name || '').toLowerCase()],
+  }));
+
+  const boothComboItems: CompatibilityComboboxItem[] = (booths || []).map((b) => ({
+    value: (b as any).boothId,
+    label: (b as any).name,
+    keywords: [String((b as any).name || '').toLowerCase()],
+  }));
 
   if (!isInitialized) {
     return null; // Show nothing during initial render to prevent flicker
@@ -186,125 +324,94 @@ export function ClassSessionFilter({
             />
           </div>
 
-          {/* Teacher filter */}
+          {/* Teacher filter (compatibility combobox) */}
           <div className="space-y-2 min-w-0">
             <label className="text-xs font-medium">講師</label>
-            <Select
-              value={filters.teacherId || "all"}
-              onValueChange={(value) =>
-                onFilterChange("teacherId", value === "all" ? undefined : value)
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="全ての講師" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">全ての講師</SelectItem>
-                {teachers.map((teacher) => (
-                  <SelectItem key={teacher.teacherId} value={teacher.teacherId}>
-                    {teacher.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Combobox<CompatibilityComboboxItem>
+              items={teacherComboItems}
+              value={filters.teacherId || ""}
+              onValueChange={(val) => onFilterChange("teacherId", val || undefined)}
+              placeholder="講師を選択"
+              searchPlaceholder="講師を検索..."
+              emptyMessage="講師が見つかりません"
+              disabled={false}
+              clearable
+              searchValue={teacherSearch}
+              onSearchChange={setTeacherSearch}
+              loading={isLoadingTeachersSmart || isFetchingTeachers}
+              triggerClassName="h-9"
+              onOpenChange={(open) => { if (!open) setTeacherSearch("") }}
+              renderItem={renderCompatibilityComboboxItem}
+            />
           </div>
 
-          {/* Student filter */}
+          {/* Student filter (compatibility combobox) */}
           <div className="space-y-2 min-w-0">
             <label className="text-xs font-medium">生徒</label>
-            <Select
-              value={filters.studentId || "all"}
-              onValueChange={(value) =>
-                onFilterChange("studentId", value === "all" ? undefined : value)
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="全ての生徒" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">全ての生徒</SelectItem>
-                {students.map((student) => (
-                  <SelectItem key={student.studentId} value={student.studentId}>
-                    {student.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Combobox<CompatibilityComboboxItem>
+              items={studentComboItems}
+              value={filters.studentId || ""}
+              onValueChange={(val) => onFilterChange("studentId", val || undefined)}
+              placeholder="生徒を選択"
+              searchPlaceholder="生徒を検索..."
+              emptyMessage="生徒が見つかりません"
+              disabled={false}
+              clearable
+              searchValue={studentSearch}
+              onSearchChange={setStudentSearch}
+              loading={isLoadingStudentsSmart || isFetchingStudents}
+              triggerClassName="h-9"
+              onOpenChange={(open) => { if (!open) setStudentSearch("") }}
+              renderItem={renderCompatibilityComboboxItem}
+            />
           </div>
 
-          {/* Subject filter */}
+          {/* Subject filter (simple searchable combobox) */}
           <div className="space-y-2 min-w-0">
             <label className="text-xs font-medium">科目</label>
-            <Select
-              value={filters.subjectId || "all"}
-              onValueChange={(value) =>
-                onFilterChange("subjectId", value === "all" ? undefined : value)
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="全ての科目" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">全ての科目</SelectItem>
-                {subjects.map((subject) => (
-                  <SelectItem key={subject.subjectId} value={subject.subjectId}>
-                    {subject.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Combobox<CompatibilityComboboxItem>
+              items={subjectComboItems}
+              value={filters.subjectId || ""}
+              onValueChange={(val) => onFilterChange("subjectId", val || undefined)}
+              placeholder="科目を選択"
+              searchPlaceholder="科目を検索..."
+              emptyMessage="科目が見つかりません"
+              disabled={false}
+              clearable
+              triggerClassName="h-9"
+            />
           </div>
 
-          {/* Class Type filter */}
+          {/* Class Type filter (simple searchable combobox) */}
           <div className="space-y-2 min-w-0">
             <label className="text-xs font-medium">授業タイプ</label>
-            <Select
-              value={filters.classTypeId || "all"}
-              onValueChange={(value) =>
-                onFilterChange(
-                  "classTypeId",
-                  value === "all" ? undefined : value
-                )
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="全ての授業タイプ" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">全ての授業タイプ</SelectItem>
-                {classTypes.map((classType) => (
-                  <SelectItem
-                    key={classType.classTypeId}
-                    value={classType.classTypeId}
-                  >
-                    {classType.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Combobox<CompatibilityComboboxItem>
+              items={classTypeComboItems}
+              value={filters.classTypeId || ""}
+              onValueChange={(val) => onFilterChange("classTypeId", val || undefined)}
+              placeholder="授業タイプを選択"
+              searchPlaceholder="授業タイプを検索..."
+              emptyMessage="授業タイプが見つかりません"
+              disabled={false}
+              clearable
+              triggerClassName="h-9"
+            />
           </div>
 
-          {/* Booth filter */}
+          {/* Booth filter (simple searchable combobox) */}
           <div className="space-y-2 min-w-0">
             <label className="text-xs font-medium">ブース</label>
-            <Select
-              value={filters.boothId || "all"}
-              onValueChange={(value) =>
-                onFilterChange("boothId", value === "all" ? undefined : value)
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="全てのブース" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">全てのブース</SelectItem>
-                {booths.map((booth) => (
-                  <SelectItem key={booth.boothId} value={booth.boothId}>
-                    {booth.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Combobox<CompatibilityComboboxItem>
+              items={boothComboItems}
+              value={filters.boothId || ""}
+              onValueChange={(val) => onFilterChange("boothId", val || undefined)}
+              placeholder="ブースを選択"
+              searchPlaceholder="ブースを検索..."
+              emptyMessage="ブースが見つかりません"
+              disabled={false}
+              clearable
+              triggerClassName="h-9"
+            />
           </div>
         </div>
       </CollapsibleContent>

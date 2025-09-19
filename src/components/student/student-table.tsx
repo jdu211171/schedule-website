@@ -277,6 +277,7 @@ export function StudentTable() {
   const FILTERS_STORAGE_KEY = "student_filters";
   const COLUMN_VISIBILITY_STORAGE_KEY = "student_column_visibility";
   const PAGE_SIZE_STORAGE_KEY = "student_page_size";
+  const PAGE_INDEX_STORAGE_KEY = "student_page_index";
 
   // Initialize filters with localStorage values or defaults
   const [filters, setFilters] = React.useState<{
@@ -380,7 +381,16 @@ export function StudentTable() {
   }, [filters]);
 
   const debouncedName = useDebounce(filters.name, 300);
-  const [page, setPage] = React.useState(1);
+  const [page, setPage] = React.useState<number>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem(PAGE_INDEX_STORAGE_KEY);
+      if (saved) {
+        const n = Number.parseInt(saved, 10);
+        if (!Number.isNaN(n) && n >= 1) return n;
+      }
+    }
+    return 1;
+  });
   const [studentToEdit, setStudentToEdit] = React.useState<Student | null>(
     null
   );
@@ -417,6 +427,13 @@ export function StudentTable() {
       localStorage.setItem(PAGE_SIZE_STORAGE_KEY, String(pageSize));
     }
   }, [pageSize]);
+
+  // Persist current page index
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem(PAGE_INDEX_STORAGE_KEY, String(page));
+    }
+  }, [page]);
 
   // Load data
   const { data: studentTypesResponse } = useStudentTypes();

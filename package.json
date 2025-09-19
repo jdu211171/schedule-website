@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "watch": "tsc --noEmit --skipLibCheck --watch",
     "postinstall": "prisma generate",
     "check-errors": "tsc --noEmit --skipLibCheck",
@@ -56,7 +58,9 @@
     "@tanstack/react-table": "^8.21.3",
     "@vercel/analytics": "^1.5.0",
     "@vercel/speed-insights": "^1.2.0",
+    "@tabler/icons-react": "^3.34.1",
     "axios": "^1.9.0",
+    "recharts": "2.15.4",
     "bcryptjs": "^3.0.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -92,6 +96,9 @@
     "@eslint/eslintrc": "^3",
     "@faker-js/faker": "^9.6.0",
     "@tailwindcss/postcss": "^4",
+    "@testing-library/jest-dom": "^6.5.0",
+    "@testing-library/react": "^16.0.0",
+    "@testing-library/user-event": "^14.5.2",
     "@types/iconv-lite": "^0.0.1",
     "@types/node": "^24.1.0",
     "@types/react": "^19",
@@ -99,11 +106,13 @@
     "dotenv": "^17.2.1",
     "eslint": "^9",
     "eslint-config-next": "15.2.3",
+    "jsdom": "^24.0.0",
     "prettier": "^3.6.2",
     "prisma": "^6.8.2",
     "shadcn": "^2.4.0-canary.17",
     "tailwindcss": "^4",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "vitest": "^2.0.5"
   },
   "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
 }

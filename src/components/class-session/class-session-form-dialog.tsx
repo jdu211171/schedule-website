@@ -359,31 +359,78 @@ export function ClassSessionFormDialog({
         notes: formattedValues.notes,
       });
     } else {
-      // Create new session(s)
-      createClassSessionMutation.mutate({
-        teacherId: formattedValues.teacherId,
-        studentId: formattedValues.studentId,
-        subjectId: formattedValues.subjectId,
-        classTypeId: formattedValues.classTypeId,
-        boothId: formattedValues.boothId,
-        date: formattedValues.date,
-        startTime: formattedValues.startTime,
-        endTime: formattedValues.endTime,
-        duration: formattedValues.duration,
-        notes: formattedValues.notes,
-        isRecurring: formattedValues.isRecurring,
-        startDate: formattedValues.isRecurring
-          ? formattedValues.startDate
-          : undefined,
-        endDate: formattedValues.isRecurring
-          ? formattedValues.endDate
-          : undefined,
-        daysOfWeek: formattedValues.isRecurring
-          ? formattedValues.daysOfWeek
-          : undefined,
-        checkAvailability: true,
-        skipConflicts: false,
-        forceCreate: false,
+      // Create new session(s) — stealth blueprint path for regular recurring
+      const tryStealthBlueprint = async () => {
+        try {
+          if (formattedValues.isRecurring) {
+            // Attempt to create a series blueprint; server rejects for 特別授業
+            const res = await fetch('/api/class-series', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                teacherId: formattedValues.teacherId || null,
+                studentId: formattedValues.studentId || null,
+                subjectId: formattedValues.subjectId || null,
+                classTypeId: formattedValues.classTypeId || null,
+                boothId: formattedValues.boothId || null,
+                branchId: undefined, // server enforces selected branch
+                startDate: formattedValues.startDate || formattedValues.date,
+                endDate: formattedValues.endDate || null,
+                startTime: formattedValues.startTime,
+                endTime: formattedValues.endTime,
+                duration: formattedValues.duration ?? undefined,
+                daysOfWeek: formattedValues.daysOfWeek && formattedValues.daysOfWeek.length > 0
+                  ? formattedValues.daysOfWeek
+                  : [new Date(formattedValues.date).getDay()],
+                notes: formattedValues.notes ?? null,
+              })
+            });
+
+            if (res.ok) {
+              const { seriesId } = await res.json();
+              // Extend by one month (near-term visibility)
+              await fetch(`/api/class-series/${seriesId}/extend`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ months: 1 })
+              });
+              return true; // handled as series
+            }
+          }
+        } catch (_) {
+          // Ignore and fall back to legacy path
+        }
+        return false;
+      };
+
+      // Try blueprint flow first; otherwise fall back to legacy create
+      tryStealthBlueprint().then((handled) => {
+        if (handled) return;
+        createClassSessionMutation.mutate({
+          teacherId: formattedValues.teacherId,
+          studentId: formattedValues.studentId,
+          subjectId: formattedValues.subjectId,
+          classTypeId: formattedValues.classTypeId,
+          boothId: formattedValues.boothId,
+          date: formattedValues.date,
+          startTime: formattedValues.startTime,
+          endTime: formattedValues.endTime,
+          duration: formattedValues.duration,
+          notes: formattedValues.notes,
+          isRecurring: formattedValues.isRecurring,
+          startDate: formattedValues.isRecurring
+            ? formattedValues.startDate
+            : undefined,
+          endDate: formattedValues.isRecurring
+            ? formattedValues.endDate
+            : undefined,
+          daysOfWeek: formattedValues.isRecurring
+            ? formattedValues.daysOfWeek
+            : undefined,
+          checkAvailability: true,
+          skipConflicts: false,
+          forceCreate: false,
+        });
       });
     }
 

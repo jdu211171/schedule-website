@@ -51,7 +51,6 @@ export const classSessionUpdateSchema = z.object({
   notes: z.string().max(255).optional().nullable(),
   // Cancellation updates
   isCancelled: z.boolean().optional(),
-  cancellationReason: z.enum(["SICK", "PERMANENTLY_LEFT", "ADMIN_CANCELLED"]).optional(),
 });
 
 // Schema for updating a recurring class session series

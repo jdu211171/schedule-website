@@ -25,6 +25,7 @@ import {
   renderCompatibilityComboboxItem,
 } from "../compatibility-combobox-utils";
 import { X } from 'lucide-react';
+import { SPECIAL_CLASS_COLOR_CLASSES } from '@/lib/special-class-constants';
 import {
   getDateKey,
 } from '../date';
@@ -57,6 +58,7 @@ interface ApiErrorResponse {
 
 const VIEW_START_DATE_KEY = "admin_calendar_view_start_date";
 const SELECTED_DAYS_KEY = "admin_calendar_selected_days_v2";
+const SHOW_CANCELLED_KEY = "admin_calendar_show_cancelled";
 
 interface AdminCalendarDayProps {
   selectedBranchId?: string;
@@ -94,8 +96,9 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
   const today = useMemo(() => startOfDay(new Date()), []);
   const currentWeekStart = useMemo(() => startOfWeek(today, { weekStartsOn: 1 }), [today]);
 
-  const [viewStartDate, setViewStartDate] = useState<Date>(() => currentWeekStart);
-  const [selectedDays, setSelectedDays] = useState<Date[]>([currentWeekStart]);
+  // Default focus on 'today' instead of week start
+  const [viewStartDate, setViewStartDate] = useState<Date>(() => today);
+  const [selectedDays, setSelectedDays] = useState<Date[]>([today]);
   const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
@@ -104,17 +107,18 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
       if (saved) {
         const date = new Date(saved);
         if (!isNaN(date.getTime())) {
-          // Use saved start only if it's in the same week as today; otherwise reset to current week
+          // If saved date is in the same week as today, use the saved day itself.
+          // Otherwise, focus today.
           if (isSameWeek(date, today, { weekStartsOn: 1 })) {
-            setViewStartDate(startOfWeek(startOfDay(date), { weekStartsOn: 1 }));
+            setViewStartDate(startOfDay(date));
           } else {
-            setViewStartDate(currentWeekStart);
+            setViewStartDate(today);
           }
         } else {
-          setViewStartDate(currentWeekStart);
+          setViewStartDate(today);
         }
       } else {
-        setViewStartDate(currentWeekStart);
+        setViewStartDate(today);
       }
 
       const savedDaysJson = localStorage.getItem(SELECTED_DAYS_KEY);
@@ -126,8 +130,8 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
               .map((dateStr: string) => new Date(dateStr))
               .filter((date: Date) => !isNaN(date.getTime()));
 
-            // Only restore if at least one date is in the same week as the viewStartDate (after it's set above)
-            const base = startOfWeek(viewStartDate, { weekStartsOn: 1 });
+            // Only restore if at least one date is in the same week as the current viewStartDate
+            const base = viewStartDate;
             const inSameWeek = parsedDates.filter(date => isSameWeek(date, base, { weekStartsOn: 1 }));
 
             if (inSameWeek.length > 0) {
@@ -136,14 +140,14 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
               setSelectedDays([base]);
             }
           } else {
-            setSelectedDays([startOfWeek(viewStartDate, { weekStartsOn: 1 })]);
+            setSelectedDays([viewStartDate]);
           }
         } catch (error) {
           console.error('Error parsing saved selected days:', error);
-          setSelectedDays([startOfWeek(viewStartDate, { weekStartsOn: 1 })]);
+          setSelectedDays([viewStartDate]);
         }
       } else {
-        setSelectedDays([startOfWeek(viewStartDate, { weekStartsOn: 1 })]);
+        setSelectedDays([viewStartDate]);
       }
 
       setIsInitialized(true);
@@ -160,7 +164,11 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
 
   const [globalAvailabilityMode, setGlobalAvailabilityMode] = useState<AvailabilityMode>('with-special');
   const [dayAvailabilitySettings, setDayAvailabilitySettings] = useState<Record<string, AvailabilityMode>>({});
-  const [showCancelled, setShowCancelled] = useState<boolean>(false);
+  const [showCancelled, setShowCancelled] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    const saved = localStorage.getItem(SHOW_CANCELLED_KEY);
+    return saved === null ? false : saved === 'true';
+  });
 
   const [dayFilters, setDayFilters] = useState<Record<string, DayFilters>>({});
   const [showCreateDialog, setShowCreateDialog] = useState<boolean>(false);
@@ -190,16 +198,7 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
   // Persist showCancelled preference
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('admin_calendar_show_cancelled');
-      if (saved !== null) {
-        setShowCancelled(saved === 'true');
-      }
-    }
-  }, []);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('admin_calendar_show_cancelled', String(showCancelled));
+      localStorage.setItem(SHOW_CANCELLED_KEY, String(showCancelled));
     }
   }, [showCancelled]);
 
@@ -421,13 +420,16 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
       if (lessonData.forceCreate) {
         requestBody.forceCreate = true;
       }
+      // NEW: Respect caller preference to include or skip availability-based checks
+      if (typeof lessonData.checkAvailability === 'boolean') {
+        requestBody.checkAvailability = lessonData.checkAvailability;
+      }
 
       // ВАЖНО: Добавляем sessionActions!!!
       if (lessonData.sessionActions && lessonData.sessionActions.length > 0) {
         requestBody.sessionActions = lessonData.sessionActions;
       }
 
-      console.log("Final request body:", JSON.stringify(requestBody, null, 2));
 
       const response = await fetch('/api/class-sessions', {
         method: 'POST',
@@ -495,7 +497,6 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
         }
       }
 
-      console.log('Lesson created successfully');
 
       // Show success toast
       toast.success('授業が正常に作成されました');
@@ -878,26 +879,7 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
       </div>
 
       <div className="flex flex-col sm:flex-row justify-between items-center space-y-2 sm:space-y-0">
-        <div className="flex items-center gap-6">
-          <h2 className="text-xl font-semibold text-foreground dark:text-foreground"></h2>
-
-          <div className="flex items-center gap-4">
-            <div className="text-xs text-muted-foreground">授業タイプ表示:</div>
-            <div className="flex items-center gap-3 text-xs">
-              <div className="flex items-center gap-1">
-                <div className="w-3 h-3 rounded-sm bg-red-100 border border-red-300 dark:bg-red-900/70 dark:border-red-700"></div>
-                <span className="text-red-700 dark:text-red-300">特別希望</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <div className="w-3 h-3 rounded-sm bg-indigo-100 border border-indigo-300 dark:bg-indigo-900/70 dark:border-indigo-700"></div>
-                <span className="text-indigo-700 dark:text-indigo-300">通常希望</span>
-              </div>
-            </div>
-            <div className="text-xs text-muted-foreground">
-              特別希望は通常希望より優先されます
-            </div>
-          </div>
-        </div>
+        <div className="flex items-center gap-6"/>
 
         <DaySelector
           startDate={viewStartDate}

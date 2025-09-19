@@ -7,10 +7,13 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { ExtendedClassSessionWithRelations } from '@/hooks/useClassSessionQuery';
 import { useClassSessionDelete, useClassSessionUpdate, useClassSessionSeriesUpdate, useClassSessionSeriesDelete, useClassSessionCancel } from '@/hooks/useClassSessionMutation';
+import { useUpdateClassSeries } from '@/hooks/use-class-series';
 import { SearchableSelect, SearchableSelectItem } from '../searchable-select';
 import { TimeInput } from '@/components/ui/time-input';
 import { ConfirmDeleteDialog } from '../confirm-delete-dialog';
 import { useAvailability } from './availability-layer';
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { fetcher } from '@/lib/fetcher';
 
 interface Booth {
@@ -157,6 +160,7 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
   const [editMode, setEditMode] = useState<EditMode>('single');
   const [deleteMode, setDeleteMode] = useState<DeleteMode>('single');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const queryClient = useQueryClient();
 
   // Состояния для типов уроков
   const [classTypes, setClassTypes] = useState<ClassType[]>([]);
@@ -169,6 +173,7 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
   const updateClassMutation = useClassSessionUpdate();
   const updateSeriesMutation = useClassSessionSeriesUpdate();
   const cancelMutation = useClassSessionCancel();
+  const updateSeriesMeta = lesson.seriesId ? useUpdateClassSeries(lesson.seriesId) : null;
 
   const isRecurringLesson = lesson.seriesId !== null;
 
@@ -360,8 +365,30 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
         seriesToSave.classTypeId = finalClassTypeId;
       }
 
+      // 1) Update future sessions from this instance forward
       updateSeriesMutation.mutate(seriesToSave, {
-        onSuccess: () => {
+        onSuccess: async () => {
+          // 2) Update series metadata so future generation stays in sync (skip propagation)
+          try {
+            if (updateSeriesMeta) {
+              const metaPatch: any = {};
+              if (seriesToSave.teacherId !== undefined) metaPatch.teacherId = seriesToSave.teacherId;
+              if (seriesToSave.studentId !== undefined) metaPatch.studentId = seriesToSave.studentId;
+              if (seriesToSave.subjectId !== undefined) metaPatch.subjectId = seriesToSave.subjectId;
+              if (seriesToSave.classTypeId !== undefined) metaPatch.classTypeId = seriesToSave.classTypeId;
+              if (seriesToSave.boothId !== undefined) metaPatch.boothId = seriesToSave.boothId || null;
+              if (seriesToSave.startTime) metaPatch.startTime = seriesToSave.startTime;
+              if (seriesToSave.endTime) metaPatch.endTime = seriesToSave.endTime;
+              if (seriesToSave.notes !== undefined) metaPatch.notes = seriesToSave.notes || null;
+              // Avoid re-propagation because we already updated sessions with a pivot
+              metaPatch.skipPropagation = true;
+              metaPatch.propagateFromClassId = editedLesson.classId;
+              await updateSeriesMeta.mutateAsync(metaPatch);
+            }
+          } catch (e) {
+            // Non-fatal: sessions already updated; log for diagnostics
+            console.error('シリーズメタデータの更新に失敗しました', e);
+          }
           onSave(editedLesson.classId, true);
           onModeChange('view');
         },
@@ -521,6 +548,16 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
+            {lesson.isCancelled && (
+              <div className="rounded-md border border-slate-300 bg-slate-100 text-slate-800 dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-100 p-3">
+                <div className="text-sm font-semibold">この授業はキャンセルされています</div>
+                <div className="text-xs mt-1 opacity-90">
+                  取消日: {lesson.cancelledAt ? format(new Date(lesson.cancelledAt), 'yyyy/MM/dd', { locale: ja }) : '-'}
+                  {" / "}
+                  取消者: {lesson.cancelledByName || '不明'}
+                </div>
+              </div>
+            )}
             {mode === 'edit' && isRecurringLesson && (
               <div className="p-3 border rounded-lg bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
             <RadioGroup
@@ -804,7 +841,8 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
               <>
                 <div />
                 <div className="flex space-x-2">
-                   <Button
+                  {!lesson.isCancelled && (
+                    <Button
                       variant="destructive"
                       className="transition-all duration-200 hover:brightness-110 active:scale-[0.98] focus:ring-2 focus:ring-destructive/30 focus:outline-none"
                       onClick={() => {
@@ -819,7 +857,36 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
                     >
                       キャンセル
                     </Button>
-                   <Button
+                  )}
+                  {lesson.isCancelled && (
+                    <Button
+                      variant="secondary"
+                      className="transition-all duration-200 hover:brightness-110 active:scale-[0.98] focus:ring-2 focus:ring-secondary/30 focus:outline-none"
+                      onClick={async () => {
+                        try {
+                          const res = await fetch('/api/class-sessions/reactivate', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ classIds: [lesson.classId] }),
+                          });
+                          const data = await res.json().catch(() => ({}));
+                          if (!res.ok) {
+                            toast.error(data?.error || '再開に失敗しました');
+                          } else {
+                            toast.success(data?.message || '再開しました');
+                            onOpenChange(false);
+                          }
+                        } catch (e: any) {
+                          toast.error('再開に失敗しました');
+                        } finally {
+                          queryClient.invalidateQueries({ queryKey: ['classSessions'] });
+                        }
+                      }}
+                    >
+                      再開
+                    </Button>
+                  )}
+                  <Button
                       variant="outline"
                       className="transition-all duration-200 hover:bg-accent hover:text-accent-foreground active:scale-[0.98] focus:ring-2 focus:ring-primary/30 focus:outline-none"
                       onClick={() => onOpenChange(false)}

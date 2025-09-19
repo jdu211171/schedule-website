@@ -5,6 +5,8 @@ import { prisma } from "@/lib/prisma";
 import { classSessionSeriesUpdateSchema } from "@/schemas/class-session.schema";
 import { ClassSession } from "@prisma/client";
 import { parse, format, parseISO } from "date-fns";
+import { applySpecialClassColor } from "@/lib/special-class-server";
+import { CANCELLED_CLASS_COLOR_HEX } from "@/lib/cancelled-class-constants";
 
 type FormattedClassSession = {
   classId: string;
@@ -28,6 +30,9 @@ type FormattedClassSession = {
   endTime: string;
   duration: number | null;
   notes: string | null;
+  status: ClassSession["status"];
+  isCancelled: boolean;
+  classTypeColor?: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -62,7 +67,7 @@ const formatClassSession = (
   const endMinute = String(endUTC.getUTCMinutes()).padStart(2, "0");
   const formattedEndTime = `${endHour}:${endMinute}`;
 
-  return {
+  const out: FormattedClassSession = {
     classId: classSession.classId,
     seriesId: classSession.seriesId,
     teacherId: classSession.teacherId,
@@ -75,6 +80,7 @@ const formatClassSession = (
     subjectName: classSession.subject?.name || null,
     classTypeId: classSession.classTypeId,
     classTypeName: classSession.classType?.name || null,
+    classTypeColor: (classSession as any).classType?.color ?? null,
     boothId: classSession.boothId,
     boothName: classSession.booth?.name || null,
     branchId: classSession.branchId,
@@ -84,9 +90,15 @@ const formatClassSession = (
     endTime: formattedEndTime,
     duration: classSession.duration,
     notes: classSession.notes,
+    status: classSession.status,
+    isCancelled: (classSession as any).isCancelled ?? false,
     createdAt: format(classSession.createdAt, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"),
     updatedAt: format(classSession.updatedAt, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"),
   };
+  if ((classSession as any).isCancelled) {
+    out.classTypeColor = CANCELLED_CLASS_COLOR_HEX;
+  }
+  return out;
 };
 
 // Helper function to create a DateTime from date and time string
@@ -173,6 +185,7 @@ export const GET = withBranchAccess(
         classType: {
           select: {
             name: true,
+            color: true,
           },
         },
         booth: {
@@ -446,6 +459,7 @@ export const PATCH = withBranchAccess(
               classType: {
                 select: {
                   name: true,
+                  color: true,
                 },
               },
               booth: {
@@ -469,6 +483,7 @@ export const PATCH = withBranchAccess(
 
       // Format response
       const formattedSessions = updatedSessions.map(formatClassSession);
+      // Do not override special class colors
 
       return NextResponse.json({
         data: formattedSessions,
@@ -622,18 +637,31 @@ export const DELETE = withBranchAccess(
             },
           },
         });
+
+        // Finally, shorten the series blueprint so no future sessions regenerate
+        try {
+          // Fetch current lastGeneratedThrough to avoid regressions
+          const series = await tx.classSeries.findUnique({ where: { seriesId }, select: { lastGeneratedThrough: true } });
+          if (series) {
+            // Set endDate to pivotDate
+            const updates: any = { endDate: pivotDate };
+            // Ensure lastGeneratedThrough is at least pivotDate to prevent re-creating the deleted pivot
+            const cur = series.lastGeneratedThrough ? new Date(series.lastGeneratedThrough) : null;
+            if (!cur || cur.getTime() < pivotDate.getTime()) {
+              updates.lastGeneratedThrough = pivotDate;
+            }
+            await tx.classSeries.update({ where: { seriesId }, data: updates });
+          }
+        } catch (_) {
+          // Ignore; deleting sessions succeeded even if blueprint is missing
+        }
       });
 
       return NextResponse.json(
         {
           data: [],
-          message: `${futureSessionsCount}件の未来の授業を削除しました`,
-          pagination: {
-            total: 0,
-            page: 0,
-            limit: 0,
-            pages: 0,
-          },
+          message: `${futureSessionsCount}件の未来の授業を削除し、シリーズの終了日を更新しました`,
+          pagination: { total: 0, page: 0, limit: 0, pages: 0 },
         },
         { status: 200 }
       );

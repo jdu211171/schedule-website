@@ -107,6 +107,7 @@ export const POST = withBranchAccess(
       const formattedArchives = archives.map((archive: Archive) => ({
         archiveId: archive.archiveId,
         classId: archive.classId,
+        seriesId: (archive as any).seriesId ?? null,
         teacherName: archive.teacherName,
         studentName: archive.studentName,
         subjectName: archive.subjectName,

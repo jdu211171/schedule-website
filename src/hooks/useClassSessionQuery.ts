@@ -32,12 +32,16 @@ export interface ApiClassSessionFields {
   classTypeName?: string;
   // Color key or HEX for the class type (from API)
   classTypeColor?: string | null;
+  status?: string | null;
   boothName?: string;
   branchName?: string | null;
   seriesId?: string | null;
   duration?: number;
   isCancelled?: boolean;
-  cancellationReason?: string | null;
+  // Cancellation metadata (single fetch and list may provide these)
+  cancelledAt?: string | null;
+  cancelledByUserId?: string | null;
+  cancelledByName?: string | null;
 }
 
 export type ExtendedClassSessionWithRelations = ClassSessionWithRelations & ApiClassSessionFields;
@@ -55,6 +59,7 @@ export type UseClassSessionsParams = {
   endDate?: string;
   seriesId?: string;
   date?: string;
+  includeCancelled?: boolean;
 };
 
 export type ClassSessionsResponse = {
@@ -128,6 +133,10 @@ export function useMultipleDaysClassSessions(
         const params = new URLSearchParams({
           startDate: dateStr,
           endDate: dateStr,
+          // Ensure we fetch enough rows for a full day view
+          // Default API limit is 10; that can hide sessions.
+          limit: '500',
+          page: '1',
         });
 
         const dateFilters = filters[dateStr];

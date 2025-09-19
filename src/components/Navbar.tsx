@@ -373,11 +373,14 @@ export default function Navbar() {
     navItems = studentNavItems;
   }
 
-  // Hide アーカイブ and 設定 for STAFF users on dashboard routes
+  // Customize navigation for STAFF users on dashboard routes
   if (!isTeacherRoute && !isStudentRoute && session?.user?.role === "STAFF") {
-    navItems = navItems.filter(
-      (item) => item.href !== "/dashboard/archives" && item.href !== "/dashboard/settings"
-    );
+    navItems = navItems.filter((item) => item.href !== "/dashboard/archives" && item.href !== "/dashboard/settings");
+    // Add branch settings for conflict config
+    navItems = [
+      ...navItems,
+      { title: "ブランチ設定", href: "/dashboard/branch-settings", icon: Settings },
+    ];
   }
 
   let homeLink = "/dashboard/schedules";

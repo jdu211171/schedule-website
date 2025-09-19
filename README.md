@@ -53,3 +53,7 @@
 # Notes
 - **Dependencies:** Only add new ones if justified, ensuring compatibility with Next.js 15.2.3, React 19, and TypeScript 5.
 - **Tools:** Leverage ESLint, TypeScript, and Tailwind CSS as configured in `package.json`.
+
+## Feature Docs
+
+- Class Series Metadata (blueprint, APIs, UI): see `docs/class-series-metadata.md`.

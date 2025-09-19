@@ -42,6 +42,7 @@ BEGIN
         -- Insert old class sessions into the archives table with all new fields
         INSERT INTO archives (
             class_id,
+            series_id,
             teacher_name,
             student_name,
             subject_name,
@@ -58,6 +59,7 @@ BEGIN
         )
         SELECT
             cs.class_id,
+            cs.series_id,
             t.name AS teacher_name,
             s.name AS student_name,
             sub.name AS subject_name,

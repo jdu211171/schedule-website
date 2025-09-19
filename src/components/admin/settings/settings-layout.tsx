@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { LineSettings } from "./line-settings";
 import { ArchiveSettings } from "./archive-settings";
+import { SchedulingConflictSettings } from "./scheduling-conflict-settings";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, MessageSquare, Archive } from "lucide-react";
@@ -17,6 +18,18 @@ export function SettingsLayout() {
         </p>
       </div>
       
+      <Card>
+        <CardHeader>
+          <CardTitle>スケジューリング競合設定（グローバル）</CardTitle>
+          <CardDescription>
+            ソフト競合をCONFLICTEDにするか、許容するかを制御
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <SchedulingConflictSettings />
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>LINE設定</CardTitle>

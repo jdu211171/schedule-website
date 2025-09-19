@@ -5,6 +5,9 @@ import { prisma } from "@/lib/prisma";
 import { classSessionUpdateSchema } from "@/schemas/class-session.schema";
 import { ClassSession } from "@prisma/client";
 import { parse, format, parseISO } from "date-fns";
+import { SPECIAL_CLASS_COLOR_HEX } from "@/lib/special-class-constants";
+import { CANCELLED_CLASS_COLOR_HEX } from "@/lib/cancelled-class-constants";
+import { isSpecialClassType } from "@/lib/special-class-server";
 
 type FormattedClassSession = {
   classId: string;
@@ -19,6 +22,7 @@ type FormattedClassSession = {
   subjectName: string | null;
   classTypeId: string | null;
   classTypeName: string | null;
+  status: ClassSession["status"];
   boothId: string | null;
   boothName: string | null;
   branchId: string | null;
@@ -28,6 +32,12 @@ type FormattedClassSession = {
   endTime: string;
   duration: number | null;
   notes: string | null;
+  classTypeColor?: string | null;
+  // Cancellation metadata
+  isCancelled?: boolean;
+  cancelledAt?: string | null;
+  cancelledByUserId?: string | null;
+  cancelledByName?: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -41,6 +51,7 @@ const formatClassSession = (
     classType?: { name: string } | null;
     booth?: { name: string } | null;
     branch?: { name: string } | null;
+    cancelledBy?: { id: string; name: string | null; username: string | null; email: string | null } | null;
   }
 ): FormattedClassSession => {
   // Get UTC values from the date
@@ -75,6 +86,8 @@ const formatClassSession = (
     subjectName: classSession.subject?.name || null,
     classTypeId: classSession.classTypeId,
     classTypeName: classSession.classType?.name || null,
+    classTypeColor: (classSession as any).classType?.color ?? null,
+    status: classSession.status,
     boothId: classSession.boothId,
     boothName: classSession.booth?.name || null,
     branchId: classSession.branchId,
@@ -84,6 +97,16 @@ const formatClassSession = (
     endTime: formattedEndTime,
     duration: classSession.duration,
     notes: classSession.notes,
+    isCancelled: (classSession as any).isCancelled ?? false,
+    cancelledAt: (classSession as any).cancelledAt
+      ? format((classSession as any).cancelledAt, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
+      : null,
+    cancelledByUserId: (classSession as any).cancelledByUserId ?? null,
+    cancelledByName:
+      classSession.cancelledBy?.name ||
+      classSession.cancelledBy?.username ||
+      classSession.cancelledBy?.email ||
+      null,
     createdAt: format(classSession.createdAt, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"),
     updatedAt: format(classSession.updatedAt, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"),
   };
@@ -162,23 +185,27 @@ export const GET = withBranchAccess(
             name: true,
           },
         },
-        classType: {
-          select: {
-            name: true,
+          classType: {
+            select: {
+              name: true,
+              color: true,
+            },
           },
-        },
         booth: {
           select: {
             name: true,
           },
         },
-        branch: {
-          select: {
-            name: true,
-          },
-        },
+    branch: {
+      select: {
+        name: true,
       },
-    });
+    },
+    cancelledBy: {
+      select: { id: true, name: true, username: true, email: true },
+    },
+  },
+});
 
     if (!classSession) {
       return NextResponse.json(
@@ -201,6 +228,10 @@ export const GET = withBranchAccess(
 
     // Format response
     const formattedClassSession = formatClassSession(classSession);
+    // Do not override class type color for special classes; use stored color
+    if ((classSession as any).isCancelled) {
+      formattedClassSession.classTypeColor = CANCELLED_CLASS_COLOR_HEX;
+    }
 
     return NextResponse.json({
       data: formattedClassSession,
@@ -208,7 +239,7 @@ export const GET = withBranchAccess(
   }
 );
 
-// PATCH - Update a class session
+  // PATCH - Update a class session
 export const PATCH = withBranchAccess(
   ["ADMIN", "STAFF"],
   async (request: NextRequest, session, branchId) => {
@@ -268,7 +299,6 @@ export const PATCH = withBranchAccess(
         duration,
         notes,
         isCancelled,
-        cancellationReason,
       } = result.data;
 
       // Prepare update data
@@ -284,7 +314,6 @@ export const PATCH = withBranchAccess(
         endTime?: Date;
         duration?: number | null;
         isCancelled?: boolean;
-        cancellationReason?: 'SICK' | 'PERMANENTLY_LEFT' | 'ADMIN_CANCELLED' | null;
         cancelledAt?: Date | null;
         cancelledByUserId?: string | null;
       } = {
@@ -300,12 +329,10 @@ export const PATCH = withBranchAccess(
       if (typeof isCancelled === 'boolean') {
         updateData.isCancelled = isCancelled;
         if (isCancelled) {
-          updateData.cancellationReason = cancellationReason ?? null;
           updateData.cancelledAt = new Date();
           updateData.cancelledByUserId = session.user?.id ?? null;
         } else {
           // Clearing cancellation
-          updateData.cancellationReason = null;
           updateData.cancelledAt = null;
           updateData.cancelledByUserId = null;
         }
@@ -441,7 +468,7 @@ export const PATCH = withBranchAccess(
     }
 
     // Update class session
-    const updatedClassSession = await prisma.classSession.update({
+      let updatedClassSession = await prisma.classSession.update({
         where: { classId },
         data: updateData,
         include: {
@@ -469,6 +496,7 @@ export const PATCH = withBranchAccess(
           classType: {
             select: {
               name: true,
+              color: true,
             },
           },
           booth: {
@@ -481,11 +509,107 @@ export const PATCH = withBranchAccess(
               name: true,
             },
           },
+          cancelledBy: {
+            select: { id: true, name: true, username: true, email: true },
+          },
         },
       });
 
+      // After update, recompute status: if no hard conflicts and no policy-marked soft conflicts, set CONFIRMED
+      try {
+        const date = updatedClassSession.date;
+        const start = updatedClassSession.startTime;
+        const end = updatedClassSession.endTime;
+        const reasons: Array<{ type: string }> = [];
+        // Hard overlaps teacher/student/booth (exclude self)
+        const reqStartM = start.getUTCHours() * 60 + start.getUTCMinutes();
+        const reqEndM = end.getUTCHours() * 60 + end.getUTCMinutes();
+        if (updatedClassSession.teacherId || updatedClassSession.studentId || updatedClassSession.boothId) {
+          const overlaps = await prisma.classSession.findMany({
+            where: {
+              isCancelled: false,
+              date,
+              classId: { not: classId },
+              OR: [
+                updatedClassSession.teacherId ? { teacherId: updatedClassSession.teacherId } : undefined,
+                updatedClassSession.studentId ? { studentId: updatedClassSession.studentId } : undefined,
+                updatedClassSession.boothId ? { boothId: updatedClassSession.boothId } : undefined,
+              ].filter(Boolean) as any,
+            },
+            select: { startTime: true, endTime: true, teacherId: true, studentId: true, boothId: true },
+          });
+          for (const s of overlaps) {
+            const sStartM = s.startTime.getUTCHours() * 60 + s.startTime.getUTCMinutes();
+            const sEndM = s.endTime.getUTCHours() * 60 + s.endTime.getUTCMinutes();
+            if (!(sStartM < reqEndM && sEndM > reqStartM)) continue;
+            if (updatedClassSession.teacherId && s.teacherId === updatedClassSession.teacherId) reasons.push({ type: 'TEACHER_CONFLICT' });
+            if (updatedClassSession.studentId && s.studentId === updatedClassSession.studentId) reasons.push({ type: 'STUDENT_CONFLICT' });
+            if (updatedClassSession.boothId && s.boothId === updatedClassSession.boothId) reasons.push({ type: 'BOOTH_CONFLICT' });
+          }
+        }
+
+        // Availability-derived soft reasons (policy-marked) – consult centralized policy
+        const { getEffectiveSchedulingConfig, toPolicyShape } = await import("@/lib/scheduling-config");
+        const eff = await getEffectiveSchedulingConfig(updatedClassSession.branchId || branchId);
+        const policy = toPolicyShape(eff);
+        const allowOutside = policy.allowOutsideAvailability || { teacher: false, student: false };
+        if (updatedClassSession.teacherId && updatedClassSession.studentId) {
+          try {
+            const [teacher, student] = await Promise.all([
+              prisma.teacher.findUnique({ where: { teacherId: updatedClassSession.teacherId }, select: { userId: true } }),
+              prisma.student.findUnique({ where: { studentId: updatedClassSession.studentId }, select: { userId: true } }),
+            ]);
+            if (teacher?.userId && student?.userId) {
+              const { getDetailedSharedAvailability } = await import("@/lib/enhanced-availability");
+              const avail = await getDetailedSharedAvailability(teacher.userId, student.userId, date, start, end, { skipVacationCheck: true });
+              if (!avail.available) {
+                let t: string = 'NO_SHARED_AVAILABILITY';
+                if (!avail.user1.available) t = avail.user1.conflictType === 'UNAVAILABLE' ? 'TEACHER_UNAVAILABLE' : 'TEACHER_WRONG_TIME';
+                else if (!avail.user2.available) t = avail.user2.conflictType === 'UNAVAILABLE' ? 'STUDENT_UNAVAILABLE' : 'STUDENT_WRONG_TIME';
+                // Respect allowOutsideAvailability (suppress when allowed)
+                const isTeacherType = t === 'TEACHER_UNAVAILABLE' || t === 'TEACHER_WRONG_TIME';
+                const isStudentType = t === 'STUDENT_UNAVAILABLE' || t === 'STUDENT_WRONG_TIME';
+                if (!((isTeacherType && allowOutside.teacher) || (isStudentType && allowOutside.student))) {
+                  reasons.push({ type: t });
+                }
+              }
+            }
+          } catch (_) {}
+        }
+
+        // Determine status
+        const { hasHardConflict, isMarkedByPolicy } = await import("@/lib/conflict-types");
+        const nextStatus = hasHardConflict(reasons)
+          ? 'CONFLICTED'
+          : isMarkedByPolicy(reasons as any, policy.markAsConflicted)
+          ? 'CONFLICTED'
+          : 'CONFIRMED';
+        if (nextStatus !== updatedClassSession.status) {
+          const reread = await prisma.classSession.update({
+            where: { classId },
+            data: { status: nextStatus },
+            include: {
+              teacher: { select: { name: true } },
+              student: { select: { name: true, gradeYear: true, studentType: { select: { name: true } } } },
+              subject: { select: { name: true } },
+              classType: { select: { name: true, color: true } },
+              booth: { select: { name: true } },
+              branch: { select: { name: true } },
+              cancelledBy: { select: { id: true, name: true, username: true, email: true } },
+            }
+          });
+          updatedClassSession = reread;
+        }
+      } catch (_) {
+        // If status recompute fails, proceed without blocking the update
+      }
+
       // Format response
       const formattedClassSession = formatClassSession(updatedClassSession);
+      // Do not override class type color for special classes; use stored color
+      if ((updatedClassSession as any).isCancelled) {
+        formattedClassSession.classTypeColor = CANCELLED_CLASS_COLOR_HEX;
+      }
 
       return NextResponse.json({
         data: formattedClassSession,

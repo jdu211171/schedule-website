@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withBranchAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-// DELETE - Delete class sessions that conflict with a specific vacation
+// DELETE - Mark class sessions as cancelled for a specific vacation period
 export const DELETE = withBranchAccess(
   ["ADMIN", "STAFF"],
   async (request: NextRequest, session, branchId) => {
@@ -64,13 +64,21 @@ export const DELETE = withBranchAccess(
 
       const classIds = sessions.map((s) => s.classId);
 
-      // Delete enrollments first to satisfy FK constraints, then delete class sessions
-      const [, deleteSessionsResult] = await prisma.$transaction([
-        prisma.studentClassEnrollment.deleteMany({ where: { classId: { in: classIds } } }),
-        prisma.classSession.deleteMany({ where: { classId: { in: classIds } } }),
-      ]);
+      // Mark sessions as cancelled instead of deleting
+      const now = new Date();
+      const updateResult = await prisma.classSession.updateMany({
+        where: {
+          classId: { in: classIds },
+          isCancelled: false,
+        },
+        data: {
+          isCancelled: true,
+          cancelledAt: now,
+          cancelledByUserId: session.user?.id ?? null,
+        },
+      });
 
-      const count = deleteSessionsResult.count;
+      const count = updateResult.count;
 
       return NextResponse.json(
         { deleted: count, message: `${count}件の授業をキャンセルしました` },

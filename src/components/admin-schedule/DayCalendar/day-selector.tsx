@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useMemo, useState } from "react"
-import { format, addDays, isSameDay, startOfDay, addMonths, startOfWeek, isSameWeek } from "date-fns"
+import { format, addDays, isSameDay, startOfDay, startOfWeek, isSameWeek } from "date-fns"
 import { ja } from "date-fns/locale"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -39,9 +39,7 @@ export const DaySelector: React.FC<DaySelectorProps> = ({
 
   const currentWeekStart = useMemo(() => startOfWeek(today, { weekStartsOn: 1 }), [today])
 
-  const maxDate = useMemo(() => {
-    return addMonths(today, 3)
-  }, [today])
+  // Allow selecting any date in history or future without restriction
 
   const displayDays = useMemo(() => {
     const days: Date[] = []
@@ -109,7 +107,6 @@ export const DaySelector: React.FC<DaySelectorProps> = ({
                   setCalendarOpen(false)
                 }
               }}
-              disabled={(date) => date < today || date > maxDate}
               initialFocus
               locale={ja}
               numberOfMonths={2}

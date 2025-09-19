@@ -7,7 +7,7 @@ const batchCancelSchema = z.object({
   classIds: z.array(z.string()).optional(),
   seriesId: z.string().optional(),
   fromDate: z.string().optional(), // YYYY-MM-DD, used with seriesId
-  reason: z.enum(['SICK', 'PERMANENTLY_LEFT', 'ADMIN_CANCELLED']).optional(),
+  reason: z.string().optional(), // free-form; stored in notes by UI if needed
 });
 
 export const POST = withBranchAccess(['ADMIN', 'STAFF'], async (req: NextRequest, session, branchId) => {
@@ -62,7 +62,6 @@ export const POST = withBranchAccess(['ADMIN', 'STAFF'], async (req: NextRequest
       },
       data: {
         isCancelled: true,
-        cancellationReason: reason ?? 'ADMIN_CANCELLED',
         cancelledAt: now,
         cancelledByUserId: userId,
       },
@@ -79,4 +78,3 @@ export const POST = withBranchAccess(['ADMIN', 'STAFF'], async (req: NextRequest
     return NextResponse.json({ error: '授業のキャンセルに失敗しました' }, { status: 500 });
   }
 });
-
