@@ -1,0 +1,5 @@
+- [x] カナ列にソートUIを追加（DataTableColumnHeader）
+- [x] スキーマとフックのsortByにkanaNameを追加
+- [x] /api/studentsでkanaNameのorderByを実装
+- [x] テーブルからsortBy/sortOrderを渡す
+- [x] bun run check-errorsで型チェック

@@ -1,0 +1,6 @@
+- [x] Add `isCancelled` to class-session filter schema
+- [x] Update /api/class-sessions GET to honor `isCancelled`
+- [x] Extend useClassSessions params to include `isCancelled`
+- [x] Update list view filters state and reset
+- [x] Add "キャンセル" option to 授業タイプ combobox and map to `isCancelled`
+- [x] Type-check (`bun run check-errors`)

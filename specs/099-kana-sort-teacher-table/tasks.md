@@ -1,0 +1,5 @@
+- [x] Teacher カナ列にDataTableColumnHeaderとenableSorting
+- [x] useTeachersにsortBy/sortOrderを追加
+- [x] teacherFilterSchemaにkanaName sortingを追加
+- [x] /api/teachersでkanaNameのorderByを実装
+- [x] 型チェック（bun run check-errors）

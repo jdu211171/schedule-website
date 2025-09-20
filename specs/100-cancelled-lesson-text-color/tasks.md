@@ -1,0 +1,3 @@
+- [x] Add conditional text override for cancelled lessons
+- [x] Preserve existing grayscale/opacity styles
+- [x] Run bun run check-errors
