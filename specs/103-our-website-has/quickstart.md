@@ -19,3 +19,18 @@ This document provides instructions for testing the responsive layout and zoom f
 ### 4. Window Resizing
 - **Action**: Resize the browser window from a wide to a narrow width.
 - **Expected Result**: The layout components should reflow dynamically and gracefully.
+
+## What Changed (Developer Notes)
+- Global layout: `src/app/layout.tsx` now sets `min-h-dvh overflow-x-hidden` on `<body>`.
+- Tables: `src/components/ui/table.tsx`
+  - Container: `overflow-x-auto xl:overflow-visible`.
+  - Header/Cell: `whitespace-normal sm:whitespace-nowrap`.
+- Dialogs: `src/components/ui/dialog.tsx`
+  - `DialogContent`: `max-h-[calc(100dvh-2rem)] overflow-y-auto` to fit viewport under zoom.
+- Sheets: `src/components/ui/sheet.tsx`
+  - `SheetContent`: `max-h-[calc(100dvh-2rem)] overflow-y-auto` for tall content.
+
+## How To Verify Quickly
+- Run `bun test specs/103-our-website-has/ui-responsiveness.test.tsx` — all 4 tests should pass.
+- Manually check a few dialogs (e.g., student/teacher forms) at 120–150% zoom; confirm scroll works inside the modal and content is not clipped.
+- On small screens (~1280px), confirm no horizontal scroll on main pages with large tables; at ≥1280px, table container should not force a scrollbar.
