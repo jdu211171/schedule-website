@@ -155,10 +155,13 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
   };
 
   const handleDateRangeChange = (range: DateRange | undefined) => {
+    // Treat single-day selection as from == to to avoid open-ended ranges
+    const fromDate = range?.from;
+    const toDate = range?.to ?? range?.from; // fallback to from when to is not set
     setFilters({
       ...filters,
-      startDate: range?.from ? format(range.from, "yyyy-MM-dd") : undefined,
-      endDate: range?.to ? format(range.to, "yyyy-MM-dd") : undefined,
+      startDate: fromDate ? format(fromDate, "yyyy-MM-dd") : undefined,
+      endDate: toDate ? format(toDate, "yyyy-MM-dd") : undefined,
     });
     setPage(1); // Reset to first page when filter changes
   };
