@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Pencil, Trash2, MoreHorizontal } from "lucide-react";
+import { Pencil, Trash2, MoreHorizontal, AlertTriangle } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { ja } from "date-fns/locale";
 import { DateRange } from "react-day-picker";
@@ -248,6 +248,14 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
             <span className={`inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded border ${cls.background} ${cls.border} ${cls.text} dark:!text-white`}>
               <span className={`inline-block h-2 w-2 rounded-full ${cls.dot}`} />
               キャンセル
+            </span>
+          );
+        }
+        if ((session as any).status === "CONFLICTED") {
+          return (
+            <span className="inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded border border-destructive/60 bg-destructive/5 text-destructive dark:!text-white">
+              <AlertTriangle className="h-3.5 w-3.5" />
+              競合
             </span>
           );
         }
