@@ -1,76 +1,27 @@
 {
-  // Core CLI Settings
-  // These settings control the overall behavior and appearance of the Gemini CLI.
-  "theme": "Default", // Specifies the CLI's visual theme. Other options include "GitHub", "Cloud", etc.
-  // "selectedAuthType": "oauth-personal", // Sets the authentication method. "oauth-personal" is for personal Google accounts. Other options may exist depending on the environment (e.g., "cloud-shell").
-  "autoAccept": false, // If true, the CLI automatically accepts tool executions that are deemed safe. Use with caution.
-  // "sandbox": "docker", // Configures sandbox mode for tool execution. Set to "docker" or "podman" to enable, or false to disable. Requires a running Docker or Podman daemon.
-  // "checkpointing": {
-  //   // Checkpointing allows you to save and restore the state of your chat session.
-  //   "enabled": true // Enables the /restore and /chat save commands.
-  // },
-  // "fileFiltering": {
-  //   // Controls how the CLI handles files when using the "@" command to include file context.
-  //   "respectGitIgnore": true // If true, the CLI will not include files ignored by .gitignore.
-  // },
-  "usageStatisticsEnabled": true, // Determines if anonymous usage statistics are sent to Google.
-  "includeDirectories": [
-    // An array of directories to include in your project's context.
-    "../shared-library",
-    "~/common-utils"
-  ],
-  "chatCompression": {
-    // Settings for compressing the chat history to save tokens.
-    "contextPercentageThreshold": 0.6 // The percentage of the total context size that, when exceeded, triggers compression.
-  },
-
-  // Model and Tool Settings
-  // These settings control which models and tools are available to the agent.
+  "autoAccept": true,
   "coreTools": [
-    // An array to explicitly whitelist specific built-in tools. If this is present, only the listed tools are available.
-    // Example: "ShellTool(ls -l)" to allow only the 'ls -l' command.
-    "FileSystemTool",
-    "ShellTool",
-    "SearchTool"
+    "run_shell_command",
+    "web_fetch",
+    "web_search",
+    "list_directory",
+    "read_many_files",
+    "save_memory",
+    "read_file",
+    "write_file",
+    "glob",
+    "search_file_content",
+    "replace"
   ],
-  "excludeTools": [
-    // An array to blacklist specific built-in tools or commands. Exclusions take precedence over inclusions.
-    // Example: "ShellTool(rm -rf)" to prevent the use of the 'rm -rf' command.
-    "dangerous_tool_name"
-  ],
-
-  // MCP Servers
-  // The MCP (Model Context Protocol) allows you to integrate custom tools and context via external servers.
+  "disableAutoUpdate": false,
+  "excludeTools": [],
   "mcpServers": {
-    "myPythonServer": {
-      "command": "python", // The command to start the MCP server.
-      "args": [
-        "-m",
-        "my_mcp_server",
-        "--port",
-        "8080"
-      ], // Arguments to pass to the command.
-      "cwd": "./mcp_tools/python", // The current working directory for the command.
-      "env": {
-        // Environment variables to set for the server process. Can reference shell variables.
-        "DATABASE_URL": "$DB_URL_FROM_ENV"
-      },
-      "timeout": 15000, // Timeout for requests to this server in milliseconds.
-      "trust": false, // If true, all tool confirmations from this server are bypassed.
-      "includeTools": [
-        "safe_tool_1"
-      ], // Whitelist specific tools from this server.
-      "excludeTools": [
-        "dangerous_tool"
-      ] // Blacklist specific tools from this server.
-    },
-    "githubCopilot": {
-      "httpUrl": "https://api.githubcopilot.com/mcp/", // URL for a remote MCP server.
-      "headers": {
-        // HTTP headers for authentication or other purposes.
-        "Authorization": "GITHUB_PAT"
-      },
-      "timeout": 5000 // Timeout for this specific server.
+    "Context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp@latest"]
     }
-  }
+  },
+  "theme": "GitHub",
+  "usageStatisticsEnabled": true,
+  "vimMode": true
 }

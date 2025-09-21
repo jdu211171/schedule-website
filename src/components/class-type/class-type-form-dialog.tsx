@@ -228,7 +228,8 @@ export function ClassTypeFormDialog({
                     </div>
                     <FormControl>
                       <div className={`grid grid-cols-2 gap-2 ${(!colorEnabled) ? 'opacity-50 pointer-events-none' : ''}`}>
-                        {CLASS_TYPE_DEFAULT_COLORS.map((c) => {
+                        {/* Exclude 'red' from selectable defaults (reserved for conflicts) */}
+                        {CLASS_TYPE_DEFAULT_COLORS.filter((c) => c !== 'red').map((c) => {
                           const disabled = usedColors.has(c);
                           const selected = field.value === c;
                           const cls = classTypeColorClasses[c as ClassTypeColor];

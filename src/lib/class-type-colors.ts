@@ -9,6 +9,7 @@ export const CLASS_TYPE_DEFAULT_COLORS = [
   'blue',
   'dark blue',
   'cyan',
+  'teal',
   'orange',
   'yellow',
   'red',
@@ -61,6 +62,17 @@ export const classTypeColorClasses: Record<ClassTypeColor, {
     chipBorder: 'border-cyan-300',
     chipText: 'text-cyan-700',
     dot: 'bg-cyan-500',
+  },
+  'teal': {
+    background: 'bg-teal-100 dark:bg-teal-900/70',
+    border: 'border-teal-300 dark:border-teal-700',
+    text: 'text-teal-800 dark:text-teal-100',
+    hover: 'hover:bg-teal-200 dark:hover:bg-teal-800',
+    swatch: 'bg-teal-500',
+    chipBg: 'bg-teal-100',
+    chipBorder: 'border-teal-300',
+    chipText: 'text-teal-700',
+    dot: 'bg-teal-500',
   },
   'orange': {
     background: 'bg-orange-100 dark:bg-orange-900/70',
@@ -123,6 +135,7 @@ export const classTypeColorJaLabels: Record<ClassTypeColor, string> = {
   'blue': '青',
   'dark blue': '濃い青',
   'cyan': '水色',
+  'teal': '青緑',
   'orange': 'オレンジ',
   'yellow': '黄色',
   'red': '特別ピンク',
@@ -135,6 +148,7 @@ export const CLASS_TYPE_COLOR_HEX: Record<ClassTypeColor, string> = {
   'blue': '#3b82f6',          // blue-500
   'dark blue': '#4f46e5',     // indigo-600
   'cyan': '#06b6d4',          // cyan-500
+  'teal': '#14b8a6',          // teal-500
   'orange': '#f97316',        // orange-500
   'yellow': '#f59e0b',        // amber/yellow-500
   'red': '#ef4444', // red-500
