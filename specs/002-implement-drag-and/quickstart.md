@@ -1,6 +1,11 @@
 # Quickstart: Testing Drag-and-Drop
 
-1.  Navigate to a page displaying class session lesson cards.
-2.  Drag and drop a lesson card to a new position.
-3.  Verify the card stays in the new position after a page refresh.
-4.  (To test rollback) Use browser developer tools to simulate a network error for the reorder API call. Drag and drop a card. Verify it returns to its original position.
+Admin Day Calendar
+- Open Admin → Day calendar.
+- Drag any lesson card to another time/booth cell within the same day.
+- Observe the blue ghost overlay matches the card width and position.
+- On drop, the lesson moves immediately (optimistic). If the request fails, it snaps back (rollback).
+- Ensure no scroll jump occurs during or after drop.
+
+Student/Teacher List (optional demo)
+- Mobile week view lists also support DnD reorder in demo; this is not required for the DayCalendar flow.

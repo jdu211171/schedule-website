@@ -1,3 +1,4 @@
+"use client";
 import { ExtendedClassSessionWithRelations } from "@/hooks/useClassSessionQuery";
 import { cn } from "@/lib/utils";
 import { addDays, format, isSameDay, isToday, startOfWeek } from "date-fns";
@@ -54,9 +55,7 @@ export const StudentScheduleWeekViewer: React.FC<WeekViewerProps> = ({
 
               <div className="p-3 space-y-3 min-h-[100px]">
                 {lessonsOnDay.length === 0 ? (
-                  <div className="text-center text-gray-500 text-sm py-4">
-                    授業なし
-                  </div>
+                  <div className="text-center text-gray-500 text-sm py-4">授業なし</div>
                 ) : (
                   lessonsOnDay.map((lesson, i) => {
                     const { text, border, background, hover, iconColor } =

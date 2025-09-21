@@ -1,4 +1,5 @@
 import React, { useMemo } from "react";
+import { useDraggable } from "@dnd-kit/core";
 import { ExtendedClassSessionWithRelations } from "@/hooks/useClassSessionQuery";
 import { TimeSlot } from "./day-calendar";
 import { UserCheck, GraduationCap } from "lucide-react";
@@ -249,6 +250,8 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
     return { colorClasses: fallback, colorStyle: undefined, textClass: undefined };
   }, [isConflicted, lesson.seriesId, (lesson as any)?.classTypeColor, (lesson as any)?.classType?.color]);
 
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: lesson.classId });
+
   const style = useMemo(
     () =>
       ({
@@ -257,7 +260,11 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
         top: `${boothIndex * timeSlotHeight}px`,
         width: `${effectiveDuration * 50}px`,
         height: `${timeSlotHeight - 2}px`,
-        zIndex: maxZIndex - 1,
+        zIndex: isDragging ? maxZIndex : maxZIndex - 1,
+        transform: transform
+          ? `translate3d(${transform.x}px, ${transform.y}px, 0)`
+          : undefined,
+        touchAction: 'none',
       }) as React.CSSProperties,
     [
       effectiveStartIndex,
@@ -265,6 +272,8 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
       boothIndex,
       timeSlotHeight,
       maxZIndex,
+      isDragging,
+      transform,
     ],
   );
 
@@ -297,8 +306,9 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
 
   return (
     <div
+      ref={setNodeRef}
       className={`
-        absolute rounded border shadow-sm cursor-pointer
+        absolute rounded border shadow-sm cursor-grab active:cursor-grabbing
         transition-colors duration-100 ease-in-out transform
         ${colorClasses ? `${colorClasses.background} ${colorClasses.border} ${colorClasses.text} ${colorClasses.hover}` : ''}
         ${textClass ?? ''}
@@ -309,6 +319,8 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
       `}
       style={{ ...style, ...(colorStyle || {}) }}
       onClick={() => onClick(lesson)}
+      {...attributes}
+      {...listeners}
     >
       <div className="text-[11px] p-1 flex flex-col h-full justify-between relative">
         {/* Labels removed: visual state indicated by color styles */}
