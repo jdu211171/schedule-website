@@ -1,5 +1,6 @@
 "use client"
 
+import * as React from "react";
 import { flexRender, type Table as ReactTable } from "@tanstack/react-table"
 import type { UniqueIdentifier } from "@dnd-kit/core"
 
