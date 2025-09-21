@@ -27,6 +27,7 @@ import * as React from "react";
 import { useDebouncedCallback } from "@/hooks/use-debounced-callback";
 import { getSortingStateParser } from "@/lib/parsers";
 import type { ExtendedColumnSort } from "@/types/data-table";
+import { useColumnOrder } from "@/hooks/useColumnOrder";
 
 const SORT_KEY = "sort";
 const DEBOUNCE_MS = 300;
@@ -46,6 +47,10 @@ interface UseDataTableProps<TData>
   initialState?: Omit<Partial<TableState>, "sorting"> & {
     sorting?: ExtendedColumnSort<TData>[];
   };
+  /**
+   * Persist column order in localStorage under this key. If omitted, column order is not persisted.
+   */
+  columnOrderStorageKey?: string;
   history?: "push" | "replace";
   debounceMs?: number;
   throttleMs?: number;
@@ -60,6 +65,10 @@ export function useStateDataTable<TData>(props: UseDataTableProps<TData>) {
   const {
     columns,
     pageCount = -1,
+    // New: optional storage key to persist column order per table
+    // Example: "teacherTable.columnOrder" | "studentTable.columnOrder"
+    // If omitted, column order is still controllable in-memory and not persisted.
+    columnOrderStorageKey,
     initialState,
     history = "replace",
     debounceMs = DEBOUNCE_MS,
@@ -249,10 +258,31 @@ export function useStateDataTable<TData>(props: UseDataTableProps<TData>) {
     [debouncedSetFilterValues, filterableColumns, enableAdvancedFilter],
   );
 
+  // Derive a stable list of leaf column ids from column definitions
+  const allColumnIds = React.useMemo(() => {
+    // Our codebase declares ids on each ColumnDef; fall back to accessorKey when needed
+    const ids: string[] = [];
+    for (const col of columns as any[]) {
+      const id = (col?.id ?? col?.accessorKey) as string | undefined;
+      if (id) ids.push(id);
+    }
+    return ids;
+  }, [columns]);
+
+  // Column order state + persistence
+  const { order: columnOrder, setOrder: setColumnOrder } = useColumnOrder(
+    columnOrderStorageKey as string | undefined,
+    allColumnIds,
+  );
+
   const table = useReactTable({
     ...tableProps,
     columns,
     initialState,
+    meta: {
+      columnOrderStorageKey,
+      defaultColumnIds: allColumnIds,
+    },
     pageCount,
     state: {
       pagination,
@@ -260,6 +290,8 @@ export function useStateDataTable<TData>(props: UseDataTableProps<TData>) {
       columnVisibility,
       rowSelection,
       columnFilters,
+      // Control column order so we can persist it
+      columnOrder,
     },
     enableMultiSort: true,
     defaultColumn: {
@@ -272,6 +304,14 @@ export function useStateDataTable<TData>(props: UseDataTableProps<TData>) {
     onSortingChange,
     onColumnFiltersChange,
     onColumnVisibilityChange: setColumnVisibility,
+    onColumnOrderChange: (updaterOrValue) => {
+      if (typeof updaterOrValue === "function") {
+        const next = updaterOrValue(columnOrder as any);
+        setColumnOrder(next as string[]);
+      } else {
+        setColumnOrder(updaterOrValue as unknown as string[]);
+      }
+    },
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),

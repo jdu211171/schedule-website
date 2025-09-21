@@ -18,6 +18,7 @@ import {
   closestCenter,
   closestCorners,
   defaultDropAnimationSideEffects,
+  useDndMonitor,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
@@ -107,6 +108,11 @@ type SortableRootProps<T> = DndContextProps & {
   strategy?: SortableContextProps["strategy"];
   orientation?: "vertical" | "horizontal" | "mixed";
   flatCursor?: boolean;
+  /**
+   * When true, do not render a DndContext. Use nearest existing DndContext instead.
+   * Events are handled via useDndMonitor to keep reorder behavior.
+   */
+  withinContext?: boolean;
 } & (T extends object ? GetItemValue<T> : Partial<GetItemValue<T>>);
 
 function SortableRoot<T>(props: SortableRootProps<T>) {
@@ -121,6 +127,7 @@ function SortableRoot<T>(props: SortableRootProps<T>) {
     flatCursor = false,
     getItemValue: getItemValueProp,
     accessibility,
+    withinContext = false,
     ...sortableProps
   } = props;
 
@@ -280,6 +287,23 @@ function SortableRoot<T>(props: SortableRootProps<T>) {
       flatCursor,
     ],
   );
+
+  if (withinContext) {
+    // Subscribe to the nearest DndContext and handle events locally
+    useDndMonitor({
+      onDragStart,
+      onDragCancel,
+      onDragEnd,
+    });
+
+    return (
+      <SortableRootContext.Provider
+        value={contextValue as SortableRootContextValue<unknown>}
+      >
+        {sortableProps.children as React.ReactNode}
+      </SortableRootContext.Provider>
+    );
+  }
 
   return (
     <SortableRootContext.Provider
@@ -493,7 +517,7 @@ const SortableItemHandle = React.forwardRef<
   const isDisabled = disabled ?? itemContext.disabled;
 
   const composedRef = useComposedRefs(forwardedRef, (node) => {
-    if (!isDisabled) return;
+    if (isDisabled) return;
     itemContext.setActivatorNodeRef(node);
   });
 

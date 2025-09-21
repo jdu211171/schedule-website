@@ -12,7 +12,7 @@ import {
   type DragStartEvent,
   type UniqueIdentifier,
 } from "@dnd-kit/core"
-import { restrictToVerticalAxis } from "@dnd-kit/modifiers"
+import { restrictToParentElement } from "@dnd-kit/modifiers"
 import type { Table as ReactTable } from "@tanstack/react-table"
 import * as React from "react"
 
@@ -68,7 +68,8 @@ export function GenericDraggableTable<TData>({
       sensors={sensors}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
-      modifiers={[restrictToVerticalAxis]}
+      // Allow both vertical (body) and horizontal (header) drags within table bounds
+      modifiers={[restrictToParentElement]}
     >
       <UI_Table>
         <GenericTableHeader table={table} />
