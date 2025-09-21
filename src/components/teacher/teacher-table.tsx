@@ -742,6 +742,7 @@ export function TeacherTable() {
     data: filteredData,
     columns,
     pageCount: totalPages,
+    columnOrderStorageKey: "teacherTable.columnOrder.v1",
     initialState: {
       pagination: { pageSize, pageIndex: page - 1 },
       columnPinning: { left: ["select", "name"] },
@@ -882,13 +883,14 @@ export function TeacherTable() {
   };
 
   const handleExport = () => {
+    // Preserve current UI column order
     const visibleColumns = table
-      .getAllColumns()
-      .filter((col) =>
-        col.getIsVisible() &&
-        col.id !== "select" &&
-        col.id !== "actions" &&
-        !["lineConnection", "lineId", "lineNotificationsEnabled"].includes(col.id)
+      .getVisibleLeafColumns()
+      .filter(
+        (col) =>
+          col.id !== "select" &&
+          col.id !== "actions" &&
+          !["lineConnection", "lineId", "lineNotificationsEnabled"].includes(col.id)
       )
       .map((col) => col.id);
 

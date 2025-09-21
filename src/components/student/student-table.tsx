@@ -1061,6 +1061,7 @@ export function StudentTable() {
     data: filteredData,
     columns,
     pageCount: totalPages,
+    columnOrderStorageKey: "studentTable.columnOrder.v1",
     initialState: {
       pagination: { pageSize, pageIndex: page - 1 },
       columnPinning: { left: ["select", "name"] },
@@ -1285,11 +1286,11 @@ export function StudentTable() {
   };
 
   const handleExport = () => {
+    // Preserve current UI column order
     const visibleColumns = table
-      .getAllColumns()
+      .getVisibleLeafColumns()
       .filter(
         (col) =>
-          col.getIsVisible() &&
           col.id !== "select" &&
           col.id !== "actions" &&
           !["lineConnection", "lineId", "lineNotificationsEnabled"].includes(
