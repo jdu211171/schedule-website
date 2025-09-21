@@ -210,6 +210,32 @@ export function StudentFormDialog({
   const [selectedTeacherIds, setSelectedTeacherIds] = useState<string[]>([]);
   const [isAllSelected, setIsAllSelected] = useState(false);
 
+  // Generators kept local for minimal changes
+  const generateUsername = () => {
+    const letters = "abcdefghijkmnpqrstuvwxyz"; // exclude l, o
+    const digits = "23456789"; // exclude 0, 1
+    const pick = (pool: string) => pool[Math.floor(Math.random() * pool.length)];
+    return (
+      Array.from({ length: 3 }, () => pick(letters)).join("") +
+      Array.from({ length: 3 }, () => pick(digits)).join("")
+    );
+  };
+
+  const generatePassword = (length = 6) => {
+    // Simpler for students: only letters + digits, exclude ambiguous chars
+    const letters = "abcdefghijkmnpqrstuvwxyz"; // no l, o
+    const digits = "23456789"; // no 0, 1
+    const all = letters + digits;
+    const pick = (pool: string) => pool[Math.floor(Math.random() * pool.length)];
+    const base = [pick(letters), pick(digits)];
+    const rest = Array.from({ length: Math.max(0, length - base.length) }, () =>
+      pick(all)
+    );
+    return [...base, ...rest]
+      .sort(() => Math.random() - 0.5)
+      .join("");
+  };
+
   // Fetch teachers based on selected subject and types
   const { data: availableTeachers = [], isLoading: isLoadingTeachers } =
     useTeachersBySubjectPreference(currentSubject, selectedSubjectTypes);
@@ -1123,11 +1149,30 @@ export function StudentFormDialog({
                                 ユーザー名
                               </FormLabel>
                               <FormControl>
-                                <Input
-                                  placeholder="student_username"
-                                  className="h-11"
-                                  {...field}
-                                />
+                                <div className="flex gap-2">
+                                  <Input
+                                    placeholder="student_username"
+                                    className="h-11 flex-1"
+                                    {...field}
+                                  />
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-11"
+                                    onClick={() => {
+                                      const v = generateUsername();
+                                      form.setValue("username", v, {
+                                        shouldDirty: true,
+                                        shouldValidate: true,
+                                      });
+                                    }}
+                                    title="ユーザー名を自動生成"
+                                  >
+                                    <RotateCcw className="h-4 w-4 mr-1" />
+                                    自動生成
+                                  </Button>
+                                </div>
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -1149,17 +1194,36 @@ export function StudentFormDialog({
                                 {isEditing ? "（変更する場合のみ）" : ""}
                               </FormLabel>
                               <FormControl>
-                                <Input
-                                  type="password"
-                                  placeholder={
-                                    isEditing
-                                      ? "新しいパスワードを入力"
-                                      : "パスワードを入力"
-                                  }
-                                  className="h-11"
-                                  {...field}
-                                  value={field.value || ""}
-                                />
+                                <div className="flex gap-2">
+                                  <Input
+                                    type="password"
+                                    placeholder={
+                                      isEditing
+                                        ? "新しいパスワードを入力"
+                                        : "パスワードを入力"
+                                    }
+                                    className="h-11 flex-1"
+                                    {...field}
+                                    value={field.value || ""}
+                                  />
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-11"
+                                    onClick={() => {
+                                      const v = generatePassword();
+                                      form.setValue("password", v, {
+                                        shouldDirty: true,
+                                        shouldValidate: true,
+                                      });
+                                    }}
+                                    title="パスワードを自動生成"
+                                  >
+                                    <RotateCcw className="h-4 w-4 mr-1" />
+                                    自動生成
+                                  </Button>
+                                </div>
                               </FormControl>
                               <FormMessage />
                             </FormItem>

@@ -1,0 +1,6 @@
+- Add generator functions (username/password) in both dialogs
+- Place small `自動生成` buttons next to inputs
+- Ensure inputs mark dirty/validate when auto-filled
+- Typecheck with `bun run check-errors`
+- Keep changes minimal; no new deps
+- Adjust default password length to 6 per request
