@@ -25,6 +25,8 @@ import {
   Phone,
   Mail,
   Cake,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -155,6 +157,7 @@ export function StudentFormDialog({
   onOpenChange,
   student,
 }: StudentFormDialogProps) {
+  const [showPassword, setShowPassword] = useState(true);
   const [openLineManage, setOpenLineManage] = useState(false);
   // Local LINE connection state for immediate UI reflection
   const [lineState, setLineState] = useState({
@@ -1166,8 +1169,12 @@ export function StudentFormDialog({
                                         shouldDirty: true,
                                         shouldValidate: true,
                                       });
+                                      form.setValue("password", v, {
+                                        shouldDirty: true,
+                                        shouldValidate: true,
+                                      });
                                     }}
-                                    title="ユーザー名を自動生成"
+                                    title="ユーザー名とパスワードを自動生成"
                                   >
                                     <RotateCcw className="h-4 w-4 mr-1" />
                                     自動生成
@@ -1195,34 +1202,34 @@ export function StudentFormDialog({
                               </FormLabel>
                               <FormControl>
                                 <div className="flex gap-2">
-                                  <Input
-                                    type="password"
-                                    placeholder={
-                                      isEditing
-                                        ? "新しいパスワードを入力"
-                                        : "パスワードを入力"
-                                    }
-                                    className="h-11 flex-1"
-                                    {...field}
-                                    value={field.value || ""}
-                                  />
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-11"
-                                    onClick={() => {
-                                      const v = generatePassword();
-                                      form.setValue("password", v, {
-                                        shouldDirty: true,
-                                        shouldValidate: true,
-                                      });
-                                    }}
-                                    title="パスワードを自動生成"
-                                  >
-                                    <RotateCcw className="h-4 w-4 mr-1" />
-                                    自動生成
-                                  </Button>
+                                  <div className="relative flex-1">
+                                    <Input
+                                      type={showPassword ? "text" : "password"}
+                                      placeholder={
+                                        isEditing
+                                          ? "新しいパスワードを入力"
+                                          : "パスワードを入力"
+                                      }
+                                      className="h-11 pr-10"
+                                      {...field}
+                                      value={field.value || ""}
+                                    />
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      className="absolute right-1.5 top-1.5"
+                                      onClick={() => setShowPassword((s) => !s)}
+                                      title={showPassword ? "パスワードを隠す" : "パスワードを表示"}
+                                    >
+                                      {showPassword ? (
+                                        <EyeOff className="h-4 w-4" />
+                                      ) : (
+                                        <Eye className="h-4 w-4" />
+                                      )}
+                                      <span className="sr-only">パスワード表示切替</span>
+                                    </Button>
+                                  </div>
                                 </div>
                               </FormControl>
                               <FormMessage />

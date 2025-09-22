@@ -1,9 +1,10 @@
-# Plan: Add Username/Password Generators
+# Plan: Add Username/Password Generators + Eye Toggle
 
-- Add inline generator buttons for username and password in both dialogs.
+- Provide a single 自動生成 button next to username that fills both username and password.
+- Remove separate generators from password and username-only flows.
+- Add password show/hide eye toggle in both dialogs (inside the input area).
 - Keep logic local to components to minimize churn and avoid wider imports.
 - Username format: 3 letters + 3 digits; exclude l, o, 0, 1.
-- Password: 12 chars, mix of lower/upper/digits/symbols, exclude ambiguous.
+- Password: use same 6-char safe charset (letters+digits) to match schema minimum; generated identical to username.
 - Update only `student-form-dialog.tsx` and `teacher-form-dialog.tsx`.
 - Verify typecheck via `bun run check-errors`.
-

@@ -1,6 +1,7 @@
-- Add generator functions (username/password) in both dialogs
-- Place small `自動生成` buttons next to inputs
-- Ensure inputs mark dirty/validate when auto-filled
-- Typecheck with `bun run check-errors`
-- Keep changes minimal; no new deps
-- Adjust default password length to 6 per request
+- Add single `自動生成` next to username that fills both fields — DONE
+- Remove other generator buttons — DONE
+- Add eye toggle to password input (show/hide, visible by default) — DONE
+- Ensure inputs mark dirty/validate when auto-filled — DONE
+- Typecheck with `bun run check-errors` — DONE
+- Keep changes minimal; no new deps — DONE
+- Default password visibility is ON — DONE
