@@ -1154,7 +1154,7 @@ export function StudentFormDialog({
                               <FormControl>
                                 <div className="flex gap-2">
                                   <Input
-                                    placeholder="student_username"
+                                    placeholder="生徒ユーザー名を入力"
                                     className="h-11 flex-1"
                                     {...field}
                                   />
