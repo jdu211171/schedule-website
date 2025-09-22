@@ -1,4 +1,18 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import {
+  DndContext,
+  type DragStartEvent,
+  type DragEndEvent,
+  type DragOverEvent,
+  closestCenter,
+  KeyboardSensor,
+  MouseSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  useDroppable,
+} from '@dnd-kit/core';
+import { restrictToParentElement } from '@dnd-kit/modifiers';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { ExtendedClassSessionWithRelations, DayFilters } from '@/hooks/useClassSessionQuery';
@@ -8,6 +22,12 @@ import { DayCalendarFilters } from './day-calendar-filters';
 import { AvailabilityLayer, useAvailability } from './availability-layer';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { useClassSessionUpdate } from '@/hooks/useClassSessionMutation';
+import { useUpdateClassSeries } from '@/hooks/use-class-series';
+import { useQueryClient } from '@tanstack/react-query';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 
 export type TimeSlot = {
   index: number;
@@ -98,9 +118,11 @@ const CalendarCell = React.memo(({
   onMouseUp: (e: React.MouseEvent) => void
 }) => {
   const cellKey = `cell-${boothIndex}-${timeSlot.index}`;
+  const { setNodeRef, isOver } = useDroppable({ id: cellKey });
 
   return (
     <div
+      ref={setNodeRef}
       key={cellKey}
       id={cellKey}
       data-booth-index={boothIndex}
@@ -121,6 +143,7 @@ const CalendarCell = React.memo(({
     ? "!bg-blue-200 dark:!bg-blue-900 !opacity-100 shadow-inner"
     : ""
   }
+  ${isOver ? 'outline outline-2 outline-blue-400/70' : ''}
   border-border dark:border-border
   ${!isSelecting ? "transition-none" : ""}
 `}
@@ -407,11 +430,92 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
     return true; // Always allow dragging
   }, []);
 
+  // DnD: sensors and handlers
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } }),
+    useSensor(KeyboardSensor)
+  );
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [ghost, setGhost] = useState<{ boothIdx: number; timeIdx: number; durationSlots: number } | null>(null);
+  const updateClassSession = useClassSessionUpdate();
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pending, setPending] = useState<null | { classId: string; seriesId: string | null; startTime: string; endTime: string; boothId?: string }>(null);
+  const [seriesForHook, setSeriesForHook] = useState<string>('');
+  const updateSeries = useUpdateClassSeries(seriesForHook || '');
+  const qc = useQueryClient();
+
   const cancelSelection = useCallback(() => {
     setSelection(initialSelectionState);
     document.body.classList.remove('cursor-move');
     createLessonCalledRef.current = false;
   }, []);
+
+  const onDragStart = useCallback((e: DragStartEvent) => {
+    setDraggingId(String(e.active.id));
+    const lesson = filteredSessions.find((s) => s.classId === String(e.active.id)) || classSessions.find((s) => s.classId === String(e.active.id));
+    if (!lesson) return;
+    const toMin = (hhmm: string) => { const [h, m] = hhmm.split(':').map(Number); return (h || 0) * 60 + (m || 0); };
+    const s = typeof lesson.startTime === 'string' ? lesson.startTime : extractTime(lesson.startTime);
+    const et = typeof lesson.endTime === 'string' ? lesson.endTime : extractTime(lesson.endTime);
+    const findSlotIndex = (hhmm: string): number => {
+      const exact = timeSlots.findIndex((slot) => slot.start === hhmm);
+      if (exact >= 0) return exact;
+      const t = toMin(hhmm);
+      let idx = 0; let best = Number.POSITIVE_INFINITY;
+      timeSlots.forEach((slot, i) => { const diff = Math.abs(toMin(slot.start) - t); if (diff < best) { best = diff; idx = i; } });
+      return idx;
+    };
+    const startIdx = findSlotIndex(s);
+    const endIdx = findSlotIndex(et);
+    const durationSlots = Math.max(1, endIdx - startIdx);
+    setGhost({ boothIdx: 0, timeIdx: 0, durationSlots });
+  }, [filteredSessions, classSessions, timeSlots]);
+
+  const onDragOver = useCallback((e: DragOverEvent) => {
+    const { over } = e;
+    if (!over?.id || !ghost) return;
+    const overId = String(over.id);
+    if (!overId.startsWith('cell-')) return;
+    const parts = overId.split('-');
+    let boothIdx = Number(parts[1]);
+    let timeIdx = Number(parts[2]);
+    if (Number.isNaN(boothIdx) || Number.isNaN(timeIdx)) return;
+    const maxStart = Math.max(0, timeSlots.length - ghost.durationSlots);
+    timeIdx = Math.min(Math.max(0, timeIdx), maxStart);
+    setGhost({ boothIdx, timeIdx, durationSlots: ghost.durationSlots });
+  }, [ghost, timeSlots.length]);
+
+  const onDragEnd = useCallback((e: DragEndEvent) => {
+    const { active, over } = e;
+    setDraggingId(null);
+    setGhost(null);
+    if (!active?.id || !over?.id) return;
+    const overId = String(over.id);
+    if (!overId.startsWith('cell-')) return;
+    const parts = overId.split('-');
+    const boothIdx = Number(parts[1]);
+    const timeIdx = Number(parts[2]);
+    if (Number.isNaN(boothIdx) || Number.isNaN(timeIdx)) return;
+    const lesson = filteredSessions.find((s) => s.classId === active.id) || classSessions.find((s) => s.classId === active.id);
+    if (!lesson) return;
+    const toMin = (hhmm: string) => { const [h, m] = hhmm.split(':').map(Number); return (h || 0) * 60 + (m || 0); };
+    const s = typeof lesson.startTime === 'string' ? lesson.startTime : extractTime(lesson.startTime);
+    const eTime = typeof lesson.endTime === 'string' ? lesson.endTime : extractTime(lesson.endTime);
+    const duration = Math.max(30, (toMin(eTime) - toMin(s)) || 60);
+    const newStart = timeSlots[timeIdx]?.start; if (!newStart) return;
+    const [sh, sm] = newStart.split(':').map(Number);
+    const endMin = (sh || 0) * 60 + (sm || 0) + duration;
+    const newEnd = `${String(Math.floor(endMin / 60)).padStart(2, '0')}:${String(endMin % 60).padStart(2, '0')}`;
+    const targetBoothId = booths[boothIdx]?.boothId || undefined;
+    if (lesson.seriesId) {
+      setPending({ classId: String(active.id), seriesId: lesson.seriesId, startTime: newStart, endTime: newEnd, boothId: targetBoothId });
+      setSeriesForHook(lesson.seriesId);
+      setConfirmOpen(true);
+      return;
+    }
+    updateClassSession.mutate({ classId: String(active.id), startTime: newStart, endTime: newEnd, boothId: targetBoothId });
+  }, [filteredSessions, classSessions, booths, timeSlots, updateClassSession]);
 
   // --- Compute per-session positions and lane assignments ---
   type Pos = { boothIndex: number; start: number; end: number };
@@ -732,77 +836,208 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
             availabilityMode={availabilityMode}
           />
 
-          <div className="relative">
-            {booths.map((booth, boothIndex) => (
-              <BoothRow
-                key={`booth-${booth.boothId || boothIndex}`}
-                booth={booth}
-                boothIndex={boothIndex}
-                timeSlots={timeSlots}
-                selectionStart={selection.start}
-                selectionEnd={selection.end}
-                isSelecting={selection.isSelecting}
-                canDrag={canDrag}
-                onStartSelection={handleStartSelection}
-                onCellHover={handleCellHover}
-                onEndSelection={handleEndSelection}
-                rowHeight={boothRowHeights[boothIndex]}
-              />
-            ))}
-          </div>
-
-          <div
-            className="absolute pointer-events-none"
-            style={{
-              zIndex: 10,
-              top: `${TIME_SLOT_HEIGHT}px`, // Start after the sticky header
-              left: `0px`,
-              width: '100%',
-              height: `${contentHeight}px`
-            }}
+          <DndContext
+            sensors={sensors}
+            onDragStart={onDragStart}
+            onDragOver={onDragOver}
+            onDragEnd={onDragEnd}
+            modifiers={[restrictToParentElement]}
+            collisionDetection={closestCenter}
           >
-            {/* Conflict gutter bands */}
-            {conflictRanges.map((r, idx) => (
-              <div
-                key={`gutter-${idx}`}
-                className="absolute"
-                style={{
-                  left: `${r.start * CELL_WIDTH + BOOTH_LABEL_WIDTH}px`,
-                  top: `${boothTopOffsets[r.boothIndex]}px`,
-                  width: `${(r.end - r.start) * CELL_WIDTH}px`,
-                  height: '4px',
-                  background: 'linear-gradient(90deg, rgba(220,38,38,0.9), rgba(220,38,38,0.5))',
-                  borderRadius: '2px',
-                }}
-              />
-            ))}
+            <div className="relative">
+              {booths.map((booth, boothIndex) => (
+                <div
+                  key={`booth-wrap-${booth.boothId || boothIndex}`}
+                  className="relative"
+                  style={{ height: `${boothRowHeights[boothIndex]}px` }}
+                >
+                  <BoothRow
+                    key={`booth-${booth.boothId || boothIndex}`}
+                    booth={booth}
+                    boothIndex={boothIndex}
+                    timeSlots={timeSlots}
+                    selectionStart={selection.start}
+                    selectionEnd={selection.end}
+                    isSelecting={selection.isSelecting}
+                    canDrag={canDrag}
+                    onStartSelection={handleStartSelection}
+                    onCellHover={handleCellHover}
+                    onEndSelection={handleEndSelection}
+                    rowHeight={boothRowHeights[boothIndex]}
+                  />
+                </div>
+              ))}
+            </div>
 
-            {filteredSessions.map(session => (
-              <LessonCard
-                key={`lesson-${session.classId}`}
-                lesson={session}
-                booths={booths}
-                onClick={onLessonClick}
-                timeSlotHeight={TIME_SLOT_HEIGHT}
-                timeSlots={timeSlots}
-                maxZIndex={9}
-                laneIndex={laneMap.get(String(session.classId))?.laneIndex || 0}
-                laneHeight={TIME_SLOT_HEIGHT}
-                rowTopOffset={boothTopOffsets[sessionPos.get(String(session.classId))?.boothIndex || 0]}
-                hasBoothOverlap={(laneMap.get(String(session.classId))?.laneIndex ?? 0) > 0 ||
-                  (() => {
-                    const pos = sessionPos.get(String(session.classId));
-                    if (!pos) return false;
-                    return filteredSessions.some(s2 => {
-                      if (s2.classId === session.classId) return false;
-                      const p2 = sessionPos.get(String(s2.classId));
-                      return p2 && p2.boothIndex === pos.boothIndex && !(p2.end <= pos.start || pos.end <= p2.start);
-                    });
-                  })()
-                }
-              />
-            ))}
-          </div>
+            {/* Conflict gutter bands */}
+            <div
+              className="absolute pointer-events-none"
+              style={{
+                zIndex: 9,
+                top: `${TIME_SLOT_HEIGHT}px`, // Start after the sticky header
+                left: `0px`,
+                width: '100%',
+                height: `${contentHeight}px`
+              }}
+            >
+              {conflictRanges.map((r, idx) => (
+                <div
+                  key={`gutter-${idx}`}
+                  className="absolute"
+                  style={{
+                    left: `${r.start * CELL_WIDTH + BOOTH_LABEL_WIDTH}px`,
+                    top: `${boothTopOffsets[r.boothIndex]}px`,
+                    width: `${(r.end - r.start) * CELL_WIDTH}px`,
+                    height: '4px',
+                    background: 'linear-gradient(90deg, rgba(220,38,38,0.9), rgba(220,38,38,0.5))',
+                    borderRadius: '2px',
+                  }}
+                />
+              ))}
+            </div>
+
+            {/* Ghost overlay */}
+            <div
+              className="absolute pointer-events-none"
+              style={{
+                zIndex: 10,
+                top: `${TIME_SLOT_HEIGHT}px`,
+                left: `0px`,
+                width: '100%',
+                height: `${contentHeight}px`,
+              }}
+            >
+              {ghost && (
+                <div
+                  aria-hidden
+                  className="absolute rounded-sm bg-blue-500/15 border-2 border-blue-400"
+                  style={{
+                    left: `${ghost.timeIdx * CELL_WIDTH + BOOTH_LABEL_WIDTH}px`,
+                    top: `${boothTopOffsets[ghost.boothIdx] ?? 0}px`,
+                    width: `${ghost.durationSlots * CELL_WIDTH}px`,
+                    height: `${(boothRowHeights[ghost.boothIdx] ?? TIME_SLOT_HEIGHT) - 2}px`,
+                  }}
+                />
+              )}
+            </div>
+
+            {/* Lessons overlay */}
+            <div
+              className="absolute pointer-events-none"
+              style={{
+                zIndex: 11,
+                top: `${TIME_SLOT_HEIGHT}px`, // Start after the sticky header
+                left: `0px`,
+                width: '100%',
+                height: `${contentHeight}px`
+              }}
+            >
+              {filteredSessions.map(session => (
+                <LessonCard
+                  key={`lesson-${session.classId}`}
+                  lesson={session}
+                  booths={booths}
+                  onClick={onLessonClick}
+                  timeSlotHeight={TIME_SLOT_HEIGHT}
+                  timeSlots={timeSlots}
+                  maxZIndex={9}
+                  laneIndex={laneMap.get(String(session.classId))?.laneIndex || 0}
+                  laneHeight={TIME_SLOT_HEIGHT}
+                  rowTopOffset={boothTopOffsets[sessionPos.get(String(session.classId))?.boothIndex || 0]}
+                  hasBoothOverlap={(laneMap.get(String(session.classId))?.laneIndex ?? 0) > 0 ||
+                    (() => {
+                      const pos = sessionPos.get(String(session.classId));
+                      if (!pos) return false;
+                      return filteredSessions.some(s2 => {
+                        if (s2.classId === session.classId) return false;
+                        const p2 = sessionPos.get(String(s2.classId));
+                        return p2 && p2.boothIndex === pos.boothIndex && !(p2.end <= pos.start || pos.end <= p2.start);
+                      });
+                    })()
+                  }
+                />
+              ))}
+            </div>
+
+            {/* Series scope dialog */}
+            <Dialog open={confirmOpen} onOpenChange={(o) => { setConfirmOpen(o); if (!o) setPending(null); }}>
+              <DialogContent className="sm:max-w-[440px]">
+                <DialogHeader>
+                  <DialogTitle>どの範囲を更新しますか？</DialogTitle>
+                  <DialogDescription>
+                    この授業は連続授業（シリーズ）の一部です。移動の適用範囲を選択してください。
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-2 pt-2 text-sm">
+                  <div>開始: <span className="font-mono">{pending?.startTime}</span> / 終了: <span className="font-mono">{pending?.endTime}</span></div>
+                </div>
+                <DialogFooter className="gap-2 sm:gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      if (!pending) return;
+                      updateClassSession.mutate({ classId: pending.classId, startTime: pending.startTime, endTime: pending.endTime, boothId: pending.boothId });
+                      setConfirmOpen(false); setPending(null);
+                    }}
+                  >
+                    この授業のみ
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      if (!pending?.seriesId) return;
+                      const pivot = filteredSessions.find(s => s.classId === pending.classId) || classSessions.find(s => s.classId === pending.classId);
+                      const pivotDateStr = pivot ? normalizeDate(pivot.date) : null;
+                      const boothName = pending.boothId ? (booths.find(b => b.boothId === pending.boothId)?.name || null) : null;
+                      const snapshots: Array<[any, any]> = [];
+                      if (pivotDateStr) {
+                        const entries = qc.getQueriesData<any>({ queryKey: ['classSessions'] });
+                        for (const [key] of entries) {
+                          const current = qc.getQueryData<any>(key);
+                          snapshots.push([key, current]);
+                          if (!current) continue;
+                          if (Array.isArray(current)) {
+                            const next = current.map((s: any) => (s?.seriesId === pending.seriesId && normalizeDate(s.date) >= pivotDateStr)
+                              ? { ...s, startTime: pending.startTime, endTime: pending.endTime, boothId: pending.boothId ?? s.boothId, boothName: boothName ?? s.boothName, updatedAt: new Date() }
+                              : s);
+                            qc.setQueryData(key, next);
+                          } else if (current?.data && Array.isArray(current.data)) {
+                            const next = {
+                              ...current,
+                              data: current.data.map((s: any) => (s?.seriesId === pending.seriesId && normalizeDate(s.date) >= pivotDateStr)
+                                ? { ...s, startTime: pending.startTime, endTime: pending.endTime, boothId: pending.boothId ?? s.boothId, boothName: boothName ?? s.boothName, updatedAt: new Date() }
+                                : s),
+                            };
+                            qc.setQueryData(key, next);
+                          }
+                        }
+                        toast.success('シリーズ（仮）を更新しました');
+                      }
+                      updateSeries.mutate(
+                        { startTime: pending.startTime, endTime: pending.endTime, ...(pending.boothId ? { boothId: pending.boothId } : {}), propagateFromClassId: pending.classId } as any,
+                        {
+                          onSuccess: () => {
+                            toast.success('シリーズの授業を更新しました');
+                            qc.invalidateQueries({ queryKey: ['classSessions'], refetchType: 'none' });
+                          },
+                          onError: (err: any) => {
+                            for (const [key, data] of snapshots) qc.setQueryData(key, data);
+                            const message = err?.message || 'シリーズ更新に失敗しました';
+                            toast.error('シリーズ更新に失敗しました', { description: message });
+                          },
+                          onSettled: () => {
+                            setConfirmOpen(false);
+                            setPending(null);
+                          }
+                        }
+                      );
+                    }}
+                  >
+                    シリーズ全体
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </DndContext>
         </div>
       </div>
     </div>
