@@ -1,0 +1,12 @@
+- [x] Read DnD branch files and hooks
+- [x] Add lane stacking and dynamic row heights
+- [x] Make `CalendarCell` droppable (dnd-kit)
+- [x] Add `DndContext` + sensors + handlers
+- [x] Add drag ghost overlay sized by booth row
+- [x] Make `LessonCard` draggable with lane-aware positioning
+- [x] Keep conflict gutter visible under ghost/cards
+- [x] Wire series update dialog; optimistic update + rollback
+- [x] Typecheck (`bun run check-errors`)
+- [ ] Add snap guidance (no-drop red vs valid green) while dragging
+- [ ] Add conflict popover quick-fix actions (±30m, swap booth)
+- [ ] Cap lanes with +N expand affordance (optional)
