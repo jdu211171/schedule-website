@@ -342,12 +342,6 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
       {...listeners}
     >
       <div className="text-[11px] p-1 flex flex-col h-full justify-between relative">
-        {isConflictVisual && (
-          <div className="absolute top-0.5 left-0.5 flex items-center gap-0.5 text-[10px] text-destructive">
-            <AlertTriangle className="h-3 w-3" />
-            <span className="font-semibold">Conflict</span>
-          </div>
-        )}
         {/* Labels removed: visual state indicated by color styles */}
         {/* Top row */}
         <div className="flex justify-between items-start">
