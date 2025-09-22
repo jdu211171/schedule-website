@@ -489,7 +489,8 @@ const SortableItem = React.forwardRef<HTMLDivElement, SortableItemProps>(
               "data-dragging:cursor-grabbing": !context.flatCursor,
               "cursor-grab": !isDragging && asHandle && !context.flatCursor,
               "opacity-50": isDragging,
-              "pointer-events-none opacity-50": disabled,
+              // IMPORTANT: keep disabled non-draggable but clickable
+              // Do NOT suppress pointer events when disabled; some headers contain interactive controls
             },
             className,
           )}
