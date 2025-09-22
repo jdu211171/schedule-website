@@ -1,7 +1,8 @@
 import React, { useMemo } from "react";
+import { useDraggable } from "@dnd-kit/core";
 import { ExtendedClassSessionWithRelations } from "@/hooks/useClassSessionQuery";
 import { TimeSlot } from "./day-calendar";
-import { UserCheck, GraduationCap } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { classTypeColorClasses, isValidClassTypeColor, isHexColor, rgba, getContrastText } from "@/lib/class-type-colors";
 
 interface Booth {
@@ -16,6 +17,10 @@ interface LessonCardProps {
   timeSlotHeight: number;
   timeSlots: TimeSlot[];
   maxZIndex?: number;
+  laneIndex?: number;
+  laneHeight?: number;
+  rowTopOffset?: number;
+  hasBoothOverlap?: boolean;
 }
 
 export const extractTime = (timeValue: string | Date | undefined): string => {
@@ -50,6 +55,10 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
   timeSlotHeight,
   timeSlots,
   maxZIndex = 10,
+  laneIndex = 0,
+  laneHeight,
+  rowTopOffset = 0,
+  hasBoothOverlap = false,
 }) => {
   const startTime = useMemo(
     () => extractTime(lesson.startTime),
@@ -114,6 +123,7 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
     startSlotIndex >= 0 && endSlotIndex > startSlotIndex && boothIndex >= 0;
 
   const isConflicted = (lesson as any)?.status === "CONFLICTED";
+  const isConflictVisual = isConflicted || hasBoothOverlap;
 
   const { effectiveStartIndex, effectiveDuration } = useMemo(() => {
     if (isValidPosition) {
@@ -198,7 +208,7 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
   ]);
 
   const { colorClasses, colorStyle, textClass } = useMemo(() => {
-    if (isConflicted) {
+    if (isConflictVisual) {
       return {
         colorClasses: {
           background: "bg-destructive/15 dark:bg-destructive/25",
@@ -247,24 +257,32 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
           hover: "hover:bg-slate-200 dark:hover:bg-slate-700",
         };
     return { colorClasses: fallback, colorStyle: undefined, textClass: undefined };
-  }, [isConflicted, lesson.seriesId, (lesson as any)?.classTypeColor, (lesson as any)?.classType?.color]);
+  }, [isConflictVisual, lesson.seriesId, (lesson as any)?.classTypeColor, (lesson as any)?.classType?.color]);
+
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: lesson.classId });
 
   const style = useMemo(
     () =>
       ({
         position: "absolute",
         left: `${effectiveStartIndex * 50 + 100}px`,
-        top: `${boothIndex * timeSlotHeight}px`,
+        top: `${rowTopOffset + laneIndex * (laneHeight ?? timeSlotHeight)}px`,
         width: `${effectiveDuration * 50}px`,
-        height: `${timeSlotHeight - 2}px`,
-        zIndex: maxZIndex - 1,
+        height: `${(laneHeight ?? timeSlotHeight) - 2}px`,
+        zIndex: isDragging ? maxZIndex : maxZIndex - 1,
+        transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
+        touchAction: 'none',
       }) as React.CSSProperties,
     [
       effectiveStartIndex,
       effectiveDuration,
-      boothIndex,
+      rowTopOffset,
+      laneIndex,
+      laneHeight,
       timeSlotHeight,
       maxZIndex,
+      isDragging,
+      transform,
     ],
   );
 
@@ -297,8 +315,9 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
 
   return (
     <div
+      ref={setNodeRef}
       className={`
-        absolute rounded border shadow-sm cursor-pointer
+        absolute rounded border shadow-sm cursor-grab active:cursor-grabbing
         transition-colors duration-100 ease-in-out transform
         ${colorClasses ? `${colorClasses.background} ${colorClasses.border} ${colorClasses.text} ${colorClasses.hover}` : ''}
         ${textClass ?? ''}
@@ -307,8 +326,20 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
         overflow-hidden truncate pointer-events-auto
         dark:!text-white
       `}
-      style={{ ...style, ...(colorStyle || {}) }}
+      data-conflict={isConflictVisual ? 'true' : 'false'}
+      style={{
+        ...style,
+        ...(colorStyle || {}),
+        ...(isConflictVisual
+          ? {
+              backgroundImage:
+                'repeating-linear-gradient(45deg, rgba(220,38,38,.20) 0 6px, transparent 6px 12px)'
+            }
+          : {}),
+      }}
       onClick={() => onClick(lesson)}
+      {...attributes}
+      {...listeners}
     >
       <div className="text-[11px] p-1 flex flex-col h-full justify-between relative">
         {/* Labels removed: visual state indicated by color styles */}
