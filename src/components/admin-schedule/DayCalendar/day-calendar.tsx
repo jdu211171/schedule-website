@@ -127,7 +127,7 @@ const CalendarCell = React.memo(({
       style={{
         width: `${CELL_WIDTH}px`,
         minWidth: `${CELL_WIDTH}px`,
-        height: `${TIME_SLOT_HEIGHT}px`,
+        height: '100%',
       }}
       onMouseDown={onMouseDown}
       onMouseEnter={onMouseEnter}
@@ -154,7 +154,8 @@ const BoothRow = React.memo(({
   canDrag,
   onStartSelection,
   onCellHover,
-  onEndSelection
+  onEndSelection,
+  rowHeight
 }: {
   booth: Booth,
   boothIndex: number,
@@ -165,19 +166,20 @@ const BoothRow = React.memo(({
   canDrag: boolean,
   onStartSelection: (boothIndex: number, timeIndex: number, e: React.MouseEvent) => void,
   onCellHover: (boothIndex: number, timeIndex: number, e: React.MouseEvent) => void,
-  onEndSelection: (e: React.MouseEvent) => void
+  onEndSelection: (e: React.MouseEvent) => void,
+  rowHeight: number
 }) => {
   return (
     <div
       className="flex relative"
-      style={{ height: `${TIME_SLOT_HEIGHT}px` }}
+      style={{ height: `${rowHeight}px` }}
     >
       <div
         className="flex items-center justify-center bg-background dark:bg-background border-r border-b text-sm font-medium text-foreground dark:text-foreground px-2 border-border dark:border-border sticky left-0"
         style={{
           width: `${BOOTH_LABEL_WIDTH}px`,
           minWidth: `${BOOTH_LABEL_WIDTH}px`,
-          height: `${TIME_SLOT_HEIGHT}px`,
+          height: `${rowHeight}px`,
           zIndex: 20
         }}
       >
@@ -209,7 +211,8 @@ const BoothRow = React.memo(({
          prevProps.isSelecting === nextProps.isSelecting &&
          prevProps.canDrag === nextProps.canDrag &&
          prevProps.selectionStart === nextProps.selectionStart &&
-         prevProps.selectionEnd === nextProps.selectionEnd;
+         prevProps.selectionEnd === nextProps.selectionEnd &&
+         prevProps.rowHeight === nextProps.rowHeight;
 });
 
 BoothRow.displayName = 'BoothRow';
@@ -325,6 +328,34 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
     availabilityMode
   );
 
+  // --- Overlap/Lane computation helpers ---
+  const getStartSlotIndex = useCallback((t: string) => {
+    const exact = timeSlots.findIndex((s) => s.start === t);
+    if (exact >= 0) return exact;
+    return timeSlots.findIndex((slot) => {
+      const [sh, sm] = slot.start.split(':').map(Number);
+      const [th, tm] = t.split(':').map(Number);
+      if (Number.isNaN(sh) || Number.isNaN(th)) return false;
+      const slotMin = sh * 60 + (sm || 0);
+      const tMin = th * 60 + (tm || 0);
+      return slotMin <= tMin && tMin < slotMin + 30;
+    });
+  }, [timeSlots]);
+
+  const getEndSlotIndex = useCallback((t: string, fallbackStart: number) => {
+    const exact = timeSlots.findIndex((s) => s.start === t);
+    if (exact >= 0) return exact;
+    const idx = timeSlots.findIndex((slot) => {
+      const [sh, sm] = slot.start.split(':').map(Number);
+      const [th, tm] = t.split(':').map(Number);
+      if (Number.isNaN(sh) || Number.isNaN(th)) return false;
+      const slotMin = sh * 60 + (sm || 0);
+      const tMin = th * 60 + (tm || 0);
+      return slotMin <= tMin && tMin < slotMin + 30;
+    });
+    return idx >= 0 ? idx : Math.max(fallbackStart + 1, fallbackStart + 3);
+  }, [timeSlots]);
+
   const dateKey = useMemo(() => {
     return getDateKey(date); // Use consistent date formatting
   }, [date]);
@@ -381,6 +412,99 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
     document.body.classList.remove('cursor-move');
     createLessonCalledRef.current = false;
   }, []);
+
+  // --- Compute per-session positions and lane assignments ---
+  type Pos = { boothIndex: number; start: number; end: number };
+  const sessionPos = useMemo(() => {
+    const map = new Map<string, Pos>();
+    filteredSessions.forEach((lesson) => {
+      const st = extractTime(lesson.startTime);
+      const et = extractTime(lesson.endTime);
+      const start = getStartSlotIndex(st);
+      const end = getEndSlotIndex(et, start);
+      const boothIdx = (() => {
+        const byId = booths.findIndex((b) => b.boothId === lesson.boothId);
+        if (byId >= 0) return byId;
+        const byName = booths.findIndex((b) => b.name === (lesson as any).boothName || (lesson as any).booth?.name);
+        return byName >= 0 ? byName : 0;
+      })();
+      map.set(String(lesson.classId), { boothIndex: boothIdx, start, end });
+    });
+    return map;
+  }, [filteredSessions, booths, getStartSlotIndex, getEndSlotIndex]);
+
+  const { laneMap, boothLaneCounts } = useMemo(() => {
+    const laneMap = new Map<string, { laneIndex: number }>();
+    const boothLaneCounts = new Map<number, number>();
+
+    const byBooth = new Map<number, Array<{ id: string; start: number; end: number }>>();
+    filteredSessions.forEach((s) => {
+      const pos = sessionPos.get(String(s.classId));
+      if (!pos) return;
+      if (!byBooth.has(pos.boothIndex)) byBooth.set(pos.boothIndex, []);
+      byBooth.get(pos.boothIndex)!.push({ id: String(s.classId), start: pos.start, end: pos.end });
+    });
+
+    byBooth.forEach((list, boothIdx) => {
+      list.sort((a, b) => a.start - b.start || a.end - b.end);
+      const laneEnds: number[] = [];
+      list.forEach((ev) => {
+        let assigned = -1;
+        for (let i = 0; i < laneEnds.length; i++) {
+          if (laneEnds[i] <= ev.start) { assigned = i; break; }
+        }
+        if (assigned === -1) {
+          laneEnds.push(ev.end);
+          assigned = laneEnds.length - 1;
+        } else {
+          laneEnds[assigned] = ev.end;
+        }
+        laneMap.set(ev.id, { laneIndex: assigned });
+      });
+      boothLaneCounts.set(boothIdx, Math.max(1, laneEnds.length));
+    });
+
+    booths.forEach((_, idx) => { if (!boothLaneCounts.has(idx)) boothLaneCounts.set(idx, 1); });
+    return { laneMap, boothLaneCounts };
+  }, [filteredSessions, sessionPos, booths]);
+
+  const boothRowHeights = useMemo(() => booths.map((_, idx) => (boothLaneCounts.get(idx) || 1) * TIME_SLOT_HEIGHT), [booths, boothLaneCounts]);
+  const boothTopOffsets = useMemo(() => {
+    const offsets: number[] = [];
+    let acc = 0;
+    for (let i = 0; i < boothRowHeights.length; i++) { offsets.push(acc); acc += boothRowHeights[i]; }
+    return offsets;
+  }, [boothRowHeights]);
+  const contentHeight = useMemo(() => boothRowHeights.reduce((a, b) => a + b, 0), [boothRowHeights]);
+
+  // Build conflict gutter ranges per booth
+  const conflictRanges = useMemo(() => {
+    type Range = { start: number; end: number; boothIndex: number };
+    const ranges: Range[] = [];
+    const byBooth: Map<number, Array<{ start: number; end: number }>> = new Map();
+    filteredSessions.forEach((s) => {
+      const pos = sessionPos.get(String(s.classId));
+      if (!pos) return;
+      if (!byBooth.has(pos.boothIndex)) byBooth.set(pos.boothIndex, []);
+      byBooth.get(pos.boothIndex)!.push({ start: pos.start, end: pos.end });
+    });
+    byBooth.forEach((events, boothIndex) => {
+      const conc = new Array(timeSlots.length).fill(0);
+      events.forEach(({ start, end }) => {
+        for (let i = Math.max(0, start); i < Math.min(timeSlots.length, end); i++) conc[i] += 1;
+      });
+      let i = 0;
+      while (i < conc.length) {
+        if (conc[i] > 1) {
+          const start = i;
+          while (i < conc.length && conc[i] > 1) i++;
+          const end = i;
+          ranges.push({ start, end, boothIndex });
+        } else { i++; }
+      }
+    });
+    return ranges;
+  }, [filteredSessions, sessionPos, timeSlots.length]);
 
   useEffect(() => {
     if (resetSelectionKey > 0) {
@@ -598,7 +722,7 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
           className="relative min-w-full select-none"
           style={{
             minWidth: `${Math.max(totalGridWidth + BOOTH_LABEL_WIDTH, containerWidth)}px`,
-            height: `${(booths.length + 1) * TIME_SLOT_HEIGHT}px`
+            height: `${TIME_SLOT_HEIGHT + contentHeight}px`
           }}
         >
           <TimeHeader
@@ -622,6 +746,7 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
                 onStartSelection={handleStartSelection}
                 onCellHover={handleCellHover}
                 onEndSelection={handleEndSelection}
+                rowHeight={boothRowHeights[boothIndex]}
               />
             ))}
           </div>
@@ -633,9 +758,25 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
               top: `${TIME_SLOT_HEIGHT}px`, // Start after the sticky header
               left: `0px`,
               width: '100%',
-              height: `${booths.length * TIME_SLOT_HEIGHT}px`
+              height: `${contentHeight}px`
             }}
           >
+            {/* Conflict gutter bands */}
+            {conflictRanges.map((r, idx) => (
+              <div
+                key={`gutter-${idx}`}
+                className="absolute"
+                style={{
+                  left: `${r.start * CELL_WIDTH + BOOTH_LABEL_WIDTH}px`,
+                  top: `${boothTopOffsets[r.boothIndex]}px`,
+                  width: `${(r.end - r.start) * CELL_WIDTH}px`,
+                  height: '4px',
+                  background: 'linear-gradient(90deg, rgba(220,38,38,0.9), rgba(220,38,38,0.5))',
+                  borderRadius: '2px',
+                }}
+              />
+            ))}
+
             {filteredSessions.map(session => (
               <LessonCard
                 key={`lesson-${session.classId}`}
@@ -645,6 +786,20 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
                 timeSlotHeight={TIME_SLOT_HEIGHT}
                 timeSlots={timeSlots}
                 maxZIndex={9}
+                laneIndex={laneMap.get(String(session.classId))?.laneIndex || 0}
+                laneHeight={TIME_SLOT_HEIGHT}
+                rowTopOffset={boothTopOffsets[sessionPos.get(String(session.classId))?.boothIndex || 0]}
+                hasBoothOverlap={(laneMap.get(String(session.classId))?.laneIndex ?? 0) > 0 ||
+                  (() => {
+                    const pos = sessionPos.get(String(session.classId));
+                    if (!pos) return false;
+                    return filteredSessions.some(s2 => {
+                      if (s2.classId === session.classId) return false;
+                      const p2 = sessionPos.get(String(s2.classId));
+                      return p2 && p2.boothIndex === pos.boothIndex && !(p2.end <= pos.start || pos.end <= p2.start);
+                    });
+                  })()
+                }
               />
             ))}
           </div>
