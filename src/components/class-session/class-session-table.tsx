@@ -104,6 +104,43 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
     isCancelled: filters.isCancelled,
   });
 
+  const queryClient = useQueryClient();
+
+  // Cross-tab sync: refresh only if changed dates intersect current filter range
+  useEffect(() => {
+    const channel = typeof window !== 'undefined' ? new BroadcastChannel('calendar-events') : null;
+    if (!channel) return;
+    const handler = (event: MessageEvent) => {
+      const payload = event.data as { type?: string; dates?: string[] };
+      if (!payload || payload.type !== 'classSessionsChanged') return;
+
+      // If no date filter set, just refetch active classSessions queries
+      const startStr = filters.startDate;
+      const endStr = filters.endDate || filters.startDate;
+      const hasRange = !!startStr && !!endStr;
+      if (!hasRange) {
+        queryClient.invalidateQueries({ queryKey: ['classSessions'], refetchType: 'active' });
+        return;
+      }
+
+      const start = new Date(`${startStr}T00:00:00`);
+      const end = new Date(`${endStr}T23:59:59`);
+      const dates = payload.dates || [];
+      const intersects = dates.length === 0 || dates.some((d) => {
+        const dd = new Date(`${d}T12:00:00`);
+        return dd >= start && dd <= end;
+      });
+      if (intersects) {
+        queryClient.invalidateQueries({ queryKey: ['classSessions'], refetchType: 'active' });
+      }
+    };
+    channel.addEventListener('message', handler);
+    return () => {
+      channel.removeEventListener('message', handler);
+      channel.close();
+    };
+  }, [filters.startDate, filters.endDate, queryClient]);
+
   // Fetch reference data for filters
   const { data: teachersData } = useTeachers({ limit: 100 });
   const { data: studentsData } = useStudents({ limit: 100 });
@@ -115,7 +152,6 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
   const bulkDeleteClassSessionMutation = useClassSessionBulkDelete();
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "ADMIN";
-  const queryClient = useQueryClient();
   const [isLessonDialogOpen, setIsLessonDialogOpen] = useState(false);
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
   const [dialogMode, setDialogMode] = useState<"view" | "edit">("edit");

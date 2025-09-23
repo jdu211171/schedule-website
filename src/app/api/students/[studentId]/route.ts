@@ -4,69 +4,58 @@ import { withBranchAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { adjustOppositeAvailabilityForNew } from "@/lib/user-availability-adjust";
 import { studentUpdateSchema } from "@/schemas/student.schema";
-import { Student, StudentType, DayOfWeek } from "@prisma/client";
+import { Student, StudentType, DayOfWeek, Prisma } from "@prisma/client";
 
 // Define a type for the student with includes
-type StudentWithIncludes = Student & {
-  studentType: StudentType | null;
-  user: {
-    username: string | null;
-    email: string | null;
-    passwordHash: string | null;
-    branches?: {
-      branch: {
-        branchId: string;
-        name: string;
+type StudentWithIncludes = (Prisma.StudentGetPayload<{
+  include: {
+    studentType: true;
+    user: {
+      select: {
+        username: true;
+        email: true;
+        passwordHash: true;
+        branches: {
+          include: {
+            branch: { select: { branchId: true; name: true } };
+          };
+        };
+        subjectPreferences: {
+          select: {
+            subjectId: true;
+            subjectTypeId: true;
+            subject: { select: { subjectId: true; name: true } };
+            subjectType: { select: { subjectTypeId: true; name: true } };
+          };
+        };
+        availability: {
+          select: {
+            id: true;
+            dayOfWeek: true;
+            type: true;
+            status: true;
+            fullDay: true;
+            startTime: true;
+            endTime: true;
+            date: true;
+            reason: true;
+            notes: true;
+          };
+        };
       };
-    }[];
-    subjectPreferences?: {
-      subjectId: string;
-      subjectTypeId: string;
-      subject: {
-        subjectId: string;
-        name: string;
-      };
-      subjectType: {
-        subjectTypeId: string;
-        name: string;
-      };
-    }[];
-    availability?: {
-      id: string;
-      dayOfWeek: string | null;
-      type: string;
-      status: string;
-      fullDay: boolean | null;
-      startTime: Date | null;
-      endTime: Date | null;
-      date: Date | null;
-      reason: string | null;
-      notes: string | null;
-    }[];
-  };
-  teacherPreferences?: {
-    teacherId: string;
-    subjectId: string;
-    subjectTypeId: string;
-    teacher: {
-      teacherId: string;
-      name: string;
     };
-  }[];
-  contactPhones?: {
-    id: string;
-    phoneType: string;
-    phoneNumber: string;
-    notes: string | null;
-    order: number;
-  }[];
-  contactEmails?: {
-    id: string;
-    email: string;
-    notes: string | null;
-    order: number;
-  }[];
-};
+    teacherPreferences: {
+      select: {
+        teacherId: true;
+        subjectId: true;
+        subjectTypeId: true;
+        teacher: { select: { teacherId: true; name: true } };
+      };
+    };
+    contactPhones: true;
+    contactEmails: true;
+  };
+}>) & { admissionDate: Date | null };
 
 // Define the return type for the formatted student
 export type FormattedStudent = {
@@ -503,8 +492,8 @@ export const GET = withBranchAccess(
       return NextResponse.json({ error: "Student not found" }, { status: 404 });
     }
 
-    // Format response using the helper function
-    const formattedStudent = formatStudent(student);
+    // Format response using the helper function (type-assert to our include shape)
+    const formattedStudent = formatStudent(student as StudentWithIncludes);
 
     return NextResponse.json({
       data: [formattedStudent],
@@ -1113,7 +1102,7 @@ export const PATCH = withBranchAccess(
       }
 
       // Format response using the helper function
-      const formattedStudent = formatStudent(updatedStudent);
+      const formattedStudent = formatStudent(updatedStudent as StudentWithIncludes);
 
       return NextResponse.json({
         data: [formattedStudent],

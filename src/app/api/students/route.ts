@@ -375,7 +375,7 @@ const formatStudent = (student: StudentWithIncludes): FormattedStudent => {
     username: student.user.username,
     email: student.user.email,
     password: student.user.passwordHash,
-    admissionDate: student.admissionDate,
+    admissionDate: (student as any).admissionDate ?? null,
     branches:
       student.user.branches?.map((ub) => ({
         branchId: ub.branch.branchId,
@@ -558,12 +558,12 @@ export const GET = withBranchAccess(
 
     // Filter by admission date range
     if (admissionDateFrom || admissionDateTo) {
-      where.admissionDate = {};
+      (where as any).admissionDate = {};
       if (admissionDateFrom) {
-        where.admissionDate.gte = admissionDateFrom;
+        (where as any).admissionDate.gte = admissionDateFrom;
       }
       if (admissionDateTo) {
-        where.admissionDate.lte = admissionDateTo;
+        (where as any).admissionDate.lte = admissionDateTo;
       }
     }
 

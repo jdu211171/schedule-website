@@ -228,7 +228,7 @@ const AdminCalendarWeek: React.FC<AdminCalendarWeekProps> = ({
         requestBody.sessionActions = payload.sessionActions;
       }
   
-      console.log("Creating lesson with payload:", JSON.stringify(requestBody, null, 2));
+      // Silent background create
   
       const response = await fetch('/api/class-sessions', {
         method: 'POST',
@@ -252,7 +252,6 @@ const AdminCalendarWeek: React.FC<AdminCalendarWeekProps> = ({
   
         // Check for conflicts
         if (errorData.requiresConfirmation) {
-          console.log('Conflicts detected:', errorData);
           return { 
             success: false, 
             conflicts: errorData as ConflictResponse 
@@ -284,8 +283,6 @@ const AdminCalendarWeek: React.FC<AdminCalendarWeekProps> = ({
         }
       }
   
-      console.log('Lesson created successfully');
-      
       // Close dialog and refresh data if needed
       setCreateDialogOpen(false);
       setCreateLessonData(null);

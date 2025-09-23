@@ -260,8 +260,9 @@ export const GET = withBranchAccess(
     // Filter by admission date range
     if (admissionDateFrom || admissionDateTo) {
       filteredStudents = filteredStudents.filter(student => {
-        if (!student.admissionDate) return false;
-        const d = new Date(student.admissionDate);
+        const adm = (student as any).admissionDate as Date | string | null | undefined;
+        if (!adm) return false;
+        const d = new Date(adm);
         if (admissionDateFrom && d < admissionDateFrom) return false;
         if (admissionDateTo && d > admissionDateTo) return false;
         return true;
@@ -356,7 +357,7 @@ export const GET = withBranchAccess(
         case "birthDate":
           return formatDateForCSV(student.birthDate);
         case "admissionDate":
-          return formatDateForCSV(student.admissionDate);
+          return formatDateForCSV((student as any).admissionDate ?? null);
         case "schoolName":
           return student.schoolName || "";
         case "schoolType":
