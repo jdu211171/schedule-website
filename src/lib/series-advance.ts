@@ -3,6 +3,8 @@
 // Shared between API routes and scripts.
 
 import type { PrismaClient } from "@prisma/client";
+import { fromZonedTime } from "date-fns-tz";
+import { getEffectiveSchedulingConfig, applySeriesOverride } from "@/lib/scheduling-config";
 
 export type AdvanceResult = {
   seriesId: string;
@@ -57,8 +59,12 @@ export function computeAdvanceWindow(
   return { from: baseline, to };
 }
 
-function overlaps(aStart: Date, aEnd: Date, bStart: Date, bEnd: Date) {
-  return aStart < bEnd && aEnd > bStart;
+// Compare overlaps by minutes-from-midnight to avoid mismatched date anchors on time-only fields
+function toMin(d: Date) { return d.getUTCHours() * 60 + d.getUTCMinutes(); }
+function overlapsByMinutes(aStart: Date, aEnd: Date, bStart: Date, bEnd: Date) {
+  const as = toMin(aStart), ae = toMin(aEnd);
+  const bs = toMin(bStart), be = toMin(bEnd);
+  return bs < ae && be > as;
 }
 
 async function getBranchVacations(prisma: PrismaClient, branchId: string) {
@@ -93,8 +99,27 @@ export async function advanceGenerateForSeries(
   seriesId: string,
   opts?: { leadDays?: number }
 ): Promise<AdvanceResult> {
+  // Acquire advisory lock to avoid concurrent generation for the same series
+  try {
+    // @ts-ignore: $queryRaw exists on PrismaClient
+    const lockRes: Array<{ pg_try_advisory_lock: boolean }> = await (prisma as any).$queryRaw`SELECT pg_try_advisory_lock(hashtext(${seriesId})::bigint)`;
+    if (!lockRes?.[0]?.pg_try_advisory_lock) {
+      return {
+        seriesId,
+        fromDate: "",
+        toDate: "",
+        attempted: 0,
+        createdConfirmed: 0,
+        createdConflicted: 0,
+        skipped: 0,
+      };
+    }
+  } catch {
+    // best-effort; continue without lock
+  }
   const leadDays = Math.max(1, opts?.leadDays ?? 30);
 
+  try {
   const series = await prisma.classSeries.findUnique({ where: { seriesId } });
   if (!series) throw new Error("Series not found");
 
@@ -190,15 +215,16 @@ export async function advanceGenerateForSeries(
     : [];
 
   // Prefetch same-day sessions to check overlap quickly
+  const orConds = [
+    series.teacherId ? { teacherId: series.teacherId } : undefined,
+    series.studentId ? { studentId: series.studentId } : undefined,
+    series.boothId ? { boothId: series.boothId } : undefined,
+  ].filter(Boolean) as any[];
   const sameDaySessions = await prisma.classSession.findMany({
     where: {
       isCancelled: false,
       date: { in: candidateDates },
-      OR: [
-        series.teacherId ? { teacherId: series.teacherId } : undefined,
-        series.studentId ? { studentId: series.studentId } : undefined,
-        series.boothId ? { boothId: series.boothId } : undefined,
-      ].filter(Boolean) as any,
+      ...(orConds.length ? { OR: orConds as any } : {}),
     },
     select: {
       date: true,
@@ -227,40 +253,40 @@ export async function advanceGenerateForSeries(
   let createdConflicted = 0;
   let skipped = 0;
   const attempted = candidateDates.length;
+  let lastSuccess: Date | null = null;
 
   for (const date of candidateDates) {
-    const start = new Date(
-      Date.UTC(
-        date.getUTCFullYear(),
-        date.getUTCMonth(),
-        date.getUTCDate(),
-        sh,
-        sm,
-        0,
-        0
-      )
-    );
-    const end = new Date(
-      Date.UTC(
-        date.getUTCFullYear(),
-        date.getUTCMonth(),
-        date.getUTCDate(),
-        eh,
-        em,
-        0,
-        0
-      )
-    );
+    let start: Date;
+    let end: Date;
+    if ((series as any).timezone) {
+      const y = date.getUTCFullYear();
+      const m = String(date.getUTCMonth() + 1).padStart(2, "0");
+      const d = String(date.getUTCDate()).padStart(2, "0");
+      const sStr = `${y}-${m}-${d}T${String(sh).padStart(2, "0")}:${String(sm).padStart(2, "0")}:00`;
+      const eStr = `${y}-${m}-${d}T${String(eh).padStart(2, "0")}:${String(em).padStart(2, "0")}:00`;
+      start = fromZonedTime(sStr, (series as any).timezone as string);
+      end = fromZonedTime(eStr, (series as any).timezone as string);
+    } else {
+      start = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), sh, sm, 0, 0));
+      end = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), eh, em, 0, 0));
+    }
     const duration = series.duration ?? Math.round((end.getTime() - start.getTime()) / (1000 * 60));
 
     const k = fmtYMD(date);
     const existing = sessionsByDate.get(k) || [];
-    const timeConflict = existing.some((s) => overlaps(start, end, s.startTime, s.endTime));
+    const timeConflict = existing.some((s) => overlapsByMinutes(start, end, s.startTime, s.endTime));
     const vacationConflict = series.branchId
       ? hasVacationConflictCached(date, vacations)
       : false;
 
     const isConflict = timeConflict || vacationConflict;
+
+    // Idempotency: skip if a session already exists with the same series/date/time
+    const duplicate = await prisma.classSession.findFirst({
+      where: { seriesId: series.seriesId, date, startTime: start, endTime: end },
+      select: { classId: true },
+    });
+    if (duplicate) { skipped++; continue; }
 
     try {
       await prisma.classSession.create({
@@ -283,6 +309,7 @@ export async function advanceGenerateForSeries(
         },
       });
       if (isConflict) createdConflicted++; else createdConfirmed++;
+      lastSuccess = date;
     } catch (_) {
       // Unique constraint or other DB guard; count as skipped
       skipped++;
@@ -293,8 +320,8 @@ export async function advanceGenerateForSeries(
   const last = candidateDates[candidateDates.length - 1];
   if (series.endDate && last.getTime() >= series.endDate.getTime()) {
     await prisma.classSeries.delete({ where: { seriesId: series.seriesId } }).catch(() => {});
-  } else {
-    await prisma.classSeries.update({ where: { seriesId: series.seriesId }, data: { lastGeneratedThrough: last } });
+  } else if (lastSuccess) {
+    await prisma.classSeries.update({ where: { seriesId: series.seriesId }, data: { lastGeneratedThrough: lastSuccess } });
   }
 
   return {
@@ -306,4 +333,12 @@ export async function advanceGenerateForSeries(
     createdConflicted,
     skipped,
   };
+  } finally {
+  try {
+    // @ts-ignore: $queryRaw exists on PrismaClient
+    await (prisma as any).$queryRaw`SELECT pg_advisory_unlock(hashtext(${seriesId})::bigint)`;
+  } catch {
+    // ignore
+  }
+}
 }

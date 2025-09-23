@@ -93,6 +93,40 @@ export async function getEffectiveSchedulingConfig(
 }
 
 /**
+ * Apply a per-series JSON override on top of an existing effective config.
+ * Only properties present in the override are applied.
+ */
+export function applySeriesOverride(
+  base: EffectiveSchedulingConfig,
+  override: Partial<EffectiveSchedulingConfig> | null | undefined
+): EffectiveSchedulingConfig {
+  if (!override || typeof override !== 'object') return base;
+  return {
+    markTeacherConflict: override.markTeacherConflict ?? base.markTeacherConflict,
+    markStudentConflict: override.markStudentConflict ?? base.markStudentConflict,
+    markBoothConflict: override.markBoothConflict ?? base.markBoothConflict,
+    markTeacherUnavailable:
+      override.markTeacherUnavailable ?? base.markTeacherUnavailable,
+    markStudentUnavailable:
+      override.markStudentUnavailable ?? base.markStudentUnavailable,
+    markTeacherWrongTime:
+      override.markTeacherWrongTime ?? base.markTeacherWrongTime,
+    markStudentWrongTime:
+      override.markStudentWrongTime ?? base.markStudentWrongTime,
+    markNoSharedAvailability:
+      override.markNoSharedAvailability ?? base.markNoSharedAvailability,
+    allowOutsideAvailabilityTeacher:
+      override.allowOutsideAvailabilityTeacher ?? base.allowOutsideAvailabilityTeacher,
+    allowOutsideAvailabilityStudent:
+      override.allowOutsideAvailabilityStudent ?? base.allowOutsideAvailabilityStudent,
+    generationMonths: Math.max(
+      1,
+      Number(override.generationMonths ?? base.generationMonths)
+    ),
+  };
+}
+
+/**
  * Convert effective config into the existing `conflictPolicy` response shape
  * expected by the frontend.
  */

@@ -2,7 +2,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { advanceGenerateForSeries, computeAdvanceWindow } from "@/lib/series-advance";
-import { getEffectiveSchedulingConfig } from "@/lib/scheduling-config";
+import { getEffectiveSchedulingConfig, applySeriesOverride } from "@/lib/scheduling-config";
+import { validateEffectiveConfig, maybeReportSchedulingWarnings } from "@/lib/scheduling-config-validation";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,6 +21,10 @@ function isAuthorizedCron(req: NextRequest): boolean {
 }
 
 export async function GET(request: NextRequest) {
+  // Feature flag guard for production safety
+  if (process.env.NODE_ENV === 'production' && process.env.ENABLE_SERIES_GENERATION !== 'true') {
+    return NextResponse.json({ error: 'Series generation is disabled in production. Set ENABLE_SERIES_GENERATION=true to enable.' }, { status: 403 });
+  }
   if (!isAuthorizedCron(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -46,10 +51,14 @@ export async function GET(request: NextRequest) {
   let skipped = 0;
   const details: Array<any> = [];
 
+  const startedAt = Date.now();
   for (const s of list) {
     processed++;
-    const cfg = await getEffectiveSchedulingConfig(s.branchId || undefined);
-    const perSeriesLeadDays = leadDaysOverride ? Math.max(1, Number(leadDaysOverride)) : Math.max(1, (cfg as any).generationMonths * 30);
+    const baseCfg = await getEffectiveSchedulingConfig(s.branchId || undefined);
+    const effCfg = applySeriesOverride(baseCfg, (s as any).schedulingOverride as any);
+    const perSeriesLeadDays = leadDaysOverride ? Math.max(1, Number(leadDaysOverride)) : Math.max(1, (effCfg as any).generationMonths * 30);
+    const warnings = validateEffectiveConfig(effCfg as any);
+    if (warnings.length) await maybeReportSchedulingWarnings({ branchId: s.branchId, seriesId: s.seriesId }, warnings);
     const { to } = computeAdvanceWindow(today, s.lastGeneratedThrough, s.startDate, s.endDate, perSeriesLeadDays);
     if (s.lastGeneratedThrough && s.lastGeneratedThrough >= to) {
       upToDate++;
@@ -62,13 +71,17 @@ export async function GET(request: NextRequest) {
     details.push({ ...res });
   }
 
-  return NextResponse.json({
+  const durationMs = Date.now() - startedAt;
+  const payload = {
     processed,
     upToDate,
     created: { confirmed, conflicted },
     skipped,
     leadDays: leadDaysOverride ? Number(leadDaysOverride) : undefined,
     count: details.length,
+    durationMs,
     details,
-  });
+  } as const;
+  console.log('[series-cron] summary', payload);
+  return NextResponse.json(payload);
 }

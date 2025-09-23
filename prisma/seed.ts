@@ -91,6 +91,33 @@ async function main() {
     },
   });
 
+  // 1‑a-2. Scheduling configuration (GLOBAL + per-branch overrides)
+  await prisma.schedulingConfig.upsert({
+    where: { configId: "GLOBAL" },
+    update: {},
+    create: {
+      configId: "GLOBAL",
+      markTeacherConflict: true,
+      markStudentConflict: true,
+      markBoothConflict: true,
+      markTeacherUnavailable: false,
+      markStudentUnavailable: false,
+      markTeacherWrongTime: false,
+      markStudentWrongTime: false,
+      markNoSharedAvailability: false,
+      allowOutsideAvailabilityTeacher: false,
+      allowOutsideAvailabilityStudent: false,
+      generationMonths: 1,
+    },
+  });
+
+  // East branch override: allow outside availability for teacher and generate 2 months ahead
+  await prisma.branchSchedulingConfig.upsert({
+    where: { branchId: eastBranch.branchId },
+    update: { allowOutsideAvailabilityTeacher: true, generationMonths: 2 },
+    create: { branchId: eastBranch.branchId, allowOutsideAvailabilityTeacher: true, generationMonths: 2 },
+  });
+
   // 1‑b. StudentType
   const generalStudentType = await prisma.studentType.create({
     data: {
