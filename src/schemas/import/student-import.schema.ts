@@ -150,6 +150,12 @@ export const studentImportSchema = z.object({
     .transform(val => val === "" ? null : val)
     .pipe(z.coerce.date().nullable().optional())
     .optional(),
+  // Admission date
+  admissionDate: z
+    .string()
+    .transform(val => val === "" ? null : val)
+    .pipe(z.coerce.date().nullable().optional())
+    .optional(),
   // Contact phones aggregated column (e.g., "自宅:03-...; 父:090-...; 母:080-...")
   contactPhones: z
     .string()
@@ -319,6 +325,12 @@ export const studentUpdateImportSchema = z.object({
     .transform(val => val === "" ? null : val)
     .pipe(z.coerce.date().nullable().optional())
     .optional(),
+  // Admission date
+  admissionDate: z
+    .string()
+    .transform(val => val === "" ? null : val)
+    .pipe(z.coerce.date().nullable().optional())
+    .optional(),
   // Contact phones aggregated column
   contactPhones: z
     .string()
@@ -343,6 +355,7 @@ export const STUDENT_CSV_HEADERS = [
   "生徒タイプ",
   "学年",
   "生年月日",
+  "入会日",
   "学校名",
   "学校種別",
   "受験区分",

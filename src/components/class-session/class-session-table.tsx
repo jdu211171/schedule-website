@@ -471,6 +471,7 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
             firstChoice: student.firstChoice,
             secondChoice: student.secondChoice,
             examDate: student.examDate ? new Date(student.examDate) : null,
+            admissionDate: student.admissionDate ? new Date(student.admissionDate) : null,
             homePhone: student.homePhone,
             parentPhone: student.parentPhone,
             studentPhone: student.studentPhone,

@@ -86,6 +86,7 @@ export type FormattedStudent = {
   username: string | null;
   email: string | null;
   password: string | null;
+  admissionDate: Date | null;
   branches: {
     branchId: string;
     name: string;
@@ -364,6 +365,7 @@ const formatStudent = (student: StudentWithIncludes): FormattedStudent => {
     username: student.user.username,
     email: student.user.email,
     password: student.user.passwordHash,
+    admissionDate: student.admissionDate,
     branches:
       student.user.branches?.map((ub) => ({
         branchId: ub.branch.branchId,

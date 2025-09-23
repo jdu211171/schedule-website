@@ -278,6 +278,8 @@ export const studentBaseSchema = z.object({
     .or(z.literal("")),
   // Personal information
   birthDate: z.coerce.date().optional().nullable(),
+  // Admission date (date the student started attending)
+  admissionDate: z.coerce.date().optional().nullable(),
   // Contact phones
   contactPhones: z.array(contactPhoneSchema).optional().default([]),
   // Contact emails (non-login informational emails)
@@ -386,6 +388,8 @@ export const studentFilterSchema = z.object({
   examCategoryTypes: z.array(examCategoryTypeEnum).optional(), // Multiple exam category types
   birthDateFrom: z.coerce.date().optional(),
   birthDateTo: z.coerce.date().optional(),
+  admissionDateFrom: z.coerce.date().optional(),
+  admissionDateTo: z.coerce.date().optional(),
   examDateFrom: z.coerce.date().optional(),
   examDateTo: z.coerce.date().optional(),
   // Sorting

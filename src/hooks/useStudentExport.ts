@@ -16,6 +16,7 @@ interface ExportOptions {
   examCategory?: string[];
   examCategoryType?: string[];
   birthDateRange?: { from?: Date; to?: Date };
+  admissionDateRange?: { from?: Date; to?: Date };
   examDateRange?: { from?: Date; to?: Date };
   columns: string[];
 }
@@ -63,6 +64,14 @@ export function useStudentExport() {
         }
         if (options.birthDateRange.to) {
           params.append("birthDateTo", options.birthDateRange.to.toISOString());
+        }
+      }
+      if (options.admissionDateRange) {
+        if (options.admissionDateRange.from) {
+          params.append("admissionDateFrom", options.admissionDateRange.from.toISOString());
+        }
+        if (options.admissionDateRange.to) {
+          params.append("admissionDateTo", options.admissionDateRange.to.toISOString());
         }
       }
       if (options.examDateRange) {

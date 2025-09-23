@@ -88,7 +88,7 @@ import {
 } from "@/components/ui/popover";
 import { EnhancedAvailabilityRegularSelector } from "./enhanced-availability-regular-selector";
 import { EnhancedAvailabilityIrregularSelector } from "./enhanced-availability-irregular-selector";
-import { parseYMDToLocalDate, toUTCDateOnly } from "@/lib/date";
+import { parseYMDToLocalDate, toUTCDateOnly, formatLocalYMD } from "@/lib/date";
 import { LineLinking } from "@/components/shared/line-linking";
 import { LineManagementDialog } from "@/components/shared/line-management-dialog";
 import { AlertCircle } from "lucide-react";
@@ -300,6 +300,7 @@ export function StudentFormDialog({
       parentEmail: "",
       // Personal information
       birthDate: undefined,
+      admissionDate: new Date(),
       // Contact phones
       contactPhones: [],
      // Contact emails (non-login informational emails)
@@ -373,6 +374,7 @@ export function StudentFormDialog({
         parentEmail: student.parentEmail || "",
         // Personal information
         birthDate: student.birthDate ? new Date(student.birthDate) : undefined,
+        admissionDate: student.admissionDate ? new Date(student.admissionDate) : undefined,
         // Contact phones
         contactPhones: student.contactPhones?.map(phone => ({
           ...phone,
@@ -469,6 +471,7 @@ export function StudentFormDialog({
         studentTypeId: undefined,
         gradeYear: undefined,
         lineUserId: "",
+        lineNotificationsEnabled: true,
         notes: "",
         status: "ACTIVE",
         username: "",
@@ -476,7 +479,20 @@ export function StudentFormDialog({
         email: "",
         branchIds: defaultBranchId ? [defaultBranchId] : [],
         studentId: undefined,
+        // Personal information
+        birthDate: undefined,
+        admissionDate: new Date(),
         contactEmails: [],
+        contactPhones: [],
+        // School / exam defaults
+        schoolName: "",
+        schoolType: undefined,
+        examCategory: undefined,
+        examCategoryType: undefined,
+        firstChoice: "",
+        secondChoice: "",
+        examDate: undefined,
+        parentEmail: "",
       });
       setStudentSubjects([]);
       setRegularAvailability([]);
@@ -557,6 +573,12 @@ export function StudentFormDialog({
     }
 
     const submissionData = { ...values };
+    if (submissionData.birthDate) {
+      submissionData.birthDate = toUTCDateOnly(submissionData.birthDate as Date);
+    }
+    if (submissionData.admissionDate) {
+      submissionData.admissionDate = toUTCDateOnly(submissionData.admissionDate as Date);
+    }
 
     if (
       typeof submissionData.gradeYear === "string" &&
@@ -717,6 +739,12 @@ export function StudentFormDialog({
       const values = form.getValues();
       console.log("Form values before submission:", values);
       const submissionData = { ...values };
+      if (submissionData.birthDate) {
+        submissionData.birthDate = toUTCDateOnly(submissionData.birthDate as Date);
+      }
+      if (submissionData.admissionDate) {
+        submissionData.admissionDate = toUTCDateOnly(submissionData.admissionDate as Date);
+      }
 
       if (
         typeof submissionData.gradeYear === "string" &&
@@ -1684,9 +1712,9 @@ export function StudentFormDialog({
                                   type="date"
                                   className="h-11"
                                   {...field}
-                                  value={field.value ? new Date(field.value).toISOString().split('T')[0] : ""}
+                                  value={field.value ? (typeof field.value === 'string' ? field.value : (formatLocalYMD(new Date(field.value)))) : ""}
                                   onChange={(e) => {
-                                    field.onChange(e.target.value ? new Date(e.target.value) : undefined);
+                                    field.onChange(e.target.value ? parseYMDToLocalDate(e.target.value) : undefined);
                                   }}
                                 />
                               </FormControl>
@@ -1963,6 +1991,29 @@ export function StudentFormDialog({
                             <FormItem>
                               <FormLabel className="text-sm font-medium">
                                 生年月日
+                              </FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="date"
+                                  className="h-11"
+                                  {...field}
+                                  value={field.value ? (typeof field.value === 'string' ? field.value : (formatLocalYMD(new Date(field.value)))) : ""}
+                                  onChange={(e) => {
+                                    field.onChange(e.target.value ? parseYMDToLocalDate(e.target.value) : undefined);
+                                  }}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="admissionDate"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-sm font-medium">
+                                入会日
                               </FormLabel>
                               <FormControl>
                                 <Input
