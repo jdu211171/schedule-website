@@ -534,7 +534,7 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {mode === 'view' ? '授業の詳細' : '授業の編集'}
