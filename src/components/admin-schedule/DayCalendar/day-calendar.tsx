@@ -69,9 +69,10 @@ type DayCalendarProps = {
   preserveScrollOnFetch?: boolean;
 };
 
-const CELL_WIDTH = 50;
+// Base values; actual pixel sizes are computed responsively below
+const DEFAULT_CELL_WIDTH = 50;
 const BOOTH_LABEL_WIDTH = 100;
-const TIME_SLOT_HEIGHT = 50;
+const DEFAULT_TIME_SLOT_HEIGHT = 50;
 
 interface SelectionState {
   isSelecting: boolean;
@@ -101,7 +102,7 @@ const isCellInSelection = (
   return timeIndex >= minCol && timeIndex <= maxCol;
 };
 
-const CalendarCell = React.memo(({
+const CalendarCell = React.memo(({ 
   boothIndex,
   timeSlot,
   isSelected,
@@ -109,7 +110,8 @@ const CalendarCell = React.memo(({
   canDrag,
   onMouseDown,
   onMouseEnter,
-  onMouseUp
+  onMouseUp,
+  cellWidth,
 }: {
   boothIndex: number,
   timeSlot: TimeSlot,
@@ -118,7 +120,8 @@ const CalendarCell = React.memo(({
   canDrag: boolean,
   onMouseDown: (e: React.MouseEvent) => void,
   onMouseEnter: (e: React.MouseEvent) => void,
-  onMouseUp: (e: React.MouseEvent) => void
+  onMouseUp: (e: React.MouseEvent) => void,
+  cellWidth: number,
 }) => {
   const cellKey = `cell-${boothIndex}-${timeSlot.index}`;
   const { setNodeRef, isOver } = useDroppable({ id: cellKey });
@@ -151,8 +154,8 @@ const CalendarCell = React.memo(({
   ${!isSelecting ? "transition-none" : ""}
 `}
       style={{
-        width: `${CELL_WIDTH}px`,
-        minWidth: `${CELL_WIDTH}px`,
+        width: `${cellWidth}px`,
+        minWidth: `${cellWidth}px`,
         height: '100%',
       }}
       onMouseDown={onMouseDown}
@@ -165,12 +168,13 @@ const CalendarCell = React.memo(({
          prevProps.timeSlot.index === nextProps.timeSlot.index &&
          prevProps.isSelected === nextProps.isSelected &&
          prevProps.isSelecting === nextProps.isSelecting &&
-         prevProps.canDrag === nextProps.canDrag;
+         prevProps.canDrag === nextProps.canDrag &&
+         prevProps.cellWidth === nextProps.cellWidth;
 });
 
 CalendarCell.displayName = 'CalendarCell';
 
-const BoothRow = React.memo(({
+const BoothRow = React.memo(({ 
   booth,
   boothIndex,
   timeSlots,
@@ -181,7 +185,8 @@ const BoothRow = React.memo(({
   onStartSelection,
   onCellHover,
   onEndSelection,
-  rowHeight
+  rowHeight,
+  cellWidth,
 }: {
   booth: Booth,
   boothIndex: number,
@@ -193,7 +198,8 @@ const BoothRow = React.memo(({
   onStartSelection: (boothIndex: number, timeIndex: number, e: React.MouseEvent) => void,
   onCellHover: (boothIndex: number, timeIndex: number, e: React.MouseEvent) => void,
   onEndSelection: (e: React.MouseEvent) => void,
-  rowHeight: number
+  rowHeight: number,
+  cellWidth: number,
 }) => {
   return (
     <div
@@ -226,6 +232,7 @@ const BoothRow = React.memo(({
             onMouseDown={(e) => onStartSelection(boothIndex, timeSlot.index, e)}
             onMouseEnter={(e) => onCellHover(boothIndex, timeSlot.index, e)}
             onMouseUp={onEndSelection}
+            cellWidth={cellWidth}
           />
         );
       })}
@@ -238,40 +245,45 @@ const BoothRow = React.memo(({
          prevProps.canDrag === nextProps.canDrag &&
          prevProps.selectionStart === nextProps.selectionStart &&
          prevProps.selectionEnd === nextProps.selectionEnd &&
-         prevProps.rowHeight === nextProps.rowHeight;
+         prevProps.rowHeight === nextProps.rowHeight &&
+         prevProps.cellWidth === nextProps.cellWidth;
 });
 
 BoothRow.displayName = 'BoothRow';
 
-const TimeHeader = React.memo(({
+const TimeHeader = React.memo(({ 
   timeSlots,
   teacherAvailability,
   studentAvailability,
-  availabilityMode
+  availabilityMode,
+  cellWidth,
+  slotHeight,
 }: {
   timeSlots: TimeSlot[],
   teacherAvailability?: boolean[],
   studentAvailability?: boolean[],
-  availabilityMode?: AvailabilityMode
+  availabilityMode?: AvailabilityMode,
+  cellWidth: number,
+  slotHeight: number,
 }) => {
   return (
     <div
       className="flex bg-background dark:bg-background shadow-sm border-b border-border dark:border-border sticky top-0 z-20"
-      style={{ height: `${TIME_SLOT_HEIGHT}px` }}
+      style={{ height: `${slotHeight}px` }}
     >
       <div
         className="flex items-center justify-center font-semibold border-r text-sm text-foreground dark:text-foreground bg-background dark:bg-background border-border dark:border-border sticky left-0"
         style={{
           width: `${BOOTH_LABEL_WIDTH}px`,
           minWidth: `${BOOTH_LABEL_WIDTH}px`,
-          height: `${TIME_SLOT_HEIGHT}px`,
+          height: `${slotHeight}px`,
           zIndex: 30
         }}
       >
         ブース
       </div>
 
-      <div className="flex relative" style={{ height: `${TIME_SLOT_HEIGHT}px` }}>
+      <div className="flex relative" style={{ height: `${slotHeight}px` }}>
         {timeSlots.map((timeSlot) => (
           <div
             key={`time-${timeSlot.index}`}
@@ -282,9 +294,9 @@ const TimeHeader = React.memo(({
                 : "bg-background dark:bg-background"
               }`}
             style={{
-              width: `${CELL_WIDTH}px`,
-              minWidth: `${CELL_WIDTH}px`,
-              height: `${TIME_SLOT_HEIGHT}px`
+              width: `${cellWidth}px`,
+              minWidth: `${cellWidth}px`,
+              height: `${slotHeight}px`
             }}
           >
             {timeSlot.index % 4 === 0 ? (
@@ -302,8 +314,9 @@ const TimeHeader = React.memo(({
             booths={[]} // Not needed for header overlay
             teacherAvailability={teacherAvailability}
             studentAvailability={studentAvailability}
-            timeSlotHeight={TIME_SLOT_HEIGHT}
+            timeSlotHeight={slotHeight}
             availabilityMode={availabilityMode}
+            cellWidth={cellWidth}
           />
         )}
       </div>
@@ -340,6 +353,10 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
   preserveScrollOnFetch = true,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  // Responsive dimensions for grid
+  const [slotHeight, setSlotHeight] = useState<number>(DEFAULT_TIME_SLOT_HEIGHT);
+  // Slightly widen cells so names can fully display
+  const [cellWidth, setCellWidth] = useState<number>(36);
   const [containerWidth, setContainerWidth] = useState(1200);
 
   const [selection, setSelection] = useState<SelectionState>(initialSelectionState);
@@ -391,8 +408,8 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
   }, [filteredSessions]);
 
   const totalGridWidth = useMemo(() => {
-    return timeSlots.length * CELL_WIDTH;
-  }, [timeSlots.length]);
+    return timeSlots.length * cellWidth;
+  }, [timeSlots.length, cellWidth]);
 
   const formattedDate = useMemo(() => {
     return format(date, 'MM月dd日 (eee)', { locale: ja });
@@ -479,7 +496,7 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
     return { laneMap, boothLaneCounts };
   }, [filteredSessions, sessionPos, booths]);
 
-  const boothRowHeights = useMemo(() => booths.map((_, idx) => (boothLaneCounts.get(idx) || 1) * TIME_SLOT_HEIGHT), [booths, boothLaneCounts]);
+  const boothRowHeights = useMemo(() => booths.map((_, idx) => (boothLaneCounts.get(idx) || 1) * slotHeight), [booths, boothLaneCounts, slotHeight]);
   const boothTopOffsets = useMemo(() => {
     const offsets: number[] = [];
     let acc = 0;
@@ -623,11 +640,36 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
       return slotHour === hour && slotMinute === minute;
     });
     if (timeSlotIndex !== -1) {
-      const scrollPosition = (timeSlotIndex * CELL_WIDTH) - 100;
+      const scrollPosition = (timeSlotIndex * cellWidth) - 100;
       containerRef.current.scrollLeft = Math.max(0, scrollPosition);
       scrolledForDateRef.current[dk] = true;
     }
-  }, [earliestLesson, timeSlots, dateKey]);
+  }, [earliestLesson, timeSlots, dateKey, cellWidth]);
+
+  // Compute responsive sizes based on viewport and content
+  useEffect(() => {
+    const compute = () => {
+      if (!containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const viewportH = window.innerHeight || document.documentElement.clientHeight;
+      const availableH = Math.max(320, viewportH - rect.top - 16); // leave small bottom padding
+      const totalLanes = Array.from(boothLaneCounts.values()).reduce((a, b) => a + (b || 1), 0);
+      const minRow = 32;
+      const base = DEFAULT_TIME_SLOT_HEIGHT;
+      // header counts as one lane
+      const nextSlot = Math.min(base, Math.max(minRow, Math.floor(availableH / Math.max(1, totalLanes + 1))));
+      setSlotHeight(nextSlot);
+
+      // Horizontal density: try to keep small inner gap; shrink a bit but not too far
+      const currentW = containerRef.current.clientWidth;
+      // Prefer a bit more width to avoid truncating teacher/student names
+      const targetCell = currentW > 1100 ? 42 : currentW > 900 ? 40 : 36;
+      setCellWidth(Math.max(34, Math.min(DEFAULT_CELL_WIDTH, targetCell)));
+    };
+    compute();
+    window.addEventListener('resize', compute, { passive: true } as any);
+    return () => window.removeEventListener('resize', compute as any);
+  }, [boothLaneCounts]);
 
   // Preserve scroll position during background refetch
   const wasFetchingRef = useRef(false);
@@ -838,14 +880,14 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
 
       <div
         className="relative overflow-auto"
-        style={{ maxHeight: '650px' }}
         ref={containerRef}
+        style={{ maxHeight: '80vh' }}
       >
         <div
           className="relative min-w-full select-none"
           style={{
             minWidth: `${Math.max(totalGridWidth + BOOTH_LABEL_WIDTH, containerWidth)}px`,
-            height: `${TIME_SLOT_HEIGHT + contentHeight}px`
+            height: `${slotHeight + contentHeight}px`
           }}
         >
           <TimeHeader
@@ -853,6 +895,8 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
             teacherAvailability={teacherAvailability}
             studentAvailability={studentAvailability}
             availabilityMode={availabilityMode}
+            cellWidth={cellWidth}
+            slotHeight={slotHeight}
           />
 
           <DndContext
@@ -878,6 +922,7 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
                   onCellHover={handleCellHover}
                   onEndSelection={handleEndSelection}
                   rowHeight={boothRowHeights[boothIndex]}
+                  cellWidth={cellWidth}
                 />
               ))}
             </div>
@@ -887,7 +932,7 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
               className="absolute pointer-events-none"
               style={{
                 zIndex: 9,
-                top: `${TIME_SLOT_HEIGHT}px`,
+                top: `${slotHeight}px`,
                 left: `0px`,
                 width: '100%',
                 height: `${contentHeight}px`
@@ -898,9 +943,9 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
                   key={`gutter-${idx}`}
                   className="absolute"
                   style={{
-                    left: `${r.start * CELL_WIDTH + BOOTH_LABEL_WIDTH}px`,
+                    left: `${r.start * cellWidth + BOOTH_LABEL_WIDTH}px`,
                     top: `${boothTopOffsets[r.boothIndex]}px`,
-                    width: `${(r.end - r.start) * CELL_WIDTH}px`,
+                    width: `${(r.end - r.start) * cellWidth}px`,
                     height: '4px',
                     background: 'linear-gradient(90deg, rgba(220,38,38,0.9), rgba(220,38,38,0.5))',
                     borderRadius: '2px',
@@ -914,7 +959,7 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
               className="absolute pointer-events-none"
               style={{
                 zIndex: 10,
-                top: `${TIME_SLOT_HEIGHT}px`,
+                top: `${slotHeight}px`,
                 left: `0px`,
                 width: '100%',
                 height: `${contentHeight}px`,
@@ -925,10 +970,10 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
                   aria-hidden
                   className="absolute rounded-sm bg-blue-500/15 border-2 border-blue-400"
                   style={{
-                    left: `${ghost.timeIdx * CELL_WIDTH + BOOTH_LABEL_WIDTH}px`,
+                    left: `${ghost.timeIdx * cellWidth + BOOTH_LABEL_WIDTH}px`,
                     top: `${boothTopOffsets[ghost.boothIdx] ?? 0}px`,
-                    width: `${ghost.durationSlots * CELL_WIDTH}px`,
-                    height: `${(boothRowHeights[ghost.boothIdx] ?? TIME_SLOT_HEIGHT) - 2}px`,
+                    width: `${ghost.durationSlots * cellWidth}px`,
+                    height: `${(boothRowHeights[ghost.boothIdx] ?? slotHeight) - 2}px`,
                   }}
                 />
               )}
@@ -939,7 +984,7 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
               className="absolute pointer-events-none"
               style={{
                 zIndex: 11,
-                top: `${TIME_SLOT_HEIGHT}px`, // Start after the sticky header
+                top: `${slotHeight}px`, // Start after the sticky header
                 left: `0px`,
                 width: '100%',
                 height: `${contentHeight}px`
@@ -951,11 +996,11 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
                   lesson={session}
                   booths={booths}
                   onClick={onLessonClick}
-                  timeSlotHeight={TIME_SLOT_HEIGHT}
+                  timeSlotHeight={slotHeight}
                   timeSlots={timeSlots}
                   maxZIndex={9}
                   laneIndex={laneMap.get(String(session.classId))?.laneIndex || 0}
-                  laneHeight={TIME_SLOT_HEIGHT}
+                  laneHeight={slotHeight}
                   rowTopOffset={boothTopOffsets[sessionPos.get(String(session.classId))?.boothIndex || 0]}
                   hasBoothOverlap={(laneMap.get(String(session.classId))?.laneIndex ?? 0) > 0 ||
                     (() => {
@@ -968,6 +1013,7 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
                       });
                     })()
                   }
+                  cellWidth={cellWidth}
                 />
               ))}
             </div>

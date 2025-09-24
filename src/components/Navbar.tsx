@@ -365,6 +365,41 @@ export default function Navbar() {
   const { data: session } = useSession();
   const isTeacherRoute = pathname.startsWith("/teacher");
   const isStudentRoute = pathname.startsWith("/student");
+  const [hidden, setHidden] = React.useState(false);
+  const lastY = React.useRef(0);
+  const ticking = React.useRef(false);
+
+  // Hide on scroll down, show on scroll up. Ignore tiny deltas to prevent jitter.
+  React.useEffect(() => {
+    const onScroll = () => {
+      if (ticking.current) return;
+      ticking.current = true;
+      window.requestAnimationFrame(() => {
+        const y = window.scrollY || 0;
+        const delta = y - lastY.current;
+        const threshold = 6; // minimal movement to react
+        const minYToHide = 64; // don't hide at very top
+
+        if (Math.abs(delta) > threshold) {
+          if (delta > 0 && y > minYToHide) {
+            setHidden(true);
+          } else if (delta < 0) {
+            setHidden(false);
+          }
+          lastY.current = y;
+        } else {
+          // Update lastY subtly to keep it in sync without toggling state
+          lastY.current = y;
+        }
+        ticking.current = false;
+      });
+    };
+
+    // Initialize
+    lastY.current = window.scrollY || 0;
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   let navItems = dashboardNavItems;
   if (isTeacherRoute) {
@@ -398,7 +433,12 @@ export default function Navbar() {
   };
 
   return (
-    <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
+    <header
+      className={cn(
+        "border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50 transition-transform duration-300",
+        hidden ? "-translate-y-full" : "translate-y-0"
+      )}
+    >
       <div className="container mx-auto sm:px-6">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center space-x-4 lg:space-x-8">
