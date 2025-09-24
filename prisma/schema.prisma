@@ -229,6 +229,7 @@ model Student {
   linkingCode              String?                    @unique @map("linking_code") @db.VarChar(10)
   lineNotificationsEnabled Boolean?                   @default(true) @map("line_notifications_enabled")
   birthDate                DateTime?                  @map("birth_date") @db.Date
+  admissionDate            DateTime?                  @map("admission_date") @db.Date
   examCategory             String?                    @map("exam_category") @db.VarChar(50)
   examCategoryType         String?                    @map("exam_category_type") @db.VarChar(50)
   examDate                 DateTime?                  @map("exam_date") @db.Date

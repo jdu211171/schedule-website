@@ -318,6 +318,36 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
     classSessionQueries.forEach(query => query.refetch());
   }, [classSessionQueries, selectedDatesStrings, newLessonData, selectedLesson]);
 
+  // Cross-tab light sync: listen for local broadcast events and refetch affected days
+  // Only active days are refetched to avoid visual disruptions
+  useEffect(() => {
+    const channel = typeof window !== 'undefined' ? new BroadcastChannel('calendar-events') : null;
+    if (!channel) return;
+    const handler = (event: MessageEvent) => {
+      const payload = event.data as { type?: string; dates?: string[] };
+      if (!payload || payload.type !== 'classSessionsChanged') return;
+      const dates = payload.dates || [];
+      if (dates.length === 0) {
+        // Unknown dates – lightly refresh active day queries only
+        classSessionQueries.forEach((q) => q.refetch());
+        return;
+      }
+      let any = false;
+      dates.forEach((d) => {
+        const idx = selectedDatesStrings.indexOf(d);
+        if (idx !== -1) {
+          classSessionQueries[idx]?.refetch();
+          any = true;
+        }
+      });
+    };
+    channel.addEventListener('message', handler);
+    return () => {
+      channel.removeEventListener('message', handler);
+      channel.close();
+    };
+  }, [classSessionQueries, selectedDatesStrings]);
+
   const handleStartDateChange = useCallback((newStartDate: Date) => {
     const day = startOfDay(newStartDate);
     const weekStart = startOfWeek(day, { weekStartsOn: 1 });
@@ -453,7 +483,6 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
 
         // ВАЖНО: Проверяем на наличие конфликтов
         if (errorData.requiresConfirmation) {
-          console.log('Conflicts detected:', errorData);
           return {
             success: false,
             conflicts: errorData as ConflictResponse
@@ -550,8 +579,6 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
       updatedSettings[getDateKey(day)] = newMode;
     });
     setDayAvailabilitySettings(updatedSettings);
-
-    console.log('Global availability mode changed to:', newMode);
   }, [selectedDays]);
 
   const handleDayAvailabilityModeChange = useCallback((dateKey: string, mode: AvailabilityMode) => {
@@ -559,7 +586,6 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
       ...prev,
       [dateKey]: mode
     }));
-    console.log(`Day ${dateKey} availability mode changed to:`, mode);
   }, []);
 
   const getAvailabilityModeForDay = useCallback((dateKey: string): AvailabilityMode => {
@@ -911,6 +937,7 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
           const availabilityMode = getAvailabilityModeForDay(dateKey);
 
           const queryIndex = selectedDatesStrings.indexOf(dateKey);
+          const isFetchingThisDay = queryIndex !== -1 ? classSessionQueries[queryIndex].isFetching : false;
           const isLoadingThisDay = queryIndex !== -1 ?
             (classSessionQueries[queryIndex].isLoading || classSessionQueries[queryIndex].isFetching) :
             false;
@@ -956,6 +983,8 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
                 selectedClassTypeId={selectedClassTypeId}
                 availabilityMode={availabilityMode}
                 onAvailabilityModeChange={(mode) => handleDayAvailabilityModeChange(dateKey, mode)}
+                isFetching={isFetchingThisDay}
+                preserveScrollOnFetch
               />
             </div>
           );

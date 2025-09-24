@@ -20,6 +20,7 @@ export type Student = {
   username: string | null;
   email: string | null;
   password: string | null;
+  admissionDate: Date | null;
   branches: {
     branchId: string;
     name: string;
@@ -117,6 +118,8 @@ type UseStudentsParams = {
   examCategoryTypes?: string[]; // Support multiple exam category types
   birthDateFrom?: Date; // Filter by birth date range
   birthDateTo?: Date;
+  admissionDateFrom?: Date; // Filter by admission date range
+  admissionDateTo?: Date;
   examDateFrom?: Date; // Filter by exam date range
   examDateTo?: Date;
   sortBy?: "studentTypeName" | "gradeYear" | "kanaName";
@@ -157,6 +160,8 @@ export function useStudents(params: UseStudentsParams = {}) {
     examCategoryTypes,
     birthDateFrom,
     birthDateTo,
+    admissionDateFrom,
+    admissionDateTo,
     examDateFrom,
     examDateTo,
     sortBy,
@@ -186,6 +191,8 @@ export function useStudents(params: UseStudentsParams = {}) {
     examCategoryTypes,
     birthDateFrom: birthDateFrom?.toISOString(),
     birthDateTo: birthDateTo?.toISOString(),
+    admissionDateFrom: admissionDateFrom?.toISOString(),
+    admissionDateTo: admissionDateTo?.toISOString(),
     examDateFrom: examDateFrom?.toISOString(),
     examDateTo: examDateTo?.toISOString(),
     sortBy,

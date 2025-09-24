@@ -25,6 +25,8 @@ import {
   Phone,
   Mail,
   Cake,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -86,7 +88,7 @@ import {
 } from "@/components/ui/popover";
 import { EnhancedAvailabilityRegularSelector } from "./enhanced-availability-regular-selector";
 import { EnhancedAvailabilityIrregularSelector } from "./enhanced-availability-irregular-selector";
-import { parseYMDToLocalDate, toUTCDateOnly } from "@/lib/date";
+import { parseYMDToLocalDate, toUTCDateOnly, formatLocalYMD } from "@/lib/date";
 import { LineLinking } from "@/components/shared/line-linking";
 import { LineManagementDialog } from "@/components/shared/line-management-dialog";
 import { AlertCircle } from "lucide-react";
@@ -155,6 +157,7 @@ export function StudentFormDialog({
   onOpenChange,
   student,
 }: StudentFormDialogProps) {
+  const [showPassword, setShowPassword] = useState(true);
   const [openLineManage, setOpenLineManage] = useState(false);
   // Local LINE connection state for immediate UI reflection
   const [lineState, setLineState] = useState({
@@ -297,6 +300,7 @@ export function StudentFormDialog({
       parentEmail: "",
       // Personal information
       birthDate: undefined,
+      admissionDate: new Date(),
       // Contact phones
       contactPhones: [],
      // Contact emails (non-login informational emails)
@@ -370,6 +374,7 @@ export function StudentFormDialog({
         parentEmail: student.parentEmail || "",
         // Personal information
         birthDate: student.birthDate ? new Date(student.birthDate) : undefined,
+        admissionDate: student.admissionDate ? new Date(student.admissionDate) : undefined,
         // Contact phones
         contactPhones: student.contactPhones?.map(phone => ({
           ...phone,
@@ -466,6 +471,7 @@ export function StudentFormDialog({
         studentTypeId: undefined,
         gradeYear: undefined,
         lineUserId: "",
+        lineNotificationsEnabled: true,
         notes: "",
         status: "ACTIVE",
         username: "",
@@ -473,7 +479,20 @@ export function StudentFormDialog({
         email: "",
         branchIds: defaultBranchId ? [defaultBranchId] : [],
         studentId: undefined,
+        // Personal information
+        birthDate: undefined,
+        admissionDate: new Date(),
         contactEmails: [],
+        contactPhones: [],
+        // School / exam defaults
+        schoolName: "",
+        schoolType: undefined,
+        examCategory: undefined,
+        examCategoryType: undefined,
+        firstChoice: "",
+        secondChoice: "",
+        examDate: undefined,
+        parentEmail: "",
       });
       setStudentSubjects([]);
       setRegularAvailability([]);
@@ -554,6 +573,12 @@ export function StudentFormDialog({
     }
 
     const submissionData = { ...values };
+    if (submissionData.birthDate) {
+      submissionData.birthDate = toUTCDateOnly(submissionData.birthDate as Date);
+    }
+    if (submissionData.admissionDate) {
+      submissionData.admissionDate = toUTCDateOnly(submissionData.admissionDate as Date);
+    }
 
     if (
       typeof submissionData.gradeYear === "string" &&
@@ -714,6 +739,12 @@ export function StudentFormDialog({
       const values = form.getValues();
       console.log("Form values before submission:", values);
       const submissionData = { ...values };
+      if (submissionData.birthDate) {
+        submissionData.birthDate = toUTCDateOnly(submissionData.birthDate as Date);
+      }
+      if (submissionData.admissionDate) {
+        submissionData.admissionDate = toUTCDateOnly(submissionData.admissionDate as Date);
+      }
 
       if (
         typeof submissionData.gradeYear === "string" &&
@@ -1151,7 +1182,7 @@ export function StudentFormDialog({
                               <FormControl>
                                 <div className="flex gap-2">
                                   <Input
-                                    placeholder="student_username"
+                                    placeholder="生徒ユーザー名を入力"
                                     className="h-11 flex-1"
                                     {...field}
                                   />
@@ -1166,8 +1197,12 @@ export function StudentFormDialog({
                                         shouldDirty: true,
                                         shouldValidate: true,
                                       });
+                                      form.setValue("password", v, {
+                                        shouldDirty: true,
+                                        shouldValidate: true,
+                                      });
                                     }}
-                                    title="ユーザー名を自動生成"
+                                    title="ユーザー名とパスワードを自動生成"
                                   >
                                     <RotateCcw className="h-4 w-4 mr-1" />
                                     自動生成
@@ -1195,34 +1230,34 @@ export function StudentFormDialog({
                               </FormLabel>
                               <FormControl>
                                 <div className="flex gap-2">
-                                  <Input
-                                    type="password"
-                                    placeholder={
-                                      isEditing
-                                        ? "新しいパスワードを入力"
-                                        : "パスワードを入力"
-                                    }
-                                    className="h-11 flex-1"
-                                    {...field}
-                                    value={field.value || ""}
-                                  />
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-11"
-                                    onClick={() => {
-                                      const v = generatePassword();
-                                      form.setValue("password", v, {
-                                        shouldDirty: true,
-                                        shouldValidate: true,
-                                      });
-                                    }}
-                                    title="パスワードを自動生成"
-                                  >
-                                    <RotateCcw className="h-4 w-4 mr-1" />
-                                    自動生成
-                                  </Button>
+                                  <div className="relative flex-1">
+                                    <Input
+                                      type={showPassword ? "text" : "password"}
+                                      placeholder={
+                                        isEditing
+                                          ? "新しいパスワードを入力"
+                                          : "パスワードを入力"
+                                      }
+                                      className="h-11 pr-10"
+                                      {...field}
+                                      value={field.value || ""}
+                                    />
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      className="absolute right-1.5 top-1.5"
+                                      onClick={() => setShowPassword((s) => !s)}
+                                      title={showPassword ? "パスワードを隠す" : "パスワードを表示"}
+                                    >
+                                      {showPassword ? (
+                                        <EyeOff className="h-4 w-4" />
+                                      ) : (
+                                        <Eye className="h-4 w-4" />
+                                      )}
+                                      <span className="sr-only">パスワード表示切替</span>
+                                    </Button>
+                                  </div>
                                 </div>
                               </FormControl>
                               <FormMessage />
@@ -1677,9 +1712,9 @@ export function StudentFormDialog({
                                   type="date"
                                   className="h-11"
                                   {...field}
-                                  value={field.value ? new Date(field.value).toISOString().split('T')[0] : ""}
+                                  value={field.value ? (typeof field.value === 'string' ? field.value : (formatLocalYMD(new Date(field.value)))) : ""}
                                   onChange={(e) => {
-                                    field.onChange(e.target.value ? new Date(e.target.value) : undefined);
+                                    field.onChange(e.target.value ? parseYMDToLocalDate(e.target.value) : undefined);
                                   }}
                                 />
                               </FormControl>
@@ -1956,6 +1991,29 @@ export function StudentFormDialog({
                             <FormItem>
                               <FormLabel className="text-sm font-medium">
                                 生年月日
+                              </FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="date"
+                                  className="h-11"
+                                  {...field}
+                                  value={field.value ? (typeof field.value === 'string' ? field.value : (formatLocalYMD(new Date(field.value)))) : ""}
+                                  onChange={(e) => {
+                                    field.onChange(e.target.value ? parseYMDToLocalDate(e.target.value) : undefined);
+                                  }}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="admissionDate"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-sm font-medium">
+                                入会日
                               </FormLabel>
                               <FormControl>
                                 <Input

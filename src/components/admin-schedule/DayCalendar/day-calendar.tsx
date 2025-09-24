@@ -64,6 +64,9 @@ type DayCalendarProps = {
   selectedClassTypeId?: string;
   availabilityMode?: AvailabilityMode;
   onAvailabilityModeChange?: (mode: AvailabilityMode) => void;
+  // Background refresh awareness to preserve scroll and avoid jumps
+  isFetching?: boolean;
+  preserveScrollOnFetch?: boolean;
 };
 
 const CELL_WIDTH = 50;
@@ -332,7 +335,9 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
   selectedStudentId,
   selectedClassTypeId,
   availabilityMode = 'with-special',
-  onAvailabilityModeChange
+  onAvailabilityModeChange,
+  isFetching = false,
+  preserveScrollOnFetch = true,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(1200);
@@ -362,11 +367,6 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
     const filtered = classSessions.filter(session => {
       const sessionDateStr = normalizeDate(session.date);
       const matches = sessionDateStr === targetDateStr;
-
-      if (!matches) {
-        console.log(`Session ${session.classId} date mismatch: ${sessionDateStr} !== ${targetDateStr}`);
-      }
-
       return matches;
     });
 
@@ -605,27 +605,57 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
     }
   }, [resetSelectionKey, cancelSelection]);
 
-  // Auto-scroll to earliest lesson
+  // Guarded auto-scroll to earliest lesson (once per date)
+  const scrolledForDateRef = useRef<Record<string, boolean>>({});
   useEffect(() => {
+    const dk = dateKey;
+    // Reset flag for a new date key
+    if (scrolledForDateRef.current[dk] === undefined) {
+      scrolledForDateRef.current[dk] = false;
+    }
     if (!earliestLesson || !containerRef.current) return;
+    if (scrolledForDateRef.current[dk]) return;
 
     const startTime = extractTime(earliestLesson.startTime);
     const [hour, minute] = startTime.split(':').map(Number);
-
-    // Find the time slot index
     const timeSlotIndex = timeSlots.findIndex(slot => {
       const [slotHour, slotMinute] = slot.start.split(':').map(Number);
       return slotHour === hour && slotMinute === minute;
     });
-
     if (timeSlotIndex !== -1) {
-      // Calculate scroll position (with some padding)
       const scrollPosition = (timeSlotIndex * CELL_WIDTH) - 100;
-
-      // Scroll horizontally to show the earliest lesson
       containerRef.current.scrollLeft = Math.max(0, scrollPosition);
+      scrolledForDateRef.current[dk] = true;
     }
-  }, [earliestLesson, timeSlots, date]);
+  }, [earliestLesson, timeSlots, dateKey]);
+
+  // Preserve scroll position during background refetch
+  const wasFetchingRef = useRef(false);
+  const storedScrollRef = useRef<{ left: number; top: number } | null>(null);
+  useEffect(() => {
+    if (!preserveScrollOnFetch) return;
+    if (isFetching && !wasFetchingRef.current) {
+      wasFetchingRef.current = true;
+      if (containerRef.current) {
+        storedScrollRef.current = {
+          left: containerRef.current.scrollLeft,
+          top: containerRef.current.scrollTop,
+        };
+      }
+    } else if (!isFetching && wasFetchingRef.current) {
+      wasFetchingRef.current = false;
+      if (containerRef.current && storedScrollRef.current) {
+        const { left, top } = storedScrollRef.current;
+        // Restore on next frame to avoid layout thrash
+        requestAnimationFrame(() => {
+          if (!containerRef.current) return;
+          containerRef.current!.scrollLeft = left;
+          containerRef.current!.scrollTop = top;
+        });
+        storedScrollRef.current = null;
+      }
+    }
+  }, [isFetching, preserveScrollOnFetch]);
 
   const handleStartSelection = useCallback((boothIndex: number, timeIndex: number, e: React.MouseEvent) => {
     e.preventDefault();

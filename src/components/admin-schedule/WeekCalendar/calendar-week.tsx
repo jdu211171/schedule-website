@@ -14,7 +14,7 @@ import {
   startOfWeek,
 } from "date-fns";
 import { ja } from "date-fns/locale";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState, useEffect } from "react";
 import WeekLessonCard from "./week-lesson-card";
 import { DayCalendarFilters } from "../DayCalendar/day-calendar-filters";
 
@@ -47,6 +47,38 @@ export default function CalendarWeek({
     ...filters,
     ...(selectedBranchId && { branchId: selectedBranchId })
   });
+
+  // Light cross-tab sync: refetch only weeks that include changed dates
+  useEffect(() => {
+    const channel = typeof window !== 'undefined' ? new BroadcastChannel('calendar-events') : null;
+    if (!channel) return;
+    const handler = (event: MessageEvent) => {
+      const payload = event.data as { type?: string; dates?: string[] };
+      if (!payload || payload.type !== 'classSessionsChanged') return;
+      const dates = payload.dates || [];
+      if (dates.length === 0) {
+        // Unknown dates → refresh visible weeks lightly
+        weekQueries.forEach((q) => q.refetch());
+        return;
+      }
+      const shouldRefetch = (week: Date, dateStr: string) => {
+        const ws = startOfWeek(week, { weekStartsOn: 1 });
+        const we = addDays(ws, 6);
+        const d = new Date(dateStr + 'T00:00:00');
+        return isWithinInterval(d, { start: ws, end: we });
+      };
+      selectedWeeks.forEach((w, idx) => {
+        if (dates.some((ds) => shouldRefetch(w, ds))) {
+          weekQueries[idx]?.refetch();
+        }
+      });
+    };
+    channel.addEventListener('message', handler);
+    return () => {
+      channel.removeEventListener('message', handler);
+      channel.close();
+    };
+  }, [selectedWeeks, weekQueries]);
 
   const handleLessonClick = useCallback(
     (lessonId: string) => {

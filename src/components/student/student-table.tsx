@@ -292,6 +292,7 @@ export function StudentTable() {
     examCategory: string[];
     examCategoryType: string[];
     birthDateRange?: { from?: Date; to?: Date };
+    admissionDateRange?: { from?: Date; to?: Date };
     examDateRange?: { from?: Date; to?: Date };
   }>(() => {
     if (typeof window !== "undefined") {
@@ -334,6 +335,16 @@ export function StudentTable() {
                     : undefined,
                 }
               : undefined,
+            admissionDateRange: parsed.admissionDateRange
+              ? {
+                  from: parsed.admissionDateRange.from
+                    ? new Date(parsed.admissionDateRange.from)
+                    : undefined,
+                  to: parsed.admissionDateRange.to
+                    ? new Date(parsed.admissionDateRange.to)
+                    : undefined,
+                }
+              : undefined,
           };
         } catch (error) {
           console.error("Error parsing saved filters:", error);
@@ -353,6 +364,7 @@ export function StudentTable() {
       examCategoryType: [] as string[],
       birthDateRange: undefined,
       examDateRange: undefined,
+      admissionDateRange: undefined,
     };
   });
 
@@ -507,6 +519,8 @@ export function StudentTable() {
     birthDateTo: filters.birthDateRange?.to,
     examDateFrom: filters.examDateRange?.from,
     examDateTo: filters.examDateRange?.to,
+    admissionDateFrom: filters.admissionDateRange?.from,
+    admissionDateTo: filters.admissionDateRange?.to,
     studentTypeOrder: sortParams.studentTypeOrder,
     gradeYearOrder: sortParams.gradeYearOrder,
     sortBy: tableSort.sortBy,
@@ -687,6 +701,26 @@ export function StudentTable() {
           label: "生年月日",
           variant: "yearRange",
           placeholder: "生年月日で検索",
+        },
+        enableColumnFilter: true,
+      },
+      {
+        id: "admissionDate",
+        accessorKey: "admissionDate",
+        header: "入会日",
+        cell: ({ row }) => {
+          const d = row.original.admissionDate as Date | null;
+          if (!d) return "-";
+          return new Date(d).toLocaleDateString("ja-JP", {
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+          });
+        },
+        meta: {
+          label: "入会日",
+          variant: "dateRange",
+          placeholder: "入会日で検索",
         },
         enableColumnFilter: true,
       },
@@ -1101,6 +1135,9 @@ export function StudentTable() {
         ...(filters.examDateRange
           ? [{ id: "examDate", value: filters.examDateRange }]
           : []),
+        ...(filters.admissionDateRange
+          ? [{ id: "admissionDate", value: filters.admissionDateRange }]
+          : []),
       ],
       // Match backend default order: status asc; keep UI indicator consistent
       sorting: [
@@ -1189,6 +1226,7 @@ export function StudentTable() {
         examCategory: [] as string[],
         examCategoryType: [] as string[],
         birthDateRange: undefined as { from?: Date; to?: Date } | undefined,
+        admissionDateRange: undefined as { from?: Date; to?: Date } | undefined,
         examDateRange: undefined as { from?: Date; to?: Date } | undefined,
       };
 
@@ -1226,6 +1264,9 @@ export function StudentTable() {
             break;
           case 'birthDate':
             next.birthDateRange = filter.value as { from?: Date; to?: Date };
+            break;
+          case 'admissionDate':
+            next.admissionDateRange = filter.value as { from?: Date; to?: Date };
             break;
           case 'examDate':
             next.examDateRange = filter.value as { from?: Date; to?: Date };
@@ -1324,6 +1365,7 @@ export function StudentTable() {
           : undefined,
       birthDateRange: filters.birthDateRange,
       examDateRange: filters.examDateRange,
+      admissionDateRange: filters.admissionDateRange,
       columns: visibleColumns,
     });
   };

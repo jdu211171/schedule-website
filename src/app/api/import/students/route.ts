@@ -439,6 +439,7 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
               if (fieldsInRow.has("examDate")) studentUpdates.examDate = data.examDate || null;
               if (fieldsInRow.has("parentEmail")) studentUpdates.parentEmail = data.parentEmail || null;
               if (fieldsInRow.has("birthDate")) studentUpdates.birthDate = data.birthDate || null;
+              if (fieldsInRow.has("admissionDate")) studentUpdates.admissionDate = (data as any).admissionDate || null;
               if (fieldsInRow.has("lineId")) studentUpdates.lineId = data.lineId || null;
               if (fieldsInRow.has("status") && (data as any).status !== null) studentUpdates.status = (data as any).status;
 
@@ -648,6 +649,7 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
                     examDate: data.examDate || null,
                     parentEmail: data.parentEmail || null,
                     birthDate: data.birthDate || null,
+                    admissionDate: (data as any).admissionDate || null,
                   };
                   if (data.studentTypeId) {
                     studentCreateData.studentTypeId = data.studentTypeId;
@@ -800,6 +802,7 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
                 parentEmail: data.parentEmail || null,
                 // Personal information
                 birthDate: data.birthDate || null,
+                admissionDate: (data as any).admissionDate || null,
               };
 
               if (data.studentTypeId) {

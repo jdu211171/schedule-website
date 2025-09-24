@@ -86,6 +86,7 @@ export function useStudentCreate() {
                 username: newStudent.username,
                 email: newStudent.email || null,
                 password: newStudent.password || null,
+                admissionDate: (newStudent as any).admissionDate || null,
                 branches: [],
                 subjectPreferences: newStudent.subjectPreferences || [],
                 regularAvailability: (newStudent.regularAvailability || []).map(ra => ({

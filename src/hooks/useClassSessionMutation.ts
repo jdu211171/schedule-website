@@ -9,6 +9,8 @@ import {
   ClassSessionBulkDelete,
 } from "@/schemas/class-session.schema";
 import { ClassSession } from "@prisma/client";
+import { broadcastClassSessionsChanged } from "@/lib/calendar-broadcast";
+import { getDateKey } from "@/components/admin-schedule/date";
 
 // Helper function to extract error message from CustomError or regular Error
 const getErrorMessage = (error: Error): string => {
@@ -89,6 +91,12 @@ const tempToServerIdMap = new Map<string, string>();
 export function getResolvedClassSessionId(id: string): string {
   return tempToServerIdMap.get(id) || id;
 }
+
+const toDateKey = (v: string | Date | undefined | null): string | null => {
+  if (!v) return null;
+  if (typeof v === 'string') return v.split('T')[0];
+  try { return getDateKey(new Date(v)); } catch { return null; }
+};
 
 // Hook for creating a class session (supports both one-time and recurring)
 export function useClassSessionCreate() {
@@ -233,12 +241,36 @@ export function useClassSessionCreate() {
       toast.success(successMessage, {
         id: "class-session-create-success",
       });
+
+      // Broadcast day change for visible views
+      try {
+        if (!newClassSession.isRecurring && newClassSession.date) {
+          const d = toDateKey(newClassSession.date);
+          if (d) broadcastClassSessionsChanged([d]); else broadcastClassSessionsChanged();
+        } else {
+          broadcastClassSessionsChanged();
+        }
+      } catch {}
     },
-    onSettled: () => {
+    onSettled: (_data, _error, variables, context) => {
+      // Ensure active views refetch in background
       queryClient.invalidateQueries({
         queryKey: ["classSessions"],
-        refetchType: "none",
+        refetchType: "active",
       });
+
+      // Broadcast affected day(s)
+      try {
+        const dates = new Set<string>();
+        const prev = context?.previousClassSession?.date;
+        const next = (variables as any)?.date as string | Date | undefined;
+        const d1 = prev ? toDateKey(prev as unknown as Date) : null;
+        const d2 = next ? toDateKey(next) : null;
+        if (d1) dates.add(d1);
+        if (d2) dates.add(d2);
+        if (dates.size > 0) broadcastClassSessionsChanged(Array.from(dates));
+        else broadcastClassSessionsChanged();
+      } catch {}
     },
   });
 }
@@ -379,18 +411,18 @@ export function useClassSessionUpdate() {
         id: "class-session-update-success",
       });
     },
-    onSettled: (_, __, variables) => {
+    onSettled: (_data, _error, variables, context) => {
       // Resolve ID for proper invalidation
       const resolvedId = getResolvedClassSessionId(variables.classId);
 
       queryClient.invalidateQueries({
         queryKey: ["classSessions"],
-        refetchType: "none",
+        refetchType: "active",
       });
 
       queryClient.invalidateQueries({
         queryKey: ["classSession", resolvedId],
-        refetchType: "none",
+        refetchType: "active",
       });
 
       // If this session belongs to a series, invalidate series data too
@@ -401,9 +433,22 @@ export function useClassSessionUpdate() {
       if (classSession?.seriesId) {
         queryClient.invalidateQueries({
           queryKey: ["classSessionSeries", classSession.seriesId],
-          refetchType: "none",
+          refetchType: "active",
         });
       }
+
+      // Broadcast affected day(s)
+      try {
+        const dates = new Set<string>();
+        const prev = context?.previousClassSession?.date;
+        const next = (variables as any)?.date as string | Date | undefined;
+        const d1 = prev ? toDateKey(prev as unknown as Date) : null;
+        const d2 = next ? toDateKey(next) : null;
+        if (d1) dates.add(d1);
+        if (d2) dates.add(d2);
+        if (dates.size > 0) broadcastClassSessionsChanged(Array.from(dates));
+        else broadcastClassSessionsChanged();
+      } catch {}
     },
   });
 }
@@ -569,7 +614,7 @@ export function useClassSessionDelete() {
         id: "class-session-delete-success",
       });
     },
-    onSettled: (_, __, classId) => {
+    onSettled: (_, __, classId, context) => {
       // Resolve ID for proper invalidation
       const resolvedId = getResolvedClassSessionId(classId);
 
@@ -581,8 +626,15 @@ export function useClassSessionDelete() {
 
       queryClient.invalidateQueries({
         queryKey: ["classSession", resolvedId],
-        refetchType: "none",
+        refetchType: "active",
       });
+
+      // Broadcast affected day
+      try {
+        const d = context?.deletedClassSession?.date as Date | undefined;
+        const key = d ? toDateKey(d) : null;
+        if (key) broadcastClassSessionsChanged([key]); else broadcastClassSessionsChanged();
+      } catch {}
     },
   });
 }
@@ -764,7 +816,7 @@ export function useClassSessionBulkDelete() {
         id: "class-session-bulk-delete-success",
       });
     },
-    onSettled: (_, __, variables) => {
+    onSettled: (_, __, variables, context) => {
       // Resolve IDs for proper invalidation
       const resolvedIds = variables.classIds.map((id) =>
         getResolvedClassSessionId(id)
@@ -779,9 +831,22 @@ export function useClassSessionBulkDelete() {
       resolvedIds.forEach((id) => {
         queryClient.invalidateQueries({
           queryKey: ["classSession", id],
-          refetchType: "none",
+          refetchType: "active",
         });
       });
+
+      // Broadcast affected day(s)
+      try {
+        const set = new Set<string>();
+        context?.deletedClassSessions?.forEach((s) => {
+          if (s?.date) {
+            const key = toDateKey(s.date as unknown as Date);
+            if (key) set.add(key);
+          }
+        });
+        if (set.size > 0) broadcastClassSessionsChanged(Array.from(set));
+        else broadcastClassSessionsChanged();
+      } catch {}
     },
   });
 }
@@ -844,14 +909,17 @@ export function useClassSessionSeriesUpdate() {
       // Invalidate the series query
       queryClient.invalidateQueries({
         queryKey: ["classSessionSeries", seriesId],
-        refetchType: "none",
+        refetchType: "active",
       });
 
       // Invalidate the general class sessions query
       queryClient.invalidateQueries({
         queryKey: ["classSessions"],
-        refetchType: "none",
+        refetchType: "active",
       });
+
+      // Unknown which days changed – broadcast general
+      try { broadcastClassSessionsChanged(); } catch {}
     },
   });
 }
@@ -919,14 +987,17 @@ export function useClassSessionSeriesDelete() {
       // Invalidate the series query
       queryClient.invalidateQueries({
         queryKey: ["classSessionSeries", seriesId],
-        refetchType: "none",
+        refetchType: "active",
       });
 
       // Invalidate the general class sessions query
       queryClient.invalidateQueries({
         queryKey: ["classSessions"],
-        refetchType: "none",
+        refetchType: "active",
       });
+
+      // Unknown which days changed – broadcast general
+      try { broadcastClassSessionsChanged(); } catch {}
     },
   });
 }
@@ -952,7 +1023,9 @@ export function useClassSessionCancel() {
       toast.error('授業のキャンセルに失敗しました', { description: message });
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['classSessions'] });
+      queryClient.invalidateQueries({ queryKey: ['classSessions'], refetchType: 'active' });
+      // Unknown dates – broadcast general change
+      try { broadcastClassSessionsChanged(); } catch {}
     },
   });
 }

@@ -93,6 +93,7 @@ type FormattedStudent = {
   username: string | null;
   email: string | null;
   password: string | null;
+  admissionDate: Date | null;
   branches: {
     branchId: string;
     name: string;
@@ -374,6 +375,7 @@ const formatStudent = (student: StudentWithIncludes): FormattedStudent => {
     username: student.user.username,
     email: student.user.email,
     password: student.user.passwordHash,
+    admissionDate: (student as any).admissionDate ?? null,
     branches:
       student.user.branches?.map((ub) => ({
         branchId: ub.branch.branchId,
@@ -481,6 +483,8 @@ export const GET = withBranchAccess(
       examCategoryTypes,
       birthDateFrom,
       birthDateTo,
+      admissionDateFrom,
+      admissionDateTo,
       examDateFrom,
       examDateTo,
       sortBy,
@@ -549,6 +553,17 @@ export const GET = withBranchAccess(
       }
       if (birthDateTo) {
         where.birthDate.lte = birthDateTo;
+      }
+    }
+
+    // Filter by admission date range
+    if (admissionDateFrom || admissionDateTo) {
+      (where as any).admissionDate = {};
+      if (admissionDateFrom) {
+        (where as any).admissionDate.gte = admissionDateFrom;
+      }
+      if (admissionDateTo) {
+        (where as any).admissionDate.lte = admissionDateTo;
       }
     }
 

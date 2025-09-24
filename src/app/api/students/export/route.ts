@@ -64,6 +64,8 @@ export const GET = withBranchAccess(
     const examCategoryTypeList = searchParams.get("examCategoryType")?.split(",") || [];
     const birthDateFrom = searchParams.get("birthDateFrom") ? new Date(searchParams.get("birthDateFrom")!) : undefined;
     const birthDateTo = searchParams.get("birthDateTo") ? new Date(searchParams.get("birthDateTo")!) : undefined;
+    const admissionDateFrom = searchParams.get("admissionDateFrom") ? new Date(searchParams.get("admissionDateFrom")!) : undefined;
+    const admissionDateTo = searchParams.get("admissionDateTo") ? new Date(searchParams.get("admissionDateTo")!) : undefined;
     const examDateFrom = searchParams.get("examDateFrom") ? new Date(searchParams.get("examDateFrom")!) : undefined;
     const examDateTo = searchParams.get("examDateTo") ? new Date(searchParams.get("examDateTo")!) : undefined;
 
@@ -76,6 +78,7 @@ export const GET = withBranchAccess(
       "studentTypeName",
       "gradeYear",
       "birthDate",
+      "admissionDate",
       "schoolName",
       "schoolType",
       "examCategory",
@@ -254,6 +257,18 @@ export const GET = withBranchAccess(
       });
     }
 
+    // Filter by admission date range
+    if (admissionDateFrom || admissionDateTo) {
+      filteredStudents = filteredStudents.filter(student => {
+        const adm = (student as any).admissionDate as Date | string | null | undefined;
+        if (!adm) return false;
+        const d = new Date(adm);
+        if (admissionDateFrom && d < admissionDateFrom) return false;
+        if (admissionDateTo && d > admissionDateTo) return false;
+        return true;
+      });
+    }
+
     // Filter by exam date range
     if (examDateFrom || examDateTo) {
       filteredStudents = filteredStudents.filter(student => {
@@ -282,6 +297,7 @@ export const GET = withBranchAccess(
         case 'status':
         case 'gradeYear':
         case 'birthDate':
+        case 'admissionDate':
         case 'schoolName':
         case 'schoolType':
         case 'examCategory':
@@ -340,6 +356,8 @@ export const GET = withBranchAccess(
           return student.gradeYear?.toString() || "";
         case "birthDate":
           return formatDateForCSV(student.birthDate);
+        case "admissionDate":
+          return formatDateForCSV((student as any).admissionDate ?? null);
         case "schoolName":
           return student.schoolName || "";
         case "schoolType":

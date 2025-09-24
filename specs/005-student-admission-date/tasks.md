@@ -1,0 +1,7 @@
+- Add `admissionDate` to Prisma Student model
+- Generate migration and Prisma client
+- Update Zod student schemas
+- Update API route formatting and types
+- Add import/export column + schema support
+- Document change in docs/
+- Run `npx prisma migrate dev` and `bun run check-errors`

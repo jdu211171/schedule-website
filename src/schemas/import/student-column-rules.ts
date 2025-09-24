@@ -50,6 +50,13 @@ export const STUDENT_COLUMN_RULES: Record<string, ColumnRule> = {
     updateRule: 'optional',
     exportOrder: 6,
   },
+  admissionDate: {
+    csvHeader: '入会日',
+    dbField: 'admissionDate',
+    createRule: 'optional',
+    updateRule: 'optional',
+    exportOrder: 6.5 as any,
+  },
   schoolName: {
     csvHeader: '学校名',
     dbField: 'schoolName',
