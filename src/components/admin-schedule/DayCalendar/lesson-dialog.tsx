@@ -839,7 +839,7 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
               </>
             ) : (
               <>
-                <div />
+                {/* Left side: cancellation/reactivation */}
                 <div className="flex space-x-2">
                   {!lesson.isCancelled && (
                     <Button
@@ -855,7 +855,7 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
                         }
                       }}
                     >
-                      キャンセル
+                      授業をキャンセルする
                     </Button>
                   )}
                   {lesson.isCancelled && (
@@ -886,19 +886,22 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
                       再開
                     </Button>
                   )}
+                </div>
+                {/* Right side: close and edit */}
+                <div className="flex space-x-2">
                   <Button
-                      variant="outline"
-                      className="transition-all duration-200 hover:bg-accent hover:text-accent-foreground active:scale-[0.98] focus:ring-2 focus:ring-primary/30 focus:outline-none"
-                      onClick={() => onOpenChange(false)}
-                    >
-                      閉じる
-                    </Button>
-                    <Button
-                      className="transition-all duration-200 hover:brightness-110 active:scale-[0.98] focus:ring-2 focus:ring-primary/30 focus:outline-none"
-                      onClick={() => onModeChange('edit')}
-                    >
-                      編集
-                    </Button>
+                    variant="outline"
+                    className="transition-all duration-200 hover:bg-accent hover:text-accent-foreground active:scale-[0.98] focus:ring-2 focus:ring-primary/30 focus:outline-none"
+                    onClick={() => onOpenChange(false)}
+                  >
+                    閉じる
+                  </Button>
+                  <Button
+                    className="transition-all duration-200 hover:brightness-110 active:scale-[0.98] focus:ring-2 focus:ring-primary/30 focus:outline-none"
+                    onClick={() => onModeChange('edit')}
+                  >
+                    編集
+                  </Button>
                 </div>
               </>
             )}
