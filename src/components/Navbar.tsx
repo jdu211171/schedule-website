@@ -12,17 +12,16 @@ import {
   navigationMenuTriggerStyle,
 } from "@/components/navigation-menu";
 import {
-  CalendarIcon,
   Settings,
   CalendarDays,
   LayoutDashboard,
-  LucideIcon,
   GraduationCap,
   Building,
   Menu,
   Archive,
   Bell,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
 // Custom LINE icon component using text
 const LineTextIcon = React.forwardRef<

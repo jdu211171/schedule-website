@@ -1,3 +1,5 @@
+"use client";
+
 import * as React from 'react';
 import { useMemo } from 'react';
 import { TimeSlot } from './day-calendar';

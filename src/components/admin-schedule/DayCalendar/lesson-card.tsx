@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useMemo } from "react";
 import { useDraggable } from "@dnd-kit/core";
 import { ExtendedClassSessionWithRelations } from "@/hooks/useClassSessionQuery";
