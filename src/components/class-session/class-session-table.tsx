@@ -288,8 +288,16 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
           );
         }
         if ((session as any).status === "CONFLICTED") {
+          const stripePx = 3;
           return (
-            <span className="inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded border border-destructive/60 bg-destructive/5 text-destructive dark:!text-white">
+            <span
+              className="inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded border text-destructive dark:!text-white"
+              style={{
+                // Match 日次 view: red stripes with subtle fill and clear border
+                backgroundImage: `repeating-linear-gradient(45deg, rgba(220, 38, 38, 0.18) 0px, rgba(220, 38, 38, 0.18) ${stripePx}px, transparent ${stripePx}px, transparent ${stripePx * 2}px)`,
+                borderColor: 'rgba(220, 38, 38, 0.7)'
+              }}
+            >
               <AlertTriangle className="h-3.5 w-3.5" />
               競合
             </span>

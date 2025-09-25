@@ -46,6 +46,9 @@ interface ClassSession {
   createdAt: string
   updatedAt: string
   seriesId: string | null
+  // Optional fields provided by API, used for visuals
+  status?: string | null
+  isCancelled?: boolean
 }
 
 type SortOrder = "asc" | "desc" | null
@@ -626,19 +629,34 @@ export const AdminCalendarList = () => {
               </TableHeader>
               <TableBody>
                 {sortedSessions && sortedSessions.length > 0 ? (
-                  sortedSessions.map((session) => (
-                    <TableRow key={session.classId}>
-                      <TableCell>{new Date(session.date).toLocaleDateString("ja-JP")}</TableCell>
-                      <TableCell>
+                  sortedSessions.map((session) => {
+                    const isConflicted = (session as any)?.status === 'CONFLICTED';
+                    const stripePx = 3;
+                    const rowStyle = isConflicted
+                      ? {
+                          backgroundImage:
+                            `repeating-linear-gradient(45deg, rgba(220, 38, 38, 0.18) 0px, rgba(220, 38, 38, 0.18) ${stripePx}px, transparent ${stripePx}px, transparent ${stripePx * 2}px)`,
+                        } as React.CSSProperties
+                      : undefined;
+                    return (
+                      <TableRow
+                        key={session.classId}
+                        className={isConflicted ? '' : ''}
+                        style={rowStyle}
+                      >
+                      <TableCell className={isConflicted ? 'border-l-4 border-destructive/80' : ''} style={rowStyle}>
+                        {new Date(session.date).toLocaleDateString("ja-JP")}
+                      </TableCell>
+                      <TableCell style={rowStyle}>
                         {session.startTime} - {session.endTime}
                       </TableCell>
-                      <TableCell>{session.teacherName}</TableCell>
-                      <TableCell>{session.studentName}</TableCell>
-                      <TableCell>{session.subjectName}</TableCell>
-                      <TableCell>{session.boothName}</TableCell>
-                      <TableCell>{session.duration}分</TableCell>
-                      <TableCell>{session.notes}</TableCell>
-                      <TableCell className="text-right">
+                      <TableCell style={rowStyle}>{session.teacherName}</TableCell>
+                      <TableCell style={rowStyle}>{session.studentName}</TableCell>
+                      <TableCell style={rowStyle}>{session.subjectName}</TableCell>
+                      <TableCell style={rowStyle}>{session.boothName}</TableCell>
+                      <TableCell style={rowStyle}>{session.duration}分</TableCell>
+                      <TableCell style={rowStyle}>{session.notes}</TableCell>
+                      <TableCell className="text-right" style={rowStyle}>
                         <div className="flex justify-end space-x-2">
                           <Button variant="ghost" size="icon" onClick={() => handleEdit(session)}>
                             <svg
@@ -677,8 +695,9 @@ export const AdminCalendarList = () => {
                           </Button>
                         </div>
                       </TableCell>
-                    </TableRow>
-                  ))
+                      </TableRow>
+                    );
+                  })
                 ) : (
                   <TableRow>
                     <TableCell colSpan={9} className="text-center py-6">

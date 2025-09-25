@@ -21,6 +21,18 @@ interface WeekLessonCardProps {
 
 const useLessonColors = (lesson: ExtendedClassSessionWithRelations) => {
   return useMemo(() => {
+    // Reserve conflict palette like Day view (override class type colors)
+    if ((lesson as any)?.status === 'CONFLICTED') {
+      const conflict = {
+        background: 'bg-destructive/15 dark:bg-destructive/25',
+        border: 'border-destructive/80 dark:border-destructive/70',
+        text: 'text-destructive dark:!text-white',
+        hover: 'hover:bg-destructive/25 dark:hover:bg-destructive/30',
+        compactBg: 'bg-destructive/15 dark:bg-destructive/25 hover:bg-destructive/25 dark:hover:bg-destructive/30',
+        compactText: 'text-destructive dark:!text-white',
+      } as const;
+      return { classes: conflict, style: undefined as React.CSSProperties | undefined, compactStyle: undefined as React.CSSProperties | undefined };
+    }
     const colorKey = ((lesson as any)?.classType?.color ?? (lesson as any)?.classTypeColor) as string | undefined;
     if (isValidClassTypeColor(colorKey)) {
       const cls = classTypeColorClasses[colorKey];
@@ -94,6 +106,12 @@ const WeekLessonCard: React.FC<WeekLessonCardProps> = ({
   onEdit,
 }) => {
   const { classes: colors, style, compactStyle } = useLessonColors(lesson);
+  const isConflicted = (lesson as any)?.status === 'CONFLICTED';
+  const stripePx = 3;
+  const stripeStyle: React.CSSProperties | undefined = isConflicted
+    ? { backgroundImage: `repeating-linear-gradient(45deg, rgba(220, 38, 38, 0.18) 0px, rgba(220, 38, 38, 0.18) ${stripePx}px, transparent ${stripePx}px, transparent ${stripePx * 2}px)` }
+    : undefined;
+  const conflictBorder: React.CSSProperties | undefined = isConflicted ? { borderColor: 'rgba(220, 38, 38, 0.7)' } : undefined;
 
   const handleEdit = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -108,7 +126,10 @@ const WeekLessonCard: React.FC<WeekLessonCardProps> = ({
   if (isExpanded) {
     return (
       <div className="w-full cursor-pointer" onClick={() => onClick(lesson.classId)}>
-        <Card className={`p-2 space-y-2 ${colors ? `${colors.background} ${colors.border} ${colors.hover}` : ''} border h-full transition-colors duration-100`} style={style}>
+        <Card
+          className={`p-2 space-y-2 ${colors ? `${colors.background} ${colors.border} ${colors.hover}` : ''} border h-full transition-colors duration-100`}
+          style={{ ...(style || {}), ...(stripeStyle || {}), ...(conflictBorder || {}) }}
+        >
           <CardContent className={`p-1.5 space-y-2 dark:!text-white relative`}>
             {/* Edit button */}
             <div className="flex justify-end">
@@ -176,7 +197,7 @@ const WeekLessonCard: React.FC<WeekLessonCardProps> = ({
           >
             <div
               className={`${colors ? `${colors.compactBg}` : ''} p-1.5 px-2 rounded flex items-center justify-between mb-1 text-xs transition-colors duration-100 dark:!text-white`}
-              style={compactStyle}
+              style={{ ...(compactStyle || {}), ...(stripeStyle || {}), ...(conflictBorder || {}) }}
             >
               <div className="flex items-center gap-0.5 overflow-hidden">
                 <span className="font-medium truncate">{getShortName(lesson.teacherName || '')}</span>
@@ -197,7 +218,7 @@ const WeekLessonCard: React.FC<WeekLessonCardProps> = ({
           >
             <div
               className={`${colors ? `${colors.compactBg}` : ''} p-1 rounded flex items-center justify-center mb-1 transition-colors duration-100 dark:!text-white`}
-              style={compactStyle}
+              style={{ ...(compactStyle || {}), ...(stripeStyle || {}), ...(conflictBorder || {}) }}
             >
               <div className="text-xs truncate font-medium">{lesson.boothName}</div>
             </div>
@@ -220,7 +241,7 @@ const WeekLessonCard: React.FC<WeekLessonCardProps> = ({
           >
             <div
               className={`${colors ? `${colors.compactBg}` : ''} p-0.5 px-1 rounded flex items-center justify-center mb-1 transition-colors duration-100 dark:!text-white`}
-              style={compactStyle}
+              style={{ ...(compactStyle || {}), ...(stripeStyle || {}), ...(conflictBorder || {}) }}
             >
               <div className="text-[11px] font-bold">
                 {lesson.boothName?.replace('Booth-', '').substring(0, 1)}
@@ -245,7 +266,7 @@ const WeekLessonCard: React.FC<WeekLessonCardProps> = ({
           >
             <div
               className={`${colors ? `${colors.compactBg}` : ''} h-6 rounded flex justify-center items-center mb-1 transition-colors duration-100 dark:!text-white`}
-              style={compactStyle}
+              style={{ ...(compactStyle || {}), ...(stripeStyle || {}), ...(conflictBorder || {}) }}
             >
               <div className="text-[10px] font-bold">
                 {lesson.boothName?.replace('Booth-', '').substring(0, 1)}
@@ -271,7 +292,7 @@ const WeekLessonCard: React.FC<WeekLessonCardProps> = ({
           >
             <div
               className={`${colors ? colors.compactBg : ''} rounded-sm h-5 w-5 mx-auto mb-1 transition-colors duration-100`}
-              style={compactStyle}
+              style={{ ...(compactStyle || {}), ...(stripeStyle || {}) }}
             ></div>
             <div className="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 mb-2 p-2 bg-gray-900 text-white text-xs rounded-md shadow-lg invisible group-hover:visible whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none">
               <div className="font-medium">{lesson.subjectName}</div>
