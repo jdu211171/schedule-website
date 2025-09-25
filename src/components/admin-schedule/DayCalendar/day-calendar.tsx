@@ -355,6 +355,9 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
   preserveScrollOnFetch = true,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  // Toggle for thin red conflict lines above rows.
+  // Set to false to disable rendering until visuals are reworked.
+  const RENDER_CONFLICT_GUTTERS = false;
   // Responsive dimensions for grid
   const [slotHeight, setSlotHeight] = useState<number>(DEFAULT_TIME_SLOT_HEIGHT);
   // Slightly widen cells so names can fully display
@@ -507,29 +510,64 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
   }, [boothRowHeights]);
   const contentHeight = useMemo(() => boothRowHeights.reduce((a, b) => a + b, 0), [boothRowHeights]);
 
-  // Conflict gutter ranges per booth
-  const conflictRanges = useMemo(() => {
-    type Range = { start: number; end: number; boothIndex: number };
-    const ranges: Range[] = [];
-    const byBooth: Map<number, Array<{ start: number; end: number }>> = new Map();
+  // Conflict gutter ranges per booth (minute-accurate, then converted to px)
+  const conflictRanges = RENDER_CONFLICT_GUTTERS ? useMemo(() => {
+    type Band = { leftPx: number; widthPx: number; boothIndex: number };
+    const result: Band[] = [];
+
+    // Helpers to convert HH:mm to minutes from midnight
+    const toMin = (hhmm: string) => {
+      const [h, m] = hhmm.split(":").map(Number);
+      return (h || 0) * 60 + (m || 0);
+    };
+    const dayStartMin = toMin(timeSlots[0]?.start || "08:00");
+    const dayEndMin = toMin(timeSlots[timeSlots.length - 1]?.end || "22:00");
+
+    // Build per-booth intervals in minutes
+    const byBooth: Map<number, Array<{ s: number; e: number }>> = new Map();
     filteredSessions.forEach((s) => {
+      const st = extractTime(s.startTime);
+      const et = extractTime(s.endTime);
+      if (!st || !et) return;
       const pos = sessionPos.get(String(s.classId));
       if (!pos) return;
+      const sMin = Math.max(dayStartMin, Math.min(dayEndMin, toMin(st)));
+      const eMin = Math.max(dayStartMin, Math.min(dayEndMin, toMin(et)));
+      if (eMin <= sMin) return;
       if (!byBooth.has(pos.boothIndex)) byBooth.set(pos.boothIndex, []);
-      byBooth.get(pos.boothIndex)!.push({ start: pos.start, end: pos.end });
+      byBooth.get(pos.boothIndex)!.push({ s: sMin, e: eMin });
     });
-    byBooth.forEach((events, boothIndex) => {
-      const conc = new Array(timeSlots.length).fill(0);
-      events.forEach(({ start, end }) => {
-        for (let i = Math.max(0, start); i < Math.min(timeSlots.length, end); i++) conc[i] += 1;
-      });
-      let i = 0; while (i < conc.length) {
-        if (conc[i] > 1) { const start = i; while (i < conc.length && conc[i] > 1) i++; const end = i; ranges.push({ start, end, boothIndex }); }
-        else i++;
+
+    // For each booth, sweep intervals to find sections where concurrency > 1
+    byBooth.forEach((intervals, boothIndex) => {
+      if (intervals.length <= 1) return;
+      const points: Array<{ t: number; d: number }> = [];
+      intervals.forEach(({ s, e }) => { points.push({ t: s, d: +1 }); points.push({ t: e, d: -1 }); });
+      points.sort((a, b) => a.t - b.t || b.d - a.d);
+
+      let count = 0;
+      let curStart: number | null = null;
+      for (const p of points) {
+        const prev = count;
+        count += p.d;
+        if (prev <= 1 && count > 1) {
+          curStart = p.t;
+        } else if (prev > 1 && count <= 1 && curStart !== null) {
+          const segStart = curStart;
+          const segEnd = p.t;
+          // Convert to px using 15-min cells
+          const startCells = (segStart - dayStartMin) / 15;
+          const widthCells = Math.max(0, (segEnd - segStart) / 15);
+          const leftPx = startCells * cellWidth;
+          const widthPx = Math.max(1, widthCells * cellWidth);
+          result.push({ boothIndex, leftPx, widthPx });
+          curStart = null;
+        }
       }
     });
-    return ranges;
-  }, [filteredSessions, sessionPos, timeSlots.length]);
+
+    return result;
+  }, [filteredSessions, sessionPos, timeSlots, cellWidth]) : ([] as Array<{ leftPx: number; widthPx: number; boothIndex: number }>);
 
   // DnD: sensors and handlers
   const sensors = useSensors(
@@ -929,33 +967,38 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
               ))}
             </div>
 
-            {/* Conflict gutter bands (below ghost/cards) */}
-            <div
-              className="absolute pointer-events-none"
-              style={{
-                zIndex: 9,
-                top: `${slotHeight}px`,
-                left: `0px`,
-                width: '100%',
-                height: `${contentHeight}px`
-              }}
-            >
-              {conflictRanges.map((r, idx) => (
-                <div
-                  key={`gutter-${idx}`}
-                  className="absolute"
-                  style={{
-                    left: `${r.start * cellWidth + BOOTH_LABEL_WIDTH}px`,
-                    top: `${boothTopOffsets[r.boothIndex]}px`,
-                    width: `${(r.end - r.start) * cellWidth}px`,
-                    // Scale height with slot/cell size so it stays subtle when rows are smaller
-                    height: `${Math.max(2, Math.round(slotHeight * 0.08))}px`,
-                    background: 'linear-gradient(90deg, rgba(220,38,38,0.9), rgba(220,38,38,0.5))',
-                    borderRadius: `${Math.max(1, Math.round((slotHeight * 0.08) / 2))}px`,
-                  }}
-                />
-              ))}
-            </div>
+            {/* Conflict gutter bands (disabled until fully reworked) */}
+            {RENDER_CONFLICT_GUTTERS && (
+              <div
+                className="absolute pointer-events-none"
+                style={{
+                  zIndex: 9,
+                  top: `${slotHeight}px`,
+                  left: `0px`,
+                  width: '100%',
+                  height: `${contentHeight}px`
+                }}
+              >
+                {conflictRanges.map((r, idx) => {
+                  const ribbonH = 2; // thin, crisp line anchored to row top
+                  const y = boothTopOffsets[r.boothIndex];
+                  return (
+                    <div
+                      key={`gutter-${idx}`}
+                      className="absolute"
+                      style={{
+                        left: `${r.leftPx + BOOTH_LABEL_WIDTH}px`,
+                        top: `${y}px`,
+                        width: `${r.widthPx}px`,
+                        height: `${ribbonH}px`,
+                        background: 'linear-gradient(90deg, rgba(220,38,38,0.9), rgba(220,38,38,0.5))',
+                        borderRadius: `1px`,
+                      }}
+                    />
+                  );
+                })}
+              </div>
+            )}
 
             {/* Ghost overlay */}
             <div
