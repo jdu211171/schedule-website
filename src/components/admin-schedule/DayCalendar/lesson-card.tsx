@@ -352,8 +352,11 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
         ...(colorStyle || {}),
         ...(isConflictVisual
           ? {
-              backgroundImage:
-                'repeating-linear-gradient(45deg, rgba(220,38,38,.20) 0 6px, transparent 6px 12px)'
+              // Make stripe thickness responsive to the cell width so it looks right when cells are smaller
+              backgroundImage: (() => {
+                const stripe = Math.max(2, Math.round(cellWidth * 0.1)); // ~10% of a cell, min 2px
+                return `repeating-linear-gradient(45deg, rgba(220,38,38,.20) 0 ${stripe}px, transparent ${stripe}px ${stripe * 2}px)`;
+              })()
             }
           : {}),
       }}

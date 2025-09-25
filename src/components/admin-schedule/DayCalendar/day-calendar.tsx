@@ -948,9 +948,10 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
                     left: `${r.start * cellWidth + BOOTH_LABEL_WIDTH}px`,
                     top: `${boothTopOffsets[r.boothIndex]}px`,
                     width: `${(r.end - r.start) * cellWidth}px`,
-                    height: '4px',
+                    // Scale height with slot/cell size so it stays subtle when rows are smaller
+                    height: `${Math.max(2, Math.round(slotHeight * 0.08))}px`,
                     background: 'linear-gradient(90deg, rgba(220,38,38,0.9), rgba(220,38,38,0.5))',
-                    borderRadius: '2px',
+                    borderRadius: `${Math.max(1, Math.round((slotHeight * 0.08) / 2))}px`,
                   }}
                 />
               ))}
