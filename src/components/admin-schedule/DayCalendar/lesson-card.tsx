@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useMemo } from "react";
 import { useDraggable } from "@dnd-kit/core";
 import { ExtendedClassSessionWithRelations } from "@/hooks/useClassSessionQuery";
@@ -21,6 +23,7 @@ interface LessonCardProps {
   laneHeight?: number;
   rowTopOffset?: number;
   hasBoothOverlap?: boolean;
+  cellWidth?: number;
 }
 
 export const extractTime = (timeValue: string | Date | undefined): string => {
@@ -59,6 +62,7 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
   laneHeight,
   rowTopOffset = 0,
   hasBoothOverlap = false,
+  cellWidth = 50,
 }) => {
   const startTime = useMemo(
     () => extractTime(lesson.startTime),
@@ -265,9 +269,9 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
     () =>
       ({
         position: "absolute",
-        left: `${effectiveStartIndex * 50 + 100}px`,
+        left: `${effectiveStartIndex * cellWidth + 100}px`,
         top: `${rowTopOffset + laneIndex * (laneHeight ?? timeSlotHeight)}px`,
-        width: `${effectiveDuration * 50}px`,
+        width: `${effectiveDuration * cellWidth}px`,
         height: `${(laneHeight ?? timeSlotHeight) - 2}px`,
         zIndex: isDragging ? maxZIndex : maxZIndex - 1,
         transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
@@ -283,6 +287,7 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
       maxZIndex,
       isDragging,
       transform,
+      cellWidth,
     ],
   );
 
@@ -313,6 +318,21 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
 
   const isCancelled = Boolean((lesson as any)?.isCancelled);
 
+  // Dynamically scale font/padding to use available vertical space
+  const rowHeightPx = (laneHeight ?? timeSlotHeight) - 2;
+  const baseFontSize = useMemo(() => {
+    // Slightly smaller to favor full names
+    // ~50px row → ~15px font (cap at 16)
+    return Math.min(16, Math.max(12, Math.round(rowHeightPx * 0.29)));
+  }, [rowHeightPx]);
+  const badgeFontSize = Math.max(9, baseFontSize - 3);
+  const badgeFontSizeT = Math.max(10, baseFontSize - 2);
+  const innerPadding = Math.max(1, Math.round(baseFontSize * 0.08));
+
+  // Card width for responsiveness
+  const cardWidthPx = effectiveDuration * cellWidth; // mirrors layout width calc
+  const compactTop = cardWidthPx <= 140; // compact top-row layout for narrow cards
+
   return (
     <div
       ref={setNodeRef}
@@ -341,31 +361,59 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
       {...attributes}
       {...listeners}
     >
-      <div className="text-[11px] p-1 flex flex-col h-full justify-between relative">
+      <div
+        className="flex flex-col h-full justify-center gap-1 relative"
+        style={{ fontSize: baseFontSize, lineHeight: 1.08, padding: innerPadding, paddingBottom: 0 }}
+      >
         {/* Labels removed: visual state indicated by color styles */}
         {/* Top row */}
-        <div className="flex justify-between items-start">
-          <div className="flex items-center gap-1">
-            <span className="truncate font-medium">{studentName}</span>
-            {studentTypeLabel && (
-              <span className="text-[8px] px-1 bg-gray-600 dark:bg-gray-700 text-white dark:!text-white rounded flex-shrink-0">
-                {studentTypeLabel}
+        {compactTop ? (
+          <div className="flex flex-col gap-0.5 min-w-0" style={{ fontSize: Math.max(11, baseFontSize - 1) }}>
+            <div className="flex items-center gap-0.5 min-w-0">
+              <span className="whitespace-nowrap overflow-hidden text-ellipsis font-semibold min-w-0" title={studentName}>{studentName}</span>
+              {/* Hide grade label in ultra-compact mode to favor names */}
+            </div>
+            <div className="flex items-center gap-0.5 min-w-0">
+              <span className="whitespace-nowrap overflow-hidden text-ellipsis font-medium min-w-0" title={teacherName}>{teacherName}</span>
+              <span
+                className="px-[2px] bg-gray-600 dark:bg-gray-700 text-white dark:!text-white rounded flex-shrink-0"
+                style={{ fontSize: badgeFontSizeT }}
+              >
+                T
               </span>
-            )}
+            </div>
           </div>
-          <span className="truncate text-right ml-2">
-            {teacherName}
-            <span className="text-[10px] px-1 bg-gray-600 dark:bg-gray-700 text-white dark:!text-white rounded flex-shrink-0">
-              T
-            </span>
-          </span>
-        </div>
+        ) : (
+          <div className="flex items-center">
+            <div className="min-w-0 flex items-center gap-1">
+              <span className="truncate font-semibold" title={studentName}>{studentName}</span>
+              {studentTypeLabel && (
+                <span
+                  className="px-[2px] bg-gray-600 dark:bg-gray-700 text-white dark:!text-white rounded flex-shrink-0"
+                  style={{ fontSize: badgeFontSize }}
+                >
+                  {studentTypeLabel}
+                </span>
+              )}
+            </div>
+            <div className="flex-1" />
+            <div className="min-w-0 flex items-center gap-0.5 justify-end pr-1">
+              <span className="truncate font-medium" title={teacherName}>{teacherName}</span>
+              <span
+                className="px-[2px] bg-gray-600 dark:bg-gray-700 text-white dark:!text-white rounded flex-shrink-0"
+                style={{ fontSize: badgeFontSizeT }}
+              >
+                T
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* Bottom row */}
-        {!isNarrow && (
-          <div className="flex justify-between items-end mt-auto">
-            <span className="truncate">{boothName}</span>
-            <span className="truncate text-right font-medium">
+        {!isNarrow && !compactTop && (
+          <div className="flex justify-between items-end mt-0">
+            <span className="truncate max-w-[56%] font-medium">{boothName}</span>
+            <span className="truncate text-right font-semibold max-w-[42%]">
               {subjectName}
             </span>
           </div>

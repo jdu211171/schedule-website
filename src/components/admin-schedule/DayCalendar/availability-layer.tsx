@@ -1,3 +1,5 @@
+"use client";
+
 import * as React from 'react';
 import { useMemo } from 'react';
 import { TimeSlot } from './day-calendar';
@@ -13,6 +15,7 @@ interface AvailabilityLayerProps {
   studentAvailability?: boolean[];
   timeSlotHeight: number;
   availabilityMode?: AvailabilityMode;
+  cellWidth?: number;
 }
 
 const AVAILABILITY_COLORS = {
@@ -38,6 +41,7 @@ export const AvailabilityLayer: React.FC<AvailabilityLayerProps> = ({
   studentAvailability,
   timeSlotHeight,
   availabilityMode = 'with-special',
+  cellWidth = 50,
 }) => {
   const availabilityBlocks = useMemo(() => {
     const blocks: React.JSX.Element[] = [];
@@ -69,7 +73,7 @@ export const AvailabilityLayer: React.FC<AvailabilityLayerProps> = ({
       }
 
       const key = `availability-header-${slotIndex}`;
-      const left = slotIndex * 50;
+      const left = slotIndex * cellWidth;
       const top = 0;
       
       blocks.push(
@@ -79,7 +83,7 @@ export const AvailabilityLayer: React.FC<AvailabilityLayerProps> = ({
           style={{
             left: `${left}px`,
             top: `${top}px`,
-            width: '50px',
+            width: `${cellWidth}px`,
             height: `${timeSlotHeight}px`,
             backgroundColor,
             zIndex: 1,
@@ -89,7 +93,7 @@ export const AvailabilityLayer: React.FC<AvailabilityLayerProps> = ({
     });
 
     return blocks;
-  }, [timeSlots, teacherAvailability, studentAvailability, timeSlotHeight, availabilityMode]);
+  }, [timeSlots, teacherAvailability, studentAvailability, timeSlotHeight, availabilityMode, cellWidth]);
 
   return (
     <div className="absolute inset-0 pointer-events-none">

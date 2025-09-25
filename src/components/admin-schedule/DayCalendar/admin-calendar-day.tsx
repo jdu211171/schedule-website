@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { startOfDay, startOfWeek, isSameWeek } from 'date-fns';
 import { toast } from 'sonner';
