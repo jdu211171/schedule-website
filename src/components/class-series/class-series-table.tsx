@@ -286,8 +286,10 @@ function RowActions({ seriesId, onOpenSessions }: { seriesId: string; onOpenSess
 function InlineEndDateCell({ seriesId, startDate, endDate }: { seriesId: string; startDate: string; endDate: string | null }) {
   const update = useUpdateClassSeries(seriesId);
   const [open, setOpen] = useState(false);
+  // Persisted value from server
   const [selected, setSelected] = useState<Date | undefined>(() => (endDate ? new Date(`${endDate}T00:00:00Z`) : undefined));
-  const todayUTC = useMemo(() => { const t = new Date(); t.setUTCHours(0,0,0,0); return t; }, []);
+  // Draft value while the popover is open
+  const [draft, setDraft] = useState<Date | undefined>(undefined);
 
   useEffect(() => {
     setSelected(endDate ? new Date(`${endDate}T00:00:00Z`) : undefined);
@@ -301,18 +303,28 @@ function InlineEndDateCell({ seriesId, startDate, endDate }: { seriesId: string;
     return `${y}-${m}-${da}`;
   };
 
-  const onSelect = async (d?: Date) => {
-    if (!d) return;
-    const ymd = fmt(d);
-    // guard: endDate should be >= startDate
+  const handleApply = async () => {
+    // If draft is undefined, this is a clear action
+    if (!draft) {
+      try {
+        await update.mutateAsync({ endDate: null } as any);
+        setSelected(undefined);
+        setOpen(false);
+        toast.success("終了日をクリアしました");
+      } catch (_) {
+        toast.error("終了日のクリアに失敗しました");
+      }
+      return;
+    }
+
+    const ymd = fmt(draft);
     if (new Date(`${ymd}T00:00:00Z`) < new Date(`${startDate}T00:00:00Z`)) {
-      // use a lightweight toast pattern in this project
       toast.error("終了日は開始日以降である必要があります");
       return;
     }
     try {
       await update.mutateAsync({ endDate: ymd } as any);
-      setSelected(d);
+      setSelected(draft);
       setOpen(false);
       toast.success("終了日を更新しました");
     } catch (_) {
@@ -320,25 +332,24 @@ function InlineEndDateCell({ seriesId, startDate, endDate }: { seriesId: string;
     }
   };
 
-  const clear = async () => {
-    try {
-      await update.mutateAsync({ endDate: null } as any);
-      setSelected(undefined);
-      setOpen(false);
-      toast.success("終了日をクリアしました");
-    } catch (_) {
-      toast.error("終了日のクリアに失敗しました");
-    }
+  const handleClearDraft = () => {
+    setDraft(undefined);
   };
 
   return (
-    <Popover open={open} onOpenChange={(o) => {
-      setOpen(o);
-      if (o && !selected) {
-        // When opening with no current endDate, preselect today for convenience (no update yet)
-        setSelected(todayUTC);
-      }
-    }}>
+    <Popover
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        if (o) {
+          // Initialize draft from current selected when opening
+          setDraft(selected);
+        } else {
+          // Reset draft on close
+          setDraft(undefined);
+        }
+      }}
+    >
       <PopoverTrigger asChild>
         <Button variant="outline" size="sm" className="h-7 px-2 text-xs">
           <CalendarIcon className="mr-1 h-3 w-3" />
@@ -348,19 +359,34 @@ function InlineEndDateCell({ seriesId, startDate, endDate }: { seriesId: string;
       <PopoverContent className="w-auto p-2" align="start">
         <div className="flex items-center justify-between mb-2">
           <div className="text-xs text-muted-foreground">終了日を選択</div>
-          {selected && (
-            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={clear} disabled={update.isPending}>
-              <XIcon className="h-3 w-3" />
-            </Button>
-          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6"
+            onClick={() => setOpen(false)}
+            disabled={update.isPending}
+          >
+            <XIcon className="h-3 w-3" />
+          </Button>
         </div>
         <Calendar
           mode="single"
-          selected={selected}
-          onSelect={onSelect}
+          selected={draft}
+          onSelect={(d) => setDraft(d)}
           initialFocus
-          defaultMonth={selected ?? new Date(`${startDate}T00:00:00Z`)}
+          defaultMonth={draft ?? selected ?? new Date(`${startDate}T00:00:00Z`)}
         />
+        <div className="flex gap-2 mt-3 pt-2 border-t">
+          <Button variant="outline" size="sm" onClick={handleClearDraft} disabled={update.isPending}>
+            クリア
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => setOpen(false)} disabled={update.isPending}>
+            キャンセル
+          </Button>
+          <Button size="sm" onClick={handleApply} disabled={update.isPending}>
+            適用
+          </Button>
+        </div>
       </PopoverContent>
     </Popover>
   );
