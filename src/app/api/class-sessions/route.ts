@@ -21,6 +21,7 @@ import {
   applySpecialClassColor,
   isSpecialClassType,
 } from "@/lib/special-class-server";
+import { recomputeNeighborsForChange } from "@/lib/conflict-status";
 
 type FormattedClassSession = {
   classId: string;
@@ -975,6 +976,21 @@ export const POST = withBranchAccess(
         });
 
         const formattedSession = formatClassSession(newClassSession);
+
+        // After creation, recompute neighbor statuses on same date/resources (non-blocking)
+        try {
+          const newCtx = {
+            classId: newClassSession.classId,
+            branchId: newClassSession.branchId,
+            date: newClassSession.date as Date,
+            startTime: newClassSession.startTime as Date,
+            endTime: newClassSession.endTime as Date,
+            teacherId: newClassSession.teacherId,
+            studentId: newClassSession.studentId,
+            boothId: newClassSession.boothId,
+          };
+          await recomputeNeighborsForChange(null as any, newCtx as any);
+        } catch (_) {}
 
         return NextResponse.json(
           {

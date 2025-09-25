@@ -8,6 +8,7 @@ import { parse, format, parseISO } from "date-fns";
 import { SPECIAL_CLASS_COLOR_HEX } from "@/lib/special-class-constants";
 import { CANCELLED_CLASS_COLOR_HEX } from "@/lib/cancelled-class-constants";
 import { isSpecialClassType } from "@/lib/special-class-server";
+import { recomputeNeighborsForChange } from "@/lib/conflict-status";
 
 type FormattedClassSession = {
   classId: string;
@@ -602,6 +603,42 @@ export const PATCH = withBranchAccess(
         }
       } catch (_) {
         // If status recompute fails, proceed without blocking the update
+      }
+
+      // Neighbor recompute: if key placement fields changed, refresh neighbor statuses
+      try {
+        const changed =
+          existingClassSession.date.getTime() !== (updatedClassSession.date as Date).getTime() ||
+          existingClassSession.startTime.getTime() !== (updatedClassSession.startTime as Date).getTime() ||
+          existingClassSession.endTime.getTime() !== (updatedClassSession.endTime as Date).getTime() ||
+          existingClassSession.teacherId !== updatedClassSession.teacherId ||
+          existingClassSession.studentId !== updatedClassSession.studentId ||
+          existingClassSession.boothId !== updatedClassSession.boothId;
+        if (changed) {
+          const oldCtx = {
+            classId,
+            branchId: existingClassSession.branchId,
+            date: existingClassSession.date as Date,
+            startTime: existingClassSession.startTime as Date,
+            endTime: existingClassSession.endTime as Date,
+            teacherId: existingClassSession.teacherId,
+            studentId: existingClassSession.studentId,
+            boothId: existingClassSession.boothId,
+          };
+          const newCtx = {
+            classId,
+            branchId: updatedClassSession.branchId,
+            date: updatedClassSession.date as Date,
+            startTime: updatedClassSession.startTime as Date,
+            endTime: updatedClassSession.endTime as Date,
+            teacherId: updatedClassSession.teacherId,
+            studentId: updatedClassSession.studentId,
+            boothId: updatedClassSession.boothId,
+          };
+          await recomputeNeighborsForChange(oldCtx, newCtx);
+        }
+      } catch (_) {
+        // Do not block the main update on neighbor refresh errors
       }
 
       // Format response

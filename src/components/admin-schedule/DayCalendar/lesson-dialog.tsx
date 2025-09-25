@@ -15,6 +15,8 @@ import { useAvailability } from './availability-layer';
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { fetcher } from '@/lib/fetcher';
+import { getDateKey } from '../date';
+import { broadcastClassSessionsChanged } from '@/lib/calendar-broadcast';
 
 interface Booth {
   boothId: string;
@@ -847,11 +849,24 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
                       className="transition-all duration-200 hover:brightness-110 active:scale-[0.98] focus:ring-2 focus:ring-destructive/30 focus:outline-none"
                       onClick={() => {
                         if (window.confirm('この授業をキャンセルしますか？')) {
-                          cancelMutation.mutate({ classIds: [lesson.classId], reason: 'ADMIN_CANCELLED' }, {
-                            onSuccess: () => {
-                              onOpenChange(false);
+                          const dateKey = getDateKey(getDisplayDate());
+                          cancelMutation.mutate(
+                            { classIds: [lesson.classId], reason: 'ADMIN_CANCELLED' },
+                            {
+                              onSuccess: () => {
+                                try { broadcastClassSessionsChanged([dateKey]); } catch {}
+                                // Precisely refetch affected day queries
+                                queryClient.refetchQueries({
+                                  predicate: ({ queryKey }) => Array.isArray(queryKey)
+                                    && queryKey[0] === 'classSessions'
+                                    && queryKey[1] === 'byDate'
+                                    && queryKey[2] === dateKey,
+                                  type: 'active' as any,
+                                });
+                                onOpenChange(false);
+                              }
                             }
-                          });
+                          );
                         }
                       }}
                     >
@@ -874,6 +889,17 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
                             toast.error(data?.error || '再開に失敗しました');
                           } else {
                             toast.success(data?.message || '再開しました');
+                            try {
+                              const dateKey = getDateKey(getDisplayDate());
+                              broadcastClassSessionsChanged([dateKey]);
+                              await queryClient.refetchQueries({
+                                predicate: ({ queryKey }) => Array.isArray(queryKey)
+                                  && queryKey[0] === 'classSessions'
+                                  && queryKey[1] === 'byDate'
+                                  && queryKey[2] === dateKey,
+                                type: 'active' as any,
+                              });
+                            } catch {}
                             onOpenChange(false);
                           }
                         } catch (e: any) {

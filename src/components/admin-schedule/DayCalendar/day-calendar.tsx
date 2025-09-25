@@ -30,6 +30,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { broadcastClassSessionsChanged } from '@/lib/calendar-broadcast';
 
 export type TimeSlot = {
   index: number;
@@ -584,6 +585,29 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
   const updateSeries = useUpdateClassSeries(seriesForHook || '');
   const qc = useQueryClient();
 
+  // Listen for cross-tab calendar broadcasts and refresh this day if affected
+  useEffect(() => {
+    const channel = typeof window !== 'undefined' && typeof BroadcastChannel !== 'undefined'
+      ? new BroadcastChannel('calendar-events')
+      : null;
+    if (!channel) return;
+    const handler = (event: MessageEvent) => {
+      const payload = event.data as { type?: string; dates?: string[] };
+      if (!payload || payload.type !== 'classSessionsChanged') return;
+      const key = getDateKey(date);
+      const dates = payload.dates || [];
+      if (dates.length === 0 || dates.includes(key)) {
+        // Lightly invalidate classSessions queries; active views will refetch
+        qc.invalidateQueries({ queryKey: ['classSessions'], refetchType: 'active' });
+      }
+    };
+    channel.addEventListener('message', handler);
+    return () => {
+      channel.removeEventListener('message', handler);
+      channel.close();
+    };
+  }, [date, qc]);
+
   const cancelSelection = useCallback(() => {
     setSelection(initialSelectionState);
     document.body.classList.remove('cursor-move');
@@ -653,7 +677,22 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
       setConfirmOpen(true);
       return;
     }
-    updateClassSession.mutate({ classId: String(active.id), startTime: newStart, endTime: newEnd, boothId: targetBoothId });
+    updateClassSession.mutate(
+      { classId: String(active.id), startTime: newStart, endTime: newEnd, boothId: targetBoothId },
+      {
+        onSuccess: () => {
+          try { broadcastClassSessionsChanged([dateKey]); } catch {}
+          // Robust: refetch any byDate queries for this date regardless of filters
+          qc.refetchQueries({
+            predicate: ({ queryKey }) => Array.isArray(queryKey)
+              && queryKey[0] === 'classSessions'
+              && queryKey[1] === 'byDate'
+              && queryKey[2] === dateKey,
+            type: 'active' as any,
+          });
+        }
+      }
+    );
   }, [filteredSessions, classSessions, booths, timeSlots, updateClassSession]);
 
   useEffect(() => {
@@ -1081,7 +1120,21 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
                     variant="outline"
                     onClick={() => {
                       if (!pending) return;
-                      updateClassSession.mutate({ classId: pending.classId, startTime: pending.startTime, endTime: pending.endTime, boothId: pending.boothId });
+                      updateClassSession.mutate(
+                        { classId: pending.classId, startTime: pending.startTime, endTime: pending.endTime, boothId: pending.boothId },
+                        {
+                          onSuccess: () => {
+                            try { broadcastClassSessionsChanged([dateKey]); } catch {}
+                            qc.refetchQueries({
+                              predicate: ({ queryKey }) => Array.isArray(queryKey)
+                                && queryKey[0] === 'classSessions'
+                                && queryKey[1] === 'byDate'
+                                && queryKey[2] === dateKey,
+                              type: 'active' as any,
+                            });
+                          }
+                        }
+                      );
                       setConfirmOpen(false); setPending(null);
                     }}
                   >
@@ -1122,7 +1175,14 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
                         {
                           onSuccess: () => {
                             toast.success('シリーズの授業を更新しました');
-                            qc.invalidateQueries({ queryKey: ['classSessions'], refetchType: 'none' });
+                            try { broadcastClassSessionsChanged([dateKey]); } catch {}
+                            qc.refetchQueries({
+                              predicate: ({ queryKey }) => Array.isArray(queryKey)
+                                && queryKey[0] === 'classSessions'
+                                && queryKey[1] === 'byDate'
+                                && queryKey[2] === dateKey,
+                              type: 'active' as any,
+                            });
                           },
                           onError: (err: any) => {
                             for (const [key, data] of snapshots) qc.setQueryData(key, data);

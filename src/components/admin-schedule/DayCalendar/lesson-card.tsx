@@ -431,13 +431,24 @@ LessonCardComponent.displayName = "LessonCard";
 export const LessonCard = React.memo(
   LessonCardComponent,
   (prevProps, nextProps) => {
+    // Re-render when placement or visual-conflict inputs change
     return (
       prevProps.lesson.classId === nextProps.lesson.classId &&
       prevProps.timeSlotHeight === nextProps.timeSlotHeight &&
       prevProps.lesson.startTime === nextProps.lesson.startTime &&
       prevProps.lesson.endTime === nextProps.lesson.endTime &&
       prevProps.lesson.boothId === nextProps.lesson.boothId &&
-      prevProps.lesson.seriesId === nextProps.lesson.seriesId
+      prevProps.lesson.seriesId === nextProps.lesson.seriesId &&
+      // Include status because stripes depend on CONFLICTED
+      (prevProps.lesson as any).status === (nextProps.lesson as any).status &&
+      // Include cancellation visual state
+      (prevProps.lesson as any).isCancelled === (nextProps.lesson as any).isCancelled &&
+      // Include computed overlap flag and lane assignment
+      prevProps.hasBoothOverlap === nextProps.hasBoothOverlap &&
+      prevProps.laneIndex === nextProps.laneIndex &&
+      (prevProps.laneHeight ?? prevProps.timeSlotHeight) === (nextProps.laneHeight ?? nextProps.timeSlotHeight) &&
+      // Include width for responsive stripe thickness
+      prevProps.cellWidth === nextProps.cellWidth
     );
   },
 );

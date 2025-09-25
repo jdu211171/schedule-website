@@ -7,6 +7,7 @@ import { ClassSession } from "@prisma/client";
 import { parse, format, parseISO } from "date-fns";
 import { applySpecialClassColor } from "@/lib/special-class-server";
 import { CANCELLED_CLASS_COLOR_HEX } from "@/lib/cancelled-class-constants";
+import { recomputeNeighborsForChange } from "@/lib/conflict-status";
 
 type FormattedClassSession = {
   classId: string;
@@ -359,6 +360,7 @@ export const PATCH = withBranchAccess(
       // Update each future session within a single transaction
       const updatedSessions = await prisma.$transaction(async (tx) => {
         const results: ClassSession[] = [] as any;
+        const neighborPairs: Array<{ oldCtx: any; newCtx: any }> = [];
         for (const session of futureSessions) {
           // If updating times, calculate for each session's date
           // Format date as YYYY-MM-DD for the current session (used for messages and time recompute)
@@ -476,10 +478,43 @@ export const PATCH = withBranchAccess(
           });
 
           results.push(updated as any);
+          try {
+            const oldCtx = {
+              classId: session.classId,
+              branchId: session.branchId ?? null,
+              date: session.date as Date,
+              startTime: session.startTime as Date,
+              endTime: session.endTime as Date,
+              teacherId: (updateData.teacherId !== undefined ? updateData.teacherId : session.teacherId) ?? session.teacherId,
+              studentId: (updateData.studentId !== undefined ? updateData.studentId : session.studentId) ?? session.studentId,
+              boothId: (updateData.boothId !== undefined ? updateData.boothId : session.boothId) ?? session.boothId,
+            };
+            const newCtx = {
+              classId: updated.classId,
+              branchId: updated.branchId ?? null,
+              date: updated.date as Date,
+              startTime: updated.startTime as Date,
+              endTime: updated.endTime as Date,
+              teacherId: updated.teacherId,
+              studentId: updated.studentId,
+              boothId: updated.boothId,
+            };
+            neighborPairs.push({ oldCtx, newCtx });
+          } catch (_) {}
         }
 
+        // Attach neighborPairs to results array for post-tx processing via mutation
+        (results as any)._neighborPairs = neighborPairs;
         return results as any;
       });
+
+      // After transaction, recompute neighbor statuses for impacted sessions (non-blocking errors)
+      try {
+        const pairs: Array<{ oldCtx: any; newCtx: any }> = (updatedSessions as any)._neighborPairs || [];
+        for (const p of pairs) {
+          try { await recomputeNeighborsForChange(p.oldCtx, p.newCtx); } catch (_) {}
+        }
+      } catch (_) {}
 
       // Format response
       const formattedSessions = updatedSessions.map(formatClassSession);
