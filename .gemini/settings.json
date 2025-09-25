@@ -1,27 +1,38 @@
 {
-  "autoAccept": true,
-  "coreTools": [
-    "run_shell_command",
-    "web_fetch",
-    "web_search",
-    "list_directory",
-    "read_many_files",
-    "save_memory",
-    "read_file",
-    "write_file",
-    "glob",
-    "search_file_content",
-    "replace"
-  ],
-  "disableAutoUpdate": false,
-  "excludeTools": [],
+  "tools": {
+    "autoAccept": true,
+    "core": [
+      "run_shell_command",
+      "web_fetch",
+      "web_search",
+      "list_directory",
+      "read_many_files",
+      "save_memory",
+      "read_file",
+      "write_file",
+      "glob",
+      "search_file_content",
+      "replace"
+    ],
+    "exclude": []
+  },
+  "general": {
+    "disableAutoUpdate": false,
+    "vimMode": true
+  },
   "mcpServers": {
     "Context7": {
       "command": "npx",
-      "args": ["-y", "@upstash/context7-mcp@latest"]
+      "args": [
+        "-y",
+        "@upstash/context7-mcp@latest"
+      ]
     }
   },
-  "theme": "GitHub",
-  "usageStatisticsEnabled": true,
-  "vimMode": true
+  "ui": {
+    "theme": "GitHub"
+  },
+  "privacy": {
+    "usageStatisticsEnabled": true
+  }
 }
