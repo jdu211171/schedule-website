@@ -334,7 +334,7 @@ const FormContent: React.FC<{
             </label>
           {!lessonData.boothId ? (
             // Show selector for weekly calendar (no pre-selected booth)
-            <div className="flex items-center gap-2 mt-1">
+            (<div className="flex items-center gap-2 mt-1">
               <div className="flex-1">
                 <SearchableSelect
                   value={selectedBoothId}
@@ -358,12 +358,12 @@ const FormContent: React.FC<{
                   <X className="h-4 w-4" />
                 </Button>
               )}
-            </div>
+            </div>)
           ) : (
             // Show static field for daily calendar (pre-selected booth)
-            <div className="border rounded-md p-2 mt-1 bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground border-input">
+            (<div className="border rounded-md p-2 mt-1 bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground border-input">
               {booths.find(booth => booth.boothId === lessonData.boothId)?.name || lessonData.boothId}
-            </div>
+            </div>)
           )}
         </div>
         
@@ -456,7 +456,6 @@ const FormContent: React.FC<{
           </div>
         </div>
       </div>
-
       {/* Class type selectors */}
       <div className="grid grid-cols-2 gap-4">
         <div>
@@ -527,7 +526,6 @@ const FormContent: React.FC<{
           </div>
         </div>
       </div>
-
       {/* Teacher and Student selectors */}
       <div className="grid grid-cols-2 gap-4">
         <div>
@@ -624,7 +622,6 @@ const FormContent: React.FC<{
           </div>
         </div>
       </div>
-
       {/* Compatibility indicator */}
       {compatibilityInfo && (
         <div className={`text-xs p-3 rounded-md border ${
@@ -655,7 +652,6 @@ const FormContent: React.FC<{
           </div>
         </div>
       )}
-
       {/* Subject selector */}
       <div>
         <label htmlFor="subject-select" className="text-sm font-medium mb-1 block text-foreground">
@@ -698,7 +694,6 @@ const FormContent: React.FC<{
           )}
         </div>
       </div>
-
       {/* Recurring lesson configuration */}
       {isRecurring && (
         <div className="space-y-3 p-3 rounded-md border border-input bg-muted/30">
@@ -747,7 +742,6 @@ const FormContent: React.FC<{
           </div>
         </div>
       )}
-
       {/* Notes */}
       <div>
         <label htmlFor="notes" className="text-sm font-medium mb-1 block text-foreground">メモ</label>
@@ -760,14 +754,12 @@ const FormContent: React.FC<{
           disabled={disabled}
         />
       </div>
-
       {/* Error displays - только для активной формы */}
       {!disabled && error && (
         <div className="p-3 rounded bg-destructive/10 border border-destructive/20 text-destructive text-sm">
           {error}
         </div>
       )}
-
       {!disabled && validationErrors.length > 0 && (
         <div className="p-3 rounded bg-destructive/10 border border-destructive/20 text-destructive text-sm">
           <div className="font-medium mb-2">入力内容を確認してください:</div>
@@ -1601,253 +1593,250 @@ const isLoading = isLoadingClassTypes || isSubmitting;
 
   return (
     <>
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className={cn(
-          "max-h-[90vh]",
-          conflictData ? "sm:max-w-[1400px]" : "sm:max-w-[800px]"
-        )}
-      >
-        <DialogHeader>
-          <DialogTitle>授業の作成</DialogTitle>
-          <DialogDescription>
-            {conflictData ? "競合が発見されました。解決方法を選択してください。" : "新しい授業の情報を入力してください"}
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className={cn(conflictData ? "max-h-[70vh]" : "overflow-y-auto max-h-[70vh]")}>
-          {conflictData ? (
-            // Two-column layout when conflicts exist
-            <div className="flex gap-6">
-              {/* Left column - Form (disabled) - FIXED HEIGHT */}
-              <div className="w-[600px] flex-shrink-0 max-h-[70vh] overflow-auto">
-                <div className="text-sm font-medium mb-2 text-muted-foreground">
-                  入力された情報:
-                </div>
-                <div className="px-1 opacity-60 pointer-events-none">
-                  <FormContent
-                    disabled={true}
-                    lessonData={lessonData}
-                    booths={booths}
-                    selectedParentClassTypeId={selectedParentClassTypeId}
-                    selectedChildClassTypeId={selectedChildClassTypeId}
-                    selectedTeacherId={selectedTeacherId}
-                    selectedStudentId={selectedStudentId}
-                    selectedBoothId={selectedBoothId}
-                    isRecurring={isRecurring}
-                    subjectId={subjectId}
-                    notes={notes}
-                    setNotes={setNotes}
-                    startTime={startTime}
-                    setStartTime={setStartTime}
-                    endTime={endTime}
-                    setEndTime={setEndTime}
-                    dateRange={dateRange}
-                    setDateRange={setDateRange}
-                    selectedDays={selectedDays}
-                    handleDayToggle={handleDayToggle}
-                    classTypes={classTypes}
-                    isLoadingClassTypes={isLoadingClassTypes}
-                    parentClassTypes={parentClassTypes}
-                    childClassTypes={childClassTypes}
-                    handleParentClassTypeChange={handleParentClassTypeChange}
-                    handleChildClassTypeChange={handleChildClassTypeChange}
-                    handleTeacherChange={handleTeacherChange}
-                    handleStudentChange={handleStudentChange}
-                    handleSubjectChange={handleSubjectChange}
-                    handleBoothChange={handleBoothChange}
-                    clearParentClassType={clearParentClassType}
-                    clearChildClassType={clearChildClassType}
-                    clearTeacher={clearTeacher}
-                    clearStudent={clearStudent}
-                    clearSubject={clearSubject}
-                    clearBooth={clearBooth}
-                    teacherItems={teacherItems}
-                    studentItems={studentItems}
-                    subjectItems={subjectItems}
-                    parentClassTypeItems={parentClassTypeItems}
-                    childClassTypeItems={childClassTypeItems}
-                    boothItems={boothItems}
-                    canSelectSubject={canSelectSubject}
-                    hasTeacherSelected={hasTeacherSelected}
-                    hasStudentSelected={hasStudentSelected}
-                    compatibilityInfo={compatibilityInfo}
-                    enhancedTeachers={enhancedTeachers}
-                    enhancedStudents={enhancedStudents}
-                    enhancedSubjects={enhancedSubjects}
-                    teacherAvailability={teacherAvailability}
-                    studentAvailability={studentAvailability}
-                    teacherSearchQuery={teacherSearchQuery}
-                    setTeacherSearchQuery={setTeacherSearchQuery}
-                    studentSearchQuery={studentSearchQuery}
-                    setStudentSearchQuery={setStudentSearchQuery}
-                    isLoadingTeachers={isLoadingTeachers}
-                    isFetchingTeachers={isFetchingTeachers}
-                    isLoadingStudents={isLoadingStudents}
-                    isFetchingStudents={isFetchingStudents}
-                    error={error}
-                    validationErrors={validationErrors}
-                  />
-                </div>
-              </div>
-
-              {/* Right column - Conflict Resolution Table */}
-              <div className="flex-1 min-w-0 border-l border-border pl-6 flex flex-col max-h-[70vh]">
-                <div className="flex-1 min-h-0">
-                  <ConflictResolutionTable
-                    conflictData={conflictData}
-                    originalTime={{ startTime, endTime }}
-                    onSubmit={handleConflictResolution}
-                    onCancel={handleConflictCancel}
-                    isLoading={isSubmitting}
-                  />
-                </div>
-              </div>
-            </div>
-          ) : (
-            // Single column layout when no conflicts - original form
-            <div className="px-1">
-              <FormContent
-                disabled={false}
-                lessonData={lessonData}
-                booths={booths}
-                selectedParentClassTypeId={selectedParentClassTypeId}
-                selectedChildClassTypeId={selectedChildClassTypeId}
-                selectedTeacherId={selectedTeacherId}
-                selectedStudentId={selectedStudentId}
-                selectedBoothId={selectedBoothId}
-                isRecurring={isRecurring}
-                subjectId={subjectId}
-                notes={notes}
-                setNotes={setNotes}
-                startTime={startTime}
-                setStartTime={setStartTime}
-                endTime={endTime}
-                setEndTime={setEndTime}
-                dateRange={dateRange}
-                setDateRange={setDateRange}
-                selectedDays={selectedDays}
-                handleDayToggle={handleDayToggle}
-                classTypes={classTypes}
-                isLoadingClassTypes={isLoadingClassTypes}
-                parentClassTypes={parentClassTypes}
-                childClassTypes={childClassTypes}
-                handleParentClassTypeChange={handleParentClassTypeChange}
-                handleChildClassTypeChange={handleChildClassTypeChange}
-                handleTeacherChange={handleTeacherChange}
-                handleStudentChange={handleStudentChange}
-                handleSubjectChange={handleSubjectChange}
-                handleBoothChange={handleBoothChange}
-                clearParentClassType={clearParentClassType}
-                clearChildClassType={clearChildClassType}
-                clearTeacher={clearTeacher}
-                clearStudent={clearStudent}
-                clearSubject={clearSubject}
-                clearBooth={clearBooth}
-                teacherItems={teacherItems}
-                studentItems={studentItems}
-                subjectItems={subjectItems}
-                parentClassTypeItems={parentClassTypeItems}
-                childClassTypeItems={childClassTypeItems}
-                boothItems={boothItems}
-                canSelectSubject={canSelectSubject}
-                hasTeacherSelected={hasTeacherSelected}
-                hasStudentSelected={hasStudentSelected}
-                compatibilityInfo={compatibilityInfo}
-                enhancedTeachers={enhancedTeachers}
-                enhancedStudents={enhancedStudents}
-                enhancedSubjects={enhancedSubjects}
-                teacherAvailability={teacherAvailability}
-                studentAvailability={studentAvailability}
-                teacherSearchQuery={teacherSearchQuery}
-                setTeacherSearchQuery={setTeacherSearchQuery}
-                studentSearchQuery={studentSearchQuery}
-                setStudentSearchQuery={setStudentSearchQuery}
-                isLoadingTeachers={isLoadingTeachers}
-                isFetchingTeachers={isFetchingTeachers}
-                isLoadingStudents={isLoadingStudents}
-                isFetchingStudents={isFetchingStudents}
-                error={error}
-                validationErrors={validationErrors}
-              />
-            </div>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent
+          className={cn(
+            "max-h-[90vh]",
+            conflictData ? "sm:max-w-[1400px]" : "sm:max-w-[800px]"
           )}
-        </div>
+        >
+          <DialogHeader>
+            <DialogTitle>授業の作成</DialogTitle>
+            <DialogDescription>
+              {conflictData ? "競合が発見されました。解決方法を選択してください。" : "新しい授業の情報を入力してください"}
+            </DialogDescription>
+          </DialogHeader>
 
-        {!conflictData && (
+          <div className={cn(conflictData ? "max-h-[70vh]" : "overflow-y-auto max-h-[70vh]")}>
+            {conflictData ? (
+              // Two-column layout when conflicts exist
+              (<div className="flex gap-6">
+                {/* Left column - Form (disabled) - FIXED HEIGHT */}
+                <div className="w-[600px] flex-shrink-0 max-h-[70vh] overflow-auto">
+                  <div className="text-sm font-medium mb-2 text-muted-foreground">
+                    入力された情報:
+                  </div>
+                  <div className="px-1 opacity-60 pointer-events-none">
+                    <FormContent
+                      disabled={true}
+                      lessonData={lessonData}
+                      booths={booths}
+                      selectedParentClassTypeId={selectedParentClassTypeId}
+                      selectedChildClassTypeId={selectedChildClassTypeId}
+                      selectedTeacherId={selectedTeacherId}
+                      selectedStudentId={selectedStudentId}
+                      selectedBoothId={selectedBoothId}
+                      isRecurring={isRecurring}
+                      subjectId={subjectId}
+                      notes={notes}
+                      setNotes={setNotes}
+                      startTime={startTime}
+                      setStartTime={setStartTime}
+                      endTime={endTime}
+                      setEndTime={setEndTime}
+                      dateRange={dateRange}
+                      setDateRange={setDateRange}
+                      selectedDays={selectedDays}
+                      handleDayToggle={handleDayToggle}
+                      classTypes={classTypes}
+                      isLoadingClassTypes={isLoadingClassTypes}
+                      parentClassTypes={parentClassTypes}
+                      childClassTypes={childClassTypes}
+                      handleParentClassTypeChange={handleParentClassTypeChange}
+                      handleChildClassTypeChange={handleChildClassTypeChange}
+                      handleTeacherChange={handleTeacherChange}
+                      handleStudentChange={handleStudentChange}
+                      handleSubjectChange={handleSubjectChange}
+                      handleBoothChange={handleBoothChange}
+                      clearParentClassType={clearParentClassType}
+                      clearChildClassType={clearChildClassType}
+                      clearTeacher={clearTeacher}
+                      clearStudent={clearStudent}
+                      clearSubject={clearSubject}
+                      clearBooth={clearBooth}
+                      teacherItems={teacherItems}
+                      studentItems={studentItems}
+                      subjectItems={subjectItems}
+                      parentClassTypeItems={parentClassTypeItems}
+                      childClassTypeItems={childClassTypeItems}
+                      boothItems={boothItems}
+                      canSelectSubject={canSelectSubject}
+                      hasTeacherSelected={hasTeacherSelected}
+                      hasStudentSelected={hasStudentSelected}
+                      compatibilityInfo={compatibilityInfo}
+                      enhancedTeachers={enhancedTeachers}
+                      enhancedStudents={enhancedStudents}
+                      enhancedSubjects={enhancedSubjects}
+                      teacherAvailability={teacherAvailability}
+                      studentAvailability={studentAvailability}
+                      teacherSearchQuery={teacherSearchQuery}
+                      setTeacherSearchQuery={setTeacherSearchQuery}
+                      studentSearchQuery={studentSearchQuery}
+                      setStudentSearchQuery={setStudentSearchQuery}
+                      isLoadingTeachers={isLoadingTeachers}
+                      isFetchingTeachers={isFetchingTeachers}
+                      isLoadingStudents={isLoadingStudents}
+                      isFetchingStudents={isFetchingStudents}
+                      error={error}
+                      validationErrors={validationErrors}
+                    />
+                  </div>
+                </div>
+                {/* Right column - Conflict Resolution Table */}
+                <div className="flex-1 min-w-0 border-l border-border pl-6 flex flex-col max-h-[70vh]">
+                  <div className="flex-1 min-h-0">
+                    <ConflictResolutionTable
+                      conflictData={conflictData}
+                      originalTime={{ startTime, endTime }}
+                      onSubmit={handleConflictResolution}
+                      onCancel={handleConflictCancel}
+                      isLoading={isSubmitting}
+                    />
+                  </div>
+                </div>
+              </div>)
+            ) : (
+              // Single column layout when no conflicts - original form
+              (<div className="px-1">
+                <FormContent
+                  disabled={false}
+                  lessonData={lessonData}
+                  booths={booths}
+                  selectedParentClassTypeId={selectedParentClassTypeId}
+                  selectedChildClassTypeId={selectedChildClassTypeId}
+                  selectedTeacherId={selectedTeacherId}
+                  selectedStudentId={selectedStudentId}
+                  selectedBoothId={selectedBoothId}
+                  isRecurring={isRecurring}
+                  subjectId={subjectId}
+                  notes={notes}
+                  setNotes={setNotes}
+                  startTime={startTime}
+                  setStartTime={setStartTime}
+                  endTime={endTime}
+                  setEndTime={setEndTime}
+                  dateRange={dateRange}
+                  setDateRange={setDateRange}
+                  selectedDays={selectedDays}
+                  handleDayToggle={handleDayToggle}
+                  classTypes={classTypes}
+                  isLoadingClassTypes={isLoadingClassTypes}
+                  parentClassTypes={parentClassTypes}
+                  childClassTypes={childClassTypes}
+                  handleParentClassTypeChange={handleParentClassTypeChange}
+                  handleChildClassTypeChange={handleChildClassTypeChange}
+                  handleTeacherChange={handleTeacherChange}
+                  handleStudentChange={handleStudentChange}
+                  handleSubjectChange={handleSubjectChange}
+                  handleBoothChange={handleBoothChange}
+                  clearParentClassType={clearParentClassType}
+                  clearChildClassType={clearChildClassType}
+                  clearTeacher={clearTeacher}
+                  clearStudent={clearStudent}
+                  clearSubject={clearSubject}
+                  clearBooth={clearBooth}
+                  teacherItems={teacherItems}
+                  studentItems={studentItems}
+                  subjectItems={subjectItems}
+                  parentClassTypeItems={parentClassTypeItems}
+                  childClassTypeItems={childClassTypeItems}
+                  boothItems={boothItems}
+                  canSelectSubject={canSelectSubject}
+                  hasTeacherSelected={hasTeacherSelected}
+                  hasStudentSelected={hasStudentSelected}
+                  compatibilityInfo={compatibilityInfo}
+                  enhancedTeachers={enhancedTeachers}
+                  enhancedStudents={enhancedStudents}
+                  enhancedSubjects={enhancedSubjects}
+                  teacherAvailability={teacherAvailability}
+                  studentAvailability={studentAvailability}
+                  teacherSearchQuery={teacherSearchQuery}
+                  setTeacherSearchQuery={setTeacherSearchQuery}
+                  studentSearchQuery={studentSearchQuery}
+                  setStudentSearchQuery={setStudentSearchQuery}
+                  isLoadingTeachers={isLoadingTeachers}
+                  isFetchingTeachers={isFetchingTeachers}
+                  isLoadingStudents={isLoadingStudents}
+                  isFetchingStudents={isFetchingStudents}
+                  error={error}
+                  validationErrors={validationErrors}
+                />
+              </div>)
+            )}
+          </div>
+
+          {!conflictData && (
+            <DialogFooter className="pt-2">
+              <div className="flex gap-2 w-full">
+                <Button
+                  variant="outline"
+                  className="transition-all duration-200 hover:bg-accent hover:text-accent-foreground active:scale-[0.98] focus:ring-2 focus:ring-primary/30 focus:outline-none"
+                  onClick={() => onOpenChange(false)}
+                  disabled={isLoading}
+                >
+                  キャンセル
+                </Button>
+                <Button
+                  variant="destructive"
+                  className="transition-all duration-200 hover:brightness-110 active:scale-[0.98] focus:ring-2 focus:ring-destructive/30 focus:outline-none"
+                  onClick={handleReset}
+                  disabled={isLoading}
+                >
+                  リセット
+                </Button>
+                <Button
+                  className="ml-auto transition-all duration-200 hover:brightness-110 active:scale-[0.98] focus:ring-2 focus:ring-primary/30 focus:outline-none"
+                  onClick={handleSubmit}
+                  disabled={!canSubmit || isLoading}
+                >
+                  {isLoading ? "処理中..." : "作成"}
+                </Button>
+              </div>
+            </DialogFooter>
+          )}
+        </DialogContent>
+      </Dialog>
+      {/* Availability confirm modal (force-create) */}
+      <Dialog open={showAvailabilityConfirm} onOpenChange={setShowAvailabilityConfirm}>
+        <DialogContent className="sm:max-w-[520px]">
+          <DialogHeader>
+            <DialogTitle>強制作成の確認</DialogTitle>
+            <DialogDescription>
+              現在の時間帯は
+              {softTeacherConflict && softStudentConflict ? '講師/生徒' : softTeacherConflict ? '講師' : '生徒'}
+              の利用可能時間外です。強制的に作成しますか？
+            </DialogDescription>
+          </DialogHeader>
           <DialogFooter className="pt-2">
-            <div className="flex gap-2 w-full">
-              <Button
-                variant="outline"
-                className="transition-all duration-200 hover:bg-accent hover:text-accent-foreground active:scale-[0.98] focus:ring-2 focus:ring-primary/30 focus:outline-none"
-                onClick={() => onOpenChange(false)}
-                disabled={isLoading}
-              >
-                キャンセル
-              </Button>
-              <Button
-                variant="destructive"
-                className="transition-all duration-200 hover:brightness-110 active:scale-[0.98] focus:ring-2 focus:ring-destructive/30 focus:outline-none"
-                onClick={handleReset}
-                disabled={isLoading}
-              >
-                リセット
-              </Button>
-              <Button
-                className="ml-auto transition-all duration-200 hover:brightness-110 active:scale-[0.98] focus:ring-2 focus:ring-primary/30 focus:outline-none"
-                onClick={handleSubmit}
-                disabled={!canSubmit || isLoading}
-              >
-                {isLoading ? "処理中..." : "作成"}
-              </Button>
-            </div>
+            <Button
+              variant="outline"
+              onClick={() => setShowAvailabilityConfirm(false)}
+              disabled={isSubmitting}
+            >
+              キャンセル
+            </Button>
+            <Button
+              onClick={async () => {
+                // 強制作成: 利用可能エラーは事前に無視して進める
+                setShowAvailabilityConfirm(false);
+                await proceedCreate(false);
+              }}
+              disabled={isSubmitting}
+            >
+              強制作成
+            </Button>
           </DialogFooter>
-        )}
-      </DialogContent>
-    </Dialog>
-
-    {/* Availability confirm modal (force-create) */}
-    <Dialog open={showAvailabilityConfirm} onOpenChange={setShowAvailabilityConfirm}>
-      <DialogContent className="sm:max-w-[520px]">
-        <DialogHeader>
-          <DialogTitle>強制作成の確認</DialogTitle>
-          <DialogDescription>
-            現在の時間帯は
-            {softTeacherConflict && softStudentConflict ? '講師/生徒' : softTeacherConflict ? '講師' : '生徒'}
-            の利用可能時間外です。強制的に作成しますか？
-          </DialogDescription>
-        </DialogHeader>
-        <DialogFooter className="pt-2">
-          <Button
-            variant="outline"
-            onClick={() => setShowAvailabilityConfirm(false)}
-            disabled={isSubmitting}
-          >
-            キャンセル
-          </Button>
-          <Button
-            onClick={async () => {
-              // 強制作成: 利用可能エラーは事前に無視して進める
-              setShowAvailabilityConfirm(false);
-              await proceedCreate(false);
-            }}
-            disabled={isSubmitting}
-          >
-            強制作成
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-
-    {/* Post-generation sessions view for series flow */}
-    {showSeriesSessions && generatedSeriesId && (
-      <SeriesSessionsTableDialog
-        seriesId={generatedSeriesId}
-        open={showSeriesSessions}
-        onOpenChange={(o) => setShowSeriesSessions(o)}
-        softWarningDates={softWarningDates}
-      />
-    )}
+        </DialogContent>
+      </Dialog>
+      {/* Post-generation sessions view for series flow */}
+      {showSeriesSessions && generatedSeriesId && (
+        <SeriesSessionsTableDialog
+          seriesId={generatedSeriesId}
+          open={showSeriesSessions}
+          onOpenChange={(o) => setShowSeriesSessions(o)}
+          softWarningDates={softWarningDates}
+        />
+      )}
     </>
   );
 };

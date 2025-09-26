@@ -8,7 +8,7 @@ import { parse, format, parseISO } from "date-fns";
 import { SPECIAL_CLASS_COLOR_HEX } from "@/lib/special-class-constants";
 import { CANCELLED_CLASS_COLOR_HEX } from "@/lib/cancelled-class-constants";
 import { isSpecialClassType } from "@/lib/special-class-server";
-import { recomputeNeighborsForChange } from "@/lib/conflict-status";
+import { recomputeNeighborsForChange, recomputeAndUpdateSessionStatus } from "@/lib/conflict-status";
 
 type FormattedClassSession = {
   classId: string;
@@ -636,6 +636,12 @@ export const PATCH = withBranchAccess(
             boothId: updatedClassSession.boothId,
           };
           await recomputeNeighborsForChange(oldCtx, newCtx);
+          try {
+            // Also recompute and persist the edited session's own status
+            await recomputeAndUpdateSessionStatus(classId);
+          } catch (_) {
+            // Non-blocking: ignore self-recompute errors
+          }
         }
       } catch (_) {
         // Do not block the main update on neighbor refresh errors

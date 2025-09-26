@@ -373,8 +373,8 @@ export async function POST(req: NextRequest) {
               slot = explicitAccountType;
             }
             // Prevent linking same LINE ID to another account on this channel
-            const conflict = await prisma.studentLineLink.findFirst({ where: { channelId, lineUserId: lineId, NOT: { studentId: user.student.studentId } } })
-              || await prisma.teacherLineLink.findFirst({ where: { channelId, lineUserId: lineId } });
+            const conflict = (await prisma.studentLineLink.findFirst({ where: { channelId, lineUserId: lineId, NOT: { studentId: user.student.studentId } } }))
+              || (await prisma.teacherLineLink.findFirst({ where: { channelId, lineUserId: lineId } }));
             if (conflict) {
               await sendLineReply(replyToken, 'このLINEアカウントは既に別のアカウントにリンクされています。', credentials);
               continue;
@@ -461,8 +461,8 @@ export async function POST(req: NextRequest) {
             );
             continue;
           } else if (user.teacher) {
-            const conflict = await prisma.teacherLineLink.findFirst({ where: { channelId, lineUserId: lineId, NOT: { teacherId: user.teacher.teacherId } } })
-              || await prisma.studentLineLink.findFirst({ where: { channelId, lineUserId: lineId } });
+            const conflict = (await prisma.teacherLineLink.findFirst({ where: { channelId, lineUserId: lineId, NOT: { teacherId: user.teacher.teacherId } } }))
+              || (await prisma.studentLineLink.findFirst({ where: { channelId, lineUserId: lineId } }));
             if (conflict) {
               await sendLineReply(replyToken, 'このLINEアカウントは既に別のアカウントにリンクされています。', credentials);
               continue;

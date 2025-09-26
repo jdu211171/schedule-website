@@ -1,0 +1,4 @@
+- [x] Wire self‑recompute in `/api/class-sessions/[classId]` PATCH
+- [x] Wire self‑recompute in `/api/class-sessions/series/[seriesId]` PATCH
+- [ ] Verify typecheck passes (`bun run check-errors`)
+- [ ] Manual UI sanity: edit conflicted session → watch badge clear without pressing 「確認」 (when only hard conflict was present)

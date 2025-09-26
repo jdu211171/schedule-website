@@ -215,13 +215,14 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
     if (isConflictVisual) {
       return {
         colorClasses: {
-          background: "bg-destructive/15 dark:bg-destructive/25",
-          border: "border-destructive/80 dark:border-destructive/70",
-          text: "text-destructive dark:!text-white",
-          hover: "hover:bg-destructive/25 dark:hover:bg-destructive/30",
+          background: "bg-destructive",
+          border: "border-destructive",
+          // omit text; we force text color globally below
+          text: "",
+          hover: "hover:brightness-95 dark:hover:brightness-110",
         },
         colorStyle: undefined as React.CSSProperties | undefined,
-        textClass: "font-semibold",
+        textClass: undefined,
       };
     }
     const colorKey = ((lesson as any)?.classType?.color ?? (lesson as any)?.classTypeColor) as string | undefined;
@@ -233,31 +234,26 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
       };
     }
     if (isHexColor(colorKey || '')) {
-      const bg = rgba(colorKey!, 0.18) || undefined;
-      const border = rgba(colorKey!, 0.5) || undefined;
-      const textColor = getContrastText(colorKey!);
+      const solid = colorKey!;
       const style: React.CSSProperties = {
-        backgroundColor: bg,
-        borderColor: border,
+        backgroundColor: solid,
+        borderColor: solid,
       };
-      const customTextClass = textColor === 'white'
-        ? 'text-white dark:!text-white'
-        : 'text-slate-900 dark:!text-white';
-      return { colorClasses: undefined, colorStyle: style, textClass: customTextClass };
+      return { colorClasses: undefined, colorStyle: style, textClass: undefined };
     }
     // fallback to previous behavior (series-based)
     const isRecurringLesson = lesson.seriesId !== null && lesson.seriesId !== undefined;
     const fallback = isRecurringLesson
       ? {
-          background: "bg-indigo-100 dark:bg-indigo-900/70",
+          background: "bg-indigo-100 dark:bg-indigo-900",
           border: "border-indigo-300 dark:border-indigo-700",
-          text: "text-indigo-800 dark:!text-white",
+          text: "",
           hover: "hover:bg-indigo-200 dark:hover:bg-indigo-800",
         }
       : {
-          background: "bg-slate-100 dark:bg-slate-800/60",
+          background: "bg-slate-100 dark:bg-slate-800",
           border: "border-slate-300 dark:border-slate-600",
-          text: "text-slate-800 dark:!text-white",
+          text: "",
           hover: "hover:bg-slate-200 dark:hover:bg-slate-700",
         };
     return { colorClasses: fallback, colorStyle: undefined, textClass: undefined };
@@ -267,7 +263,7 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
 
   const style = useMemo(
     () =>
-      ({
+      (({
         position: "absolute",
         left: `${effectiveStartIndex * cellWidth + 100}px`,
         top: `${rowTopOffset + laneIndex * (laneHeight ?? timeSlotHeight)}px`,
@@ -275,8 +271,8 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
         height: `${(laneHeight ?? timeSlotHeight) - 2}px`,
         zIndex: isDragging ? maxZIndex : maxZIndex - 1,
         transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
-        touchAction: 'none',
-      }) as React.CSSProperties,
+        touchAction: 'none'
+      }) as React.CSSProperties),
     [
       effectiveStartIndex,
       effectiveDuration,
@@ -339,12 +335,12 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
       className={`
         absolute rounded border shadow-sm cursor-grab active:cursor-grabbing
         transition-colors duration-100 ease-in-out transform
-        ${colorClasses ? `${colorClasses.background} ${colorClasses.border} ${colorClasses.text} ${colorClasses.hover}` : ''}
+        ${colorClasses ? `${colorClasses.background} ${colorClasses.border} ${colorClasses.hover}` : ''}
         ${textClass ?? ''}
         ${isCancelled ? 'opacity-60 grayscale !text-black dark:!text-white' : ''}
+        !text-black dark:!text-white
         active:scale-[0.98] hover:shadow-md
         overflow-hidden truncate pointer-events-auto
-        dark:!text-white
       `}
       data-conflict={isConflictVisual ? 'true' : 'false'}
       style={{
@@ -373,11 +369,11 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
         {compactTop ? (
           <div className="flex flex-col gap-0.5 min-w-0" style={{ fontSize: Math.max(11, baseFontSize - 1) }}>
             <div className="flex items-center gap-0.5 min-w-0">
-              <span className="whitespace-nowrap overflow-hidden text-ellipsis font-semibold min-w-0" title={studentName}>{studentName}</span>
+              <span className="whitespace-nowrap overflow-hidden text-ellipsis min-w-0" title={studentName}>{studentName}</span>
               {/* Hide grade label in ultra-compact mode to favor names */}
             </div>
             <div className="flex items-center gap-0.5 min-w-0">
-              <span className="whitespace-nowrap overflow-hidden text-ellipsis font-medium min-w-0" title={teacherName}>{teacherName}</span>
+              <span className="whitespace-nowrap overflow-hidden text-ellipsis min-w-0" title={teacherName}>{teacherName}</span>
               <span
                 className="px-[2px] bg-gray-600 dark:bg-gray-700 text-white dark:!text-white rounded flex-shrink-0"
                 style={{ fontSize: badgeFontSizeT }}
@@ -389,7 +385,7 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
         ) : (
           <div className="flex items-center">
             <div className="min-w-0 flex items-center gap-1">
-              <span className="truncate font-semibold" title={studentName}>{studentName}</span>
+              <span className="truncate" title={studentName}>{studentName}</span>
               {studentTypeLabel && (
                 <span
                   className="px-[2px] bg-gray-600 dark:bg-gray-700 text-white dark:!text-white rounded flex-shrink-0"
@@ -401,7 +397,7 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
             </div>
             <div className="flex-1" />
             <div className="min-w-0 flex items-center gap-0.5 justify-end pr-1">
-              <span className="truncate font-medium" title={teacherName}>{teacherName}</span>
+              <span className="truncate" title={teacherName}>{teacherName}</span>
               <span
                 className="px-[2px] bg-gray-600 dark:bg-gray-700 text-white dark:!text-white rounded flex-shrink-0"
                 style={{ fontSize: badgeFontSizeT }}
@@ -415,8 +411,8 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
         {/* Bottom row */}
         {!isNarrow && !compactTop && (
           <div className="flex justify-between items-end mt-0">
-            <span className="truncate max-w-[56%] font-medium">{boothName}</span>
-            <span className="truncate text-right font-semibold max-w-[42%]">
+            <span className="truncate max-w-[56%]">{boothName}</span>
+            <span className="truncate text-right max-w-[42%]">
               {subjectName}
             </span>
           </div>

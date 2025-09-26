@@ -17,7 +17,6 @@ export function SettingsLayout() {
           アプリケーション設定と構成を管理
         </p>
       </div>
-      
       <Card>
         <CardHeader>
           <CardTitle>スケジューリング競合設定（グローバル）</CardTitle>
@@ -29,7 +28,6 @@ export function SettingsLayout() {
           <SchedulingConflictSettings />
         </CardContent>
       </Card>
-
       <Card>
         <CardHeader>
           <CardTitle>LINE設定</CardTitle>
@@ -41,7 +39,6 @@ export function SettingsLayout() {
           <LineSettings />
         </CardContent>
       </Card>
-
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -56,7 +53,7 @@ export function SettingsLayout() {
           <p className="text-sm text-muted-foreground mb-4">
             複数のLINEチャンネルを設定し、ブランチごとに異なるチャンネルを使用できます。
           </p>
-          <Link href="/dashboard/settings/line-channels" passHref>
+          <Link href="/dashboard/settings/line-channels" passHref legacyBehavior>
             <Button variant="outline" className="w-full sm:w-auto">
               チャンネル管理へ
               <ArrowRight className="ml-2 h-4 w-4" />
@@ -64,7 +61,6 @@ export function SettingsLayout() {
           </Link>
         </CardContent>
       </Card>
-
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">

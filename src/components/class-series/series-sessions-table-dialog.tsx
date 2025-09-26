@@ -26,6 +26,7 @@ import type { ConflictResponse } from "@/components/admin-schedule/DayCalendar/t
 type ConflictData = ConflictResponse["conflicts"][number];
 import { Edit3, Trash2, XCircle, CheckCircle2, AlertTriangle } from "lucide-react";
 import { LessonDialog } from "@/components/admin-schedule/DayCalendar/lesson-dialog";
+import FastDayCalendarDialog from "@/components/admin-schedule/DayCalendar/fast-day-calendar-dialog";
 import { useAllBoothsOrdered } from "@/hooks/useBoothQuery";
 import { useTeachers } from "@/hooks/useTeacherQuery";
 import { useStudents } from "@/hooks/useStudentQuery";
@@ -75,6 +76,8 @@ export default function SeriesSessionsTableDialog({ seriesId, open, onOpenChange
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [cancelTarget, setCancelTarget] = useState<SeriesSession | null>(null);
   const [bulkCancelOpen, setBulkCancelOpen] = useState(false);
+  const [fastDialogOpen, setFastDialogOpen] = useState(false);
+  const [fastDialogDate, setFastDialogDate] = useState<string | null>(null);
   // Integrated conflict preview state
   const [preview, setPreview] = useState<ConflictResponse | null>(null);
   const [resolveLoading, setResolveLoading] = useState(false);
@@ -542,12 +545,19 @@ export default function SeriesSessionsTableDialog({ seriesId, open, onOpenChange
                                 確認
                               </Button>
                             )}
-                            {/* Edit via CreateLessonDialog */}
+                            {/* Edit / Resolve action */}
                             <Button
                               variant="outline"
                               size="icon"
                               className="h-8 w-8"
                               onClick={async () => {
+                                // If conflicted, open fast day calendar dialog within this view
+                                if (s.status === 'CONFLICTED') {
+                                  setFastDialogDate(s.date);
+                                  setFastDialogOpen(true);
+                                  return;
+                                }
+                                // Default: open the standard edit dialog
                                 try {
                                   const res = await fetch(`/api/class-sessions/${s.classId}`, { headers: { 'X-Selected-Branch': localStorage.getItem('selectedBranchId') || '' } });
                                   if (!res.ok) throw new Error();
@@ -674,6 +684,25 @@ export default function SeriesSessionsTableDialog({ seriesId, open, onOpenChange
           />
         )}
       </DialogContent>
+      {/* Fast embedded day calendar dialog for conflict resolution */}
+      {fastDialogOpen && fastDialogDate && (
+        <FastDayCalendarDialog
+          open={fastDialogOpen}
+          onOpenChange={(o) => {
+            setFastDialogOpen(o);
+            if (!o) {
+              // refresh series list + preview after edits
+              fetchItems();
+              refreshPreview();
+            }
+          }}
+          date={fastDialogDate}
+          onAfterChange={async () => {
+            await fetchItems();
+            await refreshPreview();
+          }}
+        />
+      )}
       {/* Embedded conflict resolution now handled inside the main content */}
       {/* Bulk delete confirm */}
       {bulkDeleteOpen && (
