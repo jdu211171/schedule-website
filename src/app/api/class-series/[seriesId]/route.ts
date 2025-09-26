@@ -168,13 +168,23 @@ export const PATCH = withBranchAccess(
 
     const input = parsed.data;
 
-    // Fetch current series to allow dependent adjustments (e.g., lastGeneratedThrough clamp)
-    const current = await prisma.classSeries.findUnique({ where: { seriesId }, select: { lastGeneratedThrough: true } });
+    // Ensure series exists and enforce branch access for non-admins
+    const current = await prisma.classSeries.findUnique({
+      where: { seriesId },
+      select: { lastGeneratedThrough: true, branchId: true },
+    });
+    if (!current) {
+      return NextResponse.json({ error: "Series not found" }, { status: 404 });
+    }
 
-    // Enforce branch edit permissions for non-admins
     const isAdmin = session.user?.role === "ADMIN";
-    if (!isAdmin && input.branchId && input.branchId !== selectedBranchId) {
-      return NextResponse.json({ error: "Forbidden: invalid branch" }, { status: 403 });
+    if (!isAdmin) {
+      if (current.branchId && current.branchId !== selectedBranchId) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+      if (input.branchId && input.branchId !== selectedBranchId) {
+        return NextResponse.json({ error: "Forbidden: invalid branch" }, { status: 403 });
+      }
     }
 
     // Build Prisma update payload
@@ -200,9 +210,8 @@ export const PATCH = withBranchAccess(
         : null;
     // Centralized policy: update branch-level overrides when provided
     if (input.conflictPolicy !== undefined) {
-      // Need branchId to persist overrides; fetch if not in patch
-      const seriesRow = await prisma.classSeries.findUnique({ where: { seriesId }, select: { branchId: true } });
-      const effectiveBranchId = (input.branchId ?? seriesRow?.branchId) || null;
+      // Need branchId to persist overrides; use current if not in patch
+      const effectiveBranchId = (input.branchId ?? current.branchId) || null;
       if (effectiveBranchId) {
         await upsertBranchPolicyFromSeriesPatch(effectiveBranchId, (input.conflictPolicy as any) || {});
       }

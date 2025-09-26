@@ -7,7 +7,7 @@ import { ClassSession } from "@prisma/client";
 import { parse, format, parseISO } from "date-fns";
 import { applySpecialClassColor } from "@/lib/special-class-server";
 import { CANCELLED_CLASS_COLOR_HEX } from "@/lib/cancelled-class-constants";
-import { recomputeNeighborsForChange } from "@/lib/conflict-status";
+import { recomputeNeighborsForChange, recomputeAndUpdateSessionStatus } from "@/lib/conflict-status";
 
 type FormattedClassSession = {
   classId: string;
@@ -507,6 +507,16 @@ export const PATCH = withBranchAccess(
         (results as any)._neighborPairs = neighborPairs;
         return results as any;
       });
+
+      // After transaction, recompute statuses for updated sessions themselves (non-blocking)
+      try {
+        for (const s of updatedSessions) {
+          const id = (s as any)?.classId;
+          if (typeof id === 'string' && id) {
+            try { await recomputeAndUpdateSessionStatus(id); } catch (_) {}
+          }
+        }
+      } catch (_) {}
 
       // After transaction, recompute neighbor statuses for impacted sessions (non-blocking errors)
       try {

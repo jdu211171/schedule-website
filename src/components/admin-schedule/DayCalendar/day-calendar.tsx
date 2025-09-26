@@ -24,7 +24,7 @@ import { DayCalendarFilters } from './day-calendar-filters';
 import { AvailabilityLayer, useAvailability } from './availability-layer';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { useClassSessionUpdate } from '@/hooks/useClassSessionMutation';
+import { useClassSessionUpdate, useClassSessionSeriesUpdate } from '@/hooks/useClassSessionMutation';
 import { useUpdateClassSeries } from '@/hooks/use-class-series';
 import { useQueryClient } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -579,6 +579,7 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [ghost, setGhost] = useState<{ boothIdx: number; timeIdx: number; durationSlots: number } | null>(null);
   const updateClassSession = useClassSessionUpdate();
+  const updateSeriesSessions = useClassSessionSeriesUpdate();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pending, setPending] = useState<null | { classId: string; seriesId: string | null; startTime: string; endTime: string; boothId?: string }>(null);
   const [seriesForHook, setSeriesForHook] = useState<string>('');
@@ -1170,7 +1171,47 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
                         }
                         toast.success('シリーズ（仮）を更新しました');
                       }
-                      updateSeries.mutate(
+                      // Preflight: if the blueprint is missing (404), fallback to session-series update
+                      (async () => {
+                        try {
+                          const res = await fetch(`/api/class-series/${pending.seriesId}`, {
+                            headers: { 'X-Selected-Branch': localStorage.getItem('selectedBranchId') || '' },
+                          });
+                          if (res.status === 404) {
+                            updateSeriesSessions.mutate(
+                              {
+                                seriesId: pending.seriesId,
+                                startTime: pending.startTime,
+                                endTime: pending.endTime,
+                                ...(pending.boothId ? { boothId: pending.boothId } : {}),
+                                fromClassId: pending.classId,
+                              } as any,
+                              {
+                                onSuccess: () => {
+                                  try { broadcastClassSessionsChanged([dateKey]); } catch {}
+                                  qc.refetchQueries({
+                                    predicate: ({ queryKey }) => Array.isArray(queryKey)
+                                      && queryKey[0] === 'classSessions'
+                                      && queryKey[1] === 'byDate'
+                                      && queryKey[2] === dateKey,
+                                    type: 'active' as any,
+                                  });
+                                },
+                                onError: (e2: any) => {
+                                  for (const [key, data] of snapshots) qc.setQueryData(key, data);
+                                  const msg = e2?.message || 'シリーズ更新に失敗しました';
+                                  toast.error('シリーズ更新に失敗しました', { description: msg });
+                                },
+                                onSettled: () => {
+                                  setConfirmOpen(false);
+                                  setPending(null);
+                                }
+                              }
+                            );
+                            return;
+                          }
+                        } catch { /* ignore and fall through to normal series update */ }
+                        updateSeries.mutate(
                         { startTime: pending.startTime, endTime: pending.endTime, ...(pending.boothId ? { boothId: pending.boothId } : {}), propagateFromClassId: pending.classId } as any,
                         {
                           onSuccess: () => {
@@ -1185,6 +1226,42 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
                             });
                           },
                           onError: (err: any) => {
+                            // Fallback: orphan series (no blueprint). Try updating sessions by seriesId directly.
+                            const isNotFound = (err?.message || '').includes('404') || (err?.message || '').includes('Series not found');
+                            if (isNotFound && pending?.seriesId) {
+                              updateSeriesSessions.mutate(
+                                {
+                                  seriesId: pending.seriesId,
+                                  startTime: pending.startTime,
+                                  endTime: pending.endTime,
+                                  ...(pending.boothId ? { boothId: pending.boothId } : {}),
+                                  fromClassId: pending.classId,
+                                } as any,
+                                {
+                                  onSuccess: () => {
+                                    try { broadcastClassSessionsChanged([dateKey]); } catch {}
+                                    qc.refetchQueries({
+                                      predicate: ({ queryKey }) => Array.isArray(queryKey)
+                                        && queryKey[0] === 'classSessions'
+                                        && queryKey[1] === 'byDate'
+                                        && queryKey[2] === dateKey,
+                                      type: 'active' as any,
+                                    });
+                                  },
+                                  onError: (e2: any) => {
+                                    for (const [key, data] of snapshots) qc.setQueryData(key, data);
+                                    const msg = e2?.message || 'シリーズ更新に失敗しました';
+                                    toast.error('シリーズ更新に失敗しました', { description: msg });
+                                  },
+                                  onSettled: () => {
+                                    setConfirmOpen(false);
+                                    setPending(null);
+                                  }
+                                }
+                              );
+                              return; // Do not run original onSettled; fallback handles closing
+                            }
+                            // Non-404: revert optimistic changes and show error
                             for (const [key, data] of snapshots) qc.setQueryData(key, data);
                             const message = err?.message || 'シリーズ更新に失敗しました';
                             toast.error('シリーズ更新に失敗しました', { description: message });
@@ -1195,6 +1272,7 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
                           }
                         }
                       );
+                      })();
                     }}
                   >
                     シリーズ全体
