@@ -215,14 +215,15 @@ export default function ClassSeriesTable({ selectedBranchId }: Props) {
     getFacetedUniqueValues: getFacetedUniqueValues(),
     getRowId: (row: any) => row.seriesId as string,
     globalFilterFn: (row, _columnId, filterValue) => {
-      const v = String(filterValue).toLowerCase();
+      const v = String(filterValue || "").trim().toLowerCase();
+      if (!v) return true;
       const o = row.original as any;
-      return (
-        (o.subjectId || "").toLowerCase().includes(v) ||
-        (o.studentId || "").toLowerCase().includes(v) ||
-        (o.teacherId || "").toLowerCase().includes(v) ||
-        (o.seriesId || "").toLowerCase().includes(v)
-      );
+      const fields = [
+        o.subjectName,
+        o.studentName,
+        o.teacherName,
+      ];
+      return fields.some((f) => typeof f === "string" && f.toLowerCase().includes(v));
     },
     initialState: {
       pagination: { pageSize: 25 },

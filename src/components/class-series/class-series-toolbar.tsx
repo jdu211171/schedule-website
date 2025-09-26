@@ -15,7 +15,7 @@ type Props<TData> = {
   globalSearchPlaceholder?: string;
 };
 
-export default function ClassSeriesToolbar<TData>({ table, globalSearchPlaceholder = "検索（科目/生徒/講師/ID）" }: Props<TData>) {
+export default function ClassSeriesToolbar<TData>({ table, globalSearchPlaceholder = "検索（科目/生徒/講師）" }: Props<TData>) {
   const isFiltered = table.getState().columnFilters.length > 0 || Boolean(table.getState().globalFilter);
 
   const statusOptions = [
