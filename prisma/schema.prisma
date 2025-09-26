@@ -22,7 +22,10 @@ model ClassSeries {
   // Lifecycle & automation
   status               String    @default("ACTIVE")
   lastGeneratedThrough DateTime? @map("last_generated_through") @db.Date
+  timezone             String?   @map("timezone") @db.VarChar(64)
   notes                String?   @db.VarChar(255)
+  // Optional per-series scheduling override (takes precedence over branch/global)
+  schedulingOverride   Json?     @map("scheduling_override")
   createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt            DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 

@@ -4,7 +4,9 @@ import { withBranchAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import type { DayOfWeek } from "@prisma/client";
 import { normalizeMarkAsConflicted } from "@/lib/conflict-types";
-import { getEffectiveSchedulingConfig, toPolicyShape } from "@/lib/scheduling-config";
+import { getEffectiveSchedulingConfig, toPolicyShape, applySeriesOverride } from "@/lib/scheduling-config";
+import { validateEffectiveConfig, maybeReportSchedulingWarnings } from "@/lib/scheduling-config-validation";
+import { fromZonedTime } from "date-fns-tz";
 
 type BranchVacation = { startDate: Date; endDate: Date; isRecurring: boolean };
 
@@ -223,6 +225,16 @@ export const POST = withBranchAccess(["ADMIN", "STAFF"], async (request: NextReq
       return NextResponse.json({ error: "Series not found" }, { status: 404 });
     }
 
+    // Acquire an advisory lock to prevent concurrent generation for the same series
+    try {
+      const locked: Array<{ pg_try_advisory_lock: boolean }> = await (prisma as any).$queryRaw`SELECT pg_try_advisory_lock(hashtext(${seriesId})::bigint)`;
+      if (!locked?.[0]?.pg_try_advisory_lock) {
+        return NextResponse.json({ error: "Series is locked by another process" }, { status: 423 });
+      }
+    } catch {
+      // Best-effort locking; continue if unavailable
+    }
+
     // Branch access for non-admins
     if (session.user?.role !== "ADMIN") {
       if (series.branchId && series.branchId !== selectedBranchId) {
@@ -300,15 +312,16 @@ export const POST = withBranchAccess(["ADMIN", "STAFF"], async (request: NextReq
     const vacations = series.branchId ? await getBranchVacations(series.branchId) : [];
 
     // Prefetch same-day sessions for overlap checks
+    const orConds = [
+      series.teacherId ? { teacherId: series.teacherId } : undefined,
+      series.studentId ? { studentId: series.studentId } : undefined,
+      series.boothId ? { boothId: series.boothId } : undefined,
+    ].filter(Boolean) as any[];
     const sameDaySessions = await prisma.classSession.findMany({
       where: {
         isCancelled: false,
         date: { in: candidateDates },
-        OR: [
-          series.teacherId ? { teacherId: series.teacherId } : undefined,
-          series.studentId ? { studentId: series.studentId } : undefined,
-          series.boothId ? { boothId: series.boothId } : undefined,
-        ].filter(Boolean) as any,
+        ...(orConds.length ? { OR: orConds as any } : {}),
       },
       select: { date: true, startTime: true, endTime: true, teacherId: true, studentId: true, boothId: true },
     });
@@ -326,6 +339,7 @@ export const POST = withBranchAccess(["ADMIN", "STAFF"], async (request: NextReq
     const skipped: { date: string; reason: string }[] = [];
     const conflicted: { date: string; reasons: string[]; cancelled?: boolean }[] = [];
     const softWarnings: { date: string; reasons: string[] }[] = [];
+    let lastSuccess: Date | null = null;
 
     const sh = series.startTime.getUTCHours();
     const sm = series.startTime.getUTCMinutes();
@@ -338,8 +352,20 @@ export const POST = withBranchAccess(["ADMIN", "STAFF"], async (request: NextReq
         continue;
       }
 
-      let start = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), sh, sm, 0, 0));
-      let end = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), eh, em, 0, 0));
+      let start: Date;
+      let end: Date;
+      if ((series as any).timezone) {
+        const y = date.getUTCFullYear();
+        const m = String(date.getUTCMonth() + 1).padStart(2, "0");
+        const d = String(date.getUTCDate()).padStart(2, "0");
+        const sStr = `${y}-${m}-${d}T${String(sh).padStart(2, "0")}:${String(sm).padStart(2, "0")}:00`;
+        const eStr = `${y}-${m}-${d}T${String(eh).padStart(2, "0")}:${String(em).padStart(2, "0")}:00`;
+        start = fromZonedTime(sStr, (series as any).timezone as string);
+        end = fromZonedTime(eStr, (series as any).timezone as string);
+      } else {
+        start = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), sh, sm, 0, 0));
+        end = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), eh, em, 0, 0));
+      }
       const duration = series.duration ?? Math.round((end.getTime() - start.getTime()) / (1000 * 60));
 
       const k = fmt(date);
@@ -357,8 +383,11 @@ export const POST = withBranchAccess(["ADMIN", "STAFF"], async (request: NextReq
       }
 
       // Availability mismatch checks using centralized config
-      const effCfg = await getEffectiveSchedulingConfig(series.branchId || undefined);
+      const baseCfg = await getEffectiveSchedulingConfig(series.branchId || undefined);
+      const effCfg = applySeriesOverride(baseCfg, (series as any).schedulingOverride as any);
       const policy = toPolicyShape(effCfg);
+      const warnings = validateEffectiveConfig(effCfg as any);
+      if (warnings.length) await maybeReportSchedulingWarnings({ branchId: series.branchId, seriesId }, warnings);
       const allowOutside = policy.allowOutsideAvailability || {};
       const mark = normalizeMarkAsConflicted(policy.markAsConflicted);
       if (series.teacherId) {
@@ -435,6 +464,18 @@ export const POST = withBranchAccess(["ADMIN", "STAFF"], async (request: NextReq
       // Cancel only for explicit ABSENCE cases (teacher or student)
       const shouldCancel = cancelForTeacherAbsence || cancelForStudentAbsence;
 
+      // Idempotency guard: skip if an identical session already exists for this series/date/time
+      const dup = await prisma.classSession.findFirst({
+        where: {
+          seriesId,
+          date,
+          startTime: start,
+          endTime: end,
+        },
+        select: { classId: true },
+      });
+      if (dup) { skipped.push({ date: k, reason: "DUPLICATE" }); continue; }
+
       try {
         const cs = await prisma.classSession.create({
           data: {
@@ -460,6 +501,7 @@ export const POST = withBranchAccess(["ADMIN", "STAFF"], async (request: NextReq
         if (conflictReasons.length) {
           conflicted.push({ date: k, reasons: conflictReasons, cancelled: shouldCancel });
         }
+        lastSuccess = date;
       } catch (e: any) {
         skipped.push({ date: k, reason: "DB_CONSTRAINT" });
       }
@@ -469,13 +511,26 @@ export const POST = withBranchAccess(["ADMIN", "STAFF"], async (request: NextReq
     const generatedThrough = candidateDates[candidateDates.length - 1];
     if (hardEnd && generatedThrough.getTime() >= hardEnd.getTime()) {
       await prisma.classSeries.delete({ where: { seriesId } }).catch(() => {});
-    } else {
-      await prisma.classSeries.update({ where: { seriesId }, data: { lastGeneratedThrough: generatedThrough } });
+    } else if (lastSuccess) {
+      await prisma.classSeries.update({ where: { seriesId }, data: { lastGeneratedThrough: lastSuccess } });
     }
 
     return NextResponse.json({ count: created.length, skipped: skipped.length, conflicts: conflicted.length, createdIds: created, skippedDetails: skipped, conflictDetails: conflicted, softWarnings });
   } catch (error) {
     console.error("Error extending series:", error);
     return NextResponse.json({ error: "Failed to extend series" }, { status: 500 });
+  }
+  finally {
+    // Release advisory lock if held
+    try {
+      const url = new URL(request.url);
+      const parts = url.pathname.split("/").filter(Boolean);
+      const sId = parts[parts.length - 2];
+      if (sId) {
+        await (prisma as any).$queryRaw`SELECT pg_advisory_unlock(hashtext(${sId})::bigint)`;
+      }
+    } catch {
+      // ignore
+    }
   }
 });
