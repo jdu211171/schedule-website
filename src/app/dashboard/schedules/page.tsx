@@ -21,12 +21,14 @@ export default function ScheduleManagementPage() {
 
     // On component mount, load the saved tab from localStorage
     useEffect(() => {
-        const savedTab = localStorage.getItem(ACTIVE_TAB_KEY);
-        if (savedTab) {
-            setActiveTab(savedTab);
-        }
-        setIsInitialized(true);
-    }, []);
+    const savedTab = localStorage.getItem(ACTIVE_TAB_KEY);
+    if (savedTab) {
+        setActiveTab(savedTab);
+    }
+    setIsInitialized(true);
+  }, []);
+
+    // Removed cross-tab forced Day navigation; conflicts now resolve within Series view fast dialog
 
     // Handle tab change and save to localStorage
     const handleTabChange = (value: string) => {

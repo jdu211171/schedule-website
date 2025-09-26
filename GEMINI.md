@@ -118,6 +118,10 @@ GOOGLE_CLIENT_SECRET=
 
   - Modify only relevant code parts.
   - Preserve formatting, names, and documentation unless specified.
+  
+### Feature: Conflicted session edit flow (009-we-should-show)
+- Behavior: From シリーズの授業一覧, clicking Edit on a conflicted session opens an embedded Fast Day Calendar dialog for that date. Users can edit lessons in place and close it to continue with other conflicts.
+- Day Calendar LessonCard click behavior remains unchanged elsewhere (opens the standard "授業の編集" modal).
   - Output complete code if modified.
 
 - **Spec Kit (Project Management)**
@@ -162,3 +166,12 @@ GOOGLE_CLIENT_SECRET=
   - Prioritize simplicity and readability.
   - Start with minimal working functionality.
   - Maintain consistent style.
+
+## Feature: Conflicting Class Session Resolution (009-we-should-show)
+
+- **Goal**: When a user clicks to edit a conflicting class session, they will be navigated to the day calendar view for that day to see the conflict in context and resolve it.
+- **Key Changes**:
+    - Modify the click handler for the edit button on class sessions in the day calendar.
+    - Implement logic to differentiate between conflicting and non-conflicting sessions.
+    - Navigate to the day calendar view when a conflicting session is clicked.
+    - Ensure the standard "Edit Class" modal is shown for non-conflicting sessions.

@@ -186,6 +186,8 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
     }
   }, [viewStartDate, isInitialized]);
 
+  // Removed global "focus date" event handler; conflicts are resolved within Series fast dialog
+
   useEffect(() => {
     if (isInitialized) {
       const daysToSave = selectedDays.map(d => d.toISOString());

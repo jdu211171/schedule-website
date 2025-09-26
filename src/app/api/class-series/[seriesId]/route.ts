@@ -168,20 +168,22 @@ export const PATCH = withBranchAccess(
 
     const input = parsed.data;
 
-    // Ensure series exists and enforce branch access for non-admins
-    const current = await prisma.classSeries.findUnique({
+    // Fetch existing series (guard against orphans) and gather needed fields
+    const existing = await prisma.classSeries.findUnique({
       where: { seriesId },
-      select: { lastGeneratedThrough: true, branchId: true },
+      select: { branchId: true, startTime: true, endTime: true, lastGeneratedThrough: true },
     });
-    if (!current) {
+    if (!existing) {
       return NextResponse.json({ error: "Series not found" }, { status: 404 });
     }
 
     const isAdmin = session.user?.role === "ADMIN";
     if (!isAdmin) {
-      if (current.branchId && current.branchId !== selectedBranchId) {
+      // Cannot patch a series outside selected branch
+      if (existing.branchId && existing.branchId !== selectedBranchId) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
+      // Cannot switch to another branch
       if (input.branchId && input.branchId !== selectedBranchId) {
         return NextResponse.json({ error: "Forbidden: invalid branch" }, { status: 403 });
       }
@@ -210,8 +212,8 @@ export const PATCH = withBranchAccess(
         : null;
     // Centralized policy: update branch-level overrides when provided
     if (input.conflictPolicy !== undefined) {
-      // Need branchId to persist overrides; use current if not in patch
-      const effectiveBranchId = (input.branchId ?? current.branchId) || null;
+      // Need branchId to persist overrides; use input or existing
+      const effectiveBranchId = (input.branchId ?? existing.branchId) || null;
       if (effectiveBranchId) {
         await upsertBranchPolicyFromSeriesPatch(effectiveBranchId, (input.conflictPolicy as any) || {});
       }
@@ -219,15 +221,15 @@ export const PATCH = withBranchAccess(
     if (input.notes !== undefined) data.notes = input.notes ?? null;
 
     // If endDate was shortened before the previous lastGeneratedThrough, clamp it down
-    if (data.endDate && current?.lastGeneratedThrough && current.lastGeneratedThrough > data.endDate) {
+    if (data.endDate && existing.lastGeneratedThrough && existing.lastGeneratedThrough > data.endDate) {
       (data as any).lastGeneratedThrough = data.endDate;
     }
 
     // If times changed and duration not explicitly provided, recompute duration from new times
     if ((hasStartTime || hasEndTime) && (input.duration === undefined)) {
       try {
-        const s = (hasStartTime ? (data.startTime as Date) : undefined) ?? (await prisma.classSeries.findUnique({ where: { seriesId }, select: { startTime: true } }))?.startTime;
-        const e = (hasEndTime ? (data.endTime as Date) : undefined) ?? (await prisma.classSeries.findUnique({ where: { seriesId }, select: { endTime: true } }))?.endTime;
+        const s = (hasStartTime ? (data.startTime as Date) : undefined) ?? existing.startTime;
+        const e = (hasEndTime ? (data.endTime as Date) : undefined) ?? existing.endTime;
         if (s && e && e > s) {
           (data as any).duration = Math.round((e.getTime() - s.getTime()) / (1000 * 60));
         }

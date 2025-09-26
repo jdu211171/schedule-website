@@ -524,6 +524,10 @@ export const PATCH = withBranchAccess(
         for (const p of pairs) {
           try { await recomputeNeighborsForChange(p.oldCtx, p.newCtx); } catch (_) {}
         }
+        // Also recompute statuses for the updated sessions themselves
+        for (const s of updatedSessions) {
+          try { await recomputeAndUpdateSessionStatus(s.classId); } catch (_) {}
+        }
       } catch (_) {}
 
       // Format response

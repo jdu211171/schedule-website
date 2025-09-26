@@ -328,7 +328,7 @@ function MobileNavMenu({
                     ? "bg-accent text-accent-foreground"
                     : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                 )}
-              >
+                legacyBehavior>
                 {item.href === "/dashboard/line-test" ? (
                   <span className="text-[8px] font-bold bg-[#00B900] text-white px-1 py-0.5 rounded h-4 w-4 flex items-center justify-center">
                     LINE

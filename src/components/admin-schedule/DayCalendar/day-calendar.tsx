@@ -70,6 +70,9 @@ type DayCalendarProps = {
   // Background refresh awareness to preserve scroll and avoid jumps
   isFetching?: boolean;
   preserveScrollOnFetch?: boolean;
+  // Presentation controls
+  noContainer?: boolean; // render without card-like container
+  hideHeader?: boolean; // hide the top date/count header
 };
 
 // Base values; actual pixel sizes are computed responsively below
@@ -354,6 +357,8 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
   onAvailabilityModeChange,
   isFetching = false,
   preserveScrollOnFetch = true,
+  noContainer = false,
+  hideHeader = false,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   // Toggle for thin red conflict lines above rows.
@@ -702,17 +707,16 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
     }
   }, [resetSelectionKey, cancelSelection]);
 
-  // Guarded auto-scroll to earliest lesson (once per date)
+  // Guarded auto-scroll to earliest lesson (once per date) — horizontal and vertical
   const scrolledForDateRef = useRef<Record<string, boolean>>({});
   useEffect(() => {
     const dk = dateKey;
-    // Reset flag for a new date key
-    if (scrolledForDateRef.current[dk] === undefined) {
-      scrolledForDateRef.current[dk] = false;
-    }
-    if (!earliestLesson || !containerRef.current) return;
+    if (!containerRef.current || !earliestLesson) return;
     if (scrolledForDateRef.current[dk]) return;
 
+    const container = containerRef.current;
+
+    // Horizontal: scroll to earliest lesson's start time (approximate center)
     const startTime = extractTime(earliestLesson.startTime);
     const [hour, minute] = startTime.split(':').map(Number);
     const timeSlotIndex = timeSlots.findIndex(slot => {
@@ -720,11 +724,31 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
       return slotHour === hour && slotMinute === minute;
     });
     if (timeSlotIndex !== -1) {
-      const scrollPosition = (timeSlotIndex * cellWidth) - 100;
-      containerRef.current.scrollLeft = Math.max(0, scrollPosition);
-      scrolledForDateRef.current[dk] = true;
+      const targetLeft = (timeSlotIndex * cellWidth) - Math.max(0, (container.clientWidth - cellWidth) / 2);
+      container.scrollLeft = Math.max(0, targetLeft);
     }
-  }, [earliestLesson, timeSlots, dateKey, cellWidth]);
+
+    // Vertical: scroll to earliest lesson's booth row (center within available area below the header)
+    let boothIdx = (() => {
+      const pos = sessionPos.get(String(earliestLesson.classId));
+      if (pos) return pos.boothIndex;
+      const byId = booths.findIndex(b => b.boothId === (earliestLesson as any).boothId);
+      if (byId >= 0) return byId;
+      const byName = booths.findIndex(b => b.name === (earliestLesson as any)?.boothName || (earliestLesson as any)?.booth?.name);
+      return byName >= 0 ? byName : 0;
+    })();
+
+    const headerHeight = slotHeight; // sticky header height equals one slot
+    const rowTop = boothTopOffsets[boothIdx] ?? 0;
+    const rowHeight = boothRowHeights[boothIdx] ?? slotHeight;
+    const avail = Math.max(0, container.clientHeight - headerHeight);
+    const targetTop = Math.max(0, rowTop + (rowHeight / 2) - (avail / 2));
+    // Clamp to scrollable range
+    const maxTop = Math.max(0, container.scrollHeight - container.clientHeight);
+    container.scrollTop = Math.min(maxTop, Math.max(0, targetTop));
+
+    scrolledForDateRef.current[dk] = true;
+  }, [earliestLesson, timeSlots, dateKey, cellWidth, sessionPos, booths, boothTopOffsets, boothRowHeights, slotHeight]);
 
   // Compute responsive sizes based on viewport and content
   useEffect(() => {
@@ -905,7 +929,8 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
   }, [onAvailabilityModeChange]);
 
   return (
-    <div className="border rounded-md overflow-hidden shadow-sm bg-background dark:bg-background border-border dark:border-border">
+    <div className={noContainer ? "h-full min-h-0 flex flex-col" : "border rounded-md overflow-hidden shadow-sm bg-background dark:bg-background border-border dark:border-border"}>
+      {!hideHeader && !noContainer && (
       <div className="p-3 border-b bg-muted dark:bg-muted border-border dark:border-border">
         <div className="flex items-start gap-6">
           <div className="flex-shrink-0">
@@ -957,11 +982,12 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
           </div>
         </div>
       </div>
+      )}
 
       <div
-        className="relative overflow-auto"
+        className={`relative overflow-auto ${noContainer ? 'flex-1 min-h-0' : ''}`}
         ref={containerRef}
-        style={{ maxHeight: '80vh' }}
+        style={noContainer ? undefined : { maxHeight: '80vh' }}
       >
         <div
           className="relative min-w-full select-none"
