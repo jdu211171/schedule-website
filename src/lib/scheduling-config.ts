@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { prisma } from "./prisma";
 import { DEFAULT_MARK_AS_CONFLICTED } from "@/lib/conflict-types";
 
 export type EffectiveSchedulingConfig = {

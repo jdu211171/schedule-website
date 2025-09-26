@@ -3,6 +3,7 @@
 // Shared between API routes and scripts.
 
 import type { PrismaClient } from "@prisma/client";
+import { decideNextStatusForContext } from "./conflict-status";
 
 export type AdvanceResult = {
   seriesId: string;
@@ -260,7 +261,21 @@ export async function advanceGenerateForSeries(
       ? hasVacationConflictCached(date, vacations)
       : false;
 
-    const isConflict = timeConflict || vacationConflict;
+    // Decide status using centralized policy (hard overlaps + availability policy)
+    // Use a temporary classId placeholder to avoid self-exclusion issues (new row not yet in DB)
+    const ctx = {
+      classId: `TEMP-${series.seriesId}-${k}`,
+      branchId: series.branchId ?? null,
+      date,
+      startTime: start,
+      endTime: end,
+      teacherId: series.teacherId ?? null,
+      studentId: series.studentId ?? null,
+      boothId: series.boothId ?? null,
+    } as const;
+    let nextStatus: "CONFIRMED" | "CONFLICTED" = await decideNextStatusForContext(ctx);
+    // Preserve vacation as a conflict marker (preview skips; advance creates placeholders)
+    if (vacationConflict) nextStatus = "CONFLICTED";
 
     try {
       await prisma.classSession.create({
@@ -277,12 +292,12 @@ export async function advanceGenerateForSeries(
           endTime: end,
           duration,
           notes: series.notes ?? null,
-          status: isConflict ? "CONFLICTED" : "CONFIRMED",
-          // For conflicting placeholders, mark cancelled=true so calendars won’t show them
-          isCancelled: isConflict ? true : false,
+          status: nextStatus,
+          // Keep existing behavior: cancel for time/vacation conflicts so placeholders are hidden
+          isCancelled: (timeConflict || vacationConflict) ? true : false,
         },
       });
-      if (isConflict) createdConflicted++; else createdConfirmed++;
+      if (nextStatus === "CONFLICTED") createdConflicted++; else createdConfirmed++;
     } catch (_) {
       // Unique constraint or other DB guard; count as skipped
       skipped++;

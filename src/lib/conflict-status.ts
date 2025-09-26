@@ -1,6 +1,6 @@
-import { prisma } from "@/lib/prisma";
-import { getEffectiveSchedulingConfig, toPolicyShape } from "@/lib/scheduling-config";
-import { hasHardConflict, isMarkedByPolicy } from "@/lib/conflict-types";
+import { prisma } from "./prisma";
+import { getEffectiveSchedulingConfig, toPolicyShape } from "./scheduling-config";
+import { hasHardConflict, isMarkedByPolicy } from "./conflict-types";
 
 // Utility: minutes from midnight (UTC)
 const minutesUTC = (d: Date) => d.getUTCHours() * 60 + d.getUTCMinutes();
@@ -68,7 +68,7 @@ export async function decideNextStatusForContext(ctx: SessionCtx): Promise<"CONF
         prisma.student.findUnique({ where: { studentId: ctx.studentId }, select: { userId: true } }),
       ]);
       if (teacher?.userId && student?.userId) {
-        const { getDetailedSharedAvailability } = await import("@/lib/enhanced-availability");
+        const { getDetailedSharedAvailability } = await import("./enhanced-availability");
         const avail = await getDetailedSharedAvailability(
           teacher.userId,
           student.userId,
@@ -162,4 +162,3 @@ export async function recomputeNeighborsForChange(oldCtx: SessionCtx | null, new
     try { await recomputeAndUpdateSessionStatus(id); } catch {}
   }
 }
-
