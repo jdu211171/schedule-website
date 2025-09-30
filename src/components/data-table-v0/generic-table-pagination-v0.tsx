@@ -51,7 +51,7 @@ export function GenericTablePagination<TData>({ table }: GenericTablePaginationP
             disabled={!table.getCanPreviousPage()}
             className="h-8 w-8"
           >
-            <span className="sr-only">Go to first page</span>
+            <span className="sr-only">最初のページへ</span>
             <ChevronsLeftIcon className="h-4 w-4" />
           </Button>
           <Button
@@ -61,7 +61,7 @@ export function GenericTablePagination<TData>({ table }: GenericTablePaginationP
             disabled={!table.getCanPreviousPage()}
             className="h-8 w-8"
           >
-            <span className="sr-only">Go to previous page</span>
+            <span className="sr-only">前のページへ</span>
             <ChevronLeftIcon className="h-4 w-4" />
           </Button>
           <Button
@@ -71,7 +71,7 @@ export function GenericTablePagination<TData>({ table }: GenericTablePaginationP
             disabled={!table.getCanNextPage()}
             className="h-8 w-8"
           >
-            <span className="sr-only">Go to next page</span>
+            <span className="sr-only">次のページへ</span>
             <ChevronRightIcon className="h-4 w-4" />
           </Button>
           <Button
@@ -81,7 +81,7 @@ export function GenericTablePagination<TData>({ table }: GenericTablePaginationP
             disabled={!table.getCanNextPage()}
             className="h-8 w-8"
           >
-            <span className="sr-only">Go to last page</span>
+            <span className="sr-only">最後のページへ</span>
             <ChevronsRightIcon className="h-4 w-4" />
           </Button>
         </div>
