@@ -144,7 +144,7 @@ New endpoints (v0)
 - `GET /api/class-series` — list blueprints (filters: `studentId`, `teacherId`, `status`, `branchId`).
 - `GET /api/class-series/[seriesId]` — get a blueprint + derived stats (occurrences/week from `days_of_week`, remaining occurrences, next N dates).
 - `PATCH /api/class-series/[seriesId]` — update blueprint (teacher/student/subject/booth/times/dates). On success, also call the existing `/api/class-sessions/series/[seriesId]` PATCH to propagate to future instances.
-- `POST /api/class-series/[seriesId]/extend` — Generates new class sessions for a series. This is the primary mechanism for `ON_DEMAND` generation and supports flexible scheduling. The request body can specify either:
+- `POST /api/class-series/[seriesId]/extend` — Generates new class sessions for a series. This is an auxiliary/manual mechanism that coexists with automatic advance generation. The request body can specify either:
     - `{ "months": <number> }`: To generate sessions for the next N months from the last generated date. N is set to 1 by default.
 - `GET /api/class-series/summary?studentId=...` — returns `{ totalRegular, bySubject[] }` using the SQL above (window can be param’d; default next 90 days).
 
@@ -152,9 +152,9 @@ Notes
 - RBAC mirrors current series PATCH/DELETE rules (ADMIN/STAFF for mutating).
 - Keep `/api/class-sessions` as‑is; v0 only orchestrates it from the new endpoints.
 
-## Generation Strategy (Always-Advance)
+## Generation Strategy (Automatic)
 
-As of 2025-09-18, the per-series generation mode is removed. The system always behaves as ADVANCE:
+As of 2025-09-18, the per-series generation mode is removed. The system always behaves as AUTOMATIC:
 
 - A scheduled endpoint (`/api/class-series/advance/cron`) periodically ensures upcoming sessions are generated ahead based on the configured lead window (`generationMonths`).
 - For each target date, existing availability/overlap checks run:

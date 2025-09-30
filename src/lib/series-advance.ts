@@ -58,9 +58,8 @@ export function computeAdvanceWindow(
   return { from: baseline, to };
 }
 
-function overlaps(aStart: Date, aEnd: Date, bStart: Date, bEnd: Date) {
-  return aStart < bEnd && aEnd > bStart;
-}
+// Removed legacy time overlap helper (status computation relies on centralized
+// logic in decideNextStatusForContext)
 
 async function getBranchVacations(prisma: PrismaClient, branchId: string) {
   return prisma.vacation.findMany({
@@ -190,34 +189,7 @@ export async function advanceGenerateForSeries(
     ? await getBranchVacations(prisma, series.branchId)
     : [];
 
-  // Prefetch same-day sessions to check overlap quickly
-  const sameDaySessions = await prisma.classSession.findMany({
-    where: {
-      isCancelled: false,
-      date: { in: candidateDates },
-      OR: [
-        series.teacherId ? { teacherId: series.teacherId } : undefined,
-        series.studentId ? { studentId: series.studentId } : undefined,
-        series.boothId ? { boothId: series.boothId } : undefined,
-      ].filter(Boolean) as any,
-    },
-    select: {
-      date: true,
-      startTime: true,
-      endTime: true,
-      teacherId: true,
-      studentId: true,
-      boothId: true,
-    },
-  });
-
-  const sessionsByDate = new Map<string, typeof sameDaySessions>();
-  for (const s of sameDaySessions) {
-    const k = fmtYMD(s.date);
-    const arr = sessionsByDate.get(k) || [];
-    arr.push(s);
-    sessionsByDate.set(k, arr);
-  }
+  // Prefetch removed; centralized status logic will query as needed
 
   const sh = series.startTime.getUTCHours();
   const sm = series.startTime.getUTCMinutes();
@@ -255,11 +227,12 @@ export async function advanceGenerateForSeries(
     const duration = series.duration ?? Math.round((end.getTime() - start.getTime()) / (1000 * 60));
 
     const k = fmtYMD(date);
-    const existing = sessionsByDate.get(k) || [];
-    const timeConflict = existing.some((s) => overlaps(start, end, s.startTime, s.endTime));
     const vacationConflict = series.branchId
       ? hasVacationConflictCached(date, vacations)
       : false;
+
+    // Align with extend route behavior: skip vacation days
+    if (vacationConflict) { skipped++; continue; }
 
     // Decide status using centralized policy (hard overlaps + availability policy)
     // Use a temporary classId placeholder to avoid self-exclusion issues (new row not yet in DB)
@@ -274,8 +247,6 @@ export async function advanceGenerateForSeries(
       boothId: series.boothId ?? null,
     } as const;
     let nextStatus: "CONFIRMED" | "CONFLICTED" = await decideNextStatusForContext(ctx);
-    // Preserve vacation as a conflict marker (preview skips; advance creates placeholders)
-    if (vacationConflict) nextStatus = "CONFLICTED";
 
     try {
       await prisma.classSession.create({
@@ -293,8 +264,8 @@ export async function advanceGenerateForSeries(
           duration,
           notes: series.notes ?? null,
           status: nextStatus,
-          // Keep existing behavior: cancel for time/vacation conflicts so placeholders are hidden
-          isCancelled: (timeConflict || vacationConflict) ? true : false,
+          // Do not cancel for overlaps; vacations are skipped above
+          isCancelled: false,
         },
       });
       if (nextStatus === "CONFLICTED") createdConflicted++; else createdConfirmed++;
@@ -322,3 +293,5 @@ export async function advanceGenerateForSeries(
     skipped,
   };
 }
+
+ 
