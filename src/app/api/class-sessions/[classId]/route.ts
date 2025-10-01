@@ -719,6 +719,24 @@ export const DELETE = withBranchAccess(
         });
       });
 
+      // After deletion, recompute neighbor statuses for same-day overlapping
+      // sessions sharing teacher/student/booth to clear any lingering conflicts.
+      try {
+        const ctx = {
+          classId,
+          branchId: classSession.branchId,
+          date: classSession.date as Date,
+          startTime: classSession.startTime as Date,
+          endTime: classSession.endTime as Date,
+          teacherId: classSession.teacherId,
+          studentId: classSession.studentId,
+          boothId: classSession.boothId,
+        };
+        await recomputeNeighborsForChange(ctx as any, null);
+      } catch (_) {
+        // Non-blocking: do not fail delete if neighbor recompute errors
+      }
+
       return NextResponse.json(
         {
           data: [],

@@ -28,3 +28,10 @@ Notes
 - Overlap predicate matches existing server logic (no conflict on touching endpoints).
 - Skip cancelled sessions; availability checks respect branch policy (`allowOutsideAvailability`).
 - Errors in neighbor recompute are swallowed to avoid disrupting main mutations.
+
+Additional Findings (2025‑10‑01)
+
+- Deleting sessions did not trigger neighbor recompute, leaving stale `CONFLICTED` badges.
+- Resolved by invoking neighbor recompute after deletions:
+  - Single delete uses `recomputeNeighborsForChange(ctx, null)`.
+  - Bulk/series deletes collect contexts and call `recomputeNeighborsForCancelledContexts(contexts)`.

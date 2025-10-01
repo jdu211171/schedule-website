@@ -21,7 +21,7 @@ import {
   applySpecialClassColor,
   isSpecialClassType,
 } from "@/lib/special-class-server";
-import { recomputeNeighborsForChange } from "@/lib/conflict-status";
+import { recomputeNeighborsForChange, recomputeNeighborsForCancelledContexts, type SessionCtx } from "@/lib/conflict-status";
 
 type FormattedClassSession = {
   classId: string;
@@ -1583,6 +1583,23 @@ export const DELETE = withBranchAccess(
           },
         });
       });
+
+      // After deletion, recompute neighbor statuses for affected dates/resources
+      try {
+        const contexts: SessionCtx[] = classSessionsToDelete.map((s) => ({
+          classId: s.classId,
+          branchId: s.branchId,
+          date: s.date as Date,
+          startTime: s.startTime as Date,
+          endTime: s.endTime as Date,
+          teacherId: s.teacherId,
+          studentId: s.studentId,
+          boothId: s.boothId,
+        }));
+        await recomputeNeighborsForCancelledContexts(contexts);
+      } catch (_) {
+        // Non-blocking: neighbor recompute failures should not prevent delete
+      }
 
       return NextResponse.json(
         {

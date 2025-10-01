@@ -1125,6 +1125,20 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
                       });
                     })()
                   }
+                  hasTeacherOverlap={(session.teacherId && filteredSessions.some(s2 => {
+                    if (!s2.teacherId || s2.classId === session.classId) return false;
+                    if (s2.teacherId !== session.teacherId) return false;
+                    const p1 = sessionPos.get(String(session.classId));
+                    const p2 = sessionPos.get(String(s2.classId));
+                    return p1 && p2 && !(p2.end <= p1.start || p1.end <= p2.start);
+                  })) || false}
+                  hasStudentOverlap={(session.studentId && filteredSessions.some(s2 => {
+                    if (!s2.studentId || s2.classId === session.classId) return false;
+                    if (s2.studentId !== session.studentId) return false;
+                    const p1 = sessionPos.get(String(session.classId));
+                    const p2 = sessionPos.get(String(s2.classId));
+                    return p1 && p2 && !(p2.end <= p1.start || p1.end <= p2.start);
+                  })) || false}
                   cellWidth={cellWidth}
                 />
               ))}

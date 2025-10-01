@@ -7,7 +7,7 @@ import { ClassSession } from "@prisma/client";
 import { parse, format, parseISO } from "date-fns";
 import { applySpecialClassColor } from "@/lib/special-class-server";
 import { CANCELLED_CLASS_COLOR_HEX } from "@/lib/cancelled-class-constants";
-import { recomputeNeighborsForChange, recomputeAndUpdateSessionStatus } from "@/lib/conflict-status";
+import { recomputeNeighborsForChange, recomputeAndUpdateSessionStatus, recomputeNeighborsForCancelledContexts, type SessionCtx } from "@/lib/conflict-status";
 
 type FormattedClassSession = {
   classId: string;
@@ -649,6 +649,24 @@ export const DELETE = withBranchAccess(
         );
       }
 
+      // Collect contexts for all future sessions (for neighbor recompute post-delete)
+      const toDeleteSessions = await prisma.classSession.findMany({
+        where: {
+          seriesId,
+          date: { gte: pivotDate },
+        },
+        select: {
+          classId: true,
+          branchId: true,
+          date: true,
+          startTime: true,
+          endTime: true,
+          teacherId: true,
+          studentId: true,
+          boothId: true,
+        },
+      });
+
       // Delete future sessions and their enrollments in a transaction
       await prisma.$transaction(async (tx) => {
         // Get all future session IDs for this series
@@ -663,7 +681,6 @@ export const DELETE = withBranchAccess(
             classId: true,
           },
         });
-        
         const sessionIds = futureSessions.map(session => session.classId);
         
         // First delete all enrollments for these sessions
@@ -705,6 +722,23 @@ export const DELETE = withBranchAccess(
           // Ignore; deleting sessions succeeded even if blueprint is missing
         }
       });
+
+      // After deletion, recompute neighbor statuses for affected dates/resources
+      try {
+        const contexts: SessionCtx[] = toDeleteSessions.map((s) => ({
+          classId: s.classId,
+          branchId: s.branchId,
+          date: s.date as Date,
+          startTime: s.startTime as Date,
+          endTime: s.endTime as Date,
+          teacherId: s.teacherId,
+          studentId: s.studentId,
+          boothId: s.boothId,
+        }));
+        await recomputeNeighborsForCancelledContexts(contexts);
+      } catch (_) {
+        // Non-blocking: ignore neighbor recompute errors
+      }
 
       return NextResponse.json(
         {

@@ -23,6 +23,8 @@ interface LessonCardProps {
   laneHeight?: number;
   rowTopOffset?: number;
   hasBoothOverlap?: boolean;
+  hasTeacherOverlap?: boolean;
+  hasStudentOverlap?: boolean;
   cellWidth?: number;
 }
 
@@ -62,6 +64,8 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
   laneHeight,
   rowTopOffset = 0,
   hasBoothOverlap = false,
+  hasTeacherOverlap = false,
+  hasStudentOverlap = false,
   cellWidth = 50,
 }) => {
   const startTime = useMemo(
@@ -126,8 +130,8 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
   const isValidPosition =
     startSlotIndex >= 0 && endSlotIndex > startSlotIndex && boothIndex >= 0;
 
-  const isConflicted = (lesson as any)?.status === "CONFLICTED";
-  const isConflictVisual = isConflicted || hasBoothOverlap;
+  // For Day view, prefer live overlap computation over stored status
+  const isConflictVisual = Boolean(hasBoothOverlap || hasTeacherOverlap || hasStudentOverlap);
 
   const { effectiveStartIndex, effectiveDuration } = useMemo(() => {
     if (isValidPosition) {
