@@ -262,17 +262,26 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: lesson.classId });
 
   const style = useMemo(
-    () =>
-      (({
+    () => {
+      // Create a small horizontal gap so adjacent cards are visually separated.
+      // Scales with cell width but remains subtle.
+      const gap = Math.max(1, Math.min(4, Math.round(cellWidth * 0.06)));
+      const leftPad = Math.floor(gap / 2);
+      const rightPad = gap - leftPad;
+      const computedLeft = effectiveStartIndex * cellWidth + 100 + leftPad;
+      const computedWidth = Math.max(1, effectiveDuration * cellWidth - (leftPad + rightPad));
+
+      return (({
         position: "absolute",
-        left: `${effectiveStartIndex * cellWidth + 100}px`,
+        left: `${computedLeft}px`,
         top: `${rowTopOffset + laneIndex * (laneHeight ?? timeSlotHeight)}px`,
-        width: `${effectiveDuration * cellWidth}px`,
+        width: `${computedWidth}px`,
         height: `${(laneHeight ?? timeSlotHeight) - 2}px`,
         zIndex: isDragging ? maxZIndex : maxZIndex - 1,
         transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
         touchAction: 'none'
-      }) as React.CSSProperties),
+      }) as React.CSSProperties);
+    },
     [
       effectiveStartIndex,
       effectiveDuration,
@@ -335,6 +344,9 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
       className={`
         absolute rounded border shadow-sm cursor-grab active:cursor-grabbing
         transition-colors duration-100 ease-in-out transform
+        ring-1 ring-inset ring-black/10 dark:ring-white/10
+        after:content-[''] after:absolute after:top-0 after:bottom-0 after:right-[-1px] after:w-px after:bg-black/15 dark:after:bg-white/20
+        pointer-events-auto after:pointer-events-none
         ${colorClasses ? `${colorClasses.background} ${colorClasses.border} ${colorClasses.hover}` : ''}
         ${textClass ?? ''}
         ${isCancelled ? 'opacity-60 grayscale !text-black dark:!text-white' : ''}
