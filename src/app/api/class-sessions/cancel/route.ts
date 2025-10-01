@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { withBranchAccess } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { recomputeNeighborsForCancelledContexts, type SessionCtx } from '@/lib/conflict-status';
 
 const batchCancelSchema = z.object({
   classIds: z.array(z.string()).optional(),
@@ -54,6 +55,24 @@ export const POST = withBranchAccess(['ADMIN', 'STAFF'], async (req: NextRequest
       return NextResponse.json({ data: [], message: '対象の授業がありません', updatedCount: 0, pagination: { total: 0, page: 1, limit: 0, pages: 0 } });
     }
 
+    // Load contexts for sessions that will be cancelled (only those not yet cancelled)
+    const preCancelSessions = await prisma.classSession.findMany({
+      where: {
+        classId: { in: targetIds },
+        isCancelled: false,
+      },
+      select: {
+        classId: true,
+        branchId: true,
+        date: true,
+        startTime: true,
+        endTime: true,
+        teacherId: true,
+        studentId: true,
+        boothId: true,
+      },
+    });
+
     const result = await prisma.classSession.updateMany({
       where: {
         classId: { in: targetIds },
@@ -66,6 +85,19 @@ export const POST = withBranchAccess(['ADMIN', 'STAFF'], async (req: NextRequest
         cancelledByUserId: userId,
       },
     });
+
+    // Recompute neighbors for cancelled sessions (non-blocking, best-effort)
+    const contexts: SessionCtx[] = preCancelSessions.map((s) => ({
+      classId: s.classId,
+      branchId: s.branchId,
+      date: s.date as Date,
+      startTime: s.startTime as Date,
+      endTime: s.endTime as Date,
+      teacherId: s.teacherId,
+      studentId: s.studentId,
+      boothId: s.boothId,
+    }));
+    try { await recomputeNeighborsForCancelledContexts(contexts); } catch {}
 
     return NextResponse.json({
       data: [],

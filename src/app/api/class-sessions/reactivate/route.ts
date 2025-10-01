@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { withBranchAccess } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { recomputeNeighborsForReactivatedContexts, type SessionCtx } from '@/lib/conflict-status';
 
 const batchReactivateSchema = z.object({
   classIds: z.array(z.string()).optional(),
@@ -50,6 +51,23 @@ export const POST = withBranchAccess(['ADMIN', 'STAFF'], async (req: NextRequest
       return NextResponse.json({ data: [], message: '対象の授業がありません', updatedCount: 0, pagination: { total: 0, page: 1, limit: 0, pages: 0 } });
     }
 
+    // Load contexts for sessions being reactivated (for neighbor recompute)
+    const preReactivateSessions = await prisma.classSession.findMany({
+      where: {
+        classId: { in: targetIds },
+      },
+      select: {
+        classId: true,
+        branchId: true,
+        date: true,
+        startTime: true,
+        endTime: true,
+        teacherId: true,
+        studentId: true,
+        boothId: true,
+      },
+    });
+
     const result = await prisma.classSession.updateMany({
       where: {
         classId: { in: targetIds },
@@ -61,6 +79,19 @@ export const POST = withBranchAccess(['ADMIN', 'STAFF'], async (req: NextRequest
         cancelledByUserId: null,
       },
     });
+
+    // Recompute neighbors and the sessions themselves for reactivated contexts (non-blocking)
+    const contexts: SessionCtx[] = preReactivateSessions.map((s) => ({
+      classId: s.classId,
+      branchId: s.branchId,
+      date: s.date as Date,
+      startTime: s.startTime as Date,
+      endTime: s.endTime as Date,
+      teacherId: s.teacherId,
+      studentId: s.studentId,
+      boothId: s.boothId,
+    }));
+    try { await recomputeNeighborsForReactivatedContexts(contexts); } catch {}
 
     return NextResponse.json({
       data: [],

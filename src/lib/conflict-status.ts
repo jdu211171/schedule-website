@@ -5,7 +5,7 @@ import { hasHardConflict, isMarkedByPolicy } from "./conflict-types";
 // Utility: minutes from midnight (UTC)
 const minutesUTC = (d: Date) => d.getUTCHours() * 60 + d.getUTCMinutes();
 
-type SessionCtx = {
+export type SessionCtx = {
   classId: string;
   branchId: string | null;
   date: Date;
@@ -160,5 +160,30 @@ export async function recomputeNeighborsForChange(oldCtx: SessionCtx | null, new
   // Recompute each neighbor (sequential to avoid DB thrash; counts are small)
   for (const id of ids) {
     try { await recomputeAndUpdateSessionStatus(id); } catch {}
+  }
+}
+
+/**
+ * Convenience: given contexts for sessions that were removed (e.g., cancelled),
+ * recompute neighbors as if those sessions disappeared from the grid.
+ */
+export async function recomputeNeighborsForCancelledContexts(ctxs: SessionCtx[]): Promise<void> {
+  for (const ctx of ctxs) {
+    try { await recomputeNeighborsForChange(ctx, null); } catch {}
+  }
+}
+
+/**
+ * Convenience: given contexts for sessions that were (re)added (e.g., reactivated),
+ * recompute neighbors and the sessions themselves using the new placement.
+ */
+export async function recomputeNeighborsForReactivatedContexts(ctxs: SessionCtx[]): Promise<void> {
+  for (const ctx of ctxs) {
+    try {
+      await recomputeNeighborsForChange(null, ctx);
+    } catch {}
+    try {
+      await recomputeAndUpdateSessionStatus(ctx.classId);
+    } catch {}
   }
 }
