@@ -454,6 +454,8 @@ export const LessonCard = React.memo(
       // Include computed overlap flag and lane assignment
       prevProps.hasBoothOverlap === nextProps.hasBoothOverlap &&
       prevProps.laneIndex === nextProps.laneIndex &&
+      // Top offset can change when preceding booth lane counts change; must re-render
+      prevProps.rowTopOffset === nextProps.rowTopOffset &&
       (prevProps.laneHeight ?? prevProps.timeSlotHeight) === (nextProps.laneHeight ?? nextProps.timeSlotHeight) &&
       // Include width for responsive stripe thickness
       prevProps.cellWidth === nextProps.cellWidth
