@@ -17,6 +17,7 @@ import { GenericDraggableTable } from "@/components/data-table-v0/generic-dragga
 import { GenericInlineEditableCell } from "@/components/data-table-v0/generic-inline-editable-cell-v0";
 import { GenericSelectEditableCell } from "@/components/data-table-v0/generic-select-editable-cell-v0";
 import { GenericPasswordEditableCell } from "@/components/data-table-v0/generic-password-editable-cell-v0";
+import { GenericUsernameCopyCell } from "@/components/data-table-v0/generic-username-copy-cell-v0";
 import { SubjectPreferencesCell } from "@/components/ui/subject-preferences-cell";
 import { TypeBadge } from "@/components/data-table-v0/type-badge-v0";
 import { flexRender } from "@tanstack/react-table";
@@ -858,12 +859,7 @@ export function StudentTable() {
           label: "ユーザー名",
         },
         cell: ({ row }) => (
-          <GenericInlineEditableCell
-            value={row.original.username}
-            onSubmit={(value) => handleCellUpdate(row.original.studentId, "username", value)}
-            placeholder="-"
-            readOnly={true}
-          />
+          <GenericUsernameCopyCell value={row.original.username} />
         ),
       },
       {
