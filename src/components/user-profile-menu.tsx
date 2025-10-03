@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { LogOut } from "lucide-react";
+import { LogOut, KeyRound } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -12,9 +12,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { signOut, useSession } from "next-auth/react";
+import { useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { PasswordChangeForm } from "@/components/auth/password-change-form";
 
 export default function UserProfileMenu() {
   const { data: session } = useSession({ required: true });
+  const [open, setOpen] = useState(false);
 
   if (!session) {
     return (
@@ -41,32 +45,47 @@ export default function UserProfileMenu() {
       : "/dashboard";
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger>
-        <Avatar>
-          <AvatarImage
-            src={session.user?.image ?? ""}
-            alt={session.user?.name ?? ""}
-          />
-          <AvatarFallback>{userInitials}</AvatarFallback>
-        </Avatar>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuLabel className="font-semibold">
-          {session.user?.name}
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger>
+          <Avatar>
+            <AvatarImage
+              src={session.user?.image ?? ""}
+              alt={session.user?.name ?? ""}
+            />
+            <AvatarFallback>{userInitials}</AvatarFallback>
+          </Avatar>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuLabel className="font-semibold">
+            {session.user?.name}
+            <DropdownMenuSeparator />
+            {session.user?.email}
+          </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          {session.user?.email}
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => signOut()}>
-          <span className="flex items-center">
-            <LogOut className="mr-2 h-4 w-4" />
-            ログアウト
-          </span>
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+          <DropdownMenuItem onClick={() => setOpen(true)}>
+            <span className="flex items-center">
+              <KeyRound className="mr-2 h-4 w-4" />
+              パスワード変更
+            </span>
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => signOut()}>
+            <span className="flex items-center">
+              <LogOut className="mr-2 h-4 w-4" />
+              ログアウト
+            </span>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>パスワード変更</DialogTitle>
+          </DialogHeader>
+          <PasswordChangeForm onSuccess={() => setOpen(false)} />
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
