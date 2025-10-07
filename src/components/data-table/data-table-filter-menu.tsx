@@ -740,7 +740,7 @@ function onFilterInputRender<TData>({
                   </div>
                   <span className="truncate">
                     {selectedOptions.length > 1
-                      ? `${selectedOptions.length} selected`
+                      ? `${selectedOptions.length} 選択済`
                       : selectedOptions[0]?.label}
                   </span>
                 </>

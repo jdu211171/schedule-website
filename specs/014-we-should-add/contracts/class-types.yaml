@@ -1,0 +1,70 @@
+openapi: 3.0.3
+info:
+  title: Class Types API
+  version: 1.0.0
+paths:
+  /api/class-types:
+    get:
+      summary: List class types
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 1, default: 1 }
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+        - in: query
+          name: name
+          schema: { type: string }
+        - in: query
+          name: parentId
+          schema: { type: string, nullable: true }
+        - in: query
+          name: includeChildren
+          schema: { type: boolean, default: false }
+        - in: query
+          name: includeParent
+          schema: { type: boolean, default: false }
+        - in: query
+          name: sortBy
+          schema: { type: string, enum: [order, name], default: order }
+        - in: query
+          name: sortOrder
+          schema: { type: string, enum: [asc, desc], default: asc }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ClassType'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+components:
+  schemas:
+    ClassType:
+      type: object
+      properties:
+        classTypeId: { type: string }
+        name: { type: string }
+        notes: { type: string, nullable: true }
+        parentId: { type: string, nullable: true }
+        order: { type: integer, nullable: true }
+        color: { type: string, nullable: true }
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClassType'
+    Pagination:
+      type: object
+      properties:
+        total: { type: integer }
+        page: { type: integer }
+        limit: { type: integer }
+        pages: { type: integer }
+

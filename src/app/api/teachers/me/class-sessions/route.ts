@@ -67,9 +67,11 @@ export const GET = withRole(
       // Parse query parameters
       const url = new URL(request.url);
       const params = Object.fromEntries(url.searchParams.entries());
+      const classTypeIdsCsv = url.searchParams.get('classTypeIds');
 
       // Remove teacherId from params since we'll use session data
-      const { teacherId: _, ...filteredParams } = params;
+      // Remove unsupported params before schema validation
+      const { teacherId: _, classTypeIds: _ignoredClassTypeIds, ...filteredParams } = params;
 
       // Validate and parse filter parameters
       const result = classSessionFilterSchema.safeParse(filteredParams);
@@ -121,6 +123,12 @@ export const GET = withRole(
 
       if (classTypeId) {
         where.classTypeId = classTypeId;
+      }
+      if (classTypeIdsCsv) {
+        const list = classTypeIdsCsv.split(',').map(s => s.trim()).filter(Boolean);
+        if (list.length > 0) {
+          where.classTypeId = { in: list };
+        }
       }
 
       if (boothId) {

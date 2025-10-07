@@ -288,14 +288,21 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
       const dateStr = selectedDatesStrings[index];
 
       if (query.data?.data && Array.isArray(query.data.data)) {
-        sessionsByDate[dateStr] = query.data.data;
+        let arr = query.data.data;
+        const filter = enhancedDayFilters[dateStr];
+        const ids = filter?.classTypeIds || [];
+        if (ids.length > 0) {
+          // Exact match only; exclude sessions with null/undefined classTypeId
+          arr = arr.filter((s) => s.classTypeId ? ids.includes(s.classTypeId) : false);
+        }
+        sessionsByDate[dateStr] = arr;
       } else {
         sessionsByDate[dateStr] = [];
       }
     });
 
     return sessionsByDate;
-  }, [classSessionQueries, selectedDatesStrings]);
+  }, [classSessionQueries, selectedDatesStrings, enhancedDayFilters]);
 
   const isLoading = useMemo(() => {
     return classSessionQueries.some(query => query.isLoading || query.isFetching);

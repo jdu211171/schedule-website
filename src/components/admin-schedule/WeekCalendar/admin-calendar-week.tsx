@@ -21,6 +21,11 @@ import {
 } from "../DayCalendar/types/class-session";
 import { toast } from "sonner";
 import { broadcastClassSessionsChanged } from "@/lib/calendar-broadcast";
+import { useSession } from "next-auth/react";
+import { fetchClassTypeOptions } from "@/lib/class-type-options";
+import { getClassTypeSelection, setClassTypeSelection } from "@/lib/class-type-filter-persistence";
+import type { ClassTypeOption } from "@/types/class-type";
+import { Faceted, FacetedBadgeList, FacetedContent, FacetedEmpty, FacetedGroup, FacetedInput, FacetedItem, FacetedList, FacetedTrigger } from "@/components/ui/faceted";
 
 const SELECTED_WEEKS_KEY = "admin_calendar_selected_weeks";
 const BASE_WEEK_KEY = "admin_calendar_base_week";
@@ -93,6 +98,74 @@ const AdminCalendarWeek: React.FC<AdminCalendarWeekProps> = ({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<"view" | "edit">("view");
   const [filters, setFilters] = useState<DayFilters>({});
+  const { data: session } = useSession();
+  const role = session?.user?.role;
+  const [classTypeOptions, setClassTypeOptions] = useState<ClassTypeOption[]>([]);
+  const [classTypeLoading, setClassTypeLoading] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      setClassTypeLoading(true);
+      try {
+        const opts = await fetchClassTypeOptions();
+        if (mounted) setClassTypeOptions(opts);
+      } finally {
+        if (mounted) setClassTypeLoading(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // Initialize from persistence
+  useEffect(() => {
+    if (!filters.classTypeIds || filters.classTypeIds.length === 0) {
+      const saved = getClassTypeSelection(role);
+      if (saved && saved.length > 0) {
+        setFilters((prev) => ({ ...prev, classTypeIds: saved }));
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [role]);
+
+  // Live sync: listen for selection changes broadcast from other views
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onStorage = (e: StorageEvent) => {
+      if (!e.key || !role) return;
+      const key = `filter:classTypes:${role}`;
+      if (e.key === key) {
+        const saved = getClassTypeSelection(role);
+        setFilters((prev) => ({ ...prev, classTypeIds: saved.length ? saved : undefined }));
+      }
+    };
+    window.addEventListener('storage', onStorage);
+
+    let ch: BroadcastChannel | null = null;
+    if (typeof BroadcastChannel !== 'undefined') {
+      try {
+        ch = new BroadcastChannel('class-type-filter');
+        ch.addEventListener('message', (event: MessageEvent) => {
+          const msg = event.data as { type?: string; role?: string; ids?: string[] };
+          if (msg?.type === 'classTypeSelectionChanged' && msg.role === role) {
+            setFilters((prev) => ({ ...prev, classTypeIds: (msg.ids && msg.ids.length) ? msg.ids : undefined }));
+          }
+        });
+      } catch {}
+    }
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      try { ch?.close(); } catch {}
+    };
+  }, [role]);
+
+  const handleClassTypesChange = (ids: string[] | undefined) => {
+    const next = Array.isArray(ids) ? ids : [];
+    setFilters((prev) => ({ ...prev, classTypeIds: next.length ? next : undefined }));
+    setClassTypeSelection(role, next);
+  };
 
   // Create lesson dialog states
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -333,14 +406,41 @@ const AdminCalendarWeek: React.FC<AdminCalendarWeekProps> = ({
 
   return (
     <div className="w-full flex flex-col gap-2 my-2">
-      <div className="flex flex-col sm:flex-row justify-between items-center sm:space-y-0 mx-5">
+      <div className="flex flex-col sm:flex-row justify-between items-center sm:space-y-0 mx-5 w-full gap-3">
         <h2 className="text-xl font-semibold text-foreground dark:text-foreground"></h2>
-        <WeekSelector
-          selectedWeeks={selectedWeeks}
-          onSelectWeek={handleDaySelect}
-          baseDate={baseWeek}
-          onBaseDateChange={handleBaseDateChange}
-        />
+        <div className="flex items-center gap-3">
+          <WeekSelector
+            selectedWeeks={selectedWeeks}
+            onSelectWeek={handleDaySelect}
+            baseDate={baseWeek}
+            onBaseDateChange={handleBaseDateChange}
+          />
+          <div className="flex items-center gap-1">
+            <Faceted multiple value={filters.classTypeIds} onValueChange={handleClassTypesChange}>
+              <FacetedTrigger
+                aria-label="クラスタイプフィルター"
+                className="h-8 w-[220px] max-w-[240px] border border-input rounded-md px-2 bg-background text-foreground hover:bg-accent hover:text-accent-foreground text-sm flex items-center justify-between whitespace-nowrap overflow-hidden"
+              >
+                <span className="truncate">
+                  {`クラスタイプ${filters.classTypeIds?.length ? `（${filters.classTypeIds.length}）` : ""}`}
+                </span>
+              </FacetedTrigger>
+              <FacetedContent className="w-[240px]">
+                <FacetedInput placeholder="クラスタイプを検索..." />
+                <FacetedList>
+                  <FacetedEmpty>候補がありません</FacetedEmpty>
+                  <FacetedGroup heading="クラスタイプ">
+                    {classTypeOptions.map((opt) => (
+                      <FacetedItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </FacetedItem>
+                    ))}
+                  </FacetedGroup>
+                </FacetedList>
+              </FacetedContent>
+            </Faceted>
+          </div>
+        </div>
       </div>
 
       <CalendarWeek

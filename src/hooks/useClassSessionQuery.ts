@@ -83,6 +83,8 @@ export type DayFilters = {
   studentId?: string;
   branchId?: string;
   includeCancelled?: boolean;
+  // New: multi-select class types for client/server filtering
+  classTypeIds?: string[];
 };
 
 export function useClassSessions(params: UseClassSessionsParams = { page: 1, limit: 10 }) {
@@ -156,6 +158,8 @@ export function useMultipleDaysClassSessions(
         if (dateFilters?.includeCancelled) {
           params.append('includeCancelled', String(dateFilters.includeCancelled));
         }
+        // Do NOT append classTypeIds here; /api/class-sessions does not accept it.
+        // Client-side filtering is applied after fetch in the view components.
 
         const url = `/api/class-sessions?${params.toString()}`;
         return await fetcher<ClassSessionsResponse>(url);
@@ -256,6 +260,8 @@ export function useMultipleWeeksClassSessions(selectedWeeks: Date[], filters: Da
           if (filters.branchId) {
             params.append('branchId', filters.branchId);
           }
+          // Do NOT append classTypeIds here; /api/class-sessions does not accept it.
+          // Client-side filtering is applied after fetch in allSessions below.
 
           const url = `/api/class-sessions?${params.toString()}`;
           return await fetcher<ClassSessionsResponse>(url);
@@ -274,8 +280,13 @@ export function useMultipleWeeksClassSessions(selectedWeeks: Date[], filters: Da
       }
     });
 
+    // Client-side filter by class type when provided (exact match only)
+    const ids = filters.classTypeIds || [];
+    if (ids.length > 0) {
+      return sessions.filter((s) => s.classTypeId ? ids.includes(s.classTypeId) : false);
+    }
     return sessions;
-  }, [weekQueries]);
+  }, [weekQueries, filters.classTypeIds]);
 
   const isLoading = useMemo(() => {
     return weekQueries.some((query) => query.isLoading || query.isFetching);
@@ -295,13 +306,14 @@ export function useTeacherClassSessionsDateRange(params: {
   endDate: string;
   subjectId?: string;
   studentId?: string;
+  classTypeIds?: string[];
   page?: number;
   limit?: number;
 }) {
-  const { startDate, endDate, subjectId, studentId, page = 1, limit = 50 } = params;
+  const { startDate, endDate, subjectId, studentId, classTypeIds, page = 1, limit = 50 } = params;
 
   return useQuery<ClassSessionsResponse>({
-    queryKey: ["teacherClassSessions", "dateRange", startDate, endDate, subjectId, studentId, page, limit],
+    queryKey: ["teacherClassSessions", "dateRange", startDate, endDate, subjectId, studentId, classTypeIds?.join(',') ?? '', page, limit],
     queryFn: async () => {
       const queryParams = new URLSearchParams({
         startDate,
@@ -312,6 +324,9 @@ export function useTeacherClassSessionsDateRange(params: {
 
       if (subjectId) queryParams.append("subjectId", subjectId);
       if (studentId) queryParams.append("studentId", studentId);
+      if (classTypeIds && classTypeIds.length > 0) {
+        queryParams.append("classTypeIds", classTypeIds.join(','));
+      }
 
       return await fetcher<ClassSessionsResponse>(`/api/teachers/me/class-sessions?${queryParams.toString()}`);
     },
@@ -324,13 +339,14 @@ export function useStudentClassSessionsDateRange(params: {
   endDate: string;
   subjectId?: string;
   teacherId?: string;
+  classTypeIds?: string[];
   page?: number;
   limit?: number;
 }) {
-  const { startDate, endDate, subjectId, teacherId, page = 1, limit = 50 } = params;
+  const { startDate, endDate, subjectId, teacherId, classTypeIds, page = 1, limit = 50 } = params;
 
   return useQuery<ClassSessionsResponse>({
-    queryKey: ["studentClassSessions", "dateRange", startDate, endDate, subjectId, teacherId, page, limit],
+    queryKey: ["studentClassSessions", "dateRange", startDate, endDate, subjectId, teacherId, classTypeIds?.join(',') ?? '', page, limit],
     queryFn: async () => {
       const queryParams = new URLSearchParams({
         startDate,
@@ -341,6 +357,9 @@ export function useStudentClassSessionsDateRange(params: {
 
       if (subjectId) queryParams.append("subjectId", subjectId);
       if (teacherId) queryParams.append("teacherId", teacherId);
+      if (classTypeIds && classTypeIds.length > 0) {
+        queryParams.append("classTypeIds", classTypeIds.join(','));
+      }
 
       return await fetcher<ClassSessionsResponse>(`/api/students/me/class-sessions?${queryParams.toString()}`);
     },
