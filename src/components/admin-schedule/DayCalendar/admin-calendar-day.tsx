@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback, useEffect } from 'react';
 import { startOfDay, startOfWeek, isSameWeek } from 'date-fns';
 import { toast } from 'sonner';
 import { useBooths } from '@/hooks/useBoothQuery';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTeachers, useTeacher } from '@/hooks/useTeacherQuery';
 import { useStudents, useStudent } from '@/hooks/useStudentQuery';
 import { useSubjects } from '@/hooks/useSubjectQuery';
@@ -102,6 +103,7 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
   const [viewStartDate, setViewStartDate] = useState<Date>(() => today);
   const [selectedDays, setSelectedDays] = useState<Date[]>([today]);
   const [isInitialized, setIsInitialized] = useState(false);
+  const qc = useQueryClient();
 
   useEffect(() => {
     if (typeof window !== 'undefined' && !isInitialized) {
@@ -325,7 +327,9 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
   // Cross-tab light sync: listen for local broadcast events and refetch affected days
   // Only active days are refetched to avoid visual disruptions
   useEffect(() => {
-    const channel = typeof window !== 'undefined' ? new BroadcastChannel('calendar-events') : null;
+    const channel = typeof window !== 'undefined' && typeof BroadcastChannel !== 'undefined'
+      ? new BroadcastChannel('calendar-events')
+      : null;
     if (!channel) return;
     const handler = (event: MessageEvent) => {
       const payload = event.data as { type?: string; dates?: string[] };
@@ -469,6 +473,7 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'X-Selected-Branch': localStorage.getItem('selectedBranchId') || ''
         },
         body: JSON.stringify(requestBody),
       });
@@ -521,20 +526,99 @@ export default function AdminCalendarDay({ selectedBranchId }: AdminCalendarDayP
         return { success: false };
       }
 
-      // Успешное создание
+      // Parse response JSON if available
+      let createdPayload: any = null;
       if (contentType && contentType.includes("application/json")) {
         try {
-          await response.json();
+          createdPayload = await response.json();
         } catch (parseError) {
           console.warn("応答のパースエラー:", parseError);
         }
       }
 
-
-      // Show success toast
+      // Show generic success toast (no filter-specific messaging)
       toast.success('授業が正常に作成されました');
 
-      // Обновляем данные только при успехе
+      // Immediate local cache insert for matching day + filters (no auto-scroll)
+      try {
+        const createdList: any[] = Array.isArray(createdPayload?.data) ? createdPayload.data : [];
+        // Support single-create path too
+        const newlyCreated = createdList.length ? createdList : [];
+
+        // Map of dateKey -> created sessions for that date
+        const byDate = new Map<string, any[]>();
+        newlyCreated.forEach((s) => {
+          const d = typeof s?.date === 'string' ? s.date : '';
+          if (!d) return;
+          if (!byDate.has(d)) byDate.set(d, []);
+          byDate.get(d)!.push(s);
+        });
+
+        if (byDate.size > 0) {
+          const entries = qc.getQueriesData<any>({ queryKey: ['classSessions'] });
+          for (const [key, current] of entries) {
+            if (!Array.isArray(key)) continue;
+            if (key[0] !== 'classSessions' || key[1] !== 'byDate') continue;
+            const dateStr = key[2] as string;
+            const filterObj = (key[3] || {}) as DayFilters;
+            const createdForDate = byDate.get(dateStr);
+            if (!createdForDate || !current) continue;
+
+            const matchesFilter = (sess: any) => {
+              if (filterObj.teacherId && sess.teacherId !== filterObj.teacherId) return false;
+              if (filterObj.studentId && sess.studentId !== filterObj.studentId) return false;
+              if (filterObj.subjectId && sess.subjectId !== filterObj.subjectId) return false;
+              if (filterObj.branchId && sess.branchId !== filterObj.branchId) return false;
+              // includeCancelled is handled server-side; created sessions are not cancelled
+              return true;
+            };
+
+            const toInsert = createdForDate.filter(matchesFilter);
+            if (toInsert.length === 0) continue;
+
+            if (current?.data && Array.isArray(current.data)) {
+              // Avoid duplicate insert if server already returned (race)
+              const existingIds = new Set(current.data.map((s: any) => s.classId));
+              const merged = [
+                ...toInsert.filter((s) => !existingIds.has(s.classId)),
+                ...current.data,
+              ];
+              qc.setQueryData(key, {
+                ...current,
+                data: merged,
+                pagination: {
+                  ...current.pagination,
+                  total: (current.pagination?.total || merged.length),
+                },
+              });
+            }
+          }
+        }
+      } catch (_) {
+        // Best-effort; ignore cache update errors
+      }
+
+      // Light broadcast so same-user tabs refresh. For recurring creates, emit all created dates.
+      try {
+        const { broadcastClassSessionsChanged } = await import('@/lib/calendar-broadcast');
+        const createdDates = Array.isArray(createdPayload?.data)
+          ? Array.from(
+              new Set(
+                (createdPayload.data as any[])
+                  .map((s) => (typeof s?.date === 'string' ? s.date.split('T')[0] : ''))
+                  .filter((d) => typeof d === 'string' && d.length > 0)
+              )
+            )
+          : [];
+        if (createdDates.length > 0) {
+          broadcastClassSessionsChanged(createdDates as string[]);
+        } else {
+          const dateKey = typeof requestBody.date === 'string' ? requestBody.date : undefined;
+          if (dateKey) broadcastClassSessionsChanged([dateKey]); else broadcastClassSessionsChanged();
+        }
+      } catch {}
+
+      // Background refetch as fallback
       refreshData();
       setNewLessonData(null);
 

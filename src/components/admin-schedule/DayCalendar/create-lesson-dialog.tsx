@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { DateRange } from "react-day-picker";
 import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { X, CheckCircle2, AlertTriangle, Users } from "lucide-react";
@@ -789,6 +790,7 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
   studentData
 }) => {
   const [isInitializing, setIsInitializing] = useState(true);
+  const qc = useQueryClient();
 
   // Main form states
   const [selectedParentClassTypeId, setSelectedParentClassTypeId] = useState<string>('');
@@ -1441,7 +1443,10 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
         try {
           const res = await fetch('/api/class-series', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Selected-Branch': localStorage.getItem('selectedBranchId') || ''
+            },
             body: JSON.stringify({
               studentId: selectedStudentId,
               teacherId: selectedTeacherId,
@@ -1464,7 +1469,9 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
           setGeneratedSeriesId(seriesId);
           // Always preview and show ConflictResolutionTable (unified pre-create UX)
           const months = generationMonthsRef.current || 1;
-          const pv = await fetch(`/api/class-series/${seriesId}/extend/preview?months=${months}`);
+          const pv = await fetch(`/api/class-series/${seriesId}/extend/preview?months=${months}`, {
+            headers: { 'X-Selected-Branch': localStorage.getItem('selectedBranchId') || '' }
+          });
           if (!pv.ok) throw new Error('プレビューに失敗しました');
           const preview = await pv.json();
           // Filter availability conflicts if user chose not to display them
@@ -1500,12 +1507,30 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
           // No conflicts → directly extend (generate) and close
           const extendRes = await fetch(`/api/class-series/${seriesId}/extend`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Selected-Branch': localStorage.getItem('selectedBranchId') || ''
+            },
             body: JSON.stringify({ months }),
           });
           if (!extendRes.ok) throw new Error('授業の生成に失敗しました');
           const extendJson = await extendRes.json();
           toast.success(`${extendJson.count ?? 0}件の授業を作成しました`);
+          try {
+            const { broadcastClassSessionsChanged } = await import('@/lib/calendar-broadcast');
+            const start = payload.startDate || (typeof lessonData.date === 'string' ? lessonData.date : undefined);
+            if (start) broadcastClassSessionsChanged([start]); else broadcastClassSessionsChanged();
+            // Force a precise refetch for the created day to avoid any timing race
+            const target = start || (typeof lessonData.date === 'string' ? lessonData.date : undefined);
+            if (target) {
+              await qc.refetchQueries({
+                predicate: ({ queryKey }) => Array.isArray(queryKey)
+                  && queryKey[0] === 'classSessions'
+                  && queryKey[1] === 'byDate'
+                  && queryKey[2] === target,
+              });
+            }
+          } catch {}
           onOpenChange(false);
           return;
         } catch (e: any) {
