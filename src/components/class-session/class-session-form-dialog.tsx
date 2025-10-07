@@ -68,6 +68,7 @@ import {
 import { TimeInput } from "@/components/ui/time-input";
 import { useAvailability } from "../admin-schedule/DayCalendar/availability-layer";
 import type { ClassSession } from "@prisma/client";
+import { broadcastClassSessionsChanged } from "@/lib/calendar-broadcast";
 
 interface ClassSessionFormDialogProps {
   open: boolean;
@@ -366,7 +367,10 @@ export function ClassSessionFormDialog({
             // Attempt to create a series blueprint; server rejects for 特別授業
             const res = await fetch('/api/class-series', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Selected-Branch': localStorage.getItem('selectedBranchId') || ''
+              },
               body: JSON.stringify({
                 teacherId: formattedValues.teacherId || null,
                 studentId: formattedValues.studentId || null,
@@ -391,9 +395,16 @@ export function ClassSessionFormDialog({
               // Extend by one month (near-term visibility)
               await fetch(`/api/class-series/${seriesId}/extend`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                  'Content-Type': 'application/json',
+                  'X-Selected-Branch': localStorage.getItem('selectedBranchId') || ''
+                },
                 body: JSON.stringify({ months: 1 })
               });
+              // Notify active calendar views to refetch (same-user tabs)
+              try {
+                broadcastClassSessionsChanged();
+              } catch {}
               return true; // handled as series
             }
           }

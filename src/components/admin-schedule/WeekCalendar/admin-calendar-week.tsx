@@ -19,6 +19,8 @@ import {
   ConflictResponse,
   formatDateToString,
 } from "../DayCalendar/types/class-session";
+import { toast } from "sonner";
+import { broadcastClassSessionsChanged } from "@/lib/calendar-broadcast";
 
 const SELECTED_WEEKS_KEY = "admin_calendar_selected_weeks";
 const BASE_WEEK_KEY = "admin_calendar_base_week";
@@ -234,6 +236,7 @@ const AdminCalendarWeek: React.FC<AdminCalendarWeekProps> = ({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'X-Selected-Branch': localStorage.getItem('selectedBranchId') || ''
         },
         body: JSON.stringify(requestBody),
       });
@@ -274,16 +277,39 @@ const AdminCalendarWeek: React.FC<AdminCalendarWeekProps> = ({
         throw new Error(errorMessage || `エラー ${response.status}: ${response.statusText}`);
       }
   
-      // Success
+      // Success: parse payload if available
+      let createdPayload: any = null;
       if (contentType && contentType.includes("application/json")) {
         try {
-          await response.json();
+          createdPayload = await response.json();
         } catch (parseError) {
           console.warn("Response parse error:", parseError);
         }
       }
-  
-      // Close dialog and refresh data if needed
+
+      // Generic success toast only (no filter-specific messaging)
+      toast.success('授業が正常に作成されました');
+
+      // Notify same-user tabs to refresh. Emit all created dates when recurring.
+      try {
+        const createdDates = Array.isArray(createdPayload?.data)
+          ? Array.from(
+              new Set(
+                (createdPayload.data as any[])
+                  .map((s) => (typeof s?.date === 'string' ? s.date.split('T')[0] : ''))
+                  .filter((d) => typeof d === 'string' && d.length > 0)
+              )
+            )
+          : [];
+        if (createdDates.length > 0) {
+          broadcastClassSessionsChanged(createdDates as string[]);
+        } else {
+          const d = typeof requestBody.date === 'string' ? requestBody.date : undefined;
+          if (d) broadcastClassSessionsChanged([d]); else broadcastClassSessionsChanged();
+        }
+      } catch {}
+
+      // Close dialog
       setCreateDialogOpen(false);
       setCreateLessonData(null);
       
