@@ -68,3 +68,6 @@ bun.lock
 scripts/
 TODO.md
 backups/
+
+# codex workspace
+.codex/
