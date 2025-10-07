@@ -18,6 +18,10 @@ export default defineConfig({
     reporters: ["default"],
     setupFiles: ["./vitest.setup.ts"],
   },
+  esbuild: {
+    jsx: 'automatic',
+    jsxImportSource: 'react',
+  },
   css: {
     // Prevent Vite from loading the project's PostCSS config during tests
     postcss: {

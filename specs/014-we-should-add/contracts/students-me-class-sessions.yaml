@@ -1,0 +1,43 @@
+openapi: 3.0.3
+info:
+  title: Student Me Class Sessions API
+  version: 1.0.0
+paths:
+  /api/students/me/class-sessions:
+    get:
+      summary: List student's class sessions (week/month views)
+      parameters:
+        - in: query
+          name: startDate
+          required: true
+          schema: { type: string, format: date }
+        - in: query
+          name: endDate
+          required: true
+          schema: { type: string, format: date }
+        - in: query
+          name: classTypeIds
+          description: Comma-separated list of classTypeId (multi-select filter). If omitted or empty → all types.
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        classTypeId: { type: string, nullable: true }
+                        classTypeName: { type: string, nullable: true }
+                        subjectName: { type: string, nullable: true }
+                        date: { type: string, format: date }
+                        startTime: { type: string }
+                        endTime: { type: string }
+                        teacherName: { type: string, nullable: true }
+                        studentName: { type: string, nullable: true }
+

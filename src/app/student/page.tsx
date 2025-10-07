@@ -13,8 +13,13 @@ import {
   startOfMonth,
   startOfWeek,
 } from "date-fns";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { SPECIAL_CLASS_COLOR_CLASSES } from "@/lib/special-class-constants";
+import { Faceted, FacetedBadgeList, FacetedContent, FacetedEmpty, FacetedGroup, FacetedInput, FacetedItem, FacetedList, FacetedTrigger } from "@/components/ui/faceted";
+import { fetchClassTypeOptions } from "@/lib/class-type-options";
+import type { ClassTypeOption } from "@/types/class-type";
+import { useSession } from "next-auth/react";
+import { getClassTypeSelection, setClassTypeSelection } from "@/lib/class-type-filter-persistence";
 
 const daysOfWeek = ["月", "火", "水", "木", "金", "土", "日"];
 const getColor = (subjecType: "通常授業" | "特別授業") => {
@@ -40,6 +45,36 @@ const getColor = (subjecType: "通常授業" | "特別授業") => {
 export default function StudentPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewType, setViewType] = useState<"WEEK" | "MONTH">("WEEK");
+  const { data: session } = useSession();
+  const role = session?.user?.role;
+  const [classTypeOptions, setClassTypeOptions] = useState<ClassTypeOption[]>([]);
+  const [classTypeIds, setClassTypeIds] = useState<string[] | undefined>(undefined);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const opts = await fetchClassTypeOptions();
+        if (mounted) setClassTypeOptions(opts);
+      } catch {
+        if (mounted) setClassTypeOptions([]);
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
+
+  useEffect(() => {
+    if (!classTypeIds || classTypeIds.length === 0) {
+      const saved = getClassTypeSelection(role);
+      if (saved && saved.length > 0) setClassTypeIds(saved);
+    }
+  }, [role]);
+
+  const handleClassTypesChange = (ids: string[] | undefined) => {
+    const next = Array.isArray(ids) ? ids : [];
+    setClassTypeIds(next.length ? next : undefined);
+    setClassTypeSelection(role, next);
+  };
 
   const { startDate, endDate } = useMemo(() => {
     if (viewType === "WEEK") {
@@ -64,6 +99,7 @@ export default function StudentPage() {
   const { data, error, isPending } = useStudentClassSessionsDateRange({
     startDate,
     endDate,
+    classTypeIds,
   });
 
   if (isPending) {
@@ -127,6 +163,31 @@ export default function StudentPage() {
                 setCurrentDate={setCurrentDate}
                 currentDate={currentDate}
               />
+            </div>
+            <div className="ml-2">
+              <Faceted multiple value={classTypeIds} onValueChange={handleClassTypesChange}>
+                <FacetedTrigger
+                  aria-label="クラスタイプフィルター"
+                  className="h-8 w-[220px] max-w-[240px] border border-input rounded-md px-2 bg-background text-foreground hover:bg-accent hover:text-accent-foreground text-sm flex items-center justify-between whitespace-nowrap overflow-hidden"
+                >
+                  <span className="truncate">
+                    {`クラスタイプ${classTypeIds?.length ? `（${classTypeIds.length}）` : ""}`}
+                  </span>
+                </FacetedTrigger>
+                <FacetedContent className="w-[240px]">
+                  <FacetedInput placeholder="クラスタイプを検索..." />
+                  <FacetedList>
+                    <FacetedEmpty>候補がありません</FacetedEmpty>
+                    <FacetedGroup heading="クラスタイプ">
+                      {classTypeOptions.map((opt) => (
+                        <FacetedItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </FacetedItem>
+                      ))}
+                    </FacetedGroup>
+                  </FacetedList>
+                </FacetedContent>
+              </Faceted>
             </div>
           </div>
 
