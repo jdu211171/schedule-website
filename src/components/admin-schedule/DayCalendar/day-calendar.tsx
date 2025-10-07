@@ -21,6 +21,7 @@ import { ExtendedClassSessionWithRelations, DayFilters } from '@/hooks/useClassS
 import { getDateKey } from '../date';
 import { LessonCard, extractTime } from './lesson-card';
 import { DayCalendarFilters } from './day-calendar-filters';
+import { computeBoothOverlap, computeStudentOverlap, computeTeacherOverlap } from './overlap-utils';
 import { AvailabilityLayer, useAvailability } from './availability-layer';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -1114,31 +1115,9 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
                   laneIndex={laneMap.get(String(session.classId))?.laneIndex || 0}
                   laneHeight={slotHeight}
                   rowTopOffset={boothTopOffsets[sessionPos.get(String(session.classId))?.boothIndex || 0]}
-                  hasBoothOverlap={(laneMap.get(String(session.classId))?.laneIndex ?? 0) > 0 ||
-                    (() => {
-                      const pos = sessionPos.get(String(session.classId));
-                      if (!pos) return false;
-                      return filteredSessions.some(s2 => {
-                        if (s2.classId === session.classId) return false;
-                        const p2 = sessionPos.get(String(s2.classId));
-                        return p2 && p2.boothIndex === pos.boothIndex && !(p2.end <= pos.start || pos.end <= p2.start);
-                      });
-                    })()
-                  }
-                  hasTeacherOverlap={(session.teacherId && filteredSessions.some(s2 => {
-                    if (!s2.teacherId || s2.classId === session.classId) return false;
-                    if (s2.teacherId !== session.teacherId) return false;
-                    const p1 = sessionPos.get(String(session.classId));
-                    const p2 = sessionPos.get(String(s2.classId));
-                    return p1 && p2 && !(p2.end <= p1.start || p1.end <= p2.start);
-                  })) || false}
-                  hasStudentOverlap={(session.studentId && filteredSessions.some(s2 => {
-                    if (!s2.studentId || s2.classId === session.classId) return false;
-                    if (s2.studentId !== session.studentId) return false;
-                    const p1 = sessionPos.get(String(session.classId));
-                    const p2 = sessionPos.get(String(s2.classId));
-                    return p1 && p2 && !(p2.end <= p1.start || p1.end <= p2.start);
-                  })) || false}
+                  hasBoothOverlap={computeBoothOverlap(session, filteredSessions, sessionPos)}
+                  hasTeacherOverlap={computeTeacherOverlap(session, filteredSessions, sessionPos)}
+                  hasStudentOverlap={computeStudentOverlap(session, filteredSessions, sessionPos)}
                   cellWidth={cellWidth}
                 />
               ))}
