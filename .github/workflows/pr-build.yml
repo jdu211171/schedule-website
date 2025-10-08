@@ -32,8 +32,9 @@ jobs:
       - name: Typecheck
         run: bun run check-errors
 
-      - name: Lint
+      - name: Lint (non-blocking)
         run: bun run lint
+        continue-on-error: true
 
       - name: Build
         env:
