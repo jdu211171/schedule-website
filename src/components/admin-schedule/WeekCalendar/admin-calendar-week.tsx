@@ -26,6 +26,8 @@ import { fetchClassTypeOptions } from "@/lib/class-type-options";
 import { getClassTypeSelection, setClassTypeSelection } from "@/lib/class-type-filter-persistence";
 import type { ClassTypeOption } from "@/types/class-type";
 import { Faceted, FacetedBadgeList, FacetedContent, FacetedEmpty, FacetedGroup, FacetedInput, FacetedItem, FacetedList, FacetedTrigger } from "@/components/ui/faceted";
+import { Button } from "@/components/ui/button";
+import { X } from "lucide-react";
 
 const SELECTED_WEEKS_KEY = "admin_calendar_selected_weeks";
 const BASE_WEEK_KEY = "admin_calendar_base_week";
@@ -439,6 +441,18 @@ const AdminCalendarWeek: React.FC<AdminCalendarWeekProps> = ({
                 </FacetedList>
               </FacetedContent>
             </Faceted>
+            {filters.classTypeIds && filters.classTypeIds.length > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleClassTypesChange([])}
+                className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive"
+                aria-label="クラスタイプをクリア"
+                title="クリア"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
           </div>
         </div>
       </div>
