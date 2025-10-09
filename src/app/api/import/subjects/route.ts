@@ -25,6 +25,15 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
       );
     }
 
+    // Enforce server-side max size (hard cap)
+    const maxBytes = Number.parseInt(process.env.IMPORT_MAX_BYTES || "26214400", 10); // 25MB
+    const fileSize = (file as Blob).size ?? 0;
+    if (fileSize > maxBytes) {
+      return NextResponse.json(
+        { error: `ファイルサイズが大きすぎます。最大 ${Math.floor(maxBytes / 1024 / 1024)}MB まで対応しています` },
+        { status: 413 }
+      );
+    }
     // Convert file to buffer
     const buffer = Buffer.from(await (file as Blob).arrayBuffer());
 

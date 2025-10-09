@@ -113,7 +113,11 @@ export function CSVImportDialog({
           setImportResult(result);
         } else {
           // This is a general error
-          throw new Error(result.error || "インポート中にエラーが発生しました");
+          const generic = 'インポート中にエラーが発生しました';
+          const tooMany = 'リクエストが多すぎます。しばらくしてから再試行してください。';
+          const tooLarge = 'ファイルサイズが大きすぎます';
+          const msg = (response.status === 429 ? tooMany : (response.status === 413 ? tooLarge : (result.error || generic)));
+          throw new Error(msg);
         }
       } else {
         setImportResult(result);
@@ -145,6 +149,8 @@ export function CSVImportDialog({
       setImportResult(null);
     }
   };
+
+  // 日本語のみの表記に統一
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -192,9 +198,7 @@ export function CSVImportDialog({
                                   </Button>
                                 </FileUploadTrigger>
                               </div>
-                              <p className="text-xs text-muted-foreground">
-                                CSV形式、最大10MB
-                              </p>
+                              <p className="text-xs text-muted-foreground">CSV形式、最大10MB</p>
                             </div>
                           </FileUploadDropzone>
                           <FileUploadList>
@@ -217,9 +221,7 @@ export function CSVImportDialog({
                           </FileUploadList>
                         </FileUpload>
                       </FormControl>
-                      <FormDescription>
-                        UTF-8またはShift-JISエンコーディングのCSVファイルに対応しています
-                      </FormDescription>
+                      <FormDescription>UTF-8またはShift-JISエンコーディングのCSVファイルに対応しています</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -293,7 +295,7 @@ export function CSVImportDialog({
                     {importResult.success > 0 && (
                       <Alert className="border-green-200 bg-green-50">
                         <AlertDescription className="text-green-800">
-                          <span className="font-semibold">{importResult.success}件</span>のデータが処理されました
+                          <span className="font-semibold">{importResult.success}件のデータが処理されました</span>
                           {importResult.created !== undefined && importResult.created > 0 && (
                             <span className="block mt-1">• {importResult.created}件 新規作成</span>
                           )}
@@ -350,9 +352,7 @@ export function CSVImportDialog({
                           className="rounded-lg border border-red-200 bg-red-50 p-3"
                         >
                           <div className="flex items-center gap-2 mb-1">
-                            <Badge variant="destructive" className="text-xs">
-                              行 {error.row}
-                            </Badge>
+                            <Badge variant="destructive" className="text-xs">行 {error.row}</Badge>
                           </div>
                           <ul className="list-inside list-disc text-sm text-red-700 space-y-1">
                             {error.errors.map((msg, i) => (

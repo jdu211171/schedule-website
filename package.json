@@ -7,12 +7,14 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "lint:fix": "next lint --fix",
     "test": "vitest run",
     "test:watch": "vitest",
     "watch": "tsc --noEmit --skipLibCheck --watch",
     "postinstall": "prisma generate",
     "check-errors": "tsc --noEmit --skipLibCheck",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "perf:import": "bun run scripts/perf-import.ts"
   },
   "prisma": {
     "seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts"
