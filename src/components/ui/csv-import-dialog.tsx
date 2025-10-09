@@ -113,11 +113,9 @@ export function CSVImportDialog({
           setImportResult(result);
         } else {
           // This is a general error
-          const lang = (typeof navigator !== 'undefined' ? navigator.language : 'ja').toLowerCase();
-          const isEn = lang.startsWith('en');
-          const generic = isEn ? 'An error occurred during import' : 'インポート中にエラーが発生しました';
-          const tooMany = isEn ? 'Too many requests. Try again later.' : 'リクエストが多すぎます。しばらくしてから再試行してください。';
-          const tooLarge = isEn ? 'File too large' : 'ファイルサイズが大きすぎます';
+          const generic = 'インポート中にエラーが発生しました';
+          const tooMany = 'リクエストが多すぎます。しばらくしてから再試行してください。';
+          const tooLarge = 'ファイルサイズが大きすぎます';
           const msg = (response.status === 429 ? tooMany : (response.status === 413 ? tooLarge : (result.error || generic)));
           throw new Error(msg);
         }
@@ -152,33 +150,7 @@ export function CSVImportDialog({
     }
   };
 
-  const lang = (typeof navigator !== 'undefined' ? navigator.language : 'ja').toLowerCase();
-  const isEn = lang.startsWith('en');
-  const t = {
-    selectFile: isEn ? 'Select file' : 'ファイルを選択',
-    csvFile: isEn ? 'CSV File' : 'CSVファイル',
-    csvHint: isEn ? 'CSV format, up to 10MB' : 'CSV形式、最大10MB',
-    downloadTemplate: isEn ? 'Download template CSV' : 'テンプレートCSVをダウンロード',
-    infoTitle: isEn ? 'Info' : '情報',
-    idRules: isEn ? 'Exported CSV includes an "ID" column. Rows with ID update existing records; rows without ID create new records.' : 'エクスポートされたCSVには「ID」列が含まれます。IDがある行は更新、IDがない行は新規作成します。',
-    cancel: isEn ? 'Cancel' : 'キャンセル',
-    startImport: isEn ? 'Start import' : 'インポート開始',
-    importing: isEn ? 'Importing…' : 'インポート中...',
-    summary: isEn ? 'Summary' : 'サマリー',
-    errors: isEn ? 'Errors' : 'エラー',
-    warnings: isEn ? 'Warnings' : '警告',
-    rowsProcessed: (n: number) => isEn ? `${n} rows processed` : `${n}件のデータが処理されました`,
-    created: (n: number) => isEn ? `• ${n} created` : `• ${n}件 新規作成`,
-    updated: (n: number) => isEn ? `• ${n} updated` : `• ${n}件 更新`,
-    deleted: (n: number) => isEn ? `• ${n} deleted` : `• ${n}件 削除`,
-    skipped: (n: number) => isEn ? `${n} rows skipped` : `${n}件のデータがスキップされました`,
-    errorCount: (n: number) => isEn ? `${n} errors occurred` : `${n}件のエラーが発生しました`,
-    warningCount: (n: number) => isEn ? `${n} warnings` : `${n}件の警告があります`,
-    closeAndRefresh: isEn ? 'Close and refresh' : '閉じて更新',
-    close: isEn ? 'Close' : '閉じる',
-    row: isEn ? 'Row' : '行',
-    downloadErrorCsv: isEn ? 'Download error rows CSV' : 'エラー行CSVをダウンロード',
-  };
+  // 日本語のみの表記に統一
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -199,7 +171,7 @@ export function CSVImportDialog({
                   name="file"
                   render={({ field: { value, onChange, ...field } }) => (
                     <FormItem>
-                      <FormLabel>{t.csvFile}</FormLabel>
+                      <FormLabel>CSVファイル</FormLabel>
                       <FormControl>
                         <FileUpload
                           value={value ? [value] : []}
@@ -218,15 +190,15 @@ export function CSVImportDialog({
                             <div className="flex flex-col items-center justify-center space-y-2 text-center p-6">
                               <FileSpreadsheet className="h-8 w-8 text-muted-foreground" />
                               <div className="text-sm">
-                                <span className="font-medium">{isEn ? 'Drag & drop a CSV' : 'CSVファイルをドラッグ&ドロップ'}</span>
-                                <span className="text-muted-foreground">{isEn ? 'or' : 'または'}</span>
+                                <span className="font-medium">CSVファイルをドラッグ&ドロップ</span>
+                                <span className="text-muted-foreground">または</span>
                                 <FileUploadTrigger asChild>
                                   <Button variant="link" size="sm" className="h-auto p-0">
-                                    {t.selectFile}
+                                    ファイルを選択
                                   </Button>
                                 </FileUploadTrigger>
                               </div>
-                              <p className="text-xs text-muted-foreground">{t.csvHint}</p>
+                              <p className="text-xs text-muted-foreground">CSV形式、最大10MB</p>
                             </div>
                           </FileUploadDropzone>
                           <FileUploadList>
@@ -241,7 +213,7 @@ export function CSVImportDialog({
                                     className="size-7"
                                   >
                                     <X />
-                                    <span className="sr-only">{isEn ? 'Delete' : '削除'}</span>
+                                    <span className="sr-only">削除</span>
                                   </Button>
                                 </FileUploadItemDelete>
                               </FileUploadItem>
@@ -249,9 +221,7 @@ export function CSVImportDialog({
                           </FileUploadList>
                         </FileUpload>
                       </FormControl>
-                      <FormDescription>
-                        {isEn ? 'Supports CSV encoded as UTF-8 or Shift_JIS' : 'UTF-8またはShift-JISエンコーディングのCSVファイルに対応しています'}
-                      </FormDescription>
+                      <FormDescription>UTF-8またはShift-JISエンコーディングのCSVファイルに対応しています</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -264,16 +234,21 @@ export function CSVImportDialog({
                       download
                       className="font-medium text-primary hover:underline"
                     >
-                      {t.downloadTemplate}
+                      テンプレートCSVをダウンロード
                     </a>
-                    {isEn ? ' to check the format.' : 'して、フォーマットを確認してください。'}
+                    して、フォーマットを確認してください。
                   </AlertDescription>
                 </Alert>
 
                 <Alert>
                   <AlertDescription className="flex items-start gap-2">
                     <Info className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                    <span dangerouslySetInnerHTML={{ __html: t.idRules.replace(/\n/g, '<br />') }} />
+                    <span>
+                      エクスポートされたCSVには「ID」列が含まれます。<br />
+                      ・IDがある行は既存レコードを更新します。<br />
+                      ・IDがない行は新規作成します（または重複しない一意キーがある場合は更新します）。<br />
+                      例）ブースは「校舎名+ブース名」、科目/科目タイプ/校舎は「名前」で重複チェックします。
+                    </span>
                   </AlertDescription>
                 </Alert>
 
@@ -284,18 +259,18 @@ export function CSVImportDialog({
                     onClick={handleClose}
                     disabled={isImporting}
                   >
-                    {t.cancel}
+                    キャンセル
                   </Button>
                   <Button type="submit" disabled={isImporting || !form.watch("file")}>
                     {isImporting ? (
                       <>
                         <CloudUpload className="mr-2 h-4 w-4 animate-pulse" />
-                        {t.importing}
+                        インポート中...
                       </>
                     ) : (
                       <>
                         <CloudUpload className="mr-2 h-4 w-4" />
-                        {t.startImport}
+                        インポート開始
                       </>
                     )}
                   </Button>
@@ -306,12 +281,12 @@ export function CSVImportDialog({
             <div className="space-y-4">
               <Tabs defaultValue="summary" className="w-full">
                 <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="summary">{t.summary}</TabsTrigger>
+                  <TabsTrigger value="summary">サマリー</TabsTrigger>
                   <TabsTrigger value="errors" disabled={importResult.errors.length === 0}>
-                    {t.errors} ({importResult.errors.length})
+                    エラー ({importResult.errors.length})
                   </TabsTrigger>
                   <TabsTrigger value="warnings" disabled={importResult.warnings.length === 0}>
-                    {t.warnings} ({importResult.warnings.length})
+                    警告 ({importResult.warnings.length})
                   </TabsTrigger>
                 </TabsList>
                 
@@ -320,32 +295,38 @@ export function CSVImportDialog({
                     {importResult.success > 0 && (
                       <Alert className="border-green-200 bg-green-50">
                         <AlertDescription className="text-green-800">
-                          <span className="font-semibold">{isEn ? t.rowsProcessed(importResult.success) : `${importResult.success}件のデータが処理されました`}</span>
+                          <span className="font-semibold">{importResult.success}件のデータが処理されました</span>
                           {importResult.created !== undefined && importResult.created > 0 && (
-                            <span className="block mt-1">{isEn ? t.created(importResult.created) : `• ${importResult.created}件 新規作成`}</span>
+                            <span className="block mt-1">• {importResult.created}件 新規作成</span>
                           )}
                           {importResult.updated !== undefined && importResult.updated > 0 && (
-                            <span className="block mt-1">{isEn ? t.updated(importResult.updated) : `• ${importResult.updated}件 更新`}</span>
+                            <span className="block mt-1">• {importResult.updated}件 更新</span>
                           )}
                           {importResult.deleted !== undefined && importResult.deleted > 0 && (
-                            <span className="block mt-1">{isEn ? t.deleted(importResult.deleted) : `• ${importResult.deleted}件 削除`}</span>
+                            <span className="block mt-1">• {importResult.deleted}件 削除</span>
                           )}
                         </AlertDescription>
                       </Alert>
                     )}
                     {importResult.skipped !== undefined && importResult.skipped > 0 && (
                       <Alert className="border-blue-200 bg-blue-50">
-                        <AlertDescription className="text-blue-800">{isEn ? t.skipped(importResult.skipped!) : <span className="font-semibold">{importResult.skipped}件</span>}</AlertDescription>
+                        <AlertDescription className="text-blue-800">
+                          <span className="font-semibold">{importResult.skipped}件</span>のデータがスキップされました
+                        </AlertDescription>
                       </Alert>
                     )}
                     {importResult.errors.length > 0 && (
                       <Alert variant="destructive">
-                        <AlertDescription>{isEn ? t.errorCount(importResult.errors.length) : <span className="font-semibold">{importResult.errors.length}件</span>}</AlertDescription>
+                        <AlertDescription>
+                          <span className="font-semibold">{importResult.errors.length}件</span>のエラーが発生しました
+                        </AlertDescription>
                       </Alert>
                     )}
                     {importResult.warnings.length > 0 && (
                       <Alert className="border-yellow-200 bg-yellow-50">
-                        <AlertDescription className="text-yellow-800">{isEn ? t.warningCount(importResult.warnings.length) : <span className="font-semibold">{importResult.warnings.length}件</span>}</AlertDescription>
+                        <AlertDescription className="text-yellow-800">
+                          <span className="font-semibold">{importResult.warnings.length}件</span>の警告があります
+                        </AlertDescription>
                       </Alert>
                     )}
                   </div>
@@ -359,7 +340,7 @@ export function CSVImportDialog({
                         download={(importResult as any).errorCsvFilename || "student_import_errors.csv"}
                         className="text-primary text-sm hover:underline"
                       >
-                        {t.downloadErrorCsv}
+                        エラー行CSVをダウンロード
                       </a>
                     )}
                   </div>
@@ -371,9 +352,7 @@ export function CSVImportDialog({
                           className="rounded-lg border border-red-200 bg-red-50 p-3"
                         >
                           <div className="flex items-center gap-2 mb-1">
-                            <Badge variant="destructive" className="text-xs">
-                              {t.row} {error.row}
-                            </Badge>
+                            <Badge variant="destructive" className="text-xs">行 {error.row}</Badge>
                           </div>
                           <ul className="list-inside list-disc text-sm text-red-700 space-y-1">
                             {error.errors.map((msg, i) => (
@@ -426,12 +405,12 @@ export function CSVImportDialog({
                       onImportComplete?.();
                     }}
                   >
-                    {t.closeAndRefresh}
+                    閉じて更新
                   </Button>
                 )}
                 {importResult.errors.length > 0 && (
                   <Button variant="outline" onClick={handleClose}>
-                    {t.close}
+                    閉じる
                   </Button>
                 )}
               </div>
