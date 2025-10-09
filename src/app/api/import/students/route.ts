@@ -16,6 +16,12 @@ import { STUDENT_COLUMN_RULES, csvHeaderToDbField } from "@/schemas/import/stude
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { handleImportError } from "@/lib/import-error-handler";
+import { auditImportSummary } from "@/lib/import-audit";
+import { acquireUserImportLock, releaseUserImportLock } from "@/lib/import-lock";
+import { allowRate } from "@/lib/rate-limit";
+import { v4 as uuidv4 } from "uuid";
+import { putImportSession } from "@/lib/import-session";
+const RATE_KEY_PREFIX = "import:students:";
 // Helpers for parsing aggregated contact phones (連絡先電話)
 type ParsedPhone = { type: "HOME" | "DAD" | "MOM" | "OTHER"; number: string; notes?: string | null };
 function parseContactPhones(raw: string | undefined): ParsedPhone[] {
@@ -71,6 +77,26 @@ function parseContactEmails(raw: string | undefined): ParsedEmail[] {
 
 async function handleImport(req: NextRequest, session: any, branchId: string) {
   try {
+    const startedAt = Date.now();
+    const userId = (session as any).user?.id as string | undefined;
+    if (userId) {
+      const ok = acquireUserImportLock(userId);
+      if (!ok) {
+        return NextResponse.json(
+          { error: "インポートが実行中です。完了後に再試行してください。" },
+          { status: 429 },
+        );
+      }
+      const rateOk = allowRate(`${RATE_KEY_PREFIX}${userId}`, 2, 0.1);
+      if (!rateOk) {
+        releaseUserImportLock(userId);
+        return NextResponse.json(
+          { error: "リクエストが多すぎます。しばらくしてから再試行してください。" },
+          { status: 429 },
+        );
+      }
+    }
+    const importSessionId = uuidv4();
     const url = new URL(req.url);
     const dryRun = url.searchParams.get("dryRun") === "1";
     const returnErrorsCsv = url.searchParams.get("return") === "errors_csv";
@@ -80,22 +106,44 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
     // Strict variant: row-level decision by presence of ID; no importMode
 
     if (!file || typeof file === "string") {
+      if (userId) releaseUserImportLock(userId);
       return NextResponse.json(
         { error: "ファイルが選択されていません" },
         { status: 400 },
       );
     }
 
+    // Enforce server-side max size (hard cap)
+    const maxBytes = Number.parseInt(process.env.IMPORT_MAX_BYTES || "26214400", 10); // 25MB
+    const fileSize = (file as Blob).size ?? 0;
+    if (fileSize > maxBytes) {
+      if (userId) releaseUserImportLock(userId);
+      return NextResponse.json(
+        { error: `ファイルサイズが大きすぎます。最大 ${Math.floor(maxBytes / 1024 / 1024)}MB まで対応しています` },
+        { status: 413 },
+      );
+    }
+
+    // Start session now that filename is known
+    putImportSession({
+      id: importSessionId,
+      entity: "students",
+      userId,
+      filename: (file as any)?.name,
+      status: "running",
+      startedAt: new Date().toISOString(),
+    });
     // Convert file to buffer (kept for compatibility; streaming parser can be added later)
     const buffer = Buffer.from(await (file as Blob).arrayBuffer());
 
     // Parse CSV file with encoding detection
     const parseResult =
       await CSVParser.parseBuffer<Record<string, string>>(buffer, {
-        encoding: "utf-8", // Default to UTF-8, but the parser will auto-detect if needed
+        encoding: "utf-8", // Auto-detection will switch to Shift_JIS when applicable
       });
 
     if (parseResult.errors.length > 0) {
+      if (userId) releaseUserImportLock(userId);
       return NextResponse.json(
         {
           error: "CSVファイルの解析に失敗しました",
@@ -107,6 +155,7 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
 
     // Validate CSV headers
     if (parseResult.data.length === 0) {
+      if (userId) releaseUserImportLock(userId);
       return NextResponse.json(
         { error: "CSVファイルが空です" },
         { status: 400 },
@@ -143,6 +192,7 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
       console.warn("Unknown CSV headers:", unknownHeaders);
     }
     if (!actualHeaders.includes("ID") && !actualHeaders.includes("ユーザー名")) {
+      if (userId) releaseUserImportLock(userId);
       return NextResponse.json(
         { error: "CSVにIDまたはユーザー名の列が必要です" },
         { status: 400 },
@@ -402,7 +452,9 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
 
     // Import valid data in batches to avoid long transactions/timeouts
     if (validatedData.length > 0) {
-      const batchSize = Number.parseInt(process.env.IMPORT_BATCH_SIZE || "500", 10);
+      const batchSize = Number.parseInt(process.env.IMPORT_BATCH_SIZE || "100", 10);
+      const txTimeout = Number.parseInt(process.env.IMPORT_TX_TIMEOUT_MS || "20000", 10);
+      const txMaxWait = Number.parseInt(process.env.IMPORT_TX_MAXWAIT_MS || "10000", 10);
       for (let start = 0; start < validatedData.length; start += batchSize) {
         const batch = validatedData.slice(start, start + batchSize);
         await prisma.$transaction(async (tx) => {
@@ -749,7 +801,7 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
                 plainPassword = data.password;
               } else {
                 // Generate a default password if not provided
-                const defaultPassword = `${data.username}@123`;
+                const defaultPassword = `${data.username}`;
                 plainPassword = defaultPassword;
                 result.warnings.push({
                   message: `行 ${data.rowNumber}: パスワードが指定されていないため、デフォルトパスワード（${defaultPassword}）を設定しました`,
@@ -905,7 +957,7 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
 
           result.success++;
         }
-        });
+        }, { timeout: txTimeout, maxWait: txMaxWait });
       }
     }
 
@@ -943,8 +995,43 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
       }
     }
 
-    return NextResponse.json(result);
+    const durationMs = Date.now() - startedAt;
+    auditImportSummary({
+      entity: "students",
+      filename: (file as any)?.name,
+      encoding: undefined,
+      processed: result.success,
+      created: result.created,
+      updated: result.updated,
+      deleted: result.deleted,
+      skipped: result.skipped,
+      errors: result.errors.length,
+      durationMs,
+    });
+    putImportSession({
+      id: importSessionId,
+      entity: "students",
+      userId,
+      filename: (file as any)?.name,
+      status: "succeeded",
+      startedAt: new Date(startedAt).toISOString(),
+      completedAt: new Date().toISOString(),
+      processed: result.success,
+      created: result.created,
+      updated: result.updated,
+      deleted: result.deleted,
+      skipped: result.skipped,
+      errors: result.errors.length,
+      message: result.errors.length > 0 ? "一部の行でエラーが発生しました" : "成功",
+    });
+    const resp = NextResponse.json({ ...result, sessionId: importSessionId });
+    if (userId) releaseUserImportLock(userId);
+    return resp;
   } catch (error) {
+    try {
+      const userId = (session as any).user?.id as string | undefined;
+      if (userId) releaseUserImportLock(userId);
+    } catch {}
     return handleImportError(error);
   }
 }

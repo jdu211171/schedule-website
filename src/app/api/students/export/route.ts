@@ -324,6 +324,10 @@ export const GET = withBranchAccess(
     columnIdToHeader['contactEmails'] = '連絡先メール';
     headerToColumnId['連絡先メール'] = 'contactEmails';
 
+    // Map contact phones aggregated column
+    columnIdToHeader['contactPhones'] = '連絡先電話';
+    headerToColumnId['連絡先電話'] = 'contactPhones';
+
     // Add ID header mapping
     columnIdToHeader['id'] = 'ID';
     headerToColumnId['ID'] = 'id';

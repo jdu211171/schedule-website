@@ -1,0 +1,128 @@
+openapi: 3.0.3
+info:
+  title: CSV Import API
+  version: 1.0.0
+  description: API contracts for production CSV import reliability feature.
+servers:
+  - url: https://{host}
+    variables:
+      host:
+        default: example.com
+paths:
+  /api/import/csv:
+    post:
+      summary: Upload and import a CSV file
+      description: Accepts a CSV file (UTF-8 or Shift_JIS). Processes valid rows, skips invalid, and returns a summary.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                dryRun:
+                  type: boolean
+                  description: When true, validate only; do not write changes.
+      responses:
+        '200':
+          description: Import completed with summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportResult'
+        '400':
+          description: Invalid request (unsupported encoding, missing columns, etc.)
+        '413':
+          description: File too large
+        '422':
+          description: Validation errors
+        '500':
+          description: Unexpected error
+  /api/import/sessions/{id}:
+    get:
+      summary: Get import session status
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Session details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportSession'
+        '404':
+          description: Session not found
+  /api/import/template.csv:
+    get:
+      summary: Download CSV template
+      responses:
+        '200':
+          description: CSV template
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+components:
+  schemas:
+    ImportResult:
+      type: object
+      properties:
+        processed:
+          type: integer
+          minimum: 0
+        created:
+          type: integer
+          minimum: 0
+        updated:
+          type: integer
+          minimum: 0
+        skipped:
+          type: integer
+          minimum: 0
+        errorsUri:
+          type: string
+          nullable: true
+        message:
+          type: string
+    ImportSession:
+      type: object
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        filename:
+          type: string
+        sizeBytes:
+          type: integer
+        encoding:
+          type: string
+          enum: [UTF-8, Shift_JIS]
+        status:
+          type: string
+          enum: [pending, running, succeeded, failed]
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+        processed:
+          type: integer
+        created:
+          type: integer
+        updated:
+          type: integer
+        skipped:
+          type: integer
+        message:
+          type: string

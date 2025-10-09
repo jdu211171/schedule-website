@@ -2,6 +2,9 @@ import { parse } from "csv-parse/sync";
 import iconv from "iconv-lite";
 
 export interface ParseOptions {
+  // When omitted or set to 'utf-8', encoding will still be auto-detected and
+  // Shift_JIS will be chosen if confidently detected. This favors UTF-8 but
+  // supports common Japanese CSVs transparently.
   encoding?: "utf-8" | "shift_jis";
   columns?: boolean | string[];
   skip_empty_lines?: boolean;
@@ -55,12 +58,15 @@ export class CSVParser {
     } = options;
 
     try {
-      // Skip detection if encoding is explicitly provided as utf-8
-      let finalEncoding = encoding;
-      if (encoding !== "utf-8") {
-        // Only detect encoding if not explicitly set to utf-8
-        const detectedEncoding = this.detectEncoding(new Uint8Array(buffer));
-        finalEncoding = detectedEncoding || encoding;
+      // Always attempt lightweight detection to support Shift_JIS files commonly
+      // produced by Excel in JP locales. Prefer detected Shift_JIS over UTF-8
+      // only when there is a clear signal; otherwise fall back to requested/default.
+      let finalEncoding: "utf-8" | "shift_jis" = encoding;
+      const detected = this.detectEncoding(new Uint8Array(buffer));
+      if (detected === "shift_jis") {
+        finalEncoding = "shift_jis";
+      } else if (detected === "utf-8") {
+        finalEncoding = "utf-8";
       }
       
       // Convert to string with proper encoding
