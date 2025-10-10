@@ -564,7 +564,7 @@ async function processBatchWithGrouping(
             for (const notifId of notifIds) {
               const remaining = (pendingByNotif.get(notifId) || 0) - 1;
               pendingByNotif.set(notifId, Math.max(remaining, 0));
-              if (remaining - 0 === 0) {
+              if (remaining === 0) {
                 newlyComplete.push(notifId);
               }
             }
