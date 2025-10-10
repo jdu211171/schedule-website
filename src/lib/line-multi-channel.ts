@@ -1,5 +1,6 @@
 import { createHmac } from 'crypto';
 import axios from 'axios';
+import getNotificationConfig from '@/lib/notification/config';
 import { prisma } from '@/lib/prisma';
 import { decrypt, isEncrypted } from '@/lib/encryption';
 
@@ -293,7 +294,8 @@ export async function sendLineReply(
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${credentials.channelAccessToken}`
-        }
+        },
+        timeout: getNotificationConfig().requestTimeoutMs,
       }
     );
   } catch (error) {
@@ -324,7 +326,8 @@ export async function sendLinePush(
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${credentials.channelAccessToken}`
-        }
+        },
+        timeout: getNotificationConfig().requestTimeoutMs,
       }
     );
   } catch (error) {
@@ -372,7 +375,8 @@ export async function sendLineMulticast(
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${credentials.channelAccessToken}`
-        }
+        },
+        timeout: getNotificationConfig().requestTimeoutMs,
       }
     );
   } catch (error) {
@@ -398,7 +402,8 @@ export async function testChannelCredentials(credentials: LineChannelCredentials
       {
         headers: {
           'Authorization': `Bearer ${credentials.channelAccessToken}`
-        }
+        },
+        timeout: getNotificationConfig().requestTimeoutMs,
       }
     );
 
@@ -419,4 +424,17 @@ export async function testChannelCredentials(credentials: LineChannelCredentials
       error: 'Failed to test credentials'
     };
   }
+}
+
+// Error classification helper for callers (e.g., worker)
+export function classifyLineApiError(error: unknown): { type: 'TRANSIENT' | 'PERMANENT', status?: number, code?: string } {
+  if (axios.isAxiosError(error)) {
+    const status = error.response?.status;
+    if (!status || status >= 500) return { type: 'TRANSIENT', status, code: 'HTTP_5XX_OR_NETWORK' };
+    if (status === 429) return { type: 'TRANSIENT', status, code: 'RATE_LIMIT' };
+    // Common permanent cases: 400/401/403/404
+    return { type: 'PERMANENT', status, code: `HTTP_${status}` };
+  }
+  // Unknown -> treat as transient so we can retry later
+  return { type: 'TRANSIENT', code: 'UNKNOWN' };
 }

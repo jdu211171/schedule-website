@@ -1,6 +1,7 @@
 
 import { prisma } from '@/lib/prisma';
 import { Notification, NotificationStatus } from '@prisma/client';
+import { buildQueueIdempotencyKey } from '@/lib/notification/config';
 
 interface CreateNotificationParams {
   recipientId: string;
@@ -67,8 +68,15 @@ export const createNotification = async (
         });
         
         if (exists) {
+          const key = buildQueueIdempotencyKey({
+            recipientId: params.recipientId,
+            recipientType: params.recipientType,
+            notificationType: params.notificationType,
+            targetDate: params.targetDate,
+            branchId: params.branchId,
+          });
           console.log(
-            `Duplicate notification prevented for ${params.recipientType} ${params.recipientId} on ${params.targetDate.toISOString().split('T')[0]} (branch=${params.branchId ?? 'none'})`
+            `Duplicate notification prevented (queue-idempotency) key=${key}`
           );
           return null;
         }
@@ -85,8 +93,15 @@ export const createNotification = async (
         });
         
         if (existing) {
+          const key = buildQueueIdempotencyKey({
+            recipientId: params.recipientId,
+            recipientType: params.recipientType,
+            notificationType: params.notificationType,
+            targetDate: null,
+            branchId: params.branchId,
+          });
           console.log(
-            `Duplicate notification prevented for ${params.recipientType} ${params.recipientId} (no targetDate, branch=${params.branchId ?? 'none'})`
+            `Duplicate notification prevented (queue-idempotency) key=${key}`
           );
           return null;
         }

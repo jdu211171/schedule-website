@@ -1,0 +1,92 @@
+openapi: 3.1.0
+info:
+  title: Notification Pipeline APIs
+  version: 0.1.0
+  description: Contracts for existing cron trigger and manual run endpoints.
+servers:
+  - url: https://{vercel-project}.vercel.app
+    variables:
+      vercel-project:
+        default: example
+paths:
+  /api/notifications/unified-cron:
+    get:
+      summary: Cron-triggered unified processing (create + send)
+      description: Invoked by Vercel Cron. Requires Authorization Bearer in production.
+      parameters:
+        - in: header
+          name: Authorization
+          schema:
+            type: string
+          required: false
+          description: Bearer {CRON_SECRET} (required in production)
+      responses:
+        '200':
+          description: Run summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnifiedRunResult'
+        '401':
+          description: Unauthorized
+    post:
+      summary: Manual trigger by admin
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reset:
+                  type: boolean
+                templateId:
+                  type: string
+      responses:
+        '200':
+          description: Run summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnifiedRunResult'
+components:
+  schemas:
+    UnifiedRunResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        flow_id:
+          type: string
+        run_id:
+          type: string
+        phase:
+          type: string
+          enum: [starting, creating, sending, completed, error]
+        notificationsCreated:
+          type: integer
+        notificationsSent:
+          type: integer
+        notificationsFailed:
+          type: integer
+        deletedNotifications:
+          type: integer
+        errors:
+          type: array
+          items:
+            type: string
+        executionTimeMs:
+          type: integer
+        worker:
+          type: object
+          properties:
+            totalProcessed:
+              type: integer
+            successful:
+              type: integer
+            failed:
+              type: integer
+            batches:
+              type: integer
+            executionTimeMs:
+              type: integer

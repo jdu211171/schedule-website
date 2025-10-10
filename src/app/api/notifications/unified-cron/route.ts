@@ -6,6 +6,8 @@ import { addDays, format, startOfDay } from 'date-fns';
 import { toZonedTime, formatInTimeZone, fromZonedTime } from 'date-fns-tz';
 import { replaceTemplateVariables, DEFAULT_CLASS_LIST_ITEM_TEMPLATE, DEFAULT_CLASS_LIST_SUMMARY_TEMPLATE } from '@/lib/line/message-templates';
 import { withRole } from '@/lib/auth';
+import getNotificationConfig from '@/lib/notification/config';
+import { newFlowId, newRunId, logEvent, consoleDev } from '@/lib/telemetry/logging';
 
 const TIMEZONE = 'Asia/Tokyo';
 
@@ -403,14 +405,23 @@ async function processNotifications(reset: boolean = false, templateId?: string)
     await new Promise(resolve => setTimeout(resolve, 1000));
 
     // Run the notification worker to send pending notifications
+    const cfg = getNotificationConfig();
     const workerResult = await runNotificationWorker({
-      batchSize: 20,
-      maxConcurrency: 5,
-      maxExecutionTimeMs: 120000 // 2 minutes
+      batchSize: cfg.batchSize,
+      maxConcurrency: cfg.maxConcurrency,
+      maxExecutionTimeMs: Math.min(cfg.maxExecutionTimeMs, 120000), // keep unified-cron bounded
+      delayBetweenBatchesMs: cfg.delayBetweenBatchesMs,
     });
 
     results.notificationsSent = workerResult.successful;
     results.notificationsFailed = workerResult.failed;
+    (results as any).worker = {
+      totalProcessed: workerResult.totalProcessed,
+      successful: workerResult.successful,
+      failed: workerResult.failed,
+      batches: workerResult.batches,
+      executionTimeMs: workerResult.executionTimeMs,
+    };
 
     console.log(`✅ Worker completed: Sent ${workerResult.successful}, Failed ${workerResult.failed}`);
 
@@ -442,7 +453,11 @@ async function processNotifications(reset: boolean = false, templateId?: string)
  * This mirrors the manual "通知フロー全体を実行" button behavior.
  */
 export async function GET(request: NextRequest) {
-  console.log('📬 Unified notification cron triggered at:', new Date().toISOString());
+  const flowId = newFlowId();
+  const runId = newRunId();
+  const cfg = getNotificationConfig();
+  consoleDev.log('📬 Unified notification cron triggered at:', new Date().toISOString());
+  logEvent('unified_cron.start', { flow_id: flowId, run_id: runId, env: process.env.NODE_ENV, cfg });
 
   // Verify authentication
   const authHeader = request.headers.get('authorization');
@@ -459,16 +474,26 @@ export async function GET(request: NextRequest) {
     }, { status: 401 });
   }
 
-  console.log('✅ Cron authentication passed');
+  consoleDev.log('✅ Cron authentication passed');
 
   try {
     const results = await processNotifications();
-    return NextResponse.json({ success: true, ...results });
+    const body = { success: true, flow_id: flowId, run_id: runId, ...results } as const;
+    logEvent('unified_cron.end', { flow_id: flowId, run_id: runId, outcome: 'ok', summary: {
+      created: results.notificationsCreated,
+      sent: results.notificationsSent,
+      failed: results.notificationsFailed,
+      deleted: results.deletedNotifications,
+    }});
+    return NextResponse.json(body);
   } catch (error) {
     console.error('Error in notification service:', error);
+    logEvent('unified_cron.end', { flow_id: flowId, run_id: runId, outcome: 'error', error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ 
       error: 'Internal server error', 
-      details: error instanceof Error ? error.message : String(error) 
+      details: error instanceof Error ? error.message : String(error),
+      flow_id: flowId,
+      run_id: runId,
     }, { status: 500 });
   }
 }
