@@ -46,14 +46,10 @@ export const buildQueueIdempotencyKey = (p: {
 };
 
 export const buildGroupId = (p: { channelId: string; message: string }): string => {
-  // Lightweight hash; avoid importing heavy libs
+  const crypto = require('crypto');
   const text = `${p.channelId}|${p.message}`;
-  let h = 0;
-  for (let i = 0; i < text.length; i++) {
-    h = (h << 5) - h + text.charCodeAt(i);
-    h |= 0; // 32-bit
-  }
-  return `g:${p.channelId}:${Math.abs(h)}`;
+  const hash = crypto.createHash('sha256').update(text).digest('hex');
+  return `g:${p.channelId}:${hash}`;
 };
 
 export default getNotificationConfig;
