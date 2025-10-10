@@ -327,7 +327,13 @@ interface NotificationGroup {
   message: string;
   lineIds: string[];
   notifications: Notification[];
-  // Mapping to enable per-chunk success persistence
+  /**
+   * Maps each notification to its associated LINE IDs for this group.
+   * Used during chunked delivery to track which notifications correspond to which LINE recipients,
+   * enabling accurate persistence of delivery success/failure for each chunk.
+   * This ensures that when sending messages in batches, we can record the delivery status
+   * for each notification and its recipients individually.
+   */
   recipients: Array<{ notification: Notification; lineIds: string[] }>;
   credentials?: any;
 }
