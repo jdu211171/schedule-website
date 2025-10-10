@@ -640,7 +640,10 @@ async function processBatchWithGrouping(
         // Exponential backoff for transient errors
         if (classification.type === 'TRANSIENT') {
           // Use next attempt number based on increment earlier
-          const maxNextAttempt = Math.max(...group.notifications.map(n => (n.processingAttempts || 0) + 1));
+          const maxNextAttempt = group.notifications.reduce(
+            (max, n) => Math.max(max, (n.processingAttempts || 0) + 1),
+            -Infinity
+          );
           const backoffMs = maxNextAttempt === 1 ? 10_000 : maxNextAttempt === 2 ? 30_000 : 120_000;
           updates.scheduledAt = new Date(now + backoffMs);
         } else {
