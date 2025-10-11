@@ -202,8 +202,8 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
     try {
       // Compute pivot date (YYYY-MM-DD) from selected occurrence
       const pivot = format(getDisplayDate(), 'yyyy-MM-dd', { locale: ja });
-      // Treat editMode selection as authoritative if user didn't change cancelMode explicitly
-      const seriesScope = isRecurringLesson && (cancelMode === 'series' || editMode === 'series');
+      // Respect the cancel radio selection only; default is set when opening
+      const seriesScope = isRecurringLesson && cancelMode === 'series';
       if (seriesScope && lesson.seriesId) {
         // Cancel this and future occurrences from pivot
         await cancelMutation.mutateAsync({ seriesId: lesson.seriesId, fromDate: pivot });
