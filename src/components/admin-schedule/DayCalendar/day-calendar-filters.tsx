@@ -254,18 +254,18 @@ export const DayCalendarFilters: React.FC<DayCalendarFiltersProps> = ({
         <div className="flex items-center gap-1">
           <Faceted multiple value={filters.classTypeIds} onValueChange={handleClassTypesChange}>
             <FacetedTrigger
-              aria-label="クラスタイプフィルター"
+              aria-label="授業タイプフィルター"
               className="h-8 w-[220px] max-w-[240px] border border-input rounded-md px-2 bg-background text-foreground hover:bg-accent hover:text-accent-foreground text-sm flex items-center justify-between whitespace-nowrap overflow-hidden"
             >
               <span className="truncate">
-                {`クラスタイプ${filters.classTypeIds?.length ? `（${filters.classTypeIds.length}）` : ""}`}
+                {`授業タイプ${filters.classTypeIds?.length ? `（${filters.classTypeIds.length}）` : ""}`}
               </span>
             </FacetedTrigger>
             <FacetedContent className="w-[240px]">
-              <FacetedInput placeholder="クラスタイプを検索..." />
+              <FacetedInput placeholder="授業タイプを検索..." />
               <FacetedList>
                 <FacetedEmpty>候補がありません</FacetedEmpty>
-                <FacetedGroup heading="クラスタイプ">
+                <FacetedGroup heading="授業タイプ">
                   {classTypeOptions.map((opt) => (
                     <FacetedItem key={opt.value} value={opt.value}>
                       {opt.label}

@@ -134,7 +134,7 @@ export function useClassTypeCreate() {
         tempToServerIdMap.delete(context.tempId);
       }
 
-      toast.error("クラスタイプの追加に失敗しました", {
+      toast.error("授業タイプの追加に失敗しました", {
         id: "class-type-create-error",
         description: getErrorMessage(error),
       });
@@ -170,7 +170,7 @@ export function useClassTypeCreate() {
         );
       }
 
-      toast.success("クラスタイプを追加しました", {
+      toast.success("授業タイプを追加しました", {
         id: "class-type-create-success",
       });
     },
@@ -280,13 +280,13 @@ export function useClassTypeUpdate() {
         queryClient.setQueryData(["classType", resolvedId], context.previousClassType);
       }
 
-      toast.error("クラスタイプの更新に失敗しました", {
+      toast.error("授業タイプの更新に失敗しました", {
         id: "class-type-update-error",
         description: getErrorMessage(error),
       });
     },
     onSuccess: () => {
-      toast.success("クラスタイプを更新しました", {
+      toast.success("授業タイプを更新しました", {
         id: "class-type-update-success",
       });
     },
@@ -424,7 +424,7 @@ export function useClassTypeDelete() {
         errorMessage = error.message;
       }
 
-      toast.error("クラスタイプの削除に失敗しました", {
+      toast.error("授業タイプの削除に失敗しました", {
         id: "class-type-delete-error",
         description: errorMessage,
       });
@@ -434,7 +434,7 @@ export function useClassTypeDelete() {
         tempToServerIdMap.delete(classTypeId);
       }
 
-      toast.success("クラスタイプを削除しました", {
+      toast.success("授業タイプを削除しました", {
         id: "class-type-delete-success",
       });
     },
@@ -546,13 +546,13 @@ export function useClassTypeOrderUpdate() {
         queryClient.setQueryData(["classTypes", "all"], context.previousAllClassTypes);
       }
 
-      toast.error("クラスタイプの並び替えに失敗しました", {
+      toast.error("授業タイプの並び替えに失敗しました", {
         id: "class-type-order-error",
         description: getErrorMessage(error),
       });
     },
     onSuccess: () => {
-      toast.success("クラスタイプの並び順を更新しました", {
+      toast.success("授業タイプの並び順を更新しました", {
         id: "class-type-order-success",
       });
     },

@@ -183,8 +183,8 @@ export const POST = withRole(
 
       if (existingClassType) {
         const errorMessage = parentId
-          ? "この親クラスタイプ内で、同じ名前のクラスタイプが既に存在します" // "A class type with this name already exists under this parent"
-          : "同じ名前のルートクラスタイプが既に存在します"; // "A root class type with this name already exists"
+          ? "この親授業タイプ内で、同じ名前の授業タイプが既に存在します" // "A class type with this name already exists under this parent"
+          : "同じ名前のルート授業タイプが既に存在します"; // "A root class type with this name already exists"
         return NextResponse.json(
           { error: errorMessage },
           { status: 409 }
@@ -199,7 +199,7 @@ export const POST = withRole(
 
         if (!parentExists) {
           return NextResponse.json(
-            { error: "指定された親クラスタイプが見つかりません" }, // "Specified parent class type not found"
+            { error: "指定された親授業タイプが見つかりません" }, // "Specified parent class type not found"
             { status: 400 }
           );
         }
@@ -214,7 +214,7 @@ export const POST = withRole(
           });
           if (colorInUse) {
             return NextResponse.json(
-              { error: "この色は別のクラスタイプで利用されています" },
+              { error: "この色は別の授業タイプで利用されています" },
               { status: 409 }
             );
           }
@@ -271,7 +271,7 @@ export const POST = withRole(
       return NextResponse.json(
         {
           data: [formattedClassType],
-          message: "クラスタイプを作成しました",
+          message: "授業タイプを作成しました",
           pagination: {
             total: 1,
             page: 1,
@@ -284,7 +284,7 @@ export const POST = withRole(
     } catch (error) {
       console.error("Error creating class type:", error);
       return NextResponse.json(
-        { error: "クラスタイプの作成に失敗しました" }, // "Failed to create class type"
+        { error: "授業タイプの作成に失敗しました" }, // "Failed to create class type"
         { status: 500 }
       );
     }

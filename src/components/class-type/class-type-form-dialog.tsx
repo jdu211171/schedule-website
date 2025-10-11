@@ -80,7 +80,7 @@ export function ClassTypeFormDialog({
       // For non-root types, parentId is required
       return z.object({
         name: z.string().min(1, "名前は必須です").max(100),
-        parentId: z.string().min(1, "親クラスタイプは必須です"),
+        parentId: z.string().min(1, "親授業タイプは必須です"),
         notes: z.string().max(255).optional().nullable(),
         color: z.string().max(30).optional().nullable(),
       });
@@ -194,7 +194,7 @@ export function ClassTypeFormDialog({
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>
-            {isEditing ? "クラスタイプの編集" : "クラスタイプの作成"}
+            {isEditing ? "授業タイプの編集" : "授業タイプの作成"}
           </DialogTitle>
         </DialogHeader>
         <Form {...form}>
@@ -305,7 +305,7 @@ export function ClassTypeFormDialog({
                   </FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="クラスタイプ名を入力してください"
+                      placeholder="授業タイプ名を入力してください"
                       disabled={isRoot}
                       className={isRoot ? "bg-muted text-muted-foreground cursor-not-allowed" : ""}
                       {...field}
@@ -313,7 +313,7 @@ export function ClassTypeFormDialog({
                   </FormControl>
                   {isRoot && (
                     <p className="text-sm text-muted-foreground">
-                      基本クラスタイプの名前は変更できません
+                      基本授業タイプの名前は変更できません
                     </p>
                   )}
                   <FormMessage />
@@ -329,7 +329,7 @@ export function ClassTypeFormDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="after:content-['*'] after:ml-1 after:text-destructive">
-                      親クラスタイプ
+                      親授業タイプ
                     </FormLabel>
                     <Select
                       onValueChange={field.onChange}
@@ -337,7 +337,7 @@ export function ClassTypeFormDialog({
                     >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="親クラスタイプを選択してください" />
+                          <SelectValue placeholder="親授業タイプを選択してください" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>

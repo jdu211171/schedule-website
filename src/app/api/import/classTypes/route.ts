@@ -124,7 +124,7 @@ async function handleImport(req: NextRequest, session: any) {
           if (!parentId) {
             result.errors.push({
               row: rowNumber,
-              errors: [`親クラスタイプ「${validated.parentName}」が見つかりません`]
+              errors: [`親授業タイプ「${validated.parentName}」が見つかりません`]
             });
             continue;
           }

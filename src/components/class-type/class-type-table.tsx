@@ -149,7 +149,7 @@ export function ClassTypeTable() {
     },
     {
       accessorKey: "parentId",
-      header: "親クラスタイプ",
+      header: "親授業タイプ",
       cell: ({ row }) => {
         if (!row.original.parentId) return (
           <span className="text-muted-foreground">ルート</span>
@@ -236,7 +236,7 @@ export function ClassTypeTable() {
           variant="ghost"
           size="icon"
           onClick={() => setClassTypeToDelete(classType)}
-          title={isProtectedFromDel ? "このクラスタイプは削除できません" : "削除"}
+          title={isProtectedFromDel ? "この授業タイプは削除できません" : "削除"}
         >
           <Trash2
             className={`h-4 w-4 text-destructive ${
@@ -279,7 +279,7 @@ export function ClassTypeTable() {
         getItemId={(classType) => classType.classTypeId}
         searchValue={searchTerm}
         onSearchChange={setSearchTerm}
-        searchPlaceholder="クラスタイプを検索..."
+        searchPlaceholder="授業タイプを検索..."
         createLabel="新規作成"
         onCreateNew={() => setIsCreateDialogOpen(true)}
         isLoading={isLoading}
@@ -318,7 +318,7 @@ export function ClassTypeTable() {
           <AlertDialogHeader>
             <AlertDialogTitle>本当に削除しますか？</AlertDialogTitle>
             <AlertDialogDescription>
-              この操作は元に戻せません。クラスタイプ「{classTypeToDelete?.name}
+              この操作は元に戻せません。授業タイプ「{classTypeToDelete?.name}
               」を完全に削除します。
             </AlertDialogDescription>
           </AlertDialogHeader>
