@@ -911,7 +911,7 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
                   onClick={handleCancelClick}
                   disabled={cancelMutation.isPending || !!lesson.isCancelled}
                 >
-                  キャンセル{isRecurringLesson ? '...' : ''}
+                  キャンセル
                 </Button>
                 <div className="flex space-x-2">
                   <Button
