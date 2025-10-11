@@ -913,7 +913,6 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
                 >
                   キャンセル
                 </Button>
-                <div className="flex space-x-2">
                   <Button
                     variant="outline"
                     className="transition-all duration-200 hover:bg-accent hover:text-accent-foreground active:scale-[0.98] focus:ring-2 focus:ring-primary/30 focus:outline-none"
@@ -934,7 +933,6 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
                   >
                     {isLoading ? (editMode === 'series' ? "シリーズ保存中..." : "保存中...") : "保存"}
                   </Button>
-                </div>
               </>
             ) : (
               <>
