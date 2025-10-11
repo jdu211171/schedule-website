@@ -903,7 +903,7 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
                   onClick={handleDeleteClick}
                   disabled={deleteClassMutation.isPending || deleteSeriesMutation.isPending}
                 >
-                  削除{isRecurringLesson ? '...' : ''}
+                  削除
                 </Button>
                 <Button
                   variant="destructive"
