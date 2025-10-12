@@ -109,7 +109,7 @@ const isCellInSelection = (
   return timeIndex >= minCol && timeIndex <= maxCol;
 };
 
-const CalendarCell = React.memo(({ 
+const CalendarCell = React.memo(({
   boothIndex,
   timeSlot,
   isSelected,
@@ -181,7 +181,7 @@ const CalendarCell = React.memo(({
 
 CalendarCell.displayName = 'CalendarCell';
 
-const BoothRow = React.memo(({ 
+const BoothRow = React.memo(({
   booth,
   boothIndex,
   timeSlots,
@@ -258,7 +258,7 @@ const BoothRow = React.memo(({
 
 BoothRow.displayName = 'BoothRow';
 
-const TimeHeader = React.memo(({ 
+const TimeHeader = React.memo(({
   timeSlots,
   teacherAvailability,
   studentAvailability,
@@ -389,17 +389,10 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
     return getDateKey(date); // Use consistent date formatting
   }, [date]);
 
-  // FIXED: Better date filtering using normalized dates
+  // Filter by day only (visibility management affects filter options, not calendar rendering)
   const filteredSessions = useMemo(() => {
     const targetDateStr = normalizeDate(date);
-
-    const filtered = classSessions.filter(session => {
-      const sessionDateStr = normalizeDate(session.date);
-      const matches = sessionDateStr === targetDateStr;
-      return matches;
-    });
-
-    return filtered;
+    return classSessions.filter(session => normalizeDate(session.date) === targetDateStr);
   }, [classSessions, date]);
 
   const earliestLesson = useMemo(() => {
