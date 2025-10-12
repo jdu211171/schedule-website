@@ -287,7 +287,7 @@ export const DayCalendarFilters: React.FC<DayCalendarFiltersProps> = ({
           <Faceted multiple value={filters.classTypeIds} onValueChange={handleClassTypesChange}>
             <FacetedTrigger
               aria-label="授業タイプフィルター"
-              className="h-8 w-[120px] max-w-[240px] border border-input rounded-md px-2 bg-background text-foreground hover:bg-accent hover:text-accent-foreground text-sm flex items-center justify-between whitespace-nowrap overflow-hidden"
+              className="h-8 w-[220px] max-w-[240px] border border-input rounded-md px-2 bg-background text-foreground hover:bg-accent hover:text-accent-foreground text-sm flex items-center justify-between whitespace-nowrap overflow-hidden"
             >
               <span className="truncate">
                 {`授業タイプ${filters.classTypeIds?.length ? `（${filters.classTypeIds.length}）` : ""}`}
@@ -320,7 +320,7 @@ export const DayCalendarFilters: React.FC<DayCalendarFiltersProps> = ({
           )}
         </div>
         <Button variant="outline" size="sm" className="h-8" onClick={() => setOpenManage(true)}>
-          表示
+          表示管理
         </Button>
         <div className="flex items-center gap-1">
           <SearchableSelect
