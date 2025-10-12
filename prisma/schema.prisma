@@ -619,10 +619,25 @@ model User {
   defaultBranch          Branch?                 @relation("UserDefaultBranch", fields: [defaultBranchId], references: [branchId])
   // Reverse relation for ClassSession.cancelledBy
   cancelledClassSessions ClassSession[]
+  classTypeVisibilityPreference UserClassTypeVisibilityPreference?
 
   @@index([order])
   @@index([defaultBranchId])
   @@map("users")
+}
+
+/// Stores per-user visibility preferences for Class Types
+model UserClassTypeVisibilityPreference {
+  /// Use userId as the primary key to ensure a single row per user
+  userId               String   @id @map("user_id")
+  hiddenClassTypeIds   String[] @default([]) @map("hidden_class_type_ids")
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt            DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([updatedAt])
+  @@map("user_class_type_visibility_preferences")
 }
 
 model Archive {

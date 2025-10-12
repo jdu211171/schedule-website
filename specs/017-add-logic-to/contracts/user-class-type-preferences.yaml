@@ -1,0 +1,55 @@
+openapi: 3.0.3
+info:
+  title: User Class Type Visibility Preferences API
+  version: 1.0.0
+  description: API for per-user hidden Class Type IDs used to manage visibility in schedule views.
+servers:
+  - url: https://example.com
+paths:
+  /api/preferences/class-types:
+    get:
+      summary: Get hidden Class Type IDs for the current user
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClassTypeVisibilityPreference'
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server error
+    put:
+      summary: Replace hidden Class Type IDs for the current user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClassTypeVisibilityPreference'
+      responses:
+        '200':
+          description: Updated preference
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClassTypeVisibilityPreference'
+        '400':
+          description: Invalid payload
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server error
+components:
+  schemas:
+    ClassTypeVisibilityPreference:
+      type: object
+      required:
+        - hiddenClassTypeIds
+      properties:
+        hiddenClassTypeIds:
+          type: array
+          items:
+            type: string
+          description: Array of Class Type IDs the user has chosen to hide

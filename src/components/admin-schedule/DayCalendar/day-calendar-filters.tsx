@@ -10,9 +10,12 @@ import { DayFilters } from '@/hooks/useClassSessionQuery';
 import { X } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import { fetchClassTypeOptions } from '@/lib/class-type-options';
+import { applyHiddenClassTypes } from '@/lib/filter-class-type-options';
+import { useHiddenClassTypes } from '@/hooks/useClassTypeVisibility';
 import { getClassTypeSelection, setClassTypeSelection } from '@/lib/class-type-filter-persistence';
 import { Faceted, FacetedBadgeList, FacetedContent, FacetedEmpty, FacetedGroup, FacetedInput, FacetedItem, FacetedList, FacetedTrigger } from '@/components/ui/faceted';
 import type { ClassTypeOption } from '@/types/class-type';
+import ManageClassTypeVisibilityDialog from './manage-class-type-visibility-dialog';
 
 interface DayCalendarFiltersProps {
   filters: DayFilters;
@@ -40,7 +43,10 @@ export const DayCalendarFilters: React.FC<DayCalendarFiltersProps> = ({
 
   // Class Type options (server-provided)
   const [classTypeOptions, setClassTypeOptions] = useState<ClassTypeOption[]>([]);
+  const [allClassTypeOptions, setAllClassTypeOptions] = useState<ClassTypeOption[]>([]);
   const [classTypeLoading, setClassTypeLoading] = useState<boolean>(false);
+  const { data: hiddenPref } = useHiddenClassTypes();
+  const [openManage, setOpenManage] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -48,7 +54,12 @@ export const DayCalendarFilters: React.FC<DayCalendarFiltersProps> = ({
       setClassTypeLoading(true);
       try {
         const opts = await fetchClassTypeOptions();
-        if (mounted) setClassTypeOptions(opts);
+        const hiddenIds = hiddenPref?.hiddenClassTypeIds ?? [];
+        const filtered = applyHiddenClassTypes(opts, hiddenIds);
+        if (mounted) {
+          setAllClassTypeOptions(opts);
+          setClassTypeOptions(filtered);
+        }
       } finally {
         if (mounted) setClassTypeLoading(false);
       }
@@ -56,7 +67,28 @@ export const DayCalendarFilters: React.FC<DayCalendarFiltersProps> = ({
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [hiddenPref?.hiddenClassTypeIds]);
+
+  // Cross-tab subscription for immediate updates and dialog open requests
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof BroadcastChannel === 'undefined') return;
+    const ch = new BroadcastChannel('class-type-visibility');
+    const onMsg = (evt: MessageEvent) => {
+      const data = evt.data as { type?: string; ids?: string[] };
+      if (data?.type === 'hiddenClassTypesChanged') {
+        const filtered = applyHiddenClassTypes(allClassTypeOptions, data.ids || []);
+        setClassTypeOptions(filtered);
+      }
+      if (data?.type === 'openManageClassTypeVisibility') {
+        setOpenManage(true);
+      }
+    };
+    ch.addEventListener('message', onMsg);
+    return () => {
+      ch.removeEventListener('message', onMsg);
+      ch.close();
+    };
+  }, [allClassTypeOptions]);
 
   // Smart matching + searchable combobox for teacher/student (same as admin-calendar-day)
   const [teacherSearch, setTeacherSearch] = useState<string>('');
@@ -287,6 +319,9 @@ export const DayCalendarFilters: React.FC<DayCalendarFiltersProps> = ({
             </Button>
           )}
         </div>
+        <Button variant="outline" size="sm" className="h-8" onClick={() => setOpenManage(true)}>
+          表示管理
+        </Button>
         <div className="flex items-center gap-1">
           <SearchableSelect
             value={filters.subjectId || ''}
@@ -387,6 +422,7 @@ export const DayCalendarFilters: React.FC<DayCalendarFiltersProps> = ({
           <X className="h-4 w-4" />
         </Button>
       )}
+      <ManageClassTypeVisibilityDialog open={openManage} onOpenChange={setOpenManage} />
     </div>
   );
 };
