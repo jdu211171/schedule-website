@@ -21,27 +21,10 @@ export async function setUserHiddenClassTypeIds(userId: string, ids: string[]): 
   const validIds = new Set(existing.map((e) => e.classTypeId));
   const pruned = uniqueIds.filter((id) => validIds.has(id));
 
-  const anyPrisma = prisma as unknown as PrismaClient & Record<string, any>;
-  const delegate = anyPrisma.userClassTypeVisibilityPreference as
-    | { upsert: Function }
-    | undefined;
-
-  if (delegate && typeof delegate.upsert === "function") {
-    await (delegate as any).upsert({
-      where: { userId },
-      create: { userId, hiddenClassTypeIds: pruned },
-      update: { hiddenClassTypeIds: pruned },
-    });
-  } else {
-    // Fallback for environments where the generated delegate isn't available
-    await anyPrisma.$executeRawUnsafe(
-      `INSERT INTO public.user_class_type_visibility_preferences (user_id, hidden_class_type_ids)
-       VALUES ($1, $2::text[])
-       ON CONFLICT (user_id) DO UPDATE SET hidden_class_type_ids = EXCLUDED.hidden_class_type_ids, updated_at = CURRENT_TIMESTAMP`,
-      userId,
-      pruned
-    );
-  }
-
+  await prisma.userClassTypeVisibilityPreference.upsert({
+    where: { userId },
+    create: { userId, hiddenClassTypeIds: pruned },
+    update: { hiddenClassTypeIds: pruned },
+  });
   return pruned;
 }
