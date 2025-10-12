@@ -1,6 +1,7 @@
 // src/hooks/useClassTypeVisibility.ts
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetcher } from "@/lib/fetcher";
+import { postHiddenClassTypesChanged } from "@/lib/class-type-visibility-broadcast";
 import type { UserClassTypeVisibilityPreferenceDTO, SetUserClassTypeVisibilityRequest } from "@/types/user-preferences";
 
 const QUERY_KEY = ["userHiddenClassTypes"] as const;
@@ -39,12 +40,8 @@ export function useSetHiddenClassTypes() {
     },
     onSuccess: (data) => {
       qc.setQueryData(QUERY_KEY, { hiddenClassTypeIds: data.hiddenClassTypeIds });
-      // Broadcast cross-tab update
-      try {
-        const ch = new BroadcastChannel("class-type-visibility");
-        ch.postMessage({ type: "hiddenClassTypesChanged", ids: data.hiddenClassTypeIds });
-        ch.close();
-      } catch {}
+      // Broadcast cross-tab update via shared utility for consistency
+      postHiddenClassTypesChanged(data.hiddenClassTypeIds);
     },
   });
 }
