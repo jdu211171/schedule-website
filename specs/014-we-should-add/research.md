@@ -19,7 +19,7 @@
 - Branch scoping: Same selection across all branches.
   - Rationale: Simpler UX, consistent with other persisted filters.
 
-- Empty options behavior: Show the control disabled with an informative hint (e.g., "クラスタイプがありません").
+- Empty options behavior: Show the control disabled with an informative hint (e.g., "授業タイプがありません").
   - Rationale: Discoverability; hides less capability compared to removing control.
 
 ## Accessibility & Localization (Non-blocking Assumptions)

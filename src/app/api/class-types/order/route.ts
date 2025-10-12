@@ -36,7 +36,7 @@ export const PATCH = withBranchAccess(
 
       if (existingClassTypes.length !== classTypeIds.length) {
         return NextResponse.json(
-          { error: "一部のクラスタイプIDが存在しません" },
+          { error: "一部の授業タイプIDが存在しません" },
           { status: 400 }
         );
       }
@@ -52,12 +52,12 @@ export const PATCH = withBranchAccess(
       );
 
       return NextResponse.json({
-        message: "クラスタイプの順序を更新しました",
+        message: "授業タイプの順序を更新しました",
       });
     } catch (error) {
       console.error("Error updating class type order:", error);
       return NextResponse.json(
-        { error: "クラスタイプの順序更新に失敗しました" },
+        { error: "授業タイプの順序更新に失敗しました" },
         { status: 500 }
       );
     }

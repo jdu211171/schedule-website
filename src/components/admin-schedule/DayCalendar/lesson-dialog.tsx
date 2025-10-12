@@ -162,6 +162,9 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
   const [editMode, setEditMode] = useState<EditMode>('single');
   const [deleteMode, setDeleteMode] = useState<DeleteMode>('single');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  // Cancel flow state (mirrors delete flow)
+  const [cancelMode, setCancelMode] = useState<EditMode>('single');
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const queryClient = useQueryClient();
 
   // Состояния для типов уроков
@@ -184,6 +187,66 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
       return lesson.date;
     }
     return new Date(lesson.date as string);
+  };
+
+  const handleCancelClick = () => {
+    // If user already selected series scope in edit radiogroup, carry it over as default for cancel
+    if (isRecurringLesson) {
+      setCancelMode(editMode);
+    }
+    setShowCancelConfirm(true);
+  };
+
+  const handleCancel = async () => {
+    if (!lesson.classId) return;
+    try {
+      // Compute pivot date (YYYY-MM-DD) from selected occurrence
+      const pivot = format(getDisplayDate(), 'yyyy-MM-dd', { locale: ja });
+      // Respect the cancel radio selection only; default is set when opening
+      const seriesScope = isRecurringLesson && cancelMode === 'series';
+      if (seriesScope && lesson.seriesId) {
+        // Cancel this and future occurrences from pivot
+        await cancelMutation.mutateAsync({ seriesId: lesson.seriesId, fromDate: pivot });
+        // Mirror delete: shorten blueprint and pause generation
+        try {
+          if (updateSeriesMeta) {
+            await updateSeriesMeta.mutateAsync({ endDate: pivot, lastGeneratedThrough: pivot, status: 'PAUSED' } as any);
+          } else {
+            // Fallback direct fetch if hook not available
+            await fetch(`/api/class-series/${lesson.seriesId}`, {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Selected-Branch': (typeof window !== 'undefined' ? (localStorage.getItem('selectedBranchId') || '') : '')
+              },
+              body: JSON.stringify({ endDate: pivot, lastGeneratedThrough: pivot, status: 'PAUSED' }),
+            });
+          }
+        } catch (_) {}
+        toast.success('この回以降をキャンセルし、シリーズを停止しました');
+        try { broadcastClassSessionsChanged(); } catch {}
+        onOpenChange(false);
+      } else {
+        // Single occurrence cancel
+        await cancelMutation.mutateAsync({ classIds: [lesson.classId] });
+        const dateKey = getDateKey(getDisplayDate());
+        try {
+          broadcastClassSessionsChanged([dateKey]);
+          await queryClient.refetchQueries({
+            predicate: ({ queryKey }) => Array.isArray(queryKey)
+              && queryKey[0] === 'classSessions'
+              && queryKey[1] === 'byDate'
+              && queryKey[2] === dateKey,
+            type: 'active' as any,
+          });
+        } catch {}
+        onOpenChange(false);
+      }
+    } catch (e:any) {
+      toast.error('キャンセルに失敗しました');
+    } finally {
+      setShowCancelConfirm(false);
+    }
   };
 
   const { teacherAvailability, studentAvailability } = useAvailability(
@@ -583,6 +646,32 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
               </div>
             )}
 
+            {showCancelConfirm && isRecurringLesson && (
+              <div className="p-3 border rounded-lg bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800">
+                <div className="mb-2">
+                  <Label className="text-sm font-medium text-foreground">キャンセル範囲を選択:</Label>
+                </div>
+                <RadioGroup
+                  value={cancelMode}
+                  onValueChange={(value: EditMode) => setCancelMode(value)}
+                  className="flex flex-col space-y-2"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="single" id="cancel-single" />
+                    <Label htmlFor="cancel-single" className="text-sm font-normal cursor-pointer">
+                      この授業のみキャンセル
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="series" id="cancel-series" />
+                    <Label htmlFor="cancel-series" className="text-sm font-normal cursor-pointer">
+                      この回以降をキャンセル
+                    </Label>
+                  </div>
+                </RadioGroup>
+              </div>
+            )}
+
             {showDeleteConfirm && isRecurringLesson && (
               <div className="p-3 border rounded-lg bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800">
                 <div className="mb-2">
@@ -814,9 +903,16 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
                   onClick={handleDeleteClick}
                   disabled={deleteClassMutation.isPending || deleteSeriesMutation.isPending}
                 >
-                  削除{isRecurringLesson ? '...' : ''}
+                  削除
                 </Button>
-                <div className="flex space-x-2">
+                <Button
+                  variant="destructive"
+                  className="transition-all duration-200 hover:brightness-110 active:scale-[0.98] focus:ring-2 focus:ring-destructive/30 focus:outline-none"
+                  onClick={handleCancelClick}
+                  disabled={cancelMutation.isPending || !!lesson.isCancelled}
+                >
+                  キャンセル
+                </Button>
                   <Button
                     variant="outline"
                     className="transition-all duration-200 hover:bg-accent hover:text-accent-foreground active:scale-[0.98] focus:ring-2 focus:ring-primary/30 focus:outline-none"
@@ -828,7 +924,7 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
                       setEditMode('single');
                     }}
                   >
-                    キャンセル
+                    編集をやめる
                   </Button>
                   <Button
                     className="transition-all duration-200 hover:brightness-110 active:scale-[0.98] focus:ring-2 focus:ring-primary/30 focus:outline-none"
@@ -837,7 +933,6 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
                   >
                     {isLoading ? (editMode === 'series' ? "シリーズ保存中..." : "保存中...") : "保存"}
                   </Button>
-                </div>
               </>
             ) : (
               <>
@@ -948,6 +1043,22 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
         cancelText="キャンセル"
         onConfirm={handleDelete}
         isLoading={deleteClassMutation.isPending || deleteSeriesMutation.isPending}
+      />
+
+      {/* Cancel confirm */}
+      <ConfirmDeleteDialog
+        open={showCancelConfirm}
+        onOpenChange={setShowCancelConfirm}
+        title={isRecurringLesson && cancelMode === 'series' ? 'シリーズのキャンセル' : '授業のキャンセル'}
+        description={
+          isRecurringLesson && cancelMode === 'series'
+            ? `本当にこのシリーズの本日以降の全授業をキャンセル状態にしますか？\n\n${lesson.teacher?.name || lesson.teacherName || ''}先生の${lesson.subject?.name || lesson.subjectName || ''}の繰り返し授業がキャンセルされます。\n\n注意: 過去の授業は変更しません。`
+            : `本当にこの授業をキャンセルしますか？\n\n${format(getDisplayDate(), 'yyyy年MM月dd日', { locale: ja })} ${editedLesson?.formattedStartTime || ''}の授業をキャンセル状態にします。${isRecurringLesson ? '\n\n注意: これは繰り返しシリーズの一部ですが、この授業のみがキャンセルされます。' : ''}`
+        }
+        confirmText={cancelMode === 'series' ? 'シリーズをキャンセル' : 'キャンセル'}
+        cancelText="やめる"
+        onConfirm={handleCancel}
+        isLoading={cancelMutation.isPending}
       />
     </>
   );

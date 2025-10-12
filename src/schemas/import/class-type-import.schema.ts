@@ -3,8 +3,8 @@ import { z } from "zod";
 export const classTypeImportSchema = z.object({
   name: z
     .string()
-    .min(1, "クラスタイプ名は必須です")
-    .max(100, "クラスタイプ名は100文字以下で入力してください"),
+    .min(1, "授業タイプ名は必須です")
+    .max(100, "授業タイプ名は100文字以下で入力してください"),
   notes: z
     .string()
     .transform(val => val === "" ? null : val)

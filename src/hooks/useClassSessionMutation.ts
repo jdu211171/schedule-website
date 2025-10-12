@@ -1010,11 +1010,29 @@ export function useClassSessionCancel() {
     Error,
     { classIds?: string[]; seriesId?: string; fromDate?: string; reason?: 'SICK' | 'PERMANENTLY_LEFT' | 'ADMIN_CANCELLED' }
   >({
-    mutationFn: (payload) =>
-      fetcher('/api/class-sessions/cancel', {
+    mutationFn: async (payload) => {
+      // Ensure branch context is forwarded for non-admin users
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      try {
+        if (typeof window !== 'undefined') {
+          headers['X-Selected-Branch'] = localStorage.getItem('selectedBranchId') || '';
+        }
+      } catch {}
+      const res = await fetch('/api/class-sessions/cancel', {
         method: 'POST',
+        headers,
         body: JSON.stringify(payload),
-      }),
+      });
+      if (!res.ok) {
+        let info: any = undefined;
+        try { info = await res.json(); } catch {}
+        const msg = (info && (info.error || info.message)) || '授業のキャンセルに失敗しました';
+        throw new Error(msg);
+      }
+      return res.json();
+    },
     onSuccess: (response) => {
       toast.success(response.message || '授業をキャンセルしました');
     },

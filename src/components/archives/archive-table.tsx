@@ -206,7 +206,7 @@ export function ArchiveTable() {
                     <TableHead>科目</TableHead>
                     <TableHead>ブース</TableHead>
                     <TableHead>支店</TableHead>
-                    <TableHead>クラスタイプ</TableHead>
+                    <TableHead>授業タイプ</TableHead>
                     <TableHead>種別</TableHead>
                     <TableHead>アーカイブ日時</TableHead>
                   </TableRow>

@@ -1,0 +1,38 @@
+openapi: 3.0.3
+info:
+  title: Update Class Series
+  version: 1.0.0
+paths:
+  /api/class-series/{seriesId}:
+    patch:
+      summary: Update a class series
+      description: Update series fields including `status`. Used to set `status: PAUSED` after cancel-from.
+      parameters:
+        - in: path
+          name: seriesId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [ ACTIVE, PAUSED, ENDED ]
+              additionalProperties: true
+      responses:
+        '200':
+          description: Series updated
+        '400':
+          description: Invalid input
+        '403':
+          description: Forbidden for branch context
+        '404':
+          description: Not found
+        '500':
+          description: Server error
+

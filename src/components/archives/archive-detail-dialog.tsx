@@ -153,7 +153,7 @@ export function ArchiveDetailDialog({
                 <div className="flex items-start gap-3">
                   <Tag className="h-4 w-4 text-muted-foreground mt-0.5" />
                   <div className="flex-1">
-                    <p className="text-sm font-medium">クラスタイプ</p>
+                    <p className="text-sm font-medium">授業タイプ</p>
                     <div className="flex items-center gap-2 mt-1">
                       <p className="text-sm text-muted-foreground">
                         {archive.classTypeName || "未設定"}

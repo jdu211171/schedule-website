@@ -84,7 +84,7 @@ export const GET = withRole(
 
     if (!classTypeId) {
       return NextResponse.json(
-        { error: "クラスタイプIDが必要です" },
+        { error: "授業タイプIDが必要です" },
         { status: 400 }
       );
     }
@@ -112,7 +112,7 @@ export const GET = withRole(
 
     if (!classType) {
       return NextResponse.json(
-        { error: "クラスタイプが見つかりません" },
+        { error: "授業タイプが見つかりません" },
         { status: 404 }
       );
     }
@@ -140,7 +140,7 @@ export const PATCH = withRole(
       const classTypeId = request.url.split("/").pop();
       if (!classTypeId) {
         return NextResponse.json(
-          { error: "クラスタイプIDが必要です" },
+          { error: "授業タイプIDが必要です" },
           { status: 400 }
         );
       }
@@ -163,7 +163,7 @@ export const PATCH = withRole(
 
       if (!existingClassType) {
         return NextResponse.json(
-          { error: "クラスタイプが見つかりません" },
+          { error: "授業タイプが見つかりません" },
           { status: 404 }
         );
       }
@@ -179,7 +179,7 @@ export const PATCH = withRole(
         const hasDisallowed = Object.keys(body).some((k) => !allowed.has(k));
         if (hasDisallowed) {
           return NextResponse.json(
-            { error: "基本クラスタイプでは色とメモのみ編集可能です" },
+            { error: "基本授業タイプでは色とメモのみ編集可能です" },
             { status: 403 }
           );
         }
@@ -196,7 +196,7 @@ export const PATCH = withRole(
             });
             if (colorInUse) {
               return NextResponse.json(
-                { error: "この色は別のクラスタイプで利用されています" },
+                { error: "この色は別の授業タイプで利用されています" },
                 { status: 409 }
               );
             }
@@ -222,7 +222,7 @@ export const PATCH = withRole(
 
         return NextResponse.json({
           data: [formattedClassType],
-          message: "クラスタイプを更新しました",
+          message: "授業タイプを更新しました",
           pagination: {
             total: 1,
             page: 1,
@@ -247,8 +247,8 @@ export const PATCH = withRole(
 
         if (nameExists) {
           const errorMessage = targetParentId
-            ? "この親クラスタイプ内で、同じ名前のクラスタイプが既に存在します"
-            : "同じ名前のルートクラスタイプが既に存在します";
+            ? "この親授業タイプ内で、同じ名前の授業タイプが既に存在します"
+            : "同じ名前のルート授業タイプが既に存在します";
           return NextResponse.json(
             { error: errorMessage },
             { status: 409 }
@@ -266,7 +266,7 @@ export const PATCH = withRole(
 
           if (!parentExists) {
             return NextResponse.json(
-              { error: "指定された親クラスタイプが見つかりません" },
+              { error: "指定された親授業タイプが見つかりません" },
               { status: 400 }
             );
           }
@@ -280,7 +280,7 @@ export const PATCH = withRole(
             return NextResponse.json(
               {
                 error:
-                  "階層構造が循環参照になるため、この親クラスタイプを設定できません",
+                  "階層構造が循環参照になるため、この親授業タイプを設定できません",
               },
               { status: 400 }
             );
@@ -300,7 +300,7 @@ export const PATCH = withRole(
           });
           if (colorInUse) {
             return NextResponse.json(
-              { error: "この色は別のクラスタイプで利用されています" },
+              { error: "この色は別の授業タイプで利用されています" },
               { status: 409 }
             );
           }
@@ -340,7 +340,7 @@ export const PATCH = withRole(
 
       return NextResponse.json({
         data: [formattedClassType],
-        message: "クラスタイプを更新しました",
+        message: "授業タイプを更新しました",
         pagination: {
           total: 1,
           page: 1,
@@ -351,7 +351,7 @@ export const PATCH = withRole(
     } catch (error) {
       console.error("Error updating class type:", error);
       return NextResponse.json(
-        { error: "クラスタイプの更新に失敗しました" },
+        { error: "授業タイプの更新に失敗しました" },
         { status: 500 }
       );
     }
@@ -366,7 +366,7 @@ export const DELETE = withBranchAccess(
 
     if (!classTypeId) {
       return NextResponse.json(
-        { error: "クラスタイプIDが必要です" },
+        { error: "授業タイプIDが必要です" },
         { status: 400 }
       );
     }
@@ -390,7 +390,7 @@ export const DELETE = withBranchAccess(
 
       if (!classType) {
         return NextResponse.json(
-          { error: "クラスタイプが見つかりません" },
+          { error: "授業タイプが見つかりません" },
           { status: 404 }
         );
       }
@@ -398,7 +398,7 @@ export const DELETE = withBranchAccess(
       // Check if this is a protected class type (通常授業 or 特別授業)
       if (isProtectedClassType(classType)) {
         return NextResponse.json(
-          { error: "この基本クラスタイプは削除できません" },
+          { error: "この基本授業タイプは削除できません" },
           { status: 403 }
         );
       }
@@ -411,7 +411,7 @@ export const DELETE = withBranchAccess(
       if (childCount > 0) {
         return NextResponse.json(
           {
-            error: "サブクラスタイプが存在するため、このクラスタイプを削除できません。先にサブクラスタイプを削除してください。",
+            error: "サブ授業タイプが存在するため、この授業タイプを削除できません。先にサブ授業タイプを削除してください。",
             details: {
               childTypes: childCount
             }
@@ -449,7 +449,7 @@ export const DELETE = withBranchAccess(
         
         return NextResponse.json(
           { 
-            error: `このクラスタイプは${classSessionCount}件の授業セッション${branchText}に関連付けられているため削除できません。`,
+            error: `この授業タイプは${classSessionCount}件の授業セッション${branchText}に関連付けられているため削除できません。`,
             details: {
               classSessions: classSessionCount,
               branches: branchNames
@@ -467,7 +467,7 @@ export const DELETE = withBranchAccess(
       return NextResponse.json(
         {
           data: [],
-          message: "クラスタイプを削除しました",
+          message: "授業タイプを削除しました",
           pagination: {
             total: 0,
             page: 0,
@@ -480,7 +480,7 @@ export const DELETE = withBranchAccess(
     } catch (error) {
       console.error("Error deleting class type:", error);
       return NextResponse.json(
-        { error: "クラスタイプの削除に失敗しました" },
+        { error: "授業タイプの削除に失敗しました" },
         { status: 500 }
       );
     }
