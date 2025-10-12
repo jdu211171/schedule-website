@@ -70,7 +70,7 @@ export default function ManageClassTypeVisibilityDialog({ open, onOpenChange }: 
         <DialogHeader>
           <DialogTitle>授業タイプの表示管理</DialogTitle>
           <DialogDescription>
-            不要な授業タイプを非表示にできます。選択した授業タイプはカレンダー表示とフィルターの候補から除外されます。
+            不要な授業タイプを非表示にできます。選択した授業タイプはフィルターの候補からのみ除外されます（カレンダー表示には影響しません）。
           </DialogDescription>
         </DialogHeader>
 
