@@ -245,7 +245,9 @@ export function useMultipleWeeksClassSessions(selectedWeeks: Date[], filters: Da
           const params = new URLSearchParams({
             startDate,
             endDate,
-            limit: '100'
+            // Fetch a high enough cap to cover busy weeks
+            limit: '500',
+            page: '1',
           });
 
           if (filters.subjectId) {
