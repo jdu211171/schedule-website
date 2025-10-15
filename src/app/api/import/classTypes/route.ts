@@ -65,6 +65,7 @@ async function handleImport(req: NextRequest, session: any) {
       "備考": "notes",
       "親タイプ": "parentName",
       "表示順": "order",
+      "フィルター表示": "visibleInFilters",
     };
 
     let actualHeaders = Object.keys(parseResult.data[0]);
@@ -140,6 +141,7 @@ async function handleImport(req: NextRequest, session: any) {
                 notes: validated.notes ?? null,
                 parentId: parentId ?? existing.parentId,
                 order: validated.order ?? existing.order,
+                ...(validated.visibleInFilters !== undefined ? { visibleInFilters: validated.visibleInFilters } : {}),
               },
             });
             result.success++;
@@ -159,6 +161,7 @@ async function handleImport(req: NextRequest, session: any) {
               notes: validated.notes ?? existingClassType.notes,
               parentId: parentId ?? existingClassType.parentId,
               order: validated.order ?? existingClassType.order,
+              ...(validated.visibleInFilters !== undefined ? { visibleInFilters: validated.visibleInFilters } : {}),
             },
           });
           result.success++;
@@ -194,7 +197,8 @@ async function handleImport(req: NextRequest, session: any) {
             data: {
               name: data.name,
               notes: data.notes,
-              order: data.order
+              order: data.order,
+              ...(data.visibleInFilters !== undefined ? { visibleInFilters: data.visibleInFilters as any } : {}),
             }
           });
           // Update the map for subsequent parent lookups
@@ -216,7 +220,8 @@ async function handleImport(req: NextRequest, session: any) {
               name: data.name,
               notes: data.notes,
               parentId: parentId,
-              order: data.order
+              order: data.order,
+              ...(data.visibleInFilters !== undefined ? { visibleInFilters: data.visibleInFilters as any } : {}),
             }
           });
           result.success++;

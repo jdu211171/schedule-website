@@ -32,6 +32,7 @@ export const GET = withRole(
       "notes",
       "order",
       "childrenCount",
+      "visibleInFilters",
     ];
     const visibleColumns = rawColumns.includes("id") ? rawColumns : ["id", ...rawColumns];
 
@@ -43,6 +44,7 @@ export const GET = withRole(
       notes: "備考",
       order: "表示順",
       childrenCount: "子タイプ数",
+      visibleInFilters: "フィルター表示",
     };
 
     // Build CSV header
@@ -66,6 +68,8 @@ export const GET = withRole(
             return classType.order?.toString() || "";
           case "childrenCount":
             return classType.children.length.toString();
+          case "visibleInFilters":
+            return (classType as any).visibleInFilters === false ? "false" : "true";
           default:
             return "";
         }

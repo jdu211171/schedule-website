@@ -51,6 +51,8 @@ import { useStudents } from "@/hooks/useStudentQuery";
 import { useSubjects } from "@/hooks/useSubjectQuery";
 import { useBooths } from "@/hooks/useBoothQuery";
 import { useClassTypes } from "@/hooks/useClassTypeQuery";
+import { useQueryClient } from "@tanstack/react-query";
+import { subscribeClassTypesChanged } from "@/lib/class-types-broadcast";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Tooltip,
@@ -163,7 +165,19 @@ export function ClassSessionFormDialog({
   const { data: teachersData } = useTeachers({ limit: 100 });
   const { data: studentsData } = useStudents({ limit: 100 });
   const { data: subjectsData } = useSubjects({ limit: 100 });
-  const { data: classTypesData } = useClassTypes({ limit: 100 });
+  // Admin form should list ALL class types, even those hidden from filters
+  const { data: classTypesData } = useClassTypes({ limit: 100, visibleOnly: false });
+  const queryClient = useQueryClient();
+
+  // Live refresh class types when admin toggles visibility
+  useEffect(() => {
+    const unsubscribe = subscribeClassTypesChanged(() => {
+      queryClient.invalidateQueries({ queryKey: ["classTypes"] });
+    });
+    return () => {
+      unsubscribe();
+    };
+  }, [queryClient]);
   const { data: boothsData } = useBooths({ limit: 100 });
 
   // Get default values based on filters or class session
