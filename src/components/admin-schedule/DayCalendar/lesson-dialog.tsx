@@ -266,13 +266,14 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
     return classTypes.filter(type => type.parentId === selectedParentClassTypeId) || [];
   }, [classTypes, selectedParentClassTypeId]);
 
-  // Загрузка типов уроков
+  // Загрузка типов уроков (ALL types for admin edit)
   useEffect(() => {
     if (open) {
       const loadClassTypes = async () => {
         setIsLoadingClassTypes(true);
         try {
-          const response = await fetcher<{ data: ClassType[] }>('/api/class-types');
+          const params = new URLSearchParams({ limit: '200', includeParent: 'true' });
+          const response = await fetcher<{ data: ClassType[] }>(`/api/admin/masterdata/class-types?${params.toString()}`);
           setClassTypes(response.data || []);
         } catch (err) {
           console.error("Error loading class types:", err);
@@ -281,6 +282,20 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
         }
       };
       loadClassTypes();
+      // Live refresh when class types are toggled in masterdata
+      try {
+        const ch = new BroadcastChannel('class-types');
+        const onMsg = (evt: MessageEvent) => {
+          if ((evt.data as any)?.type === 'classTypesChanged') {
+            loadClassTypes();
+          }
+        };
+        ch.addEventListener('message', onMsg);
+        return () => {
+          ch.removeEventListener('message', onMsg);
+          ch.close();
+        };
+      } catch {}
     }
   }, [open]);
 

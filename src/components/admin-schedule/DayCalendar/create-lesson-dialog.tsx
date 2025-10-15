@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { X, CheckCircle2, AlertTriangle, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fetcher } from '@/lib/fetcher';
+import { subscribeClassTypesChanged } from '@/lib/class-types-broadcast';
 import {
   NewClassSessionData,
   formatDateToString,
@@ -1201,7 +1202,9 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
     const loadClassTypes = async () => {
       setIsLoadingClassTypes(true);
       try {
-        const response = await fetcher<{ data: ClassType[] }>('/api/class-types');
+        // Admin creation dialog: request ALL class types (ignore global filter visibility)
+        const params = new URLSearchParams({ limit: '200', includeParent: 'true' });
+        const response = await fetcher<{ data: ClassType[] }>(`/api/admin/masterdata/class-types?${params.toString()}`);
         setClassTypes(response.data || []);
 
         const regularType = response.data.find(type => type.name === '通常授業');
@@ -1216,9 +1219,17 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
       }
     };
 
+    let unsubscribe: (() => void) | null = null;
     if (open) {
       loadClassTypes();
+      // Live refresh on class type visibility changes
+      unsubscribe = subscribeClassTypesChanged(() => {
+        loadClassTypes();
+      });
     }
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
   }, [open]);
 
   // Initialize dialog effect
