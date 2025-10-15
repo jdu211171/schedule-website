@@ -20,6 +20,7 @@ type FormattedClassType = {
   parentId: string | null;
   order: number | null;
   color: string | null;
+  visibleInFilters: boolean;
   parent?: FormattedClassType | null;
   children?: FormattedClassType[];
   createdAt: Date;
@@ -36,6 +37,7 @@ const formatClassType = (
   parentId: classType.parentId,
   order: classType.order,
   color: (classType as any).color ?? null,
+  visibleInFilters: Boolean((classType as any).visibleInFilters ?? true),
   parent: classType.parent ? formatClassType(classType.parent) : undefined,
   children: classType.children?.map(formatClassType),
   createdAt: classType.createdAt,
@@ -86,11 +88,14 @@ export const GET = withRole(
       );
     }
 
-    const { page, limit, name, parentId, includeChildren, includeParent, sortBy, sortOrder } =
+    const { page, limit, name, parentId, includeChildren, includeParent, visibleOnly, sortBy, sortOrder } =
       result.data;
 
     // Build filter conditions
     const where: any = {};
+    if (visibleOnly) {
+      where.visibleInFilters = true;
+    }
 
     if (name) {
       where.name = {

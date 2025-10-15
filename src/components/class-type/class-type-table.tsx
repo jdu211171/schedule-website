@@ -26,10 +26,15 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { ClassTypeFormDialog } from "./class-type-form-dialog";
-import { ClassType, useClassTypes } from "@/hooks/useClassTypeQuery";
+import { useAdminClassTypes } from "@/hooks/useAdminClassTypeQuery";
+import type { AdminClassType as ClassType } from "@/hooks/useAdminClassTypeQuery";
 import { useSession } from "next-auth/react";
 import { CSVImportDialog } from "@/components/ui/csv-import-dialog";
 import { classTypeColorClasses, getHexForClassTypeColor, isHexColor, isValidClassTypeColor, ClassTypeColor } from "@/lib/class-type-colors";
+import { Switch } from "@/components/ui/switch";
+import { fetcher } from "@/lib/fetcher";
+import { toast } from "sonner";
+import { postClassTypesChanged } from "@/lib/class-types-broadcast";
 
 // Define custom column meta type
 interface ColumnMetaType {
@@ -66,7 +71,7 @@ export function ClassTypeTable() {
   const pageSize = 10;
   const queryClient = useQueryClient();
 
-  const { data: classTypes, isLoading } = useClassTypes({
+  const { data: classTypes, isLoading } = useAdminClassTypes({
     page,
     limit: pageSize,
     name: searchTerm || undefined,
@@ -104,6 +109,60 @@ export function ClassTypeTable() {
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
 
   const columns: ColumnDef<ClassType>[] = [
+    {
+      accessorKey: "visibleInFilters",
+      header: "フィルター表示",
+      cell: ({ row }) => {
+        const ct = row.original;
+        const checked = ct.visibleInFilters !== false; // default true
+        const onToggle = async (next: boolean) => {
+          try {
+            // Optimistically update all classTypes queries so UI reflects immediately
+            const queries = queryClient.getQueriesData<any>({ queryKey: ["adminClassTypes"] });
+            queries.forEach(([key, data]) => {
+              if (!data?.data) return;
+              queryClient.setQueryData(key, {
+                ...data,
+                data: data.data.map((x: any) =>
+                  x.classTypeId === ct.classTypeId ? { ...x, visibleInFilters: next } : x
+                ),
+              });
+            });
+            await fetcher(`/api/admin/masterdata/class-types/${ct.classTypeId}`, {
+              method: "PATCH",
+              body: JSON.stringify({ visibleInFilters: next }),
+            });
+            toast.success("フィルター表示を更新しました");
+            postClassTypesChanged();
+            // Ensure background refetch to keep pagination totals consistent
+            queryClient.invalidateQueries({ queryKey: ["adminClassTypes"] });
+          } catch (e) {
+            // Revert cache on error
+            const queries = queryClient.getQueriesData<any>({ queryKey: ["adminClassTypes"] });
+            queries.forEach(([key, data]) => {
+              if (!data?.data) return;
+              queryClient.setQueryData(key, {
+                ...data,
+                data: data.data.map((x: any) =>
+                  x.classTypeId === ct.classTypeId ? { ...x, visibleInFilters: checked } : x
+                ),
+              });
+            });
+            toast.error("更新に失敗しました");
+          }
+        };
+        return (
+          <div className="flex items-center justify-center">
+            <Switch checked={checked} onCheckedChange={(v) => onToggle(Boolean(v))} />
+          </div>
+        );
+      },
+      meta: {
+        align: "center",
+        headerClassName: "w-[80px] text-center",
+        cellClassName: "w-[80px] text-center",
+      } as ColumnMetaType,
+    },
     {
       accessorKey: "color",
       header: "色",
@@ -264,7 +323,7 @@ export function ClassTypeTable() {
 
   const handleImportComplete = () => {
     // Refresh the data after successful import
-    queryClient.invalidateQueries({ queryKey: ["class-types"] });
+    queryClient.invalidateQueries({ queryKey: ["adminClassTypes"] });
     setPage(1); // Reset to first page
   };
 

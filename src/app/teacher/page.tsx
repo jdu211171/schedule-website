@@ -18,6 +18,7 @@ import { SPECIAL_CLASS_COLOR_CLASSES } from "@/lib/special-class-constants";
 import { X } from "lucide-react";
 import { Faceted, FacetedBadgeList, FacetedContent, FacetedEmpty, FacetedGroup, FacetedInput, FacetedItem, FacetedList, FacetedTrigger } from "@/components/ui/faceted";
 import { fetchClassTypeOptions } from "@/lib/class-type-options";
+import { subscribeClassTypesChanged } from "@/lib/class-types-broadcast";
 import type { ClassTypeOption } from "@/types/class-type";
 import { useSession } from "next-auth/react";
 import { getClassTypeSelection, setClassTypeSelection } from "@/lib/class-type-filter-persistence";
@@ -53,15 +54,17 @@ export default function TeacherPage() {
 
   useEffect(() => {
     let mounted = true;
-    (async () => {
+    const load = async () => {
       try {
         const opts = await fetchClassTypeOptions();
         if (mounted) setClassTypeOptions(opts);
       } catch {
         if (mounted) setClassTypeOptions([]);
       }
-    })();
-    return () => { mounted = false; };
+    };
+    load();
+    const unsubscribe = subscribeClassTypesChanged(() => load());
+    return () => { mounted = false; unsubscribe(); };
   }, []);
 
   // init from persistence

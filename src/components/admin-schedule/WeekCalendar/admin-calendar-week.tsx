@@ -23,6 +23,7 @@ import { toast } from "sonner";
 import { broadcastClassSessionsChanged } from "@/lib/calendar-broadcast";
 import { useSession } from "next-auth/react";
 import { fetchClassTypeOptions } from "@/lib/class-type-options";
+import { subscribeClassTypesChanged } from "@/lib/class-types-broadcast";
 import { getClassTypeSelection, setClassTypeSelection } from "@/lib/class-type-filter-persistence";
 import type { ClassTypeOption } from "@/types/class-type";
 import { Faceted, FacetedBadgeList, FacetedContent, FacetedEmpty, FacetedGroup, FacetedInput, FacetedItem, FacetedList, FacetedTrigger } from "@/components/ui/faceted";
@@ -107,7 +108,7 @@ const AdminCalendarWeek: React.FC<AdminCalendarWeekProps> = ({
 
   useEffect(() => {
     let mounted = true;
-    (async () => {
+    const load = async () => {
       setClassTypeLoading(true);
       try {
         const opts = await fetchClassTypeOptions();
@@ -115,9 +116,12 @@ const AdminCalendarWeek: React.FC<AdminCalendarWeekProps> = ({
       } finally {
         if (mounted) setClassTypeLoading(false);
       }
-    })();
+    };
+    load();
+    const unsubscribe = subscribeClassTypesChanged(() => load());
     return () => {
       mounted = false;
+      unsubscribe();
     };
   }, []);
 
