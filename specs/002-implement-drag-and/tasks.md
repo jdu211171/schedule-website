@@ -7,6 +7,7 @@
 - [x] Keep conflict gutter visible under ghost/cards
 - [x] Wire series update dialog; optimistic update + rollback
 - [x] Typecheck (`bun run check-errors`)
+- [x] Optimize drag ghost (no ring/shadow; transform + will-change)
 - [ ] Add snap guidance (no-drop red vs valid green) while dragging
 - [ ] Add conflict popover quick-fix actions (±30m, swap booth)
 - [ ] Cap lanes with +N expand affordance (optional)

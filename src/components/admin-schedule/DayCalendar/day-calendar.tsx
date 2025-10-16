@@ -119,6 +119,7 @@ const CalendarCell = React.memo(({
   onMouseEnter,
   onMouseUp,
   cellWidth,
+  showDroppableOutline,
 }: {
   boothIndex: number,
   timeSlot: TimeSlot,
@@ -129,6 +130,7 @@ const CalendarCell = React.memo(({
   onMouseEnter: (e: React.MouseEvent) => void,
   onMouseUp: (e: React.MouseEvent) => void,
   cellWidth: number,
+  showDroppableOutline: boolean,
 }) => {
   const cellKey = `cell-${boothIndex}-${timeSlot.index}`;
   const { setNodeRef, isOver } = useDroppable({ id: cellKey });
@@ -156,7 +158,7 @@ const CalendarCell = React.memo(({
     ? "!bg-blue-200 dark:!bg-blue-900 !opacity-100 shadow-inner"
     : ""
   }
-  ${isOver ? 'outline outline-2 outline-blue-400/70' : ''}
+  ${isOver && showDroppableOutline ? 'outline outline-2 outline-blue-400/70' : ''}
   border-border dark:border-border
   ${!isSelecting ? "transition-none" : ""}
 `}
@@ -176,7 +178,8 @@ const CalendarCell = React.memo(({
          prevProps.isSelected === nextProps.isSelected &&
          prevProps.isSelecting === nextProps.isSelecting &&
          prevProps.canDrag === nextProps.canDrag &&
-         prevProps.cellWidth === nextProps.cellWidth;
+         prevProps.cellWidth === nextProps.cellWidth &&
+         prevProps.showDroppableOutline === nextProps.showDroppableOutline;
 });
 
 CalendarCell.displayName = 'CalendarCell';
@@ -194,6 +197,7 @@ const BoothRow = React.memo(({
   onEndSelection,
   rowHeight,
   cellWidth,
+  showDroppableOutline,
 }: {
   booth: Booth,
   boothIndex: number,
@@ -207,6 +211,7 @@ const BoothRow = React.memo(({
   onEndSelection: (e: React.MouseEvent) => void,
   rowHeight: number,
   cellWidth: number,
+  showDroppableOutline: boolean,
 }) => {
   return (
     <div
@@ -240,6 +245,7 @@ const BoothRow = React.memo(({
             onMouseEnter={(e) => onCellHover(boothIndex, timeSlot.index, e)}
             onMouseUp={onEndSelection}
             cellWidth={cellWidth}
+            showDroppableOutline={showDroppableOutline}
           />
         );
       })}
@@ -253,7 +259,8 @@ const BoothRow = React.memo(({
          prevProps.selectionStart === nextProps.selectionStart &&
          prevProps.selectionEnd === nextProps.selectionEnd &&
          prevProps.rowHeight === nextProps.rowHeight &&
-         prevProps.cellWidth === nextProps.cellWidth;
+         prevProps.cellWidth === nextProps.cellWidth &&
+         prevProps.showDroppableOutline === nextProps.showDroppableOutline;
 });
 
 BoothRow.displayName = 'BoothRow';
@@ -658,8 +665,10 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
     let timeIdx = Number(parts[2]);
     if (Number.isNaN(boothIdx) || Number.isNaN(timeIdx)) return;
     const maxStart = Math.max(0, timeSlots.length - ghost.durationSlots);
-    timeIdx = Math.min(Math.max(0, timeIdx), maxStart);
-    setGhost({ boothIdx, timeIdx, durationSlots: ghost.durationSlots });
+    const clampedTimeIdx = Math.min(Math.max(0, timeIdx), maxStart);
+    // Avoid redundant state updates to reduce renders
+    if (ghost.boothIdx === boothIdx && ghost.timeIdx === clampedTimeIdx) return;
+    setGhost({ boothIdx, timeIdx: clampedTimeIdx, durationSlots: ghost.durationSlots });
   }, [ghost, timeSlots.length]);
 
   const onDragEnd = useCallback((e: DragEndEvent) => {
@@ -1036,6 +1045,7 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
                   onEndSelection={handleEndSelection}
                   rowHeight={boothRowHeights[boothIndex]}
                   cellWidth={cellWidth}
+                  showDroppableOutline={false}
                 />
               ))}
             </div>
@@ -1077,7 +1087,7 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
             <div
               className="absolute pointer-events-none"
               style={{
-                zIndex: 10,
+                zIndex: 50,
                 top: `${slotHeight}px`,
                 left: `0px`,
                 width: '100%',
@@ -1089,8 +1099,13 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
                   aria-hidden
                   className="absolute rounded-sm bg-blue-500/15 border-2 border-blue-400"
                   style={{
-                    left: `${ghost.timeIdx * cellWidth + BOOTH_LABEL_WIDTH}px`,
-                    top: `${boothTopOffsets[ghost.boothIdx] ?? 0}px`,
+                    // Position via transforms for smoother repaints
+                    left: 0,
+                    top: 0,
+                    transform: `translate3d(${ghost.timeIdx * cellWidth + BOOTH_LABEL_WIDTH}px, ${
+                      (boothTopOffsets[ghost.boothIdx] ?? 0)
+                    }px, 0)`,
+                    willChange: 'transform',
                     width: `${ghost.durationSlots * cellWidth}px`,
                     height: `${(boothRowHeights[ghost.boothIdx] ?? slotHeight) - 2}px`,
                   }}
