@@ -26,6 +26,8 @@ interface LessonCardProps {
   hasTeacherOverlap?: boolean;
   hasStudentOverlap?: boolean;
   cellWidth?: number;
+  // True when this session overlaps with any other session in the same booth (ignores cancellation)
+  hasAnyBoothOverlap?: boolean;
 }
 
 export const extractTime = (timeValue: string | Date | undefined): string => {
@@ -67,6 +69,7 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
   hasTeacherOverlap = false,
   hasStudentOverlap = false,
   cellWidth = 50,
+  hasAnyBoothOverlap = false,
 }) => {
   const startTime = useMemo(
     () => extractTime(lesson.startTime),
@@ -326,6 +329,12 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
     studentType && gradeYear ? `${studentType.charAt(0)}${gradeYear}` : "";
 
   const isCancelled = Boolean((lesson as any)?.isCancelled);
+  // Always allow clicks to pass through cancelled lessons so users can
+  // create new sessions on top of, or beside, any remaining portion of
+  // a cancelled block. Previously this depended on whether the cancelled
+  // lesson overlapped any other session in the same booth, which made the
+  // uncovered portion non-clickable after placing a partial replacement.
+  const cancelledClickableThrough = isCancelled;
 
   // Dynamically scale font/padding to use available vertical space
   const rowHeightPx = (laneHeight ?? timeSlotHeight) - 2;
@@ -350,13 +359,13 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
         transition-colors duration-100 ease-in-out transform
         ring-1 ring-inset ring-black/10 dark:ring-white/10
         after:content-[''] after:absolute after:top-0 after:bottom-0 after:right-[-1px] after:w-px after:bg-black/15 dark:after:bg-white/20
-        pointer-events-auto after:pointer-events-none
+        ${cancelledClickableThrough ? 'pointer-events-none' : 'pointer-events-auto'} after:pointer-events-none
         ${colorClasses ? `${colorClasses.background} ${colorClasses.border} ${colorClasses.hover}` : ''}
         ${textClass ?? ''}
         ${isCancelled ? 'opacity-60 grayscale !text-black dark:!text-white' : ''}
         !text-black dark:!text-white
         active:scale-[0.98] hover:shadow-md
-        overflow-hidden truncate pointer-events-auto
+        overflow-hidden truncate
       `}
       data-conflict={isConflictVisual ? 'true' : 'false'}
       style={{
@@ -457,6 +466,8 @@ export const LessonCard = React.memo(
       (prevProps.lesson as any).isCancelled === (nextProps.lesson as any).isCancelled &&
       // Include computed overlap flag and lane assignment
       prevProps.hasBoothOverlap === nextProps.hasBoothOverlap &&
+      // Ensure click-through state updates when raw booth-overlap changes
+      prevProps.hasAnyBoothOverlap === nextProps.hasAnyBoothOverlap &&
       prevProps.laneIndex === nextProps.laneIndex &&
       // Top offset can change when preceding booth lane counts change; must re-render
       prevProps.rowTopOffset === nextProps.rowTopOffset &&

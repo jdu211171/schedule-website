@@ -472,9 +472,10 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
     return map;
   }, [filteredSessions, booths, getStartSlotIndex, getEndSlotIndex]);
 
-  const { laneMap, boothLaneCounts } = useMemo(() => {
+  const { laneMap, boothLaneCounts, boothAnyOverlapMap } = useMemo(() => {
     const laneMap = new Map<string, { laneIndex: number }>();
     const boothLaneCounts = new Map<number, number>();
+    const boothAnyOverlapMap = new Map<string, boolean>();
 
     const byBooth = new Map<number, Array<{ id: string; start: number; end: number }>>();
     filteredSessions.forEach((s) => {
@@ -495,10 +496,22 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
         laneMap.set(ev.id, { laneIndex: assigned });
       });
       boothLaneCounts.set(boothIdx, Math.max(1, laneEnds.length));
+
+      // Compute raw overlap flags (any overlap in same booth, ignoring cancellation)
+      for (let i = 0; i < list.length; i++) {
+        for (let j = i + 1; j < list.length; j++) {
+          const a = list[i];
+          const b = list[j];
+          if (!(b.end <= a.start || a.end <= b.start)) {
+            boothAnyOverlapMap.set(a.id, true);
+            boothAnyOverlapMap.set(b.id, true);
+          }
+        }
+      }
     });
 
     booths.forEach((_, idx) => { if (!boothLaneCounts.has(idx)) boothLaneCounts.set(idx, 1); });
-    return { laneMap, boothLaneCounts };
+    return { laneMap, boothLaneCounts, boothAnyOverlapMap };
   }, [filteredSessions, sessionPos, booths]);
 
   const boothRowHeights = useMemo(() => booths.map((_, idx) => (boothLaneCounts.get(idx) || 1) * slotHeight), [booths, boothLaneCounts, slotHeight]);
@@ -1111,6 +1124,7 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
                   hasBoothOverlap={computeBoothOverlap(session, filteredSessions, sessionPos)}
                   hasTeacherOverlap={computeTeacherOverlap(session, filteredSessions, sessionPos)}
                   hasStudentOverlap={computeStudentOverlap(session, filteredSessions, sessionPos)}
+                  hasAnyBoothOverlap={Boolean(boothAnyOverlapMap.get(String(session.classId)))}
                   cellWidth={cellWidth}
                 />
               ))}

@@ -31,7 +31,7 @@
 - Phase 3-4: Implementation execution (manual or via tools)
 
 ## Summary
-Cancelled lessons must not create or contribute to conflict indicators in the Day Calendar. The “キャンセル授業を表示” toggle only controls visibility of cancelled lessons; conflict logic must consider only active lessons. Technical approach: adjust Day Calendar overlap/conflict computation to ignore lessons where the cancellation flag is set, while leaving visibility controlled by the existing toggle.
+Cancelled lessons must not create or contribute to conflict indicators in the Day Calendar. The “キャンセル授業を表示” toggle only controls visibility of cancelled lessons; conflict logic must consider only active lessons. UX requirement refinement: cancelled lessons must always be "click‑through" so users can create new sessions on top of them or in the remaining uncovered portion when a partial replacement has already been created. Implementation: cancelled lesson cards use `pointer-events: none` unconditionally so uncovered regions remain interactive; any overlapping active lesson remains fully interactive on top.
 
 ## Technical Context
 **Language/Version**: TypeScript (strict), React 18, Next.js App Router  

@@ -16,7 +16,7 @@
 
 ## Phase 3.3: Core Implementation (ONLY after tests are failing)
 - [x] T008 Update `src/components/admin-schedule/DayCalendar/day-calendar.tsx`: In `hasBoothOverlap`, `hasTeacherOverlap`, `hasStudentOverlap` computations, skip any `s2.isCancelled === true` and skip current session if `session.isCancelled`.
-- [ ] T009 Update `src/components/admin-schedule/DayCalendar/lesson-card.tsx`: Ensure `isConflictVisual` derives only from overlap props and that cancelled cards never set/receive conflict stripes due to cancelled neighbors.
+ - [x] T009 Update `src/components/admin-schedule/DayCalendar/lesson-card.tsx`: Ensure `isConflictVisual` derives only from overlap props and make cancelled cards always click-through (`pointer-events: none`) so partially uncovered portions remain interactive.
 - [ ] T010 Verify `src/components/admin-schedule/DayCalendar/admin-calendar-day.tsx` continues to use `includeCancelled` for visibility only; do not alter conflict logic there.
 
 ## Phase 3.4: Integration
@@ -29,6 +29,7 @@
 - [x] T015 [P] Docs: Update `quickstart.md` with any test data assumptions and exact selectors used in tests.
 - [x] T016 Lint/typecheck: `bun lint` and fix TS/ESLint issues introduced. (Repo has pre-existing lint errors outside this feature; typecheck passes and lint for changed files shows only legacy issues we did not alter.)
 - [ ] T017 Manual QA: Follow quickstart. Verify toggling “キャンセル授業を表示” changes visibility only, not conflicts.
+ - [x] T018 UX: When “キャンセル授業を表示” is ON, cancelled lessons are always click-through. If a partial replacement exists, the uncovered portion remains interactive for creating another session.
 
 ## Dependencies
 - T004–T007 (tests) before T008–T010 (implementation).
