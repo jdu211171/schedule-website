@@ -18,10 +18,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import {
-  type UseQueryStateOptions,
-  useQueryState,
-} from "nuqs";
+import { type UseQueryStateOptions, useQueryState } from "nuqs";
 import * as React from "react";
 
 import { useDebouncedCallback } from "@/hooks/use-debounced-callback";
@@ -35,15 +32,15 @@ const THROTTLE_MS = 50;
 
 interface UseDataTableProps<TData>
   extends Omit<
-    TableOptions<TData>,
-    | "state"
-    | "pageCount"
-    | "getCoreRowModel"
-    | "manualFiltering"
-    | "manualPagination"
-    | "manualSorting"
-  >,
-  Required<Pick<TableOptions<TData>, "pageCount">> {
+      TableOptions<TData>,
+      | "state"
+      | "pageCount"
+      | "getCoreRowModel"
+      | "manualFiltering"
+      | "manualPagination"
+      | "manualSorting"
+    >,
+    Required<Pick<TableOptions<TData>, "pageCount">> {
   initialState?: Omit<Partial<TableState>, "sorting"> & {
     sorting?: ExtendedColumnSort<TData>[];
   };
@@ -101,11 +98,11 @@ export function useStateDataTable<TData>(props: UseDataTableProps<TData>) {
       debounceMs,
       clearOnDefault,
       startTransition,
-    ],
+    ]
   );
 
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>(
-    initialState?.rowSelection ?? {},
+    initialState?.rowSelection ?? {}
   );
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>(initialState?.columnVisibility ?? {});
@@ -114,10 +111,10 @@ export function useStateDataTable<TData>(props: UseDataTableProps<TData>) {
   const [page, setPage] = React.useState<number>(
     initialState?.pagination?.pageIndex != null
       ? initialState.pagination.pageIndex + 1
-      : 1,
+      : 1
   );
   const [perPage, setPerPage] = React.useState<number>(
-    initialState?.pagination?.pageSize ?? 10,
+    initialState?.pagination?.pageSize ?? 10
   );
 
   const pagination: PaginationState = React.useMemo(() => {
@@ -138,12 +135,12 @@ export function useStateDataTable<TData>(props: UseDataTableProps<TData>) {
         setPerPage(updaterOrValue.pageSize);
       }
     },
-    [pagination],
+    [pagination]
   );
 
   const columnIds = React.useMemo(() => {
     return new Set(
-      columns.map((column) => column.id).filter(Boolean) as string[],
+      columns.map((column) => column.id).filter(Boolean) as string[]
     );
   }, [columns]);
 
@@ -151,7 +148,7 @@ export function useStateDataTable<TData>(props: UseDataTableProps<TData>) {
     SORT_KEY,
     getSortingStateParser<TData>(columnIds)
       .withOptions(queryStateOptions)
-      .withDefault(initialState?.sorting ?? []),
+      .withDefault(initialState?.sorting ?? [])
   );
 
   const onSortingChange = React.useCallback(
@@ -163,7 +160,7 @@ export function useStateDataTable<TData>(props: UseDataTableProps<TData>) {
         setSorting(updaterOrValue as ExtendedColumnSort<TData>[]);
       }
     },
-    [sorting, setSorting],
+    [sorting, setSorting]
   );
 
   const filterableColumns = React.useMemo(() => {
@@ -192,7 +189,7 @@ export function useStateDataTable<TData>(props: UseDataTableProps<TData>) {
       setPage(1);
       setFilterValues(values);
     },
-    debounceMs,
+    debounceMs
   );
 
   const initialColumnFilters: ColumnFiltersState = React.useMemo(() => {
@@ -214,7 +211,7 @@ export function useStateDataTable<TData>(props: UseDataTableProps<TData>) {
         }
         return filters;
       },
-      [],
+      []
     );
   }, [filterValues, enableAdvancedFilter]);
 
@@ -255,7 +252,7 @@ export function useStateDataTable<TData>(props: UseDataTableProps<TData>) {
         return next;
       });
     },
-    [debouncedSetFilterValues, filterableColumns, enableAdvancedFilter],
+    [debouncedSetFilterValues, filterableColumns, enableAdvancedFilter]
   );
 
   // Derive a stable list of leaf column ids from column definitions
@@ -272,7 +269,7 @@ export function useStateDataTable<TData>(props: UseDataTableProps<TData>) {
   // Column order state + persistence
   const { order: columnOrder, setOrder: setColumnOrder } = useColumnOrder(
     columnOrderStorageKey as string | undefined,
-    allColumnIds,
+    allColumnIds
   );
 
   const table = useReactTable({

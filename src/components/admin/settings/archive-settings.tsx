@@ -9,12 +9,15 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { fetcher } from "@/lib/fetcher";
-import { BranchSettings, BranchSettingsUpdatePayload } from "@/types/branch-settings";
+import {
+  BranchSettings,
+  BranchSettingsUpdatePayload,
+} from "@/types/branch-settings";
 import { AlertCircle, Archive, Save } from "lucide-react";
 
 export function ArchiveSettings() {
   const [retentionMonths, setRetentionMonths] = useState<string>("");
-  
+
   // Fetch global settings
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["global-archive-settings"],
@@ -93,15 +96,14 @@ export function ArchiveSettings() {
     return (
       <Alert variant="destructive">
         <AlertCircle className="h-4 w-4" />
-        <AlertDescription>
-          設定の読み込みに失敗しました
-        </AlertDescription>
+        <AlertDescription>設定の読み込みに失敗しました</AlertDescription>
       </Alert>
     );
   }
 
   const currentSettings = data?.data;
-  const isModified = currentSettings && 
+  const isModified =
+    currentSettings &&
     retentionMonths !== currentSettings.archiveRetentionMonths.toString();
 
   return (
@@ -174,7 +176,9 @@ export function ArchiveSettings() {
             size="sm"
           >
             <Archive className="h-4 w-4 mr-2" />
-            {triggerArchiveMutation.isPending ? "実行中..." : "アーカイブを実行"}
+            {triggerArchiveMutation.isPending
+              ? "実行中..."
+              : "アーカイブを実行"}
           </Button>
         </div>
       </div>

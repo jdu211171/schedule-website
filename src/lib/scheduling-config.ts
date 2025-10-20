@@ -54,7 +54,10 @@ export async function getEffectiveSchedulingConfig(
         markNoSharedAvailability: global.markNoSharedAvailability,
         allowOutsideAvailabilityTeacher: global.allowOutsideAvailabilityTeacher,
         allowOutsideAvailabilityStudent: global.allowOutsideAvailabilityStudent,
-        generationMonths: Math.max(1, Number((global as any).generationMonths ?? 1)),
+        generationMonths: Math.max(
+          1,
+          Number((global as any).generationMonths ?? 1)
+        ),
       }
     : { ...DEFAULTS };
 
@@ -87,8 +90,8 @@ export async function getEffectiveSchedulingConfig(
     allowOutsideAvailabilityStudent:
       override.allowOutsideAvailabilityStudent ??
       base.allowOutsideAvailabilityStudent,
-    generationMonths:
-      (override.generationMonths ?? base.generationMonths) as number,
+    generationMonths: (override.generationMonths ??
+      base.generationMonths) as number,
   };
 }
 
@@ -96,7 +99,9 @@ export async function getEffectiveSchedulingConfig(
  * Convert effective config into the existing `conflictPolicy` response shape
  * expected by the frontend.
  */
-export function toPolicyShape(cfg: EffectiveSchedulingConfig): ConflictPolicyShape {
+export function toPolicyShape(
+  cfg: EffectiveSchedulingConfig
+): ConflictPolicyShape {
   return {
     markAsConflicted: {
       TEACHER_CONFLICT: cfg.markTeacherConflict,
@@ -119,16 +124,21 @@ export function toPolicyShape(cfg: EffectiveSchedulingConfig): ConflictPolicySha
 export async function upsertBranchPolicyFromSeriesPatch(
   branchId: string,
   policy: Partial<{
-    markAsConflicted: Partial<Record<keyof typeof DEFAULT_MARK_AS_CONFLICTED, boolean>>;
+    markAsConflicted: Partial<
+      Record<keyof typeof DEFAULT_MARK_AS_CONFLICTED, boolean>
+    >;
     allowOutsideAvailability: Partial<{ teacher: boolean; student: boolean }>;
   }>
 ): Promise<void> {
   const data: any = {};
   if (policy.markAsConflicted) {
     const m = policy.markAsConflicted;
-    if (m.TEACHER_CONFLICT !== undefined) data.markTeacherConflict = m.TEACHER_CONFLICT;
-    if (m.STUDENT_CONFLICT !== undefined) data.markStudentConflict = m.STUDENT_CONFLICT;
-    if (m.BOOTH_CONFLICT !== undefined) data.markBoothConflict = m.BOOTH_CONFLICT;
+    if (m.TEACHER_CONFLICT !== undefined)
+      data.markTeacherConflict = m.TEACHER_CONFLICT;
+    if (m.STUDENT_CONFLICT !== undefined)
+      data.markStudentConflict = m.STUDENT_CONFLICT;
+    if (m.BOOTH_CONFLICT !== undefined)
+      data.markBoothConflict = m.BOOTH_CONFLICT;
     if (m.TEACHER_UNAVAILABLE !== undefined)
       data.markTeacherUnavailable = m.TEACHER_UNAVAILABLE;
     if (m.STUDENT_UNAVAILABLE !== undefined)

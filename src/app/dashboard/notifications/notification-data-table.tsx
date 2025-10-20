@@ -33,19 +33,22 @@ export function NotificationDataTable() {
 
   // Initialize filters with localStorage values or defaults (yesterday)
   const [filters, setFilters] = useState(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       const savedFilters = localStorage.getItem(FILTERS_STORAGE_KEY);
       if (savedFilters) {
         try {
           return JSON.parse(savedFilters);
         } catch (error) {
-          console.error('Error parsing saved filters:', error);
+          console.error("Error parsing saved filters:", error);
         }
       }
     }
     // Default to today's notifications
     const today = format(new Date(), "yyyy-MM-dd");
-    const tomorrow = format(new Date(new Date().setDate(new Date().getDate() + 1)), "yyyy-MM-dd");
+    const tomorrow = format(
+      new Date(new Date().setDate(new Date().getDate() + 1)),
+      "yyyy-MM-dd"
+    );
     return {
       status: undefined as NotificationStatus | undefined,
       recipientType: undefined as string | undefined,
@@ -62,15 +65,18 @@ export function NotificationDataTable() {
   // Debounce search to avoid too many API calls
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      setFilters((prev: typeof filters) => ({ ...prev, search: searchValue || undefined }));
+      setFilters((prev: typeof filters) => ({
+        ...prev,
+        search: searchValue || undefined,
+      }));
     }, 500);
-    
+
     return () => clearTimeout(timeoutId);
   }, [searchValue]);
 
   // Save filters to localStorage whenever they change
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       localStorage.setItem(FILTERS_STORAGE_KEY, JSON.stringify(filters));
     }
   }, [filters]);
@@ -95,8 +101,11 @@ export function NotificationDataTable() {
   const bulkDeleteNotificationMutation = useNotificationBulkDelete();
 
   // State for delete dialogs
-  const [notificationToDelete, setNotificationToDelete] = useState<Notification | null>(null);
-  const [selectedRowsForDeletion, setSelectedRowsForDeletion] = useState<Notification[]>([]);
+  const [notificationToDelete, setNotificationToDelete] =
+    useState<Notification | null>(null);
+  const [selectedRowsForDeletion, setSelectedRowsForDeletion] = useState<
+    Notification[]
+  >([]);
   const [isConfirmingBulkDelete, setIsConfirmingBulkDelete] = useState(false);
 
   const handleFilterChange = (
@@ -105,9 +114,9 @@ export function NotificationDataTable() {
   ) => {
     setFilters({ ...filters, [field]: value });
     setPage(1); // Reset to first page when filter changes
-    
+
     // If this is a search change, also update the search value for immediate UI feedback
-    if (field === 'search') {
+    if (field === "search") {
       setSearchValue(value || "");
     }
   };
@@ -124,7 +133,10 @@ export function NotificationDataTable() {
   const resetFilters = () => {
     // Reset to today's notifications
     const today = format(new Date(), "yyyy-MM-dd");
-    const tomorrow = format(new Date(new Date().setDate(new Date().getDate() + 1)), "yyyy-MM-dd");
+    const tomorrow = format(
+      new Date(new Date().setDate(new Date().getDate() + 1)),
+      "yyyy-MM-dd"
+    );
     const defaultFilters = {
       status: undefined,
       recipientType: undefined,
@@ -137,7 +149,7 @@ export function NotificationDataTable() {
     setSearchValue("");
     setPage(1);
     // Clear localStorage when resetting to defaults
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       localStorage.removeItem(FILTERS_STORAGE_KEY);
     }
   };
@@ -175,7 +187,9 @@ export function NotificationDataTable() {
   };
 
   // Create columns with delete handler
-  const columns = createColumns((notification) => setNotificationToDelete(notification));
+  const columns = createColumns((notification) =>
+    setNotificationToDelete(notification)
+  );
 
   // Create filter component for the DataTable
   const filterComponent = (
@@ -248,10 +262,12 @@ export function NotificationDataTable() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>選択した通知を一括削除しますか？</AlertDialogTitle>
+            <AlertDialogTitle>
+              選択した通知を一括削除しますか？
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              この操作は元に戻せません。
-              選択された<strong>{selectedRowsForDeletion.length}件</strong>
+              この操作は元に戻せません。 選択された
+              <strong>{selectedRowsForDeletion.length}件</strong>
               の通知を完全に削除します。
             </AlertDialogDescription>
           </AlertDialogHeader>

@@ -41,7 +41,7 @@ interface WeekdayPattern {
 interface EnhancedAvailabilitySelectorProps {
   availability: IrregularAvailability[];
   onChange: (availability: IrregularAvailability[]) => void;
-  variant?: 'exception' | 'absence';
+  variant?: "exception" | "absence";
 }
 
 const DAYS_OF_WEEK = [
@@ -57,13 +57,13 @@ const DAYS_OF_WEEK = [
 export function EnhancedAvailabilityIrregularSelector({
   availability,
   onChange,
-  variant = 'exception',
+  variant = "exception",
 }: EnhancedAvailabilitySelectorProps) {
   // Mode selection: "date" for individual dates, "pattern" for date range + weekday patterns
   const [selectionMode, setSelectionMode] = useState<"date" | "pattern">(
     "date"
   );
-  const isAbsence = variant === 'absence';
+  const isAbsence = variant === "absence";
 
   // Individual date mode states
   const [selectedDateRange, setSelectedDateRange] = useState<
@@ -85,7 +85,9 @@ export function EnhancedAvailabilityIrregularSelector({
 
   // Load persistent time values from local storage on mount
   useEffect(() => {
-    const savedStartTime = localStorage.getItem("irregularAvailabilityStartTime");
+    const savedStartTime = localStorage.getItem(
+      "irregularAvailabilityStartTime"
+    );
     const savedEndTime = localStorage.getItem("irregularAvailabilityEndTime");
 
     if (savedStartTime) {
@@ -170,7 +172,11 @@ export function EnhancedAvailabilityIrregularSelector({
   }
 
   // Check for overlaps in weekday patterns
-  function checkForWeekdayOverlap(weekday: string, start: string, end: string): boolean {
+  function checkForWeekdayOverlap(
+    weekday: string,
+    start: string,
+    end: string
+  ): boolean {
     if (!weekday || start >= end) return false;
 
     const currentPattern = weekdayPatterns.get(weekday);
@@ -738,7 +744,11 @@ export function EnhancedAvailabilityIrregularSelector({
                       disabled={
                         !currentWeekday ||
                         startTime >= endTime ||
-                        checkForWeekdayOverlap(currentWeekday, startTime, endTime)
+                        checkForWeekdayOverlap(
+                          currentWeekday,
+                          startTime,
+                          endTime
+                        )
                       }
                       className="w-full"
                     >
@@ -883,7 +893,7 @@ export function EnhancedAvailabilityIrregularSelector({
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <Label className="text-sm font-medium">
-            {isAbsence ? '現在の欠席時間' : '現在の例外的利用可能時間'}
+            {isAbsence ? "現在の欠席時間" : "現在の例外的利用可能時間"}
           </Label>
           <Button
             type="button"
@@ -947,7 +957,7 @@ export function EnhancedAvailabilityIrregularSelector({
 
                     {dayAvailability?.fullDay ? (
                       <div className="text-sm text-muted-foreground">
-                        {isAbsence ? '終日欠席' : '終日利用可能'}
+                        {isAbsence ? "終日欠席" : "終日利用可能"}
                       </div>
                     ) : (
                       <div className="space-y-2">
@@ -975,7 +985,7 @@ export function EnhancedAvailabilityIrregularSelector({
                         {(!dayAvailability ||
                           dayAvailability.timeSlots.length === 0) && (
                           <div className="text-sm text-muted-foreground">
-                            {isAbsence ? '欠席なし' : '利用不可'}
+                            {isAbsence ? "欠席なし" : "利用不可"}
                           </div>
                         )}
                       </div>
@@ -987,7 +997,9 @@ export function EnhancedAvailabilityIrregularSelector({
         ) : (
           <div className="text-center py-8">
             <div className="text-muted-foreground text-sm">
-              {isAbsence ? '欠席時間を設定してください' : '例外的な利用可能時間を設定してください'}
+              {isAbsence
+                ? "欠席時間を設定してください"
+                : "例外的な利用可能時間を設定してください"}
             </div>
             <div className="text-xs text-muted-foreground mt-1">
               個別日付指定または期間×曜日パターン指定をお選びください

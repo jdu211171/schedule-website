@@ -27,7 +27,9 @@ export const GET = withRole(
       "notes",
       "order",
     ];
-    const visibleColumns = rawColumns.includes("id") ? rawColumns : ["id", ...rawColumns];
+    const visibleColumns = rawColumns.includes("id")
+      ? rawColumns
+      : ["id", ...rawColumns];
 
     // Column headers mapping
     const columnHeaders: Record<string, string> = {
@@ -60,14 +62,20 @@ export const GET = withRole(
       });
 
       // Escape CSV values
-      return row.map((value) => {
-        // If value contains comma, newline, or quotes, wrap in quotes
-        if (value.includes(",") || value.includes("\n") || value.includes('"')) {
-          // Escape quotes by doubling them
-          return `"${value.replace(/"/g, '""')}"`;
-        }
-        return value;
-      }).join(",");
+      return row
+        .map((value) => {
+          // If value contains comma, newline, or quotes, wrap in quotes
+          if (
+            value.includes(",") ||
+            value.includes("\n") ||
+            value.includes('"')
+          ) {
+            // Escape quotes by doubling them
+            return `"${value.replace(/"/g, '""')}"`;
+          }
+          return value;
+        })
+        .join(",");
     });
 
     // Combine header and rows

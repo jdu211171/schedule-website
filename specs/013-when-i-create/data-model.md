@@ -20,12 +20,13 @@ No database schema changes are required for this feature. Entities are listed fo
   - Notes: Series UI operates via same-page popup; session creation from series updates the day calendar for the same date.
 
 ## Relationships
+
 - A Class Session may belong to a Class Series via `seriesId`.
 - Day Calendar View lists Class Sessions for a given `date`, filtered by current `filters`.
 
 ## Constraints & Rules
+
 - Identity & Uniqueness: `classId` is unique; calendar de-duplicates sessions by `classId`.
 - Time placement: Use Asia/Tokyo for calendar slotting; display aligns with `src/components/admin-schedule/date.ts`.
 - Filter respect: New sessions not matching current filters do not render; generic success toast is shown.
 - State preservation: Date, scroll, zoom remain unchanged after creation; no auto-scroll.
-

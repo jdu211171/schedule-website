@@ -59,4 +59,3 @@
 - Single cancel must not alter series status.
 - Idempotency: repeat requests on already-cancelled sessions are no-ops and should not error.
 - Permissions: same actor permissions as delete flows (ADMIN/STAFF with branch access).
-

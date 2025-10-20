@@ -4,7 +4,13 @@ import Link from "next/link";
 import { LineSettings } from "./line-settings";
 import { ArchiveSettings } from "./archive-settings";
 import { SchedulingConflictSettings } from "./scheduling-conflict-settings";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, MessageSquare, Archive } from "lucide-react";
 
@@ -31,9 +37,7 @@ export function SettingsLayout() {
       <Card>
         <CardHeader>
           <CardTitle>LINE設定</CardTitle>
-          <CardDescription>
-            LINEメッセージングと通知設定を構成
-          </CardDescription>
+          <CardDescription>LINEメッセージングと通知設定を構成</CardDescription>
         </CardHeader>
         <CardContent>
           <LineSettings />
@@ -53,7 +57,11 @@ export function SettingsLayout() {
           <p className="text-sm text-muted-foreground mb-4">
             複数のLINEチャンネルを設定し、ブランチごとに異なるチャンネルを使用できます。
           </p>
-          <Link href="/dashboard/settings/line-channels" passHref legacyBehavior>
+          <Link
+            href="/dashboard/settings/line-channels"
+            passHref
+            legacyBehavior
+          >
             <Button variant="outline" className="w-full sm:w-auto">
               チャンネル管理へ
               <ArrowRight className="ml-2 h-4 w-4" />

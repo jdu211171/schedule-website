@@ -67,18 +67,18 @@ interface SortableDataTableProps<TData, TValue> {
   // Custom render props
   renderActions?: (item: TData) => React.ReactNode;
   isItemDisabled?: (item: TData) => boolean;
-  
+
   // Export functionality
   onExport?: () => void;
   isExporting?: boolean;
-  
+
   // Import functionality
   onImport?: () => void;
 }
 
 export function SortableDataTable<
   TData extends Record<string, unknown>,
-  TValue
+  TValue,
 >({
   data,
   columns,
@@ -162,10 +162,7 @@ export function SortableDataTable<
           </div>
           <div className="flex gap-2">
             {onImport && (
-              <Button
-                variant="outline"
-                onClick={onImport}
-              >
+              <Button variant="outline" onClick={onImport}>
                 <Upload className="mr-2 h-4 w-4" />
                 CSVインポート
               </Button>

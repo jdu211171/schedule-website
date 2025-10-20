@@ -37,7 +37,10 @@ export function useTeacherExport() {
       }
       if (options.birthDateRange) {
         if (options.birthDateRange.from) {
-          params.append("birthDateFrom", options.birthDateRange.from.toISOString());
+          params.append(
+            "birthDateFrom",
+            options.birthDateRange.from.toISOString()
+          );
         }
         if (options.birthDateRange.to) {
           params.append("birthDateTo", options.birthDateRange.to.toISOString());
@@ -47,7 +50,9 @@ export function useTeacherExport() {
         params.append("columns", options.columns.join(","));
       }
 
-      const response = await fetcherWithAuth(`/api/teachers/export?${params.toString()}`);
+      const response = await fetcherWithAuth(
+        `/api/teachers/export?${params.toString()}`
+      );
 
       // Check if response is ok
       if (!response.ok) {

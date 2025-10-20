@@ -28,6 +28,7 @@
 ---
 
 ## Spec-Driven Development (Spec Kit)
+
 - Specs live in `specs/<id>-<slug>/` and are the single source of truth for scope and progress.
 - Key files:
   - `spec.md` — problem statement, goals, acceptance criteria

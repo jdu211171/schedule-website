@@ -155,8 +155,16 @@ export const PATCH = withBranchAccess(
         );
       }
 
-      const { name, startDate, endDate, isRecurring, notes, order, branchId: newBranchId, branchIds } =
-        result.data;
+      const {
+        name,
+        startDate,
+        endDate,
+        isRecurring,
+        notes,
+        order,
+        branchId: newBranchId,
+        branchIds,
+      } = result.data;
 
       // Convert dates to UTC if they are provided
       let startDateUTC, endDateUTC;
@@ -193,7 +201,8 @@ export const PATCH = withBranchAccess(
           data.branchId = newBranchId || branchId; // Admin can reassign freely (required branch)
         } else {
           // Staff/Teacher: allow reassignment only within assigned branches
-          const assignedBranchIds = session.user?.branches?.map((b: any) => b.branchId) || [];
+          const assignedBranchIds =
+            session.user?.branches?.map((b: any) => b.branchId) || [];
           if (newBranchId && assignedBranchIds.includes(newBranchId)) {
             data.branchId = newBranchId;
           }
@@ -204,7 +213,9 @@ export const PATCH = withBranchAccess(
       if (branchIds && Array.isArray(branchIds) && branchIds.length > 0) {
         // Access control for non-admins
         if (session.user?.role !== "ADMIN") {
-          const allowed = (session.user?.branches || []).map((b: any) => b.branchId);
+          const allowed = (session.user?.branches || []).map(
+            (b: any) => b.branchId
+          );
           const allAllowed = branchIds.every((b) => allowed.includes(b));
           if (!allAllowed) {
             return NextResponse.json(
@@ -223,7 +234,10 @@ export const PATCH = withBranchAccess(
             ? data.isRecurring
             : existingVacation.isRecurring;
         const finalNotes = data.notes ?? existingVacation.notes;
-        const finalOrder = typeof data.order !== "undefined" ? data.order : existingVacation.order;
+        const finalOrder =
+          typeof data.order !== "undefined"
+            ? data.order
+            : existingVacation.order;
 
         // Old group key (before changes) to find existing duplicates across branches
         const oldKey = {
@@ -345,7 +359,12 @@ export const PATCH = withBranchAccess(
         return NextResponse.json({
           data: updatedVacations.map(formatVacation),
           message: "休日を更新しました",
-          pagination: { total: updatedVacations.length, page: 1, limit: updatedVacations.length, pages: 1 },
+          pagination: {
+            total: updatedVacations.length,
+            page: 1,
+            limit: updatedVacations.length,
+            pages: 1,
+          },
         });
       }
 

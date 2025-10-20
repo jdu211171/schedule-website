@@ -14,6 +14,7 @@ This document describes the new recurring class “blueprint” model, APIs, and
 - `archives.series_id` — preserved when sessions are archived
 
 Migrations:
+
 - `20250913035258_class_series_and_session_status`
 - `20250913082845_add_series_id_to_archives`
 
@@ -22,6 +23,7 @@ Migrations:
 All endpoints require auth. Non‑admins must include header `X-Selected-Branch: <branch_id>` and are limited to that branch. Admins can access any branch and may filter by `branchId` on list.
 
 Roles:
+
 - Read: ADMIN, STAFF, TEACHER (summary/list/show)
 - Mutate: ADMIN, STAFF (update/extend)
 
@@ -35,6 +37,7 @@ Roles:
 - GET `/api/class-series/summary?studentId=...&days=90` — `{ totalRegular, bySubject[] }` for regular (non‑special) sessions
 
 Request headers:
+
 - `X-Selected-Branch: <branch_id>`
 - `Content-Type: application/json` for mutating endpoints
 
@@ -52,8 +55,14 @@ Stopping generation mid-series
 ```
 
 Response:
+
 ```json
-{ "count": 8, "skipped": 1, "createdIds": ["..."], "skippedDetails": [{"date":"2025-01-14","reason":"OVERLAP"}] }
+{
+  "count": 8,
+  "skipped": 1,
+  "createdIds": ["..."],
+  "skippedDetails": [{ "date": "2025-01-14", "reason": "OVERLAP" }]
+}
 ```
 
 ## Special Class Types

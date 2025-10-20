@@ -1,37 +1,37 @@
-"use client"
+"use client";
 
-import type { Table as ReactTable } from "@tanstack/react-table"
-import { ChevronDownIcon, ColumnsIcon } from "lucide-react"
+import type { Table as ReactTable } from "@tanstack/react-table";
+import { ChevronDownIcon, ColumnsIcon } from "lucide-react";
 
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu";
 
-import { TableFilters } from "./table-filters-v0"
+import { TableFilters } from "./table-filters-v0";
 
 type FilterOption = string | { value: string; label: string };
 
 interface FilterConfig {
-  column: string
-  title: string
-  options: FilterOption[]
-  selectedValues: string[]
+  column: string;
+  title: string;
+  options: FilterOption[];
+  selectedValues: string[];
 }
 
 interface GenericTableToolbarProps<TData> {
-  table: ReactTable<TData>
-  searchValue: string
-  onSearchChange: (value: string) => void
-  searchableColumns?: string[]
-  filters: FilterConfig[]
-  onFilterChange: (column: string, values: string[]) => void
-  onSearch?: (query: string, columns?: string[]) => void
-  onFilter?: (column: string, values: string[]) => void
-  isLoading?: boolean
+  table: ReactTable<TData>;
+  searchValue: string;
+  onSearchChange: (value: string) => void;
+  searchableColumns?: string[];
+  filters: FilterConfig[];
+  onFilterChange: (column: string, values: string[]) => void;
+  onSearch?: (query: string, columns?: string[]) => void;
+  onFilter?: (column: string, values: string[]) => void;
+  isLoading?: boolean;
 }
 
 export function GenericTableToolbar<TData>({
@@ -72,23 +72,29 @@ export function GenericTableToolbar<TData>({
             <DropdownMenuContent align="end" className="w-56">
               {table
                 .getAllColumns()
-                .filter((column) => typeof column.accessorFn !== "undefined" && column.getCanHide())
+                .filter(
+                  (column) =>
+                    typeof column.accessorFn !== "undefined" &&
+                    column.getCanHide()
+                )
                 .map((column) => {
                   return (
                     <DropdownMenuCheckboxItem
                       key={column.id}
                       className="capitalize"
                       checked={column.getIsVisible()}
-                      onCheckedChange={(value) => column.toggleVisibility(!!value)}
+                      onCheckedChange={(value) =>
+                        column.toggleVisibility(!!value)
+                      }
                     >
                       {column.columnDef.meta?.label || column.id}
                     </DropdownMenuCheckboxItem>
-                  )
+                  );
                 })}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       </div>
     </div>
-  )
+  );
 }

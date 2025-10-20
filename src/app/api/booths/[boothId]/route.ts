@@ -137,7 +137,10 @@ export const PATCH = withBranchAccess(
 
         if (classSessionsCount > 0) {
           return NextResponse.json(
-            { error: "このブースには授業セッションが割り当てられているため、利用不可にできません" },
+            {
+              error:
+                "このブースには授業セッションが割り当てられているため、利用不可にできません",
+            },
             { status: 409 }
           );
         }
@@ -237,20 +240,20 @@ export const DELETE = withBranchAccess(
 
       // Check for dependencies - only count sessions in the booth's branch
       const classSessionCount = await prisma.classSession.count({
-        where: { 
+        where: {
           boothId,
-          branchId: booth.branchId // Ensure we only count sessions in the booth's branch
-        }
+          branchId: booth.branchId, // Ensure we only count sessions in the booth's branch
+        },
       });
 
       if (classSessionCount > 0) {
         return NextResponse.json(
-          { 
+          {
             error: `このブースは${classSessionCount}件の授業セッションに関連付けられているため削除できません。`,
             details: {
               classSessions: classSessionCount,
-              branch: booth.branchId
-            }
+              branch: booth.branchId,
+            },
           },
           { status: 400 }
         );

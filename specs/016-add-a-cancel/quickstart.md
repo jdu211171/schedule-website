@@ -40,7 +40,8 @@ Enable cancellation from an occurrence forward and pause the series so no new se
 - Expected: ≤ 30 seconds end-to-end in typical conditions. Record the result below.
 
 Results log:
-- Date: ____  Elapsed: ____
+
+- Date: \_**\_ Elapsed: \_\_**
 
 ## Rollback
 

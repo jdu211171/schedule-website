@@ -18,33 +18,33 @@ export const PUT = withRole(["ADMIN"], async (req: NextRequest) => {
     // Build where conditions for updates
     const buildStudentWhere = (): Prisma.StudentWhereInput => {
       const where: Prisma.StudentWhereInput = {
-        lineId: { not: null }
+        lineId: { not: null },
       };
-      
+
       if (branchId) {
         where.user = {
           branches: {
-            some: { branchId }
-          }
+            some: { branchId },
+          },
         };
       }
-      
+
       return where;
     };
 
     const buildTeacherWhere = (): Prisma.TeacherWhereInput => {
       const where: Prisma.TeacherWhereInput = {
-        lineId: { not: null }
+        lineId: { not: null },
       };
-      
+
       if (branchId) {
         where.user = {
           branches: {
-            some: { branchId }
-          }
+            some: { branchId },
+          },
         };
       }
-      
+
       return where;
     };
 
@@ -57,7 +57,7 @@ export const PUT = withRole(["ADMIN"], async (req: NextRequest) => {
         data: {
           lineNotificationsEnabled: enabled,
           updatedAt: new Date(),
-        }
+        },
       });
       updatedCount += result.count;
     }
@@ -68,7 +68,7 @@ export const PUT = withRole(["ADMIN"], async (req: NextRequest) => {
         data: {
           lineNotificationsEnabled: enabled,
           updatedAt: new Date(),
-        }
+        },
       });
       updatedCount += result.count;
     }
@@ -78,7 +78,7 @@ export const PUT = withRole(["ADMIN"], async (req: NextRequest) => {
         updated: updatedCount,
         userType,
         enabled,
-      }
+      },
     });
   } catch (error) {
     if (error instanceof z.ZodError) {

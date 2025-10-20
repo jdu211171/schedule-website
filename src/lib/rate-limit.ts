@@ -5,7 +5,9 @@ type Bucket = {
   refillPerSec: number;
 };
 
-const globalForBuckets = global as unknown as { __rateBuckets?: Map<string, Bucket> };
+const globalForBuckets = global as unknown as {
+  __rateBuckets?: Map<string, Bucket>;
+};
 
 function getMap() {
   if (!globalForBuckets.__rateBuckets) {
@@ -14,7 +16,11 @@ function getMap() {
   return globalForBuckets.__rateBuckets;
 }
 
-export function allowRate(key: string, capacity = 2, refillPerSec = 0.1): boolean {
+export function allowRate(
+  key: string,
+  capacity = 2,
+  refillPerSec = 0.1
+): boolean {
   // Default: capacity 2, refill 0.1 tokens/sec (~1 every 10s)
   const now = Date.now();
   const map = getMap();
@@ -33,4 +39,3 @@ export function allowRate(key: string, capacity = 2, refillPerSec = 0.1): boolea
   }
   return false;
 }
-

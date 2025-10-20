@@ -7,7 +7,11 @@ import { prisma } from "@/lib/prisma";
 export const PATCH = withRole(["ADMIN"], async (req: NextRequest) => {
   const { pathname } = new URL(req.url);
   const id = pathname.split("/").pop();
-  if (!id) return NextResponse.json({ error: "Invalid classType id" }, { status: 400 });
+  if (!id)
+    return NextResponse.json(
+      { error: "Invalid classType id" },
+      { status: 400 }
+    );
 
   let body: unknown;
   try {
@@ -23,7 +27,10 @@ export const PATCH = withRole(["ADMIN"], async (req: NextRequest) => {
   }
 
   if (Object.keys(data).length === 0) {
-    return NextResponse.json({ error: "No updatable fields provided" }, { status: 400 });
+    return NextResponse.json(
+      { error: "No updatable fields provided" },
+      { status: 400 }
+    );
   }
 
   try {
@@ -36,9 +43,15 @@ export const PATCH = withRole(["ADMIN"], async (req: NextRequest) => {
   } catch (e: unknown) {
     const err = e as { code?: string } | undefined;
     if (err?.code === "P2025") {
-      return NextResponse.json({ error: "ClassType not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "ClassType not found" },
+        { status: 404 }
+      );
     }
     console.error("Failed to update class type", e);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
   }
 });

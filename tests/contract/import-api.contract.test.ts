@@ -28,4 +28,3 @@ describe("OpenAPI contract for CSV Import API", () => {
     expect(text).toContain("status:");
   });
 });
-

@@ -1,21 +1,21 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
 async function migratePhoneData() {
-  console.log('Starting phone data migration...');
-  
+  console.log("Starting phone data migration...");
+
   const students = await prisma.student.findMany({
     select: {
       studentId: true,
       homePhone: true,
       parentPhone: true,
       studentPhone: true,
-    }
+    },
   });
 
   let migrated = 0;
-  
+
   for (const student of students) {
     const phonesToCreate = [];
     let order = 0;
@@ -24,7 +24,7 @@ async function migratePhoneData() {
     if (student.homePhone) {
       phonesToCreate.push({
         studentId: student.studentId,
-        phoneType: 'HOME' as const,
+        phoneType: "HOME" as const,
         phoneNumber: student.homePhone,
         order: order++,
         notes: null,
@@ -35,10 +35,10 @@ async function migratePhoneData() {
     if (student.parentPhone) {
       phonesToCreate.push({
         studentId: student.studentId,
-        phoneType: 'OTHER' as const,
+        phoneType: "OTHER" as const,
         phoneNumber: student.parentPhone,
         order: order++,
-        notes: '保護者',
+        notes: "保護者",
       });
     }
 
@@ -46,10 +46,10 @@ async function migratePhoneData() {
     if (student.studentPhone) {
       phonesToCreate.push({
         studentId: student.studentId,
-        phoneType: 'OTHER' as const,
+        phoneType: "OTHER" as const,
         phoneNumber: student.studentPhone,
         order: order++,
-        notes: '生徒',
+        notes: "生徒",
       });
     }
 
@@ -61,12 +61,14 @@ async function migratePhoneData() {
     }
   }
 
-  console.log(`Migration complete. Migrated phone data for ${migrated} students.`);
+  console.log(
+    `Migration complete. Migrated phone data for ${migrated} students.`
+  );
 }
 
 migratePhoneData()
   .catch((e) => {
-    console.error('Migration failed:', e);
+    console.error("Migration failed:", e);
     process.exit(1);
   })
   .finally(async () => {

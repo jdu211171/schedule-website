@@ -15,7 +15,9 @@ type ImportSessionRecord = {
   message?: string;
 };
 
-const globalStore = global as unknown as { __importSessions?: Map<string, ImportSessionRecord> };
+const globalStore = global as unknown as {
+  __importSessions?: Map<string, ImportSessionRecord>;
+};
 
 function store() {
   if (!globalStore.__importSessions) globalStore.__importSessions = new Map();
@@ -29,4 +31,3 @@ export function putImportSession(session: ImportSessionRecord) {
 export function getImportSession(id: string): ImportSessionRecord | undefined {
   return store().get(id);
 }
-

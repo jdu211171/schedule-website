@@ -1,26 +1,26 @@
-"use client"
+"use client";
 
-import { ColumnFilter } from "./column-filter-v0"
-import { TableSearch } from "./table-search-v0"
+import { ColumnFilter } from "./column-filter-v0";
+import { TableSearch } from "./table-search-v0";
 
 type FilterOption = string | { value: string; label: string };
 
 interface FilterConfig {
-  column: string
-  title: string
-  options: FilterOption[]
-  selectedValues: string[]
+  column: string;
+  title: string;
+  options: FilterOption[];
+  selectedValues: string[];
 }
 
 interface TableFiltersProps {
-  searchValue: string
-  onSearchChange: (value: string) => void
-  searchableColumns?: string[]
-  filters: FilterConfig[]
-  onFilterChange: (column: string, values: string[]) => void
-  onSearch?: (query: string, columns?: string[]) => void
-  onFilter?: (column: string, values: string[]) => void
-  isLoading?: boolean
+  searchValue: string;
+  onSearchChange: (value: string) => void;
+  searchableColumns?: string[];
+  filters: FilterConfig[];
+  onFilterChange: (column: string, values: string[]) => void;
+  onSearch?: (query: string, columns?: string[]) => void;
+  onFilter?: (column: string, values: string[]) => void;
+  isLoading?: boolean;
 }
 
 export function TableFilters({
@@ -60,5 +60,5 @@ export function TableFilters({
         ))}
       </div>
     </div>
-  )
+  );
 }

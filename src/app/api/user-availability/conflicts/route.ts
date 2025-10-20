@@ -315,10 +315,15 @@ const checkUserAvailability = async (
       // Check overlap with requested time
       for (const absence of absenceAvailability) {
         if (!absence.startTime || !absence.endTime) continue;
-        const absStart = absence.startTime.getUTCHours() * 60 + absence.startTime.getUTCMinutes();
-        const absEnd = absence.endTime.getUTCHours() * 60 + absence.endTime.getUTCMinutes();
-        const requestedStart = startTime.getUTCHours() * 60 + startTime.getUTCMinutes();
-        const requestedEnd = endTime.getUTCHours() * 60 + endTime.getUTCMinutes();
+        const absStart =
+          absence.startTime.getUTCHours() * 60 +
+          absence.startTime.getUTCMinutes();
+        const absEnd =
+          absence.endTime.getUTCHours() * 60 + absence.endTime.getUTCMinutes();
+        const requestedStart =
+          startTime.getUTCHours() * 60 + startTime.getUTCMinutes();
+        const requestedEnd =
+          endTime.getUTCHours() * 60 + endTime.getUTCMinutes();
         if (requestedStart < absEnd && requestedEnd > absStart) {
           available = false;
           break;

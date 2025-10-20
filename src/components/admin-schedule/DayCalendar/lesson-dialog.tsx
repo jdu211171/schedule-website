@@ -1,22 +1,35 @@
-import { useState, useEffect, useMemo } from 'react';
-import { format } from 'date-fns';
-import { ja } from 'date-fns/locale';
-import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Label } from '@/components/ui/label';
-import { ExtendedClassSessionWithRelations } from '@/hooks/useClassSessionQuery';
-import { useClassSessionDelete, useClassSessionUpdate, useClassSessionSeriesUpdate, useClassSessionSeriesDelete, useClassSessionCancel } from '@/hooks/useClassSessionMutation';
-import { useUpdateClassSeries } from '@/hooks/use-class-series';
-import { SearchableSelect, SearchableSelectItem } from '../searchable-select';
-import { TimeInput } from '@/components/ui/time-input';
-import { ConfirmDeleteDialog } from '../confirm-delete-dialog';
-import { useAvailability } from './availability-layer';
+import { useState, useEffect, useMemo } from "react";
+import { format } from "date-fns";
+import { ja } from "date-fns/locale";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
+import { ExtendedClassSessionWithRelations } from "@/hooks/useClassSessionQuery";
+import {
+  useClassSessionDelete,
+  useClassSessionUpdate,
+  useClassSessionSeriesUpdate,
+  useClassSessionSeriesDelete,
+  useClassSessionCancel,
+} from "@/hooks/useClassSessionMutation";
+import { useUpdateClassSeries } from "@/hooks/use-class-series";
+import { SearchableSelect, SearchableSelectItem } from "../searchable-select";
+import { TimeInput } from "@/components/ui/time-input";
+import { ConfirmDeleteDialog } from "../confirm-delete-dialog";
+import { useAvailability } from "./availability-layer";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { fetcher } from '@/lib/fetcher';
-import { getDateKey } from '../date';
-import { broadcastClassSessionsChanged } from '@/lib/calendar-broadcast';
+import { fetcher } from "@/lib/fetcher";
+import { getDateKey } from "../date";
+import { broadcastClassSessionsChanged } from "@/lib/calendar-broadcast";
 
 interface Booth {
   boothId: string;
@@ -62,15 +75,15 @@ interface EditableLessonUI {
   classType?: { name: string; classTypeId: string } | null;
 }
 
-type EditMode = 'single' | 'series';
-type DeleteMode = 'single' | 'series';
+type EditMode = "single" | "series";
+type DeleteMode = "single" | "series";
 
 type LessonDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   lesson: ExtendedClassSessionWithRelations;
-  mode: 'view' | 'edit';
-  onModeChange: (mode: 'view' | 'edit') => void;
+  mode: "view" | "edit";
+  onModeChange: (mode: "view" | "edit") => void;
   onSave: (lessonId: string, wasSeriesEdit?: boolean) => void;
   onDelete: (lessonId: string) => void;
   booths?: Booth[];
@@ -94,18 +107,20 @@ const DEFAULT_TIME_SLOTS = Array.from({ length: 57 }, (_, i) => {
 
   return {
     index: i,
-    start: `${hours.toString().padStart(2, '0')}:${startMinutes.toString().padStart(2, '0')}`,
-    end: `${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`,
-    display: `${hours}:${startMinutes === 0 ? '00' : startMinutes} - ${endHours}:${endMinutes === 0 ? '00' : endMinutes}`,
-    shortDisplay: i % 4 === 0 ? `${hours}:00` : ''
+    start: `${hours.toString().padStart(2, "0")}:${startMinutes.toString().padStart(2, "0")}`,
+    end: `${endHours.toString().padStart(2, "0")}:${endMinutes.toString().padStart(2, "0")}`,
+    display: `${hours}:${startMinutes === 0 ? "00" : startMinutes} - ${endHours}:${endMinutes === 0 ? "00" : endMinutes}`,
+    shortDisplay: i % 4 === 0 ? `${hours}:00` : "",
   };
 });
 
-function convertToEditableUI(lesson: ExtendedClassSessionWithRelations): EditableLessonUI {
+function convertToEditableUI(
+  lesson: ExtendedClassSessionWithRelations
+): EditableLessonUI {
   const getTimeFromValue = (timeValue: string | Date | undefined): string => {
-    if (!timeValue) return '';
+    if (!timeValue) return "";
     try {
-      if (typeof timeValue === 'string') {
+      if (typeof timeValue === "string") {
         if (/^\d{2}:\d{2}$/.test(timeValue)) {
           return timeValue;
         }
@@ -114,14 +129,13 @@ function convertToEditableUI(lesson: ExtendedClassSessionWithRelations): Editabl
         if (timeMatch && timeMatch[1]) {
           return timeMatch[1];
         }
-        return '';
+        return "";
+      } else if (timeValue instanceof Date) {
+        return `${timeValue.getUTCHours().toString().padStart(2, "0")}:${timeValue.getUTCMinutes().toString().padStart(2, "0")}`;
       }
-      else if (timeValue instanceof Date) {
-        return `${timeValue.getUTCHours().toString().padStart(2, '0')}:${timeValue.getUTCMinutes().toString().padStart(2, '0')}`;
-      }
-      return '';
+      return "";
     } catch {
-      return '';
+      return "";
     }
   };
 
@@ -140,7 +154,7 @@ function convertToEditableUI(lesson: ExtendedClassSessionWithRelations): Editabl
     teacher: lesson.teacher,
     student: lesson.student,
     subject: lesson.subject,
-    classType: lesson.classType
+    classType: lesson.classType,
   };
 }
 
@@ -155,30 +169,37 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
   booths = [],
   teachers = [],
   students = [],
-  subjects = []
+  subjects = [],
 }) => {
-  const [editedLesson, setEditedLesson] = useState<EditableLessonUI | null>(null);
+  const [editedLesson, setEditedLesson] = useState<EditableLessonUI | null>(
+    null
+  );
   const [error, setError] = useState<string | null>(null);
-  const [editMode, setEditMode] = useState<EditMode>('single');
-  const [deleteMode, setDeleteMode] = useState<DeleteMode>('single');
+  const [editMode, setEditMode] = useState<EditMode>("single");
+  const [deleteMode, setDeleteMode] = useState<DeleteMode>("single");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   // Cancel flow state (mirrors delete flow)
-  const [cancelMode, setCancelMode] = useState<EditMode>('single');
+  const [cancelMode, setCancelMode] = useState<EditMode>("single");
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const queryClient = useQueryClient();
 
   // Состояния для типов уроков
   const [classTypes, setClassTypes] = useState<ClassType[]>([]);
-  const [selectedParentClassTypeId, setSelectedParentClassTypeId] = useState<string>('');
-  const [selectedChildClassTypeId, setSelectedChildClassTypeId] = useState<string>('');
-  const [isLoadingClassTypes, setIsLoadingClassTypes] = useState<boolean>(false);
+  const [selectedParentClassTypeId, setSelectedParentClassTypeId] =
+    useState<string>("");
+  const [selectedChildClassTypeId, setSelectedChildClassTypeId] =
+    useState<string>("");
+  const [isLoadingClassTypes, setIsLoadingClassTypes] =
+    useState<boolean>(false);
 
   const deleteClassMutation = useClassSessionDelete();
   const deleteSeriesMutation = useClassSessionSeriesDelete();
   const updateClassMutation = useClassSessionUpdate();
   const updateSeriesMutation = useClassSessionSeriesUpdate();
   const cancelMutation = useClassSessionCancel();
-  const updateSeriesMeta = lesson.seriesId ? useUpdateClassSeries(lesson.seriesId) : null;
+  const updateSeriesMeta = lesson.seriesId
+    ? useUpdateClassSeries(lesson.seriesId)
+    : null;
 
   const isRecurringLesson = lesson.seriesId !== null;
 
@@ -201,30 +222,46 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
     if (!lesson.classId) return;
     try {
       // Compute pivot date (YYYY-MM-DD) from selected occurrence
-      const pivot = format(getDisplayDate(), 'yyyy-MM-dd', { locale: ja });
+      const pivot = format(getDisplayDate(), "yyyy-MM-dd", { locale: ja });
       // Respect the cancel radio selection only; default is set when opening
-      const seriesScope = isRecurringLesson && cancelMode === 'series';
+      const seriesScope = isRecurringLesson && cancelMode === "series";
       if (seriesScope && lesson.seriesId) {
         // Cancel this and future occurrences from pivot
-        await cancelMutation.mutateAsync({ seriesId: lesson.seriesId, fromDate: pivot });
+        await cancelMutation.mutateAsync({
+          seriesId: lesson.seriesId,
+          fromDate: pivot,
+        });
         // Mirror delete: shorten blueprint and pause generation
         try {
           if (updateSeriesMeta) {
-            await updateSeriesMeta.mutateAsync({ endDate: pivot, lastGeneratedThrough: pivot, status: 'PAUSED' } as any);
+            await updateSeriesMeta.mutateAsync({
+              endDate: pivot,
+              lastGeneratedThrough: pivot,
+              status: "PAUSED",
+            } as any);
           } else {
             // Fallback direct fetch if hook not available
             await fetch(`/api/class-series/${lesson.seriesId}`, {
-              method: 'PATCH',
+              method: "PATCH",
               headers: {
-                'Content-Type': 'application/json',
-                'X-Selected-Branch': (typeof window !== 'undefined' ? (localStorage.getItem('selectedBranchId') || '') : '')
+                "Content-Type": "application/json",
+                "X-Selected-Branch":
+                  typeof window !== "undefined"
+                    ? localStorage.getItem("selectedBranchId") || ""
+                    : "",
               },
-              body: JSON.stringify({ endDate: pivot, lastGeneratedThrough: pivot, status: 'PAUSED' }),
+              body: JSON.stringify({
+                endDate: pivot,
+                lastGeneratedThrough: pivot,
+                status: "PAUSED",
+              }),
             });
           }
         } catch (_) {}
-        toast.success('この回以降をキャンセルし、シリーズを停止しました');
-        try { broadcastClassSessionsChanged(); } catch {}
+        toast.success("この回以降をキャンセルし、シリーズを停止しました");
+        try {
+          broadcastClassSessionsChanged();
+        } catch {}
         onOpenChange(false);
       } else {
         // Single occurrence cancel
@@ -233,17 +270,18 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
         try {
           broadcastClassSessionsChanged([dateKey]);
           await queryClient.refetchQueries({
-            predicate: ({ queryKey }) => Array.isArray(queryKey)
-              && queryKey[0] === 'classSessions'
-              && queryKey[1] === 'byDate'
-              && queryKey[2] === dateKey,
-            type: 'active' as any,
+            predicate: ({ queryKey }) =>
+              Array.isArray(queryKey) &&
+              queryKey[0] === "classSessions" &&
+              queryKey[1] === "byDate" &&
+              queryKey[2] === dateKey,
+            type: "active" as any,
           });
         } catch {}
         onOpenChange(false);
       }
-    } catch (e:any) {
-      toast.error('キャンセルに失敗しました');
+    } catch (e: any) {
+      toast.error("キャンセルに失敗しました");
     } finally {
       setShowCancelConfirm(false);
     }
@@ -258,12 +296,16 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
 
   // Фильтруем типы уроков
   const parentClassTypes = useMemo(() => {
-    return classTypes.filter(type => !type.parentId) || [];
+    return classTypes.filter((type) => !type.parentId) || [];
   }, [classTypes]);
 
   const childClassTypes = useMemo(() => {
     if (!selectedParentClassTypeId) return [];
-    return classTypes.filter(type => type.parentId === selectedParentClassTypeId) || [];
+    return (
+      classTypes.filter(
+        (type) => type.parentId === selectedParentClassTypeId
+      ) || []
+    );
   }, [classTypes, selectedParentClassTypeId]);
 
   // Загрузка типов уроков (ALL types for admin edit)
@@ -272,8 +314,13 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
       const loadClassTypes = async () => {
         setIsLoadingClassTypes(true);
         try {
-          const params = new URLSearchParams({ limit: '200', includeParent: 'true' });
-          const response = await fetcher<{ data: ClassType[] }>(`/api/admin/masterdata/class-types?${params.toString()}`);
+          const params = new URLSearchParams({
+            limit: "200",
+            includeParent: "true",
+          });
+          const response = await fetcher<{ data: ClassType[] }>(
+            `/api/admin/masterdata/class-types?${params.toString()}`
+          );
           setClassTypes(response.data || []);
         } catch (err) {
           console.error("Error loading class types:", err);
@@ -284,15 +331,15 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
       loadClassTypes();
       // Live refresh when class types are toggled in masterdata
       try {
-        const ch = new BroadcastChannel('class-types');
+        const ch = new BroadcastChannel("class-types");
         const onMsg = (evt: MessageEvent) => {
-          if ((evt.data as any)?.type === 'classTypesChanged') {
+          if ((evt.data as any)?.type === "classTypesChanged") {
             loadClassTypes();
           }
         };
-        ch.addEventListener('message', onMsg);
+        ch.addEventListener("message", onMsg);
         return () => {
-          ch.removeEventListener('message', onMsg);
+          ch.removeEventListener("message", onMsg);
           ch.close();
         };
       } catch {}
@@ -302,16 +349,18 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
   useEffect(() => {
     if (lesson && open) {
       setEditedLesson(convertToEditableUI(lesson));
-      setEditMode('single');
-      setDeleteMode('single');
+      setEditMode("single");
+      setDeleteMode("single");
 
       // Определяем родительский и дочерний типы
       if (lesson.classTypeId && classTypes.length > 0) {
-        const currentType = classTypes.find(type => type.classTypeId === lesson.classTypeId);
+        const currentType = classTypes.find(
+          (type) => type.classTypeId === lesson.classTypeId
+        );
         if (currentType) {
           if (!currentType.parentId) {
             setSelectedParentClassTypeId(currentType.classTypeId);
-            setSelectedChildClassTypeId('');
+            setSelectedChildClassTypeId("");
           } else {
             setSelectedParentClassTypeId(currentType.parentId);
             setSelectedChildClassTypeId(currentType.classTypeId);
@@ -321,45 +370,48 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
     } else if (!open) {
       setEditedLesson(null);
       setError(null);
-      setEditMode('single');
-      setDeleteMode('single');
+      setEditMode("single");
+      setDeleteMode("single");
       setShowDeleteConfirm(false);
-      setSelectedParentClassTypeId('');
-      setSelectedChildClassTypeId('');
+      setSelectedParentClassTypeId("");
+      setSelectedChildClassTypeId("");
     }
   }, [lesson, open, classTypes]);
 
   useEffect(() => {
     if (isRecurringLesson) {
-      setDeleteMode(editMode === 'series' ? 'series' : 'single');
+      setDeleteMode(editMode === "series" ? "series" : "single");
     }
   }, [editMode, isRecurringLesson]);
 
   if (!lesson || !editedLesson) return null;
 
-  const handleInputChange = (field: keyof EditableLessonUI, value: string | number | boolean | null | undefined) => {
+  const handleInputChange = (
+    field: keyof EditableLessonUI,
+    value: string | number | boolean | null | undefined
+  ) => {
     const updatedLesson: EditableLessonUI = { ...editedLesson };
 
     switch (field) {
-      case 'formattedStartTime':
+      case "formattedStartTime":
         updatedLesson.formattedStartTime = value as string | undefined;
         break;
-      case 'formattedEndTime':
+      case "formattedEndTime":
         updatedLesson.formattedEndTime = value as string | undefined;
         break;
-      case 'boothId':
+      case "boothId":
         updatedLesson.boothId = value as string | null;
         break;
-      case 'teacherId':
+      case "teacherId":
         updatedLesson.teacherId = value as string | null;
         break;
-      case 'studentId':
+      case "studentId":
         updatedLesson.studentId = value as string | null;
         break;
-      case 'subjectId':
+      case "subjectId":
         updatedLesson.subjectId = value as string | null;
         break;
-      case 'notes':
+      case "notes":
         updatedLesson.notes = value as string | null;
         break;
       default:
@@ -371,7 +423,7 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
 
   const handleParentClassTypeChange = (parentTypeId: string) => {
     setSelectedParentClassTypeId(parentTypeId);
-    setSelectedChildClassTypeId('');
+    setSelectedChildClassTypeId("");
 
     // Обновляем classTypeId в editedLesson
     const updatedLesson = { ...editedLesson };
@@ -394,9 +446,10 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
     }
 
     // Определяем финальный classTypeId
-    const finalClassTypeId = selectedChildClassTypeId || selectedParentClassTypeId;
+    const finalClassTypeId =
+      selectedChildClassTypeId || selectedParentClassTypeId;
 
-    if (editMode === 'series' && lesson.seriesId) {
+    if (editMode === "series" && lesson.seriesId) {
       const seriesToSave: {
         seriesId: string;
         teacherId?: string | null;
@@ -452,14 +505,22 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
           try {
             if (updateSeriesMeta) {
               const metaPatch: any = {};
-              if (seriesToSave.teacherId !== undefined) metaPatch.teacherId = seriesToSave.teacherId;
-              if (seriesToSave.studentId !== undefined) metaPatch.studentId = seriesToSave.studentId;
-              if (seriesToSave.subjectId !== undefined) metaPatch.subjectId = seriesToSave.subjectId;
-              if (seriesToSave.classTypeId !== undefined) metaPatch.classTypeId = seriesToSave.classTypeId;
-              if (seriesToSave.boothId !== undefined) metaPatch.boothId = seriesToSave.boothId || null;
-              if (seriesToSave.startTime) metaPatch.startTime = seriesToSave.startTime;
-              if (seriesToSave.endTime) metaPatch.endTime = seriesToSave.endTime;
-              if (seriesToSave.notes !== undefined) metaPatch.notes = seriesToSave.notes || null;
+              if (seriesToSave.teacherId !== undefined)
+                metaPatch.teacherId = seriesToSave.teacherId;
+              if (seriesToSave.studentId !== undefined)
+                metaPatch.studentId = seriesToSave.studentId;
+              if (seriesToSave.subjectId !== undefined)
+                metaPatch.subjectId = seriesToSave.subjectId;
+              if (seriesToSave.classTypeId !== undefined)
+                metaPatch.classTypeId = seriesToSave.classTypeId;
+              if (seriesToSave.boothId !== undefined)
+                metaPatch.boothId = seriesToSave.boothId || null;
+              if (seriesToSave.startTime)
+                metaPatch.startTime = seriesToSave.startTime;
+              if (seriesToSave.endTime)
+                metaPatch.endTime = seriesToSave.endTime;
+              if (seriesToSave.notes !== undefined)
+                metaPatch.notes = seriesToSave.notes || null;
               // Avoid re-propagation because we already updated sessions with a pivot
               metaPatch.skipPropagation = true;
               metaPatch.propagateFromClassId = editedLesson.classId;
@@ -467,15 +528,15 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
             }
           } catch (e) {
             // Non-fatal: sessions already updated; log for diagnostics
-            console.error('シリーズメタデータの更新に失敗しました', e);
+            console.error("シリーズメタデータの更新に失敗しました", e);
           }
           onSave(editedLesson.classId, true);
-          onModeChange('view');
+          onModeChange("view");
         },
         onError: (error) => {
           console.error("シリーズの更新エラー:", error);
           setError("シリーズの更新に失敗しました");
-        }
+        },
       });
     } else {
       const lessonToSave: {
@@ -489,7 +550,7 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
         notes?: string | null;
         classTypeId?: string;
       } = {
-        classId: editedLesson.classId
+        classId: editedLesson.classId,
       };
 
       if (editedLesson.teacherId !== undefined) {
@@ -527,12 +588,12 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
       updateClassMutation.mutate(lessonToSave, {
         onSuccess: () => {
           onSave(lessonToSave.classId, false);
-          onModeChange('view');
+          onModeChange("view");
         },
         onError: (error) => {
           console.error("授業の更新エラー:", error);
           setError("授業の更新に失敗しました");
-        }
+        },
       });
     }
   };
@@ -544,17 +605,20 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
   const handleDelete = () => {
     if (!lesson.classId) return;
 
-    if (deleteMode === 'series' && lesson.seriesId) {
+    if (deleteMode === "series" && lesson.seriesId) {
       // Delete from this instance forward
-      deleteSeriesMutation.mutate({ seriesId: lesson.seriesId, fromClassId: lesson.classId }, {
-        onSuccess: () => {
-          onDelete(lesson.classId);
-        },
-        onError: (error) => {
-          console.error("シリーズの削除エラー:", error);
-          setError("シリーズの削除に失敗しました");
+      deleteSeriesMutation.mutate(
+        { seriesId: lesson.seriesId, fromClassId: lesson.classId },
+        {
+          onSuccess: () => {
+            onDelete(lesson.classId);
+          },
+          onError: (error) => {
+            console.error("シリーズの削除エラー:", error);
+            setError("シリーズの削除に失敗しました");
+          },
         }
-      });
+      );
     } else {
       deleteClassMutation.mutate(lesson.classId, {
         onSuccess: () => {
@@ -563,7 +627,7 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
         onError: (error) => {
           console.error("授業の削除エラー:", error);
           setError("授業の削除に失敗しました");
-        }
+        },
       });
     }
   };
@@ -571,8 +635,8 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
   const canSave = () => {
     return Boolean(
       editedLesson.formattedStartTime &&
-      editedLesson.formattedEndTime &&
-      editedLesson.boothId
+        editedLesson.formattedEndTime &&
+        editedLesson.boothId
     );
   };
 
@@ -596,20 +660,29 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
     label: subject.name,
   }));
 
-  const parentClassTypeItems: SearchableSelectItem[] = parentClassTypes.map((type) => ({
-    value: type.classTypeId,
-    label: type.name,
-  }));
+  const parentClassTypeItems: SearchableSelectItem[] = parentClassTypes.map(
+    (type) => ({
+      value: type.classTypeId,
+      label: type.name,
+    })
+  );
 
-  const childClassTypeItems: SearchableSelectItem[] = childClassTypes.map((type) => ({
-    value: type.classTypeId,
-    label: type.name,
-  }));
+  const childClassTypeItems: SearchableSelectItem[] = childClassTypes.map(
+    (type) => ({
+      value: type.classTypeId,
+      label: type.name,
+    })
+  );
 
-  const isLoading = updateClassMutation.isPending || updateSeriesMutation.isPending;
+  const isLoading =
+    updateClassMutation.isPending || updateSeriesMutation.isPending;
 
-  const selectedParentClassType = parentClassTypes.find(type => type.classTypeId === selectedParentClassTypeId);
-  const selectedChildClassType = childClassTypes.find(type => type.classTypeId === selectedChildClassTypeId);
+  const selectedParentClassType = parentClassTypes.find(
+    (type) => type.classTypeId === selectedParentClassTypeId
+  );
+  const selectedChildClassType = childClassTypes.find(
+    (type) => type.classTypeId === selectedChildClassTypeId
+  );
 
   return (
     <>
@@ -617,54 +690,73 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
         <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {mode === 'view' ? '授業の詳細' : '授業の編集'}
-              <span className={`text-sm font-normal ml-2 ${isRecurringLesson ? 'text-indigo-500 dark:text-indigo-400' : 'text-red-500 dark:text-red-400'}`}>
-                ({lesson.classType?.name || lesson.classTypeName || '不明'})
+              {mode === "view" ? "授業の詳細" : "授業の編集"}
+              <span
+                className={`text-sm font-normal ml-2 ${isRecurringLesson ? "text-indigo-500 dark:text-indigo-400" : "text-red-500 dark:text-red-400"}`}
+              >
+                ({lesson.classType?.name || lesson.classTypeName || "不明"})
               </span>
             </DialogTitle>
             <DialogDescription>
-              {mode === 'view' ? '授業の詳細情報です' : '時間とブースを変更できます'}
+              {mode === "view"
+                ? "授業の詳細情報です"
+                : "時間とブースを変更できます"}
             </DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
             {lesson.isCancelled && (
               <div className="rounded-md border border-slate-300 bg-slate-100 text-slate-800 dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-100 p-3">
-                <div className="text-sm font-semibold">この授業はキャンセルされています</div>
+                <div className="text-sm font-semibold">
+                  この授業はキャンセルされています
+                </div>
                 <div className="text-xs mt-1 opacity-90">
-                  取消日: {lesson.cancelledAt ? format(new Date(lesson.cancelledAt), 'yyyy/MM/dd', { locale: ja }) : '-'}
+                  取消日:{" "}
+                  {lesson.cancelledAt
+                    ? format(new Date(lesson.cancelledAt), "yyyy/MM/dd", {
+                        locale: ja,
+                      })
+                    : "-"}
                   {" / "}
-                  取消者: {lesson.cancelledByName || '不明'}
+                  取消者: {lesson.cancelledByName || "不明"}
                 </div>
               </div>
             )}
-            {mode === 'edit' && isRecurringLesson && (
+            {mode === "edit" && isRecurringLesson && (
               <div className="p-3 border rounded-lg bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
-            <RadioGroup
-              value={editMode}
-              onValueChange={(value: EditMode) => setEditMode(value)}
-              className="flex flex-row space-x-6"
-            >
-              <div className="flex items-center space-x-2" >
-                <RadioGroupItem value="single" id="single" />
-                <Label htmlFor="single" className="text-sm font-normal cursor-pointer">
-                  この授業のみ編集
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="series" id="series" />
-                <Label htmlFor="series" className="text-sm font-normal cursor-pointer">
-                  この回以降を編集
-                </Label>
-              </div>
-            </RadioGroup>
+                <RadioGroup
+                  value={editMode}
+                  onValueChange={(value: EditMode) => setEditMode(value)}
+                  className="flex flex-row space-x-6"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="single" id="single" />
+                    <Label
+                      htmlFor="single"
+                      className="text-sm font-normal cursor-pointer"
+                    >
+                      この授業のみ編集
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="series" id="series" />
+                    <Label
+                      htmlFor="series"
+                      className="text-sm font-normal cursor-pointer"
+                    >
+                      この回以降を編集
+                    </Label>
+                  </div>
+                </RadioGroup>
               </div>
             )}
 
             {showCancelConfirm && isRecurringLesson && (
               <div className="p-3 border rounded-lg bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800">
                 <div className="mb-2">
-                  <Label className="text-sm font-medium text-foreground">キャンセル範囲を選択:</Label>
+                  <Label className="text-sm font-medium text-foreground">
+                    キャンセル範囲を選択:
+                  </Label>
                 </div>
                 <RadioGroup
                   value={cancelMode}
@@ -673,13 +765,19 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
                 >
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="single" id="cancel-single" />
-                    <Label htmlFor="cancel-single" className="text-sm font-normal cursor-pointer">
+                    <Label
+                      htmlFor="cancel-single"
+                      className="text-sm font-normal cursor-pointer"
+                    >
                       この授業のみキャンセル
                     </Label>
                   </div>
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="series" id="cancel-series" />
-                    <Label htmlFor="cancel-series" className="text-sm font-normal cursor-pointer">
+                    <Label
+                      htmlFor="cancel-series"
+                      className="text-sm font-normal cursor-pointer"
+                    >
                       この回以降をキャンセル
                     </Label>
                   </div>
@@ -690,7 +788,9 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
             {showDeleteConfirm && isRecurringLesson && (
               <div className="p-3 border rounded-lg bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800">
                 <div className="mb-2">
-                  <Label className="text-sm font-medium text-foreground">削除範囲を選択:</Label>
+                  <Label className="text-sm font-medium text-foreground">
+                    削除範囲を選択:
+                  </Label>
                 </div>
                 <RadioGroup
                   value={deleteMode}
@@ -699,13 +799,19 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
                 >
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="single" id="delete-single" />
-                    <Label htmlFor="delete-single" className="text-sm font-normal cursor-pointer">
+                    <Label
+                      htmlFor="delete-single"
+                      className="text-sm font-normal cursor-pointer"
+                    >
                       この授業のみ削除
                     </Label>
                   </div>
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="series" id="delete-series" />
-                    <Label htmlFor="delete-series" className="text-sm font-normal cursor-pointer">
+                    <Label
+                      htmlFor="delete-series"
+                      className="text-sm font-normal cursor-pointer"
+                    >
                       この回以降を削除
                     </Label>
                   </div>
@@ -715,17 +821,26 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium text-foreground">日付</label>
+                <label className="text-sm font-medium text-foreground">
+                  日付
+                </label>
                 <div className="border rounded-md p-2 mt-1 bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground border-input">
-                  {format(getDisplayDate(), 'yyyy年MM月dd日', { locale: ja })}
+                  {format(getDisplayDate(), "yyyy年MM月dd日", { locale: ja })}
                 </div>
               </div>
               <div>
-                <label className="text-sm font-medium text-foreground">ブース {mode === 'edit' && <span className="text-destructive">*</span>}</label>
-                {mode === 'edit' ? (
+                <label className="text-sm font-medium text-foreground">
+                  ブース{" "}
+                  {mode === "edit" && (
+                    <span className="text-destructive">*</span>
+                  )}
+                </label>
+                {mode === "edit" ? (
                   <SearchableSelect
-                    value={editedLesson.boothId || ''}
-                    onValueChange={(value) => handleInputChange('boothId', value)}
+                    value={editedLesson.boothId || ""}
+                    onValueChange={(value) =>
+                      handleInputChange("boothId", value)
+                    }
                     items={boothItems}
                     placeholder="ブースを選択"
                     searchPlaceholder="ブースを検索..."
@@ -741,12 +856,19 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium text-foreground">開始時間 {mode === 'edit' && <span className="text-destructive">*</span>}</label>
-                {mode === 'edit' ? (
+                <label className="text-sm font-medium text-foreground">
+                  開始時間{" "}
+                  {mode === "edit" && (
+                    <span className="text-destructive">*</span>
+                  )}
+                </label>
+                {mode === "edit" ? (
                   <div className="mt-1">
                     <TimeInput
-                      value={editedLesson.formattedStartTime || ''}
-                      onChange={(value) => handleInputChange('formattedStartTime', value)}
+                      value={editedLesson.formattedStartTime || ""}
+                      onChange={(value) =>
+                        handleInputChange("formattedStartTime", value)
+                      }
                       placeholder="開始時間を選択"
                       teacherAvailability={teacherAvailability}
                       studentAvailability={studentAvailability}
@@ -760,12 +882,19 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
                 )}
               </div>
               <div>
-                <label className="text-sm font-medium text-foreground">終了時間 {mode === 'edit' && <span className="text-destructive">*</span>}</label>
-                {mode === 'edit' ? (
+                <label className="text-sm font-medium text-foreground">
+                  終了時間{" "}
+                  {mode === "edit" && (
+                    <span className="text-destructive">*</span>
+                  )}
+                </label>
+                {mode === "edit" ? (
                   <div className="mt-1">
                     <TimeInput
-                      value={editedLesson.formattedEndTime || ''}
-                      onChange={(value) => handleInputChange('formattedEndTime', value)}
+                      value={editedLesson.formattedEndTime || ""}
+                      onChange={(value) =>
+                        handleInputChange("formattedEndTime", value)
+                      }
                       placeholder="終了時間を選択"
                       teacherAvailability={teacherAvailability}
                       studentAvailability={studentAvailability}
@@ -781,10 +910,12 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
             </div>
 
             {/* Селекты для типов уроков - только в режиме редактирования */}
-            {mode === 'edit' && (
+            {mode === "edit" && (
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-medium mb-1 block text-foreground">授業タイプ（基本）</label>
+                  <label className="text-sm font-medium mb-1 block text-foreground">
+                    授業タイプ（基本）
+                  </label>
                   <SearchableSelect
                     value={selectedParentClassTypeId}
                     onValueChange={handleParentClassTypeChange}
@@ -796,7 +927,9 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium mb-1 block text-foreground">授業タイプ（詳細）</label>
+                  <label className="text-sm font-medium mb-1 block text-foreground">
+                    授業タイプ（詳細）
+                  </label>
                   <SearchableSelect
                     value={selectedChildClassTypeId}
                     onValueChange={handleChildClassTypeChange}
@@ -805,34 +938,42 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
                       !selectedParentClassTypeId
                         ? "先に基本タイプを選択"
                         : childClassTypes.length === 0
-                        ? "詳細タイプなし"
-                        : "詳細タイプを選択（任意）"
+                          ? "詳細タイプなし"
+                          : "詳細タイプを選択（任意）"
                     }
                     searchPlaceholder="詳細タイプを検索..."
                     emptyMessage="詳細タイプが見つかりません"
-                    disabled={!selectedParentClassTypeId || childClassTypes.length === 0}
+                    disabled={
+                      !selectedParentClassTypeId || childClassTypes.length === 0
+                    }
                   />
                 </div>
               </div>
             )}
 
             {/* Информация о текущем типе в режиме просмотра */}
-            {mode === 'view' && (
+            {mode === "view" && (
               <div>
-                <label className="text-sm font-medium mb-1 block text-foreground">授業タイプ</label>
+                <label className="text-sm font-medium mb-1 block text-foreground">
+                  授業タイプ
+                </label>
                 <div className="border rounded-md p-2 mt-1 bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground border-input">
-                  {lesson.classType?.name || lesson.classTypeName || '指定なし'}
+                  {lesson.classType?.name || lesson.classTypeName || "指定なし"}
                 </div>
               </div>
             )}
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium mb-1 block text-foreground">科目</label>
-                {mode === 'edit' ? (
+                <label className="text-sm font-medium mb-1 block text-foreground">
+                  科目
+                </label>
+                {mode === "edit" ? (
                   <SearchableSelect
-                    value={editedLesson.subjectId || ''}
-                    onValueChange={(value) => handleInputChange('subjectId', value)}
+                    value={editedLesson.subjectId || ""}
+                    onValueChange={(value) =>
+                      handleInputChange("subjectId", value)
+                    }
                     items={subjectItems}
                     placeholder="科目を選択"
                     searchPlaceholder="科目を検索..."
@@ -840,16 +981,20 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
                   />
                 ) : (
                   <div className="border rounded-md p-2 mt-1 bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground border-input">
-                    {lesson.subject?.name || lesson.subjectName || '指定なし'}
+                    {lesson.subject?.name || lesson.subjectName || "指定なし"}
                   </div>
                 )}
               </div>
               <div>
-                <label className="text-sm font-medium mb-1 block text-foreground">講師</label>
-                {mode === 'edit' ? (
+                <label className="text-sm font-medium mb-1 block text-foreground">
+                  講師
+                </label>
+                {mode === "edit" ? (
                   <SearchableSelect
-                    value={editedLesson.teacherId || ''}
-                    onValueChange={(value) => handleInputChange('teacherId', value)}
+                    value={editedLesson.teacherId || ""}
+                    onValueChange={(value) =>
+                      handleInputChange("teacherId", value)
+                    }
                     items={teacherItems}
                     placeholder="講師を選択"
                     searchPlaceholder="講師を検索..."
@@ -857,18 +1002,22 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
                   />
                 ) : (
                   <div className="border rounded-md p-2 mt-1 bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground border-input">
-                    {lesson.teacher?.name || lesson.teacherName || '指定なし'}
+                    {lesson.teacher?.name || lesson.teacherName || "指定なし"}
                   </div>
                 )}
               </div>
             </div>
 
             <div>
-              <label className="text-sm font-medium mb-1 block text-foreground">生徒</label>
-              {mode === 'edit' ? (
+              <label className="text-sm font-medium mb-1 block text-foreground">
+                生徒
+              </label>
+              {mode === "edit" ? (
                 <SearchableSelect
-                  value={editedLesson.studentId || ''}
-                  onValueChange={(value) => handleInputChange('studentId', value)}
+                  value={editedLesson.studentId || ""}
+                  onValueChange={(value) =>
+                    handleInputChange("studentId", value)
+                  }
                   items={studentItems}
                   placeholder="生徒を選択"
                   searchPlaceholder="生徒を検索..."
@@ -876,26 +1025,30 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
                 />
               ) : (
                 <div className="border rounded-md p-2 mt-1 bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground border-input">
-                  {lesson.student?.name || lesson.studentName || '指定なし'}
+                  {lesson.student?.name || lesson.studentName || "指定なし"}
                 </div>
               )}
             </div>
 
-            {mode === 'edit' && (
+            {mode === "edit" && (
               <div>
-                <label className="text-sm font-medium text-foreground">メモ</label>
+                <label className="text-sm font-medium text-foreground">
+                  メモ
+                </label>
                 <textarea
                   className="w-full border rounded-md p-2 mt-1 bg-background text-foreground hover:border-accent focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors duration-200 cursor-text border-input"
                   rows={3}
-                  value={editedLesson.notes || ''}
-                  onChange={(e) => handleInputChange('notes', e.target.value)}
+                  value={editedLesson.notes || ""}
+                  onChange={(e) => handleInputChange("notes", e.target.value)}
                 />
               </div>
             )}
 
-            {mode === 'view' && lesson.notes && (
+            {mode === "view" && lesson.notes && (
               <div>
-                <label className="text-sm font-medium text-foreground">メモ</label>
+                <label className="text-sm font-medium text-foreground">
+                  メモ
+                </label>
                 <div className="border rounded-md p-2 mt-1 bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground min-h-[60px] whitespace-pre-wrap border-input">
                   {lesson.notes}
                 </div>
@@ -910,13 +1063,16 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
           </div>
 
           <DialogFooter className="flex flex-row justify-between sm:justify-between w-full pt-4">
-            {mode === 'edit' ? (
+            {mode === "edit" ? (
               <>
                 <Button
                   variant="destructive"
                   className="transition-all duration-200 hover:brightness-110 active:scale-[0.98] focus:ring-2 focus:ring-destructive/30 focus:outline-none"
                   onClick={handleDeleteClick}
-                  disabled={deleteClassMutation.isPending || deleteSeriesMutation.isPending}
+                  disabled={
+                    deleteClassMutation.isPending ||
+                    deleteSeriesMutation.isPending
+                  }
                 >
                   削除
                 </Button>
@@ -928,26 +1084,30 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
                 >
                   キャンセル
                 </Button>
-                  <Button
-                    variant="outline"
-                    className="transition-all duration-200 hover:bg-accent hover:text-accent-foreground active:scale-[0.98] focus:ring-2 focus:ring-primary/30 focus:outline-none"
-                    onClick={() => {
-                      onModeChange('view');
-                      if (lesson) {
-                        setEditedLesson(convertToEditableUI(lesson));
-                      }
-                      setEditMode('single');
-                    }}
-                  >
-                    編集をやめる
-                  </Button>
-                  <Button
-                    className="transition-all duration-200 hover:brightness-110 active:scale-[0.98] focus:ring-2 focus:ring-primary/30 focus:outline-none"
-                    onClick={handleSave}
-                    disabled={!canSave() || isLoading}
-                  >
-                    {isLoading ? (editMode === 'series' ? "シリーズ保存中..." : "保存中...") : "保存"}
-                  </Button>
+                <Button
+                  variant="outline"
+                  className="transition-all duration-200 hover:bg-accent hover:text-accent-foreground active:scale-[0.98] focus:ring-2 focus:ring-primary/30 focus:outline-none"
+                  onClick={() => {
+                    onModeChange("view");
+                    if (lesson) {
+                      setEditedLesson(convertToEditableUI(lesson));
+                    }
+                    setEditMode("single");
+                  }}
+                >
+                  編集をやめる
+                </Button>
+                <Button
+                  className="transition-all duration-200 hover:brightness-110 active:scale-[0.98] focus:ring-2 focus:ring-primary/30 focus:outline-none"
+                  onClick={handleSave}
+                  disabled={!canSave() || isLoading}
+                >
+                  {isLoading
+                    ? editMode === "series"
+                      ? "シリーズ保存中..."
+                      : "保存中..."
+                    : "保存"}
+                </Button>
               </>
             ) : (
               <>
@@ -958,23 +1118,29 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
                       variant="destructive"
                       className="transition-all duration-200 hover:brightness-110 active:scale-[0.98] focus:ring-2 focus:ring-destructive/30 focus:outline-none"
                       onClick={() => {
-                        if (window.confirm('この授業をキャンセルしますか？')) {
+                        if (window.confirm("この授業をキャンセルしますか？")) {
                           const dateKey = getDateKey(getDisplayDate());
                           cancelMutation.mutate(
-                            { classIds: [lesson.classId], reason: 'ADMIN_CANCELLED' },
+                            {
+                              classIds: [lesson.classId],
+                              reason: "ADMIN_CANCELLED",
+                            },
                             {
                               onSuccess: () => {
-                                try { broadcastClassSessionsChanged([dateKey]); } catch {}
+                                try {
+                                  broadcastClassSessionsChanged([dateKey]);
+                                } catch {}
                                 // Precisely refetch affected day queries
                                 queryClient.refetchQueries({
-                                  predicate: ({ queryKey }) => Array.isArray(queryKey)
-                                    && queryKey[0] === 'classSessions'
-                                    && queryKey[1] === 'byDate'
-                                    && queryKey[2] === dateKey,
-                                  type: 'active' as any,
+                                  predicate: ({ queryKey }) =>
+                                    Array.isArray(queryKey) &&
+                                    queryKey[0] === "classSessions" &&
+                                    queryKey[1] === "byDate" &&
+                                    queryKey[2] === dateKey,
+                                  type: "active" as any,
                                 });
                                 onOpenChange(false);
-                              }
+                              },
                             }
                           );
                         }
@@ -989,33 +1155,41 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
                       className="transition-all duration-200 hover:brightness-110 active:scale-[0.98] focus:ring-2 focus:ring-secondary/30 focus:outline-none"
                       onClick={async () => {
                         try {
-                          const res = await fetch('/api/class-sessions/reactivate', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ classIds: [lesson.classId] }),
-                          });
+                          const res = await fetch(
+                            "/api/class-sessions/reactivate",
+                            {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({
+                                classIds: [lesson.classId],
+                              }),
+                            }
+                          );
                           const data = await res.json().catch(() => ({}));
                           if (!res.ok) {
-                            toast.error(data?.error || '再開に失敗しました');
+                            toast.error(data?.error || "再開に失敗しました");
                           } else {
-                            toast.success(data?.message || '再開しました');
+                            toast.success(data?.message || "再開しました");
                             try {
                               const dateKey = getDateKey(getDisplayDate());
                               broadcastClassSessionsChanged([dateKey]);
                               await queryClient.refetchQueries({
-                                predicate: ({ queryKey }) => Array.isArray(queryKey)
-                                  && queryKey[0] === 'classSessions'
-                                  && queryKey[1] === 'byDate'
-                                  && queryKey[2] === dateKey,
-                                type: 'active' as any,
+                                predicate: ({ queryKey }) =>
+                                  Array.isArray(queryKey) &&
+                                  queryKey[0] === "classSessions" &&
+                                  queryKey[1] === "byDate" &&
+                                  queryKey[2] === dateKey,
+                                type: "active" as any,
                               });
                             } catch {}
                             onOpenChange(false);
                           }
                         } catch (e: any) {
-                          toast.error('再開に失敗しました');
+                          toast.error("再開に失敗しました");
                         } finally {
-                          queryClient.invalidateQueries({ queryKey: ['classSessions'] });
+                          queryClient.invalidateQueries({
+                            queryKey: ["classSessions"],
+                          });
                         }
                       }}
                     >
@@ -1034,7 +1208,7 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
                   </Button>
                   <Button
                     className="transition-all duration-200 hover:brightness-110 active:scale-[0.98] focus:ring-2 focus:ring-primary/30 focus:outline-none"
-                    onClick={() => onModeChange('edit')}
+                    onClick={() => onModeChange("edit")}
                   >
                     編集
                   </Button>
@@ -1048,29 +1222,41 @@ export const LessonDialog: React.FC<LessonDialogProps> = ({
       <ConfirmDeleteDialog
         open={showDeleteConfirm}
         onOpenChange={setShowDeleteConfirm}
-        title={isRecurringLesson && deleteMode === 'series' ? 'シリーズの削除' : '授業の削除'}
-        description={
-          isRecurringLesson && deleteMode === 'series'
-            ? `本当にこのシリーズの本日以降の全授業を削除しますか？\n\n${lesson.teacher?.name || lesson.teacherName || ''}先生の${lesson.subject?.name || lesson.subjectName || ''}の繰り返し授業がすべて削除されます。\n\n警告: 過去の授業は削除されませんが、今日以降の未来の授業はすべて削除されます。`
-            : `本当にこの授業を削除しますか？\n\n${format(getDisplayDate(), 'yyyy年MM月dd日', { locale: ja })} ${editedLesson?.formattedStartTime || ''}の授業を削除します。${isRecurringLesson ? '\n\n注意: これは繰り返しシリーズの一部ですが、この授業のみが削除されます。' : ''}`
+        title={
+          isRecurringLesson && deleteMode === "series"
+            ? "シリーズの削除"
+            : "授業の削除"
         }
-        confirmText={deleteMode === 'series' ? 'シリーズを削除' : '削除'}
+        description={
+          isRecurringLesson && deleteMode === "series"
+            ? `本当にこのシリーズの本日以降の全授業を削除しますか？\n\n${lesson.teacher?.name || lesson.teacherName || ""}先生の${lesson.subject?.name || lesson.subjectName || ""}の繰り返し授業がすべて削除されます。\n\n警告: 過去の授業は削除されませんが、今日以降の未来の授業はすべて削除されます。`
+            : `本当にこの授業を削除しますか？\n\n${format(getDisplayDate(), "yyyy年MM月dd日", { locale: ja })} ${editedLesson?.formattedStartTime || ""}の授業を削除します。${isRecurringLesson ? "\n\n注意: これは繰り返しシリーズの一部ですが、この授業のみが削除されます。" : ""}`
+        }
+        confirmText={deleteMode === "series" ? "シリーズを削除" : "削除"}
         cancelText="キャンセル"
         onConfirm={handleDelete}
-        isLoading={deleteClassMutation.isPending || deleteSeriesMutation.isPending}
+        isLoading={
+          deleteClassMutation.isPending || deleteSeriesMutation.isPending
+        }
       />
 
       {/* Cancel confirm */}
       <ConfirmDeleteDialog
         open={showCancelConfirm}
         onOpenChange={setShowCancelConfirm}
-        title={isRecurringLesson && cancelMode === 'series' ? 'シリーズのキャンセル' : '授業のキャンセル'}
-        description={
-          isRecurringLesson && cancelMode === 'series'
-            ? `本当にこのシリーズの本日以降の全授業をキャンセル状態にしますか？\n\n${lesson.teacher?.name || lesson.teacherName || ''}先生の${lesson.subject?.name || lesson.subjectName || ''}の繰り返し授業がキャンセルされます。\n\n注意: 過去の授業は変更しません。`
-            : `本当にこの授業をキャンセルしますか？\n\n${format(getDisplayDate(), 'yyyy年MM月dd日', { locale: ja })} ${editedLesson?.formattedStartTime || ''}の授業をキャンセル状態にします。${isRecurringLesson ? '\n\n注意: これは繰り返しシリーズの一部ですが、この授業のみがキャンセルされます。' : ''}`
+        title={
+          isRecurringLesson && cancelMode === "series"
+            ? "シリーズのキャンセル"
+            : "授業のキャンセル"
         }
-        confirmText={cancelMode === 'series' ? 'シリーズをキャンセル' : 'キャンセル'}
+        description={
+          isRecurringLesson && cancelMode === "series"
+            ? `本当にこのシリーズの本日以降の全授業をキャンセル状態にしますか？\n\n${lesson.teacher?.name || lesson.teacherName || ""}先生の${lesson.subject?.name || lesson.subjectName || ""}の繰り返し授業がキャンセルされます。\n\n注意: 過去の授業は変更しません。`
+            : `本当にこの授業をキャンセルしますか？\n\n${format(getDisplayDate(), "yyyy年MM月dd日", { locale: ja })} ${editedLesson?.formattedStartTime || ""}の授業をキャンセル状態にします。${isRecurringLesson ? "\n\n注意: これは繰り返しシリーズの一部ですが、この授業のみがキャンセルされます。" : ""}`
+        }
+        confirmText={
+          cancelMode === "series" ? "シリーズをキャンセル" : "キャンセル"
+        }
         cancelText="やめる"
         onConfirm={handleCancel}
         isLoading={cancelMutation.isPending}

@@ -12,17 +12,17 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Archive } from "@/hooks/useArchiveQuery";
-import { 
-  Calendar, 
-  Clock, 
-  User, 
-  Users, 
-  BookOpen, 
-  MapPin, 
+import {
+  Calendar,
+  Clock,
+  User,
+  Users,
+  BookOpen,
+  MapPin,
   Building2,
   Tag,
   FileText,
-  Archive as ArchiveIcon
+  Archive as ArchiveIcon,
 } from "lucide-react";
 
 interface ArchiveDetailDialogProps {
@@ -84,7 +84,8 @@ export function ArchiveDetailDialog({
                   <div>
                     <p className="text-sm font-medium">時間</p>
                     <p className="text-sm text-muted-foreground">
-                      {formatTime(archive.startTime)} - {formatTime(archive.endTime)}
+                      {formatTime(archive.startTime)} -{" "}
+                      {formatTime(archive.endTime)}
                       {archive.duration && ` (${archive.duration}分)`}
                     </p>
                   </div>
@@ -176,32 +177,38 @@ export function ArchiveDetailDialog({
             </div>
 
             {/* Enrolled Students (if group class) */}
-            {archive.enrolledStudents && Array.isArray(archive.enrolledStudents) && archive.enrolledStudents.length > 0 && (
-              <>
-                <Separator />
-                <div>
-                  <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                    <Users className="h-4 w-4" />
-                    参加生徒 ({archive.enrolledStudents.length}名)
-                  </h3>
-                  <div className="space-y-2">
-                    {archive.enrolledStudents.map((student: any, index: number) => (
-                      <div
-                        key={index}
-                        className="flex items-center justify-between p-2 rounded-lg bg-muted/50"
-                      >
-                        <span className="text-sm">{student.student_name}</span>
-                        {student.status && (
-                          <Badge variant="outline" className="text-xs">
-                            {student.status}
-                          </Badge>
-                        )}
-                      </div>
-                    ))}
+            {archive.enrolledStudents &&
+              Array.isArray(archive.enrolledStudents) &&
+              archive.enrolledStudents.length > 0 && (
+                <>
+                  <Separator />
+                  <div>
+                    <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                      <Users className="h-4 w-4" />
+                      参加生徒 ({archive.enrolledStudents.length}名)
+                    </h3>
+                    <div className="space-y-2">
+                      {archive.enrolledStudents.map(
+                        (student: any, index: number) => (
+                          <div
+                            key={index}
+                            className="flex items-center justify-between p-2 rounded-lg bg-muted/50"
+                          >
+                            <span className="text-sm">
+                              {student.student_name}
+                            </span>
+                            {student.status && (
+                              <Badge variant="outline" className="text-xs">
+                                {student.status}
+                              </Badge>
+                            )}
+                          </div>
+                        )
+                      )}
+                    </div>
                   </div>
-                </div>
-              </>
-            )}
+                </>
+              )}
 
             {/* Notes */}
             {archive.notes && (

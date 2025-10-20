@@ -98,13 +98,16 @@ export interface FormattedClassSession {
 export function groupConflictsByType(
   conflicts: ConflictInfo[]
 ): Record<ConflictType, ConflictInfo[]> {
-  return conflicts.reduce((acc, conflict) => {
-    if (!acc[conflict.type]) {
-      acc[conflict.type] = [];
-    }
-    acc[conflict.type].push(conflict);
-    return acc;
-  }, {} as Record<ConflictType, ConflictInfo[]>);
+  return conflicts.reduce(
+    (acc, conflict) => {
+      if (!acc[conflict.type]) {
+        acc[conflict.type] = [];
+      }
+      acc[conflict.type].push(conflict);
+      return acc;
+    },
+    {} as Record<ConflictType, ConflictInfo[]>
+  );
 }
 
 // Helper function to get Japanese labels for conflict types

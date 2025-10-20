@@ -196,9 +196,7 @@ export function LoginForm({
             name="identifier"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>
-                  ログインID・メールアドレス・LINE ID
-                </FormLabel>
+                <FormLabel>ログインID・メールアドレス・LINE ID</FormLabel>
                 <FormControl>
                   <Input
                     type="text"

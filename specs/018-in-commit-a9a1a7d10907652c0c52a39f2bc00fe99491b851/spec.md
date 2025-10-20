@@ -16,7 +16,7 @@
 - Q: If class types support CSV import/export in マスターデータ管理, should the new `visibleInFilters` field be included? → A: Include in both import and export
 - Q: Do we need audit logging for admin changes to class type visibility? → A: No audit logging
 
-## User Scenarios & Testing *(mandatory)*
+## User Scenarios & Testing _(mandatory)_
 
 ### User Story 1 - Admin sets global visibility per class type (Priority: P1)
 
@@ -71,7 +71,7 @@ Filter lists for students, teachers, and staff are driven solely by the global c
 - Archived/disabled class types: visibility toggle does not resurrect archived items; archived logic remains authoritative.
 - Migration state: per-user visibility schema is dropped via migration; no mixed mode. Ensure deployments apply the migration before removing code paths.
 
-## Requirements *(mandatory)*
+## Requirements _(mandatory)_
 
 ### Functional Requirements
 
@@ -89,12 +89,12 @@ Filter lists for students, teachers, and staff are driven solely by the global c
 - **FR-012**: No new audit logging required for visibility changes; do not emit audit events.
 - **FR-013**: Include `visibleInFilters` in class type CSV import and export, following existing CSV boolean/header conventions used in masterdata.
 
-### Key Entities *(include if feature involves data)*
+### Key Entities _(include if feature involves data)_
 
 - **ClassType**: `{ id, name, ... , visibleInFilters: boolean (default: true) }` — drives visibility in filter lists globally.
 - **User/Role**: authorization determines who can toggle; all users consume the same filtered set.
 
-## Success Criteria *(mandatory)*
+## Success Criteria _(mandatory)_
 
 ### Measurable Outcomes
 
@@ -107,4 +107,3 @@ Filter lists for students, teachers, and staff are driven solely by the global c
 - **SC-007**: Visibility toggles do not alter calendar or other content visibility; only filter option lists change.
 - **SC-008**: No new audit events created when toggling visibility.
 - **SC-009**: Class type CSV export includes `visibleInFilters`; CSV import correctly applies it using existing boolean conventions; round‑trip is lossless.
- 

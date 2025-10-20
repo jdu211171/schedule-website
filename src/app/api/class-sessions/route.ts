@@ -14,14 +14,21 @@ import { addDays, format, parseISO, differenceInDays, getDay } from "date-fns";
 import { v4 as uuidv4 } from "uuid";
 import { z } from "zod";
 import { getDetailedSharedAvailability } from "@/lib/enhanced-availability";
-import { hasHardConflict, normalizeMarkAsConflicted } from "@/lib/conflict-types";
+import {
+  hasHardConflict,
+  normalizeMarkAsConflicted,
+} from "@/lib/conflict-types";
 import { SPECIAL_CLASS_COLOR_HEX } from "@/lib/special-class-constants";
 import { CANCELLED_CLASS_COLOR_HEX } from "@/lib/cancelled-class-constants";
 import {
   applySpecialClassColor,
   isSpecialClassType,
 } from "@/lib/special-class-server";
-import { recomputeNeighborsForChange, recomputeNeighborsForCancelledContexts, type SessionCtx } from "@/lib/conflict-status";
+import {
+  recomputeNeighborsForChange,
+  recomputeNeighborsForCancelledContexts,
+  type SessionCtx,
+} from "@/lib/conflict-status";
 
 type FormattedClassSession = {
   classId: string;
@@ -59,12 +66,21 @@ type FormattedClassSession = {
 const formatClassSession = (
   classSession: ClassSession & {
     teacher?: { name: string } | null;
-    student?: { name: string; gradeYear: number | null; studentType?: { name: string } | null } | null;
+    student?: {
+      name: string;
+      gradeYear: number | null;
+      studentType?: { name: string } | null;
+    } | null;
     subject?: { name: string } | null;
     classType?: { name: string; color?: string | null } | null;
     booth?: { name: string } | null;
     branch?: { name: string } | null;
-    cancelledBy?: { id: string; name: string | null; username: string | null; email: string | null } | null;
+    cancelledBy?: {
+      id: string;
+      name: string | null;
+      username: string | null;
+      email: string | null;
+    } | null;
   }
 ): FormattedClassSession => {
   // Get UTC values from the date
@@ -112,13 +128,18 @@ const formatClassSession = (
     notes: classSession.notes,
     isCancelled: (classSession as any).isCancelled ?? false,
     cancelledAt: (classSession as any).cancelledAt
-      ? format((classSession as any).cancelledAt, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
+      ? format(
+          (classSession as any).cancelledAt,
+          "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"
+        )
       : null,
     cancelledByUserId: (classSession as any).cancelledByUserId ?? null,
-    cancelledByName:
-      (classSession as any).cancelledByUserId
-        ? (classSession.cancelledBy?.name || classSession.cancelledBy?.username || classSession.cancelledBy?.email || null)
-        : null,
+    cancelledByName: (classSession as any).cancelledByUserId
+      ? classSession.cancelledBy?.name ||
+        classSession.cancelledBy?.username ||
+        classSession.cancelledBy?.email ||
+        null
+      : null,
     createdAt: format(classSession.createdAt, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"),
     updatedAt: format(classSession.updatedAt, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"),
   };
@@ -161,14 +182,19 @@ const createUTCDateForFilter = (dateStr: string): Date => {
 // Optimized vacation helpers (prefetch once per request)
 type BranchVacation = { startDate: Date; endDate: Date; isRecurring: boolean };
 
-const getBranchVacations = async (branchId: string): Promise<BranchVacation[]> => {
+const getBranchVacations = async (
+  branchId: string
+): Promise<BranchVacation[]> => {
   return prisma.vacation.findMany({
     where: { branchId },
     select: { startDate: true, endDate: true, isRecurring: true },
   });
 };
 
-const hasVacationConflictCached = (date: Date, vacations: BranchVacation[]): boolean => {
+const hasVacationConflictCached = (
+  date: Date,
+  vacations: BranchVacation[]
+): boolean => {
   const md = (d: Date) => (d.getUTCMonth() + 1) * 100 + d.getUTCDate();
   const targetMD = md(date);
   for (const v of vacations) {
@@ -377,16 +403,13 @@ const findOverlapConflict = async (
   date: Date,
   start: Date,
   end: Date
-): Promise<
-  | null
-  | {
-      conflict: ClassSession & {
-        teacher?: { name: string } | null;
-        student?: { name: string } | null;
-      };
-      type: "TEACHER_CONFLICT" | "STUDENT_CONFLICT";
-    }
-> => {
+): Promise<null | {
+  conflict: ClassSession & {
+    teacher?: { name: string } | null;
+    student?: { name: string } | null;
+  };
+  type: "TEACHER_CONFLICT" | "STUDENT_CONFLICT";
+}> => {
   if (!participantId) return null;
 
   const whereBase: Record<string, unknown> = {
@@ -419,7 +442,10 @@ const findOverlapConflict = async (
 
   return {
     conflict,
-    type: participant === "teacher" ? ("TEACHER_CONFLICT" as const) : ("STUDENT_CONFLICT" as const),
+    type:
+      participant === "teacher"
+        ? ("TEACHER_CONFLICT" as const)
+        : ("STUDENT_CONFLICT" as const),
   };
 };
 
@@ -549,7 +575,7 @@ export const GET = withBranchAccess(
     }
 
     // Cancellation filtering
-    if (typeof result.data.isCancelled === 'boolean') {
+    if (typeof result.data.isCancelled === "boolean") {
       where.isCancelled = result.data.isCancelled;
     } else if (result.data.includeCancelled !== true) {
       // Exclude cancelled by default unless explicitly included
@@ -677,10 +703,17 @@ export const POST = withBranchAccess(
           : branchId;
 
       // Centralized scheduling policy (global/branch effective)
-      const { getEffectiveSchedulingConfig, toPolicyShape } = await import("@/lib/scheduling-config");
-      const effCfg = await getEffectiveSchedulingConfig(sessionBranchId || undefined);
+      const { getEffectiveSchedulingConfig, toPolicyShape } = await import(
+        "@/lib/scheduling-config"
+      );
+      const effCfg = await getEffectiveSchedulingConfig(
+        sessionBranchId || undefined
+      );
       const policy = toPolicyShape(effCfg);
-      const allowOutside = policy.allowOutsideAvailability || { teacher: false, student: false };
+      const allowOutside = policy.allowOutsideAvailability || {
+        teacher: false,
+        student: false,
+      };
       const mark = normalizeMarkAsConflicted(policy.markAsConflicted);
 
       // Convert date string to Date object using UTC to avoid timezone issues
@@ -731,8 +764,11 @@ export const POST = withBranchAccess(
 
         // Check if there's a session action for this date
         const dateStr = format(dateObj, "yyyy-MM-dd");
-        const sessionAction = sessionActions?.find((action) => action.date === dateStr);
-        const shouldForceCreate = forceCreate || sessionAction?.action === "FORCE_CREATE";
+        const sessionAction = sessionActions?.find(
+          (action) => action.date === dateStr
+        );
+        const shouldForceCreate =
+          forceCreate || sessionAction?.action === "FORCE_CREATE";
 
         // Honor SKIP for single-session creates: return success without creating
         if (sessionAction?.action === "SKIP") {
@@ -770,7 +806,10 @@ export const POST = withBranchAccess(
         }
 
         // Autoskip: vacation (for non-special types) using preloaded vacations
-        if (!specialClassType && hasVacationConflictCached(dateObj, branchVacations)) {
+        if (
+          !specialClassType &&
+          hasVacationConflictCached(dateObj, branchVacations)
+        ) {
           return NextResponse.json(
             {
               data: [],
@@ -786,13 +825,21 @@ export const POST = withBranchAccess(
         if (teacherId || studentId) {
           const [tUser, sUser] = await Promise.all([
             teacherId
-              ? prisma.teacher.findUnique({ where: { teacherId }, select: { userId: true } })
+              ? prisma.teacher.findUnique({
+                  where: { teacherId },
+                  select: { userId: true },
+                })
               : Promise.resolve(null),
             studentId
-              ? prisma.student.findUnique({ where: { studentId }, select: { userId: true } })
+              ? prisma.student.findUnique({
+                  where: { studentId },
+                  select: { userId: true },
+                })
               : Promise.resolve(null),
           ]);
-          const userIds = [tUser?.userId, sUser?.userId].filter(Boolean) as string[];
+          const userIds = [tUser?.userId, sUser?.userId].filter(
+            Boolean
+          ) as string[];
           if (userIds.length > 0) {
             const absences = await prisma.userAvailability.findMany({
               where: {
@@ -806,7 +853,10 @@ export const POST = withBranchAccess(
             const absent = absences.some((a) => {
               if (a.fullDay) return true;
               if (!a.startTime || !a.endTime) return false;
-              return a.startTime < effectiveEndDateTime && a.endTime > effectiveStartDateTime;
+              return (
+                a.startTime < effectiveEndDateTime &&
+                a.endTime > effectiveStartDateTime
+              );
             });
             if (absent) {
               return NextResponse.json(
@@ -824,8 +874,12 @@ export const POST = withBranchAccess(
 
         // Hard overlap conflicts (TEACHER/STUDENT/BOOTH) → do NOT autoskip; surface as conflicts
         if (teacherId || studentId || boothId) {
-          const reqStartM = effectiveStartDateTime.getUTCHours() * 60 + effectiveStartDateTime.getUTCMinutes();
-          const reqEndM = effectiveEndDateTime.getUTCHours() * 60 + effectiveEndDateTime.getUTCMinutes();
+          const reqStartM =
+            effectiveStartDateTime.getUTCHours() * 60 +
+            effectiveStartDateTime.getUTCMinutes();
+          const reqEndM =
+            effectiveEndDateTime.getUTCHours() * 60 +
+            effectiveEndDateTime.getUTCMinutes();
           const sameDaySessions = await prisma.classSession.findMany({
             where: {
               isCancelled: false,
@@ -836,12 +890,20 @@ export const POST = withBranchAccess(
                 boothId ? { boothId } : undefined,
               ].filter(Boolean) as any,
             },
-            select: { startTime: true, endTime: true, teacherId: true, studentId: true, boothId: true },
+            select: {
+              startTime: true,
+              endTime: true,
+              teacherId: true,
+              studentId: true,
+              boothId: true,
+            },
           });
 
           for (const s of sameDaySessions) {
-            const sStartM = s.startTime.getUTCHours() * 60 + s.startTime.getUTCMinutes();
-            const sEndM = s.endTime.getUTCHours() * 60 + s.endTime.getUTCMinutes();
+            const sStartM =
+              s.startTime.getUTCHours() * 60 + s.startTime.getUTCMinutes();
+            const sEndM =
+              s.endTime.getUTCHours() * 60 + s.endTime.getUTCMinutes();
             const overlaps = sStartM < reqEndM && sEndM > reqStartM;
             if (!overlaps) continue;
             if (teacherId && s.teacherId === teacherId) {
@@ -884,9 +946,14 @@ export const POST = withBranchAccess(
           if (availabilityConflict) {
             const t = availabilityConflict.type;
             // Suppress teacher/student outside-availability conflicts if allowed centrally
-            const isTeacherType = t === 'TEACHER_UNAVAILABLE' || t === 'TEACHER_WRONG_TIME';
-            const isStudentType = t === 'STUDENT_UNAVAILABLE' || t === 'STUDENT_WRONG_TIME';
-            if ((isTeacherType && allowOutside.teacher) || (isStudentType && allowOutside.student)) {
+            const isTeacherType =
+              t === "TEACHER_UNAVAILABLE" || t === "TEACHER_WRONG_TIME";
+            const isStudentType =
+              t === "STUDENT_UNAVAILABLE" || t === "STUDENT_WRONG_TIME";
+            if (
+              (isTeacherType && allowOutside.teacher) ||
+              (isStudentType && allowOutside.student)
+            ) {
               // ignore
             } else {
               conflicts.push(availabilityConflict);
@@ -910,11 +977,14 @@ export const POST = withBranchAccess(
         }
 
         // Recalculate duration if using alternative times
-        const effectiveDuration = sessionAction?.action === "USE_ALTERNATIVE"
-          ? Math.round(
-              (effectiveEndDateTime.getTime() - effectiveStartDateTime.getTime()) / (1000 * 60)
-            )
-          : calculatedDuration;
+        const effectiveDuration =
+          sessionAction?.action === "USE_ALTERNATIVE"
+            ? Math.round(
+                (effectiveEndDateTime.getTime() -
+                  effectiveStartDateTime.getTime()) /
+                  (1000 * 60)
+              )
+            : calculatedDuration;
 
         // Create a single class session
         const newClassSession = await prisma.classSession.create({
@@ -929,9 +999,11 @@ export const POST = withBranchAccess(
             // availability conflict is configured to mark as conflicted.
             status: (() => {
               const hard = hasHardConflict(conflicts);
-              if (hard) return 'CONFLICTED';
-              const softMarked = conflicts.some((c: any) => Boolean(mark[(c?.type as string) as any]));
-              return softMarked ? 'CONFLICTED' : 'CONFIRMED';
+              if (hard) return "CONFLICTED";
+              const softMarked = conflicts.some((c: any) =>
+                Boolean(mark[c?.type as string as any])
+              );
+              return softMarked ? "CONFLICTED" : "CONFIRMED";
             })(),
           },
           include: {
@@ -1084,25 +1156,41 @@ export const POST = withBranchAccess(
         // Prefetch related data to avoid per-date queries
         const [teacherUser, studentUser] = await Promise.all([
           teacherId
-            ? prisma.teacher.findUnique({ where: { teacherId }, select: { userId: true } })
+            ? prisma.teacher.findUnique({
+                where: { teacherId },
+                select: { userId: true },
+              })
             : Promise.resolve(null),
           studentId
-            ? prisma.student.findUnique({ where: { studentId }, select: { userId: true } })
+            ? prisma.student.findUnique({
+                where: { studentId },
+                select: { userId: true },
+              })
             : Promise.resolve(null),
         ]);
 
-        const participantUserIds = [teacherUser?.userId, studentUser?.userId].filter(Boolean) as string[];
-        const absences = participantUserIds.length > 0
-          ? await prisma.userAvailability.findMany({
-              where: {
-                userId: { in: participantUserIds },
-                type: "ABSENCE",
-                status: "APPROVED",
-                date: { in: sessionDates },
-              },
-              select: { userId: true, date: true, fullDay: true, startTime: true, endTime: true },
-            })
-          : [];
+        const participantUserIds = [
+          teacherUser?.userId,
+          studentUser?.userId,
+        ].filter(Boolean) as string[];
+        const absences =
+          participantUserIds.length > 0
+            ? await prisma.userAvailability.findMany({
+                where: {
+                  userId: { in: participantUserIds },
+                  type: "ABSENCE",
+                  status: "APPROVED",
+                  date: { in: sessionDates },
+                },
+                select: {
+                  userId: true,
+                  date: true,
+                  fullDay: true,
+                  startTime: true,
+                  endTime: true,
+                },
+              })
+            : [];
 
         const absencesByDate = new Map<string, typeof absences>();
         for (const a of absences) {
@@ -1123,7 +1211,14 @@ export const POST = withBranchAccess(
               boothId ? { boothId } : undefined,
             ].filter(Boolean) as any,
           },
-          select: { date: true, startTime: true, endTime: true, teacherId: true, studentId: true, boothId: true },
+          select: {
+            date: true,
+            startTime: true,
+            endTime: true,
+            teacherId: true,
+            studentId: true,
+            boothId: true,
+          },
         });
 
         const sessionsByDate = new Map<string, typeof sameDaySessions>();
@@ -1212,7 +1307,10 @@ export const POST = withBranchAccess(
           }
 
           // Autoskip 1: vacation (for non-special types) using preloaded vacations
-          if (!specialClassType && hasVacationConflictCached(sessionDate, branchVacations)) {
+          if (
+            !specialClassType &&
+            hasVacationConflictCached(sessionDate, branchVacations)
+          ) {
             skippedDates.push(sessionDate);
             continue;
           }
@@ -1231,15 +1329,24 @@ export const POST = withBranchAccess(
 
           // Hard overlap conflicts (TEACHER/STUDENT/BOOTH) → collect for resolution (do NOT autoskip)
           const daySessions = sessionsByDate.get(formattedSessionDate) || [];
-          const reqStartM = sessionStartTime.getUTCHours() * 60 + sessionStartTime.getUTCMinutes();
-          const reqEndM = sessionEndTime.getUTCHours() * 60 + sessionEndTime.getUTCMinutes();
+          const reqStartM =
+            sessionStartTime.getUTCHours() * 60 +
+            sessionStartTime.getUTCMinutes();
+          const reqEndM =
+            sessionEndTime.getUTCHours() * 60 + sessionEndTime.getUTCMinutes();
           const addedTypes = new Set<string>();
           for (const s of daySessions) {
-            const sStartM = s.startTime.getUTCHours() * 60 + s.startTime.getUTCMinutes();
-            const sEndM = s.endTime.getUTCHours() * 60 + s.endTime.getUTCMinutes();
+            const sStartM =
+              s.startTime.getUTCHours() * 60 + s.startTime.getUTCMinutes();
+            const sEndM =
+              s.endTime.getUTCHours() * 60 + s.endTime.getUTCMinutes();
             const overlaps = sStartM < reqEndM && sEndM > reqStartM;
             if (!overlaps) continue;
-            if (teacherId && s.teacherId === teacherId && !addedTypes.has("TEACHER_CONFLICT")) {
+            if (
+              teacherId &&
+              s.teacherId === teacherId &&
+              !addedTypes.has("TEACHER_CONFLICT")
+            ) {
               dateConflicts.push({
                 date: formattedSessionDate,
                 dayOfWeek: getDayOfWeekFromDate(sessionDate),
@@ -1248,7 +1355,11 @@ export const POST = withBranchAccess(
               } as any);
               addedTypes.add("TEACHER_CONFLICT");
             }
-            if (studentId && s.studentId === studentId && !addedTypes.has("STUDENT_CONFLICT")) {
+            if (
+              studentId &&
+              s.studentId === studentId &&
+              !addedTypes.has("STUDENT_CONFLICT")
+            ) {
               dateConflicts.push({
                 date: formattedSessionDate,
                 dayOfWeek: getDayOfWeekFromDate(sessionDate),
@@ -1257,7 +1368,11 @@ export const POST = withBranchAccess(
               } as any);
               addedTypes.add("STUDENT_CONFLICT");
             }
-            if (boothId && s.boothId === boothId && !addedTypes.has("BOOTH_CONFLICT")) {
+            if (
+              boothId &&
+              s.boothId === boothId &&
+              !addedTypes.has("BOOTH_CONFLICT")
+            ) {
               dateConflicts.push({
                 date: formattedSessionDate,
                 dayOfWeek: getDayOfWeekFromDate(sessionDate),
@@ -1281,9 +1396,14 @@ export const POST = withBranchAccess(
 
             if (availabilityConflict) {
               const t = availabilityConflict.type;
-              const isTeacherType = t === 'TEACHER_UNAVAILABLE' || t === 'TEACHER_WRONG_TIME';
-              const isStudentType = t === 'STUDENT_UNAVAILABLE' || t === 'STUDENT_WRONG_TIME';
-              if ((isTeacherType && allowOutside.teacher) || (isStudentType && allowOutside.student)) {
+              const isTeacherType =
+                t === "TEACHER_UNAVAILABLE" || t === "TEACHER_WRONG_TIME";
+              const isStudentType =
+                t === "STUDENT_UNAVAILABLE" || t === "STUDENT_WRONG_TIME";
+              if (
+                (isTeacherType && allowOutside.teacher) ||
+                (isStudentType && allowOutside.student)
+              ) {
                 // ignore
               } else {
                 dateConflicts.push(availabilityConflict);
@@ -1315,13 +1435,16 @@ export const POST = withBranchAccess(
           !forceCreate
         ) {
           // Group conflicts by date for better presentation
-          const conflictsByDate = allConflicts.reduce((acc, conflict) => {
-            if (!acc[conflict.date]) {
-              acc[conflict.date] = [];
-            }
-            acc[conflict.date].push(conflict);
-            return acc;
-          }, {} as Record<string, ConflictInfo[]>);
+          const conflictsByDate = allConflicts.reduce(
+            (acc, conflict) => {
+              if (!acc[conflict.date]) {
+                acc[conflict.date] = [];
+              }
+              acc[conflict.date].push(conflict);
+              return acc;
+            },
+            {} as Record<string, ConflictInfo[]>
+          );
 
           return NextResponse.json(
             {
@@ -1385,7 +1508,9 @@ export const POST = withBranchAccess(
 
             const reasons = sessionConflictMap.get(formattedSessionDate) || [];
             const hard = hasHardConflict(reasons);
-            const softMarked = reasons.some((r: any) => Boolean(mark[(r?.type as string) as any]));
+            const softMarked = reasons.some((r: any) =>
+              Boolean(mark[r?.type as string as any])
+            );
             const dateHasConflicts = hard || softMarked;
             return prisma.classSession.create({
               data: {
@@ -1394,7 +1519,7 @@ export const POST = withBranchAccess(
                 date: sessionDate,
                 startTime: sessionStartTime,
                 endTime: sessionEndTime,
-                status: dateHasConflicts ? 'CONFLICTED' : 'CONFIRMED',
+                status: dateHasConflicts ? "CONFLICTED" : "CONFIRMED",
               },
               include: {
                 teacher: {
@@ -1569,11 +1694,11 @@ export const DELETE = withBranchAccess(
         await tx.studentClassEnrollment.deleteMany({
           where: {
             classId: {
-              in: classIds
-            }
-          }
+              in: classIds,
+            },
+          },
         });
-        
+
         // Then delete the class sessions
         await tx.classSession.deleteMany({
           where: {

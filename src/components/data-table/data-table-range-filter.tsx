@@ -13,7 +13,7 @@ interface DataTableRangeFilterProps<TData> extends React.ComponentProps<"div"> {
   inputId: string;
   onFilterUpdate: (
     filterId: string,
-    updates: Partial<Omit<ExtendedColumnFilter<TData>, "filterId">>,
+    updates: Partial<Omit<ExtendedColumnFilter<TData>, "filterId">>
   ) => void;
 }
 
@@ -47,7 +47,7 @@ export function DataTableRangeFilter<TData>({
             maximumFractionDigits: 0,
           });
     },
-    [],
+    []
   );
 
   const value = React.useMemo(() => {
@@ -77,7 +77,7 @@ export function DataTableRangeFilter<TData>({
         });
       }
     },
-    [filter.filterId, filter.value, min, max, onFilterUpdate],
+    [filter.filterId, filter.value, min, max, onFilterUpdate]
   );
 
   return (

@@ -8,6 +8,7 @@ description: "Task list for implementing Global Class Type Filter Visibility (Ad
 **Prerequisites**: plan.md (required), spec.md (user stories), research.md, data-model.md, contracts/
 
 ## Format: `[ID] [P?] [Story] Description`
+
 - [P]: Can run in parallel (different files, no dependencies)
 - [Story]: US1, US2, US3 aligned to spec user stories
 - Include exact file paths in descriptions
@@ -18,14 +19,14 @@ Repo root: `/Users/muhammadnurislomtukhtamishhoji-zoda/Development/schedule-webs
 
 ## Phase 1: Setup (Shared Infrastructure)
 
-- [X] T001 [P] [Setup] Ensure environment ready and deps installed
+- [x] T001 [P] [Setup] Ensure environment ready and deps installed
   - Commands:
     - `bun install`
     - `bun lint`
     - `bun watch`
   - Paths: N/A
 
-- [X] T002 [P] [Setup] Verify .env is configured
+- [x] T002 [P] [Setup] Verify .env is configured
   - Ensure `.env` has `DATABASE_URL` and `DIRECT_URL` (copy from `.env.example` if needed)
   - Paths: `/Users/muhammadnurislomtukhtamishhoji-zoda/Development/schedule-website/.env`
 
@@ -33,22 +34,22 @@ Repo root: `/Users/muhammadnurislomtukhtamishhoji-zoda/Development/schedule-webs
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
-- [X] T003 [P] [US1] Update Prisma schema to add global flag
+- [x] T003 [P] [US1] Update Prisma schema to add global flag
   - Edit: `/Users/muhammadnurislomtukhtamishhoji-zoda/Development/schedule-website/prisma/schema.prisma`
   - Add `visibleInFilters Boolean @default(true)` to `ClassType` model (follow repo Prisma style)
 
-- [X] T004 [US1] Create migration: add field and drop per-user visibility schema
+- [x] T004 [US1] Create migration: add field and drop per-user visibility schema
   - Commands:
     - `npx prisma migrate dev --name add-class-type-visible-in-filters-and-drop-per-user-visibility`
   - DB validation (local psql):
     - `PGPASSWORD=postgres psql -h localhost -U postgres -d schedulewebsite -c "\\d+ \"ClassType\""`
 
-- [X] T005 [P] [US1] Backfill/verify defaults
+- [x] T005 [P] [US1] Backfill/verify defaults
   - Confirm all existing rows have `visibleInFilters = true`
   - Command:
     - `PGPASSWORD=postgres psql -h localhost -U postgres -d schedulewebsite -c "SELECT COUNT(*) FROM \"ClassType\" WHERE \"visibleInFilters\" IS NOT TRUE;"`
 
-- [X] T006 [P] [US1] Update CSV import/export to include `visibleInFilters`
+- [x] T006 [P] [US1] Update CSV import/export to include `visibleInFilters`
   - Locate CSV code:
     - `rg -n "CSV|import|export" /Users/muhammadnurislomtukhtamishhoji-zoda/Development/schedule-website/src`
     - `rg -n "ClassType|授業タイプ" /Users/muhammadnurislomtukhtamishhoji-zoda/Development/schedule-website/src`
@@ -70,18 +71,18 @@ Repo root: `/Users/muhammadnurislomtukhtamishhoji-zoda/Development/schedule-webs
 
 ### Implementation
 
-- [X] T009 [US1] Implement PATCH endpoint to update `visibleInFilters`
+- [x] T009 [US1] Implement PATCH endpoint to update `visibleInFilters`
   - File: `/Users/muhammadnurislomtukhtamishhoji-zoda/Development/schedule-website/src/app/api/admin/masterdata/class-types/[id]/route.ts`
   - Enforce Admin-only authorization using existing auth utilities
   - Parse/validate body (Zod if used), update via Prisma, return updated record subset
 
-- [X] T010 [P] [US1] Add Admin UI toggle column in 授業タイプ table
+- [x] T010 [P] [US1] Add Admin UI toggle column in 授業タイプ table
   - Locate 授業タイプ masterdata table component:
     - `rg -n "授業タイプ|class type" /Users/muhammadnurislomtukhtamishhoji-zoda/Development/schedule-website/src/app`
   - Modify: add per-row toggle (label 「フィルター表示」) bound to `visibleInFilters`
   - Wire optimistic update using existing table toggle pattern
 
-- [X] T011 [P] [US1] Remove 表示管理 button and any per-user visibility UI
+- [x] T011 [P] [US1] Remove 表示管理 button and any per-user visibility UI
   - Search and remove:
     - `rg -n "表示管理" /Users/muhammadnurislomtukhtamishhoji-zoda/Development/schedule-website/src`
   - Delete related components/routes; ensure no dead links
@@ -97,7 +98,7 @@ Repo root: `/Users/muhammadnurislomtukhtamishhoji-zoda/Development/schedule-webs
 
 ### Implementation
 
-- [X] T013 [US2] Delete per-user visibility code paths (reads/writes)
+- [x] T013 [US2] Delete per-user visibility code paths (reads/writes)
   - Search:
     - `rg -n "visibility|filter|class type" /Users/muhammadnurislomtukhtamishhoji-zoda/Development/schedule-website/src`
   - Remove per-user preference storage and references
@@ -113,7 +114,7 @@ Repo root: `/Users/muhammadnurislomtukhtamishhoji-zoda/Development/schedule-webs
 
 ### Implementation
 
-- [X] T015 [US3] Update filter option sources to respect `visibleInFilters`
+- [x] T015 [US3] Update filter option sources to respect `visibleInFilters`
   - Locate filter options provider/functions:
     - `rg -n "class type" /Users/muhammadnurislomtukhtamishhoji-zoda/Development/schedule-website/src`
   - Ensure queries limit to `visibleInFilters = true` for all roles
@@ -143,10 +144,10 @@ Repo root: `/Users/muhammadnurislomtukhtamishhoji-zoda/Development/schedule-webs
 
 ## Dependencies & Execution Order
 
-- T001, T002 → T003, T004, T005, T006  
-- T003, T004 → T007..T011  
-- T011 → T012  
-- T015 depends on locating and updating filter sources; can run after T003/T004  
+- T001, T002 → T003, T004, T005, T006
+- T003, T004 → T007..T011
+- T011 → T012
+- T015 depends on locating and updating filter sources; can run after T003/T004
 
 Parallel opportunities [P]: T001, T002, T005, T006, T007, T008, T010, T011, T012, T014, T016, T017, T018, T019, T020, T021
 

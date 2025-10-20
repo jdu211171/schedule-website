@@ -264,7 +264,10 @@ export const DELETE = withBranchAccess(
       });
 
       if (!staff || staff.role !== "STAFF") {
-        return NextResponse.json({ error: "スタッフが見つかりません" }, { status: 404 });
+        return NextResponse.json(
+          { error: "スタッフが見つかりません" },
+          { status: 404 }
+        );
       }
 
       // Prevent deleting if it's the currently logged in user
@@ -277,16 +280,16 @@ export const DELETE = withBranchAccess(
 
       // Check for branch assignments
       const branchAssignments = await prisma.userBranch.count({
-        where: { userId: id }
+        where: { userId: id },
       });
 
       if (branchAssignments > 0) {
         return NextResponse.json(
-          { 
+          {
             error: `このスタッフは${branchAssignments}つの校舎に割り当てられているため削除できません。`,
             details: {
-              branchAssignments
-            }
+              branchAssignments,
+            },
           },
           { status: 400 }
         );

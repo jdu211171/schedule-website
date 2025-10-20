@@ -40,7 +40,7 @@ export function formatValidationErrors(
 ): { row: number; errors: string[] } {
   return {
     row,
-    errors: errors.map(err => {
+    errors: errors.map((err) => {
       if (err.path && err.path.length > 0) {
         return `${err.path.join(".")}: ${err.message}`;
       }

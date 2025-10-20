@@ -5,7 +5,14 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { useEffect, useState } from "react";
 import * as React from "react";
-import { Eye, EyeOff, BadgeCheck, CheckCircle, XCircle, Building2 } from "lucide-react";
+import {
+  Eye,
+  EyeOff,
+  BadgeCheck,
+  CheckCircle,
+  XCircle,
+  Building2,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -29,9 +36,16 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { useLineChannelCreate, useLineChannelUpdate, useLineChannelTest } from "@/hooks/useLineChannelMutation";
+import {
+  useLineChannelCreate,
+  useLineChannelUpdate,
+  useLineChannelTest,
+} from "@/hooks/useLineChannelMutation";
 import { LineChannelResponse } from "@/types/line-channel";
-import { lineChannelCreateSchema, lineChannelUpdateSchema } from "@/schemas/line-channel.schema";
+import {
+  lineChannelCreateSchema,
+  lineChannelUpdateSchema,
+} from "@/schemas/line-channel.schema";
 import { useBranches } from "@/hooks/useBranchQuery";
 import { SearchableMultiSelect } from "@/components/admin-schedule/searchable-multi-select";
 import { Separator } from "@/components/ui/separator";
@@ -85,7 +99,7 @@ export function ChannelFormDialog({
       channelAccessToken: "",
       channelSecret: "",
       isActive: channel?.isActive ?? true,
-      branchIds: channel?.branches?.map(b => b.branchId) || [],
+      branchIds: channel?.branches?.map((b) => b.branchId) || [],
     },
   });
 
@@ -97,7 +111,7 @@ export function ChannelFormDialog({
         channelAccessToken: "",
         channelSecret: "",
         isActive: channel.isActive ?? true,
-        branchIds: channel.branches?.map(b => b.branchId) || [],
+        branchIds: channel.branches?.map((b) => b.branchId) || [],
       });
     } else {
       form.reset({
@@ -121,7 +135,8 @@ export function ChannelFormDialog({
           description: values.description,
           isActive: values.isActive,
           branchIds: values.branchIds,
-          ...(values.channelAccessToken && values.channelAccessToken.trim().length > 0
+          ...(values.channelAccessToken &&
+          values.channelAccessToken.trim().length > 0
             ? { channelAccessToken: values.channelAccessToken }
             : {}),
           ...(values.channelSecret && values.channelSecret.trim().length > 0
@@ -134,8 +149,12 @@ export function ChannelFormDialog({
       } else {
         // For create, ensure required fields are present
         if (!values.channelAccessToken || !values.channelSecret) {
-          form.setError("channelAccessToken", { message: "チャンネルアクセストークンは必須です" });
-          form.setError("channelSecret", { message: "チャンネルシークレットは必須です" });
+          form.setError("channelAccessToken", {
+            message: "チャンネルアクセストークンは必須です",
+          });
+          form.setError("channelSecret", {
+            message: "チャンネルシークレットは必須です",
+          });
           return;
         }
 
@@ -156,17 +175,16 @@ export function ChannelFormDialog({
     }
   }
 
-
   const handleTestCredentials = async () => {
-    const accessToken = form.getValues('channelAccessToken');
-    const secret = form.getValues('channelSecret');
+    const accessToken = form.getValues("channelAccessToken");
+    const secret = form.getValues("channelSecret");
 
     if (!accessToken || !secret) {
-      form.setError('channelAccessToken', {
-        message: 'テストするにはトークンを入力してください'
+      form.setError("channelAccessToken", {
+        message: "テストするにはトークンを入力してください",
       });
-      form.setError('channelSecret', {
-        message: 'テストするにはシークレットを入力してください'
+      form.setError("channelSecret", {
+        message: "テストするにはシークレットを入力してください",
       });
       return;
     }
@@ -185,7 +203,7 @@ export function ChannelFormDialog({
     } catch (error) {
       setTestResult({
         success: false,
-        message: '認証情報のテストに失敗しました',
+        message: "認証情報のテストに失敗しました",
         tested: true,
       });
     }
@@ -194,7 +212,7 @@ export function ChannelFormDialog({
   // Reset test result when credentials change
   React.useEffect(() => {
     setTestResult(null);
-  }, [form.watch('channelAccessToken'), form.watch('channelSecret')]);
+  }, [form.watch("channelAccessToken"), form.watch("channelSecret")]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -212,273 +230,322 @@ export function ChannelFormDialog({
         <div className="flex-1 overflow-y-auto px-1">
           <Form {...form}>
             <form className="space-y-4" autoComplete="off">
-            {/* Autofill blockers (some browsers ignore autocomplete=off). Keep visually hidden. */}
-            <input type="text" name="fake-username" autoComplete="username" style={{ display: 'none' }} aria-hidden="true" />
-            <input type="password" name="fake-password" autoComplete="new-password" style={{ display: 'none' }} aria-hidden="true" />
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>チャンネル名</FormLabel>
-                  <FormControl>
-                    <Input {...field} autoComplete="off" autoCapitalize="none" autoCorrect="off" spellCheck={false} name="line-channel-name" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>説明</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      {...field}
-                      value={field.value || ""}
-                      className="resize-none"
-                      autoComplete="off"
-                      autoCapitalize="none"
-                      autoCorrect="off"
-                      spellCheck={false}
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    このチャンネルの用途や特徴を記入してください
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="channelAccessToken"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>チャンネルアクセストークン</FormLabel>
-                  <FormControl>
-                    <div className="relative">
+              {/* Autofill blockers (some browsers ignore autocomplete=off). Keep visually hidden. */}
+              <input
+                type="text"
+                name="fake-username"
+                autoComplete="username"
+                style={{ display: "none" }}
+                aria-hidden="true"
+              />
+              <input
+                type="password"
+                name="fake-password"
+                autoComplete="new-password"
+                style={{ display: "none" }}
+                aria-hidden="true"
+              />
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>チャンネル名</FormLabel>
+                    <FormControl>
                       <Input
                         {...field}
-                        type={showAccessToken ? "text" : "password"}
-                        placeholder={isEditing ? "新しいトークンを入力（変更する場合）" : ""}
-                        autoComplete="new-password"
-                        name="line-channel-access-token"
+                        autoComplete="off"
                         autoCapitalize="none"
                         autoCorrect="off"
                         spellCheck={false}
+                        name="line-channel-name"
                       />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="absolute right-0 top-0 h-full px-3"
-                        onClick={() => setShowAccessToken(!showAccessToken)}
-                      >
-                        {showAccessToken ? (
-                          <EyeOff className="h-4 w-4" />
-                        ) : (
-                          <Eye className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </div>
-                  </FormControl>
-                  {isEditing && (
-                    <FormDescription>
-                      現在のトークン: {channel?.channelAccessTokenPreview}
-                    </FormDescription>
-                  )}
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="channelSecret"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>チャンネルシークレット</FormLabel>
-                  <FormControl>
-                    <div className="relative">
-                      <Input
-                        {...field}
-                        type={showSecret ? "text" : "password"}
-                        placeholder={isEditing ? "新しいシークレットを入力（変更する場合）" : ""}
-                        autoComplete="new-password"
-                        name="line-channel-secret"
-                        autoCapitalize="none"
-                        autoCorrect="off"
-                        spellCheck={false}
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="absolute right-0 top-0 h-full px-3"
-                        onClick={() => setShowSecret(!showSecret)}
-                      >
-                        {showSecret ? (
-                          <EyeOff className="h-4 w-4" />
-                        ) : (
-                          <Eye className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </div>
-                  </FormControl>
-                  {isEditing && (
-                    <FormDescription>
-                      現在のシークレット: {channel?.channelSecretPreview}
-                    </FormDescription>
-                  )}
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {/* Test Credentials Button and Results */}
-            {!isEditing && (
-              <div className="space-y-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleTestCredentials}
-                  disabled={testChannelMutation.isPending}
-                  className="w-full"
-                >
-                  <BadgeCheck className="mr-2 h-4 w-4" />
-                  {testChannelMutation.isPending ? "テスト中..." : "認証情報をテスト"}
-                </Button>
-
-                {testResult && testResult.tested && (
-                  <div className={`flex items-center gap-2 p-3 rounded-md text-sm ${
-                    testResult.success
-                      ? 'bg-green-50 text-green-800 dark:bg-green-900/20 dark:text-green-400'
-                      : 'bg-red-50 text-red-800 dark:bg-red-900/20 dark:text-red-400'
-                  }`}>
-                    {testResult.success ? (
-                      <CheckCircle className="h-4 w-4" />
-                    ) : (
-                      <XCircle className="h-4 w-4" />
-                    )}
-                    <span>{testResult.message}</span>
-                  </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
                 )}
-              </div>
-            )}
+              />
 
-            <FormField
-              control={form.control}
-              name="isActive"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
-                  <div className="space-y-0.5">
-                    <FormLabel>有効化</FormLabel>
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>説明</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        {...field}
+                        value={field.value || ""}
+                        className="resize-none"
+                        autoComplete="off"
+                        autoCapitalize="none"
+                        autoCorrect="off"
+                        spellCheck={false}
+                      />
+                    </FormControl>
                     <FormDescription>
-                      このチャンネルを通知送信に使用できるようにします
+                      このチャンネルの用途や特徴を記入してください
                     </FormDescription>
-                  </div>
-                  <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            {/* Branch Assignment Section (only show when editing) */}
-            {isEditing && (
-              <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-medium text-muted-foreground">
-                    校舎配属
-                  </h3>
-                  <Separator className="flex-1" />
-                </div>
-
-                <FormField
-                  control={form.control}
-                  name="branchIds"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm font-medium">
-                        割り当て校舎（複数選択可）
-                      </FormLabel>
-                      <FormControl>
-                        <SearchableMultiSelect
-                          value={field.value || []}
-                          onValueChange={field.onChange}
-                          items={branches.map((branch) => ({
-                            value: branch.branchId,
-                            label: branch.name,
-                          }))}
-                          placeholder="校舎を選択してください"
-                          searchPlaceholder="校舎名を検索..."
-                          emptyMessage="該当する校舎が見つかりません"
-                          loading={isBranchesLoading}
-                          disabled={isBranchesLoading}
+              <FormField
+                control={form.control}
+                name="channelAccessToken"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>チャンネルアクセストークン</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <Input
+                          {...field}
+                          type={showAccessToken ? "text" : "password"}
+                          placeholder={
+                            isEditing
+                              ? "新しいトークンを入力（変更する場合）"
+                              : ""
+                          }
+                          autoComplete="new-password"
+                          name="line-channel-access-token"
+                          autoCapitalize="none"
+                          autoCorrect="off"
+                          spellCheck={false}
                         />
-                      </FormControl>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="absolute right-0 top-0 h-full px-3"
+                          onClick={() => setShowAccessToken(!showAccessToken)}
+                        >
+                          {showAccessToken ? (
+                            <EyeOff className="h-4 w-4" />
+                          ) : (
+                            <Eye className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
+                    </FormControl>
+                    {isEditing && (
                       <FormDescription>
-                        このチャンネルを使用する校舎を選択してください。
-                        各校舎での講師用・生徒用の設定は「校舎別チャンネル設定」で行います。
+                        現在のトークン: {channel?.channelAccessTokenPreview}
                       </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* Show current channel type assignments for editing mode */}
-                {isEditing && channel && channel.branches && channel.branches.length > 0 && (
-                  <div className="rounded-lg bg-muted/50 p-3 space-y-2">
-                    <p className="text-sm font-medium">現在のチャンネルタイプ設定:</p>
-                    <div className="flex flex-wrap gap-2">
-                      {channel.branches.map((branch) => {
-                        const isTeacher = branch.channelType === 'TEACHER';
-                        const isStudent = branch.channelType === 'STUDENT';
-                        return (
-                          <div key={branch.id} className="flex items-center gap-1">
-                            <Badge variant="outline" className="text-xs">
-                              <Building2 className="mr-1 h-3 w-3" />
-                              {branch.branch.name}
-                            </Badge>
-                            <Badge
-                              variant={isTeacher ? "default" : isStudent ? "secondary" : "outline"}
-                              className={`text-xs ${
-                                isTeacher
-                                  ? "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800"
-                                  : isStudent
-                                    ? "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800"
-                                    : "bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-900/30 dark:text-gray-300 dark:border-gray-800"
-                              }`}
-                            >
-                              {isTeacher ? "講師" : isStudent ? "生徒" : "未設定"}
-                            </Badge>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
+                    )}
+                    <FormMessage />
+                  </FormItem>
                 )}
-              </div>
-            )}
+              />
 
-            {!isEditing && (
-              <div className="rounded-md bg-blue-50 dark:bg-blue-900/20 p-3 space-y-2">
-                <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
-                  チャンネルタイプの設定について
-                </p>
-                <p className="text-sm text-blue-700 dark:text-blue-300">
-                  チャンネルを作成・校舎に割り当てた後、「校舎別チャンネル設定」から各校舎での講師用・生徒用の設定を行ってください。
-                </p>
-              </div>
-            )}
+              <FormField
+                control={form.control}
+                name="channelSecret"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>チャンネルシークレット</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <Input
+                          {...field}
+                          type={showSecret ? "text" : "password"}
+                          placeholder={
+                            isEditing
+                              ? "新しいシークレットを入力（変更する場合）"
+                              : ""
+                          }
+                          autoComplete="new-password"
+                          name="line-channel-secret"
+                          autoCapitalize="none"
+                          autoCorrect="off"
+                          spellCheck={false}
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="absolute right-0 top-0 h-full px-3"
+                          onClick={() => setShowSecret(!showSecret)}
+                        >
+                          {showSecret ? (
+                            <EyeOff className="h-4 w-4" />
+                          ) : (
+                            <Eye className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
+                    </FormControl>
+                    {isEditing && (
+                      <FormDescription>
+                        現在のシークレット: {channel?.channelSecretPreview}
+                      </FormDescription>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Test Credentials Button and Results */}
+              {!isEditing && (
+                <div className="space-y-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleTestCredentials}
+                    disabled={testChannelMutation.isPending}
+                    className="w-full"
+                  >
+                    <BadgeCheck className="mr-2 h-4 w-4" />
+                    {testChannelMutation.isPending
+                      ? "テスト中..."
+                      : "認証情報をテスト"}
+                  </Button>
+
+                  {testResult && testResult.tested && (
+                    <div
+                      className={`flex items-center gap-2 p-3 rounded-md text-sm ${
+                        testResult.success
+                          ? "bg-green-50 text-green-800 dark:bg-green-900/20 dark:text-green-400"
+                          : "bg-red-50 text-red-800 dark:bg-red-900/20 dark:text-red-400"
+                      }`}
+                    >
+                      {testResult.success ? (
+                        <CheckCircle className="h-4 w-4" />
+                      ) : (
+                        <XCircle className="h-4 w-4" />
+                      )}
+                      <span>{testResult.message}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <FormField
+                control={form.control}
+                name="isActive"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                    <div className="space-y-0.5">
+                      <FormLabel>有効化</FormLabel>
+                      <FormDescription>
+                        このチャンネルを通知送信に使用できるようにします
+                      </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
+              {/* Branch Assignment Section (only show when editing) */}
+              {isEditing && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-medium text-muted-foreground">
+                      校舎配属
+                    </h3>
+                    <Separator className="flex-1" />
+                  </div>
+
+                  <FormField
+                    control={form.control}
+                    name="branchIds"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-sm font-medium">
+                          割り当て校舎（複数選択可）
+                        </FormLabel>
+                        <FormControl>
+                          <SearchableMultiSelect
+                            value={field.value || []}
+                            onValueChange={field.onChange}
+                            items={branches.map((branch) => ({
+                              value: branch.branchId,
+                              label: branch.name,
+                            }))}
+                            placeholder="校舎を選択してください"
+                            searchPlaceholder="校舎名を検索..."
+                            emptyMessage="該当する校舎が見つかりません"
+                            loading={isBranchesLoading}
+                            disabled={isBranchesLoading}
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          このチャンネルを使用する校舎を選択してください。
+                          各校舎での講師用・生徒用の設定は「校舎別チャンネル設定」で行います。
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Show current channel type assignments for editing mode */}
+                  {isEditing &&
+                    channel &&
+                    channel.branches &&
+                    channel.branches.length > 0 && (
+                      <div className="rounded-lg bg-muted/50 p-3 space-y-2">
+                        <p className="text-sm font-medium">
+                          現在のチャンネルタイプ設定:
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {channel.branches.map((branch) => {
+                            const isTeacher = branch.channelType === "TEACHER";
+                            const isStudent = branch.channelType === "STUDENT";
+                            return (
+                              <div
+                                key={branch.id}
+                                className="flex items-center gap-1"
+                              >
+                                <Badge variant="outline" className="text-xs">
+                                  <Building2 className="mr-1 h-3 w-3" />
+                                  {branch.branch.name}
+                                </Badge>
+                                <Badge
+                                  variant={
+                                    isTeacher
+                                      ? "default"
+                                      : isStudent
+                                        ? "secondary"
+                                        : "outline"
+                                  }
+                                  className={`text-xs ${
+                                    isTeacher
+                                      ? "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800"
+                                      : isStudent
+                                        ? "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800"
+                                        : "bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-900/30 dark:text-gray-300 dark:border-gray-800"
+                                  }`}
+                                >
+                                  {isTeacher
+                                    ? "講師"
+                                    : isStudent
+                                      ? "生徒"
+                                      : "未設定"}
+                                </Badge>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                </div>
+              )}
+
+              {!isEditing && (
+                <div className="rounded-md bg-blue-50 dark:bg-blue-900/20 p-3 space-y-2">
+                  <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                    チャンネルタイプの設定について
+                  </p>
+                  <p className="text-sm text-blue-700 dark:text-blue-300">
+                    チャンネルを作成・校舎に割り当てた後、「校舎別チャンネル設定」から各校舎での講師用・生徒用の設定を行ってください。
+                  </p>
+                </div>
+              )}
             </form>
           </Form>
         </div>
@@ -488,8 +555,7 @@ export function ChannelFormDialog({
             variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={
-              createChannelMutation.isPending ||
-              updateChannelMutation.isPending
+              createChannelMutation.isPending || updateChannelMutation.isPending
             }
           >
             キャンセル
@@ -498,8 +564,7 @@ export function ChannelFormDialog({
             type="button"
             onClick={form.handleSubmit(onSubmit)}
             disabled={
-              createChannelMutation.isPending ||
-              updateChannelMutation.isPending
+              createChannelMutation.isPending || updateChannelMutation.isPending
             }
           >
             {isEditing ? "更新" : "作成"}

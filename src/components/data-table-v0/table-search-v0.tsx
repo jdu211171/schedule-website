@@ -1,17 +1,17 @@
-"use client"
+"use client";
 
-import { SearchIcon, XIcon } from "lucide-react"
-import * as React from "react"
+import { SearchIcon, XIcon } from "lucide-react";
+import * as React from "react";
 
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 interface TableSearchProps {
-  value: string
-  onChange: (value: string) => void
-  placeholder?: string
-  searchableColumns?: string[]
-  onSearch?: (query: string, columns?: string[]) => void
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  searchableColumns?: string[];
+  onSearch?: (query: string, columns?: string[]) => void;
 }
 
 export function TableSearch({
@@ -21,28 +21,28 @@ export function TableSearch({
   searchableColumns,
   onSearch,
 }: TableSearchProps) {
-  const [localValue, setLocalValue] = React.useState(value)
+  const [localValue, setLocalValue] = React.useState(value);
 
   React.useEffect(() => {
-    setLocalValue(value)
-  }, [value])
+    setLocalValue(value);
+  }, [value]);
 
   const handleSearch = React.useCallback(() => {
-    onChange(localValue)
-    onSearch?.(localValue, searchableColumns)
-  }, [localValue, onChange, onSearch, searchableColumns])
+    onChange(localValue);
+    onSearch?.(localValue, searchableColumns);
+  }, [localValue, onChange, onSearch, searchableColumns]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
-      handleSearch()
+      handleSearch();
     }
-  }
+  };
 
   const handleClear = () => {
-    setLocalValue("")
-    onChange("")
-    onSearch?.("", searchableColumns)
-  }
+    setLocalValue("");
+    onChange("");
+    onSearch?.("", searchableColumns);
+  };
 
   return (
     <div className="relative flex items-center">
@@ -56,11 +56,16 @@ export function TableSearch({
         className="pl-9 pr-9"
       />
       {localValue && (
-        <Button variant="ghost" size="icon" className="absolute right-1 h-6 w-6" onClick={handleClear}>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="absolute right-1 h-6 w-6"
+          onClick={handleClear}
+        >
           <XIcon className="h-3 w-3" />
           <span className="sr-only">Clear search</span>
         </Button>
       )}
     </div>
-  )
+  );
 }

@@ -88,17 +88,20 @@ As a user, newly introduced Class Types are visible by default so I don’t miss
 ### Assumptions & Dependencies
 
 Assumptions
+
 - The feature applies to authenticated users; preferences are associated with a user account and intended to sync across devices.
 - Hidden Class Types remove options from Class Type filter lists ONLY (they do not change Day Calendar rendering).
 - “Show all” is a temporary per-view/session override for filter options; navigating away or toggling off returns to saved visibility.
 - New Class Types default to visible until a user chooses to hide them.
 
 Dependencies
+
 - A defined Class Type taxonomy already exists and is attached to class sessions.
 - The Day Calendar and all existing Class Type filter controls consume a single source of truth for current visibility and filterable options.
 - A user identity context exists so preferences can persist per user across sessions/devices.
 
 ### Out of Scope
+
 - Creating, editing, renaming, or deleting Class Types.
 - Organization- or role-level default visibility policies managed by admins.
 - Reordering Class Types or customizing names/labels.

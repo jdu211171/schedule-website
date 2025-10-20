@@ -16,7 +16,10 @@ import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { handleImportError } from "@/lib/import-error-handler";
 import { auditImportSummary } from "@/lib/import-audit";
-import { acquireUserImportLock, releaseUserImportLock } from "@/lib/import-lock";
+import {
+  acquireUserImportLock,
+  releaseUserImportLock,
+} from "@/lib/import-lock";
 import { allowRate } from "@/lib/rate-limit";
 import { v4 as uuidv4 } from "uuid";
 const RATE_KEY_PREFIX = "import:teachers:";
@@ -32,13 +35,18 @@ function parseSubjectsRaw(raw: string | undefined): ParsedSubjectPair[] {
     .filter(Boolean)
     .map((entry) => {
       const [left, right] = entry.split(/\s*-\s*/);
-      return { subjectName: (left || "").trim(), subjectTypeName: (right || "").trim() };
+      return {
+        subjectName: (left || "").trim(),
+        subjectTypeName: (right || "").trim(),
+      };
     })
     .filter((p) => p.subjectName.length > 0 && p.subjectTypeName.length > 0);
 }
 
 // Status parser: 在籍/休会/退会 or ACTIVE/SICK/PERMANENTLY_LEFT
-function parseStatus(raw: string | undefined | null): "ACTIVE" | "SICK" | "PERMANENTLY_LEFT" | null | undefined {
+function parseStatus(
+  raw: string | undefined | null
+): "ACTIVE" | "SICK" | "PERMANENTLY_LEFT" | null | undefined {
   if (raw == null) return undefined;
   const s = String(raw).trim();
   if (s === "") return null;
@@ -103,13 +111,22 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
     if (userId) {
       const ok = acquireUserImportLock(userId);
       if (!ok) {
-        return NextResponse.json({ error: "インポートが実行中です。完了後に再試行してください。" }, { status: 429 });
+        return NextResponse.json(
+          { error: "インポートが実行中です。完了後に再試行してください。" },
+          { status: 429 }
+        );
       }
       // Rate limit per user for this route
       const rateOk = allowRate(`${RATE_KEY_PREFIX}${userId}`, 2, 0.1);
       if (!rateOk) {
         releaseUserImportLock(userId);
-        return NextResponse.json({ error: "リクエストが多すぎます。しばらくしてから再試行してください。" }, { status: 429 });
+        return NextResponse.json(
+          {
+            error:
+              "リクエストが多すぎます。しばらくしてから再試行してください。",
+          },
+          { status: 429 }
+        );
       }
     }
     // Defer session tracking until after reading the upload (to access filename)
@@ -122,15 +139,26 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
     const file = formData.get("file");
     if (!file || typeof file === "string") {
       if (userId) releaseUserImportLock(userId);
-      return NextResponse.json({ error: "ファイルが選択されていません" }, { status: 400 });
+      return NextResponse.json(
+        { error: "ファイルが選択されていません" },
+        { status: 400 }
+      );
     }
 
     // Enforce server-side max size (hard cap)
-    const maxBytes = Number.parseInt(process.env.IMPORT_MAX_BYTES || "26214400", 10); // 25MB
+    const maxBytes = Number.parseInt(
+      process.env.IMPORT_MAX_BYTES || "26214400",
+      10
+    ); // 25MB
     const fileSize = (file as Blob).size ?? 0;
     if (fileSize > maxBytes) {
       if (userId) releaseUserImportLock(userId);
-      return NextResponse.json({ error: `ファイルサイズが大きすぎます。最大 ${Math.floor(maxBytes / 1024 / 1024)}MB まで対応しています` }, { status: 413 });
+      return NextResponse.json(
+        {
+          error: `ファイルサイズが大きすぎます。最大 ${Math.floor(maxBytes / 1024 / 1024)}MB まで対応しています`,
+        },
+        { status: 413 }
+      );
     }
 
     // Session tracking (in-memory) — now we can include filename
@@ -143,41 +171,80 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
       startedAt: new Date().toISOString(),
     });
     const buffer = Buffer.from(await (file as Blob).arrayBuffer());
-    const parseResult = await CSVParser.parseBuffer<Record<string, string>>(buffer, { encoding: "utf-8" });
+    const parseResult = await CSVParser.parseBuffer<Record<string, string>>(
+      buffer,
+      { encoding: "utf-8" }
+    );
 
     if (parseResult.errors.length > 0) {
       if (userId) releaseUserImportLock(userId);
-      return NextResponse.json({ error: "CSVファイルの解析に失敗しました", details: parseResult.errors }, { status: 400 });
+      return NextResponse.json(
+        {
+          error: "CSVファイルの解析に失敗しました",
+          details: parseResult.errors,
+        },
+        { status: 400 }
+      );
     }
 
     if (parseResult.data.length === 0) {
       if (userId) releaseUserImportLock(userId);
-      return NextResponse.json({ error: "CSVファイルが空です" }, { status: 400 });
+      return NextResponse.json(
+        { error: "CSVファイルが空です" },
+        { status: 400 }
+      );
     }
 
     const actualHeaders = Object.keys(parseResult.data[0]);
 
     // Validate headers (warn on unknown)
-    const knownHeaders = new Set<string>(["ID", ...Object.values(TEACHER_COLUMN_RULES).map(r => r.csvHeader)]);
-    const unknownHeaders = actualHeaders.filter(h => !knownHeaders.has(h));
-    const result: ImportResult = { success: 0, errors: [], warnings: [], created: 0, updated: 0, deleted: 0, skipped: 0 };
+    const knownHeaders = new Set<string>([
+      "ID",
+      ...Object.values(TEACHER_COLUMN_RULES).map((r) => r.csvHeader),
+    ]);
+    const unknownHeaders = actualHeaders.filter((h) => !knownHeaders.has(h));
+    const result: ImportResult = {
+      success: 0,
+      errors: [],
+      warnings: [],
+      created: 0,
+      updated: 0,
+      deleted: 0,
+      skipped: 0,
+    };
     if (unknownHeaders.length > 0) {
-      result.warnings.push({ message: `未対応の列が含まれています: ${unknownHeaders.join(", ")}` });
+      result.warnings.push({
+        message: `未対応の列が含まれています: ${unknownHeaders.join(", ")}`,
+      });
       // eslint-disable-next-line no-console
       console.warn("Unknown CSV headers (teachers):", unknownHeaders);
     }
-    if (!actualHeaders.includes("ID") && !actualHeaders.includes("ユーザー名")) {
+    if (
+      !actualHeaders.includes("ID") &&
+      !actualHeaders.includes("ユーザー名")
+    ) {
       if (userId) releaseUserImportLock(userId);
-      return NextResponse.json({ error: "CSVにIDまたはユーザー名の列が必要です" }, { status: 400 });
+      return NextResponse.json(
+        { error: "CSVにIDまたはユーザー名の列が必要です" },
+        { status: 400 }
+      );
     }
 
     // Pre-fetch subjects, subject types, branches
-    const allSubjects = await prisma.subject.findMany({ select: { subjectId: true, name: true } });
-    const subjectMap = new Map(allSubjects.map(s => [s.name, s.subjectId]));
-    const allSubjectTypes = await prisma.subjectType.findMany({ select: { subjectTypeId: true, name: true } });
-    const subjectTypeMap = new Map(allSubjectTypes.map(t => [t.name, t.subjectTypeId]));
-    const allBranches = await prisma.branch.findMany({ select: { branchId: true, name: true } });
-    const branchMap = new Map(allBranches.map(b => [b.name, b.branchId]));
+    const allSubjects = await prisma.subject.findMany({
+      select: { subjectId: true, name: true },
+    });
+    const subjectMap = new Map(allSubjects.map((s) => [s.name, s.subjectId]));
+    const allSubjectTypes = await prisma.subjectType.findMany({
+      select: { subjectTypeId: true, name: true },
+    });
+    const subjectTypeMap = new Map(
+      allSubjectTypes.map((t) => [t.name, t.subjectTypeId])
+    );
+    const allBranches = await prisma.branch.findMany({
+      select: { branchId: true, name: true },
+    });
+    const branchMap = new Map(allBranches.map((b) => [b.name, b.branchId]));
 
     // Map CSV headers to DB fields
     const headerMapping: Record<string, string> = {};
@@ -187,7 +254,10 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
     }
 
     // Process rows
-    type RowData = (z.infer<typeof teacherImportSchema> | z.infer<typeof teacherUpdateImportSchema>) & {
+    type RowData = (
+      | z.infer<typeof teacherImportSchema>
+      | z.infer<typeof teacherUpdateImportSchema>
+    ) & {
       branchIds?: string[];
       subjectPrefTuples?: Array<{ subjectId: string; subjectTypeId: string }>;
       existingUserId?: string;
@@ -209,13 +279,22 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
         for (const [csvHeader, csvValue] of Object.entries(row)) {
           const dbField = headerMapping[csvHeader];
           if (!dbField) continue;
-          const rule = Object.values(TEACHER_COLUMN_RULES).find(r => r.dbField === dbField);
-          if (rule && rule.createRule === 'ignore' && rule.updateRule === 'ignore') continue;
+          const rule = Object.values(TEACHER_COLUMN_RULES).find(
+            (r) => r.dbField === dbField
+          );
+          if (
+            rule &&
+            rule.createRule === "ignore" &&
+            rule.updateRule === "ignore"
+          )
+            continue;
           filteredRow[dbField] = csvValue ?? "";
           fieldsInRow.add(dbField);
         }
 
-        const importTeacherId = (((row as any).id || (row as any).ID) as string | undefined)?.trim();
+        const importTeacherId = (
+          ((row as any).id || (row as any).ID) as string | undefined
+        )?.trim();
         const isUpdateRow = !!importTeacherId;
 
         const validated = isUpdateRow
@@ -223,54 +302,76 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
           : teacherImportSchema.parse(filteredRow);
 
         // Status mapping (warning on unknown)
-        let parsedStatus: RowData['status'];
-        if (fieldsInRow.has('status')) {
-          const original = filteredRow['status'];
+        let parsedStatus: RowData["status"];
+        if (fieldsInRow.has("status")) {
+          const original = filteredRow["status"];
           parsedStatus = parseStatus(original);
-          if (original && original.trim() !== '' && parsedStatus === null) {
-            result.warnings.push({ row: rowNumber, message: `不明なステータス値を無視しました: ${original}` });
+          if (original && original.trim() !== "" && parsedStatus === null) {
+            result.warnings.push({
+              row: rowNumber,
+              message: `不明なステータス値を無視しました: ${original}`,
+            });
           }
         }
 
         // Branch validation (names -> ids)
         let branchIds: string[] | undefined;
-        if ((validated as any).branches && Array.isArray((validated as any).branches) && (validated as any).branches.length > 0) {
+        if (
+          (validated as any).branches &&
+          Array.isArray((validated as any).branches) &&
+          (validated as any).branches.length > 0
+        ) {
           const names = (validated as any).branches as string[];
-          const invalid = names.filter(n => !branchMap.has(n));
+          const invalid = names.filter((n) => !branchMap.has(n));
           if (invalid.length > 0) {
-            result.errors.push({ row: rowNumber, errors: [`校舎が見つかりません: ${invalid.join(", ")}`] });
+            result.errors.push({
+              row: rowNumber,
+              errors: [`校舎が見つかりません: ${invalid.join(", ")}`],
+            });
             continue;
           }
-          branchIds = names.map(n => branchMap.get(n)!);
+          branchIds = names.map((n) => branchMap.get(n)!);
         }
 
         // Parse subjects
-        let subjectPrefTuples: Array<{ subjectId: string; subjectTypeId: string }> | undefined;
-        if (fieldsInRow.has('subjects')) {
-          const pairs = parseSubjectsRaw((filteredRow as any)['subjects']);
+        let subjectPrefTuples:
+          | Array<{ subjectId: string; subjectTypeId: string }>
+          | undefined;
+        if (fieldsInRow.has("subjects")) {
+          const pairs = parseSubjectsRaw((filteredRow as any)["subjects"]);
           const invalids: string[] = [];
-          const tuples: Array<{ subjectId: string; subjectTypeId: string }> = [];
+          const tuples: Array<{ subjectId: string; subjectTypeId: string }> =
+            [];
           for (const p of pairs) {
             const sid = subjectMap.get(p.subjectName);
             const stid = subjectTypeMap.get(p.subjectTypeName);
-            if (!sid || !stid) invalids.push(`${p.subjectName} - ${p.subjectTypeName}`);
+            if (!sid || !stid)
+              invalids.push(`${p.subjectName} - ${p.subjectTypeName}`);
             else tuples.push({ subjectId: sid, subjectTypeId: stid });
           }
           if (invalids.length > 0) {
-            result.errors.push({ row: rowNumber, errors: [`選択科目が不正です: ${invalids.join(", ")}`] });
+            result.errors.push({
+              row: rowNumber,
+              errors: [`選択科目が不正です: ${invalids.join(", ")}`],
+            });
             continue;
           }
           subjectPrefTuples = tuples; // empty array means clear
         }
 
         // Try tolerant upsert: by ID strict update, otherwise find by username/email
-        let existingUser: { id: string; teacher: { teacherId: string } | null } | null = null;
+        let existingUser: {
+          id: string;
+          teacher: { teacherId: string } | null;
+        } | null = null;
         if (!isUpdateRow) {
           existingUser = await prisma.user.findFirst({
             where: {
               OR: [
                 { username: (validated as any).username },
-                ...(((validated as any).email) ? [{ email: (validated as any).email }] : []),
+                ...((validated as any).email
+                  ? [{ email: (validated as any).email }]
+                  : []),
               ],
             },
             select: { id: true, teacher: { select: { teacherId: true } } },
@@ -309,304 +410,536 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
         }
       } catch (error) {
         if (error instanceof z.ZodError) {
-          result.errors.push({ row: rowNumber, errors: error.errors.map(e => e.message) });
+          result.errors.push({
+            row: rowNumber,
+            errors: error.errors.map((e) => e.message),
+          });
         } else if (error instanceof Error) {
           result.errors.push({ row: rowNumber, errors: [error.message] });
         } else {
-          result.errors.push({ row: rowNumber, errors: ["不明なエラーが発生しました"] });
+          result.errors.push({
+            row: rowNumber,
+            errors: ["不明なエラーが発生しました"],
+          });
         }
         continue;
       }
     }
 
     if (!dryRun && validatedData.length > 0) {
-      const batchSize = Number.parseInt(process.env.IMPORT_BATCH_SIZE || "100", 10);
-      const txTimeout = Number.parseInt(process.env.IMPORT_TX_TIMEOUT_MS || "20000", 10);
-      const txMaxWait = Number.parseInt(process.env.IMPORT_TX_MAXWAIT_MS || "10000", 10);
+      const batchSize = Number.parseInt(
+        process.env.IMPORT_BATCH_SIZE || "100",
+        10
+      );
+      const txTimeout = Number.parseInt(
+        process.env.IMPORT_TX_TIMEOUT_MS || "20000",
+        10
+      );
+      const txMaxWait = Number.parseInt(
+        process.env.IMPORT_TX_MAXWAIT_MS || "10000",
+        10
+      );
       for (let i = 0; i < validatedData.length; i += batchSize) {
         const batch = validatedData.slice(i, i + batchSize);
-        await prisma.$transaction(async (tx) => {
-          for (const data of batch) {
-            const fieldsInRow = data.fieldsInRow ?? new Set<string>();
-            try {
-              if (data.teacherId) {
-                // Strict update by teacherId
-                const t = await tx.teacher.findUnique({ where: { teacherId: data.teacherId }, select: { userId: true } });
-                if (!t) {
-                  result.errors.push({ row: data.rowNumber, errors: ["指定されたIDの講師が見つかりません"] });
-                  continue;
-                }
-                const userId = t.userId;
-
-                // Update user if fields provided
-                const userUpdate: any = {};
-                if ((data as any).username != null) userUpdate.username = (data as any).username;
-                if ((data as any).email !== undefined) userUpdate.email = (data as any).email || null;
-                if ((data as any).password) userUpdate.passwordHash = (data as any).password;
-                if (Object.keys(userUpdate).length > 0) {
-                  await tx.user.update({ where: { id: userId }, data: userUpdate });
-                }
-
-                // Update teacher fields
-                const teacherUpdate: any = {};
-                if ((data as any).name != null) teacherUpdate.name = (data as any).name;
-                if (fieldsInRow.has("kanaName")) teacherUpdate.kanaName = (data as any).kanaName ?? null;
-                if (fieldsInRow.has("birthDate")) teacherUpdate.birthDate = (data as any).birthDate ?? null;
-                if (fieldsInRow.has("notes")) teacherUpdate.notes = (data as any).notes ?? null;
-                if (fieldsInRow.has("phoneNumber")) teacherUpdate.phoneNumber = (data as any).phoneNumber ?? null;
-                if (fieldsInRow.has("phoneNotes")) teacherUpdate.phoneNotes = (data as any).phoneNotes ?? null;
-                if (fieldsInRow.has("status") && data.status !== undefined) teacherUpdate.status = data.status ?? undefined;
-                if (Object.keys(teacherUpdate).length > 0) {
-                  await tx.teacher.update({ where: { teacherId: data.teacherId }, data: teacherUpdate });
-                }
-
-                // Update branches if provided
-                if (fieldsInRow.has("branches") && data.branchIds) {
-                  await tx.userBranch.deleteMany({ where: { userId } });
-                  if (data.branchIds.length > 0) {
-                    for (const bId of data.branchIds) {
-                      await tx.userBranch.create({ data: { userId, branchId: bId } });
-                    }
-                  } else if (branchId) {
-                    await tx.userBranch.create({ data: { userId, branchId } });
-                  }
-                }
-
-                // Replace subject preferences when provided
-                if (fieldsInRow.has("subjects")) {
-                  await tx.userSubjectPreference.deleteMany({ where: { userId } });
-                  const tuples = data.subjectPrefTuples || [];
-                  for (const t of tuples) {
-                    await tx.userSubjectPreference.create({ data: { userId, subjectId: t.subjectId, subjectTypeId: t.subjectTypeId } });
-                  }
-                }
-
-                // Replace contact phones if provided
-                if (fieldsInRow.has("contactPhones")) {
-                  const phones = parseContactPhones((data as any).contactPhones as string);
-                  await tx.teacherContactPhone.deleteMany({ where: { teacherId: data.teacherId } });
-                  for (let i = 0; i < phones.length; i++) {
-                    const p = phones[i];
-                    await tx.teacherContactPhone.create({
-                      data: {
-                        teacherId: data.teacherId,
-                        phoneNumber: p.number,
-                        notes: p.notes ?? null,
-                        order: i,
-                      },
-                    });
-                  }
-                }
-
-                // Replace contact emails if provided
-                if (fieldsInRow.has("contactEmails")) {
-                  const emails = parseContactEmails((data as any).contactEmails as string);
-                  await tx.teacherContactEmail.deleteMany({ where: { teacherId: data.teacherId } });
-                  for (let i = 0; i < emails.length; i++) {
-                    const e = emails[i];
-                    await tx.teacherContactEmail.create({ data: { teacherId: data.teacherId, email: e.email, notes: e.notes ?? null, order: i } });
-                  }
-                }
-
-                result.updated!++;
-              } else {
-                // Create or update by existing user
-                let userId: string | null = data.existingUserId || null;
-
-                if (!userId) {
-                  // Create user
-                  // Conflict pre-check
-                  const conflict = await tx.user.findFirst({
-                    where: { OR: [ { username: (data as any).username }, ...(((data as any).email ? [{ email: (data as any).email }] : [])) ] },
-                    select: { username: true, email: true },
+        await prisma.$transaction(
+          async (tx) => {
+            for (const data of batch) {
+              const fieldsInRow = data.fieldsInRow ?? new Set<string>();
+              try {
+                if (data.teacherId) {
+                  // Strict update by teacherId
+                  const t = await tx.teacher.findUnique({
+                    where: { teacherId: data.teacherId },
+                    select: { userId: true },
                   });
-                  if (conflict) {
-                    result.errors.push({ row: data.rowNumber, errors: [ conflict.username === (data as any).username ? `ユーザー名「${(data as any).username}」は既に使用されています` : `メールアドレス「${(data as any).email}」は既に使用されています` ] });
+                  if (!t) {
+                    result.errors.push({
+                      row: data.rowNumber,
+                      errors: ["指定されたIDの講師が見つかりません"],
+                    });
                     continue;
                   }
+                  const userId = t.userId;
 
-                  // Determine password: use provided, otherwise default
-                  let plainPassword: string;
-                  if ((data as any).password && (data as any).password.trim() !== "") {
-                    plainPassword = (data as any).password;
-                  } else {
-                    const defaultPassword = `${(data as any).username}`;
-                    plainPassword = defaultPassword;
-                    result.warnings.push({ row: data.rowNumber, message: `パスワードが指定されていないため、デフォルトパスワード（${defaultPassword}）を設定しました`, type: "default_password" });
-                  }
-
-                  const user = await tx.user.create({ data: { username: (data as any).username, email: (data as any).email || null, passwordHash: plainPassword, name: (data as any).name!, role: "TEACHER", isRestrictedAdmin: false } });
-                  userId = user.id;
-
-                  // Branches
-                  if (data.branchIds && data.branchIds.length > 0) {
-                    for (const bId of data.branchIds) {
-                      await tx.userBranch.create({ data: { userId, branchId: bId } });
-                    }
-                  } else if (branchId) {
-                    await tx.userBranch.create({ data: { userId, branchId } });
-                  }
-
-                  // Subject preferences
-                  if (fieldsInRow.has("subjects")) {
-                    const tuples = data.subjectPrefTuples || [];
-                    for (const t of tuples) {
-                      await tx.userSubjectPreference.create({ data: { userId, subjectId: t.subjectId, subjectTypeId: t.subjectTypeId } });
-                    }
-                  }
-
-                  // Create teacher
-                  const createdTeacher = await tx.teacher.create({ data: {
-                    userId,
-                    name: (data as any).name!,
-                    kanaName: (data as any).kanaName || null,
-                    email: (data as any).email || null,
-                    notes: (data as any).notes || null,
-                    status: (data as any).status ?? 'ACTIVE',
-                    birthDate: (data as any).birthDate || null,
-                    phoneNumber: (data as any).phoneNumber || null,
-                    phoneNotes: (data as any).phoneNotes || null,
-                  } , select: { teacherId: true } });
-
-                  // Contact phones
-                  if (fieldsInRow.has("contactPhones")) {
-                    const phones = parseContactPhones((data as any).contactPhones as string);
-                    for (let i = 0; i < phones.length; i++) {
-                      const p = phones[i];
-                      await tx.teacherContactPhone.create({ data: { teacherId: createdTeacher.teacherId, phoneNumber: p.number, notes: p.notes ?? null, order: i } });
-                    }
-                  }
-
-                  // Contact emails
-                  if (fieldsInRow.has("contactEmails")) {
-                    const emails = parseContactEmails((data as any).contactEmails as string);
-                    for (let i = 0; i < emails.length; i++) {
-                      const e = emails[i];
-                      await tx.teacherContactEmail.create({ data: { teacherId: createdTeacher.teacherId, email: e.email, notes: e.notes ?? null, order: i } });
-                    }
-                  }
-
-                  result.created!++;
-                } else {
-                  // Update existing user's teacher or create if absent
-                  const existing = await tx.teacher.findFirst({ where: { userId }, select: { teacherId: true } });
-                  if (existing) {
-                    const teacherUpdate: any = {};
-                    if ((data as any).name != null) teacherUpdate.name = (data as any).name;
-                    if (fieldsInRow.has("kanaName")) teacherUpdate.kanaName = (data as any).kanaName ?? null;
-                    if (fieldsInRow.has("birthDate")) teacherUpdate.birthDate = (data as any).birthDate ?? null;
-                    if (fieldsInRow.has("notes")) teacherUpdate.notes = (data as any).notes ?? null;
-                    if (fieldsInRow.has("phoneNumber")) teacherUpdate.phoneNumber = (data as any).phoneNumber ?? null;
-                    if (fieldsInRow.has("phoneNotes")) teacherUpdate.phoneNotes = (data as any).phoneNotes ?? null;
-                    if (fieldsInRow.has("status") && data.status !== undefined) teacherUpdate.status = data.status ?? undefined;
-                    await tx.teacher.update({ where: { teacherId: existing.teacherId }, data: teacherUpdate });
-                    result.updated!++;
-
-                    // Contact phones
-                    if (fieldsInRow.has("contactPhones")) {
-                      const phones = parseContactPhones((data as any).contactPhones as string);
-                      await tx.teacherContactPhone.deleteMany({ where: { teacherId: existing.teacherId } });
-                      for (let i = 0; i < phones.length; i++) {
-                        const p = phones[i];
-                        await tx.teacherContactPhone.create({ data: { teacherId: existing.teacherId, phoneNumber: p.number, notes: p.notes ?? null, order: i } });
-                      }
-                    }
-
-                    // Contact emails
-                    if (fieldsInRow.has("contactEmails")) {
-                      const emails = parseContactEmails((data as any).contactEmails as string);
-                      await tx.teacherContactEmail.deleteMany({ where: { teacherId: existing.teacherId } });
-                      for (let i = 0; i < emails.length; i++) {
-                        const e = emails[i];
-                        await tx.teacherContactEmail.create({ data: { teacherId: existing.teacherId, email: e.email, notes: e.notes ?? null, order: i } });
-                      }
-                    }
-                  } else {
-                    const created = await tx.teacher.create({ data: {
-                      userId,
-                      name: (data as any).name!,
-                      kanaName: (data as any).kanaName || null,
-                      email: (data as any).email || null,
-                      notes: (data as any).notes || null,
-                      status: (data as any).status ?? 'ACTIVE',
-                      birthDate: (data as any).birthDate || null,
-                      phoneNumber: (data as any).phoneNumber || null,
-                      phoneNotes: (data as any).phoneNotes || null,
-                    } , select: { teacherId: true } });
-                    result.created!++;
-
-                    // Contact phones
-                    if (fieldsInRow.has("contactPhones")) {
-                      const phones = parseContactPhones((data as any).contactPhones as string);
-                      await tx.teacherContactPhone.deleteMany({ where: { teacherId: created.teacherId } });
-                      for (let i = 0; i < phones.length; i++) {
-                        const p = phones[i];
-                        await tx.teacherContactPhone.create({ data: { teacherId: created.teacherId, phoneNumber: p.number, notes: p.notes ?? null, order: i } });
-                      }
-                    }
-
-                    // Contact emails
-                    if (fieldsInRow.has("contactEmails")) {
-                      const emails = parseContactEmails((data as any).contactEmails as string);
-                      await tx.teacherContactEmail.deleteMany({ where: { teacherId: created.teacherId } });
-                      for (let i = 0; i < emails.length; i++) {
-                        const e = emails[i];
-                        await tx.teacherContactEmail.create({ data: { teacherId: created.teacherId, email: e.email, notes: e.notes ?? null, order: i } });
-                      }
-                    }
-                  }
-
-                  // Update user if values provided
+                  // Update user if fields provided
                   const userUpdate: any = {};
-                  if ((data as any).username != null) userUpdate.username = (data as any).username;
-                  if ((data as any).email !== undefined) userUpdate.email = (data as any).email || null;
-                  if ((data as any).password) userUpdate.passwordHash = (data as any).password;
+                  if ((data as any).username != null)
+                    userUpdate.username = (data as any).username;
+                  if ((data as any).email !== undefined)
+                    userUpdate.email = (data as any).email || null;
+                  if ((data as any).password)
+                    userUpdate.passwordHash = (data as any).password;
                   if (Object.keys(userUpdate).length > 0) {
-                    await tx.user.update({ where: { id: userId }, data: userUpdate });
+                    await tx.user.update({
+                      where: { id: userId },
+                      data: userUpdate,
+                    });
                   }
 
-                  // Branches if provided
+                  // Update teacher fields
+                  const teacherUpdate: any = {};
+                  if ((data as any).name != null)
+                    teacherUpdate.name = (data as any).name;
+                  if (fieldsInRow.has("kanaName"))
+                    teacherUpdate.kanaName = (data as any).kanaName ?? null;
+                  if (fieldsInRow.has("birthDate"))
+                    teacherUpdate.birthDate = (data as any).birthDate ?? null;
+                  if (fieldsInRow.has("notes"))
+                    teacherUpdate.notes = (data as any).notes ?? null;
+                  if (fieldsInRow.has("phoneNumber"))
+                    teacherUpdate.phoneNumber =
+                      (data as any).phoneNumber ?? null;
+                  if (fieldsInRow.has("phoneNotes"))
+                    teacherUpdate.phoneNotes = (data as any).phoneNotes ?? null;
+                  if (fieldsInRow.has("status") && data.status !== undefined)
+                    teacherUpdate.status = data.status ?? undefined;
+                  if (Object.keys(teacherUpdate).length > 0) {
+                    await tx.teacher.update({
+                      where: { teacherId: data.teacherId },
+                      data: teacherUpdate,
+                    });
+                  }
+
+                  // Update branches if provided
                   if (fieldsInRow.has("branches") && data.branchIds) {
                     await tx.userBranch.deleteMany({ where: { userId } });
                     if (data.branchIds.length > 0) {
                       for (const bId of data.branchIds) {
-                        await tx.userBranch.create({ data: { userId, branchId: bId } });
+                        await tx.userBranch.create({
+                          data: { userId, branchId: bId },
+                        });
                       }
                     } else if (branchId) {
-                      await tx.userBranch.create({ data: { userId, branchId } });
+                      await tx.userBranch.create({
+                        data: { userId, branchId },
+                      });
                     }
                   }
 
                   // Replace subject preferences when provided
                   if (fieldsInRow.has("subjects")) {
-                    await tx.userSubjectPreference.deleteMany({ where: { userId } });
+                    await tx.userSubjectPreference.deleteMany({
+                      where: { userId },
+                    });
                     const tuples = data.subjectPrefTuples || [];
                     for (const t of tuples) {
-                      await tx.userSubjectPreference.create({ data: { userId, subjectId: t.subjectId, subjectTypeId: t.subjectTypeId } });
+                      await tx.userSubjectPreference.create({
+                        data: {
+                          userId,
+                          subjectId: t.subjectId,
+                          subjectTypeId: t.subjectTypeId,
+                        },
+                      });
                     }
                   }
-                }
 
-                result.success++;
-              }
-            } catch (e: any) {
-              if (e instanceof Prisma.PrismaClientKnownRequestError) {
-                if (e.code === "P2002") {
-                  result.errors.push({ row: data.rowNumber, errors: ["一意制約違反（メールアドレス/ユーザー名などが重複しています）"] });
-                } else if (e.code === "P2003") {
-                  result.errors.push({ row: data.rowNumber, errors: ["参照整合性エラー（関連データが存在しません）"] });
+                  // Replace contact phones if provided
+                  if (fieldsInRow.has("contactPhones")) {
+                    const phones = parseContactPhones(
+                      (data as any).contactPhones as string
+                    );
+                    await tx.teacherContactPhone.deleteMany({
+                      where: { teacherId: data.teacherId },
+                    });
+                    for (let i = 0; i < phones.length; i++) {
+                      const p = phones[i];
+                      await tx.teacherContactPhone.create({
+                        data: {
+                          teacherId: data.teacherId,
+                          phoneNumber: p.number,
+                          notes: p.notes ?? null,
+                          order: i,
+                        },
+                      });
+                    }
+                  }
+
+                  // Replace contact emails if provided
+                  if (fieldsInRow.has("contactEmails")) {
+                    const emails = parseContactEmails(
+                      (data as any).contactEmails as string
+                    );
+                    await tx.teacherContactEmail.deleteMany({
+                      where: { teacherId: data.teacherId },
+                    });
+                    for (let i = 0; i < emails.length; i++) {
+                      const e = emails[i];
+                      await tx.teacherContactEmail.create({
+                        data: {
+                          teacherId: data.teacherId,
+                          email: e.email,
+                          notes: e.notes ?? null,
+                          order: i,
+                        },
+                      });
+                    }
+                  }
+
+                  result.updated!++;
                 } else {
-                  result.errors.push({ row: data.rowNumber, errors: [`更新/作成中にエラーが発生しました（${e.code}）`] });
+                  // Create or update by existing user
+                  let userId: string | null = data.existingUserId || null;
+
+                  if (!userId) {
+                    // Create user
+                    // Conflict pre-check
+                    const conflict = await tx.user.findFirst({
+                      where: {
+                        OR: [
+                          { username: (data as any).username },
+                          ...((data as any).email
+                            ? [{ email: (data as any).email }]
+                            : []),
+                        ],
+                      },
+                      select: { username: true, email: true },
+                    });
+                    if (conflict) {
+                      result.errors.push({
+                        row: data.rowNumber,
+                        errors: [
+                          conflict.username === (data as any).username
+                            ? `ユーザー名「${(data as any).username}」は既に使用されています`
+                            : `メールアドレス「${(data as any).email}」は既に使用されています`,
+                        ],
+                      });
+                      continue;
+                    }
+
+                    // Determine password: use provided, otherwise default
+                    let plainPassword: string;
+                    if (
+                      (data as any).password &&
+                      (data as any).password.trim() !== ""
+                    ) {
+                      plainPassword = (data as any).password;
+                    } else {
+                      const defaultPassword = `${(data as any).username}`;
+                      plainPassword = defaultPassword;
+                      result.warnings.push({
+                        row: data.rowNumber,
+                        message: `パスワードが指定されていないため、デフォルトパスワード（${defaultPassword}）を設定しました`,
+                        type: "default_password",
+                      });
+                    }
+
+                    const user = await tx.user.create({
+                      data: {
+                        username: (data as any).username,
+                        email: (data as any).email || null,
+                        passwordHash: plainPassword,
+                        name: (data as any).name!,
+                        role: "TEACHER",
+                        isRestrictedAdmin: false,
+                      },
+                    });
+                    userId = user.id;
+
+                    // Branches
+                    if (data.branchIds && data.branchIds.length > 0) {
+                      for (const bId of data.branchIds) {
+                        await tx.userBranch.create({
+                          data: { userId, branchId: bId },
+                        });
+                      }
+                    } else if (branchId) {
+                      await tx.userBranch.create({
+                        data: { userId, branchId },
+                      });
+                    }
+
+                    // Subject preferences
+                    if (fieldsInRow.has("subjects")) {
+                      const tuples = data.subjectPrefTuples || [];
+                      for (const t of tuples) {
+                        await tx.userSubjectPreference.create({
+                          data: {
+                            userId,
+                            subjectId: t.subjectId,
+                            subjectTypeId: t.subjectTypeId,
+                          },
+                        });
+                      }
+                    }
+
+                    // Create teacher
+                    const createdTeacher = await tx.teacher.create({
+                      data: {
+                        userId,
+                        name: (data as any).name!,
+                        kanaName: (data as any).kanaName || null,
+                        email: (data as any).email || null,
+                        notes: (data as any).notes || null,
+                        status: (data as any).status ?? "ACTIVE",
+                        birthDate: (data as any).birthDate || null,
+                        phoneNumber: (data as any).phoneNumber || null,
+                        phoneNotes: (data as any).phoneNotes || null,
+                      },
+                      select: { teacherId: true },
+                    });
+
+                    // Contact phones
+                    if (fieldsInRow.has("contactPhones")) {
+                      const phones = parseContactPhones(
+                        (data as any).contactPhones as string
+                      );
+                      for (let i = 0; i < phones.length; i++) {
+                        const p = phones[i];
+                        await tx.teacherContactPhone.create({
+                          data: {
+                            teacherId: createdTeacher.teacherId,
+                            phoneNumber: p.number,
+                            notes: p.notes ?? null,
+                            order: i,
+                          },
+                        });
+                      }
+                    }
+
+                    // Contact emails
+                    if (fieldsInRow.has("contactEmails")) {
+                      const emails = parseContactEmails(
+                        (data as any).contactEmails as string
+                      );
+                      for (let i = 0; i < emails.length; i++) {
+                        const e = emails[i];
+                        await tx.teacherContactEmail.create({
+                          data: {
+                            teacherId: createdTeacher.teacherId,
+                            email: e.email,
+                            notes: e.notes ?? null,
+                            order: i,
+                          },
+                        });
+                      }
+                    }
+
+                    result.created!++;
+                  } else {
+                    // Update existing user's teacher or create if absent
+                    const existing = await tx.teacher.findFirst({
+                      where: { userId },
+                      select: { teacherId: true },
+                    });
+                    if (existing) {
+                      const teacherUpdate: any = {};
+                      if ((data as any).name != null)
+                        teacherUpdate.name = (data as any).name;
+                      if (fieldsInRow.has("kanaName"))
+                        teacherUpdate.kanaName = (data as any).kanaName ?? null;
+                      if (fieldsInRow.has("birthDate"))
+                        teacherUpdate.birthDate =
+                          (data as any).birthDate ?? null;
+                      if (fieldsInRow.has("notes"))
+                        teacherUpdate.notes = (data as any).notes ?? null;
+                      if (fieldsInRow.has("phoneNumber"))
+                        teacherUpdate.phoneNumber =
+                          (data as any).phoneNumber ?? null;
+                      if (fieldsInRow.has("phoneNotes"))
+                        teacherUpdate.phoneNotes =
+                          (data as any).phoneNotes ?? null;
+                      if (
+                        fieldsInRow.has("status") &&
+                        data.status !== undefined
+                      )
+                        teacherUpdate.status = data.status ?? undefined;
+                      await tx.teacher.update({
+                        where: { teacherId: existing.teacherId },
+                        data: teacherUpdate,
+                      });
+                      result.updated!++;
+
+                      // Contact phones
+                      if (fieldsInRow.has("contactPhones")) {
+                        const phones = parseContactPhones(
+                          (data as any).contactPhones as string
+                        );
+                        await tx.teacherContactPhone.deleteMany({
+                          where: { teacherId: existing.teacherId },
+                        });
+                        for (let i = 0; i < phones.length; i++) {
+                          const p = phones[i];
+                          await tx.teacherContactPhone.create({
+                            data: {
+                              teacherId: existing.teacherId,
+                              phoneNumber: p.number,
+                              notes: p.notes ?? null,
+                              order: i,
+                            },
+                          });
+                        }
+                      }
+
+                      // Contact emails
+                      if (fieldsInRow.has("contactEmails")) {
+                        const emails = parseContactEmails(
+                          (data as any).contactEmails as string
+                        );
+                        await tx.teacherContactEmail.deleteMany({
+                          where: { teacherId: existing.teacherId },
+                        });
+                        for (let i = 0; i < emails.length; i++) {
+                          const e = emails[i];
+                          await tx.teacherContactEmail.create({
+                            data: {
+                              teacherId: existing.teacherId,
+                              email: e.email,
+                              notes: e.notes ?? null,
+                              order: i,
+                            },
+                          });
+                        }
+                      }
+                    } else {
+                      const created = await tx.teacher.create({
+                        data: {
+                          userId,
+                          name: (data as any).name!,
+                          kanaName: (data as any).kanaName || null,
+                          email: (data as any).email || null,
+                          notes: (data as any).notes || null,
+                          status: (data as any).status ?? "ACTIVE",
+                          birthDate: (data as any).birthDate || null,
+                          phoneNumber: (data as any).phoneNumber || null,
+                          phoneNotes: (data as any).phoneNotes || null,
+                        },
+                        select: { teacherId: true },
+                      });
+                      result.created!++;
+
+                      // Contact phones
+                      if (fieldsInRow.has("contactPhones")) {
+                        const phones = parseContactPhones(
+                          (data as any).contactPhones as string
+                        );
+                        await tx.teacherContactPhone.deleteMany({
+                          where: { teacherId: created.teacherId },
+                        });
+                        for (let i = 0; i < phones.length; i++) {
+                          const p = phones[i];
+                          await tx.teacherContactPhone.create({
+                            data: {
+                              teacherId: created.teacherId,
+                              phoneNumber: p.number,
+                              notes: p.notes ?? null,
+                              order: i,
+                            },
+                          });
+                        }
+                      }
+
+                      // Contact emails
+                      if (fieldsInRow.has("contactEmails")) {
+                        const emails = parseContactEmails(
+                          (data as any).contactEmails as string
+                        );
+                        await tx.teacherContactEmail.deleteMany({
+                          where: { teacherId: created.teacherId },
+                        });
+                        for (let i = 0; i < emails.length; i++) {
+                          const e = emails[i];
+                          await tx.teacherContactEmail.create({
+                            data: {
+                              teacherId: created.teacherId,
+                              email: e.email,
+                              notes: e.notes ?? null,
+                              order: i,
+                            },
+                          });
+                        }
+                      }
+                    }
+
+                    // Update user if values provided
+                    const userUpdate: any = {};
+                    if ((data as any).username != null)
+                      userUpdate.username = (data as any).username;
+                    if ((data as any).email !== undefined)
+                      userUpdate.email = (data as any).email || null;
+                    if ((data as any).password)
+                      userUpdate.passwordHash = (data as any).password;
+                    if (Object.keys(userUpdate).length > 0) {
+                      await tx.user.update({
+                        where: { id: userId },
+                        data: userUpdate,
+                      });
+                    }
+
+                    // Branches if provided
+                    if (fieldsInRow.has("branches") && data.branchIds) {
+                      await tx.userBranch.deleteMany({ where: { userId } });
+                      if (data.branchIds.length > 0) {
+                        for (const bId of data.branchIds) {
+                          await tx.userBranch.create({
+                            data: { userId, branchId: bId },
+                          });
+                        }
+                      } else if (branchId) {
+                        await tx.userBranch.create({
+                          data: { userId, branchId },
+                        });
+                      }
+                    }
+
+                    // Replace subject preferences when provided
+                    if (fieldsInRow.has("subjects")) {
+                      await tx.userSubjectPreference.deleteMany({
+                        where: { userId },
+                      });
+                      const tuples = data.subjectPrefTuples || [];
+                      for (const t of tuples) {
+                        await tx.userSubjectPreference.create({
+                          data: {
+                            userId,
+                            subjectId: t.subjectId,
+                            subjectTypeId: t.subjectTypeId,
+                          },
+                        });
+                      }
+                    }
+                  }
+
+                  result.success++;
                 }
-              } else if (e instanceof Error) {
-                result.errors.push({ row: data.rowNumber, errors: [`更新/作成中にエラーが発生しました: ${e.message}`] });
-              } else {
-                result.errors.push({ row: data.rowNumber, errors: ["更新/作成中に不明なエラーが発生しました"] });
+              } catch (e: any) {
+                if (e instanceof Prisma.PrismaClientKnownRequestError) {
+                  if (e.code === "P2002") {
+                    result.errors.push({
+                      row: data.rowNumber,
+                      errors: [
+                        "一意制約違反（メールアドレス/ユーザー名などが重複しています）",
+                      ],
+                    });
+                  } else if (e.code === "P2003") {
+                    result.errors.push({
+                      row: data.rowNumber,
+                      errors: ["参照整合性エラー（関連データが存在しません）"],
+                    });
+                  } else {
+                    result.errors.push({
+                      row: data.rowNumber,
+                      errors: [
+                        `更新/作成中にエラーが発生しました（${e.code}）`,
+                      ],
+                    });
+                  }
+                } else if (e instanceof Error) {
+                  result.errors.push({
+                    row: data.rowNumber,
+                    errors: [`更新/作成中にエラーが発生しました: ${e.message}`],
+                  });
+                } else {
+                  result.errors.push({
+                    row: data.rowNumber,
+                    errors: ["更新/作成中に不明なエラーが発生しました"],
+                  });
+                }
+                continue;
               }
-              continue;
             }
-          }
-        }, { timeout: txTimeout, maxWait: txMaxWait });
+          },
+          { timeout: txTimeout, maxWait: txMaxWait }
+        );
       }
     }
 
@@ -616,15 +949,15 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
         const headers = [...actualHeaders, "エラー"];
         const lines: string[] = [];
         const errorRows = new Map<number, string>(
-          result.errors.map(e => [e.row, e.errors.join("; ")])
+          result.errors.map((e) => [e.row, e.errors.join("; ")])
         );
-        const errorFilename = `teacher_import_errors_${new Date().toISOString().slice(0,10)}.csv`;
+        const errorFilename = `teacher_import_errors_${new Date().toISOString().slice(0, 10)}.csv`;
         for (let i = 0; i < parseResult.data.length; i++) {
           const row = parseResult.data[i] as Record<string, any>;
           const rowNumber = i + 2;
           const err = errorRows.get(rowNumber);
           if (!err) continue; // only failed rows
-          const values = headers.map(h => {
+          const values = headers.map((h) => {
             if (h === "エラー") return err;
             const v = row[h] ?? "";
             const s = String(v ?? "");
@@ -636,7 +969,8 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
         }
         const headerLine = headers.join(",");
         const bom = "\uFEFF";
-        (result as any).errorCsv = `data:text/csv;charset=utf-8,${encodeURIComponent(bom + headerLine + "\n" + lines.join("\n"))}`;
+        (result as any).errorCsv =
+          `data:text/csv;charset=utf-8,${encodeURIComponent(bom + headerLine + "\n" + lines.join("\n"))}`;
         (result as any).errorCsvFilename = errorFilename;
         (result as any).errorCount = result.errors.length;
       } catch {
@@ -671,7 +1005,8 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
       deleted: result.deleted,
       skipped: result.skipped,
       errors: result.errors.length,
-      message: result.errors.length > 0 ? "一部の行でエラーが発生しました" : "成功",
+      message:
+        result.errors.length > 0 ? "一部の行でエラーが発生しました" : "成功",
     });
     const resp = NextResponse.json({ ...result, sessionId: importSessionId });
     if (userId) releaseUserImportLock(userId);

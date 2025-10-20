@@ -24,7 +24,7 @@ export const GET = withBranchAccess(
         return NextResponse.json(
           {
             error: "Invalid parameters",
-            details: result.error.errors
+            details: result.error.errors,
           },
           { status: 400 }
         );
@@ -34,7 +34,11 @@ export const GET = withBranchAccess(
       const date = new Date(dateString + "T00:00:00.000Z");
 
       // Find shared availability
-      const sharedAvailability = await findSharedAvailability(user1Id, user2Id, date);
+      const sharedAvailability = await findSharedAvailability(
+        user1Id,
+        user2Id,
+        date
+      );
 
       return NextResponse.json({
         success: true,
@@ -42,10 +46,9 @@ export const GET = withBranchAccess(
         requestedDate: dateString,
         users: {
           user1Id,
-          user2Id
-        }
+          user2Id,
+        },
       });
-
     } catch (error) {
       console.error("Error finding shared availability:", error);
       return NextResponse.json(

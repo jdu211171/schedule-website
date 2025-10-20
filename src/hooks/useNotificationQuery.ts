@@ -51,24 +51,29 @@ export function useNotifications(filters: NotificationFilters = {}) {
     queryKey: ["notifications", filters],
     queryFn: async () => {
       const searchParams = new URLSearchParams();
-      
+
       // Add pagination
       if (filters.page) searchParams.set("page", filters.page.toString());
       if (filters.limit) searchParams.set("limit", filters.limit.toString());
-      
+
       // Add filters
       if (filters.status) searchParams.set("status", filters.status);
-      if (filters.recipientType) searchParams.set("recipientType", filters.recipientType);
-      if (filters.notificationType) searchParams.set("notificationType", filters.notificationType);
+      if (filters.recipientType)
+        searchParams.set("recipientType", filters.recipientType);
+      if (filters.notificationType)
+        searchParams.set("notificationType", filters.notificationType);
       if (filters.startDate) searchParams.set("startDate", filters.startDate);
       if (filters.endDate) searchParams.set("endDate", filters.endDate);
       if (filters.search) searchParams.set("search", filters.search);
 
-      const response = await fetch(`/api/notifications?${searchParams.toString()}`, {
-        headers: {
-          "X-Selected-Branch": localStorage.getItem("selectedBranchId") || "",
-        },
-      });
+      const response = await fetch(
+        `/api/notifications?${searchParams.toString()}`,
+        {
+          headers: {
+            "X-Selected-Branch": localStorage.getItem("selectedBranchId") || "",
+          },
+        }
+      );
 
       if (!response.ok) {
         throw new Error("通知の取得に失敗しました");

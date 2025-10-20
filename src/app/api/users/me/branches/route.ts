@@ -9,10 +9,7 @@ export const GET = withRole(
   async (request: NextRequest, session) => {
     try {
       if (!session?.user?.id) {
-        return NextResponse.json(
-          { error: "認証が必要です" },
-          { status: 401 }
-        );
+        return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
       }
 
       // Debug logging

@@ -211,7 +211,8 @@ const formatTeacher = (teacher: TeacherWithIncludes): FormattedTeacher => {
   const today = new Date();
   today.setHours(0, 0, 0, 0); // Set to start of day for comparison
 
-  const exceptionalAvailability: FormattedTeacher['exceptionalAvailability'] = [];
+  const exceptionalAvailability: FormattedTeacher["exceptionalAvailability"] =
+    [];
 
   teacher.user.availability?.forEach((avail) => {
     if (
@@ -226,10 +227,10 @@ const formatTeacher = (teacher: TeacherWithIncludes): FormattedTeacher => {
         return; // Skip this entry
       }
 
-      const dateStr = avail.date.toISOString().split('T')[0];
+      const dateStr = avail.date.toISOString().split("T")[0];
 
       // Check if we already have an entry for this date
-      let dateEntry = exceptionalAvailability.find(ea => ea.date === dateStr);
+      let dateEntry = exceptionalAvailability.find((ea) => ea.date === dateStr);
 
       if (!dateEntry) {
         dateEntry = {
@@ -237,7 +238,7 @@ const formatTeacher = (teacher: TeacherWithIncludes): FormattedTeacher => {
           timeSlots: [],
           fullDay: false,
           reason: avail.reason,
-          notes: avail.notes
+          notes: avail.notes,
         };
         exceptionalAvailability.push(dateEntry);
       }
@@ -249,35 +250,31 @@ const formatTeacher = (teacher: TeacherWithIncludes): FormattedTeacher => {
         dateEntry.timeSlots.push({
           id: avail.id,
           startTime: `${String(avail.startTime.getUTCHours()).padStart(2, "0")}:${String(avail.startTime.getUTCMinutes()).padStart(2, "0")}`,
-          endTime: `${String(avail.endTime.getUTCHours()).padStart(2, "0")}:${String(avail.endTime.getUTCMinutes()).padStart(2, "0")}`
+          endTime: `${String(avail.endTime.getUTCHours()).padStart(2, "0")}:${String(avail.endTime.getUTCMinutes()).padStart(2, "0")}`,
         });
       }
     }
   });
 
   // Process absence availability data - filter out past dates
-  const absenceAvailability: FormattedTeacher['absenceAvailability'] = [];
+  const absenceAvailability: FormattedTeacher["absenceAvailability"] = [];
   teacher.user.availability?.forEach((avail) => {
-    if (
-      avail.type === "ABSENCE" &&
-      avail.status === "APPROVED" &&
-      avail.date
-    ) {
+    if (avail.type === "ABSENCE" && avail.status === "APPROVED" && avail.date) {
       const availDate = new Date(avail.date);
       availDate.setHours(0, 0, 0, 0);
       if (availDate < today) {
         return;
       }
 
-      const dateStr = avail.date.toISOString().split('T')[0];
-      let dateEntry = absenceAvailability.find(ea => ea.date === dateStr);
+      const dateStr = avail.date.toISOString().split("T")[0];
+      let dateEntry = absenceAvailability.find((ea) => ea.date === dateStr);
       if (!dateEntry) {
         dateEntry = {
           date: dateStr,
           timeSlots: [],
           fullDay: false,
           reason: avail.reason,
-          notes: avail.notes
+          notes: avail.notes,
         };
         absenceAvailability.push(dateEntry);
       }
@@ -288,7 +285,7 @@ const formatTeacher = (teacher: TeacherWithIncludes): FormattedTeacher => {
         dateEntry.timeSlots.push({
           id: avail.id,
           startTime: `${String(avail.startTime.getUTCHours()).padStart(2, "0")}:${String(avail.startTime.getUTCMinutes()).padStart(2, "0")}`,
-          endTime: `${String(avail.endTime.getUTCHours()).padStart(2, "0")}:${String(avail.endTime.getUTCMinutes()).padStart(2, "0")}`
+          endTime: `${String(avail.endTime.getUTCHours()).padStart(2, "0")}:${String(avail.endTime.getUTCMinutes()).padStart(2, "0")}`,
         });
       }
     }
@@ -321,8 +318,10 @@ const formatTeacher = (teacher: TeacherWithIncludes): FormattedTeacher => {
     absenceAvailability,
     createdAt: teacher.createdAt,
     updatedAt: teacher.updatedAt,
-    contactPhones: teacher.contactPhones?.sort((a, b) => a.order - b.order) || [],
-    contactEmails: teacher.contactEmails?.sort((a, b) => a.order - b.order) || [],
+    contactPhones:
+      teacher.contactPhones?.sort((a, b) => a.order - b.order) || [],
+    contactEmails:
+      teacher.contactEmails?.sort((a, b) => a.order - b.order) || [],
   };
 };
 
@@ -350,7 +349,7 @@ export const GET = withBranchAccess(
             order: true,
           },
           orderBy: {
-            order: 'asc',
+            order: "asc",
           },
         },
         contactEmails: {
@@ -361,7 +360,7 @@ export const GET = withBranchAccess(
             order: true,
           },
           orderBy: {
-            order: 'asc',
+            order: "asc",
           },
         },
         user: {
@@ -577,8 +576,13 @@ export const PATCH = withBranchAccess(
         // Clean up optional fields - convert empty strings to null
         const cleanedTeacherData: Record<string, unknown> = {};
         for (const [key, value] of Object.entries(teacherData)) {
-          if (key === 'lineUserId' || key === 'kanaName' || key === 'notes' ||
-              key === 'phoneNumber' || key === 'phoneNotes') {
+          if (
+            key === "lineUserId" ||
+            key === "kanaName" ||
+            key === "notes" ||
+            key === "phoneNumber" ||
+            key === "phoneNotes"
+          ) {
             cleanedTeacherData[key] = value || null;
           } else {
             cleanedTeacherData[key] = value;
@@ -601,17 +605,17 @@ export const PATCH = withBranchAccess(
             where: { teacherId },
           });
 
-        // Create new contact phones
-        if (contactPhones.length > 0) {
-          await tx.teacherContactPhone.createMany({
-            data: contactPhones.map((phone, index) => ({
-              teacherId,
-              phoneNumber: phone.phoneNumber,
-              notes: phone.notes || null,
-              order: phone.order ?? index,
-            })),
-          });
-        }
+          // Create new contact phones
+          if (contactPhones.length > 0) {
+            await tx.teacherContactPhone.createMany({
+              data: contactPhones.map((phone, index) => ({
+                teacherId,
+                phoneNumber: phone.phoneNumber,
+                notes: phone.notes || null,
+                order: phone.order ?? index,
+              })),
+            });
+          }
         }
 
         // Update contact emails if provided
@@ -761,7 +765,8 @@ export const PATCH = withBranchAccess(
             const exceptionalRecords = [];
 
             for (const exceptionalItem of exceptionalAvailability) {
-              const { date, fullDay, startTime, endTime, reason, notes } = exceptionalItem;
+              const { date, fullDay, startTime, endTime, reason, notes } =
+                exceptionalItem;
 
               // Create UTC date from the date input
               const createUTCDate = (dateInput: Date): Date => {
@@ -789,7 +794,9 @@ export const PATCH = withBranchAccess(
                 });
               } else if (startTime && endTime) {
                 // Create time-specific exceptional availability record
-                const [startHours, startMinutes] = startTime.split(":").map(Number);
+                const [startHours, startMinutes] = startTime
+                  .split(":")
+                  .map(Number);
                 const [endHours, endMinutes] = endTime.split(":").map(Number);
 
                 exceptionalRecords.push({
@@ -823,7 +830,9 @@ export const PATCH = withBranchAccess(
                   newEndTime: rec.endTime,
                 });
               }
-              await tx.userAvailability.createMany({ data: exceptionalRecords });
+              await tx.userAvailability.createMany({
+                data: exceptionalRecords,
+              });
             }
           }
         }
@@ -841,7 +850,8 @@ export const PATCH = withBranchAccess(
             const absenceRecords = [] as any[];
 
             for (const absenceItem of absenceAvailability) {
-              const { date, fullDay, startTime, endTime, reason, notes } = absenceItem;
+              const { date, fullDay, startTime, endTime, reason, notes } =
+                absenceItem;
 
               const createUTCDate = (dateInput: Date): Date => {
                 const year = dateInput.getFullYear();
@@ -866,7 +876,9 @@ export const PATCH = withBranchAccess(
                   notes: notes || null,
                 });
               } else if (startTime && endTime) {
-                const [startHours, startMinutes] = startTime.split(":").map(Number);
+                const [startHours, startMinutes] = startTime
+                  .split(":")
+                  .map(Number);
                 const [endHours, endMinutes] = endTime.split(":").map(Number);
 
                 absenceRecords.push({
@@ -917,7 +929,7 @@ export const PATCH = withBranchAccess(
                 order: true,
               },
               orderBy: {
-                order: 'asc',
+                order: "asc",
               },
             },
             contactEmails: {
@@ -928,7 +940,7 @@ export const PATCH = withBranchAccess(
                 order: true,
               },
               orderBy: {
-                order: 'asc',
+                order: "asc",
               },
             },
             user: {
@@ -1017,10 +1029,7 @@ export const DELETE = withBranchAccess(
     const teacherId = request.url.split("/").pop();
 
     if (!teacherId) {
-      return NextResponse.json(
-        { error: "講師IDが必要です" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "講師IDが必要です" }, { status: 400 });
     }
 
     // Get selected branch from headers
@@ -1052,13 +1061,13 @@ export const DELETE = withBranchAccess(
       const classSessionCount = await prisma.classSession.count({
         where: {
           teacherId,
-          branchId: selectedBranchId
-        }
+          branchId: selectedBranchId,
+        },
       });
 
       // Count preferences separately (not branch-specific)
       const preferenceCount = await prisma.studentTeacherPreference.count({
-        where: { teacherId }
+        where: { teacherId },
       });
 
       if (classSessionCount > 0) {
@@ -1066,19 +1075,20 @@ export const DELETE = withBranchAccess(
         const sessions = await prisma.classSession.findMany({
           where: {
             teacherId,
-            branchId: selectedBranchId
+            branchId: selectedBranchId,
           },
           select: {
-            branch: { select: { name: true } }
+            branch: { select: { name: true } },
           },
-          distinct: ['branchId']
+          distinct: ["branchId"],
         });
 
-        const branchNames = [...new Set(sessions
-          .map(s => s.branch?.name)
-          .filter(Boolean))];
+        const branchNames = [
+          ...new Set(sessions.map((s) => s.branch?.name).filter(Boolean)),
+        ];
 
-        const branchText = branchNames.length > 0 ? `（${branchNames.join('、')}）` : '';
+        const branchText =
+          branchNames.length > 0 ? `（${branchNames.join("、")}）` : "";
 
         return NextResponse.json(
           {
@@ -1086,8 +1096,8 @@ export const DELETE = withBranchAccess(
             details: {
               classSessions: classSessionCount,
               branches: branchNames,
-              ...(preferenceCount > 0 && { preferences: preferenceCount })
-            }
+              ...(preferenceCount > 0 && { preferences: preferenceCount }),
+            },
           },
           { status: 400 }
         );
@@ -1135,15 +1145,16 @@ export const DELETE = withBranchAccess(
       } catch (error: unknown) {
         // Handle foreign key constraint violations
         const code = (error as { code?: string })?.code;
-        if (code === 'P2003') {
+        if (code === "P2003") {
           console.error("Foreign key constraint error:", error);
           return NextResponse.json(
             {
               error: "講師を削除できません。関連するデータが存在します。",
               details: {
-                message: "削除前に関連する授業セッションや設定を確認してください。",
-                code
-              }
+                message:
+                  "削除前に関連する授業セッションや設定を確認してください。",
+                code,
+              },
             },
             { status: 400 }
           );

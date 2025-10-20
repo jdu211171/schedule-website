@@ -61,15 +61,14 @@ public/                          # static assets
 
 ## Progress Tracking
 
-| Phase | Artifact(s) | Status |
-|------|--------------|--------|
-| Phase 0 | research.md | Completed |
+| Phase   | Artifact(s)                              | Status    |
+| ------- | ---------------------------------------- | --------- |
+| Phase 0 | research.md                              | Completed |
 | Phase 1 | data-model.md, contracts/, quickstart.md | Completed |
-| Phase 2 | tasks.md | Completed |
+| Phase 2 | tasks.md                                 | Completed |
 
 ## Complexity Tracking
 
 | Violation | Why Needed | Simpler Alternative Rejected Because |
-|-----------|------------|-------------------------------------|
-| N/A | — | — |
-
+| --------- | ---------- | ------------------------------------ |
+| N/A       | —          | —                                    |

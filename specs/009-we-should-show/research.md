@@ -1,12 +1,15 @@
 # Research for Conflicting Class Session Resolution
 
 ## Performance Goals
+
 - **Question:** What are the expected performance goals for the conflict resolution feature? (e.g., response time for conflict detection, UI rendering speed)
 
 ## Constraints
+
 - **Question:** Are there any specific constraints for this feature? (e.g., memory usage, browser compatibility)
 
 ## Scale/Scope
+
 - **Question:** What is the expected scale of usage for this feature? (e.g., number of concurrent users, number of class sessions)
 
 ---

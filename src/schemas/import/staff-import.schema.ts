@@ -19,7 +19,9 @@ export const staffImportSchema = z.object({
     .max(100, "名前は100文字以下で入力してください"),
   branchNames: z
     .string()
-    .transform(val => val === "" ? [] : val.split(",").map(name => name.trim()))
+    .transform((val) =>
+      val === "" ? [] : val.split(",").map((name) => name.trim())
+    )
     .pipe(z.array(z.string().min(1)))
     .optional()
     .default(""),
@@ -27,12 +29,18 @@ export const staffImportSchema = z.object({
 
 export type StaffImportData = z.infer<typeof staffImportSchema>;
 
-export const STAFF_CSV_HEADERS = ["username", "email", "password", "name", "branchNames"] as const;
+export const STAFF_CSV_HEADERS = [
+  "username",
+  "email",
+  "password",
+  "name",
+  "branchNames",
+] as const;
 
 // Required headers that must be present in the CSV
 export const REQUIRED_STAFF_CSV_HEADERS = [
   "username",
   "email",
   "password",
-  "name"
+  "name",
 ] as const;

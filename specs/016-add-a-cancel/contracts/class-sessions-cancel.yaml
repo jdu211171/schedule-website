@@ -32,10 +32,10 @@ paths:
                   type: string
                   description: Optional reason; UI may store separately
               oneOf:
-                - required: [ classIds ]
-                - required: [ seriesId, fromDate ]
+                - required: [classIds]
+                - required: [seriesId, fromDate]
       responses:
-        '200':
+        "200":
           description: Cancel request applied
           content:
             application/json:
@@ -44,7 +44,7 @@ paths:
                 properties:
                   data:
                     type: array
-                    items: { }
+                    items: {}
                   message:
                     type: string
                   updatedCount:
@@ -56,8 +56,7 @@ paths:
                       page: { type: integer }
                       limit: { type: integer }
                       pages: { type: integer }
-        '400':
+        "400":
           description: Invalid input
-        '500':
+        "500":
           description: Server error
-

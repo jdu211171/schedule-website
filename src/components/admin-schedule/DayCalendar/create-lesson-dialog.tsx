@@ -1,35 +1,51 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { format } from 'date-fns';
-import { ja } from 'date-fns/locale';
+import React, { useState, useEffect, useMemo } from "react";
+import { format } from "date-fns";
+import { ja } from "date-fns/locale";
 import { DateRange } from "react-day-picker";
-import { toast } from 'sonner';
-import { useQueryClient } from '@tanstack/react-query';
-import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { X, CheckCircle2, AlertTriangle, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { fetcher } from '@/lib/fetcher';
-import { subscribeClassTypesChanged } from '@/lib/class-types-broadcast';
+import { fetcher } from "@/lib/fetcher";
+import { subscribeClassTypesChanged } from "@/lib/class-types-broadcast";
 import {
   NewClassSessionData,
   formatDateToString,
   ConflictResponse,
   CreateClassSessionWithConflictsPayload,
   SessionAction,
-} from './types/class-session';
-import { SearchableSelect, SearchableSelectItem } from '../searchable-select';
-import { TimeInput } from '@/components/ui/time-input';
-import { useSmartSelection, EnhancedTeacher, EnhancedStudent, SubjectCompatibility } from '@/hooks/useSmartSelection';
-import { useAvailability } from './availability-layer';
-import { ConflictResolutionTable } from './conflict-resolution-table';
+} from "./types/class-session";
+import { SearchableSelect, SearchableSelectItem } from "../searchable-select";
+import { TimeInput } from "@/components/ui/time-input";
+import {
+  useSmartSelection,
+  EnhancedTeacher,
+  EnhancedStudent,
+  SubjectCompatibility,
+} from "@/hooks/useSmartSelection";
+import { useAvailability } from "./availability-layer";
+import { ConflictResolutionTable } from "./conflict-resolution-table";
 import SeriesSessionsTableDialog from "@/components/class-series/series-sessions-table-dialog";
 import { filterByAvailabilityPreference } from "@/lib/conflict-types";
-import { SimpleDateRangePicker } from '../../fix-date-range-picker/simple-date-range-picker';
+import { SimpleDateRangePicker } from "../../fix-date-range-picker/simple-date-range-picker";
 
-import { Teacher } from '@/hooks/useTeacherQuery';
-import { Student } from '@/hooks/useStudentQuery';
-import { useDebounce } from '@/hooks/use-debounce';
-import { Combobox, ComboboxItem, ComboboxRenderItemProps } from '@/components/ui/combobox';
+import { Teacher } from "@/hooks/useTeacherQuery";
+import { Student } from "@/hooks/useStudentQuery";
+import { useDebounce } from "@/hooks/use-debounce";
+import {
+  Combobox,
+  ComboboxItem,
+  ComboboxRenderItemProps,
+} from "@/components/ui/combobox";
 
 interface Booth {
   boothId: string;
@@ -46,7 +62,9 @@ type CreateLessonDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   lessonData: ExtendedNewClassSessionData;
-  onSave: (data: CreateClassSessionWithConflictsPayload) => Promise<{ success: boolean; conflicts?: ConflictResponse }>;
+  onSave: (
+    data: CreateClassSessionWithConflictsPayload
+  ) => Promise<{ success: boolean; conflicts?: ConflictResponse }>;
   booths: Booth[];
   preselectedClassTypeId?: string;
   preselectedTeacherId?: string;
@@ -65,9 +83,9 @@ interface ClassType {
 
 // Compatibility-aware combobox helpers (from main)
 type CompatibilityType =
-  | EnhancedTeacher['compatibilityType']
-  | EnhancedStudent['compatibilityType']
-  | SubjectCompatibility['compatibilityType'];
+  | EnhancedTeacher["compatibilityType"]
+  | EnhancedStudent["compatibilityType"]
+  | SubjectCompatibility["compatibilityType"];
 
 type CompatibilityComboboxItem = ComboboxItem & {
   description?: string;
@@ -78,20 +96,20 @@ type CompatibilityComboboxItem = ComboboxItem & {
 
 const getCompatibilityIcon = (type?: CompatibilityType) => {
   switch (type) {
-    case 'perfect':
+    case "perfect":
       return <CheckCircle2 className="h-3 w-3 text-green-500" />;
-    case 'subject-only':
+    case "subject-only":
       return <AlertTriangle className="h-3 w-3 text-orange-500" />;
-    case 'teacher-only':
-    case 'student-only':
+    case "teacher-only":
+    case "student-only":
       return <Users className="h-3 w-3 text-blue-500" />;
-    case 'mismatch':
+    case "mismatch":
       return <AlertTriangle className="h-3 w-3 text-amber-500" />;
-    case 'teacher-no-prefs':
-    case 'student-no-prefs':
-    case 'no-teacher-selected':
-    case 'no-student-selected':
-    case 'no-preferences':
+    case "teacher-no-prefs":
+    case "student-no-prefs":
+    case "no-teacher-selected":
+    case "no-student-selected":
+    case "no-preferences":
       return <Users className="h-3 w-3 text-muted-foreground" />;
     default:
       return null;
@@ -100,19 +118,19 @@ const getCompatibilityIcon = (type?: CompatibilityType) => {
 
 const getCompatibilityPriority = (type?: CompatibilityType) => {
   switch (type) {
-    case 'perfect':
+    case "perfect":
       return 5;
-    case 'subject-only':
+    case "subject-only":
       return 4;
-    case 'teacher-only':
-    case 'student-only':
+    case "teacher-only":
+    case "student-only":
       return 3;
-    case 'teacher-no-prefs':
-    case 'student-no-prefs':
+    case "teacher-no-prefs":
+    case "student-no-prefs":
       return 2;
-    case 'no-preferences':
+    case "no-preferences":
       return 1;
-    case 'mismatch':
+    case "mismatch":
       return 0;
     default:
       return -1;
@@ -141,7 +159,9 @@ const renderCompatibilityComboboxItem = <T extends CompatibilityComboboxItem>({
         {defaultIndicator}
       </div>
       {item.description ? (
-        <span className="text-xs text-muted-foreground">{item.description}</span>
+        <span className="text-xs text-muted-foreground">
+          {item.description}
+        </span>
       ) : null}
     </div>
   );
@@ -271,37 +291,47 @@ const FormContent: React.FC<{
   isLoadingStudents,
   isFetchingStudents,
   error,
-  validationErrors
+  validationErrors,
 }) => {
   const daysOfWeek = [
-    { label: '月', value: 1 },
-    { label: '火', value: 2 },
-    { label: '水', value: 3 },
-    { label: '木', value: 4 },
-    { label: '金', value: 5 },
-    { label: '土', value: 6 },
-    { label: '日', value: 0 }
+    { label: "月", value: 1 },
+    { label: "火", value: 2 },
+    { label: "水", value: 3 },
+    { label: "木", value: 4 },
+    { label: "金", value: 5 },
+    { label: "土", value: 6 },
+    { label: "日", value: 0 },
   ];
 
   // Build the same 15-min slot grid used by TimeInput for soft-conflict checks
-  const pickerTimeSlots = useMemo(() => Array.from({ length: 57 }, (_, i) => {
-    const hours = Math.floor(i / 4) + 8;
-    const startMinutes = (i % 4) * 15;
-    let endHours: number, endMinutes: number;
-    if (startMinutes === 45) { endHours = hours + 1; endMinutes = 0; }
-    else { endHours = hours; endMinutes = startMinutes + 15; }
-    return {
-      index: i,
-      start: `${hours.toString().padStart(2, '0')}:${startMinutes.toString().padStart(2, '0')}`,
-      end: `${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`,
-    };
-  }), []);
+  const pickerTimeSlots = useMemo(
+    () =>
+      Array.from({ length: 57 }, (_, i) => {
+        const hours = Math.floor(i / 4) + 8;
+        const startMinutes = (i % 4) * 15;
+        let endHours: number, endMinutes: number;
+        if (startMinutes === 45) {
+          endHours = hours + 1;
+          endMinutes = 0;
+        } else {
+          endHours = hours;
+          endMinutes = startMinutes + 15;
+        }
+        return {
+          index: i,
+          start: `${hours.toString().padStart(2, "0")}:${startMinutes.toString().padStart(2, "0")}`,
+          end: `${endHours.toString().padStart(2, "0")}:${endMinutes.toString().padStart(2, "0")}`,
+        };
+      }),
+    []
+  );
 
   // Soft conflict detection (availability mismatch). Non-blocking; only a warning.
   const { softTeacherConflict, softStudentConflict } = useMemo(() => {
-    const startIdx = pickerTimeSlots.findIndex(s => s.start === startTime);
-    let endIdx = pickerTimeSlots.findIndex(s => s.end === endTime);
-    if (endIdx === -1) endIdx = pickerTimeSlots.findIndex(s => s.start === endTime);
+    const startIdx = pickerTimeSlots.findIndex((s) => s.start === startTime);
+    let endIdx = pickerTimeSlots.findIndex((s) => s.end === endTime);
+    if (endIdx === -1)
+      endIdx = pickerTimeSlots.findIndex((s) => s.start === endTime);
     if (startIdx < 0 || endIdx < 0 || endIdx <= startIdx) {
       return { softTeacherConflict: false, softStudentConflict: false };
     }
@@ -316,7 +346,15 @@ const FormContent: React.FC<{
       softTeacherConflict: !!selectedTeacherId && !tOk,
       softStudentConflict: !!selectedStudentId && !sOk,
     };
-  }, [pickerTimeSlots, startTime, endTime, teacherAvailability, studentAvailability, selectedTeacherId, selectedStudentId]);
+  }, [
+    pickerTimeSlots,
+    startTime,
+    endTime,
+    teacherAvailability,
+    studentAvailability,
+    selectedTeacherId,
+    selectedStudentId,
+  ]);
 
   return (
     <div className="grid gap-3 py-2">
@@ -325,18 +363,24 @@ const FormContent: React.FC<{
         <div>
           <label className="text-sm font-medium text-foreground">日付</label>
           <div className="border rounded-md p-2 mt-1 bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground border-input">
-            {format(typeof lessonData.date === 'string' ? new Date(lessonData.date) : lessonData.date, 'yyyy年MM月dd日', { locale: ja })}
+            {format(
+              typeof lessonData.date === "string"
+                ? new Date(lessonData.date)
+                : lessonData.date,
+              "yyyy年MM月dd日",
+              { locale: ja }
+            )}
           </div>
         </div>
 
         {/* UPDATED: Booth Field - Conditional selector or static display */}
         <div>
-            <label className="text-sm font-medium text-foreground">
-              ブース <span className="text-destructive">*</span>
-            </label>
+          <label className="text-sm font-medium text-foreground">
+            ブース <span className="text-destructive">*</span>
+          </label>
           {!lessonData.boothId ? (
             // Show selector for weekly calendar (no pre-selected booth)
-            (<div className="flex items-center gap-2 mt-1">
+            <div className="flex items-center gap-2 mt-1">
               <div className="flex-1">
                 <SearchableSelect
                   value={selectedBoothId}
@@ -360,22 +404,25 @@ const FormContent: React.FC<{
                   <X className="h-4 w-4" />
                 </Button>
               )}
-            </div>)
+            </div>
           ) : (
             // Show static field for daily calendar (pre-selected booth)
-            (<div className="border rounded-md p-2 mt-1 bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground border-input">
-              {booths.find(booth => booth.boothId === lessonData.boothId)?.name || lessonData.boothId}
-            </div>)
+            <div className="border rounded-md p-2 mt-1 bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground border-input">
+              {booths.find((booth) => booth.boothId === lessonData.boothId)
+                ?.name || lessonData.boothId}
+            </div>
           )}
         </div>
-        
+
         <div>
           <label className="text-sm font-medium text-foreground">
             開始時間 <span className="text-destructive">*</span>
             {(softTeacherConflict || softStudentConflict) && (
               <span className="ml-2 text-xs text-destructive/90 align-middle whitespace-nowrap">
                 {softTeacherConflict && <span>講師</span>}
-                {softTeacherConflict && softStudentConflict && <span className="mx-1">/</span>}
+                {softTeacherConflict && softStudentConflict && (
+                  <span className="mx-1">/</span>
+                )}
                 {softStudentConflict && <span>生徒</span>}
                 <span> 時間外</span>
               </span>
@@ -404,10 +451,10 @@ const FormContent: React.FC<{
 
                 return {
                   index: i,
-                  start: `${hours.toString().padStart(2, '0')}:${startMinutes.toString().padStart(2, '0')}`,
-                  end: `${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`,
-                  display: `${hours}:${startMinutes === 0 ? '00' : startMinutes} - ${endHours}:${endMinutes === 0 ? '00' : endMinutes}`,
-                  shortDisplay: i % 4 === 0 ? `${hours}:00` : ''
+                  start: `${hours.toString().padStart(2, "0")}:${startMinutes.toString().padStart(2, "0")}`,
+                  end: `${endHours.toString().padStart(2, "0")}:${endMinutes.toString().padStart(2, "0")}`,
+                  display: `${hours}:${startMinutes === 0 ? "00" : startMinutes} - ${endHours}:${endMinutes === 0 ? "00" : endMinutes}`,
+                  shortDisplay: i % 4 === 0 ? `${hours}:00` : "",
                 };
               })}
             />
@@ -419,7 +466,9 @@ const FormContent: React.FC<{
             {(softTeacherConflict || softStudentConflict) && (
               <span className="ml-2 text-xs text-destructive/90 align-middle whitespace-nowrap">
                 {softTeacherConflict && <span>講師</span>}
-                {softTeacherConflict && softStudentConflict && <span className="mx-1">/</span>}
+                {softTeacherConflict && softStudentConflict && (
+                  <span className="mx-1">/</span>
+                )}
                 {softStudentConflict && <span>生徒</span>}
                 <span> 時間外</span>
               </span>
@@ -448,10 +497,10 @@ const FormContent: React.FC<{
 
                 return {
                   index: i,
-                  start: `${hours.toString().padStart(2, '0')}:${startMinutes.toString().padStart(2, '0')}`,
-                  end: `${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`,
-                  display: `${hours}:${startMinutes === 0 ? '00' : startMinutes} - ${endHours}:${endMinutes === 0 ? '00' : endMinutes}`,
-                  shortDisplay: i % 4 === 0 ? `${hours}:00` : ''
+                  start: `${hours.toString().padStart(2, "0")}:${startMinutes.toString().padStart(2, "0")}`,
+                  end: `${endHours.toString().padStart(2, "0")}:${endMinutes.toString().padStart(2, "0")}`,
+                  display: `${hours}:${startMinutes === 0 ? "00" : startMinutes} - ${endHours}:${endMinutes === 0 ? "00" : endMinutes}`,
+                  shortDisplay: i % 4 === 0 ? `${hours}:00` : "",
                 };
               })}
             />
@@ -461,7 +510,10 @@ const FormContent: React.FC<{
       {/* Class type selectors */}
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label htmlFor="parent-class-type-select" className="text-sm font-medium mb-1 block text-foreground">
+          <label
+            htmlFor="parent-class-type-select"
+            className="text-sm font-medium mb-1 block text-foreground"
+          >
             授業タイプ（基本） <span className="text-destructive">*</span>
           </label>
           <div className="flex items-center gap-2">
@@ -492,7 +544,10 @@ const FormContent: React.FC<{
         </div>
 
         <div>
-          <label htmlFor="child-class-type-select" className="text-sm font-medium mb-1 block text-foreground">
+          <label
+            htmlFor="child-class-type-select"
+            className="text-sm font-medium mb-1 block text-foreground"
+          >
             授業タイプ（詳細）
           </label>
           <div className="flex items-center gap-2">
@@ -505,12 +560,16 @@ const FormContent: React.FC<{
                   !selectedParentClassTypeId
                     ? "先に基本タイプを選択"
                     : childClassTypes.length === 0
-                    ? "詳細タイプなし"
-                    : "詳細タイプを選択（任意）"
+                      ? "詳細タイプなし"
+                      : "詳細タイプを選択（任意）"
                 }
                 searchPlaceholder="詳細タイプを検索..."
                 emptyMessage="詳細タイプが見つかりません"
-                disabled={!selectedParentClassTypeId || childClassTypes.length === 0 || disabled}
+                disabled={
+                  !selectedParentClassTypeId ||
+                  childClassTypes.length === 0 ||
+                  disabled
+                }
               />
             </div>
             {selectedChildClassTypeId && (
@@ -531,11 +590,20 @@ const FormContent: React.FC<{
       {/* Teacher and Student selectors */}
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label htmlFor="teacher-select" className="text-sm font-medium mb-1 block text-foreground">
+          <label
+            htmlFor="teacher-select"
+            className="text-sm font-medium mb-1 block text-foreground"
+          >
             講師 <span className="text-destructive">*</span>
             {hasStudentSelected && (
               <span className="text-xs text-muted-foreground ml-1">
-                ({enhancedTeachers.filter((t: EnhancedTeacher) => t.compatibilityType === 'perfect').length} 完全一致)
+                (
+                {
+                  enhancedTeachers.filter(
+                    (t: EnhancedTeacher) => t.compatibilityType === "perfect"
+                  ).length
+                }{" "}
+                完全一致)
               </span>
             )}
           </label>
@@ -556,7 +624,7 @@ const FormContent: React.FC<{
                 triggerClassName="h-10"
                 onOpenChange={(nextOpen) => {
                   if (!nextOpen) {
-                    setTeacherSearchQuery('');
+                    setTeacherSearchQuery("");
                   }
                 }}
                 renderItem={renderCompatibilityComboboxItem}
@@ -578,11 +646,20 @@ const FormContent: React.FC<{
         </div>
 
         <div>
-          <label htmlFor="student-select" className="text-sm font-medium mb-1 block text-foreground">
+          <label
+            htmlFor="student-select"
+            className="text-sm font-medium mb-1 block text-foreground"
+          >
             生徒 <span className="text-destructive">*</span>
             {hasTeacherSelected && (
               <span className="text-xs text-muted-foreground ml-1">
-                ({enhancedStudents.filter((s: EnhancedStudent) => s.compatibilityType === 'perfect').length} 完全一致)
+                (
+                {
+                  enhancedStudents.filter(
+                    (s: EnhancedStudent) => s.compatibilityType === "perfect"
+                  ).length
+                }{" "}
+                完全一致)
               </span>
             )}
           </label>
@@ -603,7 +680,7 @@ const FormContent: React.FC<{
                 triggerClassName="h-10"
                 onOpenChange={(nextOpen) => {
                   if (!nextOpen) {
-                    setStudentSearchQuery('');
+                    setStudentSearchQuery("");
                   }
                 }}
                 renderItem={renderCompatibilityComboboxItem}
@@ -626,28 +703,30 @@ const FormContent: React.FC<{
       </div>
       {/* Compatibility indicator */}
       {compatibilityInfo && (
-        <div className={`text-xs p-3 rounded-md border ${
-          compatibilityInfo.compatibilityType === 'perfect'
-            ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800'
-            : compatibilityInfo.compatibilityType === 'subject-only'
-            ? 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:text-orange-300 dark:border-orange-800'
-            : compatibilityInfo.compatibilityType === 'mismatch'
-            ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-800'
-            : 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800'
-        }`}>
+        <div
+          className={`text-xs p-3 rounded-md border ${
+            compatibilityInfo.compatibilityType === "perfect"
+              ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800"
+              : compatibilityInfo.compatibilityType === "subject-only"
+                ? "bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:text-orange-300 dark:border-orange-800"
+                : compatibilityInfo.compatibilityType === "mismatch"
+                  ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-800"
+                  : "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800"
+          }`}
+        >
           <div className="flex items-center gap-2">
-            {compatibilityInfo.compatibilityType === 'perfect' && (
+            {compatibilityInfo.compatibilityType === "perfect" && (
               <CheckCircle2 className="h-4 w-4 text-green-600" />
             )}
-            {compatibilityInfo.compatibilityType === 'subject-only' && (
+            {compatibilityInfo.compatibilityType === "subject-only" && (
               <AlertTriangle className="h-4 w-4 text-orange-600" />
             )}
-            {compatibilityInfo.compatibilityType === 'mismatch' && (
+            {compatibilityInfo.compatibilityType === "mismatch" && (
               <AlertTriangle className="h-4 w-4 text-amber-600" />
             )}
-            {(compatibilityInfo.compatibilityType === 'teacher-only' ||
-              compatibilityInfo.compatibilityType === 'student-only' ||
-              compatibilityInfo.compatibilityType === 'no-preferences') && (
+            {(compatibilityInfo.compatibilityType === "teacher-only" ||
+              compatibilityInfo.compatibilityType === "student-only" ||
+              compatibilityInfo.compatibilityType === "no-preferences") && (
               <Users className="h-4 w-4 text-blue-600" />
             )}
             <span>{compatibilityInfo.message}</span>
@@ -656,7 +735,10 @@ const FormContent: React.FC<{
       )}
       {/* Subject selector */}
       <div>
-        <label htmlFor="subject-select" className="text-sm font-medium mb-1 block text-foreground">
+        <label
+          htmlFor="subject-select"
+          className="text-sm font-medium mb-1 block text-foreground"
+        >
           科目 <span className="text-destructive">*</span>
           {!canSelectSubject && (
             <span className="text-xs text-amber-600 dark:text-amber-500 ml-2">
@@ -665,7 +747,13 @@ const FormContent: React.FC<{
           )}
           {canSelectSubject && (
             <span className="text-xs text-muted-foreground ml-1">
-              ({enhancedSubjects.filter((s: SubjectCompatibility) => s.compatibilityType === 'perfect').length} 完全一致, {enhancedSubjects.length} 総数)
+              (
+              {
+                enhancedSubjects.filter(
+                  (s: SubjectCompatibility) => s.compatibilityType === "perfect"
+                ).length
+              }{" "}
+              完全一致, {enhancedSubjects.length} 総数)
             </span>
           )}
         </label>
@@ -700,23 +788,27 @@ const FormContent: React.FC<{
       {isRecurring && (
         <div className="space-y-3 p-3 rounded-md border border-input bg-muted/30">
           <div>
-            <label className="text-sm font-medium mb-1 block text-foreground">期間 <span className="text-destructive">*</span></label>
+            <label className="text-sm font-medium mb-1 block text-foreground">
+              期間 <span className="text-destructive">*</span>
+            </label>
             <div className="relative">
-            <SimpleDateRangePicker
-  value={dateRange}
-  onValueChange={setDateRange}
-  placeholder="期間を選択してください"
-  disabled={disabled}
-  showPresets={true}
-  disablePastDates={true}
-/>
+              <SimpleDateRangePicker
+                value={dateRange}
+                onValueChange={setDateRange}
+                placeholder="期間を選択してください"
+                disabled={disabled}
+                showPresets={true}
+                disablePastDates={true}
+              />
             </div>
           </div>
 
           <div>
-            <label className="text-sm font-medium mb-2 block text-foreground">曜日を選択</label>
+            <label className="text-sm font-medium mb-2 block text-foreground">
+              曜日を選択
+            </label>
             <div className="flex flex-wrap gap-2">
-              {daysOfWeek.map(day => (
+              {daysOfWeek.map((day) => (
                 <button
                   key={day.value}
                   type="button"
@@ -725,9 +817,10 @@ const FormContent: React.FC<{
                   className={`
                     w-8 h-8 rounded-full flex items-center justify-center text-sm
                     transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed
-                    ${selectedDays.includes(day.value)
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted text-muted-foreground border border-input'
+                    ${
+                      selectedDays.includes(day.value)
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground border border-input"
                     }
                   `}
                 >
@@ -737,16 +830,20 @@ const FormContent: React.FC<{
             </div>
             <div className="text-xs mt-1 text-muted-foreground">
               {selectedDays.length === 0
-                ? `曜日が選択されていない場合、${format(typeof lessonData.date === 'string' ? new Date(lessonData.date) : lessonData.date, 'EEEE', { locale: ja })}が使用されます。`
-                : `選択された曜日: ${selectedDays.map(d => daysOfWeek.find(day => day.value === d)?.label).join(', ')}`
-              }
+                ? `曜日が選択されていない場合、${format(typeof lessonData.date === "string" ? new Date(lessonData.date) : lessonData.date, "EEEE", { locale: ja })}が使用されます。`
+                : `選択された曜日: ${selectedDays.map((d) => daysOfWeek.find((day) => day.value === d)?.label).join(", ")}`}
             </div>
           </div>
         </div>
       )}
       {/* Notes */}
       <div>
-        <label htmlFor="notes" className="text-sm font-medium mb-1 block text-foreground">メモ</label>
+        <label
+          htmlFor="notes"
+          className="text-sm font-medium mb-1 block text-foreground"
+        >
+          メモ
+        </label>
         <textarea
           id="notes"
           className="w-full min-h-[60px] p-2 border rounded-md bg-background text-foreground hover:border-accent focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors border-input disabled:opacity-50 disabled:cursor-not-allowed"
@@ -785,48 +882,57 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
   preselectedClassTypeId,
   preselectedTeacherId,
   preselectedStudentId,
-  teacherName = '',
-  studentName = '',
+  teacherName = "",
+  studentName = "",
   teacherData,
-  studentData
+  studentData,
 }) => {
   const [isInitializing, setIsInitializing] = useState(true);
   const qc = useQueryClient();
 
   // Main form states
-  const [selectedParentClassTypeId, setSelectedParentClassTypeId] = useState<string>('');
-  const [selectedChildClassTypeId, setSelectedChildClassTypeId] = useState<string>('');
-  const [selectedTeacherId, setSelectedTeacherId] = useState<string>('');
-  const [selectedStudentId, setSelectedStudentId] = useState<string>('');
-  const [selectedBoothId, setSelectedBoothId] = useState<string>(''); // NEW: Booth selector state
+  const [selectedParentClassTypeId, setSelectedParentClassTypeId] =
+    useState<string>("");
+  const [selectedChildClassTypeId, setSelectedChildClassTypeId] =
+    useState<string>("");
+  const [selectedTeacherId, setSelectedTeacherId] = useState<string>("");
+  const [selectedStudentId, setSelectedStudentId] = useState<string>("");
+  const [selectedBoothId, setSelectedBoothId] = useState<string>(""); // NEW: Booth selector state
   const [isRecurring, setIsRecurring] = useState<boolean>(false);
-  const [subjectId, setSubjectId] = useState<string>('');
-  const [notes, setNotes] = useState<string>('');
-  const [startTime, setStartTime] = useState<string>('');
-  const [endTime, setEndTime] = useState<string>('');
+  const [subjectId, setSubjectId] = useState<string>("");
+  const [notes, setNotes] = useState<string>("");
+  const [startTime, setStartTime] = useState<string>("");
+  const [endTime, setEndTime] = useState<string>("");
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [selectedDays, setSelectedDays] = useState<number[]>([]);
-  const [teacherSearchQuery, setTeacherSearchQuery] = useState<string>('');
-  const [studentSearchQuery, setStudentSearchQuery] = useState<string>('');
+  const [teacherSearchQuery, setTeacherSearchQuery] = useState<string>("");
+  const [studentSearchQuery, setStudentSearchQuery] = useState<string>("");
   const debouncedTeacherSearchQuery = useDebounce(teacherSearchQuery, 300);
   const debouncedStudentSearchQuery = useDebounce(studentSearchQuery, 300);
 
   // Class types and loading states
   const [classTypes, setClassTypes] = useState<ClassType[]>([]);
-  const [isLoadingClassTypes, setIsLoadingClassTypes] = useState<boolean>(false);
+  const [isLoadingClassTypes, setIsLoadingClassTypes] =
+    useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [regularClassTypeId, setRegularClassTypeId] = useState<string>('');
+  const [regularClassTypeId, setRegularClassTypeId] = useState<string>("");
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
   // Conflict resolution states
-  const [conflictData, setConflictData] = useState<ConflictResponse | null>(null);
+  const [conflictData, setConflictData] = useState<ConflictResponse | null>(
+    null
+  );
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [currentPayload, setCurrentPayload] = useState<CreateClassSessionWithConflictsPayload | null>(null);
+  const [currentPayload, setCurrentPayload] =
+    useState<CreateClassSessionWithConflictsPayload | null>(null);
   // NEW: Ask whether to include availability-based errors (講師不在/生徒不在)
-  const [showAvailabilityConfirm, setShowAvailabilityConfirm] = useState<boolean>(false);
+  const [showAvailabilityConfirm, setShowAvailabilityConfirm] =
+    useState<boolean>(false);
   // NEW: post-generation sessions dialog (for series flow)
   const [showSeriesSessions, setShowSeriesSessions] = useState(false);
-  const [generatedSeriesId, setGeneratedSeriesId] = useState<string | null>(null);
+  const [generatedSeriesId, setGeneratedSeriesId] = useState<string | null>(
+    null
+  );
   const [seriesPreviewMode, setSeriesPreviewMode] = useState<boolean>(false);
   const [softWarningDates, setSoftWarningDates] = useState<string[]>([]);
 
@@ -837,7 +943,7 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
     if (!open) return;
     (async () => {
       try {
-        const res = await fetch('/api/scheduling-config?scope=branch');
+        const res = await fetch("/api/scheduling-config?scope=branch");
         if (res.ok) {
           const data = await res.json();
           const m = Number(data?.effective?.generationMonths ?? 1) || 1;
@@ -872,35 +978,48 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
   });
 
   // Shared 15-min grid for availability
-  const pickerTimeSlots = useMemo(() => Array.from({ length: 57 }, (_, i) => {
-    const hours = Math.floor(i / 4) + 8;
-    const startMinutes = (i % 4) * 15;
-    let endHours, endMinutes;
-    if (startMinutes === 45) { endHours = hours + 1; endMinutes = 0; }
-    else { endHours = hours; endMinutes = startMinutes + 15; }
-    return {
-      index: i,
-      start: `${hours.toString().padStart(2, '0')}:${startMinutes.toString().padStart(2, '0')}`,
-      end: `${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`,
-      display: `${hours}:${startMinutes === 0 ? '00' : startMinutes} - ${endHours}:${endMinutes === 0 ? '00' : endMinutes}`,
-      shortDisplay: i % 4 === 0 ? `${hours}:00` : ''
-    };
-  }), []);
+  const pickerTimeSlots = useMemo(
+    () =>
+      Array.from({ length: 57 }, (_, i) => {
+        const hours = Math.floor(i / 4) + 8;
+        const startMinutes = (i % 4) * 15;
+        let endHours, endMinutes;
+        if (startMinutes === 45) {
+          endHours = hours + 1;
+          endMinutes = 0;
+        } else {
+          endHours = hours;
+          endMinutes = startMinutes + 15;
+        }
+        return {
+          index: i,
+          start: `${hours.toString().padStart(2, "0")}:${startMinutes.toString().padStart(2, "0")}`,
+          end: `${endHours.toString().padStart(2, "0")}:${endMinutes.toString().padStart(2, "0")}`,
+          display: `${hours}:${startMinutes === 0 ? "00" : startMinutes} - ${endHours}:${endMinutes === 0 ? "00" : endMinutes}`,
+          shortDisplay: i % 4 === 0 ? `${hours}:00` : "",
+        };
+      }),
+    []
+  );
 
   // Availability hook
   const { teacherAvailability, studentAvailability } = useAvailability(
     selectedTeacherId || undefined,
     selectedStudentId || undefined,
-    typeof lessonData.date === 'string' ? new Date(lessonData.date) : lessonData.date,
+    typeof lessonData.date === "string"
+      ? new Date(lessonData.date)
+      : lessonData.date,
     pickerTimeSlots
   );
 
   // Soft conflict detection (availability mismatch for selected window)
   const { softTeacherConflict, softStudentConflict } = useMemo(() => {
-    const startIdx = pickerTimeSlots.findIndex(s => s.start === startTime);
-    let endIdx = pickerTimeSlots.findIndex(s => s.end === endTime);
-    if (endIdx === -1) endIdx = pickerTimeSlots.findIndex(s => s.start === endTime);
-    if (startIdx < 0 || endIdx < 0 || endIdx <= startIdx) return { softTeacherConflict: false, softStudentConflict: false };
+    const startIdx = pickerTimeSlots.findIndex((s) => s.start === startTime);
+    let endIdx = pickerTimeSlots.findIndex((s) => s.end === endTime);
+    if (endIdx === -1)
+      endIdx = pickerTimeSlots.findIndex((s) => s.start === endTime);
+    if (startIdx < 0 || endIdx < 0 || endIdx <= startIdx)
+      return { softTeacherConflict: false, softStudentConflict: false };
     const covered = (arr?: boolean[]) => {
       if (!arr) return true;
       for (let i = startIdx; i < endIdx; i++) if (!arr[i]) return false;
@@ -912,7 +1031,15 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
       softTeacherConflict: Boolean(selectedTeacherId) && !tOk,
       softStudentConflict: Boolean(selectedStudentId) && !sOk,
     };
-  }, [pickerTimeSlots, startTime, endTime, teacherAvailability, studentAvailability, selectedTeacherId, selectedStudentId]);
+  }, [
+    pickerTimeSlots,
+    startTime,
+    endTime,
+    teacherAvailability,
+    studentAvailability,
+    selectedTeacherId,
+    selectedStudentId,
+  ]);
 
   // Determine if form should be disabled (when conflicts are shown)
   const isFormDisabled = Boolean(conflictData);
@@ -923,12 +1050,16 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
   }, [selectedTeacherId, selectedStudentId]);
 
   const parentClassTypes = useMemo(() => {
-    return classTypes.filter(type => !type.parentId) || [];
+    return classTypes.filter((type) => !type.parentId) || [];
   }, [classTypes]);
 
   const childClassTypes = useMemo(() => {
     if (!selectedParentClassTypeId) return [];
-    return classTypes.filter(type => type.parentId === selectedParentClassTypeId) || [];
+    return (
+      classTypes.filter(
+        (type) => type.parentId === selectedParentClassTypeId
+      ) || []
+    );
   }, [classTypes, selectedParentClassTypeId]);
 
   // Handle date range update from CompactDateRangePicker
@@ -943,21 +1074,32 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
     setIsSubmitting(true);
     try {
       if (seriesPreviewMode && generatedSeriesId) {
-        const res = await fetch(`/api/class-series/${generatedSeriesId}/extend`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ months: generationMonthsRef.current || 1, sessionActions: actions }),
-        });
-        if (!res.ok) throw new Error('拡張に失敗しました');
+        const res = await fetch(
+          `/api/class-series/${generatedSeriesId}/extend`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              months: generationMonthsRef.current || 1,
+              sessionActions: actions,
+            }),
+          }
+        );
+        if (!res.ok) throw new Error("拡張に失敗しました");
         // Resolution succeeded: clear preview/conflict state and close the dialog.
         // Do NOT open the SeriesSessionsTableDialog automatically (was causing an unnecessary second table).
         setConflictData(null);
         setSeriesPreviewMode(false);
         setCurrentPayload(null);
         onOpenChange(false);
-        toast.success(`${generationMonthsRef.current || 1}ヶ月分を生成しました`);
+        toast.success(
+          `${generationMonthsRef.current || 1}ヶ月分を生成しました`
+        );
       } else {
-        const finalPayload: CreateClassSessionWithConflictsPayload = { ...currentPayload, sessionActions: actions };
+        const finalPayload: CreateClassSessionWithConflictsPayload = {
+          ...currentPayload,
+          sessionActions: actions,
+        };
         const result = await onSave(finalPayload);
         if (result.success) {
           setConflictData(null);
@@ -968,11 +1110,11 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
         }
       }
     } catch (error) {
-      console.error('Error handling conflict resolution:', error);
+      console.error("Error handling conflict resolution:", error);
       if (error instanceof Error) {
-        toast.error(error.message || '競合解決中にエラーが発生しました');
+        toast.error(error.message || "競合解決中にエラーが発生しました");
       } else {
-        toast.error('競合解決中にエラーが発生しました');
+        toast.error("競合解決中にエラーが発生しました");
       }
     } finally {
       setIsSubmitting(false);
@@ -985,141 +1127,169 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
   };
 
   // Create enhanced items for select components (active-only already fetched)
-  const teacherItems: CompatibilityComboboxItem[] = enhancedTeachers.map((teacher) => {
-    let description = '';
-    let matchingSubjectsCount = 0;
-    let partialMatchingSubjectsCount = 0;
+  const teacherItems: CompatibilityComboboxItem[] = enhancedTeachers
+    .map((teacher) => {
+      let description = "";
+      let matchingSubjectsCount = 0;
+      let partialMatchingSubjectsCount = 0;
 
-    if (teacher.compatibilityType === 'perfect') {
-      description = `${teacher.matchingSubjectsCount}件の完全一致`;
-      matchingSubjectsCount = teacher.matchingSubjectsCount;
-      if (teacher.partialMatchingSubjectsCount > 0) {
-        description += `, ${teacher.partialMatchingSubjectsCount}件の部分一致`;
+      if (teacher.compatibilityType === "perfect") {
+        description = `${teacher.matchingSubjectsCount}件の完全一致`;
+        matchingSubjectsCount = teacher.matchingSubjectsCount;
+        if (teacher.partialMatchingSubjectsCount > 0) {
+          description += `, ${teacher.partialMatchingSubjectsCount}件の部分一致`;
+          partialMatchingSubjectsCount = teacher.partialMatchingSubjectsCount;
+        }
+      } else if (teacher.compatibilityType === "subject-only") {
+        description = `${teacher.partialMatchingSubjectsCount}件の部分一致`;
         partialMatchingSubjectsCount = teacher.partialMatchingSubjectsCount;
+      } else if (teacher.compatibilityType === "mismatch") {
+        description = "共通科目なし";
+      } else if (teacher.compatibilityType === "teacher-no-prefs") {
+        description = "科目設定なし";
+      } else if (teacher.compatibilityType === "student-no-prefs") {
+        description = "生徒の設定なし（全対応可）";
       }
-    } else if (teacher.compatibilityType === 'subject-only') {
-      description = `${teacher.partialMatchingSubjectsCount}件の部分一致`;
-      partialMatchingSubjectsCount = teacher.partialMatchingSubjectsCount;
-    } else if (teacher.compatibilityType === 'mismatch') {
-      description = '共通科目なし';
-    } else if (teacher.compatibilityType === 'teacher-no-prefs') {
-      description = '科目設定なし';
-    } else if (teacher.compatibilityType === 'student-no-prefs') {
-      description = '生徒の設定なし（全対応可）';
-    }
 
-    const keywords = [teacher.name, teacher.kanaName, teacher.email, teacher.username]
-      .filter((keyword): keyword is string => Boolean(keyword))
-      .map((keyword) => keyword.toLowerCase());
+      const keywords = [
+        teacher.name,
+        teacher.kanaName,
+        teacher.email,
+        teacher.username,
+      ]
+        .filter((keyword): keyword is string => Boolean(keyword))
+        .map((keyword) => keyword.toLowerCase());
 
-    return {
-      value: teacher.teacherId,
-      label: teacher.name,
-      description,
-      compatibilityType: teacher.compatibilityType,
-      matchingSubjectsCount,
-      partialMatchingSubjectsCount,
-      keywords,
-    };
-  }).sort((a, b) => {
-    const priorityDiff = getCompatibilityPriority(b.compatibilityType) - getCompatibilityPriority(a.compatibilityType);
-    if (priorityDiff !== 0) {
-      return priorityDiff;
-    }
+      return {
+        value: teacher.teacherId,
+        label: teacher.name,
+        description,
+        compatibilityType: teacher.compatibilityType,
+        matchingSubjectsCount,
+        partialMatchingSubjectsCount,
+        keywords,
+      };
+    })
+    .sort((a, b) => {
+      const priorityDiff =
+        getCompatibilityPriority(b.compatibilityType) -
+        getCompatibilityPriority(a.compatibilityType);
+      if (priorityDiff !== 0) {
+        return priorityDiff;
+      }
 
-    const labelA = typeof a.label === 'string' ? a.label : String(a.label ?? '');
-    const labelB = typeof b.label === 'string' ? b.label : String(b.label ?? '');
-    return labelA.localeCompare(labelB, 'ja');
-  });
+      const labelA =
+        typeof a.label === "string" ? a.label : String(a.label ?? "");
+      const labelB =
+        typeof b.label === "string" ? b.label : String(b.label ?? "");
+      return labelA.localeCompare(labelB, "ja");
+    });
 
-  const studentItems: CompatibilityComboboxItem[] = enhancedStudents.map((student) => {
-    let description = '';
-    let matchingSubjectsCount = 0;
-    let partialMatchingSubjectsCount = 0;
+  const studentItems: CompatibilityComboboxItem[] = enhancedStudents
+    .map((student) => {
+      let description = "";
+      let matchingSubjectsCount = 0;
+      let partialMatchingSubjectsCount = 0;
 
-    if (student.compatibilityType === 'perfect') {
-      description = `${student.matchingSubjectsCount}件の完全一致`;
-      matchingSubjectsCount = student.matchingSubjectsCount;
-      if (student.partialMatchingSubjectsCount > 0) {
-        description += `, ${student.partialMatchingSubjectsCount}件の部分一致`;
+      if (student.compatibilityType === "perfect") {
+        description = `${student.matchingSubjectsCount}件の完全一致`;
+        matchingSubjectsCount = student.matchingSubjectsCount;
+        if (student.partialMatchingSubjectsCount > 0) {
+          description += `, ${student.partialMatchingSubjectsCount}件の部分一致`;
+          partialMatchingSubjectsCount = student.partialMatchingSubjectsCount;
+        }
+      } else if (student.compatibilityType === "subject-only") {
+        description = `${student.partialMatchingSubjectsCount}件の部分一致`;
         partialMatchingSubjectsCount = student.partialMatchingSubjectsCount;
+      } else if (student.compatibilityType === "mismatch") {
+        description = "共通科目なし";
+      } else if (student.compatibilityType === "student-no-prefs") {
+        description = "科目設定なし";
+      } else if (student.compatibilityType === "teacher-no-prefs") {
+        description = "講師の設定なし（全対応可）";
       }
-    } else if (student.compatibilityType === 'subject-only') {
-      description = `${student.partialMatchingSubjectsCount}件の部分一致`;
-      partialMatchingSubjectsCount = student.partialMatchingSubjectsCount;
-    } else if (student.compatibilityType === 'mismatch') {
-      description = '共通科目なし';
-    } else if (student.compatibilityType === 'student-no-prefs') {
-      description = '科目設定なし';
-    } else if (student.compatibilityType === 'teacher-no-prefs') {
-      description = '講師の設定なし（全対応可）';
+
+      const keywords = [
+        student.name,
+        student.kanaName,
+        student.email,
+        student.username,
+      ]
+        .filter((keyword): keyword is string => Boolean(keyword))
+        .map((keyword) => keyword.toLowerCase());
+
+      return {
+        value: student.studentId,
+        label: student.name,
+        description,
+        compatibilityType: student.compatibilityType,
+        matchingSubjectsCount,
+        partialMatchingSubjectsCount,
+        keywords,
+      };
+    })
+    .sort((a, b) => {
+      const priorityDiff =
+        getCompatibilityPriority(b.compatibilityType) -
+        getCompatibilityPriority(a.compatibilityType);
+      if (priorityDiff !== 0) {
+        return priorityDiff;
+      }
+
+      const labelA =
+        typeof a.label === "string" ? a.label : String(a.label ?? "");
+      const labelB =
+        typeof b.label === "string" ? b.label : String(b.label ?? "");
+      return labelA.localeCompare(labelB, "ja");
+    });
+
+  const subjectItems: SearchableSelectItem[] = enhancedSubjects.map(
+    (subject) => {
+      let description = "";
+
+      switch (subject.compatibilityType) {
+        case "perfect":
+          description = "完全一致（科目・レベル両方）";
+          break;
+        case "subject-only":
+          description = "部分一致（科目のみ・レベル違い）";
+          break;
+        case "teacher-only":
+          description = "講師のみ対応";
+          break;
+        case "student-only":
+          description = "生徒のみ希望";
+          break;
+        case "mismatch":
+          description = "対応なし";
+          break;
+        case "no-preferences":
+          description = "全員利用可能";
+          break;
+      }
+
+      return {
+        value: subject.subjectId,
+        label: subject.name,
+        description,
+        compatibilityType: subject.compatibilityType,
+      };
     }
+  );
 
-    const keywords = [student.name, student.kanaName, student.email, student.username]
-      .filter((keyword): keyword is string => Boolean(keyword))
-      .map((keyword) => keyword.toLowerCase());
+  const parentClassTypeItems: SearchableSelectItem[] = parentClassTypes.map(
+    (type) => ({
+      value: type.classTypeId,
+      label: type.name,
+    })
+  );
 
-    return {
-      value: student.studentId,
-      label: student.name,
-      description,
-      compatibilityType: student.compatibilityType,
-      matchingSubjectsCount,
-      partialMatchingSubjectsCount,
-      keywords,
-    };
-  }).sort((a, b) => {
-    const priorityDiff = getCompatibilityPriority(b.compatibilityType) - getCompatibilityPriority(a.compatibilityType);
-    if (priorityDiff !== 0) {
-      return priorityDiff;
-    }
-
-    const labelA = typeof a.label === 'string' ? a.label : String(a.label ?? '');
-    const labelB = typeof b.label === 'string' ? b.label : String(b.label ?? '');
-    return labelA.localeCompare(labelB, 'ja');
-  });
-
-  const subjectItems: SearchableSelectItem[] = enhancedSubjects.map((subject) => {
-    let description = '';
-
-    switch (subject.compatibilityType) {
-      case 'perfect':
-        description = '完全一致（科目・レベル両方）';
-        break;
-      case 'subject-only':
-        description = '部分一致（科目のみ・レベル違い）';
-        break;
-      case 'teacher-only':
-        description = '講師のみ対応';
-        break;
-      case 'student-only':
-        description = '生徒のみ希望';
-        break;
-      case 'mismatch':
-        description = '対応なし';
-        break;
-      case 'no-preferences':
-        description = '全員利用可能';
-        break;
-    }
-
-    return {
-      value: subject.subjectId,
-      label: subject.name,
-      description,
-      compatibilityType: subject.compatibilityType
-    };
-  });
-
-  const parentClassTypeItems: SearchableSelectItem[] = parentClassTypes.map((type) => ({
-    value: type.classTypeId,
-    label: type.name,
-  }));
-
-  const childClassTypeItems: SearchableSelectItem[] = childClassTypes.map((type) => ({
-    value: type.classTypeId,
-    label: type.name,
-  }));
+  const childClassTypeItems: SearchableSelectItem[] = childClassTypes.map(
+    (type) => ({
+      value: type.classTypeId,
+      label: type.name,
+    })
+  );
 
   // NEW: Booth items for selector
   const boothItems: SearchableSelectItem[] = booths.map((booth) => ({
@@ -1153,11 +1323,13 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
   const handleParentClassTypeChange = (parentTypeId: string) => {
     if (isFormDisabled) return;
     setSelectedParentClassTypeId(parentTypeId);
-    setSelectedChildClassTypeId('');
+    setSelectedChildClassTypeId("");
 
-    const parentType = parentClassTypes.find(type => type.classTypeId === parentTypeId);
+    const parentType = parentClassTypes.find(
+      (type) => type.classTypeId === parentTypeId
+    );
     if (parentType) {
-      const isRegular = parentType.name === '通常授業';
+      const isRegular = parentType.name === "通常授業";
       setIsRecurring(isRegular);
     }
   };
@@ -1170,31 +1342,31 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
   // Clear functions
   const clearTeacher = () => {
     if (isFormDisabled) return;
-    setSelectedTeacherId('');
-    setTeacherSearchQuery('');
+    setSelectedTeacherId("");
+    setTeacherSearchQuery("");
   };
   const clearStudent = () => {
     if (isFormDisabled) return;
-    setSelectedStudentId('');
-    setStudentSearchQuery('');
+    setSelectedStudentId("");
+    setStudentSearchQuery("");
   };
   const clearSubject = () => {
     if (isFormDisabled) return;
-    setSubjectId('');
+    setSubjectId("");
   };
   const clearBooth = () => {
     if (isFormDisabled) return;
-    setSelectedBoothId('');
+    setSelectedBoothId("");
   };
   const clearParentClassType = () => {
     if (isFormDisabled) return;
-    setSelectedParentClassTypeId('');
-    setSelectedChildClassTypeId('');
+    setSelectedParentClassTypeId("");
+    setSelectedChildClassTypeId("");
     setIsRecurring(false);
   };
   const clearChildClassType = () => {
     if (isFormDisabled) return;
-    setSelectedChildClassTypeId('');
+    setSelectedChildClassTypeId("");
   };
 
   // Load class types effect
@@ -1203,11 +1375,18 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
       setIsLoadingClassTypes(true);
       try {
         // Admin creation dialog: request ALL class types (ignore global filter visibility)
-        const params = new URLSearchParams({ limit: '200', includeParent: 'true' });
-        const response = await fetcher<{ data: ClassType[] }>(`/api/admin/masterdata/class-types?${params.toString()}`);
+        const params = new URLSearchParams({
+          limit: "200",
+          includeParent: "true",
+        });
+        const response = await fetcher<{ data: ClassType[] }>(
+          `/api/admin/masterdata/class-types?${params.toString()}`
+        );
         setClassTypes(response.data || []);
 
-        const regularType = response.data.find(type => type.name === '通常授業');
+        const regularType = response.data.find(
+          (type) => type.name === "通常授業"
+        );
         if (regularType) {
           setRegularClassTypeId(regularType.classTypeId);
         }
@@ -1238,11 +1417,13 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
       const initializeDialog = () => {
         setIsInitializing(true);
 
-        let correctParentClassTypeId = '';
-        let correctChildClassTypeId = '';
+        let correctParentClassTypeId = "";
+        let correctChildClassTypeId = "";
 
         if (preselectedClassTypeId) {
-          const preselectedType = classTypes.find(type => type.classTypeId === preselectedClassTypeId);
+          const preselectedType = classTypes.find(
+            (type) => type.classTypeId === preselectedClassTypeId
+          );
           if (preselectedType) {
             if (!preselectedType.parentId) {
               correctParentClassTypeId = preselectedClassTypeId;
@@ -1252,7 +1433,9 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
             }
           }
         } else if (lessonData.classTypeId) {
-          const lessonType = classTypes.find(type => type.classTypeId === lessonData.classTypeId);
+          const lessonType = classTypes.find(
+            (type) => type.classTypeId === lessonData.classTypeId
+          );
           if (lessonType) {
             if (!lessonType.parentId) {
               correctParentClassTypeId = lessonData.classTypeId;
@@ -1265,20 +1448,27 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
           correctParentClassTypeId = regularClassTypeId;
         }
 
-        const correctIsRecurring = correctParentClassTypeId === regularClassTypeId;
-        const lessonDate = typeof lessonData.date === 'string' ? new Date(lessonData.date) : lessonData.date;
+        const correctIsRecurring =
+          correctParentClassTypeId === regularClassTypeId;
+        const lessonDate =
+          typeof lessonData.date === "string"
+            ? new Date(lessonData.date)
+            : lessonData.date;
 
         setSelectedParentClassTypeId(correctParentClassTypeId);
         setSelectedChildClassTypeId(correctChildClassTypeId);
-        setSelectedTeacherId(preselectedTeacherId || '');
-        setSelectedStudentId(preselectedStudentId || '');
-        setSelectedBoothId(lessonData.boothId || ''); // NEW: Initialize booth state
+        setSelectedTeacherId(preselectedTeacherId || "");
+        setSelectedStudentId(preselectedStudentId || "");
+        setSelectedBoothId(lessonData.boothId || ""); // NEW: Initialize booth state
         setIsRecurring(correctIsRecurring);
-        setSubjectId('');
-        setNotes('');
+        setSubjectId("");
+        setNotes("");
         setStartTime(lessonData.startTime);
         setEndTime(lessonData.endTime);
-        setDateRange({ from: lessonDate, to: correctIsRecurring ? undefined : undefined });
+        setDateRange({
+          from: lessonDate,
+          to: correctIsRecurring ? undefined : undefined,
+        });
 
         const dayOfWeek = lessonDate.getDay();
         setSelectedDays([dayOfWeek]);
@@ -1294,28 +1484,39 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
       setConflictData(null);
       setCurrentPayload(null);
     }
-  }, [open, classTypes.length, regularClassTypeId, lessonData, preselectedClassTypeId, preselectedTeacherId, preselectedStudentId]);
+  }, [
+    open,
+    classTypes.length,
+    regularClassTypeId,
+    lessonData,
+    preselectedClassTypeId,
+    preselectedTeacherId,
+    preselectedStudentId,
+  ]);
 
   useEffect(() => {
     if (!open) {
-      setTeacherSearchQuery('');
-      setStudentSearchQuery('');
+      setTeacherSearchQuery("");
+      setStudentSearchQuery("");
     }
   }, [open]);
 
   // Update date range for non-recurring lessons
   useEffect(() => {
     if (open && !isRecurring) {
-      const lessonDate = typeof lessonData.date === 'string' ? new Date(lessonData.date) : lessonData.date;
+      const lessonDate =
+        typeof lessonData.date === "string"
+          ? new Date(lessonData.date)
+          : lessonData.date;
       setDateRange({ from: lessonDate, to: undefined });
     }
   }, [open, lessonData.date, isRecurring]);
 
   const handleDayToggle = (day: number) => {
     if (isFormDisabled) return;
-    setSelectedDays(prev => {
+    setSelectedDays((prev) => {
       if (prev.includes(day)) {
-        return prev.filter(d => d !== day);
+        return prev.filter((d) => d !== day);
       } else {
         return [...prev, day];
       }
@@ -1377,13 +1578,14 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
     if (isInitializing) return false;
 
     const finalBoothId = lessonData.boothId || selectedBoothId;
-    const hasRequiredFields = selectedParentClassTypeId &&
-                             selectedTeacherId &&
-                             selectedStudentId &&
-                             subjectId &&
-                             finalBoothId &&
-                             startTime &&
-                             endTime;
+    const hasRequiredFields =
+      selectedParentClassTypeId &&
+      selectedTeacherId &&
+      selectedStudentId &&
+      subjectId &&
+      finalBoothId &&
+      startTime &&
+      endTime;
 
     if (!hasRequiredFields) return false;
     if (startTime >= endTime) return false;
@@ -1394,7 +1596,19 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
     } else {
       return Boolean(dateRange?.from);
     }
-  }, [isInitializing, selectedParentClassTypeId, selectedTeacherId, selectedStudentId, subjectId, selectedBoothId, lessonData.boothId, startTime, endTime, isRecurring, dateRange?.from]);
+  }, [
+    isInitializing,
+    selectedParentClassTypeId,
+    selectedTeacherId,
+    selectedStudentId,
+    subjectId,
+    selectedBoothId,
+    lessonData.boothId,
+    startTime,
+    endTime,
+    isRecurring,
+    dateRange?.from,
+  ]);
 
   const handleSubmit = async () => {
     const errors = validateForm();
@@ -1414,7 +1628,8 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
   };
 
   const proceedCreate = async (includeAvailabilityConflicts: boolean) => {
-    const finalClassTypeId = selectedChildClassTypeId || selectedParentClassTypeId;
+    const finalClassTypeId =
+      selectedChildClassTypeId || selectedParentClassTypeId;
     const finalBoothId = lessonData.boothId || selectedBoothId;
 
     const payload: CreateClassSessionWithConflictsPayload = {
@@ -1432,10 +1647,10 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
 
     if (isRecurring && dateRange?.from) {
       payload.isRecurring = true;
-      payload.startDate = format(dateRange.from, 'yyyy-MM-dd');
+      payload.startDate = format(dateRange.from, "yyyy-MM-dd");
 
       if (dateRange.to) {
-        payload.endDate = format(dateRange.to, 'yyyy-MM-dd');
+        payload.endDate = format(dateRange.to, "yyyy-MM-dd");
       }
 
       if (selectedDays.length > 0) {
@@ -1452,11 +1667,12 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
       const isRegularType = selectedParentClassTypeId === regularClassTypeId;
       if (isRegularType) {
         try {
-          const res = await fetch('/api/class-series', {
-            method: 'POST',
+          const res = await fetch("/api/class-series", {
+            method: "POST",
             headers: {
-              'Content-Type': 'application/json',
-              'X-Selected-Branch': localStorage.getItem('selectedBranchId') || ''
+              "Content-Type": "application/json",
+              "X-Selected-Branch":
+                localStorage.getItem("selectedBranchId") || "",
             },
             body: JSON.stringify({
               studentId: selectedStudentId,
@@ -1466,7 +1682,8 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
               branchId: undefined,
               boothId: finalBoothId || null,
               startDate: payload.startDate,
-              endDate: payload.isRecurring && payload.endDate ? payload.endDate : null,
+              endDate:
+                payload.isRecurring && payload.endDate ? payload.endDate : null,
               startTime: payload.startTime,
               endTime: payload.endTime,
               duration: undefined,
@@ -1475,38 +1692,58 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
               // centralized policy is used on the server; do not send per-series policy
             }),
           });
-          if (!res.ok) throw new Error('シリーズの作成に失敗しました');
+          if (!res.ok) throw new Error("シリーズの作成に失敗しました");
           const { seriesId } = await res.json();
           setGeneratedSeriesId(seriesId);
           // Always preview and show ConflictResolutionTable (unified pre-create UX)
           const months = generationMonthsRef.current || 1;
-          const pv = await fetch(`/api/class-series/${seriesId}/extend/preview?months=${months}`, {
-            headers: { 'X-Selected-Branch': localStorage.getItem('selectedBranchId') || '' }
-          });
-          if (!pv.ok) throw new Error('プレビューに失敗しました');
+          const pv = await fetch(
+            `/api/class-series/${seriesId}/extend/preview?months=${months}`,
+            {
+              headers: {
+                "X-Selected-Branch":
+                  localStorage.getItem("selectedBranchId") || "",
+              },
+            }
+          );
+          if (!pv.ok) throw new Error("プレビューに失敗しました");
           const preview = await pv.json();
           // Filter availability conflicts if user chose not to display them
           if (!includeAvailabilityConflicts) {
-            const filtered = filterByAvailabilityPreference(preview.conflicts || [], false);
+            const filtered = filterByAvailabilityPreference(
+              preview.conflicts || [],
+              false
+            );
             preview.conflicts = filtered;
-            preview.conflictsByDate = filtered.reduce((acc: any, c: any) => {
-              (acc[c.date] ||= []).push(c);
-              return acc;
-            }, {} as Record<string, any[]>);
+            preview.conflictsByDate = filtered.reduce(
+              (acc: any, c: any) => {
+                (acc[c.date] ||= []).push(c);
+                return acc;
+              },
+              {} as Record<string, any[]>
+            );
             // Keep flags and summary consistent after filtering
-            const sessionsWithConflicts = Object.keys(preview.conflictsByDate).length;
-            if (preview.summary && typeof preview.summary === 'object') {
+            const sessionsWithConflicts = Object.keys(
+              preview.conflictsByDate
+            ).length;
+            if (preview.summary && typeof preview.summary === "object") {
               try {
-                const total = Number((preview.summary as any).totalSessions) || undefined;
-                (preview.summary as any).sessionsWithConflicts = sessionsWithConflicts;
-                if (typeof total === 'number') {
-                  (preview.summary as any).validSessions = Math.max(0, total - sessionsWithConflicts);
+                const total =
+                  Number((preview.summary as any).totalSessions) || undefined;
+                (preview.summary as any).sessionsWithConflicts =
+                  sessionsWithConflicts;
+                if (typeof total === "number") {
+                  (preview.summary as any).validSessions = Math.max(
+                    0,
+                    total - sessionsWithConflicts
+                  );
                 }
               } catch {}
             }
             preview.requiresConfirmation = sessionsWithConflicts > 0;
           }
-          const hasConflicts = Array.isArray(preview.conflicts) && preview.conflicts.length > 0;
+          const hasConflicts =
+            Array.isArray(preview.conflicts) && preview.conflicts.length > 0;
           const needsConfirm = hasConflicts;
           if (hasConflicts || needsConfirm) {
             // Only show table when there are conflicts or confirmation is required
@@ -1516,36 +1753,52 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
             return;
           }
           // No conflicts → directly extend (generate) and close
-          const extendRes = await fetch(`/api/class-series/${seriesId}/extend`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Selected-Branch': localStorage.getItem('selectedBranchId') || ''
-            },
-            body: JSON.stringify({ months }),
-          });
-          if (!extendRes.ok) throw new Error('授業の生成に失敗しました');
+          const extendRes = await fetch(
+            `/api/class-series/${seriesId}/extend`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Selected-Branch":
+                  localStorage.getItem("selectedBranchId") || "",
+              },
+              body: JSON.stringify({ months }),
+            }
+          );
+          if (!extendRes.ok) throw new Error("授業の生成に失敗しました");
           const extendJson = await extendRes.json();
           toast.success(`${extendJson.count ?? 0}件の授業を作成しました`);
           try {
-            const { broadcastClassSessionsChanged } = await import('@/lib/calendar-broadcast');
-            const start = payload.startDate || (typeof lessonData.date === 'string' ? lessonData.date : undefined);
-            if (start) broadcastClassSessionsChanged([start]); else broadcastClassSessionsChanged();
+            const { broadcastClassSessionsChanged } = await import(
+              "@/lib/calendar-broadcast"
+            );
+            const start =
+              payload.startDate ||
+              (typeof lessonData.date === "string"
+                ? lessonData.date
+                : undefined);
+            if (start) broadcastClassSessionsChanged([start]);
+            else broadcastClassSessionsChanged();
             // Force a precise refetch for the created day to avoid any timing race
-            const target = start || (typeof lessonData.date === 'string' ? lessonData.date : undefined);
+            const target =
+              start ||
+              (typeof lessonData.date === "string"
+                ? lessonData.date
+                : undefined);
             if (target) {
               await qc.refetchQueries({
-                predicate: ({ queryKey }) => Array.isArray(queryKey)
-                  && queryKey[0] === 'classSessions'
-                  && queryKey[1] === 'byDate'
-                  && queryKey[2] === target,
+                predicate: ({ queryKey }) =>
+                  Array.isArray(queryKey) &&
+                  queryKey[0] === "classSessions" &&
+                  queryKey[1] === "byDate" &&
+                  queryKey[2] === target,
               });
             }
           } catch {}
           onOpenChange(false);
           return;
         } catch (e: any) {
-          toast.error(e?.message || 'シリーズの作成に失敗しました');
+          toast.error(e?.message || "シリーズの作成に失敗しました");
           // Fall-through to regular onSave as a fallback
         }
       }
@@ -1571,20 +1824,26 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
   const handleReset = () => {
     if (isFormDisabled) return;
 
-    const correctParentTypeId = preselectedClassTypeId ?
-      (classTypes.find(type => type.classTypeId === preselectedClassTypeId && !type.parentId)?.classTypeId || regularClassTypeId) :
-      regularClassTypeId;
+    const correctParentTypeId = preselectedClassTypeId
+      ? classTypes.find(
+          (type) =>
+            type.classTypeId === preselectedClassTypeId && !type.parentId
+        )?.classTypeId || regularClassTypeId
+      : regularClassTypeId;
     const correctIsRecurring = correctParentTypeId === regularClassTypeId;
-    const lessonDate = typeof lessonData.date === 'string' ? new Date(lessonData.date) : lessonData.date;
+    const lessonDate =
+      typeof lessonData.date === "string"
+        ? new Date(lessonData.date)
+        : lessonData.date;
 
     setSelectedParentClassTypeId(correctParentTypeId);
-    setSelectedChildClassTypeId('');
-    setSelectedTeacherId(preselectedTeacherId || '');
-    setSelectedStudentId(preselectedStudentId || '');
-    setSelectedBoothId(lessonData.boothId || ''); // NEW: Reset booth state
+    setSelectedChildClassTypeId("");
+    setSelectedTeacherId(preselectedTeacherId || "");
+    setSelectedStudentId(preselectedStudentId || "");
+    setSelectedBoothId(lessonData.boothId || ""); // NEW: Reset booth state
     setIsRecurring(correctIsRecurring);
-    setSubjectId('');
-    setNotes('');
+    setSubjectId("");
+    setNotes("");
     setStartTime(lessonData.startTime);
     setEndTime(lessonData.endTime);
     setSelectedDays([]);
@@ -1593,24 +1852,24 @@ export const CreateLessonDialog: React.FC<CreateLessonDialogProps> = ({
     setError(null);
     setValidationErrors([]);
   };
-/* merged: keep incoming FormContent; retain compatibility helpers */
+  /* merged: keep incoming FormContent; retain compatibility helpers */
 
   // const isLoading = isLoadingClassTypes || isSubmitting; // removed duplicate; defined later
 
   const daysOfWeek = [
-    { label: '月', value: 1 },
-    { label: '火', value: 2 },
-    { label: '水', value: 3 },
-    { label: '木', value: 4 },
-    { label: '金', value: 5 },
-    { label: '土', value: 6 },
-    { label: '日', value: 0 }
+    { label: "月", value: 1 },
+    { label: "火", value: 2 },
+    { label: "水", value: 3 },
+    { label: "木", value: 4 },
+    { label: "金", value: 5 },
+    { label: "土", value: 6 },
+    { label: "日", value: 0 },
   ];
 
   // Form content markup (legacy helper) – removed in favor of FormContent component
-/* merged split */
-const isLoading = isLoadingClassTypes || isSubmitting;
-/* end merged split */
+  /* merged split */
+  const isLoading = isLoadingClassTypes || isSubmitting;
+  /* end merged split */
 
   if (isInitializing) {
     return (
@@ -1639,14 +1898,20 @@ const isLoading = isLoadingClassTypes || isSubmitting;
           <DialogHeader>
             <DialogTitle>授業の作成</DialogTitle>
             <DialogDescription>
-              {conflictData ? "競合が発見されました。解決方法を選択してください。" : "新しい授業の情報を入力してください"}
+              {conflictData
+                ? "競合が発見されました。解決方法を選択してください。"
+                : "新しい授業の情報を入力してください"}
             </DialogDescription>
           </DialogHeader>
 
-          <div className={cn(conflictData ? "max-h-[70vh]" : "overflow-y-auto max-h-[70vh]")}>
+          <div
+            className={cn(
+              conflictData ? "max-h-[70vh]" : "overflow-y-auto max-h-[70vh]"
+            )}
+          >
             {conflictData ? (
               // Two-column layout when conflicts exist
-              (<div className="flex gap-6">
+              <div className="flex gap-6">
                 {/* Left column - Form (disabled) - FIXED HEIGHT */}
                 <div className="w-[600px] flex-shrink-0 max-h-[70vh] overflow-auto">
                   <div className="text-sm font-medium mb-2 text-muted-foreground">
@@ -1730,10 +1995,10 @@ const isLoading = isLoadingClassTypes || isSubmitting;
                     />
                   </div>
                 </div>
-              </div>)
+              </div>
             ) : (
               // Single column layout when no conflicts - original form
-              (<div className="px-1">
+              <div className="px-1">
                 <FormContent
                   disabled={false}
                   lessonData={lessonData}
@@ -1797,7 +2062,7 @@ const isLoading = isLoadingClassTypes || isSubmitting;
                   error={error}
                   validationErrors={validationErrors}
                 />
-              </div>)
+              </div>
             )}
           </div>
 
@@ -1833,13 +2098,20 @@ const isLoading = isLoadingClassTypes || isSubmitting;
         </DialogContent>
       </Dialog>
       {/* Availability confirm modal (force-create) */}
-      <Dialog open={showAvailabilityConfirm} onOpenChange={setShowAvailabilityConfirm}>
+      <Dialog
+        open={showAvailabilityConfirm}
+        onOpenChange={setShowAvailabilityConfirm}
+      >
         <DialogContent className="sm:max-w-[520px]">
           <DialogHeader>
             <DialogTitle>強制作成の確認</DialogTitle>
             <DialogDescription>
               現在の時間帯は
-              {softTeacherConflict && softStudentConflict ? '講師/生徒' : softTeacherConflict ? '講師' : '生徒'}
+              {softTeacherConflict && softStudentConflict
+                ? "講師/生徒"
+                : softTeacherConflict
+                  ? "講師"
+                  : "生徒"}
               の利用可能時間外です。強制的に作成しますか？
             </DialogDescription>
           </DialogHeader>

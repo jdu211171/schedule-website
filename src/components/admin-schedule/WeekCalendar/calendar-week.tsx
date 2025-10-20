@@ -4,7 +4,7 @@ import { Plus } from "lucide-react";
 import {
   ExtendedClassSessionWithRelations,
   useMultipleWeeksClassSessions,
-  DayFilters
+  DayFilters,
 } from "@/hooks/useClassSessionQuery";
 import {
   addDays,
@@ -43,18 +43,24 @@ export default function CalendarWeek({
 }: CalendarWeekProps) {
   const [expandedLessonId, setExpandedLessonId] = useState<string | null>(null);
 
-  const { weekQueries, allSessions, isLoading } = useMultipleWeeksClassSessions(selectedWeeks, {
-    ...filters,
-    ...(selectedBranchId && { branchId: selectedBranchId })
-  });
+  const { weekQueries, allSessions, isLoading } = useMultipleWeeksClassSessions(
+    selectedWeeks,
+    {
+      ...filters,
+      ...(selectedBranchId && { branchId: selectedBranchId }),
+    }
+  );
 
   // Light cross-tab sync: refetch only weeks that include changed dates
   useEffect(() => {
-    const channel = typeof window !== 'undefined' ? new BroadcastChannel('calendar-events') : null;
+    const channel =
+      typeof window !== "undefined"
+        ? new BroadcastChannel("calendar-events")
+        : null;
     if (!channel) return;
     const handler = (event: MessageEvent) => {
       const payload = event.data as { type?: string; dates?: string[] };
-      if (!payload || payload.type !== 'classSessionsChanged') return;
+      if (!payload || payload.type !== "classSessionsChanged") return;
       const dates = payload.dates || [];
       if (dates.length === 0) {
         // Unknown dates → refresh visible weeks lightly
@@ -64,7 +70,7 @@ export default function CalendarWeek({
       const shouldRefetch = (week: Date, dateStr: string) => {
         const ws = startOfWeek(week, { weekStartsOn: 1 });
         const we = addDays(ws, 6);
-        const d = new Date(dateStr + 'T00:00:00');
+        const d = new Date(dateStr + "T00:00:00");
         return isWithinInterval(d, { start: ws, end: we });
       };
       selectedWeeks.forEach((w, idx) => {
@@ -73,9 +79,9 @@ export default function CalendarWeek({
         }
       });
     };
-    channel.addEventListener('message', handler);
+    channel.addEventListener("message", handler);
     return () => {
-      channel.removeEventListener('message', handler);
+      channel.removeEventListener("message", handler);
       channel.close();
     };
   }, [selectedWeeks, weekQueries]);
@@ -153,18 +159,27 @@ export default function CalendarWeek({
 
   const groupLessonsByTime = useCallback(
     (dayLessons: ExtendedClassSessionWithRelations[]) => {
-      const grouped: { [timeSlot: string]: ExtendedClassSessionWithRelations[] } = {};
+      const grouped: {
+        [timeSlot: string]: ExtendedClassSessionWithRelations[];
+      } = {};
 
       const sortedLessons = [...dayLessons].sort((a, b) => {
-        const timeA = typeof a.startTime === 'string' ? a.startTime : format(a.startTime, 'HH:mm');
-        const timeB = typeof b.startTime === 'string' ? b.startTime : format(b.startTime, 'HH:mm');
+        const timeA =
+          typeof a.startTime === "string"
+            ? a.startTime
+            : format(a.startTime, "HH:mm");
+        const timeB =
+          typeof b.startTime === "string"
+            ? b.startTime
+            : format(b.startTime, "HH:mm");
         return timeA.localeCompare(timeB);
       });
 
       sortedLessons.forEach((lesson) => {
-        const timeKey = typeof lesson.startTime === 'string'
-          ? lesson.startTime
-          : format(lesson.startTime, 'HH:mm');
+        const timeKey =
+          typeof lesson.startTime === "string"
+            ? lesson.startTime
+            : format(lesson.startTime, "HH:mm");
 
         if (!grouped[timeKey]) {
           grouped[timeKey] = [];
@@ -197,7 +212,8 @@ export default function CalendarWeek({
           const weekEnd = addDays(weekStart, 6);
           const weekDays = getWeekDays(weekStart);
           const weekQuery = weekQueries[index];
-          const isLoadingThisWeek = weekQuery?.isLoading || weekQuery?.isFetching;
+          const isLoadingThisWeek =
+            weekQuery?.isLoading || weekQuery?.isFetching;
 
           if (isLoadingThisWeek && !weekQuery?.data) {
             return (
@@ -265,103 +281,163 @@ export default function CalendarWeek({
                         }`}
                       >
                         <div className="flex-1 space-y-4">
-                          {Object.entries(timeGroups).map(([timeSlot, lessonsAtTime]) => {
-                            const { rows, itemsPerRow } = calculateLayout(lessonsAtTime.length);
-                            return (
-                              <div key={timeSlot} className="mb-3">
-                                <div className="text-xs font-medium mb-1 pl-1">{timeSlot}</div>
-                                {expandedLessonId && lessonsAtTime.some((lesson) => lesson.classId === expandedLessonId) ? (
-                                  <div className="w-full">
-                                    <WeekLessonCard
-                                      lesson={lessonsAtTime.find((l) => l.classId === expandedLessonId)!}
-                                      isExpanded={true}
-                                      displayMode="full"
-                                      onClick={handleLessonClick}
-                                      onEdit={onEdit}
-                                      onDelete={onDelete}
-                                    />
+                          {Object.entries(timeGroups).map(
+                            ([timeSlot, lessonsAtTime]) => {
+                              const { rows, itemsPerRow } = calculateLayout(
+                                lessonsAtTime.length
+                              );
+                              return (
+                                <div key={timeSlot} className="mb-3">
+                                  <div className="text-xs font-medium mb-1 pl-1">
+                                    {timeSlot}
                                   </div>
-                                ) : (
-                                  <div>
-                                    {Array.from({ length: rows }).map((_, rowIndex) => {
-                                      let rowItemsCount = itemsPerRow;
-                                      if (lessonsAtTime.length === 7) {
-                                        rowItemsCount = rowIndex === 0 ? 4 : 3;
-                                      }
+                                  {expandedLessonId &&
+                                  lessonsAtTime.some(
+                                    (lesson) =>
+                                      lesson.classId === expandedLessonId
+                                  ) ? (
+                                    <div className="w-full">
+                                      <WeekLessonCard
+                                        lesson={
+                                          lessonsAtTime.find(
+                                            (l) =>
+                                              l.classId === expandedLessonId
+                                          )!
+                                        }
+                                        isExpanded={true}
+                                        displayMode="full"
+                                        onClick={handleLessonClick}
+                                        onEdit={onEdit}
+                                        onDelete={onDelete}
+                                      />
+                                    </div>
+                                  ) : (
+                                    <div>
+                                      {Array.from({ length: rows }).map(
+                                        (_, rowIndex) => {
+                                          let rowItemsCount = itemsPerRow;
+                                          if (lessonsAtTime.length === 7) {
+                                            rowItemsCount =
+                                              rowIndex === 0 ? 4 : 3;
+                                          }
 
-                                      const startIdx = rowIndex === 0 ? 0 : (lessonsAtTime.length === 7 ? 4 : rowIndex * itemsPerRow);
-                                      const endIdx = rowIndex === 0 ? rowItemsCount : startIdx + rowItemsCount;
-                                      const rowLessons = lessonsAtTime.slice(startIdx, endIdx);
-
-                                      return (
-                                        <div
-                                          key={rowIndex}
-                                          className="grid mb-1"
-                                          style={{ gridTemplateColumns: `repeat(${rowItemsCount}, minmax(0, 1fr))`, gap: '2px' }}
-                                        >
-                                          {rowLessons.map((lesson) => {
-                                            let displayMode: "full" | "compact-2" | "compact-3" | "compact-5" | "compact-many" = "full";
-                                            if (itemsPerRow === 2 || rowItemsCount === 2) displayMode = "compact-2";
-                                            else if (itemsPerRow === 3 || rowItemsCount === 3) displayMode = "compact-3";
-                                            else if (itemsPerRow === 4 || rowItemsCount === 4) displayMode = "compact-3";
-                                            else if (itemsPerRow === 5 || rowItemsCount === 5) displayMode = "compact-5";
-                                            else if (itemsPerRow > 5) displayMode = "compact-many";
-
-                                            return (
-                                              <WeekLessonCard
-                                                key={lesson.classId}
-                                                lesson={lesson}
-                                                isExpanded={false}
-                                                displayMode={displayMode}
-                                                onClick={handleLessonClick}
-                                                onEdit={onEdit}
-                                                onDelete={onDelete}
-                                              />
+                                          const startIdx =
+                                            rowIndex === 0
+                                              ? 0
+                                              : lessonsAtTime.length === 7
+                                                ? 4
+                                                : rowIndex * itemsPerRow;
+                                          const endIdx =
+                                            rowIndex === 0
+                                              ? rowItemsCount
+                                              : startIdx + rowItemsCount;
+                                          const rowLessons =
+                                            lessonsAtTime.slice(
+                                              startIdx,
+                                              endIdx
                                             );
-                                          })}
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
+
+                                          return (
+                                            <div
+                                              key={rowIndex}
+                                              className="grid mb-1"
+                                              style={{
+                                                gridTemplateColumns: `repeat(${rowItemsCount}, minmax(0, 1fr))`,
+                                                gap: "2px",
+                                              }}
+                                            >
+                                              {rowLessons.map((lesson) => {
+                                                let displayMode:
+                                                  | "full"
+                                                  | "compact-2"
+                                                  | "compact-3"
+                                                  | "compact-5"
+                                                  | "compact-many" = "full";
+                                                if (
+                                                  itemsPerRow === 2 ||
+                                                  rowItemsCount === 2
+                                                )
+                                                  displayMode = "compact-2";
+                                                else if (
+                                                  itemsPerRow === 3 ||
+                                                  rowItemsCount === 3
+                                                )
+                                                  displayMode = "compact-3";
+                                                else if (
+                                                  itemsPerRow === 4 ||
+                                                  rowItemsCount === 4
+                                                )
+                                                  displayMode = "compact-3";
+                                                else if (
+                                                  itemsPerRow === 5 ||
+                                                  rowItemsCount === 5
+                                                )
+                                                  displayMode = "compact-5";
+                                                else if (itemsPerRow > 5)
+                                                  displayMode = "compact-many";
+
+                                                return (
+                                                  <WeekLessonCard
+                                                    key={lesson.classId}
+                                                    lesson={lesson}
+                                                    isExpanded={false}
+                                                    displayMode={displayMode}
+                                                    onClick={handleLessonClick}
+                                                    onEdit={onEdit}
+                                                    onDelete={onDelete}
+                                                  />
+                                                );
+                                              })}
+                                            </div>
+                                          );
+                                        }
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            }
+                          )}
 
                           {Object.keys(timeGroups).length === 0 && (
-                            <div className="text-center text-gray-400 py-8 text-sm">予定なし</div>
+                            <div className="text-center text-gray-400 py-8 text-sm">
+                              予定なし
+                            </div>
                           )}
                         </div>
 
                         {/* Create Lesson Button */}
-                        {onCreateLesson && (() => {
-                          // Get current date and target date for comparison
-                          const today = new Date();
-                          const dayDate = new Date(day.date);
-                          
-                          // Normalize to start of day for accurate comparison
-                          today.setHours(0, 0, 0, 0);
-                          dayDate.setHours(0, 0, 0, 0);
-                          
-                          // Don't render button for past dates
-                          if (dayDate < today) {
-                            return null;
-                          }
-                          
-                          return (
-                            <div className="mt-2 pt-2 border-t border-border/50">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleCreateLessonClick(day.date)}
-                                className="w-full h-8 text-xs text-muted-foreground hover:text-foreground hover:bg-accent"
-                              >
-                                <Plus className="w-3 h-3 mr-1" />
-                                授業を作成
-                              </Button>
-                            </div>
-                          );
-                        })()}
+                        {onCreateLesson &&
+                          (() => {
+                            // Get current date and target date for comparison
+                            const today = new Date();
+                            const dayDate = new Date(day.date);
+
+                            // Normalize to start of day for accurate comparison
+                            today.setHours(0, 0, 0, 0);
+                            dayDate.setHours(0, 0, 0, 0);
+
+                            // Don't render button for past dates
+                            if (dayDate < today) {
+                              return null;
+                            }
+
+                            return (
+                              <div className="mt-2 pt-2 border-t border-border/50">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() =>
+                                    handleCreateLessonClick(day.date)
+                                  }
+                                  className="w-full h-8 text-xs text-muted-foreground hover:text-foreground hover:bg-accent"
+                                >
+                                  <Plus className="w-3 h-3 mr-1" />
+                                  授業を作成
+                                </Button>
+                              </div>
+                            );
+                          })()}
                       </div>
                     );
                   })}

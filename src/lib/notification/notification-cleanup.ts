@@ -1,6 +1,6 @@
-import { prisma } from '@/lib/prisma';
-import { NotificationStatus } from '@prisma/client';
-import { logCleanupOperation } from './notification-cleanup-logger';
+import { prisma } from "@/lib/prisma";
+import { NotificationStatus } from "@prisma/client";
+import { logCleanupOperation } from "./notification-cleanup-logger";
 
 export interface CleanupConfig {
   retentionDays: {
@@ -48,16 +48,18 @@ const DEFAULT_CONFIG: CleanupConfig = {
 /**
  * Gets cleanup statistics for notifications
  */
-export const getCleanupStats = async (branchId?: string): Promise<CleanupStats[]> => {
+export const getCleanupStats = async (
+  branchId?: string
+): Promise<CleanupStats[]> => {
   const stats = await prisma.notification.groupBy({
-    by: ['status'],
+    by: ["status"],
     where: branchId ? { branchId } : undefined,
     _count: true,
     _min: { createdAt: true },
     _max: { createdAt: true },
   });
 
-  return stats.map(stat => ({
+  return stats.map((stat) => ({
     status: stat.status,
     count: stat._count,
     oldestRecord: stat._min.createdAt,
@@ -71,7 +73,9 @@ export const getCleanupStats = async (branchId?: string): Promise<CleanupStats[]
 export const getEligibleNotifications = async (
   config: CleanupConfig,
   branchId?: string
-): Promise<{ status: NotificationStatus; count: number; cutoffDate: Date }[]> => {
+): Promise<
+  { status: NotificationStatus; count: number; cutoffDate: Date }[]
+> => {
   const results = [];
 
   for (const [status, retentionDays] of Object.entries(config.retentionDays)) {
@@ -113,7 +117,7 @@ export const cleanupNotifications = async (
 ): Promise<CleanupResult> => {
   const startTime = Date.now();
   const finalConfig = { ...DEFAULT_CONFIG, ...config };
-  
+
   const result: CleanupResult = {
     success: false,
     totalProcessed: 0,
@@ -125,12 +129,17 @@ export const cleanupNotifications = async (
   };
 
   try {
-    console.log(`Starting notification cleanup ${finalConfig.dryRun ? '(DRY RUN)' : ''}...`);
-    
-    const eligibleNotifications = await getEligibleNotifications(finalConfig, branchId);
-    
+    console.log(
+      `Starting notification cleanup ${finalConfig.dryRun ? "(DRY RUN)" : ""}...`
+    );
+
+    const eligibleNotifications = await getEligibleNotifications(
+      finalConfig,
+      branchId
+    );
+
     if (eligibleNotifications.length === 0) {
-      console.log('No notifications eligible for cleanup');
+      console.log("No notifications eligible for cleanup");
       result.success = true;
       result.executionTimeMs = Date.now() - startTime;
       return result;
@@ -138,24 +147,31 @@ export const cleanupNotifications = async (
 
     for (const { status, count, cutoffDate } of eligibleNotifications) {
       if (Date.now() - startTime > finalConfig.maxExecutionTimeMs) {
-        result.errors.push('Maximum execution time exceeded');
+        result.errors.push("Maximum execution time exceeded");
         break;
       }
 
-      console.log(`Processing ${count} ${status} notifications older than ${cutoffDate.toISOString()}`);
-      
+      console.log(
+        `Processing ${count} ${status} notifications older than ${cutoffDate.toISOString()}`
+      );
+
       let processedForStatus = 0;
       let deletedForStatus = 0;
 
       // Process in batches
       while (processedForStatus < count) {
         if (Date.now() - startTime > finalConfig.maxExecutionTimeMs) {
-          result.errors.push('Maximum execution time exceeded during batch processing');
+          result.errors.push(
+            "Maximum execution time exceeded during batch processing"
+          );
           break;
         }
 
-        const batchSize = Math.min(finalConfig.batchSize, count - processedForStatus);
-        
+        const batchSize = Math.min(
+          finalConfig.batchSize,
+          count - processedForStatus
+        );
+
         try {
           if (finalConfig.dryRun) {
             // For dry run, just count what would be deleted
@@ -188,7 +204,7 @@ export const cleanupNotifications = async (
             const deleteResult = await prisma.notification.deleteMany({
               where: {
                 notificationId: {
-                  in: notificationsToDelete.map(n => n.notificationId),
+                  in: notificationsToDelete.map((n) => n.notificationId),
                 },
               },
             });
@@ -197,13 +213,15 @@ export const cleanupNotifications = async (
           }
 
           processedForStatus += batchSize;
-          
+
           // Log progress periodically
           if (processedForStatus % (finalConfig.batchSize * 5) === 0) {
-            console.log(`Processed ${processedForStatus}/${count} ${status} notifications`);
+            console.log(
+              `Processed ${processedForStatus}/${count} ${status} notifications`
+            );
           }
         } catch (error) {
-          const errorMsg = `Error processing ${status} notifications: ${error instanceof Error ? error.message : 'Unknown error'}`;
+          const errorMsg = `Error processing ${status} notifications: ${error instanceof Error ? error.message : "Unknown error"}`;
           result.errors.push(errorMsg);
           console.error(errorMsg);
           break;
@@ -214,16 +232,20 @@ export const cleanupNotifications = async (
       result.totalDeleted += deletedForStatus;
       result.deletedByStatus[status] = deletedForStatus;
 
-      console.log(`Completed ${status}: processed ${processedForStatus}, deleted ${deletedForStatus}`);
+      console.log(
+        `Completed ${status}: processed ${processedForStatus}, deleted ${deletedForStatus}`
+      );
     }
 
     result.success = result.errors.length === 0;
     result.executionTimeMs = Date.now() - startTime;
 
     console.log(`Cleanup completed in ${result.executionTimeMs}ms`);
-    console.log(`Total processed: ${result.totalProcessed}, Total deleted: ${result.totalDeleted}`);
+    console.log(
+      `Total processed: ${result.totalProcessed}, Total deleted: ${result.totalDeleted}`
+    );
     console.log(`Deleted by status:`, result.deletedByStatus);
-    
+
     if (result.errors.length > 0) {
       console.log(`Errors encountered:`, result.errors);
     }
@@ -239,16 +261,18 @@ export const cleanupNotifications = async (
   } catch (error) {
     result.success = false;
     result.executionTimeMs = Date.now() - startTime;
-    result.errors.push(`Cleanup failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    console.error('Notification cleanup failed:', error);
-    
+    result.errors.push(
+      `Cleanup failed: ${error instanceof Error ? error.message : "Unknown error"}`
+    );
+    console.error("Notification cleanup failed:", error);
+
     // Log the failed cleanup operation
     logCleanupOperation(result, finalConfig, {
       branchId,
       userId: logOptions.userId,
       userEmail: logOptions.userEmail,
     });
-    
+
     return result;
   }
 };
@@ -264,7 +288,11 @@ export const dryRunCleanup = async (
     userEmail?: string;
   } = {}
 ): Promise<CleanupResult> => {
-  return cleanupNotifications({ ...config, dryRun: true }, branchId, logOptions);
+  return cleanupNotifications(
+    { ...config, dryRun: true },
+    branchId,
+    logOptions
+  );
 };
 
 /**
@@ -272,17 +300,23 @@ export const dryRunCleanup = async (
  */
 export const getCleanupConfigFromEnv = (): Partial<CleanupConfig> => {
   const config: Partial<CleanupConfig> = {};
-  
+
   // Retention days
   const sentRetention = process.env.NOTIFICATION_CLEANUP_SENT_RETENTION_DAYS;
-  const failedRetention = process.env.NOTIFICATION_CLEANUP_FAILED_RETENTION_DAYS;
+  const failedRetention =
+    process.env.NOTIFICATION_CLEANUP_FAILED_RETENTION_DAYS;
   const batchSize = process.env.NOTIFICATION_CLEANUP_BATCH_SIZE;
-  const maxExecutionTime = process.env.NOTIFICATION_CLEANUP_MAX_EXECUTION_TIME_MS;
+  const maxExecutionTime =
+    process.env.NOTIFICATION_CLEANUP_MAX_EXECUTION_TIME_MS;
 
   if (sentRetention || failedRetention) {
     config.retentionDays = {
-      [NotificationStatus.SENT]: sentRetention ? parseInt(sentRetention, 10) : DEFAULT_CONFIG.retentionDays[NotificationStatus.SENT],
-      [NotificationStatus.FAILED]: failedRetention ? parseInt(failedRetention, 10) : DEFAULT_CONFIG.retentionDays[NotificationStatus.FAILED],
+      [NotificationStatus.SENT]: sentRetention
+        ? parseInt(sentRetention, 10)
+        : DEFAULT_CONFIG.retentionDays[NotificationStatus.SENT],
+      [NotificationStatus.FAILED]: failedRetention
+        ? parseInt(failedRetention, 10)
+        : DEFAULT_CONFIG.retentionDays[NotificationStatus.FAILED],
       [NotificationStatus.PENDING]: 0,
       [NotificationStatus.PROCESSING]: 0,
     };

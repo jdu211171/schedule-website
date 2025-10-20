@@ -5,7 +5,10 @@ import {
   lineChannelFilterSchema,
   type LineChannelSortField,
 } from "@/schemas/line-channel.schema";
-import { LineChannelResponse, LineChannelListResponse } from "@/types/line-channel";
+import {
+  LineChannelResponse,
+  LineChannelListResponse,
+} from "@/types/line-channel";
 
 type UseLineChannelsParams = {
   page?: number;
@@ -39,18 +42,32 @@ export function useLineChannels(params: UseLineChannelsParams = {}) {
   });
 
   const searchParams = new URLSearchParams(
-    Object.entries(query).reduce((acc, [key, value]) => {
-      if (value !== undefined) {
-        acc[key] = String(value);
-      }
-      return acc;
-    }, {} as Record<string, string>)
+    Object.entries(query).reduce(
+      (acc, [key, value]) => {
+        if (value !== undefined) {
+          acc[key] = String(value);
+        }
+        return acc;
+      },
+      {} as Record<string, string>
+    )
   ).toString();
 
   return useQuery<LineChannelListResponse>({
-    queryKey: ["line-channels", page, limit, name, isActive, branchId, sortBy, sortOrder],
+    queryKey: [
+      "line-channels",
+      page,
+      limit,
+      name,
+      isActive,
+      branchId,
+      sortBy,
+      sortOrder,
+    ],
     queryFn: async () => {
-      const response = await fetcher<LineChannelListResponse>(`/api/admin/line-channels?${searchParams}`);
+      const response = await fetcher<LineChannelListResponse>(
+        `/api/admin/line-channels?${searchParams}`
+      );
       // Ensure we always return a valid response structure
       return {
         data: response?.data || [],
@@ -58,8 +75,8 @@ export function useLineChannels(params: UseLineChannelsParams = {}) {
           total: 0,
           page: 1,
           limit: limit,
-          pages: 0
-        }
+          pages: 0,
+        },
       };
     },
   });
@@ -97,9 +114,9 @@ export function useLineChannel(channelId: string) {
   return useQuery<LineChannelResponse>({
     queryKey: ["line-channel", channelId],
     queryFn: async () =>
-      await fetcher<{ data: LineChannelResponse }>(`/api/admin/line-channels/${channelId}`).then(
-        (res) => res.data
-      ),
+      await fetcher<{ data: LineChannelResponse }>(
+        `/api/admin/line-channels/${channelId}`
+      ).then((res) => res.data),
     enabled: !!channelId,
   });
 }

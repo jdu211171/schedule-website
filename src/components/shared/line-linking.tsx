@@ -175,7 +175,7 @@ export function LineLinking({
   onNotificationToggle,
 }: LineLinkingProps) {
   const [localNotificationsEnabled, setLocalNotificationsEnabled] = useState(
-    initialNotificationsEnabled ?? true,
+    initialNotificationsEnabled ?? true
   );
 
   // Update local state when prop changes
@@ -190,7 +190,9 @@ export function LineLinking({
   };
 
   // Load teacher's per-channel links (hook must be unconditionally called)
-  const { data: teacherLinksData } = useQuery<{ data: Array<{ enabled: boolean }> }>({
+  const { data: teacherLinksData } = useQuery<{
+    data: Array<{ enabled: boolean }>;
+  }>({
     queryKey: ["teacher-line-links", userId],
     queryFn: () =>
       fetcher(`/api/teachers/${userId}/line-links?r=${Date.now()}`, {
@@ -204,7 +206,6 @@ export function LineLinking({
 
   // For teachers, show single account view but derive linked status from TeacherLineLink
   if (userType === "teacher") {
-
     return (
       <Card>
         <CardHeader>

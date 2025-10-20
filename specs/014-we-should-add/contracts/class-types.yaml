@@ -42,9 +42,9 @@ paths:
                   data:
                     type: array
                     items:
-                      $ref: '#/components/schemas/ClassType'
+                      $ref: "#/components/schemas/ClassType"
                   pagination:
-                    $ref: '#/components/schemas/Pagination'
+                    $ref: "#/components/schemas/Pagination"
 components:
   schemas:
     ClassType:
@@ -59,7 +59,7 @@ components:
         children:
           type: array
           items:
-            $ref: '#/components/schemas/ClassType'
+            $ref: "#/components/schemas/ClassType"
     Pagination:
       type: object
       properties:
@@ -67,4 +67,3 @@ components:
         page: { type: integer }
         limit: { type: integer }
         pages: { type: integer }
-

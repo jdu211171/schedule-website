@@ -3,7 +3,13 @@ import { MapPin, UserCheck, GraduationCap, Edit } from "lucide-react";
 import React, { useMemo } from "react";
 import { ExtendedClassSessionWithRelations } from "@/hooks/useClassSessionQuery";
 import { format } from "date-fns";
-import { classTypeColorClasses, isValidClassTypeColor, isHexColor, rgba, getContrastText } from "@/lib/class-type-colors";
+import {
+  classTypeColorClasses,
+  isValidClassTypeColor,
+  isHexColor,
+  rgba,
+  getContrastText,
+} from "@/lib/class-type-colors";
 
 interface WeekLessonCardProps {
   lesson: ExtendedClassSessionWithRelations;
@@ -22,18 +28,24 @@ interface WeekLessonCardProps {
 const useLessonColors = (lesson: ExtendedClassSessionWithRelations) => {
   return useMemo(() => {
     // Reserve conflict palette like Day view (override class type colors)
-    if ((lesson as any)?.status === 'CONFLICTED') {
+    if ((lesson as any)?.status === "CONFLICTED") {
       const conflict = {
-        background: 'bg-destructive/15 dark:bg-destructive/25',
-        border: 'border-destructive/80 dark:border-destructive/70',
-        text: 'text-destructive dark:!text-white',
-        hover: 'hover:bg-destructive/25 dark:hover:bg-destructive/30',
-        compactBg: 'bg-destructive/15 dark:bg-destructive/25 hover:bg-destructive/25 dark:hover:bg-destructive/30',
-        compactText: 'text-destructive dark:!text-white',
+        background: "bg-destructive/15 dark:bg-destructive/25",
+        border: "border-destructive/80 dark:border-destructive/70",
+        text: "text-destructive dark:!text-white",
+        hover: "hover:bg-destructive/25 dark:hover:bg-destructive/30",
+        compactBg:
+          "bg-destructive/15 dark:bg-destructive/25 hover:bg-destructive/25 dark:hover:bg-destructive/30",
+        compactText: "text-destructive dark:!text-white",
       } as const;
-      return { classes: conflict, style: undefined as React.CSSProperties | undefined, compactStyle: undefined as React.CSSProperties | undefined };
+      return {
+        classes: conflict,
+        style: undefined as React.CSSProperties | undefined,
+        compactStyle: undefined as React.CSSProperties | undefined,
+      };
     }
-    const colorKey = ((lesson as any)?.classType?.color ?? (lesson as any)?.classTypeColor) as string | undefined;
+    const colorKey = ((lesson as any)?.classType?.color ??
+      (lesson as any)?.classTypeColor) as string | undefined;
     if (isValidClassTypeColor(colorKey)) {
       const cls = classTypeColorClasses[colorKey];
       return {
@@ -49,14 +61,14 @@ const useLessonColors = (lesson: ExtendedClassSessionWithRelations) => {
         compactStyle: undefined as React.CSSProperties | undefined,
       };
     }
-    if (isHexColor(colorKey || '')) {
+    if (isHexColor(colorKey || "")) {
       const bg = rgba(colorKey!, 0.18) || undefined;
       const border = rgba(colorKey!, 0.5) || undefined;
       const textColor = getContrastText(colorKey!);
       const style: React.CSSProperties = {
         backgroundColor: bg,
         borderColor: border,
-        color: textColor === 'white' ? '#f8fafc' : '#0f172a',
+        color: textColor === "white" ? "#f8fafc" : "#0f172a",
       };
       return {
         classes: undefined,
@@ -64,38 +76,41 @@ const useLessonColors = (lesson: ExtendedClassSessionWithRelations) => {
         compactStyle: style,
       };
     }
-    const isRecurringLesson = lesson.seriesId !== null && lesson.seriesId !== undefined;
+    const isRecurringLesson =
+      lesson.seriesId !== null && lesson.seriesId !== undefined;
     const fallback = isRecurringLesson
       ? {
-          background: 'bg-indigo-100 dark:bg-indigo-900/70',
-          border: 'border-indigo-300 dark:border-indigo-700',
-          text: 'text-indigo-800 dark:text-indigo-100',
-          hover: 'hover:bg-indigo-200 dark:hover:bg-indigo-800',
-          compactBg: 'bg-indigo-100 dark:bg-indigo-900/70 hover:bg-indigo-200 dark:hover:bg-indigo-800',
-          compactText: 'text-indigo-800 dark:text-indigo-100',
+          background: "bg-indigo-100 dark:bg-indigo-900/70",
+          border: "border-indigo-300 dark:border-indigo-700",
+          text: "text-indigo-800 dark:text-indigo-100",
+          hover: "hover:bg-indigo-200 dark:hover:bg-indigo-800",
+          compactBg:
+            "bg-indigo-100 dark:bg-indigo-900/70 hover:bg-indigo-200 dark:hover:bg-indigo-800",
+          compactText: "text-indigo-800 dark:text-indigo-100",
         }
       : {
-          background: 'bg-slate-100 dark:bg-slate-800/60',
-          border: 'border-slate-300 dark:border-slate-600',
-          text: 'text-slate-800 dark:text-slate-100',
-          hover: 'hover:bg-slate-200 dark:hover:bg-slate-700',
-          compactBg: 'bg-slate-100 dark:bg-slate-800/60 hover:bg-slate-200 dark:hover:bg-slate-700',
-          compactText: 'text-slate-800 dark:text-slate-100',
+          background: "bg-slate-100 dark:bg-slate-800/60",
+          border: "border-slate-300 dark:border-slate-600",
+          text: "text-slate-800 dark:text-slate-100",
+          hover: "hover:bg-slate-200 dark:hover:bg-slate-700",
+          compactBg:
+            "bg-slate-100 dark:bg-slate-800/60 hover:bg-slate-200 dark:hover:bg-slate-700",
+          compactText: "text-slate-800 dark:text-slate-100",
         };
     return { classes: fallback, style: undefined, compactStyle: undefined };
   }, [lesson]);
 };
 
 const formatTimeDisplay = (time: Date | string): string => {
-  if (typeof time === 'string') {
+  if (typeof time === "string") {
     return time;
   }
-  return format(time, 'HH:mm');
+  return format(time, "HH:mm");
 };
 
 const getShortName = (fullName: string): string => {
-  const parts = fullName.split(' ');
-  return parts[0] || fullName; 
+  const parts = fullName.split(" ");
+  return parts[0] || fullName;
 };
 
 const WeekLessonCard: React.FC<WeekLessonCardProps> = ({
@@ -106,12 +121,16 @@ const WeekLessonCard: React.FC<WeekLessonCardProps> = ({
   onEdit,
 }) => {
   const { classes: colors, style, compactStyle } = useLessonColors(lesson);
-  const isConflicted = (lesson as any)?.status === 'CONFLICTED';
+  const isConflicted = (lesson as any)?.status === "CONFLICTED";
   const stripePx = 3;
   const stripeStyle: React.CSSProperties | undefined = isConflicted
-    ? { backgroundImage: `repeating-linear-gradient(45deg, rgba(220, 38, 38, 0.18) 0px, rgba(220, 38, 38, 0.18) ${stripePx}px, transparent ${stripePx}px, transparent ${stripePx * 2}px)` }
+    ? {
+        backgroundImage: `repeating-linear-gradient(45deg, rgba(220, 38, 38, 0.18) 0px, rgba(220, 38, 38, 0.18) ${stripePx}px, transparent ${stripePx}px, transparent ${stripePx * 2}px)`,
+      }
     : undefined;
-  const conflictBorder: React.CSSProperties | undefined = isConflicted ? { borderColor: 'rgba(220, 38, 38, 0.7)' } : undefined;
+  const conflictBorder: React.CSSProperties | undefined = isConflicted
+    ? { borderColor: "rgba(220, 38, 38, 0.7)" }
+    : undefined;
 
   const handleEdit = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -119,16 +138,25 @@ const WeekLessonCard: React.FC<WeekLessonCardProps> = ({
   };
 
   // Get student type and grade
-  const studentType = lesson.studentTypeName || lesson.student?.studentType?.name || '';
-  const gradeYear = lesson.studentGradeYear || lesson.student?.gradeYear || '';
-  const studentTypeLabel = studentType && gradeYear ? `${studentType.charAt(0)}${gradeYear}` : '';
+  const studentType =
+    lesson.studentTypeName || lesson.student?.studentType?.name || "";
+  const gradeYear = lesson.studentGradeYear || lesson.student?.gradeYear || "";
+  const studentTypeLabel =
+    studentType && gradeYear ? `${studentType.charAt(0)}${gradeYear}` : "";
 
   if (isExpanded) {
     return (
-      <div className="w-full cursor-pointer" onClick={() => onClick(lesson.classId)}>
+      <div
+        className="w-full cursor-pointer"
+        onClick={() => onClick(lesson.classId)}
+      >
         <Card
-          className={`p-2 space-y-2 ${colors ? `${colors.background} ${colors.border} ${colors.hover}` : ''} border h-full transition-colors duration-100`}
-          style={{ ...(style || {}), ...(stripeStyle || {}), ...(conflictBorder || {}) }}
+          className={`p-2 space-y-2 ${colors ? `${colors.background} ${colors.border} ${colors.hover}` : ""} border h-full transition-colors duration-100`}
+          style={{
+            ...(style || {}),
+            ...(stripeStyle || {}),
+            ...(conflictBorder || {}),
+          }}
         >
           <CardContent className={`p-1.5 space-y-2 dark:!text-white relative`}>
             {/* Edit button */}
@@ -161,9 +189,7 @@ const WeekLessonCard: React.FC<WeekLessonCardProps> = ({
 
             {/* Bottom row */}
             <div className="flex justify-between items-end text-sm">
-              <span className="truncate">
-                {lesson.boothName}
-              </span>
+              <span className="truncate">{lesson.boothName}</span>
               <span className="truncate text-right font-medium">
                 {lesson.subjectName}
               </span>
@@ -196,15 +222,25 @@ const WeekLessonCard: React.FC<WeekLessonCardProps> = ({
             onClick={() => onClick(lesson.classId)}
           >
             <div
-              className={`${colors ? `${colors.compactBg}` : ''} p-1.5 px-2 rounded flex items-center justify-between mb-1 text-xs transition-colors duration-100 dark:!text-white`}
-              style={{ ...(compactStyle || {}), ...(stripeStyle || {}), ...(conflictBorder || {}) }}
+              className={`${colors ? `${colors.compactBg}` : ""} p-1.5 px-2 rounded flex items-center justify-between mb-1 text-xs transition-colors duration-100 dark:!text-white`}
+              style={{
+                ...(compactStyle || {}),
+                ...(stripeStyle || {}),
+                ...(conflictBorder || {}),
+              }}
             >
               <div className="flex items-center gap-0.5 overflow-hidden">
-                <span className="font-medium truncate">{getShortName(lesson.teacherName || '')}</span>
+                <span className="font-medium truncate">
+                  {getShortName(lesson.teacherName || "")}
+                </span>
                 <span className="opacity-60">・</span>
-                <span className="truncate">{getShortName(lesson.studentName || '')}</span>
+                <span className="truncate">
+                  {getShortName(lesson.studentName || "")}
+                </span>
                 <span className="opacity-60">・</span>
-                <span className="text-[10px] opacity-90">{lesson.boothName}</span>
+                <span className="text-[10px] opacity-90">
+                  {lesson.boothName}
+                </span>
               </div>
             </div>
           </div>
@@ -217,15 +253,26 @@ const WeekLessonCard: React.FC<WeekLessonCardProps> = ({
             onClick={() => onClick(lesson.classId)}
           >
             <div
-              className={`${colors ? `${colors.compactBg}` : ''} p-1 rounded flex items-center justify-center mb-1 transition-colors duration-100 dark:!text-white`}
-              style={{ ...(compactStyle || {}), ...(stripeStyle || {}), ...(conflictBorder || {}) }}
+              className={`${colors ? `${colors.compactBg}` : ""} p-1 rounded flex items-center justify-center mb-1 transition-colors duration-100 dark:!text-white`}
+              style={{
+                ...(compactStyle || {}),
+                ...(stripeStyle || {}),
+                ...(conflictBorder || {}),
+              }}
             >
-              <div className="text-xs truncate font-medium">{lesson.boothName}</div>
+              <div className="text-xs truncate font-medium">
+                {lesson.boothName}
+              </div>
             </div>
             <div className="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 mb-2 p-2 bg-gray-900 text-white text-xs rounded-md shadow-lg invisible group-hover:visible whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none">
               <div className="font-medium">{lesson.subjectName}</div>
-              <div>{lesson.teacherName} → {lesson.studentName}</div>
-              <div>{lesson.boothName} | {formatTimeDisplay(lesson.startTime)} - {formatTimeDisplay(lesson.endTime)}</div>
+              <div>
+                {lesson.teacherName} → {lesson.studentName}
+              </div>
+              <div>
+                {lesson.boothName} | {formatTimeDisplay(lesson.startTime)} -{" "}
+                {formatTimeDisplay(lesson.endTime)}
+              </div>
               <div className="absolute top-full left-1/2 transform -translate-x-1/2 -mt-px">
                 <div className="border-4 border-transparent border-t-gray-900"></div>
               </div>
@@ -240,17 +287,26 @@ const WeekLessonCard: React.FC<WeekLessonCardProps> = ({
             onClick={() => onClick(lesson.classId)}
           >
             <div
-              className={`${colors ? `${colors.compactBg}` : ''} p-0.5 px-1 rounded flex items-center justify-center mb-1 transition-colors duration-100 dark:!text-white`}
-              style={{ ...(compactStyle || {}), ...(stripeStyle || {}), ...(conflictBorder || {}) }}
+              className={`${colors ? `${colors.compactBg}` : ""} p-0.5 px-1 rounded flex items-center justify-center mb-1 transition-colors duration-100 dark:!text-white`}
+              style={{
+                ...(compactStyle || {}),
+                ...(stripeStyle || {}),
+                ...(conflictBorder || {}),
+              }}
             >
               <div className="text-[11px] font-bold">
-                {lesson.boothName?.replace('Booth-', '').substring(0, 1)}
+                {lesson.boothName?.replace("Booth-", "").substring(0, 1)}
               </div>
             </div>
             <div className="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 mb-2 p-2 bg-gray-900 text-white text-xs rounded-md shadow-lg invisible group-hover:visible whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none">
               <div className="font-medium">{lesson.subjectName}</div>
-              <div>{lesson.teacherName} → {lesson.studentName}</div>
-              <div>{lesson.boothName} | {formatTimeDisplay(lesson.startTime)} - {formatTimeDisplay(lesson.endTime)}</div>
+              <div>
+                {lesson.teacherName} → {lesson.studentName}
+              </div>
+              <div>
+                {lesson.boothName} | {formatTimeDisplay(lesson.startTime)} -{" "}
+                {formatTimeDisplay(lesson.endTime)}
+              </div>
               <div className="absolute top-full left-1/2 transform -translate-x-1/2 -mt-px">
                 <div className="border-4 border-transparent border-t-gray-900"></div>
               </div>
@@ -265,17 +321,26 @@ const WeekLessonCard: React.FC<WeekLessonCardProps> = ({
             onClick={() => onClick(lesson.classId)}
           >
             <div
-              className={`${colors ? `${colors.compactBg}` : ''} h-6 rounded flex justify-center items-center mb-1 transition-colors duration-100 dark:!text-white`}
-              style={{ ...(compactStyle || {}), ...(stripeStyle || {}), ...(conflictBorder || {}) }}
+              className={`${colors ? `${colors.compactBg}` : ""} h-6 rounded flex justify-center items-center mb-1 transition-colors duration-100 dark:!text-white`}
+              style={{
+                ...(compactStyle || {}),
+                ...(stripeStyle || {}),
+                ...(conflictBorder || {}),
+              }}
             >
               <div className="text-[10px] font-bold">
-                {lesson.boothName?.replace('Booth-', '').substring(0, 1)}
+                {lesson.boothName?.replace("Booth-", "").substring(0, 1)}
               </div>
             </div>
             <div className="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 mb-2 p-2 bg-gray-900 text-white text-xs rounded-md shadow-lg invisible group-hover:visible whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none">
               <div className="font-medium">{lesson.subjectName}</div>
-              <div>{lesson.teacherName} → {lesson.studentName}</div>
-              <div>{lesson.boothName} | {formatTimeDisplay(lesson.startTime)} - {formatTimeDisplay(lesson.endTime)}</div>
+              <div>
+                {lesson.teacherName} → {lesson.studentName}
+              </div>
+              <div>
+                {lesson.boothName} | {formatTimeDisplay(lesson.startTime)} -{" "}
+                {formatTimeDisplay(lesson.endTime)}
+              </div>
               <div className="absolute top-full left-1/2 transform -translate-x-1/2 -mt-px">
                 <div className="border-4 border-transparent border-t-gray-900"></div>
               </div>
@@ -291,13 +356,18 @@ const WeekLessonCard: React.FC<WeekLessonCardProps> = ({
             onClick={() => onClick(lesson.classId)}
           >
             <div
-              className={`${colors ? colors.compactBg : ''} rounded-sm h-5 w-5 mx-auto mb-1 transition-colors duration-100`}
+              className={`${colors ? colors.compactBg : ""} rounded-sm h-5 w-5 mx-auto mb-1 transition-colors duration-100`}
               style={{ ...(compactStyle || {}), ...(stripeStyle || {}) }}
             ></div>
             <div className="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 mb-2 p-2 bg-gray-900 text-white text-xs rounded-md shadow-lg invisible group-hover:visible whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none">
               <div className="font-medium">{lesson.subjectName}</div>
-              <div>{lesson.teacherName} → {lesson.studentName}</div>
-              <div>{lesson.boothName} | {formatTimeDisplay(lesson.startTime)} - {formatTimeDisplay(lesson.endTime)}</div>
+              <div>
+                {lesson.teacherName} → {lesson.studentName}
+              </div>
+              <div>
+                {lesson.boothName} | {formatTimeDisplay(lesson.startTime)} -{" "}
+                {formatTimeDisplay(lesson.endTime)}
+              </div>
               <div className="absolute top-full left-1/2 transform -translate-x-1/2 -mt-px">
                 <div className="border-4 border-transparent border-t-gray-900"></div>
               </div>

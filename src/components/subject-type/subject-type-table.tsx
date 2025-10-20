@@ -47,7 +47,10 @@ export function SubjectTypeTable() {
   const updateSubjectTypeMutation = useSubjectTypeUpdate();
   const deleteSubjectTypeMutation = useSubjectTypeDelete();
   const updateOrderMutation = useSubjectTypeOrderUpdate();
-  const { exportToCSV, isExporting } = useGenericExport("/api/subject-types/export", "subject_types");
+  const { exportToCSV, isExporting } = useGenericExport(
+    "/api/subject-types/export",
+    "subject_types"
+  );
 
   // Use local state during sort mode, otherwise use server data
   const typedSubjectTypes = isSortMode
@@ -157,8 +160,8 @@ export function SubjectTypeTable() {
   const handleExport = () => {
     // Get visible columns (all columns except actions)
     const visibleColumns = columns
-      .map(col => (col as any).accessorKey)
-      .filter(key => key) as string[];
+      .map((col) => (col as any).accessorKey)
+      .filter((key) => key) as string[];
     exportToCSV({ columns: visibleColumns, query: { name: searchTerm || "" } });
   };
 

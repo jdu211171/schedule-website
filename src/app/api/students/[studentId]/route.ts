@@ -7,7 +7,7 @@ import { studentUpdateSchema } from "@/schemas/student.schema";
 import { Student, StudentType, DayOfWeek, Prisma } from "@prisma/client";
 
 // Define a type for the student with includes
-type StudentWithIncludes = (Prisma.StudentGetPayload<{
+type StudentWithIncludes = Prisma.StudentGetPayload<{
   include: {
     studentType: true;
     user: {
@@ -55,7 +55,7 @@ type StudentWithIncludes = (Prisma.StudentGetPayload<{
     contactPhones: true;
     contactEmails: true;
   };
-}>) & { admissionDate: Date | null };
+}> & { admissionDate: Date | null };
 
 // Define the return type for the formatted student
 export type FormattedStudent = {
@@ -253,7 +253,8 @@ const formatStudent = (student: StudentWithIncludes): FormattedStudent => {
   const today = new Date();
   today.setHours(0, 0, 0, 0); // Set to start of day for comparison
 
-  const exceptionalAvailability: FormattedStudent['exceptionalAvailability'] = [];
+  const exceptionalAvailability: FormattedStudent["exceptionalAvailability"] =
+    [];
 
   student.user.availability?.forEach((avail) => {
     if (
@@ -268,10 +269,10 @@ const formatStudent = (student: StudentWithIncludes): FormattedStudent => {
         return; // Skip this entry
       }
 
-      const dateStr = avail.date.toISOString().split('T')[0];
+      const dateStr = avail.date.toISOString().split("T")[0];
 
       // Check if we already have an entry for this date
-      let dateEntry = exceptionalAvailability.find(ea => ea.date === dateStr);
+      let dateEntry = exceptionalAvailability.find((ea) => ea.date === dateStr);
 
       if (!dateEntry) {
         dateEntry = {
@@ -279,7 +280,7 @@ const formatStudent = (student: StudentWithIncludes): FormattedStudent => {
           timeSlots: [],
           fullDay: false,
           reason: avail.reason,
-          notes: avail.notes
+          notes: avail.notes,
         };
         exceptionalAvailability.push(dateEntry);
       }
@@ -291,35 +292,31 @@ const formatStudent = (student: StudentWithIncludes): FormattedStudent => {
         dateEntry.timeSlots.push({
           id: avail.id,
           startTime: `${String(avail.startTime.getUTCHours()).padStart(2, "0")}:${String(avail.startTime.getUTCMinutes()).padStart(2, "0")}`,
-          endTime: `${String(avail.endTime.getUTCHours()).padStart(2, "0")}:${String(avail.endTime.getUTCMinutes()).padStart(2, "0")}`
+          endTime: `${String(avail.endTime.getUTCHours()).padStart(2, "0")}:${String(avail.endTime.getUTCMinutes()).padStart(2, "0")}`,
         });
       }
     }
   });
 
   // Process absence availability data - filter out past dates
-  const absenceAvailability: FormattedStudent['absenceAvailability'] = [];
+  const absenceAvailability: FormattedStudent["absenceAvailability"] = [];
   student.user.availability?.forEach((avail) => {
-    if (
-      avail.type === "ABSENCE" &&
-      avail.status === "APPROVED" &&
-      avail.date
-    ) {
+    if (avail.type === "ABSENCE" && avail.status === "APPROVED" && avail.date) {
       const availDate = new Date(avail.date);
       availDate.setHours(0, 0, 0, 0);
       if (availDate < today) {
         return; // Skip past entries
       }
 
-      const dateStr = avail.date.toISOString().split('T')[0];
-      let dateEntry = absenceAvailability.find(ea => ea.date === dateStr);
+      const dateStr = avail.date.toISOString().split("T")[0];
+      let dateEntry = absenceAvailability.find((ea) => ea.date === dateStr);
       if (!dateEntry) {
         dateEntry = {
           date: dateStr,
           timeSlots: [],
           fullDay: false,
           reason: avail.reason,
-          notes: avail.notes
+          notes: avail.notes,
         };
         absenceAvailability.push(dateEntry);
       }
@@ -331,7 +328,7 @@ const formatStudent = (student: StudentWithIncludes): FormattedStudent => {
         dateEntry.timeSlots.push({
           id: avail.id,
           startTime: `${String(avail.startTime.getUTCHours()).padStart(2, "0")}:${String(avail.startTime.getUTCMinutes()).padStart(2, "0")}`,
-          endTime: `${String(avail.endTime.getUTCHours()).padStart(2, "0")}:${String(avail.endTime.getUTCMinutes()).padStart(2, "0")}`
+          endTime: `${String(avail.endTime.getUTCHours()).padStart(2, "0")}:${String(avail.endTime.getUTCMinutes()).padStart(2, "0")}`,
         });
       }
     }
@@ -381,20 +378,22 @@ const formatStudent = (student: StudentWithIncludes): FormattedStudent => {
     // Personal information
     birthDate: student.birthDate,
     // Contact phones
-    contactPhones: student.contactPhones?.map(phone => ({
-      id: phone.id,
-      phoneType: phone.phoneType,
-      phoneNumber: phone.phoneNumber,
-      notes: phone.notes,
-      order: phone.order,
-    })) || [],
+    contactPhones:
+      student.contactPhones?.map((phone) => ({
+        id: phone.id,
+        phoneType: phone.phoneType,
+        phoneNumber: phone.phoneNumber,
+        notes: phone.notes,
+        order: phone.order,
+      })) || [],
     // Contact emails
-    contactEmails: student.contactEmails?.map(e => ({
-      id: e.id,
-      email: e.email,
-      notes: e.notes,
-      order: e.order,
-    })) || [],
+    contactEmails:
+      student.contactEmails?.map((e) => ({
+        id: e.id,
+        email: e.email,
+        notes: e.notes,
+        order: e.order,
+      })) || [],
     createdAt: student.createdAt,
     updatedAt: student.updatedAt,
   };
@@ -668,10 +667,18 @@ export const PATCH = withBranchAccess(
         // Clean up optional fields - convert empty strings to null
         const cleanedStudentData: Record<string, unknown> = {};
         for (const [key, value] of Object.entries(studentData)) {
-          if (key === 'lineUserId' || key === 'kanaName' || key === 'notes' ||
-              key === 'schoolName' || key === 'firstChoice' || key === 'secondChoice' ||
-              key === 'parentEmail' || key === 'homePhone' || key === 'parentPhone' ||
-              key === 'studentPhone') {
+          if (
+            key === "lineUserId" ||
+            key === "kanaName" ||
+            key === "notes" ||
+            key === "schoolName" ||
+            key === "firstChoice" ||
+            key === "secondChoice" ||
+            key === "parentEmail" ||
+            key === "homePhone" ||
+            key === "parentPhone" ||
+            key === "studentPhone"
+          ) {
             cleanedStudentData[key] = value || null;
           } else {
             cleanedStudentData[key] = value;
@@ -835,7 +842,8 @@ export const PATCH = withBranchAccess(
             const exceptionalRecords = [];
 
             for (const exceptionalItem of exceptionalAvailability) {
-              const { date, fullDay, startTime, endTime, reason, notes } = exceptionalItem;
+              const { date, fullDay, startTime, endTime, reason, notes } =
+                exceptionalItem;
 
               // Create UTC date from the date input
               const createUTCDate = (dateInput: Date): Date => {
@@ -863,7 +871,9 @@ export const PATCH = withBranchAccess(
                 });
               } else if (startTime && endTime) {
                 // Create time-specific exceptional availability record
-                const [startHours, startMinutes] = startTime.split(":").map(Number);
+                const [startHours, startMinutes] = startTime
+                  .split(":")
+                  .map(Number);
                 const [endHours, endMinutes] = endTime.split(":").map(Number);
 
                 exceptionalRecords.push({
@@ -897,7 +907,9 @@ export const PATCH = withBranchAccess(
                   newEndTime: rec.endTime,
                 });
               }
-              await tx.userAvailability.createMany({ data: exceptionalRecords });
+              await tx.userAvailability.createMany({
+                data: exceptionalRecords,
+              });
             }
           }
         }
@@ -915,7 +927,8 @@ export const PATCH = withBranchAccess(
             const absenceRecords = [];
 
             for (const absenceItem of absenceAvailability) {
-              const { date, fullDay, startTime, endTime, reason, notes } = absenceItem;
+              const { date, fullDay, startTime, endTime, reason, notes } =
+                absenceItem;
 
               const createUTCDate = (dateInput: Date): Date => {
                 const year = dateInput.getFullYear();
@@ -940,7 +953,9 @@ export const PATCH = withBranchAccess(
                   notes: notes || null,
                 });
               } else if (startTime && endTime) {
-                const [startHours, startMinutes] = startTime.split(":").map(Number);
+                const [startHours, startMinutes] = startTime
+                  .split(":")
+                  .map(Number);
                 const [endHours, endMinutes] = endTime.split(":").map(Number);
 
                 absenceRecords.push({
@@ -1102,7 +1117,9 @@ export const PATCH = withBranchAccess(
       }
 
       // Format response using the helper function
-      const formattedStudent = formatStudent(updatedStudent as StudentWithIncludes);
+      const formattedStudent = formatStudent(
+        updatedStudent as StudentWithIncludes
+      );
 
       return NextResponse.json({
         data: [formattedStudent],
@@ -1130,10 +1147,7 @@ export const DELETE = withBranchAccess(
     const studentId = request.url.split("/").pop();
 
     if (!studentId) {
-      return NextResponse.json(
-        { error: "生徒IDが必要です" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "生徒IDが必要です" }, { status: 400 });
     }
 
     // Get selected branch from headers
@@ -1170,31 +1184,32 @@ export const DELETE = withBranchAccess(
             { studentId }, // Primary student
             {
               studentClassEnrollments: {
-                some: { studentId } // Enrolled student
-              }
-            }
-          ]
+                some: { studentId }, // Enrolled student
+              },
+            },
+          ],
         },
         select: {
           classId: true,
-          branch: { select: { name: true } }
-        }
+          branch: { select: { name: true } },
+        },
       });
 
       const uniqueClassSessionCount = classSessions.length;
 
       // Count preferences separately (not branch-specific)
       const preferenceCount = await prisma.studentTeacherPreference.count({
-        where: { studentId }
+        where: { studentId },
       });
 
       if (uniqueClassSessionCount > 0) {
         // Get unique branch names
-        const branchNames = [...new Set(classSessions
-          .map(s => s.branch?.name)
-          .filter(Boolean))];
+        const branchNames = [
+          ...new Set(classSessions.map((s) => s.branch?.name).filter(Boolean)),
+        ];
 
-        const branchText = branchNames.length > 0 ? `（${branchNames.join('、')}）` : '';
+        const branchText =
+          branchNames.length > 0 ? `（${branchNames.join("、")}）` : "";
 
         return NextResponse.json(
           {
@@ -1202,8 +1217,8 @@ export const DELETE = withBranchAccess(
             details: {
               classSessions: uniqueClassSessionCount,
               branches: branchNames,
-              ...(preferenceCount > 0 && { preferences: preferenceCount })
-            }
+              ...(preferenceCount > 0 && { preferences: preferenceCount }),
+            },
           },
           { status: 400 }
         );
@@ -1251,15 +1266,16 @@ export const DELETE = withBranchAccess(
       } catch (error: unknown) {
         // Handle foreign key constraint violations
         const err = error as { code?: string };
-        if (err?.code === 'P2003') {
+        if (err?.code === "P2003") {
           console.error("Foreign key constraint error:", error);
           return NextResponse.json(
             {
               error: "生徒を削除できません。関連するデータが存在します。",
               details: {
-                message: "削除前に関連する授業セッションや設定を確認してください。",
-                code: err.code
-              }
+                message:
+                  "削除前に関連する授業セッションや設定を確認してください。",
+                code: err.code,
+              },
             },
             { status: 400 }
           );

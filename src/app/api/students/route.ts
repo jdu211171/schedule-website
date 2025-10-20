@@ -275,7 +275,8 @@ const formatStudent = (student: StudentWithIncludes): FormattedStudent => {
   const today = new Date();
   today.setHours(0, 0, 0, 0); // Set to start of day for comparison
 
-  const exceptionalAvailability: FormattedStudent['exceptionalAvailability'] = [];
+  const exceptionalAvailability: FormattedStudent["exceptionalAvailability"] =
+    [];
 
   student.user.availability?.forEach((avail) => {
     if (
@@ -290,10 +291,13 @@ const formatStudent = (student: StudentWithIncludes): FormattedStudent => {
         return; // Skip this entry
       }
 
-      const dateStr = avail.date.toISOString().split('T')[0];
+      const dateStr = avail.date.toISOString().split("T")[0];
 
       // Check if we already have an entry for this date
-      let dateEntry = exceptionalAvailability.find((ea: FormattedStudent['exceptionalAvailability'][number]) => ea.date === dateStr);
+      let dateEntry = exceptionalAvailability.find(
+        (ea: FormattedStudent["exceptionalAvailability"][number]) =>
+          ea.date === dateStr
+      );
 
       if (!dateEntry) {
         dateEntry = {
@@ -301,7 +305,7 @@ const formatStudent = (student: StudentWithIncludes): FormattedStudent => {
           timeSlots: [],
           fullDay: false,
           reason: avail.reason,
-          notes: avail.notes
+          notes: avail.notes,
         };
         exceptionalAvailability.push(dateEntry);
       }
@@ -313,34 +317,30 @@ const formatStudent = (student: StudentWithIncludes): FormattedStudent => {
         dateEntry.timeSlots.push({
           id: avail.id,
           startTime: `${String(avail.startTime.getUTCHours()).padStart(2, "0")}:${String(avail.startTime.getUTCMinutes()).padStart(2, "0")}`,
-          endTime: `${String(avail.endTime.getUTCHours()).padStart(2, "0")}:${String(avail.endTime.getUTCMinutes()).padStart(2, "0")}`
+          endTime: `${String(avail.endTime.getUTCHours()).padStart(2, "0")}:${String(avail.endTime.getUTCMinutes()).padStart(2, "0")}`,
         });
       }
     }
   });
 
   // Process absence availability data - filter out past dates
-  const absenceAvailability: FormattedStudent['absenceAvailability'] = [];
+  const absenceAvailability: FormattedStudent["absenceAvailability"] = [];
   student.user.availability?.forEach((avail) => {
-    if (
-      avail.type === "ABSENCE" &&
-      avail.status === "APPROVED" &&
-      avail.date
-    ) {
+    if (avail.type === "ABSENCE" && avail.status === "APPROVED" && avail.date) {
       const availDate = new Date(avail.date);
       availDate.setHours(0, 0, 0, 0);
       if (availDate < today) {
         return;
       }
-      const dateStr = avail.date.toISOString().split('T')[0];
-      let dateEntry = absenceAvailability.find(ea => ea.date === dateStr);
+      const dateStr = avail.date.toISOString().split("T")[0];
+      let dateEntry = absenceAvailability.find((ea) => ea.date === dateStr);
       if (!dateEntry) {
         dateEntry = {
           date: dateStr,
           timeSlots: [],
           fullDay: false,
           reason: avail.reason,
-          notes: avail.notes
+          notes: avail.notes,
         };
         absenceAvailability.push(dateEntry);
       }
@@ -351,7 +351,7 @@ const formatStudent = (student: StudentWithIncludes): FormattedStudent => {
         dateEntry.timeSlots.push({
           id: avail.id,
           startTime: `${String(avail.startTime.getUTCHours()).padStart(2, "0")}:${String(avail.startTime.getUTCMinutes()).padStart(2, "0")}`,
-          endTime: `${String(avail.endTime.getUTCHours()).padStart(2, "0")}:${String(avail.endTime.getUTCMinutes()).padStart(2, "0")}`
+          endTime: `${String(avail.endTime.getUTCHours()).padStart(2, "0")}:${String(avail.endTime.getUTCMinutes()).padStart(2, "0")}`,
         });
       }
     }
@@ -402,20 +402,22 @@ const formatStudent = (student: StudentWithIncludes): FormattedStudent => {
     // Personal information
     birthDate: student.birthDate,
     // Contact phones
-    contactPhones: student.contactPhones?.map(phone => ({
-      id: phone.id,
-      phoneType: phone.phoneType,
-      phoneNumber: phone.phoneNumber,
-      notes: phone.notes,
-      order: phone.order,
-    })) || [],
+    contactPhones:
+      student.contactPhones?.map((phone) => ({
+        id: phone.id,
+        phoneType: phone.phoneType,
+        phoneNumber: phone.phoneNumber,
+        notes: phone.notes,
+        order: phone.order,
+      })) || [],
     // Contact emails (non-login)
-    contactEmails: student.contactEmails?.map(e => ({
-      id: e.id,
-      email: e.email,
-      notes: e.notes,
-      order: e.order,
-    })) || [],
+    contactEmails:
+      student.contactEmails?.map((e) => ({
+        id: e.id,
+        email: e.email,
+        notes: e.notes,
+        order: e.order,
+      })) || [],
     createdAt: student.createdAt,
     updatedAt: student.updatedAt,
   };
@@ -430,14 +432,24 @@ export const GET = withBranchAccess(
     const params: Record<string, string | string[]> = {};
 
     // Handle both single values and arrays
-    const arrayParams = ['studentTypeIds', 'gradeYears', 'statuses', 'branchIds', 'subjectIds', 'lineConnection', 'schoolTypes', 'examCategories', 'examCategoryTypes'];
+    const arrayParams = [
+      "studentTypeIds",
+      "gradeYears",
+      "statuses",
+      "branchIds",
+      "subjectIds",
+      "lineConnection",
+      "schoolTypes",
+      "examCategories",
+      "examCategoryTypes",
+    ];
 
     url.searchParams.forEach((value, key) => {
       const existing = params[key];
       if (arrayParams.includes(key)) {
         if (Array.isArray(existing)) {
           existing.push(value);
-        } else if (typeof existing === 'string') {
+        } else if (typeof existing === "string") {
           params[key] = [existing, value];
         } else {
           params[key] = [value];
@@ -601,23 +613,24 @@ export const GET = withBranchAccess(
     if (branchIds && branchIds.length > 0) {
       if (!where.user) where.user = {};
       // Check if branchIds contain UUIDs or names
-      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      const hasUUIDs = branchIds.some(id => isUUID.test(id));
+      const isUUID =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const hasUUIDs = branchIds.some((id) => isUUID.test(id));
 
       if (hasUUIDs) {
         where.user.branches = {
           some: {
-            branchId: { in: branchIds }
-          }
+            branchId: { in: branchIds },
+          },
         };
       } else {
         // If they're names, filter by branch name
         where.user.branches = {
           some: {
             branch: {
-              name: { in: branchIds }
-            }
-          }
+              name: { in: branchIds },
+            },
+          },
         };
       }
     }
@@ -627,8 +640,8 @@ export const GET = withBranchAccess(
       if (!where.user) where.user = {};
       where.user.subjectPreferences = {
         some: {
-          subjectId: { in: subjectIds }
-        }
+          subjectId: { in: subjectIds },
+        },
       };
     }
 
@@ -642,29 +655,20 @@ export const GET = withBranchAccess(
 
       if (lineConnection.includes("connected_enabled")) {
         orConditions.push({
-          AND: [
-            { lineId: { not: null } },
-            { lineNotificationsEnabled: true }
-          ]
+          AND: [{ lineId: { not: null } }, { lineNotificationsEnabled: true }],
         });
       }
 
       if (lineConnection.includes("connected_disabled")) {
         orConditions.push({
-          AND: [
-            { lineId: { not: null } },
-            { lineNotificationsEnabled: false }
-          ]
+          AND: [{ lineId: { not: null } }, { lineNotificationsEnabled: false }],
         });
       }
 
       if (orConditions.length > 0) {
         if (where.OR) {
           // If we already have OR conditions (from name search), wrap them
-          where.AND = [
-            { OR: where.OR },
-            { OR: orConditions }
-          ];
+          where.AND = [{ OR: where.OR }, { OR: orConditions }];
           delete where.OR;
         } else {
           where.OR = orConditions;
@@ -705,12 +709,16 @@ export const GET = withBranchAccess(
     orderBy.push({ status: "asc" });
 
     // Determine independent sort directions
-    const effectiveStudentTypeOrder = (studentTypeOrder
-      ?? (sortBy === "studentTypeName" ? sortOrder : undefined)
-      ?? "asc") as Prisma.SortOrder;
-    const effectiveGradeOrder = (gradeYearOrder
-      ?? (sortBy === "gradeYear" ? sortOrder : undefined)) as Prisma.SortOrder | undefined;
-    const effectiveKanaOrder = (sortBy === "kanaName" ? (sortOrder ?? "asc") : undefined) as Prisma.SortOrder | undefined;
+    const effectiveStudentTypeOrder = (studentTypeOrder ??
+      (sortBy === "studentTypeName" ? sortOrder : undefined) ??
+      "asc") as Prisma.SortOrder;
+    const effectiveGradeOrder = (gradeYearOrder ??
+      (sortBy === "gradeYear" ? sortOrder : undefined)) as
+      | Prisma.SortOrder
+      | undefined;
+    const effectiveKanaOrder = (
+      sortBy === "kanaName" ? (sortOrder ?? "asc") : undefined
+    ) as Prisma.SortOrder | undefined;
 
     // Always order by configured student type sequence (not alphabetical)
     orderBy.push({
@@ -877,7 +885,9 @@ export const POST = withBranchAccess(
       if (session.user?.role !== "ADMIN") {
         // Staff can only assign students to branches they have access to
         const userBranches =
-          (session.user?.branches as Array<{ branchId: string }> | undefined)?.map((b) => b.branchId) || [];
+          (
+            session.user?.branches as Array<{ branchId: string }> | undefined
+          )?.map((b) => b.branchId) || [];
 
         // Verify staff has access to all requested branches
         const unauthorizedBranches = finalBranchIds.filter(
@@ -1041,7 +1051,10 @@ export const POST = withBranchAccess(
         }
 
         // Create regular availability records if provided
-        if (regularAvailability !== undefined && regularAvailability.length > 0) {
+        if (
+          regularAvailability !== undefined &&
+          regularAvailability.length > 0
+        ) {
           const availabilityRecords = [];
 
           for (const dayAvailability of regularAvailability) {
@@ -1104,7 +1117,8 @@ export const POST = withBranchAccess(
           const exceptionalRecords = [];
 
           for (const exceptionalItem of exceptionalAvailability) {
-            const { date, fullDay, startTime, endTime, reason, notes } = exceptionalItem;
+            const { date, fullDay, startTime, endTime, reason, notes } =
+              exceptionalItem;
 
             if (fullDay) {
               // Create a full-day exceptional availability record
@@ -1122,7 +1136,9 @@ export const POST = withBranchAccess(
               });
             } else if (startTime && endTime) {
               // Create time-specific exceptional availability record
-              const [startHours, startMinutes] = startTime.split(":").map(Number);
+              const [startHours, startMinutes] = startTime
+                .split(":")
+                .map(Number);
               const [endHours, endMinutes] = endTime.split(":").map(Number);
 
               exceptionalRecords.push({
@@ -1165,7 +1181,8 @@ export const POST = withBranchAccess(
           const absenceRecords = [];
 
           for (const absenceItem of absenceAvailability) {
-            const { date, fullDay, startTime, endTime, reason, notes } = absenceItem;
+            const { date, fullDay, startTime, endTime, reason, notes } =
+              absenceItem;
 
             if (fullDay) {
               absenceRecords.push({
@@ -1181,7 +1198,9 @@ export const POST = withBranchAccess(
                 notes: notes || null,
               });
             } else if (startTime && endTime) {
-              const [startHours, startMinutes] = startTime.split(":").map(Number);
+              const [startHours, startMinutes] = startTime
+                .split(":")
+                .map(Number);
               const [endHours, endMinutes] = endTime.split(":").map(Number);
 
               absenceRecords.push({

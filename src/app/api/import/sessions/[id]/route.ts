@@ -8,7 +8,10 @@ export async function GET(req: NextRequest) {
   const id = parts[parts.length - 1];
   const sess = getImportSession(id);
   if (!sess) {
-    return NextResponse.json({ error: "セッションが見つかりません" }, { status: 404 });
+    return NextResponse.json(
+      { error: "セッションが見つかりません" },
+      { status: 404 }
+    );
   }
   return NextResponse.json(sess);
 }

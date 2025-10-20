@@ -12,4 +12,3 @@
    - Verify validation error toast appears and no update occurs.
 7. Pick a valid date and click 適用:
    - Verify the table updates to the new date and popover closes.
-

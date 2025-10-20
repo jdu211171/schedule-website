@@ -17,7 +17,6 @@ describe("CSVParser CSV behaviors", () => {
     const res = await CSVParser.parseBuffer<Record<string, string>>(buffer);
     expect(res.errors).toEqual([]);
     expect(res.data.length).toBe(1);
-    expect(res.data[0]["text"]).toBe('line1\nline2');
+    expect(res.data[0]["text"]).toBe("line1\nline2");
   });
 });
-

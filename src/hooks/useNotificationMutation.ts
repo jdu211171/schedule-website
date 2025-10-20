@@ -39,9 +39,9 @@ interface NotificationMutationContext {
 // Hook for deleting a single notification
 export function useNotificationDelete() {
   const queryClient = useQueryClient();
-  
+
   return useMutation<void, Error, string, NotificationMutationContext>({
-    mutationFn: (notificationId) => 
+    mutationFn: (notificationId) =>
       fetcher(`/api/notifications/${notificationId}`, {
         method: "DELETE",
       }),
@@ -149,7 +149,8 @@ export function useNotificationBulkDelete() {
       queries.forEach(([queryKey, data]) => {
         if (data) {
           const remainingNotifications = data.data.filter(
-            (notification) => !notificationIds.includes(notification.notificationId)
+            (notification) =>
+              !notificationIds.includes(notification.notificationId)
           );
           const removedCount = data.data.length - remainingNotifications.length;
 

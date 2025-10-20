@@ -8,6 +8,7 @@ Adds an optional `admissionDate` field to the Student model to store the date a 
 - Validation: Accepted on create/update (optional). CSV import/export supported via header `入会日`.
 
 Notes:
+
 - Field is nullable for backward compatibility; existing records remain unchanged.
 - If omitted in create/update/import, it stays `null`.
 

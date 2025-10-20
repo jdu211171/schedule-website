@@ -33,18 +33,11 @@ export function Providers({ children }: { children: ReactNode }) {
         disableTransitionOnChange
       >
         <SessionProvider>
-          <NuqsAdapter>
-            {children}
-          </NuqsAdapter>
+          <NuqsAdapter>{children}</NuqsAdapter>
         </SessionProvider>
       </ThemeProvider>
       <ReactQueryDevtools initialIsOpen={false} />
-      <Toaster
-        duration={10000}
-        position="top-center"
-        richColors
-        closeButton
-      />
+      <Toaster duration={10000} position="top-center" richColors closeButton />
       <Analytics />
       <SpeedInsights />
     </QueryClientProvider>

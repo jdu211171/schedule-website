@@ -6,6 +6,6 @@
 - Adopted similar approach for single date: draft state + explicit actions.
 
 ## Assumptions
+
 - Users expect clicking a date not to persist without confirmation.
 - The X in the popover header should act as close, not clear.
-

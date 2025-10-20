@@ -60,7 +60,10 @@ export function useStudentExport() {
       }
       if (options.birthDateRange) {
         if (options.birthDateRange.from) {
-          params.append("birthDateFrom", options.birthDateRange.from.toISOString());
+          params.append(
+            "birthDateFrom",
+            options.birthDateRange.from.toISOString()
+          );
         }
         if (options.birthDateRange.to) {
           params.append("birthDateTo", options.birthDateRange.to.toISOString());
@@ -68,15 +71,24 @@ export function useStudentExport() {
       }
       if (options.admissionDateRange) {
         if (options.admissionDateRange.from) {
-          params.append("admissionDateFrom", options.admissionDateRange.from.toISOString());
+          params.append(
+            "admissionDateFrom",
+            options.admissionDateRange.from.toISOString()
+          );
         }
         if (options.admissionDateRange.to) {
-          params.append("admissionDateTo", options.admissionDateRange.to.toISOString());
+          params.append(
+            "admissionDateTo",
+            options.admissionDateRange.to.toISOString()
+          );
         }
       }
       if (options.examDateRange) {
         if (options.examDateRange.from) {
-          params.append("examDateFrom", options.examDateRange.from.toISOString());
+          params.append(
+            "examDateFrom",
+            options.examDateRange.from.toISOString()
+          );
         }
         if (options.examDateRange.to) {
           params.append("examDateTo", options.examDateRange.to.toISOString());
@@ -86,7 +98,9 @@ export function useStudentExport() {
         params.append("columns", options.columns.join(","));
       }
 
-      const response = await fetcherWithAuth(`/api/students/export?${params.toString()}`);
+      const response = await fetcherWithAuth(
+        `/api/students/export?${params.toString()}`
+      );
 
       // Check if response is ok
       if (!response.ok) {

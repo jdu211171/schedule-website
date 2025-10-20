@@ -33,7 +33,16 @@ interface NotificationFilterProps {
     endDate?: string;
     search?: string;
   };
-  onFilterChange: (field: "status" | "recipientType" | "notificationType" | "startDate" | "endDate" | "search", value: string | undefined) => void;
+  onFilterChange: (
+    field:
+      | "status"
+      | "recipientType"
+      | "notificationType"
+      | "startDate"
+      | "endDate"
+      | "search",
+    value: string | undefined
+  ) => void;
   onDateRangeChange: (range: DateRange | undefined) => void;
   onResetFilters: () => void;
 }
@@ -171,7 +180,9 @@ export function NotificationFilter({
             <Input
               placeholder="メッセージを検索..."
               value={filters.search || ""}
-              onChange={(e) => onFilterChange("search", e.target.value || undefined)}
+              onChange={(e) =>
+                onFilterChange("search", e.target.value || undefined)
+              }
               className="w-full"
             />
           </div>
@@ -195,7 +206,10 @@ export function NotificationFilter({
             <Select
               value={filters.status || "all"}
               onValueChange={(value) =>
-                onFilterChange("status", value === "all" ? undefined : value as NotificationStatus)
+                onFilterChange(
+                  "status",
+                  value === "all" ? undefined : (value as NotificationStatus)
+                )
               }
             >
               <SelectTrigger>
@@ -204,9 +218,15 @@ export function NotificationFilter({
               <SelectContent>
                 <SelectItem value="all">全ステータス</SelectItem>
                 <SelectItem value={NotificationStatus.FAILED}>失敗</SelectItem>
-                <SelectItem value={NotificationStatus.PENDING}>待機中</SelectItem>
-                <SelectItem value={NotificationStatus.PROCESSING}>処理中</SelectItem>
-                <SelectItem value={NotificationStatus.SENT}>送信済み</SelectItem>
+                <SelectItem value={NotificationStatus.PENDING}>
+                  待機中
+                </SelectItem>
+                <SelectItem value={NotificationStatus.PROCESSING}>
+                  処理中
+                </SelectItem>
+                <SelectItem value={NotificationStatus.SENT}>
+                  送信済み
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -217,7 +237,10 @@ export function NotificationFilter({
             <Select
               value={filters.recipientType || "all"}
               onValueChange={(value) =>
-                onFilterChange("recipientType", value === "all" ? undefined : value)
+                onFilterChange(
+                  "recipientType",
+                  value === "all" ? undefined : value
+                )
               }
             >
               <SelectTrigger>
@@ -237,7 +260,10 @@ export function NotificationFilter({
             <Select
               value={filters.notificationType || "all"}
               onValueChange={(value) =>
-                onFilterChange("notificationType", value === "all" ? undefined : value)
+                onFilterChange(
+                  "notificationType",
+                  value === "all" ? undefined : value
+                )
               }
             >
               <SelectTrigger>
@@ -246,7 +272,9 @@ export function NotificationFilter({
               <SelectContent>
                 <SelectItem value="all">全通知タイプ</SelectItem>
                 <SelectItem value="CLASS_REMINDER">授業リマインダー</SelectItem>
-                <SelectItem value="CLASS_CANCELLATION">授業キャンセル</SelectItem>
+                <SelectItem value="CLASS_CANCELLATION">
+                  授業キャンセル
+                </SelectItem>
                 <SelectItem value="CLASS_CHANGE">授業変更</SelectItem>
                 <SelectItem value="GENERAL">一般通知</SelectItem>
               </SelectContent>

@@ -7,7 +7,12 @@ import { ClassSession } from "@prisma/client";
 import { parse, format, parseISO } from "date-fns";
 import { applySpecialClassColor } from "@/lib/special-class-server";
 import { CANCELLED_CLASS_COLOR_HEX } from "@/lib/cancelled-class-constants";
-import { recomputeNeighborsForChange, recomputeAndUpdateSessionStatus, recomputeNeighborsForCancelledContexts, type SessionCtx } from "@/lib/conflict-status";
+import {
+  recomputeNeighborsForChange,
+  recomputeAndUpdateSessionStatus,
+  recomputeNeighborsForCancelledContexts,
+  type SessionCtx,
+} from "@/lib/conflict-status";
 
 type FormattedClassSession = {
   classId: string;
@@ -42,7 +47,11 @@ type FormattedClassSession = {
 const formatClassSession = (
   classSession: ClassSession & {
     teacher?: { name: string } | null;
-    student?: { name: string; gradeYear: number | null; studentType?: { name: string } | null } | null;
+    student?: {
+      name: string;
+      gradeYear: number | null;
+      studentType?: { name: string } | null;
+    } | null;
     subject?: { name: string } | null;
     classType?: { name: string } | null;
     booth?: { name: string } | null;
@@ -367,10 +376,12 @@ export const PATCH = withBranchAccess(
           const sessionDateUTC = new Date(session.date);
           const sessionDateStr = `${sessionDateUTC.getUTCFullYear()}-${String(
             sessionDateUTC.getUTCMonth() + 1
-          ).padStart(2, "0")}-${String(sessionDateUTC.getUTCDate()).padStart(2, "0")}`;
+          ).padStart(
+            2,
+            "0"
+          )}-${String(sessionDateUTC.getUTCDate()).padStart(2, "0")}`;
 
           if (hasTimeUpdate) {
-
             if (startTime) {
               const sessionStartTime = createDateTime(
                 sessionDateStr,
@@ -399,16 +410,33 @@ export const PATCH = withBranchAccess(
                 date: effDate,
                 isCancelled: false,
                 OR: [
-                  { AND: [{ startTime: { lte: effStart } }, { endTime: { gt: effStart } }] },
-                  { AND: [{ startTime: { lt: effEnd } }, { endTime: { gte: effEnd } }] },
-                  { AND: [{ startTime: { gte: effStart } }, { endTime: { lte: effEnd } }] },
+                  {
+                    AND: [
+                      { startTime: { lte: effStart } },
+                      { endTime: { gt: effStart } },
+                    ],
+                  },
+                  {
+                    AND: [
+                      { startTime: { lt: effEnd } },
+                      { endTime: { gte: effEnd } },
+                    ],
+                  },
+                  {
+                    AND: [
+                      { startTime: { gte: effStart } },
+                      { endTime: { lte: effEnd } },
+                    ],
+                  },
                 ],
               },
               select: { classId: true },
             });
 
             if (teacherConflict) {
-              throw new Error(`講師の時間重複が検出されました（${sessionDateStr}）`);
+              throw new Error(
+                `講師の時間重複が検出されました（${sessionDateStr}）`
+              );
             }
           }
 
@@ -420,16 +448,33 @@ export const PATCH = withBranchAccess(
                 date: effDate,
                 isCancelled: false,
                 OR: [
-                  { AND: [{ startTime: { lte: effStart } }, { endTime: { gt: effStart } }] },
-                  { AND: [{ startTime: { lt: effEnd } }, { endTime: { gte: effEnd } }] },
-                  { AND: [{ startTime: { gte: effStart } }, { endTime: { lte: effEnd } }] },
+                  {
+                    AND: [
+                      { startTime: { lte: effStart } },
+                      { endTime: { gt: effStart } },
+                    ],
+                  },
+                  {
+                    AND: [
+                      { startTime: { lt: effEnd } },
+                      { endTime: { gte: effEnd } },
+                    ],
+                  },
+                  {
+                    AND: [
+                      { startTime: { gte: effStart } },
+                      { endTime: { lte: effEnd } },
+                    ],
+                  },
                 ],
               },
               select: { classId: true },
             });
 
             if (studentConflict) {
-              throw new Error(`生徒の時間重複が検出されました（${sessionDateStr}）`);
+              throw new Error(
+                `生徒の時間重複が検出されました（${sessionDateStr}）`
+              );
             }
           }
 
@@ -485,9 +530,18 @@ export const PATCH = withBranchAccess(
               date: session.date as Date,
               startTime: session.startTime as Date,
               endTime: session.endTime as Date,
-              teacherId: (updateData.teacherId !== undefined ? updateData.teacherId : session.teacherId) ?? session.teacherId,
-              studentId: (updateData.studentId !== undefined ? updateData.studentId : session.studentId) ?? session.studentId,
-              boothId: (updateData.boothId !== undefined ? updateData.boothId : session.boothId) ?? session.boothId,
+              teacherId:
+                (updateData.teacherId !== undefined
+                  ? updateData.teacherId
+                  : session.teacherId) ?? session.teacherId,
+              studentId:
+                (updateData.studentId !== undefined
+                  ? updateData.studentId
+                  : session.studentId) ?? session.studentId,
+              boothId:
+                (updateData.boothId !== undefined
+                  ? updateData.boothId
+                  : session.boothId) ?? session.boothId,
             };
             const newCtx = {
               classId: updated.classId,
@@ -512,21 +566,28 @@ export const PATCH = withBranchAccess(
       try {
         for (const s of updatedSessions) {
           const id = (s as any)?.classId;
-          if (typeof id === 'string' && id) {
-            try { await recomputeAndUpdateSessionStatus(id); } catch (_) {}
+          if (typeof id === "string" && id) {
+            try {
+              await recomputeAndUpdateSessionStatus(id);
+            } catch (_) {}
           }
         }
       } catch (_) {}
 
       // After transaction, recompute neighbor statuses for impacted sessions (non-blocking errors)
       try {
-        const pairs: Array<{ oldCtx: any; newCtx: any }> = (updatedSessions as any)._neighborPairs || [];
+        const pairs: Array<{ oldCtx: any; newCtx: any }> =
+          (updatedSessions as any)._neighborPairs || [];
         for (const p of pairs) {
-          try { await recomputeNeighborsForChange(p.oldCtx, p.newCtx); } catch (_) {}
+          try {
+            await recomputeNeighborsForChange(p.oldCtx, p.newCtx);
+          } catch (_) {}
         }
         // Also recompute statuses for the updated sessions themselves
         for (const s of updatedSessions) {
-          try { await recomputeAndUpdateSessionStatus(s.classId); } catch (_) {}
+          try {
+            await recomputeAndUpdateSessionStatus(s.classId);
+          } catch (_) {}
         }
       } catch (_) {}
 
@@ -544,17 +605,14 @@ export const PATCH = withBranchAccess(
           pages: 1,
         },
       });
-  } catch (error) {
+    } catch (error) {
       console.error("Error updating class session series:", error);
       const message =
         error instanceof Error && error.message
           ? error.message
           : "授業シリーズの更新に失敗しました";
       const status = error instanceof Error && error.message ? 400 : 500;
-      return NextResponse.json(
-        { error: message },
-        { status }
-      );
+      return NextResponse.json({ error: message }, { status });
     }
   }
 );
@@ -600,10 +658,10 @@ export const DELETE = withBranchAccess(
       // Optionally accept a pivot instance to define deletion start date
       let fromClassId: string | undefined;
       try {
-        const contentType = request.headers.get('content-type') || '';
-        if (contentType.includes('application/json')) {
+        const contentType = request.headers.get("content-type") || "";
+        if (contentType.includes("application/json")) {
           const body = await request.json().catch(() => null);
-          if (body && typeof body.fromClassId === 'string') {
+          if (body && typeof body.fromClassId === "string") {
             fromClassId = body.fromClassId;
           }
         }
@@ -681,8 +739,8 @@ export const DELETE = withBranchAccess(
             classId: true,
           },
         });
-        const sessionIds = futureSessions.map(session => session.classId);
-        
+        const sessionIds = futureSessions.map((session) => session.classId);
+
         // First delete all enrollments for these sessions
         if (sessionIds.length > 0) {
           await tx.studentClassEnrollment.deleteMany({
@@ -693,7 +751,7 @@ export const DELETE = withBranchAccess(
             },
           });
         }
-        
+
         // Then delete the future sessions
         await tx.classSession.deleteMany({
           where: {
@@ -707,12 +765,17 @@ export const DELETE = withBranchAccess(
         // Finally, shorten the series blueprint so no future sessions regenerate
         try {
           // Fetch current lastGeneratedThrough to avoid regressions
-          const series = await tx.classSeries.findUnique({ where: { seriesId }, select: { lastGeneratedThrough: true } });
+          const series = await tx.classSeries.findUnique({
+            where: { seriesId },
+            select: { lastGeneratedThrough: true },
+          });
           if (series) {
             // Set endDate to pivotDate
             const updates: any = { endDate: pivotDate };
             // Ensure lastGeneratedThrough is at least pivotDate to prevent re-creating the deleted pivot
-            const cur = series.lastGeneratedThrough ? new Date(series.lastGeneratedThrough) : null;
+            const cur = series.lastGeneratedThrough
+              ? new Date(series.lastGeneratedThrough)
+              : null;
             if (!cur || cur.getTime() < pivotDate.getTime()) {
               updates.lastGeneratedThrough = pivotDate;
             }

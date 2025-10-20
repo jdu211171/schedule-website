@@ -1,45 +1,61 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { motion, AnimatePresence } from "framer-motion"
-import { Button } from "@/components/ui/button"
-import { Loader2, Check, X, Copy, Save, Send, Download, Upload, type LucideIcon } from "lucide-react"
-import { cn } from "@/lib/utils"
+import * as React from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import {
+  Loader2,
+  Check,
+  X,
+  Copy,
+  Save,
+  Send,
+  Download,
+  Upload,
+  type LucideIcon,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 
-export type ButtonState = "default" | "loading" | "success" | "error"
+export type ButtonState = "default" | "loading" | "success" | "error";
 
 export interface StateConfig {
-  label: string
-  icon?: LucideIcon
-  variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link"
-  className?: string
+  label: string;
+  icon?: LucideIcon;
+  variant?:
+    | "default"
+    | "destructive"
+    | "outline"
+    | "secondary"
+    | "ghost"
+    | "link";
+  className?: string;
 }
 
 export interface EnhancedStateButtonProps {
   // State configurations
-  defaultState?: StateConfig
-  loadingState?: StateConfig
-  successState?: StateConfig
-  errorState?: StateConfig
+  defaultState?: StateConfig;
+  loadingState?: StateConfig;
+  successState?: StateConfig;
+  errorState?: StateConfig;
 
   // Current state
-  state?: ButtonState
+  state?: ButtonState;
 
   // Button props
-  size?: "default" | "sm" | "lg" | "icon"
-  disabled?: boolean
-  className?: string
+  size?: "default" | "sm" | "lg" | "icon";
+  disabled?: boolean;
+  className?: string;
 
   // Callbacks
-  onClick?: () => void | Promise<void>
-  onStateChange?: (state: ButtonState) => void
+  onClick?: () => void | Promise<void>;
+  onStateChange?: (state: ButtonState) => void;
 
   // Auto-reset options
-  autoResetDelay?: number // milliseconds to auto-reset from success/error states
-  resetToState?: ButtonState // which state to reset to (default: "default")
+  autoResetDelay?: number; // milliseconds to auto-reset from success/error states
+  resetToState?: ButtonState; // which state to reset to (default: "default")
 
   // Animation options
-  animationDuration?: number
+  animationDuration?: number;
 }
 
 const defaultConfigs: Record<ButtonState, StateConfig> = {
@@ -63,7 +79,7 @@ const defaultConfigs: Record<ButtonState, StateConfig> = {
     icon: X,
     variant: "destructive",
   },
-}
+};
 
 export function EnhancedStateButton({
   defaultState,
@@ -81,11 +97,12 @@ export function EnhancedStateButton({
   animationDuration = 200,
   ...props
 }: EnhancedStateButtonProps) {
-  const [internalState, setInternalState] = React.useState<ButtonState>("default")
-  const timeoutRef = React.useRef<NodeJS.Timeout | null>(null)
+  const [internalState, setInternalState] =
+    React.useState<ButtonState>("default");
+  const timeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
   // Use controlled state if provided, otherwise use internal state
-  const currentState = controlledState ?? internalState
+  const currentState = controlledState ?? internalState;
 
   // Merge user configs with defaults
   const stateConfigs = {
@@ -93,55 +110,55 @@ export function EnhancedStateButton({
     loading: { ...defaultConfigs.loading, ...loadingState },
     success: { ...defaultConfigs.success, ...successState },
     error: { ...defaultConfigs.error, ...errorState },
-  }
+  };
 
-  const currentConfig = stateConfigs[currentState]
+  const currentConfig = stateConfigs[currentState];
 
   // Handle state changes
   const updateState = React.useCallback(
     (newState: ButtonState) => {
       if (!controlledState) {
-        setInternalState(newState)
+        setInternalState(newState);
       }
-      onStateChange?.(newState)
+      onStateChange?.(newState);
     },
-    [controlledState, onStateChange],
-  )
+    [controlledState, onStateChange]
+  );
 
   // Auto-reset functionality
   React.useEffect(() => {
     if (currentState === "success" || currentState === "error") {
       timeoutRef.current = setTimeout(() => {
-        updateState(resetToState)
-      }, autoResetDelay)
+        updateState(resetToState);
+      }, autoResetDelay);
     }
 
     return () => {
       if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current)
+        clearTimeout(timeoutRef.current);
       }
-    }
-  }, [currentState, autoResetDelay, resetToState, updateState])
+    };
+  }, [currentState, autoResetDelay, resetToState, updateState]);
 
   // Handle click events
   const handleClick = React.useCallback(async () => {
-    if (currentState === "loading" || disabled) return
+    if (currentState === "loading" || disabled) return;
 
     if (onClick) {
       try {
-        updateState("loading")
-        await onClick()
-        updateState("success")
+        updateState("loading");
+        await onClick();
+        updateState("success");
       } catch (error) {
-        updateState("error")
-        console.error("Button action failed:", error)
+        updateState("error");
+        console.error("Button action failed:", error);
       }
     }
-  }, [currentState, disabled, onClick, updateState])
+  }, [currentState, disabled, onClick, updateState]);
 
   // Get the appropriate icon
-  const IconComponent = currentConfig.icon
-  const isLoading = currentState === "loading"
+  const IconComponent = currentConfig.icon;
+  const isLoading = currentState === "loading";
 
   // Color classes for different states
   const stateColors = {
@@ -149,14 +166,14 @@ export function EnhancedStateButton({
     loading: "",
     success: "bg-green-600 hover:bg-green-700 border-green-600",
     error: "",
-  }
+  };
 
   const stateTextColors = {
     default: "",
     loading: "",
     success: "text-white",
     error: "",
-  }
+  };
 
   return (
     <Button
@@ -169,7 +186,7 @@ export function EnhancedStateButton({
         currentState === "success" && stateColors.success,
         currentState === "success" && stateTextColors.success,
         currentConfig.className,
-        className,
+        className
       )}
       {...props}
     >
@@ -186,7 +203,13 @@ export function EnhancedStateButton({
             <motion.div
               animate={isLoading ? { rotate: 360 } : { rotate: 0 }}
               transition={
-                isLoading ? { duration: 1, repeat: Number.POSITIVE_INFINITY, ease: "linear" } : { duration: 0.2 }
+                isLoading
+                  ? {
+                      duration: 1,
+                      repeat: Number.POSITIVE_INFINITY,
+                      ease: "linear",
+                    }
+                  : { duration: 0.2 }
               }
             >
               <IconComponent className="h-4 w-4" />
@@ -206,7 +229,7 @@ export function EnhancedStateButton({
         />
       )}
     </Button>
-  )
+  );
 }
 
 // Preset configurations for common use cases
@@ -241,4 +264,4 @@ export const buttonPresets = {
     successState: { label: "Uploaded!", icon: Check },
     errorState: { label: "Upload Failed", icon: X },
   },
-}
+};

@@ -1,19 +1,40 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { SearchableSelect, SearchableSelectItem } from '../searchable-select';
-import { useSubjects } from '@/hooks/useSubjectQuery';
-import { useSmartSelection, EnhancedTeacher, EnhancedStudent } from '@/hooks/useSmartSelection';
-import { Combobox } from '@/components/ui/combobox';
-import { CompatibilityComboboxItem, getCompatibilityPriority, renderCompatibilityComboboxItem } from '../compatibility-combobox-utils';
-import { useDebounce } from '@/hooks/use-debounce';
-import { DayFilters } from '@/hooks/useClassSessionQuery';
-import { X } from 'lucide-react';
-import { useSession } from 'next-auth/react';
-import { fetchClassTypeOptions } from '@/lib/class-type-options';
-import { subscribeClassTypesChanged } from '@/lib/class-types-broadcast';
-import { getClassTypeSelection, setClassTypeSelection } from '@/lib/class-type-filter-persistence';
-import { Faceted, FacetedBadgeList, FacetedContent, FacetedEmpty, FacetedGroup, FacetedInput, FacetedItem, FacetedList, FacetedTrigger } from '@/components/ui/faceted';
-import type { ClassTypeOption } from '@/types/class-type';
+import React, { useEffect, useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { SearchableSelect, SearchableSelectItem } from "../searchable-select";
+import { useSubjects } from "@/hooks/useSubjectQuery";
+import {
+  useSmartSelection,
+  EnhancedTeacher,
+  EnhancedStudent,
+} from "@/hooks/useSmartSelection";
+import { Combobox } from "@/components/ui/combobox";
+import {
+  CompatibilityComboboxItem,
+  getCompatibilityPriority,
+  renderCompatibilityComboboxItem,
+} from "../compatibility-combobox-utils";
+import { useDebounce } from "@/hooks/use-debounce";
+import { DayFilters } from "@/hooks/useClassSessionQuery";
+import { X } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { fetchClassTypeOptions } from "@/lib/class-type-options";
+import { subscribeClassTypesChanged } from "@/lib/class-types-broadcast";
+import {
+  getClassTypeSelection,
+  setClassTypeSelection,
+} from "@/lib/class-type-filter-persistence";
+import {
+  Faceted,
+  FacetedBadgeList,
+  FacetedContent,
+  FacetedEmpty,
+  FacetedGroup,
+  FacetedInput,
+  FacetedItem,
+  FacetedList,
+  FacetedTrigger,
+} from "@/components/ui/faceted";
+import type { ClassTypeOption } from "@/types/class-type";
 
 interface DayCalendarFiltersProps {
   filters: DayFilters;
@@ -24,12 +45,12 @@ interface DayCalendarFiltersProps {
 export const DayCalendarFilters: React.FC<DayCalendarFiltersProps> = ({
   filters,
   onFiltersChange,
-  dateKey
+  dateKey,
 }) => {
   const { data: session } = useSession();
   const role = session?.user?.role;
   const { data: subjectsResponse, isLoading: isLoadingSubjects } = useSubjects({
-    limit: 100
+    limit: 100,
   });
 
   const subjects = subjectsResponse?.data || [];
@@ -40,7 +61,9 @@ export const DayCalendarFilters: React.FC<DayCalendarFiltersProps> = ({
   }));
 
   // Class Type options (server-provided)
-  const [classTypeOptions, setClassTypeOptions] = useState<ClassTypeOption[]>([]);
+  const [classTypeOptions, setClassTypeOptions] = useState<ClassTypeOption[]>(
+    []
+  );
   const [classTypeLoading, setClassTypeLoading] = useState<boolean>(false);
 
   useEffect(() => {
@@ -69,8 +92,8 @@ export const DayCalendarFilters: React.FC<DayCalendarFiltersProps> = ({
   // Per-user visibility removed; global filter visibility now handled server-side.
 
   // Smart matching + searchable combobox for teacher/student (same as admin-calendar-day)
-  const [teacherSearch, setTeacherSearch] = useState<string>('');
-  const [studentSearch, setStudentSearch] = useState<string>('');
+  const [teacherSearch, setTeacherSearch] = useState<string>("");
+  const [studentSearch, setStudentSearch] = useState<string>("");
   const debouncedTeacher = useDebounce(teacherSearch, 300);
   const debouncedStudent = useDebounce(studentSearch, 300);
 
@@ -92,29 +115,34 @@ export const DayCalendarFilters: React.FC<DayCalendarFiltersProps> = ({
   const teacherComboItems: CompatibilityComboboxItem[] = useMemo(() => {
     return enhancedTeachers
       .map((teacher: EnhancedTeacher) => {
-        let description = '';
+        let description = "";
         let matchingSubjectsCount = 0;
         let partialMatchingSubjectsCount = 0;
 
-        if (teacher.compatibilityType === 'perfect') {
+        if (teacher.compatibilityType === "perfect") {
           description = `${teacher.matchingSubjectsCount}件の完全一致`;
           matchingSubjectsCount = teacher.matchingSubjectsCount;
           if (teacher.partialMatchingSubjectsCount > 0) {
             description += `, ${teacher.partialMatchingSubjectsCount}件の部分一致`;
             partialMatchingSubjectsCount = teacher.partialMatchingSubjectsCount;
           }
-        } else if (teacher.compatibilityType === 'subject-only') {
+        } else if (teacher.compatibilityType === "subject-only") {
           description = `${teacher.partialMatchingSubjectsCount}件の部分一致`;
           partialMatchingSubjectsCount = teacher.partialMatchingSubjectsCount;
-        } else if (teacher.compatibilityType === 'mismatch') {
-          description = '共通科目なし';
-        } else if (teacher.compatibilityType === 'teacher-no-prefs') {
-          description = '科目設定なし';
-        } else if (teacher.compatibilityType === 'student-no-prefs') {
-          description = '生徒の設定なし（全対応可）';
+        } else if (teacher.compatibilityType === "mismatch") {
+          description = "共通科目なし";
+        } else if (teacher.compatibilityType === "teacher-no-prefs") {
+          description = "科目設定なし";
+        } else if (teacher.compatibilityType === "student-no-prefs") {
+          description = "生徒の設定なし（全対応可）";
         }
 
-        const keywords = [teacher.name, teacher.kanaName, teacher.email, teacher.username]
+        const keywords = [
+          teacher.name,
+          teacher.kanaName,
+          teacher.email,
+          teacher.username,
+        ]
           .filter((k): k is string => Boolean(k))
           .map((k) => k.toLowerCase());
 
@@ -129,40 +157,49 @@ export const DayCalendarFilters: React.FC<DayCalendarFiltersProps> = ({
         } as CompatibilityComboboxItem;
       })
       .sort((a, b) => {
-        const priorityDiff = getCompatibilityPriority(b.compatibilityType) - getCompatibilityPriority(a.compatibilityType);
+        const priorityDiff =
+          getCompatibilityPriority(b.compatibilityType) -
+          getCompatibilityPriority(a.compatibilityType);
         if (priorityDiff !== 0) return priorityDiff;
-        const labelA = typeof a.label === 'string' ? a.label : String(a.label ?? '');
-        const labelB = typeof b.label === 'string' ? b.label : String(b.label ?? '');
-        return labelA.localeCompare(labelB, 'ja');
+        const labelA =
+          typeof a.label === "string" ? a.label : String(a.label ?? "");
+        const labelB =
+          typeof b.label === "string" ? b.label : String(b.label ?? "");
+        return labelA.localeCompare(labelB, "ja");
       });
   }, [enhancedTeachers]);
 
   const studentComboItems: CompatibilityComboboxItem[] = useMemo(() => {
     return enhancedStudents
       .map((student: EnhancedStudent) => {
-        let description = '';
+        let description = "";
         let matchingSubjectsCount = 0;
         let partialMatchingSubjectsCount = 0;
 
-        if (student.compatibilityType === 'perfect') {
+        if (student.compatibilityType === "perfect") {
           description = `${student.matchingSubjectsCount}件の完全一致`;
           matchingSubjectsCount = student.matchingSubjectsCount;
           if (student.partialMatchingSubjectsCount > 0) {
             description += `, ${student.partialMatchingSubjectsCount}件の部分一致`;
             partialMatchingSubjectsCount = student.partialMatchingSubjectsCount;
           }
-        } else if (student.compatibilityType === 'subject-only') {
+        } else if (student.compatibilityType === "subject-only") {
           description = `${student.partialMatchingSubjectsCount}件の部分一致`;
           partialMatchingSubjectsCount = student.partialMatchingSubjectsCount;
-        } else if (student.compatibilityType === 'mismatch') {
-          description = '共通科目なし';
-        } else if (student.compatibilityType === 'student-no-prefs') {
-          description = '科目設定なし';
-        } else if (student.compatibilityType === 'teacher-no-prefs') {
-          description = '講師の設定なし（全対応可）';
+        } else if (student.compatibilityType === "mismatch") {
+          description = "共通科目なし";
+        } else if (student.compatibilityType === "student-no-prefs") {
+          description = "科目設定なし";
+        } else if (student.compatibilityType === "teacher-no-prefs") {
+          description = "講師の設定なし（全対応可）";
         }
 
-        const keywords = [student.name, student.kanaName, student.email, student.username]
+        const keywords = [
+          student.name,
+          student.kanaName,
+          student.email,
+          student.username,
+        ]
           .filter((k): k is string => Boolean(k))
           .map((k) => k.toLowerCase());
 
@@ -177,11 +214,15 @@ export const DayCalendarFilters: React.FC<DayCalendarFiltersProps> = ({
         } as CompatibilityComboboxItem;
       })
       .sort((a, b) => {
-        const priorityDiff = getCompatibilityPriority(b.compatibilityType) - getCompatibilityPriority(a.compatibilityType);
+        const priorityDiff =
+          getCompatibilityPriority(b.compatibilityType) -
+          getCompatibilityPriority(a.compatibilityType);
         if (priorityDiff !== 0) return priorityDiff;
-        const labelA = typeof a.label === 'string' ? a.label : String(a.label ?? '');
-        const labelB = typeof b.label === 'string' ? b.label : String(b.label ?? '');
-        return labelA.localeCompare(labelB, 'ja');
+        const labelA =
+          typeof a.label === "string" ? a.label : String(a.label ?? "");
+        const labelB =
+          typeof b.label === "string" ? b.label : String(b.label ?? "");
+        return labelA.localeCompare(labelB, "ja");
       });
   }, [enhancedStudents]);
 
@@ -246,15 +287,18 @@ export const DayCalendarFilters: React.FC<DayCalendarFiltersProps> = ({
 
   const handleClassTypesChange = (ids: string[] | undefined) => {
     const next = Array.isArray(ids) ? ids : [];
-    onFiltersChange({ ...filters, classTypeIds: next.length ? next : undefined });
+    onFiltersChange({
+      ...filters,
+      classTypeIds: next.length ? next : undefined,
+    });
     setClassTypeSelection(role, next);
   };
 
   const hasActiveFilters = Boolean(
     filters.subjectId ||
-    filters.teacherId ||
-    filters.studentId ||
-    (filters.classTypeIds && filters.classTypeIds.length > 0)
+      filters.teacherId ||
+      filters.studentId ||
+      (filters.classTypeIds && filters.classTypeIds.length > 0)
   );
 
   return (
@@ -262,7 +306,11 @@ export const DayCalendarFilters: React.FC<DayCalendarFiltersProps> = ({
       <div className="flex items-center gap-2 flex-wrap">
         {/* Class Type multi-select (searchable, multi) */}
         <div className="flex items-center gap-1">
-          <Faceted multiple value={filters.classTypeIds} onValueChange={handleClassTypesChange}>
+          <Faceted
+            multiple
+            value={filters.classTypeIds}
+            onValueChange={handleClassTypesChange}
+          >
             <FacetedTrigger
               aria-label="授業タイプフィルター"
               className="h-8 w-[100px] max-w-[240px] border border-input rounded-md px-2 bg-background text-foreground hover:bg-accent hover:text-accent-foreground text-sm flex items-center justify-between whitespace-nowrap overflow-hidden"
@@ -300,7 +348,7 @@ export const DayCalendarFilters: React.FC<DayCalendarFiltersProps> = ({
         {/* 表示管理 removed: visibility is now admin-controlled and global */}
         <div className="flex items-center gap-1">
           <SearchableSelect
-            value={filters.subjectId || ''}
+            value={filters.subjectId || ""}
             onValueChange={handleSubjectChange}
             items={subjectItems}
             placeholder="科目を選択"
@@ -327,7 +375,7 @@ export const DayCalendarFilters: React.FC<DayCalendarFiltersProps> = ({
           <div className="flex-1 min-w-[200px]">
             <Combobox<CompatibilityComboboxItem>
               items={teacherComboItems}
-              value={filters.teacherId || ''}
+              value={filters.teacherId || ""}
               onValueChange={handleTeacherChange}
               placeholder="講師を選択"
               searchPlaceholder="講師を検索..."
@@ -338,7 +386,9 @@ export const DayCalendarFilters: React.FC<DayCalendarFiltersProps> = ({
               onSearchChange={setTeacherSearch}
               loading={isLoadingTeachersSmart || isFetchingTeachers}
               triggerClassName="h-8"
-              onOpenChange={(open) => { if (!open) setTeacherSearch(''); }}
+              onOpenChange={(open) => {
+                if (!open) setTeacherSearch("");
+              }}
               renderItem={renderCompatibilityComboboxItem}
             />
           </div>
@@ -358,7 +408,7 @@ export const DayCalendarFilters: React.FC<DayCalendarFiltersProps> = ({
           <div className="flex-1 min-w-[200px]">
             <Combobox<CompatibilityComboboxItem>
               items={studentComboItems}
-              value={filters.studentId || ''}
+              value={filters.studentId || ""}
               onValueChange={handleStudentChange}
               placeholder="生徒を選択"
               searchPlaceholder="生徒を検索..."
@@ -369,7 +419,9 @@ export const DayCalendarFilters: React.FC<DayCalendarFiltersProps> = ({
               onSearchChange={setStudentSearch}
               loading={isLoadingStudentsSmart || isFetchingStudents}
               triggerClassName="h-8"
-              onOpenChange={(open) => { if (!open) setStudentSearch(''); }}
+              onOpenChange={(open) => {
+                if (!open) setStudentSearch("");
+              }}
               renderItem={renderCompatibilityComboboxItem}
             />
           </div>

@@ -31,7 +31,7 @@ interface FacetedContextValue<Multiple extends boolean = boolean> {
 }
 
 const FacetedContext = React.createContext<FacetedContextValue<boolean> | null>(
-  null,
+  null
 );
 
 function useFacetedContext(name: string) {
@@ -51,7 +51,7 @@ interface FacetedProps<Multiple extends boolean = false>
 }
 
 function Faceted<Multiple extends boolean = false>(
-  props: FacetedProps<Multiple>,
+  props: FacetedProps<Multiple>
 ) {
   const {
     open: openProp,
@@ -74,7 +74,7 @@ function Faceted<Multiple extends boolean = false>(
       }
       onOpenChangeProp?.(newOpen);
     },
-    [isControlled, onOpenChangeProp],
+    [isControlled, onOpenChangeProp]
   );
 
   const onItemSelect = React.useCallback(
@@ -97,12 +97,12 @@ function Faceted<Multiple extends boolean = false>(
         requestAnimationFrame(() => onOpenChange(false));
       }
     },
-    [multiple, value, onValueChange, onOpenChange],
+    [multiple, value, onValueChange, onOpenChange]
   );
 
   const contextValue = React.useMemo<FacetedContextValue<typeof multiple>>(
     () => ({ value, onItemSelect, multiple }),
-    [value, onItemSelect, multiple],
+    [value, onItemSelect, multiple]
   );
 
   return (
@@ -154,7 +154,7 @@ function FacetedBadgeList(props: FacetedBadgeListProps) {
       const option = options.find((opt) => opt.value === value);
       return option?.label ?? value;
     },
-    [options],
+    [options]
   );
 
   if (!values || values.length === 0) {
@@ -205,7 +205,7 @@ function FacetedContent(props: React.ComponentProps<typeof PopoverContent>) {
       align="start"
       className={cn(
         "w-[200px] origin-(--radix-popover-content-transform-origin) p-0",
-        className,
+        className
       )}
     >
       <Command>{children}</Command>
@@ -241,7 +241,7 @@ function FacetedItem(props: FacetedItemProps) {
         context.onItemSelect(currentValue);
       }
     },
-    [onSelect, context.onItemSelect],
+    [onSelect, context.onItemSelect]
   );
 
   return (
@@ -257,7 +257,7 @@ function FacetedItem(props: FacetedItemProps) {
           "flex size-4 items-center justify-center rounded-sm border border-primary",
           isSelected
             ? "bg-primary text-primary-foreground"
-            : "opacity-50 [&_svg]:invisible",
+            : "opacity-50 [&_svg]:invisible"
         )}
       >
         <Check className="size-4" />

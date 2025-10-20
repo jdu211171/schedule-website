@@ -218,7 +218,8 @@ const formatTeacher = (teacher: TeacherWithIncludes): FormattedTeacher => {
   const today = new Date();
   today.setHours(0, 0, 0, 0); // Set to start of day for comparison
 
-  const exceptionalAvailability: FormattedTeacher['exceptionalAvailability'] = [];
+  const exceptionalAvailability: FormattedTeacher["exceptionalAvailability"] =
+    [];
 
   teacher.user.availability?.forEach((avail) => {
     if (
@@ -233,10 +234,10 @@ const formatTeacher = (teacher: TeacherWithIncludes): FormattedTeacher => {
         return; // Skip this entry
       }
 
-      const dateStr = avail.date.toISOString().split('T')[0];
+      const dateStr = avail.date.toISOString().split("T")[0];
 
       // Check if we already have an entry for this date
-      let dateEntry = exceptionalAvailability.find(ea => ea.date === dateStr);
+      let dateEntry = exceptionalAvailability.find((ea) => ea.date === dateStr);
 
       if (!dateEntry) {
         dateEntry = {
@@ -244,7 +245,7 @@ const formatTeacher = (teacher: TeacherWithIncludes): FormattedTeacher => {
           timeSlots: [],
           fullDay: false,
           reason: avail.reason,
-          notes: avail.notes
+          notes: avail.notes,
         };
         exceptionalAvailability.push(dateEntry);
       }
@@ -256,35 +257,31 @@ const formatTeacher = (teacher: TeacherWithIncludes): FormattedTeacher => {
         dateEntry.timeSlots.push({
           id: avail.id,
           startTime: `${String(avail.startTime.getUTCHours()).padStart(2, "0")}:${String(avail.startTime.getUTCMinutes()).padStart(2, "0")}`,
-          endTime: `${String(avail.endTime.getUTCHours()).padStart(2, "0")}:${String(avail.endTime.getUTCMinutes()).padStart(2, "0")}`
+          endTime: `${String(avail.endTime.getUTCHours()).padStart(2, "0")}:${String(avail.endTime.getUTCMinutes()).padStart(2, "0")}`,
         });
       }
     }
   });
 
   // Process absence availability data - filter out past dates, group by date
-  const absenceAvailability: FormattedTeacher['absenceAvailability'] = [];
+  const absenceAvailability: FormattedTeacher["absenceAvailability"] = [];
   teacher.user.availability?.forEach((avail) => {
-    if (
-      avail.type === "ABSENCE" &&
-      avail.status === "APPROVED" &&
-      avail.date
-    ) {
+    if (avail.type === "ABSENCE" && avail.status === "APPROVED" && avail.date) {
       const availDate = new Date(avail.date);
       availDate.setHours(0, 0, 0, 0);
       if (availDate < today) {
         return;
       }
 
-      const dateStr = avail.date.toISOString().split('T')[0];
-      let dateEntry = absenceAvailability.find(ea => ea.date === dateStr);
+      const dateStr = avail.date.toISOString().split("T")[0];
+      let dateEntry = absenceAvailability.find((ea) => ea.date === dateStr);
       if (!dateEntry) {
         dateEntry = {
           date: dateStr,
           timeSlots: [],
           fullDay: false,
           reason: avail.reason,
-          notes: avail.notes
+          notes: avail.notes,
         };
         absenceAvailability.push(dateEntry);
       }
@@ -296,7 +293,7 @@ const formatTeacher = (teacher: TeacherWithIncludes): FormattedTeacher => {
         dateEntry.timeSlots.push({
           id: avail.id,
           startTime: `${String(avail.startTime.getUTCHours()).padStart(2, "0")}:${String(avail.startTime.getUTCMinutes()).padStart(2, "0")}`,
-          endTime: `${String(avail.endTime.getUTCHours()).padStart(2, "0")}:${String(avail.endTime.getUTCMinutes()).padStart(2, "0")}`
+          endTime: `${String(avail.endTime.getUTCHours()).padStart(2, "0")}:${String(avail.endTime.getUTCMinutes()).padStart(2, "0")}`,
         });
       }
     }
@@ -329,8 +326,10 @@ const formatTeacher = (teacher: TeacherWithIncludes): FormattedTeacher => {
     absenceAvailability,
     createdAt: teacher.createdAt,
     updatedAt: teacher.updatedAt,
-    contactPhones: teacher.contactPhones?.sort((a, b) => a.order - b.order) || [],
-    contactEmails: teacher.contactEmails?.sort((a, b) => a.order - b.order) || [],
+    contactPhones:
+      teacher.contactPhones?.sort((a, b) => a.order - b.order) || [],
+    contactEmails:
+      teacher.contactEmails?.sort((a, b) => a.order - b.order) || [],
   };
 };
 
@@ -373,7 +372,17 @@ export const GET = withBranchAccess(
       );
     }
 
-    const { page, limit, name, status, statuses, birthDateFrom, birthDateTo, sortBy, sortOrder } = result.data;
+    const {
+      page,
+      limit,
+      name,
+      status,
+      statuses,
+      birthDateFrom,
+      birthDateTo,
+      sortBy,
+      sortOrder,
+    } = result.data;
 
     // Build filter conditions
     const where: Record<string, unknown> = {};
@@ -439,7 +448,12 @@ export const GET = withBranchAccess(
     orderBy.push({ status: "asc" });
     // Apply kanaName sort when requested
     if (sortBy === "kanaName") {
-      orderBy.push({ kanaName: { sort: (sortOrder ?? "asc") as Prisma.SortOrder, nulls: "last" } });
+      orderBy.push({
+        kanaName: {
+          sort: (sortOrder ?? "asc") as Prisma.SortOrder,
+          nulls: "last",
+        },
+      });
     }
     // Stable tie-breaker
     orderBy.push({ name: "asc" });
@@ -455,7 +469,7 @@ export const GET = withBranchAccess(
             order: true,
           },
           orderBy: {
-            order: 'asc',
+            order: "asc",
           },
         },
         contactEmails: {
@@ -466,7 +480,7 @@ export const GET = withBranchAccess(
             order: true,
           },
           orderBy: {
-            order: 'asc',
+            order: "asc",
           },
         },
         user: {
@@ -745,7 +759,10 @@ export const POST = withBranchAccess(
         }
 
         // Create regular availability records if provided
-        if (regularAvailability !== undefined && regularAvailability.length > 0) {
+        if (
+          regularAvailability !== undefined &&
+          regularAvailability.length > 0
+        ) {
           const availabilityRecords = [];
 
           for (const dayAvailability of regularAvailability) {
@@ -808,7 +825,8 @@ export const POST = withBranchAccess(
           const exceptionalRecords = [];
 
           for (const exceptionalItem of exceptionalAvailability) {
-            const { date, fullDay, startTime, endTime, reason, notes } = exceptionalItem;
+            const { date, fullDay, startTime, endTime, reason, notes } =
+              exceptionalItem;
 
             if (fullDay) {
               // Create a full-day exceptional availability record
@@ -826,7 +844,9 @@ export const POST = withBranchAccess(
               });
             } else if (startTime && endTime) {
               // Create time-specific exceptional availability record
-              const [startHours, startMinutes] = startTime.split(":").map(Number);
+              const [startHours, startMinutes] = startTime
+                .split(":")
+                .map(Number);
               const [endHours, endMinutes] = endTime.split(":").map(Number);
 
               exceptionalRecords.push({
@@ -869,7 +889,8 @@ export const POST = withBranchAccess(
           const absenceRecords = [];
 
           for (const absenceItem of absenceAvailability) {
-            const { date, fullDay, startTime, endTime, reason, notes } = absenceItem;
+            const { date, fullDay, startTime, endTime, reason, notes } =
+              absenceItem;
 
             if (fullDay) {
               absenceRecords.push({
@@ -885,7 +906,9 @@ export const POST = withBranchAccess(
                 notes: notes || null,
               });
             } else if (startTime && endTime) {
-              const [startHours, startMinutes] = startTime.split(":").map(Number);
+              const [startHours, startMinutes] = startTime
+                .split(":")
+                .map(Number);
               const [endHours, endMinutes] = endTime.split(":").map(Number);
 
               absenceRecords.push({
@@ -935,7 +958,7 @@ export const POST = withBranchAccess(
                 order: true,
               },
               orderBy: {
-                order: 'asc',
+                order: "asc",
               },
             },
             contactEmails: {
@@ -946,7 +969,7 @@ export const POST = withBranchAccess(
                 order: true,
               },
               orderBy: {
-                order: 'asc',
+                order: "asc",
               },
             },
             user: {

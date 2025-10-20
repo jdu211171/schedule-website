@@ -1,5 +1,5 @@
-"use client"
-import * as React from "react"
+"use client";
+import * as React from "react";
 import {
   format,
   startOfMonth,
@@ -9,24 +9,28 @@ import {
   endOfWeek,
   addWeeks,
   addDays,
-} from "date-fns"
-import { ja } from "date-fns/locale"
-import { CalendarIcon } from "lucide-react"
-import { type DateRange } from "react-day-picker"
+} from "date-fns";
+import { ja } from "date-fns/locale";
+import { CalendarIcon } from "lucide-react";
+import { type DateRange } from "react-day-picker";
 
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import { Calendar } from "@/components/ui/calendar"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 interface SimpleDateRangePickerProps {
-  value?: DateRange
-  onValueChange?: (range: DateRange | undefined) => void
-  placeholder?: string
-  disabled?: boolean
-  className?: string
-  disablePastDates?: boolean
-  showPresets?: boolean
+  value?: DateRange;
+  onValueChange?: (range: DateRange | undefined) => void;
+  placeholder?: string;
+  disabled?: boolean;
+  className?: string;
+  disablePastDates?: boolean;
+  showPresets?: boolean;
 }
 
 // Preset configurations
@@ -87,7 +91,7 @@ const presets = [
       to: addMonths(startDate, 60),
     }),
   },
-]
+];
 
 export const SimpleDateRangePicker: React.FC<SimpleDateRangePickerProps> = ({
   value,
@@ -98,112 +102,114 @@ export const SimpleDateRangePicker: React.FC<SimpleDateRangePickerProps> = ({
   disablePastDates = true,
   showPresets = true,
 }) => {
-  const [open, setOpen] = React.useState(false)
-  const [tempRange, setTempRange] = React.useState<DateRange | undefined>(value)
+  const [open, setOpen] = React.useState(false);
+  const [tempRange, setTempRange] = React.useState<DateRange | undefined>(
+    value
+  );
 
   // Helper: normalize a Date to local noon to avoid timezone day shifts
   const toLocalNoon = React.useCallback((d: Date | undefined) => {
-    if (!d) return undefined
-    const nd = new Date(d)
-    nd.setHours(12, 0, 0, 0)
-    return nd
-  }, [])
+    if (!d) return undefined;
+    const nd = new Date(d);
+    nd.setHours(12, 0, 0, 0);
+    return nd;
+  }, []);
 
   // Update temp range when value changes
   React.useEffect(() => {
     if (!value) {
-      setTempRange(undefined)
-      return
+      setTempRange(undefined);
+      return;
     }
     setTempRange({
       from: toLocalNoon(value.from!),
       to: toLocalNoon(value.to),
-    })
-  }, [value, toLocalNoon])
+    });
+  }, [value, toLocalNoon]);
 
   // Format the selected date range for display
   const formatDateRange = (range: DateRange | undefined) => {
-    if (!range?.from) return placeholder
-    if (!range.to) return format(range.from, "M/d", { locale: ja })
-    
+    if (!range?.from) return placeholder;
+    if (!range.to) return format(range.from, "M/d", { locale: ja });
+
     if (range.from.getTime() === range.to.getTime()) {
-      return format(range.from, "M/d", { locale: ja })
+      return format(range.from, "M/d", { locale: ja });
     }
 
-    const fromYear = range.from.getFullYear()
-    const toYear = range.to.getFullYear()
-    const fromMonth = range.from.getMonth()
-    const toMonth = range.to.getMonth()
+    const fromYear = range.from.getFullYear();
+    const toYear = range.to.getFullYear();
+    const fromMonth = range.from.getMonth();
+    const toMonth = range.to.getMonth();
 
     if (fromYear === toYear && fromMonth === toMonth) {
-      return `${format(range.from, "M/d", { locale: ja })} - ${format(range.to, "d", { locale: ja })}`
+      return `${format(range.from, "M/d", { locale: ja })} - ${format(range.to, "d", { locale: ja })}`;
     } else if (fromYear === toYear) {
-      return `${format(range.from, "M/d", { locale: ja })} - ${format(range.to, "M/d", { locale: ja })}`
+      return `${format(range.from, "M/d", { locale: ja })} - ${format(range.to, "M/d", { locale: ja })}`;
     } else {
-      return `${format(range.from, "yyyy/M/d", { locale: ja })} - ${format(range.to, "yyyy/M/d", { locale: ja })}`
+      return `${format(range.from, "yyyy/M/d", { locale: ja })} - ${format(range.to, "yyyy/M/d", { locale: ja })}`;
     }
-  }
+  };
 
   // Handle date selection - work with temp range
   const handleSelect = (range: DateRange | undefined) => {
     if (!range) {
-      setTempRange(undefined)
-      return
+      setTempRange(undefined);
+      return;
     }
-    setTempRange({ from: toLocalNoon(range.from!), to: toLocalNoon(range.to) })
-  }
+    setTempRange({ from: toLocalNoon(range.from!), to: toLocalNoon(range.to) });
+  };
 
   // Handle preset selection - work with temp range
-  const handlePresetClick = (preset: typeof presets[0]) => {
-    if (!tempRange?.from) return // Require start date first
-    
-    const range = preset.getValue(tempRange.from)
-    setTempRange({ from: toLocalNoon(range.from)!, to: toLocalNoon(range.to) })
-  }
+  const handlePresetClick = (preset: (typeof presets)[0]) => {
+    if (!tempRange?.from) return; // Require start date first
+
+    const range = preset.getValue(tempRange.from);
+    setTempRange({ from: toLocalNoon(range.from)!, to: toLocalNoon(range.to) });
+  };
 
   // Handle popover open/close
   const handleOpenChange = (isOpen: boolean) => {
-    if (disabled) return
-    setOpen(isOpen)
+    if (disabled) return;
+    setOpen(isOpen);
     if (!isOpen) {
       // Reset temp range when closing without applying
-      setTempRange(value)
+      setTempRange(value);
     }
-  }
+  };
 
   // Handle clear button
   const handleClear = () => {
-    setTempRange(undefined)
-  }
+    setTempRange(undefined);
+  };
 
   // Handle apply button
   const handleApply = () => {
-    setOpen(false)
+    setOpen(false);
     if (!tempRange) {
-      onValueChange?.(undefined)
-      return
+      onValueChange?.(undefined);
+      return;
     }
     const normalized: DateRange = {
       from: toLocalNoon(tempRange.from!)!,
       to: toLocalNoon(tempRange.to),
-    }
-    onValueChange?.(normalized)
-  }
+    };
+    onValueChange?.(normalized);
+  };
 
   // Handle cancel button
   const handleCancel = () => {
-    setTempRange(value)
-    setOpen(false)
-  }
+    setTempRange(value);
+    setOpen(false);
+  };
 
   // Disable past dates function
-  const disablePastDatesFunc = disablePastDates 
+  const disablePastDatesFunc = disablePastDates
     ? (date: Date) => {
-        const today = new Date()
-        today.setHours(0, 0, 0, 0)
-        return date < today
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        return date < today;
       }
-    : undefined
+    : undefined;
 
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
@@ -214,7 +220,7 @@ export const SimpleDateRangePicker: React.FC<SimpleDateRangePickerProps> = ({
             "w-full justify-start text-left font-normal min-h-[40px] text-sm",
             !value?.from && "text-muted-foreground",
             disabled && "opacity-50 cursor-not-allowed",
-            className,
+            className
           )}
           disabled={disabled}
         >
@@ -237,7 +243,12 @@ export const SimpleDateRangePicker: React.FC<SimpleDateRangePickerProps> = ({
             />
 
             <div className="flex gap-2 mt-4 pt-3 border-t border-border">
-              <Button variant="outline" size="sm" className="hover:bg-accent" onClick={handleClear}>
+              <Button
+                variant="outline"
+                size="sm"
+                className="hover:bg-accent"
+                onClick={handleClear}
+              >
                 クリア
               </Button>
               <Button variant="ghost" size="sm" onClick={handleCancel}>
@@ -266,8 +277,8 @@ export const SimpleDateRangePicker: React.FC<SimpleDateRangePickerProps> = ({
                     variant="ghost"
                     className={cn(
                       "h-10 w-16 p-0 text-sm font-normal justify-center",
-                      tempRange?.from 
-                        ? "hover:bg-primary hover:text-primary-foreground" 
+                      tempRange?.from
+                        ? "hover:bg-primary hover:text-primary-foreground"
                         : "opacity-50 cursor-not-allowed"
                     )}
                     onClick={() => handlePresetClick(preset)}
@@ -282,7 +293,7 @@ export const SimpleDateRangePicker: React.FC<SimpleDateRangePickerProps> = ({
         </div>
       </PopoverContent>
     </Popover>
-  )
-}
+  );
+};
 
-SimpleDateRangePicker.displayName = "SimpleDateRangePicker"
+SimpleDateRangePicker.displayName = "SimpleDateRangePicker";

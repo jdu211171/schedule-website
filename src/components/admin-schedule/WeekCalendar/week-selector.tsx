@@ -1,11 +1,23 @@
-"use client"
+"use client";
 
 import { cn } from "@/lib/utils";
-import { addWeeks, startOfWeek, format, addDays, isSameDay, startOfDay, addMonths } from "date-fns";
+import {
+  addWeeks,
+  startOfWeek,
+  format,
+  addDays,
+  isSameDay,
+  startOfDay,
+  addMonths,
+} from "date-fns";
 import { ja } from "date-fns/locale";
 import React, { useState, useMemo } from "react";
 import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { CalendarIcon } from "lucide-react";
 import { getCurrentDateAdjusted, getDateKey, isSameDayDate } from "../date";
@@ -24,10 +36,10 @@ export const WeekSelector: React.FC<WeekSelectorProps> = ({
   onBaseDateChange,
 }) => {
   const [calendarOpen, setCalendarOpen] = useState(false);
-  
+
   // Use provided baseDate or default to current date
   const currentBaseDate = baseDate || getCurrentDateAdjusted();
-  
+
   const today = useMemo(() => {
     return startOfDay(getCurrentDateAdjusted());
   }, []);
@@ -37,13 +49,16 @@ export const WeekSelector: React.FC<WeekSelectorProps> = ({
   }, [today]);
 
   // Generate 5 weeks starting from base date
-  const weeksOfMonth: Date[] = useMemo(() => [
-    currentBaseDate,
-    addWeeks(currentBaseDate, 1),
-    addWeeks(currentBaseDate, 2),
-    addWeeks(currentBaseDate, 3),
-    addWeeks(currentBaseDate, 4),
-  ], [currentBaseDate]);
+  const weeksOfMonth: Date[] = useMemo(
+    () => [
+      currentBaseDate,
+      addWeeks(currentBaseDate, 1),
+      addWeeks(currentBaseDate, 2),
+      addWeeks(currentBaseDate, 3),
+      addWeeks(currentBaseDate, 4),
+    ],
+    [currentBaseDate]
+  );
 
   const isWeekSelected = (weekStartDate: Date): boolean => {
     const currentWeekStart = startOfWeek(weekStartDate, { weekStartsOn: 1 });
@@ -100,7 +115,7 @@ export const WeekSelector: React.FC<WeekSelectorProps> = ({
       {onBaseDateChange && (
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium text-foreground">期間:</span>
-          
+
           <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
             <PopoverTrigger asChild>
               <Button
@@ -125,12 +140,14 @@ export const WeekSelector: React.FC<WeekSelectorProps> = ({
                 modifiers={{
                   range: (date) => {
                     // Highlight the 5-week range
-                    const firstWeekStart = startOfWeek(currentBaseDate, { weekStartsOn: 1 });
+                    const firstWeekStart = startOfWeek(currentBaseDate, {
+                      weekStartsOn: 1,
+                    });
                     return date >= firstWeekStart && date <= lastWeekEnd;
-                  }
+                  },
                 }}
                 modifiersClassNames={{
-                  range: "bg-primary/20 text-foreground"
+                  range: "bg-primary/20 text-foreground",
                 }}
               />
               <div className="p-3 border-t">
@@ -148,10 +165,10 @@ export const WeekSelector: React.FC<WeekSelectorProps> = ({
           </Popover>
 
           {!isViewingCurrentWeek && (
-            <Button 
-              size="sm" 
-              variant="ghost" 
-              className="h-8 px-2 text-xs" 
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-8 px-2 text-xs"
               onClick={handleTodayClick}
             >
               今週に戻る
@@ -162,7 +179,9 @@ export const WeekSelector: React.FC<WeekSelectorProps> = ({
 
       {/* Week Selection */}
       <div className="flex items-center gap-2">
-        <span className="text-sm font-medium text-foreground">表示する週間:</span>
+        <span className="text-sm font-medium text-foreground">
+          表示する週間:
+        </span>
 
         <div className="flex space-x-2">
           {weeksOfMonth.map((weekStartDate, index) => {
@@ -170,7 +189,7 @@ export const WeekSelector: React.FC<WeekSelectorProps> = ({
             const weekStart = startOfWeek(weekStartDate, { weekStartsOn: 1 });
             const weekEnd = addDays(weekStart, 6);
             const weekDisplay = `${format(weekStart, "M/d", { locale: ja })}-${format(weekEnd, "M/d", { locale: ja })}`;
-            
+
             return (
               <label
                 key={getDateKey(weekStartDate)}
@@ -179,8 +198,8 @@ export const WeekSelector: React.FC<WeekSelectorProps> = ({
                   isSelected
                     ? "bg-primary text-primary-foreground ring-2 ring-primary"
                     : index === 0
-                    ? "bg-secondary text-secondary-foreground border border-input"
-                    : "bg-background text-foreground border border-input",
+                      ? "bg-secondary text-secondary-foreground border border-input"
+                      : "bg-background text-foreground border border-input",
                   index === 0 && "font-bold",
                   "cursor-pointer hover:bg-accent hover:text-accent-foreground"
                 )}
@@ -190,7 +209,9 @@ export const WeekSelector: React.FC<WeekSelectorProps> = ({
                   type="checkbox"
                   className="sr-only"
                   checked={isSelected}
-                  onChange={(e) => onSelectWeek(weekStartDate, e.target.checked)}
+                  onChange={(e) =>
+                    onSelectWeek(weekStartDate, e.target.checked)
+                  }
                 />
                 {index + 1}
               </label>

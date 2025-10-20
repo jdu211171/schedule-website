@@ -1,11 +1,24 @@
 "use client";
 
 import React from "react";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 
-type Props = { seriesId: string; open: boolean; onOpenChange: (open: boolean) => void };
+type Props = {
+  seriesId: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+};
 
-export default function SeriesSessionsDrawer({ seriesId, open, onOpenChange }: Props) {
+export default function SeriesSessionsDrawer({
+  seriesId,
+  open,
+  onOpenChange,
+}: Props) {
   const [items, setItems] = React.useState<any[]>([]);
   const [loading, setLoading] = React.useState(false);
 
@@ -13,7 +26,9 @@ export default function SeriesSessionsDrawer({ seriesId, open, onOpenChange }: P
     if (!open) return;
     setLoading(true);
     fetch(`/api/class-sessions/series/${seriesId}`, {
-      headers: { "X-Selected-Branch": localStorage.getItem("selectedBranchId") || "" },
+      headers: {
+        "X-Selected-Branch": localStorage.getItem("selectedBranchId") || "",
+      },
     })
       .then((r) => r.json())
       .then((j) => setItems(j?.data || []))
@@ -34,19 +49,30 @@ export default function SeriesSessionsDrawer({ seriesId, open, onOpenChange }: P
               {items.slice(0, 100).map((s) => (
                 <li
                   key={s.classId}
-                  className={`rounded border p-2 ${s.status === 'CONFLICTED' ? 'border-destructive/60 bg-destructive/5' : 'border-border'}`}
+                  className={`rounded border p-2 ${s.status === "CONFLICTED" ? "border-destructive/60 bg-destructive/5" : "border-border"}`}
                 >
                   <div className="flex items-center justify-between">
                     <div>
-                      <div className="font-medium">{s.date} {s.startTime}–{s.endTime}</div>
+                      <div className="font-medium">
+                        {s.date} {s.startTime}–{s.endTime}
+                      </div>
                       <div className="text-xs text-muted-foreground">
-                        {s.subjectName || s.subjectId || ''} / {s.teacherName || ''} / {s.studentName || ''}
+                        {s.subjectName || s.subjectId || ""} /{" "}
+                        {s.teacherName || ""} / {s.studentName || ""}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      {s.isCancelled && <span className="text-[10px] px-1 rounded bg-slate-700 text-white">キャンセル</span>}
+                      {s.isCancelled && (
+                        <span className="text-[10px] px-1 rounded bg-slate-700 text-white">
+                          キャンセル
+                        </span>
+                      )}
                       {s.status && (
-                        <span className={`text-[10px] px-2 py-0.5 rounded border ${s.status === 'CONFLICTED' ? 'border-destructive text-destructive' : 'text-muted-foreground'}`}>{s.status}</span>
+                        <span
+                          className={`text-[10px] px-2 py-0.5 rounded border ${s.status === "CONFLICTED" ? "border-destructive text-destructive" : "text-muted-foreground"}`}
+                        >
+                          {s.status}
+                        </span>
                       )}
                     </div>
                   </div>

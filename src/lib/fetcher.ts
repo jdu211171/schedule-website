@@ -32,7 +32,11 @@ export async function fetcher<T>(
   if (!res.ok) {
     const info = await res.json();
     const status = res.status;
-    const error = new CustomError("An error occurred while fetching the data.", info, status);
+    const error = new CustomError(
+      "An error occurred while fetching the data.",
+      info,
+      status
+    );
     throw error;
   }
 

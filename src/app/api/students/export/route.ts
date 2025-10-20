@@ -4,7 +4,11 @@ import { withBranchAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { studentFilterSchema } from "@/schemas/student.schema";
 import { STUDENT_CSV_HEADERS } from "@/schemas/import/student-import.schema";
-import { getOrderedCsvHeaders, getExportColumns, STUDENT_COLUMN_RULES } from "@/schemas/import/student-column-rules";
+import {
+  getOrderedCsvHeaders,
+  getExportColumns,
+  STUDENT_COLUMN_RULES,
+} from "@/schemas/import/student-column-rules";
 import { format } from "date-fns";
 import { formatLocalYMD } from "@/lib/date";
 
@@ -15,7 +19,10 @@ function formatDateForCSV(date: Date | null): string {
 }
 
 // Helper function to format enum values back to their readable form
-function formatEnumForCSV(value: string | null, type: "schoolType" | "examCategory" | "examCategoryType"): string {
+function formatEnumForCSV(
+  value: string | null,
+  type: "schoolType" | "examCategory" | "examCategoryType"
+): string {
   if (!value) return "";
 
   switch (type) {
@@ -24,10 +31,10 @@ function formatEnumForCSV(value: string | null, type: "schoolType" | "examCatego
       return value === "PUBLIC" ? "公立" : value === "PRIVATE" ? "私立" : value;
     case "examCategory":
       const examCategoryMap: Record<string, string> = {
-        "BEGINNER": "小学校",
-        "ELEMENTARY": "中学校",
-        "HIGH_SCHOOL": "高校",
-        "UNIVERSITY": "大学"
+        BEGINNER: "小学校",
+        ELEMENTARY: "中学校",
+        HIGH_SCHOOL: "高校",
+        UNIVERSITY: "大学",
       };
       return examCategoryMap[value] || value;
     default:
@@ -58,16 +65,30 @@ export const GET = withBranchAccess(
     const gradeYearList = searchParams.get("gradeYear")?.split(",") || [];
     const branchList = searchParams.get("branch")?.split(",") || [];
     const subjectList = searchParams.get("subject")?.split(",") || [];
-    const lineConnectionList = searchParams.get("lineConnection")?.split(",") || [];
+    const lineConnectionList =
+      searchParams.get("lineConnection")?.split(",") || [];
     const schoolTypeList = searchParams.get("schoolType")?.split(",") || [];
     const examCategoryList = searchParams.get("examCategory")?.split(",") || [];
-    const examCategoryTypeList = searchParams.get("examCategoryType")?.split(",") || [];
-    const birthDateFrom = searchParams.get("birthDateFrom") ? new Date(searchParams.get("birthDateFrom")!) : undefined;
-    const birthDateTo = searchParams.get("birthDateTo") ? new Date(searchParams.get("birthDateTo")!) : undefined;
-    const admissionDateFrom = searchParams.get("admissionDateFrom") ? new Date(searchParams.get("admissionDateFrom")!) : undefined;
-    const admissionDateTo = searchParams.get("admissionDateTo") ? new Date(searchParams.get("admissionDateTo")!) : undefined;
-    const examDateFrom = searchParams.get("examDateFrom") ? new Date(searchParams.get("examDateFrom")!) : undefined;
-    const examDateTo = searchParams.get("examDateTo") ? new Date(searchParams.get("examDateTo")!) : undefined;
+    const examCategoryTypeList =
+      searchParams.get("examCategoryType")?.split(",") || [];
+    const birthDateFrom = searchParams.get("birthDateFrom")
+      ? new Date(searchParams.get("birthDateFrom")!)
+      : undefined;
+    const birthDateTo = searchParams.get("birthDateTo")
+      ? new Date(searchParams.get("birthDateTo")!)
+      : undefined;
+    const admissionDateFrom = searchParams.get("admissionDateFrom")
+      ? new Date(searchParams.get("admissionDateFrom")!)
+      : undefined;
+    const admissionDateTo = searchParams.get("admissionDateTo")
+      ? new Date(searchParams.get("admissionDateTo")!)
+      : undefined;
+    const examDateFrom = searchParams.get("examDateFrom")
+      ? new Date(searchParams.get("examDateFrom")!)
+      : undefined;
+    const examDateTo = searchParams.get("examDateTo")
+      ? new Date(searchParams.get("examDateTo")!)
+      : undefined;
 
     // Get visible columns from query params
     const rawColumns = searchParams.get("columns")?.split(",") || [
@@ -95,11 +116,21 @@ export const GET = withBranchAccess(
     ];
 
     // Ensure ID is included and then filter out disallowed columns
-    const visibleColumns = rawColumns.includes("id") ? rawColumns : ["id", ...rawColumns];
+    const visibleColumns = rawColumns.includes("id")
+      ? rawColumns
+      : ["id", ...rawColumns];
 
     // Filter out LINE-related fields, phone fields, and contactPhones for security/privacy
-    const allowedColumns = visibleColumns.filter(col =>
-      !["lineId", "lineConnection", "lineNotificationsEnabled", "homePhone", "parentPhone", "studentPhone"].includes(col)
+    const allowedColumns = visibleColumns.filter(
+      (col) =>
+        ![
+          "lineId",
+          "lineConnection",
+          "lineNotificationsEnabled",
+          "homePhone",
+          "parentPhone",
+          "studentPhone",
+        ].includes(col)
     );
 
     // Build where clause
@@ -147,12 +178,12 @@ export const GET = withBranchAccess(
         contactEmails: true,
       },
       orderBy: [
-        { 
-          studentType: { 
-            order: { sort: "asc", nulls: "last" } 
-          } 
+        {
+          studentType: {
+            order: { sort: "asc", nulls: "last" },
+          },
         },
-        { name: "asc" }
+        { name: "asc" },
       ],
     });
 
@@ -162,7 +193,7 @@ export const GET = withBranchAccess(
     // Filter by multiple statuses if needed
     if (statusList.length > 1) {
       const statusSet = new Set(statusList);
-      filteredStudents = filteredStudents.filter(student =>
+      filteredStudents = filteredStudents.filter((student) =>
         statusSet.has(student.status || "ACTIVE")
       );
     }
@@ -170,23 +201,26 @@ export const GET = withBranchAccess(
     // Filter by student types (by name, not ID)
     if (studentTypeList.length > 0) {
       const studentTypeSet = new Set(studentTypeList);
-      filteredStudents = filteredStudents.filter(student =>
-        student.studentType && studentTypeSet.has(student.studentType.name)
+      filteredStudents = filteredStudents.filter(
+        (student) =>
+          student.studentType && studentTypeSet.has(student.studentType.name)
       );
     }
 
     // Filter by grade years
     if (gradeYearList.length > 0) {
       const gradeYearSet = new Set(gradeYearList);
-      filteredStudents = filteredStudents.filter(student =>
-        student.gradeYear !== null && gradeYearSet.has(student.gradeYear.toString())
+      filteredStudents = filteredStudents.filter(
+        (student) =>
+          student.gradeYear !== null &&
+          gradeYearSet.has(student.gradeYear.toString())
       );
     }
 
     // Filter by branches
     if (branchList.length > 0) {
       const branchSet = new Set(branchList);
-      filteredStudents = filteredStudents.filter(student =>
+      filteredStudents = filteredStudents.filter((student) =>
         student.user?.branches?.some((b: any) => branchSet.has(b.branch.name))
       );
     }
@@ -194,7 +228,7 @@ export const GET = withBranchAccess(
     // Filter by subjects
     if (subjectList.length > 0) {
       const subjectSet = new Set(subjectList);
-      filteredStudents = filteredStudents.filter(student => {
+      filteredStudents = filteredStudents.filter((student) => {
         if (!student.user?.subjectPreferences) return false;
         return student.user.subjectPreferences.some((pref: any) =>
           subjectSet.has(pref.subject.name)
@@ -205,7 +239,7 @@ export const GET = withBranchAccess(
     // Filter by LINE connection status
     if (lineConnectionList.length > 0) {
       const lineConnectionSet = new Set(lineConnectionList);
-      filteredStudents = filteredStudents.filter(student => {
+      filteredStudents = filteredStudents.filter((student) => {
         const hasLine = !!student.lineId;
         const notificationsEnabled = student.lineNotificationsEnabled ?? true;
 
@@ -225,30 +259,33 @@ export const GET = withBranchAccess(
     // Filter by school type
     if (schoolTypeList.length > 0) {
       const schoolTypeSet = new Set(schoolTypeList);
-      filteredStudents = filteredStudents.filter(student =>
-        student.schoolType && schoolTypeSet.has(student.schoolType)
+      filteredStudents = filteredStudents.filter(
+        (student) => student.schoolType && schoolTypeSet.has(student.schoolType)
       );
     }
 
     // Filter by exam category
     if (examCategoryList.length > 0) {
       const examCategorySet = new Set(examCategoryList);
-      filteredStudents = filteredStudents.filter(student =>
-        student.examCategory && examCategorySet.has(student.examCategory)
+      filteredStudents = filteredStudents.filter(
+        (student) =>
+          student.examCategory && examCategorySet.has(student.examCategory)
       );
     }
 
     // Filter by exam category type
     if (examCategoryTypeList.length > 0) {
       const examCategoryTypeSet = new Set(examCategoryTypeList);
-      filteredStudents = filteredStudents.filter(student =>
-        student.examCategoryType && examCategoryTypeSet.has(student.examCategoryType)
+      filteredStudents = filteredStudents.filter(
+        (student) =>
+          student.examCategoryType &&
+          examCategoryTypeSet.has(student.examCategoryType)
       );
     }
 
     // Filter by birth date range
     if (birthDateFrom || birthDateTo) {
-      filteredStudents = filteredStudents.filter(student => {
+      filteredStudents = filteredStudents.filter((student) => {
         if (!student.birthDate) return false;
         const birthDate = new Date(student.birthDate);
         if (birthDateFrom && birthDate < birthDateFrom) return false;
@@ -259,8 +296,12 @@ export const GET = withBranchAccess(
 
     // Filter by admission date range
     if (admissionDateFrom || admissionDateTo) {
-      filteredStudents = filteredStudents.filter(student => {
-        const adm = (student as any).admissionDate as Date | string | null | undefined;
+      filteredStudents = filteredStudents.filter((student) => {
+        const adm = (student as any).admissionDate as
+          | Date
+          | string
+          | null
+          | undefined;
         if (!adm) return false;
         const d = new Date(adm);
         if (admissionDateFrom && d < admissionDateFrom) return false;
@@ -271,7 +312,7 @@ export const GET = withBranchAccess(
 
     // Filter by exam date range
     if (examDateFrom || examDateTo) {
-      filteredStudents = filteredStudents.filter(student => {
+      filteredStudents = filteredStudents.filter((student) => {
         if (!student.examDate) return false;
         const examDate = new Date(student.examDate);
         if (examDateFrom && examDate < examDateFrom) return false;
@@ -283,34 +324,34 @@ export const GET = withBranchAccess(
     // Column ID to CSV header mapping based on column rules
     const columnIdToHeader: Record<string, string> = {};
     const headerToColumnId: Record<string, string> = {};
-    
+
     // Build mappings from column rules
     for (const [key, rule] of Object.entries(STUDENT_COLUMN_RULES)) {
       // Map common column IDs to CSV headers
       switch (key) {
-        case 'studentTypeName':
-          columnIdToHeader['studentTypeName'] = rule.csvHeader;
-          headerToColumnId[rule.csvHeader] = 'studentTypeName';
+        case "studentTypeName":
+          columnIdToHeader["studentTypeName"] = rule.csvHeader;
+          headerToColumnId[rule.csvHeader] = "studentTypeName";
           break;
-        case 'name':
-        case 'kanaName':
-        case 'status':
-        case 'gradeYear':
-        case 'birthDate':
-        case 'admissionDate':
-        case 'schoolName':
-        case 'schoolType':
-        case 'examCategory':
-        case 'examCategoryType':
-        case 'firstChoice':
-        case 'secondChoice':
-        case 'examDate':
-        case 'username':
-        case 'email':
-        case 'parentEmail':
-        case 'password':
-        case 'branches':
-        case 'notes':
+        case "name":
+        case "kanaName":
+        case "status":
+        case "gradeYear":
+        case "birthDate":
+        case "admissionDate":
+        case "schoolName":
+        case "schoolType":
+        case "examCategory":
+        case "examCategoryType":
+        case "firstChoice":
+        case "secondChoice":
+        case "examDate":
+        case "username":
+        case "email":
+        case "parentEmail":
+        case "password":
+        case "branches":
+        case "notes":
           columnIdToHeader[key] = rule.csvHeader;
           headerToColumnId[rule.csvHeader] = key;
           break;
@@ -318,19 +359,19 @@ export const GET = withBranchAccess(
     }
 
     // Map subject preferences column to Japanese header
-    columnIdToHeader['subjectPreferences'] = '選択科目';
-    headerToColumnId['選択科目'] = 'subjectPreferences';
+    columnIdToHeader["subjectPreferences"] = "選択科目";
+    headerToColumnId["選択科目"] = "subjectPreferences";
     // Map contact emails aggregated column
-    columnIdToHeader['contactEmails'] = '連絡先メール';
-    headerToColumnId['連絡先メール'] = 'contactEmails';
+    columnIdToHeader["contactEmails"] = "連絡先メール";
+    headerToColumnId["連絡先メール"] = "contactEmails";
 
     // Map contact phones aggregated column
-    columnIdToHeader['contactPhones'] = '連絡先電話';
-    headerToColumnId['連絡先電話'] = 'contactPhones';
+    columnIdToHeader["contactPhones"] = "連絡先電話";
+    headerToColumnId["連絡先電話"] = "contactPhones";
 
     // Add ID header mapping
-    columnIdToHeader['id'] = 'ID';
-    headerToColumnId['ID'] = 'id';
+    columnIdToHeader["id"] = "ID";
+    headerToColumnId["ID"] = "id";
 
     // Build CSV header from allowed columns
     const headers = allowedColumns
@@ -352,7 +393,9 @@ export const GET = withBranchAccess(
             SICK: "休会",
             PERMANENTLY_LEFT: "退会",
           };
-          return statusLabels[student.status || "ACTIVE"] || student.status || "";
+          return (
+            statusLabels[student.status || "ACTIVE"] || student.status || ""
+          );
         }
         case "studentTypeName":
           return student.studentType?.name || "";
@@ -387,7 +430,8 @@ export const GET = withBranchAccess(
           return "";
         case "branches":
           return (
-            student.user?.branches?.map((b: any) => b.branch.name).join("; ") || ""
+            student.user?.branches?.map((b: any) => b.branch.name).join("; ") ||
+            ""
           );
         case "subjectPreferences":
           return (
@@ -403,7 +447,14 @@ export const GET = withBranchAccess(
               .join("; ") || ""
           );
         case "contactPhones": {
-          const label = (t: string) => (t === 'HOME' ? '自宅' : t === 'DAD' ? '父' : t === 'MOM' ? '母' : 'その他');
+          const label = (t: string) =>
+            t === "HOME"
+              ? "自宅"
+              : t === "DAD"
+                ? "父"
+                : t === "MOM"
+                  ? "母"
+                  : "その他";
           return (
             student.contactPhones
               ?.sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0))
@@ -420,7 +471,10 @@ export const GET = withBranchAccess(
 
     // Streaming mode for large exports
     if (streamMode) {
-      const pageSize = Number.parseInt(process.env.EXPORT_PAGE_SIZE || "1000", 10);
+      const pageSize = Number.parseInt(
+        process.env.EXPORT_PAGE_SIZE || "1000",
+        10
+      );
       const filename = `students_${formatLocalYMD(new Date())}.csv`;
       const encoder = new TextEncoder();
 
@@ -483,7 +537,11 @@ export const GET = withBranchAccess(
     const rows = filteredStudents.map((student) => {
       const row = allowedColumns.map((col) => {
         const value = formatValue(student as any, col);
-        if (value.includes(",") || value.includes("\n") || value.includes('"')) {
+        if (
+          value.includes(",") ||
+          value.includes("\n") ||
+          value.includes('"')
+        ) {
           return `"${value.replace(/"/g, '""')}"`;
         }
         return value;

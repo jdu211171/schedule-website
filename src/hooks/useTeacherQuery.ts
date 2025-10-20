@@ -98,7 +98,17 @@ type TeachersResponse = {
 };
 
 export function useTeachers(params: UseTeachersParams = {}) {
-  const { page = 1, limit = 10, name, status, statuses, birthDateFrom, birthDateTo, sortBy, sortOrder } = params;
+  const {
+    page = 1,
+    limit = 10,
+    name,
+    status,
+    statuses,
+    birthDateFrom,
+    birthDateTo,
+    sortBy,
+    sortOrder,
+  } = params;
 
   // Build search params manually to handle arrays
   const searchParams = new URLSearchParams();
@@ -109,15 +119,30 @@ export function useTeachers(params: UseTeachersParams = {}) {
   if (statuses && statuses.length > 0) {
     statuses.forEach((s) => searchParams.append("statuses", s));
   }
-  if (birthDateFrom) searchParams.append("birthDateFrom", birthDateFrom.toISOString());
-  if (birthDateTo) searchParams.append("birthDateTo", birthDateTo.toISOString());
+  if (birthDateFrom)
+    searchParams.append("birthDateFrom", birthDateFrom.toISOString());
+  if (birthDateTo)
+    searchParams.append("birthDateTo", birthDateTo.toISOString());
   if (sortBy) searchParams.append("sortBy", sortBy);
   if (sortOrder) searchParams.append("sortOrder", sortOrder);
 
   return useQuery<TeachersResponse>({
-    queryKey: ["teachers", page, limit, name, status, statuses, birthDateFrom, birthDateTo, sortBy, sortOrder],
+    queryKey: [
+      "teachers",
+      page,
+      limit,
+      name,
+      status,
+      statuses,
+      birthDateFrom,
+      birthDateTo,
+      sortBy,
+      sortOrder,
+    ],
     queryFn: async () =>
-      await fetcher<TeachersResponse>(`/api/teachers?${searchParams.toString()}`),
+      await fetcher<TeachersResponse>(
+        `/api/teachers?${searchParams.toString()}`
+      ),
   });
 }
 

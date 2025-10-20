@@ -33,7 +33,7 @@ export default {
         },
       },
       authorize: async (creds) => {
-        console.log("🔍 Credentials login attempt:", creds)
+        console.log("🔍 Credentials login attempt:", creds);
         if (!creds?.identifier || !creds?.password)
           throw new Error("Missing username/email/LINE user ID or password");
 
@@ -44,10 +44,7 @@ export default {
 
         let user = await prisma.user.findFirst({
           where: {
-            OR: [
-              { email: identifier },
-              { username: identifier },
-            ],
+            OR: [{ email: identifier }, { username: identifier }],
           },
           include: {
             teacher: true,
@@ -75,7 +72,7 @@ export default {
         if (!user) {
           const student = await prisma.student.findUnique({
             where: {
-              lineId: identifier
+              lineId: identifier,
             },
             include: {
               user: {
@@ -99,15 +96,15 @@ export default {
                     },
                   },
                 },
-              }
-            }
+              },
+            },
           });
           if (student) {
             user = student?.user;
           } else {
             const teacher = await prisma.teacher.findUnique({
               where: {
-                lineId: identifier
+                lineId: identifier,
               },
               include: {
                 user: {
@@ -131,8 +128,8 @@ export default {
                       },
                     },
                   },
-                }
-              }
+                },
+              },
             });
             if (teacher) {
               user = teacher?.user;
@@ -144,7 +141,7 @@ export default {
         if (!user) {
           const student = await prisma.student.findUnique({
             where: {
-              lineUserId: identifier
+              lineUserId: identifier,
             },
             include: {
               user: {
@@ -168,15 +165,15 @@ export default {
                     },
                   },
                 },
-              }
-            }
+              },
+            },
           });
           if (student) {
             user = student?.user;
           } else {
             const teacher = await prisma.teacher.findUnique({
               where: {
-                lineUserId: identifier
+                lineUserId: identifier,
               },
               include: {
                 user: {
@@ -200,8 +197,8 @@ export default {
                       },
                     },
                   },
-                }
-              }
+                },
+              },
             });
             if (teacher) {
               user = teacher?.user;
@@ -216,21 +213,21 @@ export default {
         const ok = ["TEACHER", "STUDENT"].includes(user.role)
           ? password === user.passwordHash
           : await bcrypt.compare(
-            password as string,
-            user.passwordHash as string
-          );
+              password as string,
+              user.passwordHash as string
+            );
 
         if (!ok) throw new Error("Invalid credentials");
 
         // For ADMIN users, fetch all branches
         let userBranches;
-        if (user.role === 'ADMIN') {
+        if (user.role === "ADMIN") {
           const allBranches = await prisma.branch.findMany({
             select: {
               branchId: true,
               name: true,
             },
-            orderBy: { name: 'asc' }
+            orderBy: { name: "asc" },
           });
           userBranches = allBranches;
         } else {
@@ -246,7 +243,10 @@ export default {
         let selectedBranchId: string | null = null;
         if (userBranches.length > 0) {
           // First priority: Use user's default branch if set and still valid
-          if (user.defaultBranchId && userBranches.some((b) => b.branchId === user.defaultBranchId)) {
+          if (
+            user.defaultBranchId &&
+            userBranches.some((b) => b.branchId === user.defaultBranchId)
+          ) {
             selectedBranchId = user.defaultBranchId;
           } else {
             // Second priority: Default to first branch alphabetically
@@ -331,13 +331,13 @@ export default {
         // User exists, allow sign in and attach additional data
         // For ADMIN users, fetch all branches
         let userBranches;
-        if (existingUser.role === 'ADMIN') {
+        if (existingUser.role === "ADMIN") {
           const allBranches = await prisma.branch.findMany({
             select: {
               branchId: true,
               name: true,
             },
-            orderBy: { name: 'asc' }
+            orderBy: { name: "asc" },
           });
           userBranches = allBranches;
         } else {
@@ -353,7 +353,12 @@ export default {
         let selectedBranchId: string | null = null;
         if (userBranches.length > 0) {
           // First priority: Use user's default branch if set and still valid
-          if (existingUser.defaultBranchId && userBranches.some((b) => b.branchId === existingUser.defaultBranchId)) {
+          if (
+            existingUser.defaultBranchId &&
+            userBranches.some(
+              (b) => b.branchId === existingUser.defaultBranchId
+            )
+          ) {
             selectedBranchId = existingUser.defaultBranchId;
           } else {
             // Second priority: Default to first branch alphabetically
@@ -364,7 +369,10 @@ export default {
         // Attach additional user data
         user.role = existingUser.role;
         user.username = existingUser.username ?? "";
-        user.userId = existingUser.teacher?.teacherId || existingUser.student?.studentId || "";
+        user.userId =
+          existingUser.teacher?.teacherId ||
+          existingUser.student?.studentId ||
+          "";
         user.branches = userBranches;
         user.selectedBranchId = selectedBranchId;
         user.isRestrictedAdmin = existingUser.isRestrictedAdmin ?? false;
@@ -412,7 +420,11 @@ export default {
           }
         }
 
-        if (pathname.startsWith("/dashboard") && (role !== "ADMIN" && role !== "STAFF")) {
+        if (
+          pathname.startsWith("/dashboard") &&
+          role !== "ADMIN" &&
+          role !== "STAFF"
+        ) {
           const homeUrl = homeFor(role);
           if (homeUrl !== pathname) {
             return NextResponse.redirect(`${origin}${homeUrl}`);
@@ -450,7 +462,10 @@ export default {
       }
 
       // Handle session updates (when update() is called from frontend)
-      if (trigger === "update" && session?.user?.selectedBranchId !== undefined) {
+      if (
+        trigger === "update" &&
+        session?.user?.selectedBranchId !== undefined
+      ) {
         token.selectedBranchId = session.user.selectedBranchId;
       }
 

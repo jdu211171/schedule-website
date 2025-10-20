@@ -39,112 +39,122 @@ export function DataTableYearFilter<TData>({
   column,
   title,
 }: DataTableYearFilterProps<TData>) {
-  const columnFilterValue = column.getFilterValue() as { from?: Date; to?: Date } | undefined;
-  
+  const columnFilterValue = column.getFilterValue() as
+    | { from?: Date; to?: Date }
+    | undefined;
+
   // Convert the date range to year filter value
   const initialValue = React.useMemo<YearFilterValue>(() => {
     if (!columnFilterValue) {
       return { mode: "single" };
     }
-    
+
     const { from, to } = columnFilterValue;
-    
+
     if (from && to) {
       const fromYear = from.getFullYear();
       const toYear = to.getFullYear();
-      
+
       // Check if it's a single year (Jan 1 - Dec 31 of same year)
-      if (fromYear === toYear && 
-          from.getMonth() === 0 && from.getDate() === 1 &&
-          to.getMonth() === 11 && to.getDate() === 31) {
+      if (
+        fromYear === toYear &&
+        from.getMonth() === 0 &&
+        from.getDate() === 1 &&
+        to.getMonth() === 11 &&
+        to.getDate() === 31
+      ) {
         return { mode: "single", year: fromYear };
       }
-      
+
       // Check if it's a "from" filter (from year to far future)
       if (toYear >= 2100) {
         return { mode: "from", year: fromYear };
       }
-      
+
       // Otherwise it's a range
       return { mode: "range", startYear: fromYear, endYear: toYear };
     }
-    
+
     if (from && !to) {
       return { mode: "from", year: from.getFullYear() };
     }
-    
+
     if (!from && to) {
       return { mode: "before", year: to.getFullYear() };
     }
-    
+
     return { mode: "single" };
   }, [columnFilterValue]);
-  
-  const [filterValue, setFilterValue] = React.useState<YearFilterValue>(initialValue);
+
+  const [filterValue, setFilterValue] =
+    React.useState<YearFilterValue>(initialValue);
   const [isOpen, setIsOpen] = React.useState(false);
-  
+
   // Update column filter when internal state changes
-  const updateColumnFilter = React.useCallback((value: YearFilterValue) => {
-    let dateRange: { from?: Date; to?: Date } | undefined;
-    
-    switch (value.mode) {
-      case "single":
-        if (value.year) {
-          dateRange = {
-            from: new Date(value.year, 0, 1), // Jan 1
-            to: new Date(value.year, 11, 31), // Dec 31
-          };
-        }
-        break;
-      
-      case "range":
-        if (value.startYear && value.endYear) {
-          dateRange = {
-            from: new Date(value.startYear, 0, 1),
-            to: new Date(value.endYear, 11, 31),
-          };
-        }
-        break;
-      
-      case "from":
-        if (value.year) {
-          dateRange = {
-            from: new Date(value.year, 0, 1),
-            to: new Date(2100, 0, 1), // Far future date
-          };
-        }
-        break;
-      
-      case "before":
-        if (value.year) {
-          dateRange = {
-            from: undefined,
-            to: new Date(value.year - 1, 11, 31), // Dec 31 of previous year
-          };
-        }
-        break;
-    }
-    
-    column.setFilterValue(dateRange);
-  }, [column]);
-  
+  const updateColumnFilter = React.useCallback(
+    (value: YearFilterValue) => {
+      let dateRange: { from?: Date; to?: Date } | undefined;
+
+      switch (value.mode) {
+        case "single":
+          if (value.year) {
+            dateRange = {
+              from: new Date(value.year, 0, 1), // Jan 1
+              to: new Date(value.year, 11, 31), // Dec 31
+            };
+          }
+          break;
+
+        case "range":
+          if (value.startYear && value.endYear) {
+            dateRange = {
+              from: new Date(value.startYear, 0, 1),
+              to: new Date(value.endYear, 11, 31),
+            };
+          }
+          break;
+
+        case "from":
+          if (value.year) {
+            dateRange = {
+              from: new Date(value.year, 0, 1),
+              to: new Date(2100, 0, 1), // Far future date
+            };
+          }
+          break;
+
+        case "before":
+          if (value.year) {
+            dateRange = {
+              from: undefined,
+              to: new Date(value.year - 1, 11, 31), // Dec 31 of previous year
+            };
+          }
+          break;
+      }
+
+      column.setFilterValue(dateRange);
+    },
+    [column]
+  );
+
   const handleApply = () => {
     updateColumnFilter(filterValue);
     setIsOpen(false);
   };
-  
+
   const handleReset = () => {
     setFilterValue({ mode: "single" });
     column.setFilterValue(undefined);
     setIsOpen(false);
   };
-  
+
   const onResetClick = (event: React.MouseEvent) => {
     event.stopPropagation();
     setFilterValue({ mode: "single" });
     column.setFilterValue(undefined);
   };
-  
+
   const hasValue = React.useMemo(() => {
     switch (filterValue.mode) {
       case "single":
@@ -158,10 +168,10 @@ export function DataTableYearFilter<TData>({
         return false;
     }
   }, [filterValue]);
-  
+
   const displayText = React.useMemo(() => {
     if (!hasValue) return null;
-    
+
     switch (filterValue.mode) {
       case "single":
         return `${filterValue.year}年`;
@@ -175,7 +185,7 @@ export function DataTableYearFilter<TData>({
         return null;
     }
   }, [filterValue, hasValue]);
-  
+
   // Generate year options (e.g., from 1950 to current year + 10)
   const currentYear = new Date().getFullYear();
   const yearOptions = React.useMemo(() => {
@@ -185,7 +195,7 @@ export function DataTableYearFilter<TData>({
     }
     return years;
   }, [currentYear]);
-  
+
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
@@ -223,7 +233,7 @@ export function DataTableYearFilter<TData>({
             <label className="text-sm font-medium">フィルタータイプ</label>
             <Select
               value={filterValue.mode}
-              onValueChange={(value: YearFilterMode) => 
+              onValueChange={(value: YearFilterMode) =>
                 setFilterValue({ ...filterValue, mode: value })
               }
             >
@@ -238,13 +248,13 @@ export function DataTableYearFilter<TData>({
               </SelectContent>
             </Select>
           </div>
-          
+
           {filterValue.mode === "single" && (
             <div>
               <label className="text-sm font-medium">年</label>
               <Select
                 value={filterValue.year?.toString()}
-                onValueChange={(value) => 
+                onValueChange={(value) =>
                   setFilterValue({ ...filterValue, year: parseInt(value) })
                 }
               >
@@ -261,15 +271,18 @@ export function DataTableYearFilter<TData>({
               </Select>
             </div>
           )}
-          
+
           {filterValue.mode === "range" && (
             <div className="space-y-3">
               <div>
                 <label className="text-sm font-medium">開始年</label>
                 <Select
                   value={filterValue.startYear?.toString()}
-                  onValueChange={(value) => 
-                    setFilterValue({ ...filterValue, startYear: parseInt(value) })
+                  onValueChange={(value) =>
+                    setFilterValue({
+                      ...filterValue,
+                      startYear: parseInt(value),
+                    })
                   }
                 >
                   <SelectTrigger className="mt-1">
@@ -288,7 +301,7 @@ export function DataTableYearFilter<TData>({
                 <label className="text-sm font-medium">終了年</label>
                 <Select
                   value={filterValue.endYear?.toString()}
-                  onValueChange={(value) => 
+                  onValueChange={(value) =>
                     setFilterValue({ ...filterValue, endYear: parseInt(value) })
                   }
                 >
@@ -297,7 +310,11 @@ export function DataTableYearFilter<TData>({
                   </SelectTrigger>
                   <SelectContent>
                     {yearOptions
-                      .filter(year => !filterValue.startYear || year >= filterValue.startYear)
+                      .filter(
+                        (year) =>
+                          !filterValue.startYear ||
+                          year >= filterValue.startYear
+                      )
                       .map((year) => (
                         <SelectItem key={year} value={year.toString()}>
                           {year}年
@@ -308,7 +325,7 @@ export function DataTableYearFilter<TData>({
               </div>
             </div>
           )}
-          
+
           {(filterValue.mode === "from" || filterValue.mode === "before") && (
             <div>
               <label className="text-sm font-medium">
@@ -316,7 +333,7 @@ export function DataTableYearFilter<TData>({
               </label>
               <Select
                 value={filterValue.year?.toString()}
-                onValueChange={(value) => 
+                onValueChange={(value) =>
                   setFilterValue({ ...filterValue, year: parseInt(value) })
                 }
               >
@@ -333,7 +350,7 @@ export function DataTableYearFilter<TData>({
               </Select>
             </div>
           )}
-          
+
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" size="sm" onClick={handleReset}>
               リセット

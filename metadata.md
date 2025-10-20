@@ -3,6 +3,7 @@
 This document outlines a pragmatic approach to introduce explicit “series metadata” (a blueprint) for regular commuting classes, leveraging what already exists in the codebase. It focuses on low-risk changes that unlock per‑student commuting summaries, easier series‑level edits, and safer bulk generation.
 
 ## Current State (as of 2025-09-10)
+
 - Persistence
   - `class_sessions` holds individual sessions. Regular sessions are implicitly linked via `series_id` (nullable). No first‑class series entity exists.
   - Archiving: old sessions are copied to `archives` then deleted from `class_sessions`. The `archives` table currently stores names and times but not `series_id`.
@@ -12,10 +13,12 @@ This document outlines a pragmatic approach to introduce explicit “series meta
   - “Regular vs special”: logic treats class type with lineage under `特別授業` as “special”. Everything else is considered regular/commuting.
 
 Implications
+
 - There is no single source of truth for series metadata (start/end, cadence, policy, assignments). Series‑level updates operate directly on future instances.
 - Archiving breaks linkage needed for historical series stats (no `series_id` in `archives`).
 
 ## Goals
+
 - Provide at-a-glance commuting stats:
   - Per student: total commuting classes (regular only), and counts per subject.
   - “How often” (weekly cadence) and expected end.
@@ -33,6 +36,7 @@ The introduction of a `class_series` blueprint is intended to formalize the conc
 ## Data Model (additive, minimal-risk)
 
 ### 1) New table: `class_series` (the blueprint)
+
 Backed by the existing `series_id` to avoid breaking links.
 
 Prisma (illustrative — naming and maps align with repo style):
@@ -73,6 +77,7 @@ model ClassSeries {
 ```
 
 Notes
+
 - Times are stored similarly to `class_sessions` for consistency and simpler comparisons.
 - `daysOfWeek` as JSON avoids an extra join in v0. If we need per‑day time variants later, a child table (e.g., `class_series_patterns`) can be introduced without breaking the base model.
 - A “single series across multiple DOW” matches today’s recurring create flow (one `series_id` per batch with multiple DOW values).
@@ -80,6 +85,7 @@ Notes
 ### 2) Extend `class_sessions`
 
 #### `class_sessions`
+
 - Add a `status` column (e.g., `VARCHAR(20)`). This will be used to flag sessions that require manual attention.
   - `'CONFIRMED'`: The default state for any session created successfully, whether manually or automatically.
   - `'CONFLICTED'`: For a session that was intended to be created by the advance generation script but could not be due to an availability or overlap issue. This serves as a direct flag for staff to review and resolve.
@@ -89,6 +95,7 @@ Notes
 Regular definition (v0): sessions whose class type is NOT under `特別授業` in the class type hierarchy. The code already has an `isSpecialClassType` helper; server‑side SQL can achieve the same by walking `class_types.parent_id` up to the root and excluding `特別授業`.
 
 Common summaries
+
 - Total commuting classes per student (future window):
   - Count of `class_sessions` with `student_id = :id AND is_cancelled = false AND series_id IS NOT NULL AND class_type` not under `特別授業`, within a date window (e.g., [today, +90d]).
 - Per subject:
@@ -141,14 +148,16 @@ PGPASSWORD=postgres psql -h localhost -U postgres -d schedulewebsite -c "<SQL ab
 ## API Additions (keep existing endpoints intact)
 
 New endpoints (v0)
+
 - `GET /api/class-series` — list blueprints (filters: `studentId`, `teacherId`, `status`, `branchId`).
 - `GET /api/class-series/[seriesId]` — get a blueprint + derived stats (occurrences/week from `days_of_week`, remaining occurrences, next N dates).
 - `PATCH /api/class-series/[seriesId]` — update blueprint (teacher/student/subject/booth/times/dates). On success, also call the existing `/api/class-sessions/series/[seriesId]` PATCH to propagate to future instances.
 - `POST /api/class-series/[seriesId]/extend` — Generates new class sessions for a series. This is an auxiliary/manual mechanism that coexists with automatic advance generation. The request body can specify either:
-    - `{ "months": <number> }`: To generate sessions for the next N months from the last generated date. N is set to 1 by default.
+  - `{ "months": <number> }`: To generate sessions for the next N months from the last generated date. N is set to 1 by default.
 - `GET /api/class-series/summary?studentId=...` — returns `{ totalRegular, bySubject[] }` using the SQL above (window can be param’d; default next 90 days).
 
 Notes
+
 - RBAC mirrors current series PATCH/DELETE rules (ADMIN/STAFF for mutating).
 - Keep `/api/class-sessions` as‑is; v0 only orchestrates it from the new endpoints.
 
@@ -164,22 +173,24 @@ As of 2025-09-18, the per-series generation mode is removed. The system always b
 - Staff can still manually extend via `POST /api/class-series/[seriesId]/extend` when needed (e.g., immediate fill or controlled preview/resolution). This coexists with the automatic advance generation.
 
 End-of-life behavior
+
 - When a series’ `endDate` is reached (or already in the past), the backend deletes the `class_series` blueprint automatically and leaves any previously generated `class_sessions` intact. No automatic status change to ENDED occurs any more.
 
 Mid-series truncation via calendar
+
 - If staff choose “この回以降を削除” on an instance:
   - All sessions on/after that date are deleted for the series.
   - The blueprint `endDate` is set to that date and `last_generated_through` is lifted to at least that date, ensuring future generation won’t recreate the deleted occurrence or later ones.
 
 ## Backfill Plan (one‑time)
 
-1) Create `class_series`, extend `archives` with `series_id`, and add the `status` column to `class_sessions`.
-2) Backfill blueprints from existing sessions:
+1. Create `class_series`, extend `archives` with `series_id`, and add the `status` column to `class_sessions`.
+2. Backfill blueprints from existing sessions:
    - Group by `series_id IS NOT NULL`.
    - Derive `start_date = MIN(date)`, `end_date = MAX(date)`, `days_of_week = ARRAY_AGG(DISTINCT EXTRACT(DOW FROM date))`, `start_time/end_time/duration` from first or majority; store anomalies in `notes`.
    - Choose default assignments (teacher/student/subject/booth/branch/class_type) by majority; if ties, prefer the latest.
-3) Validate a sample of series and spot‑fix anomalies.
-4) Update the archive function to also copy `series_id` (and optional IDs) into `archives` going forward.
+3. Validate a sample of series and spot‑fix anomalies.
+4. Update the archive function to also copy `series_id` (and optional IDs) into `archives` going forward.
 
 Operational examples (psql; sketch)
 
@@ -216,9 +227,9 @@ LIMIT 20;
 
 ## Rollout Phases
 
-1) Schema + backfill + minimal summary API
-2) Series PATCH orchestration and extend endpoint
-3) Generator script + cron
-4) UI summaries + basic series drawer
+1. Schema + backfill + minimal summary API
+2. Series PATCH orchestration and extend endpoint
+3. Generator script + cron
+4. UI summaries + basic series drawer
 
 This sequence delivers immediate value (summaries and centralized metadata) while minimizing risk by reusing existing create/patch logic for instances.

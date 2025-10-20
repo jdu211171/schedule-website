@@ -10,10 +10,10 @@ const conflictAnalysisSchema = z.object({
   teacherId: z.string(),
   studentId: z.string(),
   startDate: z.string(), // YYYY-MM-DD
-  endDate: z.string(),   // YYYY-MM-DD
+  endDate: z.string(), // YYYY-MM-DD
   daysOfWeek: z.array(z.number().min(0).max(6)),
   startTime: z.string(), // HH:MM
-  endTime: z.string(),   // HH:MM
+  endTime: z.string(), // HH:MM
 });
 
 export const POST = withBranchAccess(
@@ -30,18 +30,26 @@ export const POST = withBranchAccess(
         );
       }
 
-      const { teacherId, studentId, startDate, endDate, daysOfWeek, startTime, endTime } = result.data;
+      const {
+        teacherId,
+        studentId,
+        startDate,
+        endDate,
+        daysOfWeek,
+        startTime,
+        endTime,
+      } = result.data;
 
       // Get teacher and student user IDs
       const [teacher, student] = await Promise.all([
         prisma.teacher.findUnique({
           where: { teacherId },
-          select: { userId: true, name: true }
+          select: { userId: true, name: true },
         }),
         prisma.student.findUnique({
           where: { studentId },
-          select: { userId: true, name: true }
-        })
+          select: { userId: true, name: true },
+        }),
       ]);
 
       if (!teacher || !student) {
@@ -75,7 +83,7 @@ export const POST = withBranchAccess(
             conflictDates: 0,
             availableDates: 0,
           },
-          message: "指定された日付範囲内に該当する曜日がありません"
+          message: "指定された日付範囲内に該当する曜日がありません",
         });
       }
 
@@ -84,8 +92,14 @@ export const POST = withBranchAccess(
       const availableDates = [];
 
       for (const date of targetDates) {
-        const requestedStartTime = createDateTime(format(date, 'yyyy-MM-dd'), startTime);
-        const requestedEndTime = createDateTime(format(date, 'yyyy-MM-dd'), endTime);
+        const requestedStartTime = createDateTime(
+          format(date, "yyyy-MM-dd"),
+          startTime
+        );
+        const requestedEndTime = createDateTime(
+          format(date, "yyyy-MM-dd"),
+          endTime
+        );
 
         const analysis = await getDetailedSharedAvailability(
           teacher.userId,
@@ -95,7 +109,7 @@ export const POST = withBranchAccess(
           requestedEndTime
         );
 
-        const dateStr = format(date, 'yyyy-MM-dd');
+        const dateStr = format(date, "yyyy-MM-dd");
         const dayOfWeek = getDayOfWeekFromDate(date);
 
         if (!analysis.available) {
@@ -104,33 +118,39 @@ export const POST = withBranchAccess(
 
           if (!analysis.user1.available) {
             conflictReasons.push({
-              type: analysis.user1.conflictType === "UNAVAILABLE" ? "TEACHER_UNAVAILABLE" : "TEACHER_WRONG_TIME",
+              type:
+                analysis.user1.conflictType === "UNAVAILABLE"
+                  ? "TEACHER_UNAVAILABLE"
+                  : "TEACHER_WRONG_TIME",
               participant: {
                 id: teacherId,
                 name: teacher.name,
-                role: "teacher" as const
+                role: "teacher" as const,
               },
               hasExceptions: analysis.user1.hasExceptions,
               hasRegular: analysis.user1.hasRegular,
               exceptionSlots: analysis.user1.exceptionSlots,
               regularSlots: analysis.user1.regularSlots,
-              effectiveSlots: analysis.user1.effectiveSlots
+              effectiveSlots: analysis.user1.effectiveSlots,
             });
           }
 
           if (!analysis.user2.available) {
             conflictReasons.push({
-              type: analysis.user2.conflictType === "UNAVAILABLE" ? "STUDENT_UNAVAILABLE" : "STUDENT_WRONG_TIME",
+              type:
+                analysis.user2.conflictType === "UNAVAILABLE"
+                  ? "STUDENT_UNAVAILABLE"
+                  : "STUDENT_WRONG_TIME",
               participant: {
                 id: studentId,
                 name: student.name,
-                role: "student" as const
+                role: "student" as const,
               },
               hasExceptions: analysis.user2.hasExceptions,
               hasRegular: analysis.user2.hasRegular,
               exceptionSlots: analysis.user2.exceptionSlots,
               regularSlots: analysis.user2.regularSlots,
-              effectiveSlots: analysis.user2.effectiveSlots
+              effectiveSlots: analysis.user2.effectiveSlots,
             });
           }
 
@@ -141,7 +161,7 @@ export const POST = withBranchAccess(
             conflicts: conflictReasons,
             sharedAvailableSlots: analysis.sharedSlots,
             strategy: analysis.strategy,
-            message: analysis.message
+            message: analysis.message,
           });
         } else {
           // This date is available
@@ -149,7 +169,7 @@ export const POST = withBranchAccess(
             date: dateStr,
             dayOfWeek,
             sharedSlots: analysis.sharedSlots,
-            strategy: analysis.strategy
+            strategy: analysis.strategy,
           });
         }
       }
@@ -165,10 +185,9 @@ export const POST = withBranchAccess(
         },
         participants: {
           teacher: { id: teacherId, name: teacher.name },
-          student: { id: studentId, name: student.name }
-        }
+          student: { id: studentId, name: student.name },
+        },
       });
-
     } catch (error) {
       console.error("Error analyzing availability conflicts:", error);
       return NextResponse.json(
@@ -181,7 +200,7 @@ export const POST = withBranchAccess(
 
 // Helper functions
 function createDateTime(dateStr: string, timeStr: string): Date {
-  const [hours, minutes] = timeStr.split(':').map(Number);
+  const [hours, minutes] = timeStr.split(":").map(Number);
   const date = new Date(dateStr + "T00:00:00.000Z");
   date.setUTCHours(hours, minutes, 0, 0);
   return date;

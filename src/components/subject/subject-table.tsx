@@ -46,7 +46,10 @@ export function SubjectTable() {
 
   const totalCount = subjects?.pagination.total || 0;
   const deleteSubjectMutation = useSubjectDelete();
-  const { exportToCSV, isExporting } = useGenericExport("/api/subjects/export", "subjects");
+  const { exportToCSV, isExporting } = useGenericExport(
+    "/api/subjects/export",
+    "subjects"
+  );
 
   const [subjectToEdit, setSubjectToEdit] = useState<Subject | null>(null);
   const [subjectToDelete, setSubjectToDelete] = useState<Subject | null>(null);
@@ -126,9 +129,9 @@ export function SubjectTable() {
   const handleExport = () => {
     // Get visible columns (all columns except actions)
     const visibleColumns = columns
-      .filter(col => col.id !== "actions")
-      .map(col => (col as any).accessorKey)
-      .filter(key => key) as string[];
+      .filter((col) => col.id !== "actions")
+      .map((col) => (col as any).accessorKey)
+      .filter((key) => key) as string[];
     exportToCSV({ columns: visibleColumns, query: { name: searchTerm || "" } });
   };
 

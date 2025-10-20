@@ -7,4 +7,3 @@
 5. Ensure X closes popover without clearing
 6. Validate date >= startDate on apply
 7. Run typecheck and verify UI paths
-

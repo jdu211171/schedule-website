@@ -1,8 +1,9 @@
 # Dual-Channel LINE Notifications Implementation
 
 This document describes the dual-channel LINE notifications backend that supports:
+
 - Multiple LINE channels per learning center with role-based routing
-- Branch-specific TEACHER and STUDENT channel configurations  
+- Branch-specific TEACHER and STUDENT channel configurations
 - Smart notification routing based on recipient type
 - Secure credential management with encryption
 - Backward compatibility with existing setup
@@ -35,7 +36,7 @@ Each branch can have up to two LINE channels configured:
    - Administrative communications to teachers
    - Staff announcements
 
-2. **STUDENT Channel**: Handles notifications for:  
+2. **STUDENT Channel**: Handles notifications for:
    - Student notifications (class reminders, homework)
    - Parent notifications (multiple LINE accounts per student)
    - General student/parent communications
@@ -45,17 +46,20 @@ Each branch can have up to two LINE channels configured:
 ### Key Components
 
 #### 1. Encryption Service (`/lib/encryption.ts`)
+
 - AES-256-GCM encryption for credentials
 - Uses `ENCRYPTION_KEY` or falls back to `NEXTAUTH_SECRET`
 - Secure storage of sensitive LINE credentials
 
 #### 2. Multi-Channel LINE Library (`/lib/line-multi-channel.ts`)
+
 - Channel credential management
 - Branch-specific channel resolution
 - Test channel functionality
 - Backward compatibility with env variables
 
 #### 3. Channel Management Service (`/services/line-channel.service.ts`)
+
 - CRUD operations for channels
 - Branch assignment management
 - Credential validation before saving
@@ -64,6 +68,7 @@ Each branch can have up to two LINE channels configured:
 #### 4. API Endpoints
 
 **Channel Management:**
+
 - `GET /api/admin/line-channels` - List all channels
 - `POST /api/admin/line-channels` - Create new channel
 - `GET /api/admin/line-channels/[channelId]` - Get channel details
@@ -71,6 +76,7 @@ Each branch can have up to two LINE channels configured:
 - `DELETE /api/admin/line-channels/[channelId]` - Delete channel
 
 **Channel Operations:**
+
 - `POST /api/admin/line-channels/[channelId]/test` - Test channel
 - `PUT /api/admin/line-channels/[channelId]/branches` - Assign branches
 - `POST /api/admin/line-channels/set-primary` - Set channel type for branch
@@ -78,6 +84,7 @@ Each branch can have up to two LINE channels configured:
 - `POST /api/admin/line-channels/migrate` - Migrate from env vars
 
 **Webhooks:**
+
 - `/api/line/webhook/[channelId]` - Channel-specific webhook endpoint
 
 ## Setup Guide
@@ -85,6 +92,7 @@ Each branch can have up to two LINE channels configured:
 ### 1. Environment Variables
 
 Add encryption key (optional - will use NEXTAUTH_SECRET if not set):
+
 ```env
 ENCRYPTION_KEY=your-32-char-secret-key
 ```
@@ -118,6 +126,7 @@ curl -X POST http://localhost:3000/api/admin/line-channels \
 ### 4. Configure LINE Webhook
 
 For each channel, set the webhook URL in LINE Developers Console:
+
 ```
 https://your-domain.com/api/line/webhook/[channelId]
 ```
@@ -135,10 +144,10 @@ await sendLineMulticast(lineIds, message, credentials);
 
 // Examples:
 // For teacher notifications
-const teacherCredentials = await getChannelCredentials('branch-123', 'TEACHER');
+const teacherCredentials = await getChannelCredentials("branch-123", "TEACHER");
 
-// For student/parent notifications  
-const studentCredentials = await getChannelCredentials('branch-123', 'STUDENT');
+// For student/parent notifications
+const studentCredentials = await getChannelCredentials("branch-123", "STUDENT");
 
 // Legacy support (without recipient type)
 const credentials = await getChannelCredentials(branchId); // Uses any available channel
@@ -147,18 +156,20 @@ const credentials = await getChannelCredentials(branchId); // Uses any available
 ### Managing Channel Types
 
 Set a channel as TEACHER type for a specific branch:
+
 ```bash
 curl -X POST http://localhost:3000/api/admin/line-channels/set-primary \
   -H "Authorization: Bearer YOUR_AUTH_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "branchId": "branch-123",
-    "channelId": "channel-456", 
+    "channelId": "channel-456",
     "channelType": "TEACHER"
   }'
 ```
 
 Validate all branch channel assignments:
+
 ```bash
 curl -X GET http://localhost:3000/api/admin/line-channels/validate \
   -H "Authorization: Bearer YOUR_AUTH_TOKEN"
@@ -217,16 +228,19 @@ curl -X POST http://localhost:3000/api/admin/line-channels/[channelId]/test \
 ## Troubleshooting
 
 ### Channel Not Sending Messages
+
 1. Test channel credentials using test endpoint
 2. Verify webhook URL is correctly configured
 3. Check channel is active and assigned to branch
 
 ### Webhook Not Receiving Messages
+
 1. Verify webhook URL in LINE Developers Console
 2. Check signature validation
 3. Ensure channel is active
 
 ### Migration Issues
+
 1. Verify env variables are set correctly
 2. Check for existing default channel
 3. Review migration endpoint response

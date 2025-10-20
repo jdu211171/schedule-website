@@ -6,4 +6,3 @@ export const userHiddenClassTypesSchema = z.object({
 });
 
 export type UserHiddenClassTypes = z.infer<typeof userHiddenClassTypesSchema>;
-

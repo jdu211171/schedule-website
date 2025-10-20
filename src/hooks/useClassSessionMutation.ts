@@ -94,8 +94,12 @@ export function getResolvedClassSessionId(id: string): string {
 
 const toDateKey = (v: string | Date | undefined | null): string | null => {
   if (!v) return null;
-  if (typeof v === 'string') return v.split('T')[0];
-  try { return getDateKey(new Date(v)); } catch { return null; }
+  if (typeof v === "string") return v.split("T")[0];
+  try {
+    return getDateKey(new Date(v));
+  } catch {
+    return null;
+  }
 };
 
 // Hook for creating a class session (supports both one-time and recurring)
@@ -246,7 +250,8 @@ export function useClassSessionCreate() {
       try {
         if (!newClassSession.isRecurring && newClassSession.date) {
           const d = toDateKey(newClassSession.date);
-          if (d) broadcastClassSessionsChanged([d]); else broadcastClassSessionsChanged();
+          if (d) broadcastClassSessionsChanged([d]);
+          else broadcastClassSessionsChanged();
         } else {
           broadcastClassSessionsChanged();
         }
@@ -633,7 +638,8 @@ export function useClassSessionDelete() {
       try {
         const d = context?.deletedClassSession?.date as Date | undefined;
         const key = d ? toDateKey(d) : null;
-        if (key) broadcastClassSessionsChanged([key]); else broadcastClassSessionsChanged();
+        if (key) broadcastClassSessionsChanged([key]);
+        else broadcastClassSessionsChanged();
       } catch {}
     },
   });
@@ -919,7 +925,9 @@ export function useClassSessionSeriesUpdate() {
       });
 
       // Unknown which days changed – broadcast general
-      try { broadcastClassSessionsChanged(); } catch {}
+      try {
+        broadcastClassSessionsChanged();
+      } catch {}
     },
   });
 }
@@ -934,7 +942,7 @@ export function useClassSessionSeriesDelete() {
     { previousData?: ClassSession[]; seriesId?: string }
   >({
     mutationFn: (input) => {
-      if (typeof input === 'string') {
+      if (typeof input === "string") {
         // Backward-compatible: delete from today onward
         return fetcher(`/api/class-sessions/series/${input}`, {
           method: "DELETE",
@@ -947,7 +955,7 @@ export function useClassSessionSeriesDelete() {
       });
     },
     onMutate: async (input) => {
-      const seriesId = typeof input === 'string' ? input : input.seriesId;
+      const seriesId = typeof input === "string" ? input : input.seriesId;
       // Cancel any outgoing refetches for the series
       await queryClient.cancelQueries({
         queryKey: ["classSessionSeries", seriesId],
@@ -983,7 +991,7 @@ export function useClassSessionSeriesDelete() {
       });
     },
     onSettled: (_, __, input) => {
-      const seriesId = typeof input === 'string' ? input : input.seriesId;
+      const seriesId = typeof input === "string" ? input : input.seriesId;
       // Invalidate the series query
       queryClient.invalidateQueries({
         queryKey: ["classSessionSeries", seriesId],
@@ -997,7 +1005,9 @@ export function useClassSessionSeriesDelete() {
       });
 
       // Unknown which days changed – broadcast general
-      try { broadcastClassSessionsChanged(); } catch {}
+      try {
+        broadcastClassSessionsChanged();
+      } catch {}
     },
   });
 }
@@ -1006,44 +1016,64 @@ export function useClassSessionSeriesDelete() {
 export function useClassSessionCancel() {
   const queryClient = useQueryClient();
   return useMutation<
-    { data: []; message: string; updatedCount: number; pagination: { total: number; page: number; limit: number; pages: number } },
+    {
+      data: [];
+      message: string;
+      updatedCount: number;
+      pagination: { total: number; page: number; limit: number; pages: number };
+    },
     Error,
-    { classIds?: string[]; seriesId?: string; fromDate?: string; reason?: 'SICK' | 'PERMANENTLY_LEFT' | 'ADMIN_CANCELLED' }
+    {
+      classIds?: string[];
+      seriesId?: string;
+      fromDate?: string;
+      reason?: "SICK" | "PERMANENTLY_LEFT" | "ADMIN_CANCELLED";
+    }
   >({
     mutationFn: async (payload) => {
       // Ensure branch context is forwarded for non-admin users
       const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       };
       try {
-        if (typeof window !== 'undefined') {
-          headers['X-Selected-Branch'] = localStorage.getItem('selectedBranchId') || '';
+        if (typeof window !== "undefined") {
+          headers["X-Selected-Branch"] =
+            localStorage.getItem("selectedBranchId") || "";
         }
       } catch {}
-      const res = await fetch('/api/class-sessions/cancel', {
-        method: 'POST',
+      const res = await fetch("/api/class-sessions/cancel", {
+        method: "POST",
         headers,
         body: JSON.stringify(payload),
       });
       if (!res.ok) {
         let info: any = undefined;
-        try { info = await res.json(); } catch {}
-        const msg = (info && (info.error || info.message)) || '授業のキャンセルに失敗しました';
+        try {
+          info = await res.json();
+        } catch {}
+        const msg =
+          (info && (info.error || info.message)) ||
+          "授業のキャンセルに失敗しました";
         throw new Error(msg);
       }
       return res.json();
     },
     onSuccess: (response) => {
-      toast.success(response.message || '授業をキャンセルしました');
+      toast.success(response.message || "授業をキャンセルしました");
     },
     onError: (error) => {
       const message = getErrorMessage(error);
-      toast.error('授業のキャンセルに失敗しました', { description: message });
+      toast.error("授業のキャンセルに失敗しました", { description: message });
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['classSessions'], refetchType: 'active' });
+      queryClient.invalidateQueries({
+        queryKey: ["classSessions"],
+        refetchType: "active",
+      });
       // Unknown dates – broadcast general change
-      try { broadcastClassSessionsChanged(); } catch {}
+      try {
+        broadcastClassSessionsChanged();
+      } catch {}
     },
   });
 }

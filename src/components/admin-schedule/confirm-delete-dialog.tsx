@@ -1,5 +1,5 @@
 // ConfirmDeleteDialog.tsx
-import { Button } from '@/components/ui/button';
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -7,7 +7,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
+} from "@/components/ui/dialog";
 
 interface ConfirmDeleteDialogProps {
   open: boolean;
@@ -48,7 +48,7 @@ export const ConfirmDeleteDialog: React.FC<ConfirmDeleteDialogProps> = ({
             {description}
           </DialogDescription>
         </DialogHeader>
-        
+
         <DialogFooter className="flex flex-row justify-end space-x-1 pt-4">
           <Button
             variant="outline"

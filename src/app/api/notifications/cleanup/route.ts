@@ -1,18 +1,18 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { withBranchAccess } from '@/lib/auth';
-import { 
-  cleanupNotifications, 
-  dryRunCleanup, 
-  getCleanupStats, 
+import { NextRequest, NextResponse } from "next/server";
+import { withBranchAccess } from "@/lib/auth";
+import {
+  cleanupNotifications,
+  dryRunCleanup,
+  getCleanupStats,
   getEligibleNotifications,
   getCleanupConfigFromEnv,
-  CleanupConfig 
-} from '@/lib/notification/notification-cleanup';
+  CleanupConfig,
+} from "@/lib/notification/notification-cleanup";
 import {
   validateCleanupOperation,
   createPreCleanupBackup,
-  safeCleanupWithBackup
-} from '@/lib/notification/notification-backup';
+  safeCleanupWithBackup,
+} from "@/lib/notification/notification-backup";
 
 // GET - Get cleanup statistics and eligible notifications
 export const GET = withBranchAccess(
@@ -20,8 +20,8 @@ export const GET = withBranchAccess(
   async (request: NextRequest, session: any, branchId: string) => {
     try {
       const { searchParams } = new URL(request.url);
-      const dryRun = searchParams.get('dryRun') === 'true';
-      const statsOnly = searchParams.get('statsOnly') === 'true';
+      const dryRun = searchParams.get("dryRun") === "true";
+      const statsOnly = searchParams.get("statsOnly") === "true";
 
       // Get current notification statistics
       const stats = await getCleanupStats(branchId);
@@ -41,7 +41,10 @@ export const GET = withBranchAccess(
       const config = { ...envConfig, dryRun };
 
       // Get eligible notifications for cleanup
-      const eligibleNotifications = await getEligibleNotifications(config as CleanupConfig, branchId);
+      const eligibleNotifications = await getEligibleNotifications(
+        config as CleanupConfig,
+        branchId
+      );
 
       if (dryRun) {
         // Perform dry run
@@ -71,12 +74,12 @@ export const GET = withBranchAccess(
         },
       });
     } catch (error) {
-      console.error('Error getting cleanup information:', error);
+      console.error("Error getting cleanup information:", error);
       return NextResponse.json(
-        { 
-          success: false, 
-          error: 'クリーンアップ情報の取得に失敗しました',
-          details: error instanceof Error ? error.message : 'Unknown error'
+        {
+          success: false,
+          error: "クリーンアップ情報の取得に失敗しました",
+          details: error instanceof Error ? error.message : "Unknown error",
         },
         { status: 500 }
       );
@@ -90,7 +93,7 @@ export const POST = withBranchAccess(
   async (request: NextRequest, session: any, branchId: string) => {
     try {
       const body = await request.json();
-      
+
       // Parse and validate request body
       const {
         dryRun = false,
@@ -108,25 +111,38 @@ export const POST = withBranchAccess(
         const { SENT, FAILED, PENDING, PROCESSING } = retentionDays;
         if (SENT !== undefined && (SENT < 0 || SENT > 365)) {
           return NextResponse.json(
-            { success: false, error: 'SENT retention days must be between 0 and 365' },
+            {
+              success: false,
+              error: "SENT retention days must be between 0 and 365",
+            },
             { status: 400 }
           );
         }
         if (FAILED !== undefined && (FAILED < 0 || FAILED > 365)) {
           return NextResponse.json(
-            { success: false, error: 'FAILED retention days must be between 0 and 365' },
+            {
+              success: false,
+              error: "FAILED retention days must be between 0 and 365",
+            },
             { status: 400 }
           );
         }
         if (PENDING !== undefined && PENDING !== 0) {
           return NextResponse.json(
-            { success: false, error: 'PENDING notifications cannot be automatically cleaned up' },
+            {
+              success: false,
+              error: "PENDING notifications cannot be automatically cleaned up",
+            },
             { status: 400 }
           );
         }
         if (PROCESSING !== undefined && PROCESSING !== 0) {
           return NextResponse.json(
-            { success: false, error: 'PROCESSING notifications cannot be automatically cleaned up' },
+            {
+              success: false,
+              error:
+                "PROCESSING notifications cannot be automatically cleaned up",
+            },
             { status: 400 }
           );
         }
@@ -135,15 +151,21 @@ export const POST = withBranchAccess(
       // Validate batch size
       if (batchSize !== undefined && (batchSize < 1 || batchSize > 10000)) {
         return NextResponse.json(
-          { success: false, error: 'Batch size must be between 1 and 10000' },
+          { success: false, error: "Batch size must be between 1 and 10000" },
           { status: 400 }
         );
       }
 
       // Validate max execution time
-      if (maxExecutionTimeMs !== undefined && (maxExecutionTimeMs < 1000 || maxExecutionTimeMs > 30 * 60 * 1000)) {
+      if (
+        maxExecutionTimeMs !== undefined &&
+        (maxExecutionTimeMs < 1000 || maxExecutionTimeMs > 30 * 60 * 1000)
+      ) {
         return NextResponse.json(
-          { success: false, error: 'Max execution time must be between 1 second and 30 minutes' },
+          {
+            success: false,
+            error: "Max execution time must be between 1 second and 30 minutes",
+          },
           { status: 400 }
         );
       }
@@ -173,14 +195,17 @@ export const POST = withBranchAccess(
       }
 
       // Get eligible notifications before cleanup
-      const eligibleNotifications = await getEligibleNotifications(config as CleanupConfig, branchId);
-      
+      const eligibleNotifications = await getEligibleNotifications(
+        config as CleanupConfig,
+        branchId
+      );
+
       // Check if there are notifications to clean up
       if (eligibleNotifications.length === 0) {
         return NextResponse.json({
           success: true,
           data: {
-            message: 'No notifications eligible for cleanup',
+            message: "No notifications eligible for cleanup",
             result: {
               success: true,
               totalProcessed: 0,
@@ -234,7 +259,7 @@ export const POST = withBranchAccess(
           return NextResponse.json(
             {
               success: false,
-              error: 'Cleanup operation cannot proceed due to safety checks',
+              error: "Cleanup operation cannot proceed due to safety checks",
               validation,
               backup,
               requiresForce: safetyResult.requiresForce,
@@ -247,14 +272,17 @@ export const POST = withBranchAccess(
 
       // Safety check for non-dry-run operations
       if (!dryRun && !force) {
-        const totalEligible = eligibleNotifications.reduce((sum, n) => sum + n.count, 0);
+        const totalEligible = eligibleNotifications.reduce(
+          (sum, n) => sum + n.count,
+          0
+        );
         if (totalEligible > 10000) {
           return NextResponse.json(
-            { 
-              success: false, 
+            {
+              success: false,
               error: `Large cleanup operation (${totalEligible} notifications). Use force=true to proceed or run in batches.`,
               totalEligible,
-              eligibleNotifications
+              eligibleNotifications,
             },
             { status: 400 }
           );
@@ -268,7 +296,7 @@ export const POST = withBranchAccess(
       });
 
       // Log the cleanup operation
-      const operationType = dryRun ? 'DRY RUN' : 'CLEANUP';
+      const operationType = dryRun ? "DRY RUN" : "CLEANUP";
       const logMessage = `${operationType} - User: ${session.user.email}, Branch: ${branchId}, Processed: ${result.totalProcessed}, Deleted: ${result.totalDeleted}`;
       console.log(logMessage);
 
@@ -284,12 +312,12 @@ export const POST = withBranchAccess(
         },
       });
     } catch (error) {
-      console.error('Error performing cleanup:', error);
+      console.error("Error performing cleanup:", error);
       return NextResponse.json(
-        { 
-          success: false, 
-          error: 'クリーンアップの実行に失敗しました',
-          details: error instanceof Error ? error.message : 'Unknown error'
+        {
+          success: false,
+          error: "クリーンアップの実行に失敗しました",
+          details: error instanceof Error ? error.message : "Unknown error",
         },
         { status: 500 }
       );
@@ -303,11 +331,11 @@ export const DELETE = withBranchAccess(
   async (request: NextRequest, session: any, branchId: string) => {
     try {
       const { searchParams } = new URL(request.url);
-      const dryRun = searchParams.get('dryRun') === 'true';
-      const sentRetentionDays = searchParams.get('sentRetentionDays');
-      const failedRetentionDays = searchParams.get('failedRetentionDays');
-      const batchSize = searchParams.get('batchSize');
-      const force = searchParams.get('force') === 'true';
+      const dryRun = searchParams.get("dryRun") === "true";
+      const sentRetentionDays = searchParams.get("sentRetentionDays");
+      const failedRetentionDays = searchParams.get("failedRetentionDays");
+      const batchSize = searchParams.get("batchSize");
+      const force = searchParams.get("force") === "true";
 
       // Build configuration from query parameters
       const envConfig = getCleanupConfigFromEnv();
@@ -318,8 +346,12 @@ export const DELETE = withBranchAccess(
 
       if (sentRetentionDays || failedRetentionDays) {
         config.retentionDays = {
-          SENT: sentRetentionDays ? parseInt(sentRetentionDays, 10) : envConfig.retentionDays?.SENT ?? 30,
-          FAILED: failedRetentionDays ? parseInt(failedRetentionDays, 10) : envConfig.retentionDays?.FAILED ?? 90,
+          SENT: sentRetentionDays
+            ? parseInt(sentRetentionDays, 10)
+            : (envConfig.retentionDays?.SENT ?? 30),
+          FAILED: failedRetentionDays
+            ? parseInt(failedRetentionDays, 10)
+            : (envConfig.retentionDays?.FAILED ?? 90),
           PENDING: 0,
           PROCESSING: 0,
         };
@@ -330,13 +362,16 @@ export const DELETE = withBranchAccess(
       }
 
       // Get eligible notifications
-      const eligibleNotifications = await getEligibleNotifications(config as CleanupConfig, branchId);
+      const eligibleNotifications = await getEligibleNotifications(
+        config as CleanupConfig,
+        branchId
+      );
 
       if (eligibleNotifications.length === 0) {
         return NextResponse.json({
           success: true,
           data: {
-            message: 'No notifications eligible for cleanup',
+            message: "No notifications eligible for cleanup",
             result: {
               success: true,
               totalProcessed: 0,
@@ -353,13 +388,16 @@ export const DELETE = withBranchAccess(
 
       // Safety check for large operations
       if (!dryRun && !force) {
-        const totalEligible = eligibleNotifications.reduce((sum, n) => sum + n.count, 0);
+        const totalEligible = eligibleNotifications.reduce(
+          (sum, n) => sum + n.count,
+          0
+        );
         if (totalEligible > 10000) {
           return NextResponse.json(
-            { 
-              success: false, 
+            {
+              success: false,
               error: `Large cleanup operation (${totalEligible} notifications). Add force=true to proceed.`,
-              totalEligible
+              totalEligible,
             },
             { status: 400 }
           );
@@ -373,7 +411,7 @@ export const DELETE = withBranchAccess(
       });
 
       // Log the operation
-      const operationType = dryRun ? 'DRY RUN' : 'CLEANUP';
+      const operationType = dryRun ? "DRY RUN" : "CLEANUP";
       const logMessage = `${operationType} - User: ${session.user.email}, Branch: ${branchId}, Processed: ${result.totalProcessed}, Deleted: ${result.totalDeleted}`;
       console.log(logMessage);
 
@@ -386,12 +424,12 @@ export const DELETE = withBranchAccess(
         },
       });
     } catch (error) {
-      console.error('Error performing cleanup:', error);
+      console.error("Error performing cleanup:", error);
       return NextResponse.json(
-        { 
-          success: false, 
-          error: 'クリーンアップの実行に失敗しました',
-          details: error instanceof Error ? error.message : 'Unknown error'
+        {
+          success: false,
+          error: "クリーンアップの実行に失敗しました",
+          details: error instanceof Error ? error.message : "Unknown error",
         },
         { status: 500 }
       );

@@ -1,5 +1,8 @@
 import { prisma } from "./prisma";
-import { getEffectiveSchedulingConfig, toPolicyShape } from "./scheduling-config";
+import {
+  getEffectiveSchedulingConfig,
+  toPolicyShape,
+} from "./scheduling-config";
 import { hasHardConflict, isMarkedByPolicy } from "./conflict-types";
 
 // Utility: minutes from midnight (UTC)
@@ -30,7 +33,9 @@ function buildTimeOverlapWhere(start: Date, end: Date) {
  * Decide the next status (CONFIRMED/CONFLICTED) for a given session context.
  * Includes both hard-overlap checks and availability-based policy checks.
  */
-export async function decideNextStatusForContext(ctx: SessionCtx): Promise<"CONFIRMED" | "CONFLICTED"> {
+export async function decideNextStatusForContext(
+  ctx: SessionCtx
+): Promise<"CONFIRMED" | "CONFLICTED"> {
   const reasons: Array<{ type: string }> = [];
 
   // Hard overlaps teacher/student/booth (exclude self)
@@ -46,7 +51,13 @@ export async function decideNextStatusForContext(ctx: SessionCtx): Promise<"CONF
           ctx.boothId ? { boothId: ctx.boothId } : undefined,
         ].filter(Boolean) as any,
       },
-      select: { startTime: true, endTime: true, teacherId: true, studentId: true, boothId: true },
+      select: {
+        startTime: true,
+        endTime: true,
+        teacherId: true,
+        studentId: true,
+        boothId: true,
+      },
     });
     const reqStartM = minutesUTC(ctx.startTime);
     const reqEndM = minutesUTC(ctx.endTime);
@@ -54,9 +65,12 @@ export async function decideNextStatusForContext(ctx: SessionCtx): Promise<"CONF
       const sStartM = minutesUTC(s.startTime);
       const sEndM = minutesUTC(s.endTime);
       if (!(sStartM < reqEndM && sEndM > reqStartM)) continue;
-      if (ctx.teacherId && s.teacherId === ctx.teacherId) reasons.push({ type: "TEACHER_CONFLICT" });
-      if (ctx.studentId && s.studentId === ctx.studentId) reasons.push({ type: "STUDENT_CONFLICT" });
-      if (ctx.boothId && s.boothId === ctx.boothId) reasons.push({ type: "BOOTH_CONFLICT" });
+      if (ctx.teacherId && s.teacherId === ctx.teacherId)
+        reasons.push({ type: "TEACHER_CONFLICT" });
+      if (ctx.studentId && s.studentId === ctx.studentId)
+        reasons.push({ type: "STUDENT_CONFLICT" });
+      if (ctx.boothId && s.boothId === ctx.boothId)
+        reasons.push({ type: "BOOTH_CONFLICT" });
     }
   }
 
@@ -64,11 +78,19 @@ export async function decideNextStatusForContext(ctx: SessionCtx): Promise<"CONF
   try {
     if (ctx.teacherId && ctx.studentId) {
       const [teacher, student] = await Promise.all([
-        prisma.teacher.findUnique({ where: { teacherId: ctx.teacherId }, select: { userId: true } }),
-        prisma.student.findUnique({ where: { studentId: ctx.studentId }, select: { userId: true } }),
+        prisma.teacher.findUnique({
+          where: { teacherId: ctx.teacherId },
+          select: { userId: true },
+        }),
+        prisma.student.findUnique({
+          where: { studentId: ctx.studentId },
+          select: { userId: true },
+        }),
       ]);
       if (teacher?.userId && student?.userId) {
-        const { getDetailedSharedAvailability } = await import("./enhanced-availability");
+        const { getDetailedSharedAvailability } = await import(
+          "./enhanced-availability"
+        );
         const avail = await getDetailedSharedAvailability(
           teacher.userId,
           student.userId,
@@ -79,15 +101,35 @@ export async function decideNextStatusForContext(ctx: SessionCtx): Promise<"CONF
         );
         if (!avail.available) {
           // Determine reason type and honor allowOutsideAvailability
-          const eff = await getEffectiveSchedulingConfig(ctx.branchId || undefined);
+          const eff = await getEffectiveSchedulingConfig(
+            ctx.branchId || undefined
+          );
           const policy = toPolicyShape(eff);
-          const allowOutside = policy.allowOutsideAvailability || { teacher: false, student: false };
+          const allowOutside = policy.allowOutsideAvailability || {
+            teacher: false,
+            student: false,
+          };
           let t: string = "NO_SHARED_AVAILABILITY";
-          if (!avail.user1.available) t = avail.user1.conflictType === "UNAVAILABLE" ? "TEACHER_UNAVAILABLE" : "TEACHER_WRONG_TIME";
-          else if (!avail.user2.available) t = avail.user2.conflictType === "UNAVAILABLE" ? "STUDENT_UNAVAILABLE" : "STUDENT_WRONG_TIME";
-          const isTeacherType = t === "TEACHER_UNAVAILABLE" || t === "TEACHER_WRONG_TIME";
-          const isStudentType = t === "STUDENT_UNAVAILABLE" || t === "STUDENT_WRONG_TIME";
-          if (!((isTeacherType && allowOutside.teacher) || (isStudentType && allowOutside.student))) {
+          if (!avail.user1.available)
+            t =
+              avail.user1.conflictType === "UNAVAILABLE"
+                ? "TEACHER_UNAVAILABLE"
+                : "TEACHER_WRONG_TIME";
+          else if (!avail.user2.available)
+            t =
+              avail.user2.conflictType === "UNAVAILABLE"
+                ? "STUDENT_UNAVAILABLE"
+                : "STUDENT_WRONG_TIME";
+          const isTeacherType =
+            t === "TEACHER_UNAVAILABLE" || t === "TEACHER_WRONG_TIME";
+          const isStudentType =
+            t === "STUDENT_UNAVAILABLE" || t === "STUDENT_WRONG_TIME";
+          if (
+            !(
+              (isTeacherType && allowOutside.teacher) ||
+              (isStudentType && allowOutside.student)
+            )
+          ) {
             reasons.push({ type: t });
           }
         }
@@ -101,15 +143,33 @@ export async function decideNextStatusForContext(ctx: SessionCtx): Promise<"CONF
   if (hasHardConflict(reasons)) return "CONFLICTED";
   const eff = await getEffectiveSchedulingConfig(ctx.branchId || undefined);
   const policy = toPolicyShape(eff);
-  return isMarkedByPolicy(reasons, policy.markAsConflicted) ? "CONFLICTED" : "CONFIRMED";
+  return isMarkedByPolicy(reasons, policy.markAsConflicted)
+    ? "CONFLICTED"
+    : "CONFIRMED";
 }
 
 /**
  * Load a session by id, recompute its status, and persist if changed.
  * Returns the updated status (or null if not found).
  */
-export async function recomputeAndUpdateSessionStatus(classId: string): Promise<"CONFIRMED" | "CONFLICTED" | null> {
-  const s = await prisma.classSession.findUnique({ where: { classId }, select: { classId: true, branchId: true, date: true, startTime: true, endTime: true, teacherId: true, studentId: true, boothId: true, status: true, isCancelled: true } });
+export async function recomputeAndUpdateSessionStatus(
+  classId: string
+): Promise<"CONFIRMED" | "CONFLICTED" | null> {
+  const s = await prisma.classSession.findUnique({
+    where: { classId },
+    select: {
+      classId: true,
+      branchId: true,
+      date: true,
+      startTime: true,
+      endTime: true,
+      teacherId: true,
+      studentId: true,
+      boothId: true,
+      status: true,
+      isCancelled: true,
+    },
+  });
   if (!s) return null;
   if (s.isCancelled) return s.status as any;
   const ctx: SessionCtx = {
@@ -124,7 +184,10 @@ export async function recomputeAndUpdateSessionStatus(classId: string): Promise<
   };
   const next = await decideNextStatusForContext(ctx);
   if (next !== s.status) {
-    await prisma.classSession.update({ where: { classId }, data: { status: next } });
+    await prisma.classSession.update({
+      where: { classId },
+      data: { status: next },
+    });
   }
   return next;
 }
@@ -134,7 +197,10 @@ export async function recomputeAndUpdateSessionStatus(classId: string): Promise<
  * Only same-date sessions sharing teacher/student/booth and overlapping the
  * old or new time window are affected.
  */
-export async function recomputeNeighborsForChange(oldCtx: SessionCtx | null, newCtx: SessionCtx | null): Promise<void> {
+export async function recomputeNeighborsForChange(
+  oldCtx: SessionCtx | null,
+  newCtx: SessionCtx | null
+): Promise<void> {
   const ids = new Set<string>();
 
   async function collect(ctx: SessionCtx) {
@@ -150,7 +216,10 @@ export async function recomputeNeighborsForChange(oldCtx: SessionCtx | null, new
       ].filter(Boolean),
     };
     if (!where.OR || where.OR.length === 0) return;
-    const neighbors = await prisma.classSession.findMany({ where, select: { classId: true } });
+    const neighbors = await prisma.classSession.findMany({
+      where,
+      select: { classId: true },
+    });
     for (const n of neighbors) ids.add(n.classId);
   }
 
@@ -159,7 +228,9 @@ export async function recomputeNeighborsForChange(oldCtx: SessionCtx | null, new
 
   // Recompute each neighbor (sequential to avoid DB thrash; counts are small)
   for (const id of ids) {
-    try { await recomputeAndUpdateSessionStatus(id); } catch {}
+    try {
+      await recomputeAndUpdateSessionStatus(id);
+    } catch {}
   }
 }
 
@@ -167,9 +238,13 @@ export async function recomputeNeighborsForChange(oldCtx: SessionCtx | null, new
  * Convenience: given contexts for sessions that were removed (e.g., cancelled),
  * recompute neighbors as if those sessions disappeared from the grid.
  */
-export async function recomputeNeighborsForCancelledContexts(ctxs: SessionCtx[]): Promise<void> {
+export async function recomputeNeighborsForCancelledContexts(
+  ctxs: SessionCtx[]
+): Promise<void> {
   for (const ctx of ctxs) {
-    try { await recomputeNeighborsForChange(ctx, null); } catch {}
+    try {
+      await recomputeNeighborsForChange(ctx, null);
+    } catch {}
   }
 }
 
@@ -177,7 +252,9 @@ export async function recomputeNeighborsForCancelledContexts(ctxs: SessionCtx[])
  * Convenience: given contexts for sessions that were (re)added (e.g., reactivated),
  * recompute neighbors and the sessions themselves using the new placement.
  */
-export async function recomputeNeighborsForReactivatedContexts(ctxs: SessionCtx[]): Promise<void> {
+export async function recomputeNeighborsForReactivatedContexts(
+  ctxs: SessionCtx[]
+): Promise<void> {
   for (const ctx of ctxs) {
     try {
       await recomputeNeighborsForChange(null, ctx);

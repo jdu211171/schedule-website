@@ -145,21 +145,14 @@ const teacherBaseSchema = z.object({
     .max(50, "LINEユーザーIDは50文字以内で入力してください")
     .optional()
     .nullable(),
-  lineNotificationsEnabled: z
-    .boolean()
-    .optional()
-    .default(true),
+  lineNotificationsEnabled: z.boolean().optional().default(true),
   notes: z
     .string()
     .max(255, "備考は255文字以内で入力してください")
     .optional()
     .nullable(),
   status: userStatusEnum.optional().default("ACTIVE"),
-  birthDate: z
-    .coerce
-    .date()
-    .optional()
-    .nullable(),
+  birthDate: z.coerce.date().optional().nullable(),
   // Legacy phone fields (for backward compatibility)
   phoneNumber: z
     .string()

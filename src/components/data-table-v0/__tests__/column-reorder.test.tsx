@@ -22,7 +22,7 @@ function TestTable({ storageKey }: { storageKey: string }) {
       { id: "lastName", accessorKey: "lastName", header: "Last" },
       { id: "age", accessorKey: "age", header: "Age" },
     ],
-    [],
+    []
   );
 
   const { table } = useStateDataTable<Row>({
@@ -59,18 +59,18 @@ function getHeaderTexts() {
 describe("Column reorder integration", () => {
   const KEY = "vitest.table.order";
 
-beforeEach(() => {
-  // Reset storage
-  (globalThis as any).localStorage?.removeItem(KEY);
-  // Minimal ResizeObserver polyfill for jsdom
-  (globalThis as any).ResizeObserver = class {
-    observe() {}
-    unobserve() {}
-    disconnect() {}
-  };
-  // Minimal scrollIntoView polyfill
-  (Element.prototype as any).scrollIntoView = () => {};
-});
+  beforeEach(() => {
+    // Reset storage
+    (globalThis as any).localStorage?.removeItem(KEY);
+    // Minimal ResizeObserver polyfill for jsdom
+    (globalThis as any).ResizeObserver = class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    };
+    // Minimal scrollIntoView polyfill
+    (Element.prototype as any).scrollIntoView = () => {};
+  });
 
   it("applies persisted order on mount and can reset via view options", async () => {
     const user = userEvent.setup();
@@ -78,13 +78,13 @@ beforeEach(() => {
     // Persist a custom order: age, first, last
     (globalThis as any).localStorage?.setItem(
       KEY,
-      JSON.stringify(["age", "firstName", "lastName"]),
+      JSON.stringify(["age", "firstName", "lastName"])
     );
 
     render(
       <NuqsAdapter>
         <TestTable storageKey={KEY} />
-      </NuqsAdapter>,
+      </NuqsAdapter>
     );
 
     // Expect headers reflect persisted order

@@ -28,8 +28,10 @@ export async function adjustOppositeAvailabilityForNew(
     newEndTime?: Date | null; // time-only (UTC 2000-01-01)
   }
 ): Promise<void> {
-  const { userId, dateUTC, newType, newFullDay, newStartTime, newEndTime } = params;
-  const oppositeType: AvailabilityType = newType === "EXCEPTION" ? "ABSENCE" : "EXCEPTION";
+  const { userId, dateUTC, newType, newFullDay, newStartTime, newEndTime } =
+    params;
+  const oppositeType: AvailabilityType =
+    newType === "EXCEPTION" ? "ABSENCE" : "EXCEPTION";
 
   const existing = await tx.userAvailability.findMany({
     where: { userId, type: oppositeType, date: dateUTC },
@@ -42,7 +44,8 @@ export async function adjustOppositeAvailabilityForNew(
   });
 
   // Pre-compute new interval in minutes, if any
-  const newStartMin = newFullDay || !newStartTime ? null : toMinutesUTC(newStartTime);
+  const newStartMin =
+    newFullDay || !newStartTime ? null : toMinutesUTC(newStartTime);
   const newEndMin = newFullDay || !newEndTime ? null : toMinutesUTC(newEndTime);
 
   for (const e of existing) {
@@ -179,4 +182,3 @@ export async function adjustOppositeAvailabilityForNew(
     }
   }
 }
-

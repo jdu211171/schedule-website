@@ -79,11 +79,12 @@ export default function MasterDataPage() {
             <BranchTable />
           </TabsContent>
           {/* Only show admin management content for non-restricted admins */}
-          {session?.user?.role === "ADMIN" && !session?.user?.isRestrictedAdmin && (
-            <TabsContent value="admins" className="mt-0">
-              <AdminUserTable />
-            </TabsContent>
-          )}
+          {session?.user?.role === "ADMIN" &&
+            !session?.user?.isRestrictedAdmin && (
+              <TabsContent value="admins" className="mt-0">
+                <AdminUserTable />
+              </TabsContent>
+            )}
           <TabsContent value="staff" className="mt-0">
             <StaffTable />
           </TabsContent>
