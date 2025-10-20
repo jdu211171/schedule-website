@@ -28,7 +28,11 @@ const LineTextIcon = React.forwardRef<
   HTMLDivElement,
   React.HTMLProps<HTMLDivElement> & { className?: string }
 >(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn("flex items-center justify-center h-4 w-4", className)} {...props}>
+  <div
+    ref={ref}
+    className={cn("flex items-center justify-center h-4 w-4", className)}
+    {...props}
+  >
     <span className="text-[8px] font-bold bg-[#00B900] text-white px-0.5 py-0.5 rounded leading-none">
       LINE
     </span>
@@ -143,7 +147,8 @@ function BranchSelector() {
   );
   const [isLoading, setIsLoading] = React.useState(false);
 
-  const { data: branches = [], isLoading: isBranchesLoading } = useUserBranches();
+  const { data: branches = [], isLoading: isBranchesLoading } =
+    useUserBranches();
 
   const handleBranchChange = React.useCallback(
     async (value: string) => {
@@ -328,7 +333,8 @@ function MobileNavMenu({
                     ? "bg-accent text-accent-foreground"
                     : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                 )}
-                legacyBehavior>
+                legacyBehavior
+              >
                 {item.href === "/dashboard/line-test" ? (
                   <span className="text-[8px] font-bold bg-[#00B900] text-white px-1 py-0.5 rounded h-4 w-4 flex items-center justify-center">
                     LINE
@@ -396,8 +402,8 @@ export default function Navbar() {
 
     // Initialize
     lastY.current = window.scrollY || 0;
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
   let navItems = dashboardNavItems;
@@ -409,11 +415,19 @@ export default function Navbar() {
 
   // Customize navigation for STAFF users on dashboard routes
   if (!isTeacherRoute && !isStudentRoute && session?.user?.role === "STAFF") {
-    navItems = navItems.filter((item) => item.href !== "/dashboard/archives" && item.href !== "/dashboard/settings");
+    navItems = navItems.filter(
+      (item) =>
+        item.href !== "/dashboard/archives" &&
+        item.href !== "/dashboard/settings"
+    );
     // Add branch settings for conflict config
     navItems = [
       ...navItems,
-      { title: "ブランチ設定", href: "/dashboard/branch-settings", icon: Settings },
+      {
+        title: "ブランチ設定",
+        href: "/dashboard/branch-settings",
+        icon: Settings,
+      },
     ];
   }
 

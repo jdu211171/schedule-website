@@ -103,7 +103,7 @@ export function DataTableFilterMenu<TData>({
         setSelectedColumn(null);
       }
     },
-    [inputValue, selectedColumn],
+    [inputValue, selectedColumn]
   );
 
   const [filters, setFilters] = useQueryState(
@@ -114,7 +114,7 @@ export function DataTableFilterMenu<TData>({
         clearOnDefault: true,
         shallow,
         throttleMs,
-      }),
+      })
   );
   const debouncedSetFilters = useDebouncedCallback(setFilters, debounceMs);
 
@@ -132,7 +132,7 @@ export function DataTableFilterMenu<TData>({
         value: filterValue,
         variant: column.columnDef.meta?.variant ?? "text",
         operator: getDefaultFilterOperator(
-          column.columnDef.meta?.variant ?? "text",
+          column.columnDef.meta?.variant ?? "text"
         ),
         filterId: generateId({ length: 8 }),
       };
@@ -145,26 +145,26 @@ export function DataTableFilterMenu<TData>({
         setInputValue("");
       }, 100);
     },
-    [filters, debouncedSetFilters],
+    [filters, debouncedSetFilters]
   );
 
   const onFilterRemove = React.useCallback(
     (filterId: string) => {
       const updatedFilters = filters.filter(
-        (filter) => filter.filterId !== filterId,
+        (filter) => filter.filterId !== filterId
       );
       debouncedSetFilters(updatedFilters);
       requestAnimationFrame(() => {
         triggerRef.current?.focus();
       });
     },
-    [filters, debouncedSetFilters],
+    [filters, debouncedSetFilters]
   );
 
   const onFilterUpdate = React.useCallback(
     (
       filterId: string,
-      updates: Partial<Omit<ExtendedColumnFilter<TData>, "filterId">>,
+      updates: Partial<Omit<ExtendedColumnFilter<TData>, "filterId">>
     ) => {
       debouncedSetFilters((prevFilters) => {
         const updatedFilters = prevFilters.map((filter) => {
@@ -176,7 +176,7 @@ export function DataTableFilterMenu<TData>({
         return updatedFilters;
       });
     },
-    [debouncedSetFilters],
+    [debouncedSetFilters]
   );
 
   const onFiltersReset = React.useCallback(() => {
@@ -227,7 +227,7 @@ export function DataTableFilterMenu<TData>({
         onFilterRemove(filters[filters.length - 1]?.filterId ?? "");
       }
     },
-    [filters, onFilterRemove],
+    [filters, onFilterRemove]
   );
 
   return (
@@ -337,7 +337,7 @@ interface DataTableFilterItemProps<TData> {
   columns: Column<TData>[];
   onFilterUpdate: (
     filterId: string,
-    updates: Partial<Omit<ExtendedColumnFilter<TData>, "filterId">>,
+    updates: Partial<Omit<ExtendedColumnFilter<TData>, "filterId">>
   ) => void;
   onFilterRemove: (filterId: string) => void;
 }
@@ -350,8 +350,7 @@ function DataTableFilterItem<TData>({
   onFilterRemove,
 }: DataTableFilterItemProps<TData>) {
   const [showFieldSelector, setShowFieldSelector] = React.useState(false);
-  const [showOperatorSelector, setShowOperatorSelector] =
-    React.useState(false);
+  const [showOperatorSelector, setShowOperatorSelector] = React.useState(false);
   const [showValueSelector, setShowValueSelector] = React.useState(false);
 
   const onItemKeyDown = React.useCallback(
@@ -378,7 +377,7 @@ function DataTableFilterItem<TData>({
       showOperatorSelector,
       showValueSelector,
       onFilterRemove,
-    ],
+    ]
   );
 
   const column = columns.find((column) => column.id === filter.id);
@@ -390,126 +389,124 @@ function DataTableFilterItem<TData>({
   const columnMeta = column.columnDef.meta;
   const filterOperators = getFilterOperators(filter.variant);
 
-    return (
-      <div
-        key={filter.filterId}
-        role="listitem"
-        id={filterItemId}
-        className="flex h-8 items-center rounded-md bg-background"
-        onKeyDown={onItemKeyDown}
-      >
-        <Popover open={showFieldSelector} onOpenChange={setShowFieldSelector}>
-          <PopoverTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="rounded-none rounded-l-md border border-r-0 font-normal dark:bg-input/30"
-            >
-              {columnMeta?.icon && (
-                <columnMeta.icon className="text-muted-foreground" />
-              )}
-              {columnMeta?.label ?? column.id}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent
-            align="start"
-            className="w-48 origin-[var(--radix-popover-content-transform-origin)] p-0"
+  return (
+    <div
+      key={filter.filterId}
+      role="listitem"
+      id={filterItemId}
+      className="flex h-8 items-center rounded-md bg-background"
+      onKeyDown={onItemKeyDown}
+    >
+      <Popover open={showFieldSelector} onOpenChange={setShowFieldSelector}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="rounded-none rounded-l-md border border-r-0 font-normal dark:bg-input/30"
           >
-            <Command loop>
-              <CommandInput placeholder="Search fields..." />
-              <CommandList>
-                <CommandEmpty>No fields found.</CommandEmpty>
-                <CommandGroup>
-                  {columns.map((column) => (
-                    <CommandItem
-                      key={column.id}
-                      value={column.id}
-                      onSelect={() => {
-                        onFilterUpdate(filter.filterId, {
-                          id: column.id as Extract<keyof TData, string>,
-                          variant: column.columnDef.meta?.variant ?? "text",
-                          operator: getDefaultFilterOperator(
-                            column.columnDef.meta?.variant ?? "text",
-                          ),
-                          value: "",
-                        });
+            {columnMeta?.icon && (
+              <columnMeta.icon className="text-muted-foreground" />
+            )}
+            {columnMeta?.label ?? column.id}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent
+          align="start"
+          className="w-48 origin-[var(--radix-popover-content-transform-origin)] p-0"
+        >
+          <Command loop>
+            <CommandInput placeholder="Search fields..." />
+            <CommandList>
+              <CommandEmpty>No fields found.</CommandEmpty>
+              <CommandGroup>
+                {columns.map((column) => (
+                  <CommandItem
+                    key={column.id}
+                    value={column.id}
+                    onSelect={() => {
+                      onFilterUpdate(filter.filterId, {
+                        id: column.id as Extract<keyof TData, string>,
+                        variant: column.columnDef.meta?.variant ?? "text",
+                        operator: getDefaultFilterOperator(
+                          column.columnDef.meta?.variant ?? "text"
+                        ),
+                        value: "",
+                      });
 
-                        setShowFieldSelector(false);
-                      }}
-                    >
-                      {column.columnDef.meta?.icon && (
-                        <column.columnDef.meta.icon />
+                      setShowFieldSelector(false);
+                    }}
+                  >
+                    {column.columnDef.meta?.icon && (
+                      <column.columnDef.meta.icon />
+                    )}
+                    <span className="truncate">
+                      {column.columnDef.meta?.label ?? column.id}
+                    </span>
+                    <Check
+                      className={cn(
+                        "ml-auto",
+                        column.id === filter.id ? "opacity-100" : "opacity-0"
                       )}
-                      <span className="truncate">
-                        {column.columnDef.meta?.label ?? column.id}
-                      </span>
-                      <Check
-                        className={cn(
-                          "ml-auto",
-                          column.id === filter.id ? "opacity-100" : "opacity-0",
-                        )}
-                      />
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-              </CommandList>
-            </Command>
-          </PopoverContent>
-        </Popover>
-        <Select
-          open={showOperatorSelector}
-          onOpenChange={setShowOperatorSelector}
-          value={filter.operator}
-          onValueChange={(value: FilterOperator) =>
-            onFilterUpdate(filter.filterId, {
-              operator: value,
-              value:
-                value === "isEmpty" || value === "isNotEmpty"
-                  ? ""
-                  : filter.value,
-            })
-          }
+                    />
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+      <Select
+        open={showOperatorSelector}
+        onOpenChange={setShowOperatorSelector}
+        value={filter.operator}
+        onValueChange={(value: FilterOperator) =>
+          onFilterUpdate(filter.filterId, {
+            operator: value,
+            value:
+              value === "isEmpty" || value === "isNotEmpty" ? "" : filter.value,
+          })
+        }
+      >
+        <SelectTrigger
+          aria-controls={operatorListboxId}
+          className="h-8 rounded-none border-r-0 px-2.5 lowercase [&[data-size]]:h-8 [&_svg]:hidden"
         >
-          <SelectTrigger
-            aria-controls={operatorListboxId}
-            className="h-8 rounded-none border-r-0 px-2.5 lowercase [&[data-size]]:h-8 [&_svg]:hidden"
-          >
-            <SelectValue placeholder={filter.operator} />
-          </SelectTrigger>
-          <SelectContent
-            id={operatorListboxId}
-            className="origin-[var(--radix-select-content-transform-origin)]"
-          >
-            {filterOperators.map((operator) => (
-              <SelectItem
-                key={operator.value}
-                className="lowercase"
-                value={operator.value}
-              >
-                {operator.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {onFilterInputRender({
-          filter,
-          column,
-          inputId,
-          onFilterUpdate,
-          showValueSelector,
-          setShowValueSelector,
-        })}
-        <Button
-          aria-controls={filterItemId}
-          variant="ghost"
-          size="sm"
-          className="h-full rounded-none rounded-r-md border border-l-0 px-1.5 font-normal dark:bg-input/30"
-          onClick={() => onFilterRemove(filter.filterId)}
+          <SelectValue placeholder={filter.operator} />
+        </SelectTrigger>
+        <SelectContent
+          id={operatorListboxId}
+          className="origin-[var(--radix-select-content-transform-origin)]"
         >
-          <X className="size-3.5" />
-        </Button>
-      </div>
-    );
+          {filterOperators.map((operator) => (
+            <SelectItem
+              key={operator.value}
+              className="lowercase"
+              value={operator.value}
+            >
+              {operator.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {onFilterInputRender({
+        filter,
+        column,
+        inputId,
+        onFilterUpdate,
+        showValueSelector,
+        setShowValueSelector,
+      })}
+      <Button
+        aria-controls={filterItemId}
+        variant="ghost"
+        size="sm"
+        className="h-full rounded-none rounded-r-md border border-l-0 px-1.5 font-normal dark:bg-input/30"
+        onClick={() => onFilterRemove(filter.filterId)}
+      >
+        <X className="size-3.5" />
+      </Button>
+    </div>
+  );
 }
 
 interface FilterValueSelectorProps<TData> {
@@ -612,7 +609,7 @@ function onFilterInputRender<TData>({
   inputId: string;
   onFilterUpdate: (
     filterId: string,
-    updates: Partial<Omit<ExtendedColumnFilter<TData>, "filterId">>,
+    updates: Partial<Omit<ExtendedColumnFilter<TData>, "filterId">>
   ) => void;
   showValueSelector: boolean;
   setShowValueSelector: (value: boolean) => void;
@@ -705,7 +702,7 @@ function onFilterInputRender<TData>({
         : [filter.value];
 
       const selectedOptions = options.filter((option) =>
-        selectedValues.includes(option.value),
+        selectedValues.includes(option.value)
       );
 
       return (
@@ -735,7 +732,7 @@ function onFilterInputRender<TData>({
                         >
                           <selectedOption.icon className="size-3.5" />
                         </div>
-                      ) : null,
+                      ) : null
                     )}
                   </div>
                   <span className="truncate">
@@ -779,7 +776,7 @@ function onFilterInputRender<TData>({
                             "ml-auto",
                             selectedValues.includes(option.value)
                               ? "opacity-100"
-                              : "opacity-0",
+                              : "opacity-0"
                           )}
                         />
                       )}
@@ -804,7 +801,7 @@ function onFilterInputRender<TData>({
       const displayValue =
         filter.operator === "isBetween" && dateValue.length === 2
           ? `${formatDate(new Date(Number(dateValue[0])))} - ${formatDate(
-              new Date(Number(dateValue[1])),
+              new Date(Number(dateValue[1]))
             )}`
           : dateValue[0]
             ? formatDate(new Date(Number(dateValue[0])))
@@ -820,7 +817,7 @@ function onFilterInputRender<TData>({
               size="sm"
               className={cn(
                 "h-full rounded-none border px-1.5 font-normal dark:bg-input/30",
-                !filter.value && "text-muted-foreground",
+                !filter.value && "text-muted-foreground"
               )}
             >
               <CalendarIcon className="size-3.5" />

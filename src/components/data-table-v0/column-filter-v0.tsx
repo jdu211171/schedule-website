@@ -1,31 +1,31 @@
-"use client"
+"use client";
 
-import { CheckIcon, FilterIcon } from "lucide-react"
-import * as React from "react"
+import { CheckIcon, FilterIcon } from "lucide-react";
+import * as React from "react";
 
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Input } from "@/components/ui/input"
-import { ScrollArea } from "@/components/ui/scroll-area"
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 type FilterOption = string | { value: string; label: string };
 
 interface ColumnFilterProps {
-  column: string
-  title: string
-  options: FilterOption[]
-  selectedValues: string[]
-  onSelectionChange: (column: string, values: string[]) => void
-  onFilter?: (column: string, values: string[]) => void
-  isLoading?: boolean
+  column: string;
+  title: string;
+  options: FilterOption[];
+  selectedValues: string[];
+  onSelectionChange: (column: string, values: string[]) => void;
+  onFilter?: (column: string, values: string[]) => void;
+  isLoading?: boolean;
 }
 
 export function ColumnFilter({
@@ -37,47 +37,53 @@ export function ColumnFilter({
   onFilter,
   isLoading = false,
 }: ColumnFilterProps) {
-  const [searchQuery, setSearchQuery] = React.useState("")
-  const [isOpen, setIsOpen] = React.useState(false)
+  const [searchQuery, setSearchQuery] = React.useState("");
+  const [isOpen, setIsOpen] = React.useState(false);
 
   const normalizedOptions = React.useMemo(() => {
     return options.map((option) => {
-      if (typeof option === 'string') {
-        return { value: option, label: option }
+      if (typeof option === "string") {
+        return { value: option, label: option };
       }
-      return option
-    })
-  }, [options])
+      return option;
+    });
+  }, [options]);
 
   const filteredOptions = React.useMemo(() => {
-    if (!searchQuery) return normalizedOptions
+    if (!searchQuery) return normalizedOptions;
     return normalizedOptions.filter((option) =>
       option.label.toLowerCase().includes(searchQuery.toLowerCase())
-    )
-  }, [normalizedOptions, searchQuery])
+    );
+  }, [normalizedOptions, searchQuery]);
 
   const handleSelectionChange = (value: string, checked: boolean) => {
-    const newSelection = checked ? [...selectedValues, value] : selectedValues.filter((v) => v !== value)
+    const newSelection = checked
+      ? [...selectedValues, value]
+      : selectedValues.filter((v) => v !== value);
 
-    onSelectionChange(column, newSelection)
-  }
+    onSelectionChange(column, newSelection);
+  };
 
   const handleApplyFilter = () => {
-    onFilter?.(column, selectedValues)
-    setIsOpen(false)
-  }
+    onFilter?.(column, selectedValues);
+    setIsOpen(false);
+  };
 
   const handleClearFilter = () => {
-    onSelectionChange(column, [])
-    onFilter?.(column, [])
-  }
+    onSelectionChange(column, []);
+    onFilter?.(column, []);
+  };
 
-  const hasActiveFilters = selectedValues.length > 0
+  const hasActiveFilters = selectedValues.length > 0;
 
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="h-8 border-dashed bg-transparent">
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8 border-dashed bg-transparent"
+        >
           <FilterIcon className="mr-2 h-4 w-4" />
           {title}
           {hasActiveFilters && (
@@ -91,7 +97,12 @@ export function ColumnFilter({
         <DropdownMenuLabel className="flex items-center justify-between">
           {title}をフィルター
           {hasActiveFilters && (
-            <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={handleClearFilter}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2 text-xs"
+              onClick={handleClearFilter}
+            >
               クリア
             </Button>
           )}
@@ -111,11 +122,15 @@ export function ColumnFilter({
           <div className="p-2 space-y-1">
             {isLoading ? (
               <div className="flex items-center justify-center py-4">
-                <div className="text-sm text-muted-foreground">読み込み中...</div>
+                <div className="text-sm text-muted-foreground">
+                  読み込み中...
+                </div>
               </div>
             ) : filteredOptions.length === 0 ? (
               <div className="flex items-center justify-center py-4">
-                <div className="text-sm text-muted-foreground">オプションが見つかりません</div>
+                <div className="text-sm text-muted-foreground">
+                  オプションが見つかりません
+                </div>
               </div>
             ) : (
               filteredOptions.map((option) => (
@@ -123,9 +138,14 @@ export function ColumnFilter({
                   <Checkbox
                     id={`${column}-${option.value}`}
                     checked={selectedValues.includes(option.value)}
-                    onCheckedChange={(checked) => handleSelectionChange(option.value, !!checked)}
+                    onCheckedChange={(checked) =>
+                      handleSelectionChange(option.value, !!checked)
+                    }
                   />
-                  <label htmlFor={`${column}-${option.value}`} className="text-sm font-normal cursor-pointer flex-1">
+                  <label
+                    htmlFor={`${column}-${option.value}`}
+                    className="text-sm font-normal cursor-pointer flex-1"
+                  >
                     {option.label}
                   </label>
                 </div>
@@ -146,5 +166,5 @@ export function ColumnFilter({
         </div>
       </DropdownMenuContent>
     </DropdownMenu>
-  )
+  );
 }

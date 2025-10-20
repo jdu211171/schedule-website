@@ -181,53 +181,55 @@ export const DELETE = withBranchAccess(
 
       // Check for dependencies in the selected branch only
       const classSessionCount = await prisma.classSession.count({
-        where: { 
+        where: {
           subjectId,
-          branchId: selectedBranchId
-        }
+          branchId: selectedBranchId,
+        },
       });
 
       // Count preferences separately (not branch-specific)
       const userPreferenceCount = await prisma.userSubjectPreference.count({
-        where: { subjectId }
+        where: { subjectId },
       });
 
-      const studentPreferenceCount = await prisma.studentTeacherPreference.count({
-        where: { subjectId }
-      });
+      const studentPreferenceCount =
+        await prisma.studentTeacherPreference.count({
+          where: { subjectId },
+        });
 
       const totalPreferences = userPreferenceCount + studentPreferenceCount;
 
       if (classSessionCount > 0) {
         // Get branch information for class sessions
         const sessions = await prisma.classSession.findMany({
-          where: { 
+          where: {
             subjectId,
-            branchId: selectedBranchId
+            branchId: selectedBranchId,
           },
           select: {
-            branch: { select: { name: true } }
+            branch: { select: { name: true } },
           },
-          distinct: ['branchId']
+          distinct: ["branchId"],
         });
-        
-        const branchNames = [...new Set(sessions
-          .map(s => s.branch?.name)
-          .filter(Boolean))];
-        
-        const branchText = branchNames.length > 0 ? `（${branchNames.join('、')}）` : '';
-        
+
+        const branchNames = [
+          ...new Set(sessions.map((s) => s.branch?.name).filter(Boolean)),
+        ];
+
+        const branchText =
+          branchNames.length > 0 ? `（${branchNames.join("、")}）` : "";
+
         return NextResponse.json(
-          { 
+          {
             error: `この科目は${classSessionCount}件の授業セッション${branchText}に関連付けられているため削除できません。`,
             details: {
               classSessions: classSessionCount,
               branches: branchNames,
-              ...(totalPreferences > 0 && { 
+              ...(totalPreferences > 0 && {
                 userPreferences: userPreferenceCount,
-                studentPreferences: studentPreferenceCount
-              })
-            }
+                studentPreferences: studentPreferenceCount,
+              }),
+            },
           },
           { status: 400 }
         );
@@ -253,15 +255,16 @@ export const DELETE = withBranchAccess(
         });
       } catch (error: any) {
         // Handle foreign key constraint violations
-        if (error?.code === 'P2003') {
+        if (error?.code === "P2003") {
           console.error("Foreign key constraint error:", error);
           return NextResponse.json(
-            { 
-              error: "科目を削除できません。関連するデータが存在します。", 
-              details: { 
-                message: "削除前に関連する授業セッションや設定を確認してください。",
-                code: error.code 
-              }
+            {
+              error: "科目を削除できません。関連するデータが存在します。",
+              details: {
+                message:
+                  "削除前に関連する授業セッションや設定を確認してください。",
+                code: error.code,
+              },
             },
             { status: 400 }
           );

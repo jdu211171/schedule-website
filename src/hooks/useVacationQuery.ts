@@ -72,17 +72,20 @@ export function useVacations(params: UseVacationsParams = {}) {
   });
 
   const searchParams = new URLSearchParams(
-    Object.entries(query).reduce((acc, [key, value]) => {
-      if (value !== undefined) {
-        // Handle Date objects
-        if (value instanceof Date) {
-          acc[key] = value.toISOString();
-        } else {
-          acc[key] = String(value);
+    Object.entries(query).reduce(
+      (acc, [key, value]) => {
+        if (value !== undefined) {
+          // Handle Date objects
+          if (value instanceof Date) {
+            acc[key] = value.toISOString();
+          } else {
+            acc[key] = String(value);
+          }
         }
-      }
-      return acc;
-    }, {} as Record<string, string>)
+        return acc;
+      },
+      {} as Record<string, string>
+    )
   ).toString();
 
   return useQuery<VacationsResponse>({

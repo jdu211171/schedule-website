@@ -23,10 +23,7 @@ export const PATCH = withFullAdminRole(
       const currentUserId = session.user?.id;
 
       if (!currentUserId) {
-        return NextResponse.json(
-          { error: "認証エラー" },
-          { status: 401 }
-        );
+        return NextResponse.json({ error: "認証エラー" }, { status: 401 });
       }
 
       // Get current user's order
@@ -76,7 +73,10 @@ export const PATCH = withFullAdminRole(
         // Check if trying to reorder an admin with higher or equal rank (lower order number)
         if (adminOrder <= currentUserOrder) {
           return NextResponse.json(
-            { error: "同じまたは上位の権限を持つ管理者の順序を変更することはできません" },
+            {
+              error:
+                "同じまたは上位の権限を持つ管理者の順序を変更することはできません",
+            },
             { status: 403 }
           );
         }
@@ -90,11 +90,11 @@ export const PATCH = withFullAdminRole(
           where: {
             role: "ADMIN",
             order: {
-              lt: currentUserOrder
-            }
+              lt: currentUserOrder,
+            },
           },
           select: { id: true, order: true },
-          orderBy: { order: 'asc' }
+          orderBy: { order: "asc" },
         });
 
         // Count how many higher-ranked admins should be before current user
@@ -117,26 +117,27 @@ export const PATCH = withFullAdminRole(
           where: { role: "ADMIN" },
           select: { id: true, order: true },
           orderBy: [
-            { order: { sort: 'asc', nulls: 'last' } },
-            { createdAt: 'asc' } // fallback for null orders
-          ]
+            { order: { sort: "asc", nulls: "last" } },
+            { createdAt: "asc" }, // fallback for null orders
+          ],
         });
 
         // Separate higher-ranked admins (those the current user cannot modify)
-        const higherRankedAdmins = allAdmins.filter(admin => {
+        const higherRankedAdmins = allAdmins.filter((admin) => {
           const adminOrder = admin.order || Number.MAX_SAFE_INTEGER;
           return adminOrder < currentUserOrder && admin.id !== currentUserId;
         });
 
         // Calculate new orders
-        const updatePromises: Promise<{ id: string; order: number | null }>[] = [];
+        const updatePromises: Promise<{ id: string; order: number | null }>[] =
+          [];
 
         // First, preserve the order of higher-ranked admins
         higherRankedAdmins.forEach((admin, index) => {
           updatePromises.push(
             tx.user.update({
               where: { id: admin.id },
-              data: { order: index + 1 }
+              data: { order: index + 1 },
             })
           );
         });
@@ -147,7 +148,7 @@ export const PATCH = withFullAdminRole(
           updatePromises.push(
             tx.user.update({
               where: { id: userId },
-              data: { order: startOrder + index }
+              data: { order: startOrder + index },
             })
           );
         });

@@ -88,8 +88,17 @@ export const GET = withRole(
       );
     }
 
-    const { page, limit, name, parentId, includeChildren, includeParent, visibleOnly, sortBy, sortOrder } =
-      result.data;
+    const {
+      page,
+      limit,
+      name,
+      parentId,
+      includeChildren,
+      includeParent,
+      visibleOnly,
+      sortBy,
+      sortOrder,
+    } = result.data;
 
     // Build filter conditions
     const where: any = {};
@@ -190,10 +199,7 @@ export const POST = withRole(
         const errorMessage = parentId
           ? "この親授業タイプ内で、同じ名前の授業タイプが既に存在します" // "A class type with this name already exists under this parent"
           : "同じ名前のルート授業タイプが既に存在します"; // "A root class type with this name already exists"
-        return NextResponse.json(
-          { error: errorMessage },
-          { status: 409 }
-        );
+        return NextResponse.json({ error: errorMessage }, { status: 409 });
       }
 
       // If parentId is provided, validate it exists
@@ -214,7 +220,7 @@ export const POST = withRole(
       if (color) {
         try {
           const colorInUse = await prisma.classType.findFirst({
-            where: { color: { equals: color, mode: 'insensitive' } as any },
+            where: { color: { equals: color, mode: "insensitive" } as any },
             select: { classTypeId: true },
           });
           if (colorInUse) {
@@ -258,7 +264,7 @@ export const POST = withRole(
             notes,
             parentId,
             order: finalOrder,
-            ...(color !== undefined ? { color } : {} as any),
+            ...(color !== undefined ? { color } : ({} as any)),
           } as any,
           include: { parent: true, children: true },
         });

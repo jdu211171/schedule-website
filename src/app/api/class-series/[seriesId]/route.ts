@@ -5,7 +5,11 @@ import { prisma } from "@/lib/prisma";
 import { classSeriesUpdateSchema } from "@/schemas/class-series.schema";
 import { classSessionSeriesUpdateSchema } from "@/schemas/class-session.schema";
 // generation mode removed; advance generation handled globally via cron/extend
-import { getEffectiveSchedulingConfig, toPolicyShape, upsertBranchPolicyFromSeriesPatch } from "@/lib/scheduling-config";
+import {
+  getEffectiveSchedulingConfig,
+  toPolicyShape,
+  upsertBranchPolicyFromSeriesPatch,
+} from "@/lib/scheduling-config";
 
 type ClassSeriesRow = {
   seriesId: string;
@@ -102,7 +106,10 @@ export const GET = withBranchAccess(
     const seriesId = parts[parts.length - 1];
 
     if (!seriesId) {
-      return NextResponse.json({ error: "seriesId is required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "seriesId is required" },
+        { status: 400 }
+      );
     }
 
     const row = await prisma.classSeries.findUnique({ where: { seriesId } });
@@ -120,7 +127,10 @@ export const GET = withBranchAccess(
 
     const base = toResponse(row as unknown as ClassSeriesRow);
     const cfg = await getEffectiveSchedulingConfig(base.branchId);
-    return NextResponse.json({ ...base, conflictPolicy: toPolicyShape(cfg) as any });
+    return NextResponse.json({
+      ...base,
+      conflictPolicy: toPolicyShape(cfg) as any,
+    });
   }
 );
 
@@ -145,7 +155,10 @@ export const PATCH = withBranchAccess(
     const seriesId = parts[parts.length - 1];
 
     if (!seriesId) {
-      return NextResponse.json({ error: "seriesId is required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "seriesId is required" },
+        { status: 400 }
+      );
     }
 
     const body = await request.json().catch(() => null);
@@ -157,13 +170,17 @@ export const PATCH = withBranchAccess(
     // - skipPropagation: do not propagate to existing sessions (UI may have updated them separately)
     // - propagateFromClassId: when propagating, apply from a specific instance forward
     const skipPropagation = Boolean((body as any)?.skipPropagation);
-    const propagateFromClassId: string | undefined = typeof (body as any)?.propagateFromClassId === 'string'
-      ? (body as any).propagateFromClassId
-      : undefined;
+    const propagateFromClassId: string | undefined =
+      typeof (body as any)?.propagateFromClassId === "string"
+        ? (body as any).propagateFromClassId
+        : undefined;
 
     const parsed = classSeriesUpdateSchema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json({ error: parsed.error.message }, { status: 400 });
+      return NextResponse.json(
+        { error: parsed.error.message },
+        { status: 400 }
+      );
     }
 
     const input = parsed.data;
@@ -171,7 +188,12 @@ export const PATCH = withBranchAccess(
     // Fetch existing series (guard against orphans) and gather needed fields
     const existing = await prisma.classSeries.findUnique({
       where: { seriesId },
-      select: { branchId: true, startTime: true, endTime: true, lastGeneratedThrough: true },
+      select: {
+        branchId: true,
+        startTime: true,
+        endTime: true,
+        lastGeneratedThrough: true,
+      },
     });
     if (!existing) {
       return NextResponse.json({ error: "Series not found" }, { status: 404 });
@@ -185,7 +207,10 @@ export const PATCH = withBranchAccess(
       }
       // Cannot switch to another branch
       if (input.branchId && input.branchId !== selectedBranchId) {
-        return NextResponse.json({ error: "Forbidden: invalid branch" }, { status: 403 });
+        return NextResponse.json(
+          { error: "Forbidden: invalid branch" },
+          { status: 403 }
+        );
       }
     }
 
@@ -195,16 +220,21 @@ export const PATCH = withBranchAccess(
     if (input.teacherId !== undefined) data.teacherId = input.teacherId ?? null;
     if (input.studentId !== undefined) data.studentId = input.studentId ?? null;
     if (input.subjectId !== undefined) data.subjectId = input.subjectId ?? null;
-    if (input.classTypeId !== undefined) data.classTypeId = input.classTypeId ?? null;
+    if (input.classTypeId !== undefined)
+      data.classTypeId = input.classTypeId ?? null;
     if (input.boothId !== undefined) data.boothId = input.boothId ?? null;
-    if (input.startDate !== undefined) data.startDate = parseDateToUTC(input.startDate);
-    if (input.endDate !== undefined) data.endDate = input.endDate ? parseDateToUTC(input.endDate) : null;
+    if (input.startDate !== undefined)
+      data.startDate = parseDateToUTC(input.startDate);
+    if (input.endDate !== undefined)
+      data.endDate = input.endDate ? parseDateToUTC(input.endDate) : null;
     const hasStartTime = input.startTime !== undefined;
     const hasEndTime = input.endTime !== undefined;
-    if (hasStartTime) data.startTime = parseTimeToUTC(input.startTime as string);
+    if (hasStartTime)
+      data.startTime = parseTimeToUTC(input.startTime as string);
     if (hasEndTime) data.endTime = parseTimeToUTC(input.endTime as string);
     if (input.duration !== undefined) data.duration = input.duration ?? null;
-    if (input.daysOfWeek !== undefined) data.daysOfWeek = input.daysOfWeek as any;
+    if (input.daysOfWeek !== undefined)
+      data.daysOfWeek = input.daysOfWeek as any;
     if (input.status !== undefined) data.status = input.status;
     if (input.lastGeneratedThrough !== undefined)
       data.lastGeneratedThrough = input.lastGeneratedThrough
@@ -215,30 +245,45 @@ export const PATCH = withBranchAccess(
       // Need branchId to persist overrides; use input or existing
       const effectiveBranchId = (input.branchId ?? existing.branchId) || null;
       if (effectiveBranchId) {
-        await upsertBranchPolicyFromSeriesPatch(effectiveBranchId, (input.conflictPolicy as any) || {});
+        await upsertBranchPolicyFromSeriesPatch(
+          effectiveBranchId,
+          (input.conflictPolicy as any) || {}
+        );
       }
     }
     if (input.notes !== undefined) data.notes = input.notes ?? null;
 
     // If endDate was shortened before the previous lastGeneratedThrough, clamp it down
-    if (data.endDate && existing.lastGeneratedThrough && existing.lastGeneratedThrough > data.endDate) {
+    if (
+      data.endDate &&
+      existing.lastGeneratedThrough &&
+      existing.lastGeneratedThrough > data.endDate
+    ) {
       (data as any).lastGeneratedThrough = data.endDate;
     }
 
     // If times changed and duration not explicitly provided, recompute duration from new times
-    if ((hasStartTime || hasEndTime) && (input.duration === undefined)) {
+    if ((hasStartTime || hasEndTime) && input.duration === undefined) {
       try {
-        const s = (hasStartTime ? (data.startTime as Date) : undefined) ?? existing.startTime;
-        const e = (hasEndTime ? (data.endTime as Date) : undefined) ?? existing.endTime;
+        const s =
+          (hasStartTime ? (data.startTime as Date) : undefined) ??
+          existing.startTime;
+        const e =
+          (hasEndTime ? (data.endTime as Date) : undefined) ?? existing.endTime;
         if (s && e && e > s) {
-          (data as any).duration = Math.round((e.getTime() - s.getTime()) / (1000 * 60));
+          (data as any).duration = Math.round(
+            (e.getTime() - s.getTime()) / (1000 * 60)
+          );
         }
       } catch {
         // ignore
       }
     }
 
-    const updated = await prisma.classSeries.update({ where: { seriesId }, data });
+    const updated = await prisma.classSeries.update({
+      where: { seriesId },
+      data,
+    });
 
     // Prepare payload to propagate to class sessions (only intersecting fields)
     const propagate: any = { seriesId };
@@ -261,23 +306,31 @@ export const PATCH = withBranchAccess(
       }
     }
 
-    let propagateResult: { ok: boolean; status?: number; error?: any } | null = null;
+    let propagateResult: { ok: boolean; status?: number; error?: any } | null =
+      null;
     if (shouldPropagate && !skipPropagation) {
       // Validate against class-session series schema before sending
       const seriesPatch = classSessionSeriesUpdateSchema.safeParse(propagate);
       if (seriesPatch.success) {
         try {
           const origin = new URL(request.url).origin;
-          const res = await fetch(`${origin}/api/class-sessions/series/${seriesId}`, {
-            method: "PATCH",
-            headers: {
-              "Content-Type": "application/json",
-              // Forward auth/session & branch context
-              Cookie: request.headers.get("cookie") || "",
-              "X-Selected-Branch": request.headers.get("X-Selected-Branch") || selectedBranchId,
-            },
-            body: JSON.stringify({ ...seriesPatch.data, fromClassId: propagateFromClassId }),
-          });
+          const res = await fetch(
+            `${origin}/api/class-sessions/series/${seriesId}`,
+            {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                // Forward auth/session & branch context
+                Cookie: request.headers.get("cookie") || "",
+                "X-Selected-Branch":
+                  request.headers.get("X-Selected-Branch") || selectedBranchId,
+              },
+              body: JSON.stringify({
+                ...seriesPatch.data,
+                fromClassId: propagateFromClassId,
+              }),
+            }
+          );
           propagateResult = { ok: res.ok, status: res.status };
         } catch (err) {
           propagateResult = { ok: false, error: String(err) };
@@ -306,7 +359,10 @@ export const DELETE = withBranchAccess(
     const seriesId = parts[parts.length - 1];
 
     if (!seriesId) {
-      return NextResponse.json({ error: "seriesId is required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "seriesId is required" },
+        { status: 400 }
+      );
     }
 
     const series = await prisma.classSeries.findUnique({ where: { seriesId } });

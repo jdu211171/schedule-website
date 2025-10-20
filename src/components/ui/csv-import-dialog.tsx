@@ -113,16 +113,22 @@ export function CSVImportDialog({
           setImportResult(result);
         } else {
           // This is a general error
-          const generic = 'インポート中にエラーが発生しました';
-          const tooMany = 'リクエストが多すぎます。しばらくしてから再試行してください。';
-          const tooLarge = 'ファイルサイズが大きすぎます';
-          const msg = (response.status === 429 ? tooMany : (response.status === 413 ? tooLarge : (result.error || generic)));
+          const generic = "インポート中にエラーが発生しました";
+          const tooMany =
+            "リクエストが多すぎます。しばらくしてから再試行してください。";
+          const tooLarge = "ファイルサイズが大きすぎます";
+          const msg =
+            response.status === 429
+              ? tooMany
+              : response.status === 413
+                ? tooLarge
+                : result.error || generic;
           throw new Error(msg);
         }
       } else {
         setImportResult(result);
       }
-      
+
       if (result.errors.length === 0 && result.warnings.length === 0) {
         // Only auto-close if there are no errors AND no warnings
         // Call the completion handler immediately
@@ -131,11 +137,17 @@ export function CSVImportDialog({
     } catch (error) {
       setImportResult({
         success: 0,
-        errors: [{
-          row: 0,
-          errors: [error instanceof Error ? error.message : "インポート中にエラーが発生しました"]
-        }],
-        warnings: []
+        errors: [
+          {
+            row: 0,
+            errors: [
+              error instanceof Error
+                ? error.message
+                : "インポート中にエラーが発生しました",
+            ],
+          },
+        ],
+        warnings: [],
       });
     } finally {
       setIsImporting(false);
@@ -163,7 +175,10 @@ export function CSVImportDialog({
         <div className="flex-1 overflow-hidden">
           {!importResult ? (
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <form
+                onSubmit={form.handleSubmit(onSubmit)}
+                className="space-y-4"
+              >
                 {/* Import mode selection removed: unified upsert */}
 
                 <FormField
@@ -190,15 +205,25 @@ export function CSVImportDialog({
                             <div className="flex flex-col items-center justify-center space-y-2 text-center p-6">
                               <FileSpreadsheet className="h-8 w-8 text-muted-foreground" />
                               <div className="text-sm">
-                                <span className="font-medium">CSVファイルをドラッグ&ドロップ</span>
-                                <span className="text-muted-foreground">または</span>
+                                <span className="font-medium">
+                                  CSVファイルをドラッグ&ドロップ
+                                </span>
+                                <span className="text-muted-foreground">
+                                  または
+                                </span>
                                 <FileUploadTrigger asChild>
-                                  <Button variant="link" size="sm" className="h-auto p-0">
+                                  <Button
+                                    variant="link"
+                                    size="sm"
+                                    className="h-auto p-0"
+                                  >
                                     ファイルを選択
                                   </Button>
                                 </FileUploadTrigger>
                               </div>
-                              <p className="text-xs text-muted-foreground">CSV形式、最大10MB</p>
+                              <p className="text-xs text-muted-foreground">
+                                CSV形式、最大10MB
+                              </p>
                             </div>
                           </FileUploadDropzone>
                           <FileUploadList>
@@ -221,7 +246,9 @@ export function CSVImportDialog({
                           </FileUploadList>
                         </FileUpload>
                       </FormControl>
-                      <FormDescription>UTF-8またはShift-JISエンコーディングのCSVファイルに対応しています</FormDescription>
+                      <FormDescription>
+                        UTF-8またはShift-JISエンコーディングのCSVファイルに対応しています
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -244,9 +271,12 @@ export function CSVImportDialog({
                   <AlertDescription className="flex items-start gap-2">
                     <Info className="h-4 w-4 mt-0.5 flex-shrink-0" />
                     <span>
-                      エクスポートされたCSVには「ID」列が含まれます。<br />
-                      ・IDがある行は既存レコードを更新します。<br />
-                      ・IDがない行は新規作成します（または重複しない一意キーがある場合は更新します）。<br />
+                      エクスポートされたCSVには「ID」列が含まれます。
+                      <br />
+                      ・IDがある行は既存レコードを更新します。
+                      <br />
+                      ・IDがない行は新規作成します（または重複しない一意キーがある場合は更新します）。
+                      <br />
                       例）ブースは「校舎名+ブース名」、科目/科目タイプ/校舎は「名前」で重複チェックします。
                     </span>
                   </AlertDescription>
@@ -261,7 +291,10 @@ export function CSVImportDialog({
                   >
                     キャンセル
                   </Button>
-                  <Button type="submit" disabled={isImporting || !form.watch("file")}>
+                  <Button
+                    type="submit"
+                    disabled={isImporting || !form.watch("file")}
+                  >
                     {isImporting ? (
                       <>
                         <CloudUpload className="mr-2 h-4 w-4 animate-pulse" />
@@ -282,62 +315,92 @@ export function CSVImportDialog({
               <Tabs defaultValue="summary" className="w-full">
                 <TabsList className="grid w-full grid-cols-3">
                   <TabsTrigger value="summary">サマリー</TabsTrigger>
-                  <TabsTrigger value="errors" disabled={importResult.errors.length === 0}>
+                  <TabsTrigger
+                    value="errors"
+                    disabled={importResult.errors.length === 0}
+                  >
                     エラー ({importResult.errors.length})
                   </TabsTrigger>
-                  <TabsTrigger value="warnings" disabled={importResult.warnings.length === 0}>
+                  <TabsTrigger
+                    value="warnings"
+                    disabled={importResult.warnings.length === 0}
+                  >
                     警告 ({importResult.warnings.length})
                   </TabsTrigger>
                 </TabsList>
-                
+
                 <TabsContent value="summary" className="space-y-4 mt-4">
                   <div className="grid gap-4">
                     {importResult.success > 0 && (
                       <Alert className="border-green-200 bg-green-50">
                         <AlertDescription className="text-green-800">
-                          <span className="font-semibold">{importResult.success}件のデータが処理されました</span>
-                          {importResult.created !== undefined && importResult.created > 0 && (
-                            <span className="block mt-1">• {importResult.created}件 新規作成</span>
-                          )}
-                          {importResult.updated !== undefined && importResult.updated > 0 && (
-                            <span className="block mt-1">• {importResult.updated}件 更新</span>
-                          )}
-                          {importResult.deleted !== undefined && importResult.deleted > 0 && (
-                            <span className="block mt-1">• {importResult.deleted}件 削除</span>
-                          )}
+                          <span className="font-semibold">
+                            {importResult.success}件のデータが処理されました
+                          </span>
+                          {importResult.created !== undefined &&
+                            importResult.created > 0 && (
+                              <span className="block mt-1">
+                                • {importResult.created}件 新規作成
+                              </span>
+                            )}
+                          {importResult.updated !== undefined &&
+                            importResult.updated > 0 && (
+                              <span className="block mt-1">
+                                • {importResult.updated}件 更新
+                              </span>
+                            )}
+                          {importResult.deleted !== undefined &&
+                            importResult.deleted > 0 && (
+                              <span className="block mt-1">
+                                • {importResult.deleted}件 削除
+                              </span>
+                            )}
                         </AlertDescription>
                       </Alert>
                     )}
-                    {importResult.skipped !== undefined && importResult.skipped > 0 && (
-                      <Alert className="border-blue-200 bg-blue-50">
-                        <AlertDescription className="text-blue-800">
-                          <span className="font-semibold">{importResult.skipped}件</span>のデータがスキップされました
-                        </AlertDescription>
-                      </Alert>
-                    )}
+                    {importResult.skipped !== undefined &&
+                      importResult.skipped > 0 && (
+                        <Alert className="border-blue-200 bg-blue-50">
+                          <AlertDescription className="text-blue-800">
+                            <span className="font-semibold">
+                              {importResult.skipped}件
+                            </span>
+                            のデータがスキップされました
+                          </AlertDescription>
+                        </Alert>
+                      )}
                     {importResult.errors.length > 0 && (
                       <Alert variant="destructive">
                         <AlertDescription>
-                          <span className="font-semibold">{importResult.errors.length}件</span>のエラーが発生しました
+                          <span className="font-semibold">
+                            {importResult.errors.length}件
+                          </span>
+                          のエラーが発生しました
                         </AlertDescription>
                       </Alert>
                     )}
                     {importResult.warnings.length > 0 && (
                       <Alert className="border-yellow-200 bg-yellow-50">
                         <AlertDescription className="text-yellow-800">
-                          <span className="font-semibold">{importResult.warnings.length}件</span>の警告があります
+                          <span className="font-semibold">
+                            {importResult.warnings.length}件
+                          </span>
+                          の警告があります
                         </AlertDescription>
                       </Alert>
                     )}
                   </div>
                 </TabsContent>
-                
+
                 <TabsContent value="errors" className="mt-4">
                   <div className="mb-2 flex items-center justify-between">
                     {importResult && (importResult as any).errorCsv && (
                       <a
                         href={(importResult as any).errorCsv as string}
-                        download={(importResult as any).errorCsvFilename || "student_import_errors.csv"}
+                        download={
+                          (importResult as any).errorCsvFilename ||
+                          "student_import_errors.csv"
+                        }
                         className="text-primary text-sm hover:underline"
                       >
                         エラー行CSVをダウンロード
@@ -352,7 +415,9 @@ export function CSVImportDialog({
                           className="rounded-lg border border-red-200 bg-red-50 p-3"
                         >
                           <div className="flex items-center gap-2 mb-1">
-                            <Badge variant="destructive" className="text-xs">行 {error.row}</Badge>
+                            <Badge variant="destructive" className="text-xs">
+                              行 {error.row}
+                            </Badge>
                           </div>
                           <ul className="list-inside list-disc text-sm text-red-700 space-y-1">
                             {error.errors.map((msg, i) => (
@@ -364,7 +429,7 @@ export function CSVImportDialog({
                     </div>
                   </ScrollArea>
                 </TabsContent>
-                
+
                 <TabsContent value="warnings" className="mt-4">
                   <ScrollArea className="h-[300px]">
                     <div className="space-y-2 pr-4">
@@ -381,7 +446,8 @@ export function CSVImportDialog({
                             </div>
                           )}
                           <ul className="list-inside list-disc text-sm text-yellow-700 space-y-1">
-                            {warning.warnings && Array.isArray(warning.warnings) ? (
+                            {warning.warnings &&
+                            Array.isArray(warning.warnings) ? (
                               warning.warnings.map((msg, i) => (
                                 <li key={i}>{msg}</li>
                               ))
@@ -397,17 +463,18 @@ export function CSVImportDialog({
               </Tabs>
 
               <div className="flex justify-end gap-2">
-                {importResult.success > 0 && importResult.errors.length === 0 && (
-                  <Button 
-                    variant="default"
-                    onClick={() => {
-                      handleClose();
-                      onImportComplete?.();
-                    }}
-                  >
-                    閉じて更新
-                  </Button>
-                )}
+                {importResult.success > 0 &&
+                  importResult.errors.length === 0 && (
+                    <Button
+                      variant="default"
+                      onClick={() => {
+                        handleClose();
+                        onImportComplete?.();
+                      }}
+                    >
+                      閉じて更新
+                    </Button>
+                  )}
                 {importResult.errors.length > 0 && (
                   <Button variant="outline" onClick={handleClose}>
                     閉じる

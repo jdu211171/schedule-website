@@ -1,8 +1,8 @@
-import { useMemo } from 'react';
-import { useTeachers, Teacher, useTeacher } from '@/hooks/useTeacherQuery';
-import { useStudents, Student, useStudent } from '@/hooks/useStudentQuery';
-import { useSubjects, Subject } from '@/hooks/useSubjectQuery';
-import { useSubjectTypes, SubjectType } from '@/hooks/useSubjectTypeQuery';
+import { useMemo } from "react";
+import { useTeachers, Teacher, useTeacher } from "@/hooks/useTeacherQuery";
+import { useStudents, Student, useStudent } from "@/hooks/useStudentQuery";
+import { useSubjects, Subject } from "@/hooks/useSubjectQuery";
+import { useSubjectTypes, SubjectType } from "@/hooks/useSubjectTypeQuery";
 
 interface SmartSelectionOptions {
   selectedTeacherId?: string;
@@ -14,14 +14,26 @@ interface SmartSelectionOptions {
 }
 
 export interface EnhancedTeacher extends Teacher {
-  compatibilityType: 'perfect' | 'subject-only' | 'teacher-no-prefs' | 'mismatch' | 'no-student-selected' | 'student-no-prefs';
+  compatibilityType:
+    | "perfect"
+    | "subject-only"
+    | "teacher-no-prefs"
+    | "mismatch"
+    | "no-student-selected"
+    | "student-no-prefs";
   hasMatchingSubjects: boolean;
   matchingSubjectsCount: number;
   partialMatchingSubjectsCount: number;
 }
 
 export interface EnhancedStudent extends Student {
-  compatibilityType: 'perfect' | 'subject-only' | 'student-no-prefs' | 'mismatch' | 'no-teacher-selected' | 'teacher-no-prefs';
+  compatibilityType:
+    | "perfect"
+    | "subject-only"
+    | "student-no-prefs"
+    | "mismatch"
+    | "no-teacher-selected"
+    | "teacher-no-prefs";
   hasMatchingSubjects: boolean;
   matchingSubjectsCount: number;
   partialMatchingSubjectsCount: number;
@@ -30,7 +42,13 @@ export interface EnhancedStudent extends Student {
 export interface SubjectCompatibility {
   subjectId: string;
   name: string;
-  compatibilityType: 'perfect' | 'subject-only' | 'teacher-only' | 'student-only' | 'no-preferences' | 'mismatch';
+  compatibilityType:
+    | "perfect"
+    | "subject-only"
+    | "teacher-only"
+    | "student-only"
+    | "no-preferences"
+    | "mismatch";
   hasTeacherPreference: boolean;
   hasStudentPreference: boolean;
   hasFullMatch: boolean;
@@ -44,7 +62,13 @@ export interface CompatibilityInfo {
   partialMatches: number;
   teacherSubjectsCount: number;
   studentSubjectsCount: number;
-  compatibilityType: 'perfect' | 'subject-only' | 'teacher-only' | 'student-only' | 'no-preferences' | 'mismatch';
+  compatibilityType:
+    | "perfect"
+    | "subject-only"
+    | "teacher-only"
+    | "student-only"
+    | "no-preferences"
+    | "mismatch";
   message: string;
 }
 
@@ -65,7 +89,7 @@ function checkSubjectMatch(teacherPref: any, studentPref: any) {
 
   return {
     perfect: sameSubject && hasCommonTypes,
-    partial: sameSubject && !hasCommonTypes
+    partial: sameSubject && !hasCommonTypes,
   };
 }
 
@@ -75,8 +99,8 @@ function getMatches(teacherPrefs: any[], studentPrefs: any[]) {
   let partialMatches = 0;
   const matchedSubjects = new Set<string>();
 
-  teacherPrefs.forEach(teacherPref => {
-    studentPrefs.forEach(studentPref => {
+  teacherPrefs.forEach((teacherPref) => {
+    studentPrefs.forEach((studentPref) => {
       const match = checkSubjectMatch(teacherPref, studentPref);
       if (match.perfect && !matchedSubjects.has(teacherPref.subjectId)) {
         perfectMatches++;
@@ -110,7 +134,7 @@ export const useSmartSelection = (options: SmartSelectionOptions = {}) => {
     isLoading: isLoadingTeachers,
   } = useTeachers({
     limit: 100,
-    status: activeOnly ? 'ACTIVE' : undefined,
+    status: activeOnly ? "ACTIVE" : undefined,
     name: normalizedTeacherSearch ? normalizedTeacherSearch : undefined,
   });
   const {
@@ -119,11 +143,11 @@ export const useSmartSelection = (options: SmartSelectionOptions = {}) => {
     isLoading: isLoadingStudents,
   } = useStudents({
     limit: 100,
-    status: activeOnly ? 'ACTIVE' : undefined,
+    status: activeOnly ? "ACTIVE" : undefined,
     name: normalizedStudentSearch ? normalizedStudentSearch : undefined,
   });
-  const { data: selectedTeacherData } = useTeacher(selectedTeacherId ?? '');
-  const { data: selectedStudentData } = useStudent(selectedStudentId ?? '');
+  const { data: selectedTeacherData } = useTeacher(selectedTeacherId ?? "");
+  const { data: selectedStudentData } = useStudent(selectedStudentId ?? "");
   const { data: subjectsResponse } = useSubjects({ limit: 100 });
   const { data: subjectTypesResponse } = useSubjectTypes({ limit: 100 });
 
@@ -157,13 +181,13 @@ export const useSmartSelection = (options: SmartSelectionOptions = {}) => {
   const allSubjectTypes = subjectTypesResponse?.data || [];
 
   // Find selected teacher and student
-  const selectedTeacher = useMemo(() =>
-    allTeachers.find(t => t.teacherId === selectedTeacherId),
+  const selectedTeacher = useMemo(
+    () => allTeachers.find((t) => t.teacherId === selectedTeacherId),
     [allTeachers, selectedTeacherId]
   );
 
-  const selectedStudent = useMemo(() =>
-    allStudents.find(s => s.studentId === selectedStudentId),
+  const selectedStudent = useMemo(
+    () => allStudents.find((s) => s.studentId === selectedStudentId),
     [allStudents, selectedStudentId]
   );
 
@@ -174,48 +198,48 @@ export const useSmartSelection = (options: SmartSelectionOptions = {}) => {
   // Enhanced students with compatibility analysis
   const enhancedStudents = useMemo((): EnhancedStudent[] => {
     if (!selectedTeacherId) {
-      return allStudents.map(student => ({
+      return allStudents.map((student) => ({
         ...student,
-        compatibilityType: 'no-teacher-selected' as const,
+        compatibilityType: "no-teacher-selected" as const,
         hasMatchingSubjects: false,
         matchingSubjectsCount: 0,
-        partialMatchingSubjectsCount: 0
+        partialMatchingSubjectsCount: 0,
       }));
     }
 
     if (!teacherPreferences?.length) {
-      return allStudents.map(student => ({
+      return allStudents.map((student) => ({
         ...student,
-        compatibilityType: 'teacher-no-prefs' as const,
+        compatibilityType: "teacher-no-prefs" as const,
         hasMatchingSubjects: true,
         matchingSubjectsCount: student.subjectPreferences?.length || 0,
-        partialMatchingSubjectsCount: 0
+        partialMatchingSubjectsCount: 0,
       }));
     }
 
-    return allStudents.map(student => {
+    return allStudents.map((student) => {
       const studentPrefs = student.subjectPreferences || [];
 
       if (!studentPrefs.length) {
         return {
           ...student,
-          compatibilityType: 'student-no-prefs' as const,
+          compatibilityType: "student-no-prefs" as const,
           hasMatchingSubjects: true,
           matchingSubjectsCount: teacherPreferences.length,
-          partialMatchingSubjectsCount: 0
+          partialMatchingSubjectsCount: 0,
         };
       }
 
       const matches = getMatches(teacherPreferences, studentPrefs);
       const totalMatches = matches.perfectMatches + matches.partialMatches;
 
-      let compatibilityType: EnhancedStudent['compatibilityType'];
+      let compatibilityType: EnhancedStudent["compatibilityType"];
       if (matches.perfectMatches > 0) {
-        compatibilityType = 'perfect';
+        compatibilityType = "perfect";
       } else if (matches.partialMatches > 0) {
-        compatibilityType = 'subject-only';
+        compatibilityType = "subject-only";
       } else {
-        compatibilityType = 'mismatch';
+        compatibilityType = "mismatch";
       }
 
       return {
@@ -223,7 +247,7 @@ export const useSmartSelection = (options: SmartSelectionOptions = {}) => {
         compatibilityType,
         hasMatchingSubjects: totalMatches > 0,
         matchingSubjectsCount: matches.perfectMatches,
-        partialMatchingSubjectsCount: matches.partialMatches
+        partialMatchingSubjectsCount: matches.partialMatches,
       };
     });
   }, [selectedTeacherId, teacherPreferences, allStudents]);
@@ -231,48 +255,48 @@ export const useSmartSelection = (options: SmartSelectionOptions = {}) => {
   // Enhanced teachers with compatibility analysis
   const enhancedTeachers = useMemo((): EnhancedTeacher[] => {
     if (!selectedStudentId) {
-      return allTeachers.map(teacher => ({
+      return allTeachers.map((teacher) => ({
         ...teacher,
-        compatibilityType: 'no-student-selected' as const,
+        compatibilityType: "no-student-selected" as const,
         hasMatchingSubjects: false,
         matchingSubjectsCount: 0,
-        partialMatchingSubjectsCount: 0
+        partialMatchingSubjectsCount: 0,
       }));
     }
 
     if (!studentPreferences?.length) {
-      return allTeachers.map(teacher => ({
+      return allTeachers.map((teacher) => ({
         ...teacher,
-        compatibilityType: 'student-no-prefs' as const,
+        compatibilityType: "student-no-prefs" as const,
         hasMatchingSubjects: true,
         matchingSubjectsCount: teacher.subjectPreferences?.length || 0,
-        partialMatchingSubjectsCount: 0
+        partialMatchingSubjectsCount: 0,
       }));
     }
 
-    return allTeachers.map(teacher => {
+    return allTeachers.map((teacher) => {
       const teacherPrefs = teacher.subjectPreferences || [];
 
       if (!teacherPrefs.length) {
         return {
           ...teacher,
-          compatibilityType: 'teacher-no-prefs' as const,
+          compatibilityType: "teacher-no-prefs" as const,
           hasMatchingSubjects: true,
           matchingSubjectsCount: studentPreferences.length,
-          partialMatchingSubjectsCount: 0
+          partialMatchingSubjectsCount: 0,
         };
       }
 
       const matches = getMatches(teacherPrefs, studentPreferences);
       const totalMatches = matches.perfectMatches + matches.partialMatches;
 
-      let compatibilityType: EnhancedTeacher['compatibilityType'];
+      let compatibilityType: EnhancedTeacher["compatibilityType"];
       if (matches.perfectMatches > 0) {
-        compatibilityType = 'perfect';
+        compatibilityType = "perfect";
       } else if (matches.partialMatches > 0) {
-        compatibilityType = 'subject-only';
+        compatibilityType = "subject-only";
       } else {
-        compatibilityType = 'mismatch';
+        compatibilityType = "mismatch";
       }
 
       return {
@@ -280,53 +304,68 @@ export const useSmartSelection = (options: SmartSelectionOptions = {}) => {
         compatibilityType,
         hasMatchingSubjects: totalMatches > 0,
         matchingSubjectsCount: matches.perfectMatches,
-        partialMatchingSubjectsCount: matches.partialMatches
+        partialMatchingSubjectsCount: matches.partialMatches,
       };
     });
   }, [selectedStudentId, studentPreferences, allTeachers]);
 
   // Enhanced subjects with compatibility information
   const enhancedSubjects = useMemo((): SubjectCompatibility[] => {
-    return allSubjects.map(subject => {
+    return allSubjects.map((subject) => {
       // Check if teacher has this subject
-      const teacherHasSubject = teacherPreferences?.some(pref => pref.subjectId === subject.subjectId) || false;
-      const teacherSubjectPref = teacherPreferences?.find(pref => pref.subjectId === subject.subjectId);
+      const teacherHasSubject =
+        teacherPreferences?.some(
+          (pref) => pref.subjectId === subject.subjectId
+        ) || false;
+      const teacherSubjectPref = teacherPreferences?.find(
+        (pref) => pref.subjectId === subject.subjectId
+      );
 
       // Check if student has this subject
-      const studentHasSubject = studentPreferences?.some(pref => pref.subjectId === subject.subjectId) || false;
-      const studentSubjectPref = studentPreferences?.find(pref => pref.subjectId === subject.subjectId);
+      const studentHasSubject =
+        studentPreferences?.some(
+          (pref) => pref.subjectId === subject.subjectId
+        ) || false;
+      const studentSubjectPref = studentPreferences?.find(
+        (pref) => pref.subjectId === subject.subjectId
+      );
 
       let hasFullMatch = false;
       let hasPartialMatch = false;
 
       // Check for matches if both have the subject
-      if (teacherHasSubject && studentHasSubject && teacherSubjectPref && studentSubjectPref) {
+      if (
+        teacherHasSubject &&
+        studentHasSubject &&
+        teacherSubjectPref &&
+        studentSubjectPref
+      ) {
         const match = checkSubjectMatch(teacherSubjectPref, studentSubjectPref);
         hasFullMatch = match.perfect;
         hasPartialMatch = match.partial;
       }
 
       // Determine compatibility type
-      let compatibilityType: SubjectCompatibility['compatibilityType'];
+      let compatibilityType: SubjectCompatibility["compatibilityType"];
 
       if (!selectedTeacherId && !selectedStudentId) {
-        compatibilityType = 'no-preferences';
+        compatibilityType = "no-preferences";
       } else if (hasFullMatch) {
-        compatibilityType = 'perfect';
+        compatibilityType = "perfect";
       } else if (hasPartialMatch) {
-        compatibilityType = 'subject-only';
+        compatibilityType = "subject-only";
       } else if (teacherHasSubject && !selectedStudentId) {
-        compatibilityType = 'teacher-only';
+        compatibilityType = "teacher-only";
       } else if (studentHasSubject && !selectedTeacherId) {
-        compatibilityType = 'student-only';
+        compatibilityType = "student-only";
       } else if (teacherHasSubject && !studentHasSubject) {
-        compatibilityType = 'teacher-only';
+        compatibilityType = "teacher-only";
       } else if (studentHasSubject && !teacherHasSubject) {
-        compatibilityType = 'student-only';
+        compatibilityType = "student-only";
       } else if (!teacherPreferences?.length || !studentPreferences?.length) {
-        compatibilityType = 'no-preferences';
+        compatibilityType = "no-preferences";
       } else {
-        compatibilityType = 'mismatch';
+        compatibilityType = "mismatch";
       }
 
       return {
@@ -336,10 +375,16 @@ export const useSmartSelection = (options: SmartSelectionOptions = {}) => {
         hasTeacherPreference: teacherHasSubject,
         hasStudentPreference: studentHasSubject,
         hasFullMatch,
-        hasPartialMatch
+        hasPartialMatch,
       };
     });
-  }, [teacherPreferences, studentPreferences, allSubjects, selectedTeacherId, selectedStudentId]);
+  }, [
+    teacherPreferences,
+    studentPreferences,
+    allSubjects,
+    selectedTeacherId,
+    selectedStudentId,
+  ]);
 
   // Filter subject types based on selected student and subject
   const filteredSubjectTypes = useMemo(() => {
@@ -348,7 +393,7 @@ export const useSmartSelection = (options: SmartSelectionOptions = {}) => {
     }
 
     const studentPref = studentPreferences.find(
-      pref => pref.subjectId === selectedSubjectId
+      (pref) => pref.subjectId === selectedSubjectId
     );
 
     if (!studentPref?.subjectTypeIds?.length) {
@@ -356,7 +401,7 @@ export const useSmartSelection = (options: SmartSelectionOptions = {}) => {
     }
 
     // Return subject types that match student's preferences for this subject
-    return allSubjectTypes.filter(type =>
+    return allSubjectTypes.filter((type) =>
       studentPref.subjectTypeIds.includes(type.subjectTypeId)
     );
   }, [selectedSubjectId, studentPreferences, allSubjectTypes]);
@@ -380,8 +425,8 @@ export const useSmartSelection = (options: SmartSelectionOptions = {}) => {
         partialMatches: 0,
         teacherSubjectsCount: 0,
         studentSubjectsCount: 0,
-        compatibilityType: 'no-preferences',
-        message: "両方とも科目設定がありません - 全科目利用可能"
+        compatibilityType: "no-preferences",
+        message: "両方とも科目設定がありません - 全科目利用可能",
       };
     }
 
@@ -393,8 +438,8 @@ export const useSmartSelection = (options: SmartSelectionOptions = {}) => {
         partialMatches: 0,
         teacherSubjectsCount: 0,
         studentSubjectsCount,
-        compatibilityType: 'student-only',
-        message: "講師の科目設定がありません - 生徒の科目を優先表示"
+        compatibilityType: "student-only",
+        message: "講師の科目設定がありません - 生徒の科目を優先表示",
       };
     }
 
@@ -406,8 +451,8 @@ export const useSmartSelection = (options: SmartSelectionOptions = {}) => {
         partialMatches: 0,
         teacherSubjectsCount,
         studentSubjectsCount: 0,
-        compatibilityType: 'teacher-only',
-        message: "生徒の科目設定がありません - 講師の科目を優先表示"
+        compatibilityType: "teacher-only",
+        message: "生徒の科目設定がありません - 講師の科目を優先表示",
       };
     }
 
@@ -415,9 +460,10 @@ export const useSmartSelection = (options: SmartSelectionOptions = {}) => {
     const matches = getMatches(teacherPreferences!, studentPreferences!);
 
     if (matches.perfectMatches > 0) {
-      const message = matches.partialMatches > 0
-        ? `完全一致: ${matches.perfectMatches}件, 部分一致: ${matches.partialMatches}件`
-        : `完全一致: ${matches.perfectMatches}件`;
+      const message =
+        matches.partialMatches > 0
+          ? `完全一致: ${matches.perfectMatches}件, 部分一致: ${matches.partialMatches}件`
+          : `完全一致: ${matches.perfectMatches}件`;
 
       return {
         hasTeacherPrefs: true,
@@ -426,8 +472,8 @@ export const useSmartSelection = (options: SmartSelectionOptions = {}) => {
         partialMatches: matches.partialMatches,
         teacherSubjectsCount,
         studentSubjectsCount,
-        compatibilityType: 'perfect',
-        message
+        compatibilityType: "perfect",
+        message,
       };
     } else if (matches.partialMatches > 0) {
       return {
@@ -437,8 +483,8 @@ export const useSmartSelection = (options: SmartSelectionOptions = {}) => {
         partialMatches: matches.partialMatches,
         teacherSubjectsCount,
         studentSubjectsCount,
-        compatibilityType: 'subject-only',
-        message: `部分一致のみ: ${matches.partialMatches}件 (科目は同じだが異なるレベル)`
+        compatibilityType: "subject-only",
+        message: `部分一致のみ: ${matches.partialMatches}件 (科目は同じだが異なるレベル)`,
       };
     } else {
       return {
@@ -448,8 +494,8 @@ export const useSmartSelection = (options: SmartSelectionOptions = {}) => {
         partialMatches: 0,
         teacherSubjectsCount,
         studentSubjectsCount,
-        compatibilityType: 'mismatch',
-        message: "共通科目がありません - 全科目から選択可能"
+        compatibilityType: "mismatch",
+        message: "共通科目がありません - 全科目から選択可能",
       };
     }
   };

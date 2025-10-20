@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import {
   Sidebar,
@@ -11,9 +11,17 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
-} from "@/components/ui/sidebar"
-import { User, KeyRound, Bell, Shield, Settings, Palette, HelpCircle } from "lucide-react"
-import { useStudentSettingsStore } from "./student-settings-store"
+} from "@/components/ui/sidebar";
+import {
+  User,
+  KeyRound,
+  Bell,
+  Shield,
+  Settings,
+  Palette,
+  HelpCircle,
+} from "lucide-react";
+import { useStudentSettingsStore } from "./student-settings-store";
 
 const settingsNavigation = [
   {
@@ -61,10 +69,10 @@ const settingsNavigation = [
       },
     ],
   },
-]
+];
 
 export function StudentSettingsSidebar() {
-  const { activeSection, setActiveSection } = useStudentSettingsStore()
+  const { activeSection, setActiveSection } = useStudentSettingsStore();
 
   return (
     <Sidebar className="border-r">
@@ -101,5 +109,5 @@ export function StudentSettingsSidebar() {
       </SidebarContent>
       <SidebarRail />
     </Sidebar>
-  )
+  );
 }

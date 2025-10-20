@@ -44,7 +44,14 @@ import { useClassTypes } from "@/hooks/useClassTypeQuery";
 import { useSession } from "next-auth/react";
 import type { ClassSession, UserStatus } from "@prisma/client";
 import { ClassSessionFilter } from "./class-session-filter";
-import { classTypeColorClasses, isValidClassTypeColor, isHexColor, rgba, getContrastText, ClassTypeColor } from "@/lib/class-type-colors";
+import {
+  classTypeColorClasses,
+  isValidClassTypeColor,
+  isHexColor,
+  rgba,
+  getContrastText,
+  ClassTypeColor,
+} from "@/lib/class-type-colors";
 import { CANCELLED_CLASS_COLOR_CLASSES } from "@/lib/cancelled-class-constants";
 
 // Import types to ensure proper column meta support
@@ -68,7 +75,9 @@ interface ClassSessionTableProps {
   selectedBranchId?: string;
 }
 
-export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) {
+export function ClassSessionTable({
+  selectedBranchId,
+}: ClassSessionTableProps) {
   const [page, setPage] = useState(1);
   const pageSize = 10;
 
@@ -85,7 +94,9 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
   });
 
   // Row selection state for multiselect
-  const [selectedRowsForDeletion, setSelectedRowsForDeletion] = useState<ExtendedClassSession[]>([]);
+  const [selectedRowsForDeletion, setSelectedRowsForDeletion] = useState<
+    ExtendedClassSession[]
+  >([]);
   const [isConfirmingBulkDelete, setIsConfirmingBulkDelete] = useState(false);
 
   // Fetch class sessions with filters
@@ -108,35 +119,46 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
 
   // Cross-tab sync: refresh only if changed dates intersect current filter range
   useEffect(() => {
-    const channel = typeof window !== 'undefined' ? new BroadcastChannel('calendar-events') : null;
+    const channel =
+      typeof window !== "undefined"
+        ? new BroadcastChannel("calendar-events")
+        : null;
     if (!channel) return;
     const handler = (event: MessageEvent) => {
       const payload = event.data as { type?: string; dates?: string[] };
-      if (!payload || payload.type !== 'classSessionsChanged') return;
+      if (!payload || payload.type !== "classSessionsChanged") return;
 
       // If no date filter set, just refetch active classSessions queries
       const startStr = filters.startDate;
       const endStr = filters.endDate || filters.startDate;
       const hasRange = !!startStr && !!endStr;
       if (!hasRange) {
-        queryClient.invalidateQueries({ queryKey: ['classSessions'], refetchType: 'active' });
+        queryClient.invalidateQueries({
+          queryKey: ["classSessions"],
+          refetchType: "active",
+        });
         return;
       }
 
       const start = new Date(`${startStr}T00:00:00`);
       const end = new Date(`${endStr}T23:59:59`);
       const dates = payload.dates || [];
-      const intersects = dates.length === 0 || dates.some((d) => {
-        const dd = new Date(`${d}T12:00:00`);
-        return dd >= start && dd <= end;
-      });
+      const intersects =
+        dates.length === 0 ||
+        dates.some((d) => {
+          const dd = new Date(`${d}T12:00:00`);
+          return dd >= start && dd <= end;
+        });
       if (intersects) {
-        queryClient.invalidateQueries({ queryKey: ['classSessions'], refetchType: 'active' });
+        queryClient.invalidateQueries({
+          queryKey: ["classSessions"],
+          refetchType: "active",
+        });
       }
     };
-    channel.addEventListener('message', handler);
+    channel.addEventListener("message", handler);
     return () => {
-      channel.removeEventListener('message', handler);
+      channel.removeEventListener("message", handler);
       channel.close();
     };
   }, [filters.startDate, filters.endDate, queryClient]);
@@ -170,13 +192,19 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
   const subjects = subjectsData?.data || [];
 
   // Fetch full lesson details when an item is selected
-  const { data: selectedLesson } = useClassSession(selectedLessonId || undefined);
+  const { data: selectedLesson } = useClassSession(
+    selectedLessonId || undefined
+  );
 
   // Default to today's sessions when no date range filter is applied
   useEffect(() => {
     if (!filters.startDate && !filters.endDate) {
       const todayStr = format(new Date(), "yyyy-MM-dd");
-      setFilters((prev) => ({ ...prev, startDate: todayStr, endDate: todayStr }));
+      setFilters((prev) => ({
+        ...prev,
+        startDate: todayStr,
+        endDate: todayStr,
+      }));
     }
     // run once on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -222,7 +250,13 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
       accessorKey: "date",
       header: "日付",
       cell: ({ row }) =>
-        format(typeof row.original.date === 'string' ? parseISO(row.original.date) : row.original.date, "yyyy/MM/dd", { locale: ja }),
+        format(
+          typeof row.original.date === "string"
+            ? parseISO(row.original.date)
+            : row.original.date,
+          "yyyy/MM/dd",
+          { locale: ja }
+        ),
     },
     {
       accessorKey: "timeSlot",
@@ -234,7 +268,9 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
       header: "講師",
       cell: ({ row }) =>
         (row.original as ExtendedClassSession).teacherName ? (
-          <Badge variant="outline">{(row.original as ExtendedClassSession).teacherName}</Badge>
+          <Badge variant="outline">
+            {(row.original as ExtendedClassSession).teacherName}
+          </Badge>
         ) : (
           "-"
         ),
@@ -259,7 +295,10 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
             <Badge variant="outline">{session.studentName}</Badge>
             {(session.studentGradeYear || session.studentTypeName) && (
               <span className="text-xs text-muted-foreground mt-1">
-                {[session.studentGradeYear && `${session.studentGradeYear}年`, session.studentTypeName]
+                {[
+                  session.studentGradeYear && `${session.studentGradeYear}年`,
+                  session.studentTypeName,
+                ]
                   .filter(Boolean)
                   .join(" · ")}
               </span>
@@ -271,7 +310,8 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
     {
       accessorKey: "subjectName",
       header: "科目",
-      cell: ({ row }) => (row.original as ExtendedClassSession).subjectName || "-",
+      cell: ({ row }) =>
+        (row.original as ExtendedClassSession).subjectName || "-",
     },
     {
       accessorKey: "classTypeName",
@@ -281,8 +321,12 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
         if (session.isCancelled) {
           const cls = CANCELLED_CLASS_COLOR_CLASSES;
           return (
-            <span className={`inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded border ${cls.background} ${cls.border} ${cls.text} dark:!text-white`}>
-              <span className={`inline-block h-2 w-2 rounded-full ${cls.dot}`} />
+            <span
+              className={`inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded border ${cls.background} ${cls.border} ${cls.text} dark:!text-white`}
+            >
+              <span
+                className={`inline-block h-2 w-2 rounded-full ${cls.dot}`}
+              />
               キャンセル
             </span>
           );
@@ -295,7 +339,7 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
               style={{
                 // Match 日次 view: red stripes with subtle fill and clear border
                 backgroundImage: `repeating-linear-gradient(45deg, rgba(220, 38, 38, 0.18) 0px, rgba(220, 38, 38, 0.18) ${stripePx}px, transparent ${stripePx}px, transparent ${stripePx * 2}px)`,
-                borderColor: 'rgba(220, 38, 38, 0.7)'
+                borderColor: "rgba(220, 38, 38, 0.7)",
               }}
             >
               <AlertTriangle className="h-3.5 w-3.5" />
@@ -304,18 +348,23 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
           );
         }
         const label = session.classTypeName || "-";
-        const colorKey = session.classTypeColor || (session as any)?.classType?.color || null;
+        const colorKey =
+          session.classTypeColor || (session as any)?.classType?.color || null;
         if (!session.classTypeName) return "-";
         if (isValidClassTypeColor(colorKey)) {
           const cls = classTypeColorClasses[colorKey as ClassTypeColor];
           return (
-            <span className={`inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded border ${cls.background} ${cls.border} ${cls.text} dark:!text-white`}>
-              <span className={`inline-block h-2 w-2 rounded-full ${cls.dot}`} />
+            <span
+              className={`inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded border ${cls.background} ${cls.border} ${cls.text} dark:!text-white`}
+            >
+              <span
+                className={`inline-block h-2 w-2 rounded-full ${cls.dot}`}
+              />
               {label}
             </span>
           );
         }
-        if (isHexColor(colorKey || '')) {
+        if (isHexColor(colorKey || "")) {
           const bg = rgba(colorKey!, 0.14) || undefined;
           const border = rgba(colorKey!, 0.4) || undefined;
           return (
@@ -337,7 +386,8 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
     {
       accessorKey: "boothName",
       header: "ブース",
-      cell: ({ row }) => (row.original as ExtendedClassSession).boothName || "-",
+      cell: ({ row }) =>
+        (row.original as ExtendedClassSession).boothName || "-",
     },
     {
       accessorKey: "duration",
@@ -349,7 +399,9 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
       header: "校舎",
       cell: ({ row }) =>
         (row.original as ExtendedClassSession).branchName ? (
-          <Badge variant="outline">{(row.original as ExtendedClassSession).branchName}</Badge>
+          <Badge variant="outline">
+            {(row.original as ExtendedClassSession).branchName}
+          </Badge>
         ) : (
           "-"
         ),
@@ -390,11 +442,13 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => {
-                  setSelectedLessonId(session.classId);
-                  setDialogMode("edit");
-                  setIsLessonDialogOpen(true);
-                }}>
+                <DropdownMenuItem
+                  onClick={() => {
+                    setSelectedLessonId(session.classId);
+                    setDialogMode("edit");
+                    setIsLessonDialogOpen(true);
+                  }}
+                >
                   <Pencil className="mr-2 h-4 w-4" />
                   編集
                 </DropdownMenuItem>
@@ -407,7 +461,7 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
                         if (session.seriesId) {
                           setSeriesToDelete({
                             seriesId: session.seriesId,
-                            sessionInfo: session
+                            sessionInfo: session,
                           });
                         }
                       }}
@@ -452,7 +506,7 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
   const confirmBulkDelete = () => {
     if (selectedRowsForDeletion.length === 0) return;
 
-    const classIds = selectedRowsForDeletion.map(session => session.classId);
+    const classIds = selectedRowsForDeletion.map((session) => session.classId);
     bulkDeleteClassSessionMutation.mutate({ classIds });
 
     // Clear selection and close dialog
@@ -515,7 +569,9 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
             firstChoice: student.firstChoice,
             secondChoice: student.secondChoice,
             examDate: student.examDate ? new Date(student.examDate) : null,
-            admissionDate: student.admissionDate ? new Date(student.admissionDate) : null,
+            admissionDate: student.admissionDate
+              ? new Date(student.admissionDate)
+              : null,
             homePhone: student.homePhone,
             parentPhone: student.parentPhone,
             studentPhone: student.studentPhone,
@@ -530,7 +586,7 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
       onFilterChange={handleFilterChange}
       onDateRangeChange={handleDateRangeChange}
       onResetFilters={resetFilters}
-      />
+    />
   );
 
   return (
@@ -546,10 +602,10 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
         pageCount={totalPages || 1}
         onPageChange={handlePageChange}
         pageSize={pageSize}
-      totalItems={totalCount}
-      filterComponent={filterComponent}
-      enableRowSelection={true}
-      onBatchDelete={handleBulkDelete}
+        totalItems={totalCount}
+        filterComponent={filterComponent}
+        enableRowSelection={true}
+        onBatchDelete={handleBulkDelete}
       />
 
       {/* Edit Session Dialog (shared with 日次 view) */}
@@ -588,7 +644,6 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
       />
       */}
 
-
       {/* Series Delete Confirmation Dialog */}
       <AlertDialog
         open={!!seriesToDelete}
@@ -600,18 +655,15 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
             <AlertDialogDescription>
               この操作は元に戻せません。
               {seriesToDelete?.sessionInfo?.teacherName && (
-                <span>
-                  {seriesToDelete.sessionInfo.teacherName}先生の
-                </span>
+                <span>{seriesToDelete.sessionInfo.teacherName}先生の</span>
               )}
               {seriesToDelete?.sessionInfo?.subjectName && (
-                <span>
-                  {seriesToDelete.sessionInfo.subjectName}の
-                </span>
+                <span>{seriesToDelete.sessionInfo.subjectName}の</span>
               )}
               シリーズの<strong>本日以降のすべての授業</strong>を削除します。
               <strong className="block mt-2 text-destructive">
-                警告: 過去の授業は削除されませんが、今日以降の未来の授業はすべて削除されます。
+                警告:
+                過去の授業は削除されませんが、今日以降の未来の授業はすべて削除されます。
               </strong>
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -622,7 +674,9 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
               disabled={deleteClassSessionSeriesMutation.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {deleteClassSessionSeriesMutation.isPending ? "削除中..." : "シリーズを削除"}
+              {deleteClassSessionSeriesMutation.isPending
+                ? "削除中..."
+                : "シリーズを削除"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -635,13 +689,19 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>選択した授業を一括削除しますか？</AlertDialogTitle>
+            <AlertDialogTitle>
+              選択した授業を一括削除しますか？
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              この操作は元に戻せません。
-              選択された<strong>{selectedRowsForDeletion.length}件</strong>の授業を完全に削除します。
-              {selectedRowsForDeletion.some((session: ExtendedClassSession) => session.seriesId) && (
+              この操作は元に戻せません。 選択された
+              <strong>{selectedRowsForDeletion.length}件</strong>
+              の授業を完全に削除します。
+              {selectedRowsForDeletion.some(
+                (session: ExtendedClassSession) => session.seriesId
+              ) && (
                 <strong className="block mt-2 text-destructive">
-                  注意: 選択した授業の中に繰り返しシリーズの一部が含まれています。
+                  注意:
+                  選択した授業の中に繰り返しシリーズの一部が含まれています。
                   この操作は選択した授業のみを削除し、シリーズ全体は削除されません。
                 </strong>
               )}
@@ -654,7 +714,9 @@ export function ClassSessionTable({ selectedBranchId }: ClassSessionTableProps) 
               disabled={bulkDeleteClassSessionMutation.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {bulkDeleteClassSessionMutation.isPending ? "削除中..." : `${selectedRowsForDeletion.length}件を削除`}
+              {bulkDeleteClassSessionMutation.isPending
+                ? "削除中..."
+                : `${selectedRowsForDeletion.length}件を削除`}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

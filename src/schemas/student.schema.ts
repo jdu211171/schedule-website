@@ -8,7 +8,11 @@ export const phoneTypeEnum = z.enum(["HOME", "DAD", "MOM", "OTHER"]);
 export const contactEmailSchema = z.object({
   id: z.string().optional(),
   email: z.string().email("有効なメールアドレスを入力してください"),
-  notes: z.string().max(255, "備考は255文字以内で入力してください").optional().nullable(),
+  notes: z
+    .string()
+    .max(255, "備考は255文字以内で入力してください")
+    .optional()
+    .nullable(),
   order: z.number().optional(),
 });
 
@@ -23,8 +27,15 @@ export const phoneTypeLabels = {
 export const contactPhoneSchema = z.object({
   id: z.string().optional(),
   phoneType: phoneTypeEnum,
-  phoneNumber: z.string().min(1, "電話番号は必須です").max(50, "電話番号は50文字以内で入力してください"),
-  notes: z.string().max(255, "備考は255文字以内で入力してください").optional().nullable(),
+  phoneNumber: z
+    .string()
+    .min(1, "電話番号は必須です")
+    .max(50, "電話番号は50文字以内で入力してください"),
+  notes: z
+    .string()
+    .max(255, "備考は255文字以内で入力してください")
+    .optional()
+    .nullable(),
   order: z.number().optional(),
 });
 
@@ -127,7 +138,12 @@ export const schoolTypeLabels = {
 } as const;
 
 // Exam category enum
-export const examCategoryEnum = z.enum(["BEGINNER", "ELEMENTARY", "HIGH_SCHOOL", "UNIVERSITY"]);
+export const examCategoryEnum = z.enum([
+  "BEGINNER",
+  "ELEMENTARY",
+  "HIGH_SCHOOL",
+  "UNIVERSITY",
+]);
 
 export const examCategoryLabels = {
   BEGINNER: "小学校",
@@ -176,10 +192,7 @@ export const studentBaseSchema = z.object({
     .max(50, "LINEユーザーIDは50文字以内で入力してください")
     .optional()
     .nullable(),
-  lineNotificationsEnabled: z
-    .boolean()
-    .optional()
-    .default(true),
+  lineNotificationsEnabled: z.boolean().optional().default(true),
   notes: z
     .string()
     .max(255, "備考は255文字以内で入力してください")
@@ -287,29 +300,38 @@ export const studentBaseSchema = z.object({
 });
 
 // Dynamic form schema that accepts student types for validation
-export const createStudentFormSchema = (studentTypes?: Array<{ studentTypeId: string; maxYears: number | null }>) => {
-  return studentBaseSchema.extend({
-    studentId: z.string().optional(),
-  }).refine((data) => {
-    // Skip validation if either field is missing
-    if (!data.studentTypeId || !data.gradeYear) {
-      return true;
-    }
+export const createStudentFormSchema = (
+  studentTypes?: Array<{ studentTypeId: string; maxYears: number | null }>
+) => {
+  return studentBaseSchema
+    .extend({
+      studentId: z.string().optional(),
+    })
+    .refine(
+      (data) => {
+        // Skip validation if either field is missing
+        if (!data.studentTypeId || !data.gradeYear) {
+          return true;
+        }
 
-    // Find the selected student type
-    const selectedStudentType = studentTypes?.find(type => type.studentTypeId === data.studentTypeId);
+        // Find the selected student type
+        const selectedStudentType = studentTypes?.find(
+          (type) => type.studentTypeId === data.studentTypeId
+        );
 
-    // If student type not found or has no maxYears limit, allow any grade year
-    if (!selectedStudentType || !selectedStudentType.maxYears) {
-      return true;
-    }
+        // If student type not found or has no maxYears limit, allow any grade year
+        if (!selectedStudentType || !selectedStudentType.maxYears) {
+          return true;
+        }
 
-    // Validate that gradeYear doesn't exceed maxYears
-    return data.gradeYear <= selectedStudentType.maxYears;
-  }, {
-    message: "学年が選択された生徒タイプの最大学年数を超えています",
-    path: ["gradeYear"],
-  });
+        // Validate that gradeYear doesn't exceed maxYears
+        return data.gradeYear <= selectedStudentType.maxYears;
+      },
+      {
+        message: "学年が選択された生徒タイプの最大学年数を超えています",
+        path: ["gradeYear"],
+      }
+    );
 };
 
 // Default form schema for backward compatibility
@@ -379,7 +401,9 @@ export const studentFilterSchema = z.object({
   statuses: z.array(userStatusEnum).optional(), // Support multiple statuses
   branchIds: z.array(z.string()).optional(), // Filter by branches
   subjectIds: z.array(z.string()).optional(), // Filter by subject preferences
-  lineConnection: z.array(z.enum(["connected_enabled", "connected_disabled", "not_connected"])).optional(), // Filter by message connection status
+  lineConnection: z
+    .array(z.enum(["connected_enabled", "connected_disabled", "not_connected"]))
+    .optional(), // Filter by message connection status
   schoolType: schoolTypeEnum.optional(), // Single school type
   schoolTypes: z.array(schoolTypeEnum).optional(), // Multiple school types
   examCategory: examCategoryEnum.optional(), // Single exam category

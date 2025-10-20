@@ -13,7 +13,16 @@ import {
   type RowSelectionState,
   useReactTable,
 } from "@tanstack/react-table";
-import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Download, Upload } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  Download,
+  Upload,
+} from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -57,7 +66,10 @@ interface DataTableProps<TData, TValue> {
   // Optional grouping by key to render section headers
   groupBy?: {
     getKey: (row: TData) => string | null | undefined;
-    renderHeader?: (args: { groupKey: string; firstRow: TData }) => React.ReactNode;
+    renderHeader?: (args: {
+      groupKey: string;
+      firstRow: TData;
+    }) => React.ReactNode;
   };
 }
 
@@ -224,28 +236,19 @@ export function DataTable<TData, TValue>({
         </div>
         <div className="flex items-center gap-2">
           {onImport && (
-            <Button
-              variant="outline"
-              onClick={onImport}
-            >
+            <Button variant="outline" onClick={onImport}>
               <Upload className="mr-2 h-4 w-4" />
               CSVインポート
             </Button>
           )}
           {onExport && (
-            <Button
-              variant="outline"
-              onClick={onExport}
-              disabled={isExporting}
-            >
+            <Button variant="outline" onClick={onExport} disabled={isExporting}>
               <Download className="mr-2 h-4 w-4" />
               {isExporting ? "エクスポート中..." : "CSVエクスポート"}
             </Button>
           )}
           {onCreateNew && (
-            <Button onClick={onCreateNew}>
-              + {createNewLabel}
-            </Button>
+            <Button onClick={onCreateNew}>+ {createNewLabel}</Button>
           )}
         </div>
       </div>
@@ -256,27 +259,35 @@ export function DataTable<TData, TValue>({
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {
-                  const meta = header.column.columnDef.meta as {
-                    align?: "left" | "center" | "right";
-                    headerClassName?: string;
-                    cellClassName?: string;
-                    hidden?: boolean;
-                  } | undefined;
+                  const meta = header.column.columnDef.meta as
+                    | {
+                        align?: "left" | "center" | "right";
+                        headerClassName?: string;
+                        cellClassName?: string;
+                        hidden?: boolean;
+                      }
+                    | undefined;
                   return (
                     <TableHead
                       key={header.id}
                       className={`${meta?.headerClassName || ""} ${
-                        meta?.align === "right" ? "text-right" :
-                        meta?.align === "center" ? "text-center" :
-                        "text-left"
+                        meta?.align === "right"
+                          ? "text-right"
+                          : meta?.align === "center"
+                            ? "text-center"
+                            : "text-left"
                       }`}
                     >
                       {header.isPlaceholder ? null : (
-                        <div className={`flex items-center ${
-                          meta?.align === "right" ? "justify-end" :
-                          meta?.align === "center" ? "justify-center" :
-                          "justify-start"
-                        }`}>
+                        <div
+                          className={`flex items-center ${
+                            meta?.align === "right"
+                              ? "justify-end"
+                              : meta?.align === "center"
+                                ? "justify-center"
+                                : "justify-start"
+                          }`}
+                        >
                           {header.column.getCanSort() ? (
                             <Button
                               variant="ghost"
@@ -324,16 +335,28 @@ export function DataTable<TData, TValue>({
                 rows.forEach((row) => {
                   if (groupBy) {
                     const keyRaw = groupBy.getKey(row.original as TData);
-                    const key = keyRaw ?? '未分類';
+                    const key = keyRaw ?? "未分類";
                     if (prevKey !== key) {
                       prevKey = key;
                       elements.push(
-                        <TableRow key={`group-${row.id}-${key}`}
-                          className="bg-muted/50 hover:bg-muted/50">
-                          <TableCell colSpan={columnsWithSelection.length} className="py-1">
-                            {groupBy.renderHeader
-                              ? groupBy.renderHeader({ groupKey: key, firstRow: row.original as TData })
-                              : <div className="text-xs font-semibold text-muted-foreground">{key}</div>}
+                        <TableRow
+                          key={`group-${row.id}-${key}`}
+                          className="bg-muted/50 hover:bg-muted/50"
+                        >
+                          <TableCell
+                            colSpan={columnsWithSelection.length}
+                            className="py-1"
+                          >
+                            {groupBy.renderHeader ? (
+                              groupBy.renderHeader({
+                                groupKey: key,
+                                firstRow: row.original as TData,
+                              })
+                            ) : (
+                              <div className="text-xs font-semibold text-muted-foreground">
+                                {key}
+                              </div>
+                            )}
                           </TableCell>
                         </TableRow>
                       );
@@ -346,19 +369,23 @@ export function DataTable<TData, TValue>({
                       className={row.getIsSelected() ? "bg-muted/50" : ""}
                     >
                       {row.getVisibleCells().map((cell) => {
-                        const meta = cell.column.columnDef.meta as {
-                          align?: "left" | "center" | "right";
-                          headerClassName?: string;
-                          cellClassName?: string;
-                          hidden?: boolean;
-                        } | undefined;
+                        const meta = cell.column.columnDef.meta as
+                          | {
+                              align?: "left" | "center" | "right";
+                              headerClassName?: string;
+                              cellClassName?: string;
+                              hidden?: boolean;
+                            }
+                          | undefined;
                         return (
                           <TableCell
                             key={cell.id}
                             className={`${meta?.cellClassName || ""} ${
-                              meta?.align === "right" ? "text-right" :
-                              meta?.align === "center" ? "text-center" :
-                              "text-left"
+                              meta?.align === "right"
+                                ? "text-right"
+                                : meta?.align === "center"
+                                  ? "text-center"
+                                  : "text-left"
                             }`}
                           >
                             {flexRender(

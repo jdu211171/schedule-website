@@ -21,17 +21,20 @@
     - Removed/renamed Class Types are ignored and cleaned during save
 
 ## Validation Rules
+
 - `user_id` must refer to an existing, active user
 - `hidden_class_type_ids` must contain only valid, active Class Type IDs
 - Maximum number of IDs: reasonable upper bound (e.g., 100) to protect payloads
 - Duplicate IDs are not allowed (client and server de-duplicate)
 
 ## State Transitions
+
 - Hide Type: add ID to `hidden_class_type_ids`; update `updated_at`
 - Unhide Type: remove ID from `hidden_class_type_ids`; update `updated_at`
 - Reset: clear `hidden_class_type_ids`; update `updated_at`
 - Cleanup: remove any IDs no longer valid
 
 ## Notes
+
 - Per-user preferences persist across sessions/devices
 - “Show all” override is a temporary client state and does not mutate the data model

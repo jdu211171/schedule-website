@@ -30,11 +30,11 @@ export const GET = withRole(["ADMIN"], async () => {
     const template = await prisma.lineMessageTemplate.findFirst({
       where: {
         branchId: null,
-        isActive: true
+        isActive: true,
       },
       orderBy: {
-        createdAt: 'desc'
-      }
+        createdAt: "desc",
+      },
     });
 
     // If no template exists, return a single default template
@@ -42,11 +42,11 @@ export const GET = withRole(["ADMIN"], async () => {
       const defaultTemplates = getDefaultTemplates();
       // Return only the first default template to enforce single template
       const singleDefault = defaultTemplates[0] || {
-        id: 'default-1',
-        name: '授業通知',
-        description: '授業の通知を送信します',
-        templateType: 'before_class' as const,
-        timingType: 'days' as const,
+        id: "default-1",
+        name: "授業通知",
+        description: "授業の通知を送信します",
+        templateType: "before_class" as const,
+        timingType: "days" as const,
         timingValue: 1,
         timingHour: 9,
         timingMinute: 0,
@@ -55,19 +55,21 @@ export const GET = withRole(["ADMIN"], async () => {
 {{dailyClassList}}
 
 よろしくお願いいたします。`,
-        variables: ['dailyClassList'],
+        variables: ["dailyClassList"],
         classListItemTemplate: null,
         classListSummaryTemplate: null,
         isActive: true,
       };
 
       return NextResponse.json({
-        data: [{
-          ...singleDefault,
-          branchId: null,
-          createdAt: new Date(),
-          updatedAt: new Date()
-        }]
+        data: [
+          {
+            ...singleDefault,
+            branchId: null,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        ],
       });
     }
 
@@ -163,7 +165,7 @@ export const POST = withRole(["ADMIN"], async (req: NextRequest) => {
     return NextResponse.json(
       {
         error: "Failed to create LINE templates",
-        details: error instanceof Error ? error.message : String(error)
+        details: error instanceof Error ? error.message : String(error),
       },
       { status: 500 }
     );

@@ -72,93 +72,96 @@ const formatBranch = (branch: BranchWithUsersAndChannels): FormattedBranch => ({
 });
 
 // GET - List branches with pagination and filters
-export const GET = withBranchAccess(["ADMIN", "STAFF"], async (request: NextRequest) => {
-  // Parse query parameters
-  const url = new URL(request.url);
-  const params = Object.fromEntries(url.searchParams.entries());
+export const GET = withBranchAccess(
+  ["ADMIN", "STAFF"],
+  async (request: NextRequest) => {
+    // Parse query parameters
+    const url = new URL(request.url);
+    const params = Object.fromEntries(url.searchParams.entries());
 
-  // Validate and parse filter parameters
-  const result = branchFilterSchema.safeParse(params);
-  if (!result.success) {
-    return NextResponse.json(
-      { error: "フィルターパラメータが無効です" },
-      { status: 400 }
-    );
-  }
+    // Validate and parse filter parameters
+    const result = branchFilterSchema.safeParse(params);
+    if (!result.success) {
+      return NextResponse.json(
+        { error: "フィルターパラメータが無効です" },
+        { status: 400 }
+      );
+    }
 
-  const { page, limit, name } = result.data;
+    const { page, limit, name } = result.data;
 
-  // Build filter conditions
-  const where: Record<string, unknown> = {};
+    // Build filter conditions
+    const where: Record<string, unknown> = {};
 
-  if (name) {
-    where.name = {
-      contains: name,
-      mode: "insensitive",
-    };
-  }
+    if (name) {
+      where.name = {
+        contains: name,
+        mode: "insensitive",
+      };
+    }
 
-  // ALWAYS sort by order field to maintain admin-defined sequence
-  const orderBy: Prisma.BranchOrderByWithRelationInput[] = [
-    { order: { sort: "asc", nulls: "last" } },
-    { name: "asc" }, // Secondary sort by name for branches with same order
-  ];
+    // ALWAYS sort by order field to maintain admin-defined sequence
+    const orderBy: Prisma.BranchOrderByWithRelationInput[] = [
+      { order: { sort: "asc", nulls: "last" } },
+      { name: "asc" }, // Secondary sort by name for branches with same order
+    ];
 
-  // Calculate pagination
-  const skip = (page - 1) * limit;
+    // Calculate pagination
+    const skip = (page - 1) * limit;
 
-  // Fetch total count
-  const total = await prisma.branch.count({ where });
+    // Fetch total count
+    const total = await prisma.branch.count({ where });
 
-  // Fetch branches with users and LINE channels
-  const branches = await prisma.branch.findMany({
-    where,
-    include: {
-      userBranches: {
-        include: {
-          user: {
-            select: {
-              id: true,
-              name: true,
-              username: true,
-              email: true,
-              role: true,
+    // Fetch branches with users and LINE channels
+    const branches = await prisma.branch.findMany({
+      where,
+      include: {
+        userBranches: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                username: true,
+                email: true,
+                role: true,
+              },
+            },
+          },
+        },
+        branchLineChannels: {
+          include: {
+            lineChannel: {
+              select: {
+                channelId: true,
+                name: true,
+                description: true,
+                isActive: true,
+                isDefault: true,
+              },
             },
           },
         },
       },
-      branchLineChannels: {
-        include: {
-          lineChannel: {
-            select: {
-              channelId: true,
-              name: true,
-              description: true,
-              isActive: true,
-              isDefault: true,
-            },
-          },
-        },
+      skip,
+      take: limit,
+      orderBy,
+    });
+
+    // Format branches
+    const formattedBranches = branches.map(formatBranch);
+
+    return NextResponse.json({
+      data: formattedBranches,
+      pagination: {
+        total,
+        page,
+        limit,
+        pages: Math.ceil(total / limit),
       },
-    },
-    skip,
-    take: limit,
-    orderBy,
-  });
-
-  // Format branches
-  const formattedBranches = branches.map(formatBranch);
-
-  return NextResponse.json({
-    data: formattedBranches,
-    pagination: {
-      total,
-      page,
-      limit,
-      pages: Math.ceil(total / limit),
-    },
-  });
-});
+    });
+  }
+);
 
 // POST - Create a new branch
 export const POST = withBranchAccess(

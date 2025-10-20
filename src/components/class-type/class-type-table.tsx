@@ -30,7 +30,13 @@ import { useAdminClassTypes } from "@/hooks/useAdminClassTypeQuery";
 import type { AdminClassType as ClassType } from "@/hooks/useAdminClassTypeQuery";
 import { useSession } from "next-auth/react";
 import { CSVImportDialog } from "@/components/ui/csv-import-dialog";
-import { classTypeColorClasses, getHexForClassTypeColor, isHexColor, isValidClassTypeColor, ClassTypeColor } from "@/lib/class-type-colors";
+import {
+  classTypeColorClasses,
+  getHexForClassTypeColor,
+  isHexColor,
+  isValidClassTypeColor,
+  ClassTypeColor,
+} from "@/lib/class-type-colors";
 import { Switch } from "@/components/ui/switch";
 import { fetcher } from "@/lib/fetcher";
 import { toast } from "sonner";
@@ -45,10 +51,15 @@ interface ColumnMetaType {
 }
 
 // Helper function to calculate the level of nesting for a class type
-function getClassTypeLevel(classType: ClassType, allClassTypes: ClassType[]): number {
+function getClassTypeLevel(
+  classType: ClassType,
+  allClassTypes: ClassType[]
+): number {
   if (!classType.parentId) return 0;
 
-  const parent = allClassTypes.find(type => type.classTypeId === classType.parentId);
+  const parent = allClassTypes.find(
+    (type) => type.classTypeId === classType.parentId
+  );
   if (!parent) return 0;
 
   return 1 + getClassTypeLevel(parent, allClassTypes);
@@ -83,12 +94,13 @@ export function ClassTypeTable() {
 
   const deleteClassTypeMutation = useClassTypeDelete();
   const updateOrderMutation = useClassTypeOrderUpdate();
-  const { exportToCSV, isExporting } = useGenericExport("/api/class-types/export", "class_types");
+  const { exportToCSV, isExporting } = useGenericExport(
+    "/api/class-types/export",
+    "class_types"
+  );
 
   // Use local state during sort mode, otherwise use server data
-  const typedClassTypes = isSortMode
-    ? localClassTypes
-    : classTypes?.data || [];
+  const typedClassTypes = isSortMode ? localClassTypes : classTypes?.data || [];
 
   // Update local state when server data changes
   React.useEffect(() => {
@@ -118,33 +130,44 @@ export function ClassTypeTable() {
         const onToggle = async (next: boolean) => {
           try {
             // Optimistically update all classTypes queries so UI reflects immediately
-            const queries = queryClient.getQueriesData<any>({ queryKey: ["adminClassTypes"] });
+            const queries = queryClient.getQueriesData<any>({
+              queryKey: ["adminClassTypes"],
+            });
             queries.forEach(([key, data]) => {
               if (!data?.data) return;
               queryClient.setQueryData(key, {
                 ...data,
                 data: data.data.map((x: any) =>
-                  x.classTypeId === ct.classTypeId ? { ...x, visibleInFilters: next } : x
+                  x.classTypeId === ct.classTypeId
+                    ? { ...x, visibleInFilters: next }
+                    : x
                 ),
               });
             });
-            await fetcher(`/api/admin/masterdata/class-types/${ct.classTypeId}`, {
-              method: "PATCH",
-              body: JSON.stringify({ visibleInFilters: next }),
-            });
+            await fetcher(
+              `/api/admin/masterdata/class-types/${ct.classTypeId}`,
+              {
+                method: "PATCH",
+                body: JSON.stringify({ visibleInFilters: next }),
+              }
+            );
             toast.success("フィルター表示を更新しました");
             postClassTypesChanged();
             // Ensure background refetch to keep pagination totals consistent
             queryClient.invalidateQueries({ queryKey: ["adminClassTypes"] });
           } catch (e) {
             // Revert cache on error
-            const queries = queryClient.getQueriesData<any>({ queryKey: ["adminClassTypes"] });
+            const queries = queryClient.getQueriesData<any>({
+              queryKey: ["adminClassTypes"],
+            });
             queries.forEach(([key, data]) => {
               if (!data?.data) return;
               queryClient.setQueryData(key, {
                 ...data,
                 data: data.data.map((x: any) =>
-                  x.classTypeId === ct.classTypeId ? { ...x, visibleInFilters: checked } : x
+                  x.classTypeId === ct.classTypeId
+                    ? { ...x, visibleInFilters: checked }
+                    : x
                 ),
               });
             });
@@ -153,7 +176,10 @@ export function ClassTypeTable() {
         };
         return (
           <div className="flex items-center justify-center">
-            <Switch checked={checked} onCheckedChange={(v) => onToggle(Boolean(v))} />
+            <Switch
+              checked={checked}
+              onCheckedChange={(v) => onToggle(Boolean(v))}
+            />
           </div>
         );
       },
@@ -171,18 +197,26 @@ export function ClassTypeTable() {
         let circle: React.ReactNode = null;
         if (isValidClassTypeColor(colorKey || null)) {
           const key = colorKey as ClassTypeColor;
-          circle = <span className={`inline-block h-4 w-4 rounded-full border ${classTypeColorClasses[key].dot} border-white shadow`} />;
+          circle = (
+            <span
+              className={`inline-block h-4 w-4 rounded-full border ${classTypeColorClasses[key].dot} border-white shadow`}
+            />
+          );
         } else {
           const hex = getHexForClassTypeColor(colorKey || null);
           if (hex) {
             circle = (
               <span
-                className={"inline-block h-4 w-4 rounded-full border border-white shadow"}
+                className={
+                  "inline-block h-4 w-4 rounded-full border border-white shadow"
+                }
                 style={{ backgroundColor: hex }}
               />
             );
           } else {
-            circle = <span className="inline-block h-4 w-4 rounded-full border border-muted bg-muted/60" />;
+            circle = (
+              <span className="inline-block h-4 w-4 rounded-full border border-muted bg-muted/60" />
+            );
           }
         }
         return <div className="flex items-center justify-center">{circle}</div>;
@@ -201,7 +235,8 @@ export function ClassTypeTable() {
         const indent = "　".repeat(level); // Japanese space for indentation
         return (
           <span className="font-medium">
-            {indent}{row.original.name}
+            {indent}
+            {row.original.name}
           </span>
         );
       },
@@ -210,18 +245,15 @@ export function ClassTypeTable() {
       accessorKey: "parentId",
       header: "親授業タイプ",
       cell: ({ row }) => {
-        if (!row.original.parentId) return (
-          <span className="text-muted-foreground">ルート</span>
-        );
+        if (!row.original.parentId)
+          return <span className="text-muted-foreground">ルート</span>;
         const parent =
           row.original.parent ??
           typedClassTypes.find(
             (type) => type.classTypeId === row.original.parentId
           );
         return (
-          <span className="text-muted-foreground">
-            {parent?.name || "-"}
-          </span>
+          <span className="text-muted-foreground">{parent?.name || "-"}</span>
         );
       },
     },
@@ -273,9 +305,8 @@ export function ClassTypeTable() {
 
   const renderActions = (classType: ClassType) => {
     // Type-safe check for _optimistic property
-    const isOptimistic = (
-      classType as ClassType & { _optimistic?: boolean }
-    )._optimistic;
+    const isOptimistic = (classType as ClassType & { _optimistic?: boolean })
+      ._optimistic;
 
     // Check if this class type is protected from deletion (通常授業 or 特別授業)
     const isProtectedFromDel = isProtectedFromDeletion(classType);
@@ -312,8 +343,11 @@ export function ClassTypeTable() {
   const handleExport = () => {
     // Get visible columns (all columns except actions)
     const visibleColumns = columns
-      .map(col => (col as ColumnDef<ClassType> & { accessorKey?: string }).accessorKey)
-      .filter(key => key) as string[];
+      .map(
+        (col) =>
+          (col as ColumnDef<ClassType> & { accessorKey?: string }).accessorKey
+      )
+      .filter((key) => key) as string[];
     exportToCSV({ columns: visibleColumns, query: { name: searchTerm || "" } });
   };
 

@@ -12,7 +12,7 @@ export async function GET() {
         password: "password123",
         name: "管理者1",
         isRestrictedAdmin: "false",
-        branchNames: "東京校,大阪校"
+        branchNames: "東京校,大阪校",
       },
       {
         username: "admin2",
@@ -20,8 +20,8 @@ export async function GET() {
         password: "password456",
         name: "管理者2",
         isRestrictedAdmin: "true",
-        branchNames: "東京校"
-      }
+        branchNames: "東京校",
+      },
     ];
 
     // Generate CSV with headers

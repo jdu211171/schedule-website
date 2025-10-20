@@ -45,7 +45,8 @@ export default function NotFound() {
                 >
                   <Link
                     href="/dashboard/schedules"
-                    className="flex items-center gap-2">
+                    className="flex items-center gap-2"
+                  >
                     <Calendar className="w-4 h-4" />
                     ダッシュボード
                   </Link>

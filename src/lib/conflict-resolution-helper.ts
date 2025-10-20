@@ -108,8 +108,8 @@ export function choicesToSessionActions(
         choice.action === "skip"
           ? "SKIP"
           : choice.action === "force"
-          ? "FORCE_CREATE"
-          : "USE_ALTERNATIVE",
+            ? "FORCE_CREATE"
+            : "USE_ALTERNATIVE",
     };
 
     if (choice.action === "alternative" && choice.newTime) {
@@ -127,14 +127,17 @@ export function choicesToSessionActions(
 export function groupConflictsByType(
   conflicts: ConflictInfo[]
 ): Record<string, ConflictInfo[]> {
-  return conflicts.reduce((groups, conflict) => {
-    const type = conflict.type;
-    if (!groups[type]) {
-      groups[type] = [];
-    }
-    groups[type].push(conflict);
-    return groups;
-  }, {} as Record<string, ConflictInfo[]>);
+  return conflicts.reduce(
+    (groups, conflict) => {
+      const type = conflict.type;
+      if (!groups[type]) {
+        groups[type] = [];
+      }
+      groups[type].push(conflict);
+      return groups;
+    },
+    {} as Record<string, ConflictInfo[]>
+  );
 }
 
 /**

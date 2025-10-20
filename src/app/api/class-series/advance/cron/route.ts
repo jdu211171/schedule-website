@@ -1,7 +1,10 @@
 // src/app/api/class-series/advance/cron/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { advanceGenerateForSeries, computeAdvanceWindow } from "@/lib/series-advance";
+import {
+  advanceGenerateForSeries,
+  computeAdvanceWindow,
+} from "@/lib/series-advance";
 import { getEffectiveSchedulingConfig } from "@/lib/scheduling-config";
 
 export const runtime = "nodejs";
@@ -26,7 +29,9 @@ export async function GET(request: NextRequest) {
 
   const url = new URL(request.url);
   const leadDaysOverride = url.searchParams.get("leadDays");
-  const limit = url.searchParams.get("limit") ? Math.max(1, Number(url.searchParams.get("limit"))) : undefined;
+  const limit = url.searchParams.get("limit")
+    ? Math.max(1, Number(url.searchParams.get("limit")))
+    : undefined;
   const branchId = url.searchParams.get("branchId") || undefined;
   const singleSeriesId = url.searchParams.get("seriesId") || undefined;
 
@@ -35,7 +40,11 @@ export async function GET(request: NextRequest) {
   if (branchId) where.branchId = branchId;
   if (singleSeriesId) where.seriesId = singleSeriesId;
 
-  const list = await prisma.classSeries.findMany({ where, orderBy: { updatedAt: "asc" }, take: limit });
+  const list = await prisma.classSeries.findMany({
+    where,
+    orderBy: { updatedAt: "asc" },
+    take: limit,
+  });
   const today = new Date();
   today.setUTCHours(0, 0, 0, 0);
 
@@ -49,13 +58,23 @@ export async function GET(request: NextRequest) {
   for (const s of list) {
     processed++;
     const cfg = await getEffectiveSchedulingConfig(s.branchId || undefined);
-    const perSeriesLeadDays = leadDaysOverride ? Math.max(1, Number(leadDaysOverride)) : Math.max(1, (cfg as any).generationMonths * 30);
-    const { to } = computeAdvanceWindow(today, s.lastGeneratedThrough, s.startDate, s.endDate, perSeriesLeadDays);
+    const perSeriesLeadDays = leadDaysOverride
+      ? Math.max(1, Number(leadDaysOverride))
+      : Math.max(1, (cfg as any).generationMonths * 30);
+    const { to } = computeAdvanceWindow(
+      today,
+      s.lastGeneratedThrough,
+      s.startDate,
+      s.endDate,
+      perSeriesLeadDays
+    );
     if (s.lastGeneratedThrough && s.lastGeneratedThrough >= to) {
       upToDate++;
       continue;
     }
-    const res = await advanceGenerateForSeries(prisma as any, s.seriesId, { leadDays: perSeriesLeadDays });
+    const res = await advanceGenerateForSeries(prisma as any, s.seriesId, {
+      leadDays: perSeriesLeadDays,
+    });
     confirmed += res.createdConfirmed;
     conflicted += res.createdConflicted;
     skipped += res.skipped;

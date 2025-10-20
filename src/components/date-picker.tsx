@@ -1,35 +1,37 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { format } from "date-fns"
-import { Calendar as CalendarIcon } from "lucide-react"
+import * as React from "react";
+import { format } from "date-fns";
+import { Calendar as CalendarIcon } from "lucide-react";
 
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import { Calendar } from "@/components/ui/calendar"
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover"
+} from "@/components/ui/popover";
 
 interface DatePickerProps {
-  value?: Date
-  onChange?: (date: Date | undefined) => void
+  value?: Date;
+  onChange?: (date: Date | undefined) => void;
 }
 
 export function DatePicker({ value, onChange }: DatePickerProps) {
-  const [internalDate, setInternalDate] = React.useState<Date | undefined>(value)
+  const [internalDate, setInternalDate] = React.useState<Date | undefined>(
+    value
+  );
 
   // Tashqaridan kelgan qiymat o'zgarganda local state-ni yangilash
   React.useEffect(() => {
-    setInternalDate(value)
-  }, [value])
+    setInternalDate(value);
+  }, [value]);
 
   const handleSelect = (date: Date | undefined) => {
-    setInternalDate(date)
-    onChange?.(date) // tashqi onChange functionni chaqirish
-  }
+    setInternalDate(date);
+    onChange?.(date); // tashqi onChange functionni chaqirish
+  };
 
   return (
     <Popover>
@@ -54,5 +56,5 @@ export function DatePicker({ value, onChange }: DatePickerProps) {
         />
       </PopoverContent>
     </Popover>
-  )
+  );
 }

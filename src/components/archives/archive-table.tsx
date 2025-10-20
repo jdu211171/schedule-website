@@ -94,7 +94,9 @@ export function ArchiveTable() {
                 <Input
                   placeholder="講師名で検索"
                   value={filters.teacherName}
-                  onChange={(e) => handleFilterChange("teacherName", e.target.value)}
+                  onChange={(e) =>
+                    handleFilterChange("teacherName", e.target.value)
+                  }
                   className="pl-8"
                 />
               </div>
@@ -107,7 +109,9 @@ export function ArchiveTable() {
                 <Input
                   placeholder="生徒名で検索"
                   value={filters.studentName}
-                  onChange={(e) => handleFilterChange("studentName", e.target.value)}
+                  onChange={(e) =>
+                    handleFilterChange("studentName", e.target.value)
+                  }
                   className="pl-8"
                 />
               </div>
@@ -120,7 +124,9 @@ export function ArchiveTable() {
                 <Input
                   placeholder="科目名で検索"
                   value={filters.subjectName}
-                  onChange={(e) => handleFilterChange("subjectName", e.target.value)}
+                  onChange={(e) =>
+                    handleFilterChange("subjectName", e.target.value)
+                  }
                   className="pl-8"
                 />
               </div>
@@ -133,7 +139,9 @@ export function ArchiveTable() {
                 <Input
                   placeholder="支店名で検索"
                   value={filters.branchName}
-                  onChange={(e) => handleFilterChange("branchName", e.target.value)}
+                  onChange={(e) =>
+                    handleFilterChange("branchName", e.target.value)
+                  }
                   className="pl-8"
                 />
               </div>
@@ -146,7 +154,9 @@ export function ArchiveTable() {
                 <Input
                   type="date"
                   value={filters.dateFrom}
-                  onChange={(e) => handleFilterChange("dateFrom", e.target.value)}
+                  onChange={(e) =>
+                    handleFilterChange("dateFrom", e.target.value)
+                  }
                   className="pl-8"
                 />
               </div>
@@ -242,7 +252,8 @@ export function ArchiveTable() {
                       >
                         <TableCell>{formatDate(archive.date)}</TableCell>
                         <TableCell>
-                          {formatTime(archive.startTime)} - {formatTime(archive.endTime)}
+                          {formatTime(archive.startTime)} -{" "}
+                          {formatTime(archive.endTime)}
                         </TableCell>
                         <TableCell>{archive.teacherName || "-"}</TableCell>
                         <TableCell>{archive.studentName || "-"}</TableCell>
@@ -264,7 +275,10 @@ export function ArchiveTable() {
                           )}
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
-                          {format(new Date(archive.archivedAt), "yyyy/MM/dd HH:mm")}
+                          {format(
+                            new Date(archive.archivedAt),
+                            "yyyy/MM/dd HH:mm"
+                          )}
                         </TableCell>
                       </TableRow>
                     ))
@@ -282,36 +296,49 @@ export function ArchiveTable() {
                   <PaginationItem>
                     <PaginationPrevious
                       onClick={() => setPage(Math.max(1, page - 1))}
-                      className={page === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                      className={
+                        page === 1
+                          ? "pointer-events-none opacity-50"
+                          : "cursor-pointer"
+                      }
                     />
                   </PaginationItem>
-                  
+
                   {/* Show page numbers */}
-                  {Array.from({ length: Math.min(5, pagination.pages) }, (_, i) => {
-                    const pageNumber = i + 1;
-                    return (
-                      <PaginationItem key={pageNumber}>
-                        <PaginationLink
-                          onClick={() => setPage(pageNumber)}
-                          isActive={pageNumber === page}
-                          className="cursor-pointer"
-                        >
-                          {pageNumber}
-                        </PaginationLink>
-                      </PaginationItem>
-                    );
-                  })}
-                  
+                  {Array.from(
+                    { length: Math.min(5, pagination.pages) },
+                    (_, i) => {
+                      const pageNumber = i + 1;
+                      return (
+                        <PaginationItem key={pageNumber}>
+                          <PaginationLink
+                            onClick={() => setPage(pageNumber)}
+                            isActive={pageNumber === page}
+                            className="cursor-pointer"
+                          >
+                            {pageNumber}
+                          </PaginationLink>
+                        </PaginationItem>
+                      );
+                    }
+                  )}
+
                   {pagination.pages > 5 && (
                     <PaginationItem>
                       <span className="px-3">...</span>
                     </PaginationItem>
                   )}
-                  
+
                   <PaginationItem>
                     <PaginationNext
-                      onClick={() => setPage(Math.min(pagination.pages, page + 1))}
-                      className={page === pagination.pages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                      onClick={() =>
+                        setPage(Math.min(pagination.pages, page + 1))
+                      }
+                      className={
+                        page === pagination.pages
+                          ? "pointer-events-none opacity-50"
+                          : "cursor-pointer"
+                      }
                     />
                   </PaginationItem>
                 </PaginationContent>

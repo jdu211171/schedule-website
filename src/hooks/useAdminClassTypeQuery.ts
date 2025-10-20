@@ -32,19 +32,46 @@ type ClassTypesResponse = {
 };
 
 export function useAdminClassTypes(params: UseAdminClassTypesParams = {}) {
-  const { page = 1, limit = 10, name, parentId, includeChildren = false, includeParent = true } = params;
+  const {
+    page = 1,
+    limit = 10,
+    name,
+    parentId,
+    includeChildren = false,
+    includeParent = true,
+  } = params;
 
-  const query = classTypeFilterSchema.parse({ page, limit, name, parentId, includeChildren, includeParent });
+  const query = classTypeFilterSchema.parse({
+    page,
+    limit,
+    name,
+    parentId,
+    includeChildren,
+    includeParent,
+  });
   const searchParams = new URLSearchParams(
-    Object.entries(query).reduce((acc, [key, value]) => {
-      if (value !== undefined) acc[key] = String(value);
-      return acc;
-    }, {} as Record<string, string>)
+    Object.entries(query).reduce(
+      (acc, [key, value]) => {
+        if (value !== undefined) acc[key] = String(value);
+        return acc;
+      },
+      {} as Record<string, string>
+    )
   ).toString();
 
   return useQuery<ClassTypesResponse>({
-    queryKey: ["adminClassTypes", page, limit, name, parentId, includeChildren, includeParent],
-    queryFn: async () => await fetcher<ClassTypesResponse>(`/api/admin/masterdata/class-types?${searchParams}`),
+    queryKey: [
+      "adminClassTypes",
+      page,
+      limit,
+      name,
+      parentId,
+      includeChildren,
+      includeParent,
+    ],
+    queryFn: async () =>
+      await fetcher<ClassTypesResponse>(
+        `/api/admin/masterdata/class-types?${searchParams}`
+      ),
   });
 }
-

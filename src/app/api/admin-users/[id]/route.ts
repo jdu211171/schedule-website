@@ -7,53 +7,51 @@ import { Session } from "next-auth";
 import { Prisma } from "@prisma/client";
 
 // GET - Get single admin user (Full Admin only)
-export const GET = withFullAdminRole(
-  async (request: NextRequest) => {
-    const id = request.url.split("/").pop();
+export const GET = withFullAdminRole(async (request: NextRequest) => {
+  const id = request.url.split("/").pop();
 
-    const adminUser = await prisma.user.findUnique({
-      where: {
-        id,
-        role: "ADMIN",
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        username: true,
-        order: true,
-        isRestrictedAdmin: true,
-        createdAt: true,
-        updatedAt: true,
-        branches: {
-          select: {
-            branch: {
-              select: {
-                branchId: true,
-                name: true,
-              },
+  const adminUser = await prisma.user.findUnique({
+    where: {
+      id,
+      role: "ADMIN",
+    },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      username: true,
+      order: true,
+      isRestrictedAdmin: true,
+      createdAt: true,
+      updatedAt: true,
+      branches: {
+        select: {
+          branch: {
+            select: {
+              branchId: true,
+              name: true,
             },
           },
         },
       },
-    });
+    },
+  });
 
-    if (!adminUser) {
-      return NextResponse.json(
-        { error: "管理者ユーザーが見つかりません" },
-        { status: 404 }
-      );
-    }
-
-    // Transform the response
-    const transformedUser = {
-      ...adminUser,
-      branches: adminUser.branches.map((ub) => ub.branch),
-    };
-
-    return NextResponse.json({ data: transformedUser });
+  if (!adminUser) {
+    return NextResponse.json(
+      { error: "管理者ユーザーが見つかりません" },
+      { status: 404 }
+    );
   }
-);
+
+  // Transform the response
+  const transformedUser = {
+    ...adminUser,
+    branches: adminUser.branches.map((ub) => ub.branch),
+  };
+
+  return NextResponse.json({ data: transformedUser });
+});
 
 // PATCH - Update admin user (Full Admin only)
 export const PATCH = withFullAdminRole(
@@ -71,7 +69,8 @@ export const PATCH = withFullAdminRole(
         );
       }
 
-      const { name, email, username, password, branchIds, isRestrictedAdmin } = result.data;
+      const { name, email, username, password, branchIds, isRestrictedAdmin } =
+        result.data;
       const currentUserId = session.user?.id;
 
       // Check if admin user exists and get current user's order
@@ -106,7 +105,9 @@ export const PATCH = withFullAdminRole(
 
       if (targetUserOrder <= currentUserOrder) {
         return NextResponse.json(
-          { error: "同じまたは上位の権限を持つ管理者を編集することはできません" },
+          {
+            error: "同じまたは上位の権限を持つ管理者を編集することはできません",
+          },
           { status: 403 }
         );
       }
@@ -116,10 +117,9 @@ export const PATCH = withFullAdminRole(
         const conflictingUser = await prisma.user.findFirst({
           where: {
             id: { not: id },
-            OR: [
-              username ? { username } : {},
-              email ? { email } : {},
-            ].filter(obj => Object.keys(obj).length > 0),
+            OR: [username ? { username } : {}, email ? { email } : {}].filter(
+              (obj) => Object.keys(obj).length > 0
+            ),
           },
         });
 
@@ -144,7 +144,8 @@ export const PATCH = withFullAdminRole(
       if (name !== undefined) updateData.name = name;
       if (email !== undefined) updateData.email = email;
       if (username !== undefined) updateData.username = username;
-      if (isRestrictedAdmin !== undefined) updateData.isRestrictedAdmin = isRestrictedAdmin;
+      if (isRestrictedAdmin !== undefined)
+        updateData.isRestrictedAdmin = isRestrictedAdmin;
       if (password) {
         updateData.passwordHash = await bcrypt.hash(password, 10);
       }
@@ -256,7 +257,9 @@ export const DELETE = withFullAdminRole(
 
       if (targetUserOrder <= currentUserOrder) {
         return NextResponse.json(
-          { error: "同じまたは上位の権限を持つ管理者を削除することはできません" },
+          {
+            error: "同じまたは上位の権限を持つ管理者を削除することはできません",
+          },
           { status: 403 }
         );
       }
@@ -275,16 +278,16 @@ export const DELETE = withFullAdminRole(
 
       // Check for branch assignments
       const branchAssignments = await prisma.userBranch.count({
-        where: { userId: id }
+        where: { userId: id },
       });
 
       if (branchAssignments > 0) {
         return NextResponse.json(
-          { 
+          {
             error: `この管理者は${branchAssignments}つの校舎に割り当てられているため削除できません。`,
             details: {
-              branchAssignments
-            }
+              branchAssignments,
+            },
           },
           { status: 400 }
         );

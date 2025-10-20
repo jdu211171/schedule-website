@@ -432,9 +432,14 @@ export const POST = withBranchAccess(
 
       // Create records in a transaction with ladder adjustment for EXCEPTION/ABSENCE
       const createdRecords = await prisma.$transaction(async (tx) => {
-        const created: (UserAvailability & { user?: { name: string | null } | null })[] = [] as any;
+        const created: (UserAvailability & {
+          user?: { name: string | null } | null;
+        })[] = [] as any;
         for (const record of recordsToCreate) {
-          if ((record.type === "EXCEPTION" || record.type === "ABSENCE") && record.date) {
+          if (
+            (record.type === "EXCEPTION" || record.type === "ABSENCE") &&
+            record.date
+          ) {
             await adjustOppositeAvailabilityForNew(tx, {
               userId: record.userId,
               dateUTC: record.date as Date,
@@ -540,8 +545,8 @@ export const PATCH = withBranchAccess(
         status === "APPROVED"
           ? "承認"
           : status === "REJECTED"
-          ? "拒否"
-          : "保留";
+            ? "拒否"
+            : "保留";
 
       return NextResponse.json({
         data: formattedRecords,

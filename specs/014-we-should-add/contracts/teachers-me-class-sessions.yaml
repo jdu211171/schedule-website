@@ -40,4 +40,3 @@ paths:
                         endTime: { type: string }
                         teacherName: { type: string, nullable: true }
                         studentName: { type: string, nullable: true }
-

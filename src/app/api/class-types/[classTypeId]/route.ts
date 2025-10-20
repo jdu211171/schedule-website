@@ -24,7 +24,10 @@ type FormattedClassType = {
 };
 
 // Helper function to check if a class type is protected (root level types)
-const isProtectedClassType = (classType: { name: string; parentId: string | null }): boolean => {
+const isProtectedClassType = (classType: {
+  name: string;
+  parentId: string | null;
+}): boolean => {
   // Protected class types are root level types (no parent) with specific names
   // Note: "キャンセル" is no longer a dedicated class type; cancellation uses isCancelled flag.
   return (
@@ -172,7 +175,7 @@ export const PATCH = withRole(
 
       // Check if this is a protected class type (通常授業 or 特別授業)
       const isProtected = isProtectedClassType(existingClassType);
-      
+
       if (isProtected) {
         // For protected class types, allow updating only notes and color.
         const allowed = new Set(["notes", "color", "classTypeId"]);
@@ -189,7 +192,7 @@ export const PATCH = withRole(
           try {
             const colorInUse = await prisma.classType.findFirst({
               where: {
-                color: { equals: color, mode: 'insensitive' } as any,
+                color: { equals: color, mode: "insensitive" } as any,
                 classTypeId: { not: classTypeId },
               },
               select: { classTypeId: true },
@@ -207,7 +210,7 @@ export const PATCH = withRole(
           where: { classTypeId },
           data: {
             notes: notes !== undefined ? notes : existingClassType.notes,
-            ...(color !== undefined ? { color } : {} as any),
+            ...(color !== undefined ? { color } : ({} as any)),
           },
           include: {
             parent: true,
@@ -235,8 +238,9 @@ export const PATCH = withRole(
       // Check name uniqueness within the same parent context if being updated
       if (name && name !== existingClassType.name) {
         // Determine the parent context (use existing parentId if parentId is not being updated)
-        const targetParentId = parentId !== undefined ? parentId : existingClassType.parentId;
-        
+        const targetParentId =
+          parentId !== undefined ? parentId : existingClassType.parentId;
+
         const nameExists = await prisma.classType.findFirst({
           where: {
             name: { equals: name, mode: "insensitive" },
@@ -249,10 +253,7 @@ export const PATCH = withRole(
           const errorMessage = targetParentId
             ? "この親授業タイプ内で、同じ名前の授業タイプが既に存在します"
             : "同じ名前のルート授業タイプが既に存在します";
-          return NextResponse.json(
-            { error: errorMessage },
-            { status: 409 }
-          );
+          return NextResponse.json({ error: errorMessage }, { status: 409 });
         }
       }
 
@@ -293,7 +294,7 @@ export const PATCH = withRole(
         try {
           const colorInUse = await prisma.classType.findFirst({
             where: {
-              color: { equals: color, mode: 'insensitive' } as any,
+              color: { equals: color, mode: "insensitive" } as any,
               classTypeId: { not: classTypeId },
             },
             select: { classTypeId: true },
@@ -317,7 +318,7 @@ export const PATCH = withRole(
             notes,
             parentId,
             order,
-            ...(color !== undefined ? { color } : {} as any),
+            ...(color !== undefined ? { color } : ({} as any)),
           } as any,
           include: {
             parent: true,
@@ -405,16 +406,17 @@ export const DELETE = withBranchAccess(
 
       // Check for child class types
       const childCount = await prisma.classType.count({
-        where: { parentId: classTypeId }
+        where: { parentId: classTypeId },
       });
 
       if (childCount > 0) {
         return NextResponse.json(
           {
-            error: "サブ授業タイプが存在するため、この授業タイプを削除できません。先にサブ授業タイプを削除してください。",
+            error:
+              "サブ授業タイプが存在するため、この授業タイプを削除できません。先にサブ授業タイプを削除してください。",
             details: {
-              childTypes: childCount
-            }
+              childTypes: childCount,
+            },
           },
           { status: 400 }
         );
@@ -422,38 +424,37 @@ export const DELETE = withBranchAccess(
 
       // Check for class sessions in the selected branch only
       const classSessionCount = await prisma.classSession.count({
-        where: { 
+        where: {
           classTypeId,
-          branchId: selectedBranchId
-        }
+          branchId: selectedBranchId,
+        },
       });
 
       if (classSessionCount > 0) {
         // Get branch information for better error message
         const sessions = await prisma.classSession.findMany({
-          where: { 
+          where: {
             classTypeId,
-            branchId: selectedBranchId
+            branchId: selectedBranchId,
           },
           select: {
-            branch: { select: { name: true } }
+            branch: { select: { name: true } },
           },
-          distinct: ['branchId']
+          distinct: ["branchId"],
         });
-        
-        const branchNames = sessions
-          .map(s => s.branch?.name)
-          .filter(Boolean);
-        
-        const branchText = branchNames.length > 0 ? `（${branchNames.join('、')}）` : '';
-        
+
+        const branchNames = sessions.map((s) => s.branch?.name).filter(Boolean);
+
+        const branchText =
+          branchNames.length > 0 ? `（${branchNames.join("、")}）` : "";
+
         return NextResponse.json(
-          { 
+          {
             error: `この授業タイプは${classSessionCount}件の授業セッション${branchText}に関連付けられているため削除できません。`,
             details: {
               classSessions: classSessionCount,
-              branches: branchNames
-            }
+              branches: branchNames,
+            },
           },
           { status: 400 }
         );

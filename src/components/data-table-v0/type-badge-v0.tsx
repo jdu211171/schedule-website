@@ -1,7 +1,7 @@
-import { Badge } from "@/components/ui/badge"
+import { Badge } from "@/components/ui/badge";
 
 interface TypeBadgeProps {
-  type: string
+  type: string;
 }
 
 export function TypeBadge({ type }: TypeBadgeProps) {
@@ -11,5 +11,5 @@ export function TypeBadge({ type }: TypeBadgeProps) {
         {type}
       </Badge>
     </div>
-  )
+  );
 }

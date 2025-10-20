@@ -46,7 +46,7 @@ export function withFullAdminRole(handler: RouteHandler) {
       hasSession: !!session,
       hasUser: !!session?.user,
       role: session?.user?.role,
-      isRestrictedAdmin: session?.user?.isRestrictedAdmin
+      isRestrictedAdmin: session?.user?.isRestrictedAdmin,
     });
 
     // Check if user is authenticated and is a full admin (not restricted)

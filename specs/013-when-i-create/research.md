@@ -1,6 +1,7 @@
 # Research — Instant day calendar update after session creation
 
 ## Decisions
+
 - Same-user tab updates: Use same-page update pattern and propagate to other tabs for the same user. Cross-user updates are out of scope.
   - Rationale: Meets clarified acceptance while minimizing complexity.
   - Alternatives: Full real-time (server push) to all users — rejected as out of scope.
@@ -33,5 +34,5 @@
   - Rationale: Feature is presentational refresh/sync, not data modeling.
 
 ## Notes
-- Remaining minor open items are documented as deferred in the plan. None are blockers for initial implementation/testing.
 
+- Remaining minor open items are documented as deferred in the plan. None are blockers for initial implementation/testing.

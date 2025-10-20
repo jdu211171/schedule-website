@@ -26,4 +26,3 @@ LOCAL_URL=postgresql://postgres:postgres@localhost:5432/schedulewebsite \
 DIRECT_URL=postgresql://user:pass@host:5432/db \
   scripts/mirror-prod-to-local.sh --yes
 ```
-

@@ -9,14 +9,18 @@ export function getClassTypeSelection(role: string | undefined): string[] {
     const raw = localStorage.getItem(k);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as ClassTypeFilterState;
-    if (Array.isArray(parsed?.selectedClassTypeIds)) return parsed.selectedClassTypeIds;
+    if (Array.isArray(parsed?.selectedClassTypeIds))
+      return parsed.selectedClassTypeIds;
   } catch {
     // ignore
   }
   return [];
 }
 
-export function setClassTypeSelection(role: string | undefined, ids: string[]): void {
+export function setClassTypeSelection(
+  role: string | undefined,
+  ids: string[]
+): void {
   if (typeof window === "undefined") return;
   const k = KEY_PREFIX + (role || "UNKNOWN");
   const state: ClassTypeFilterState = {
@@ -26,10 +30,14 @@ export function setClassTypeSelection(role: string | undefined, ids: string[]): 
   try {
     localStorage.setItem(k, JSON.stringify(state));
     // Notify other parts of the app (including other mounted tabs/views)
-    if (typeof BroadcastChannel !== 'undefined') {
+    if (typeof BroadcastChannel !== "undefined") {
       try {
-        const ch = new BroadcastChannel('class-type-filter');
-        ch.postMessage({ type: 'classTypeSelectionChanged', role: role || 'UNKNOWN', ids: state.selectedClassTypeIds });
+        const ch = new BroadcastChannel("class-type-filter");
+        ch.postMessage({
+          type: "classTypeSelectionChanged",
+          role: role || "UNKNOWN",
+          ids: state.selectedClassTypeIds,
+        });
         ch.close();
       } catch {}
     }

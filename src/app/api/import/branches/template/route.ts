@@ -9,13 +9,13 @@ export async function GET() {
       {
         name: "東京校",
         notes: "メインキャンパス",
-        order: "1"
+        order: "1",
       },
       {
         name: "大阪校",
         notes: "関西エリアの拠点",
-        order: "2"
-      }
+        order: "2",
+      },
     ];
 
     // Generate CSV with headers

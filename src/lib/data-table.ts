@@ -85,7 +85,7 @@ export function getDefaultFilterOperator(filterVariant: FilterVariant) {
 }
 
 export function getValidFilters<TData>(
-  filters: ExtendedColumnFilter<TData>[],
+  filters: ExtendedColumnFilter<TData>[]
 ): ExtendedColumnFilter<TData>[] {
   return filters.filter(
     (filter) =>
@@ -95,6 +95,6 @@ export function getValidFilters<TData>(
         ? filter.value.length > 0
         : filter.value !== "" &&
           filter.value !== null &&
-          filter.value !== undefined),
+          filter.value !== undefined)
   );
 }

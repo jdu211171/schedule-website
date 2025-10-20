@@ -3,7 +3,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { withBranchAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { teacherFilterSchema } from "@/schemas/teacher.schema";
-import { getTeacherExportColumns, TEACHER_COLUMN_RULES } from "@/schemas/import/teacher-column-rules";
+import {
+  getTeacherExportColumns,
+  TEACHER_COLUMN_RULES,
+} from "@/schemas/import/teacher-column-rules";
 import { formatLocalYMD } from "@/lib/date";
 
 // Helper: format date as YYYY-MM-DD
@@ -35,7 +38,8 @@ export const GET = withBranchAccess(
     const statusList = searchParams.get("status")?.split(",") || [];
     const branchList = searchParams.get("branch")?.split(",") || [];
     const subjectList = searchParams.get("subject")?.split(",") || [];
-    const lineConnectionList = searchParams.get("lineConnection")?.split(",") || [];
+    const lineConnectionList =
+      searchParams.get("lineConnection")?.split(",") || [];
 
     // Build where clause (branch scoped)
     const where: any = {
@@ -64,7 +68,9 @@ export const GET = withBranchAccess(
         user: {
           include: {
             branches: { include: { branch: true } },
-            subjectPreferences: { include: { subject: true, subjectType: true } },
+            subjectPreferences: {
+              include: { subject: true, subjectType: true },
+            },
           },
         },
         contactEmails: true,
@@ -78,25 +84,37 @@ export const GET = withBranchAccess(
 
     if (statusList.length > 1) {
       const statusSet = new Set(statusList);
-      filteredTeachers = filteredTeachers.filter(t => statusSet.has(t.status || "ACTIVE"));
+      filteredTeachers = filteredTeachers.filter((t) =>
+        statusSet.has(t.status || "ACTIVE")
+      );
     }
 
     if (branchList.length > 0) {
       const branchSet = new Set(branchList);
-      filteredTeachers = filteredTeachers.filter(t => t.user?.branches?.some((b: any) => branchSet.has(b.branch.name)));
+      filteredTeachers = filteredTeachers.filter((t) =>
+        t.user?.branches?.some((b: any) => branchSet.has(b.branch.name))
+      );
     }
 
     if (subjectList.length > 0) {
       const subjectSet = new Set(subjectList);
-      filteredTeachers = filteredTeachers.filter(t => t.user?.subjectPreferences?.some((sp: any) => subjectSet.has(sp.subject.name)));
+      filteredTeachers = filteredTeachers.filter((t) =>
+        t.user?.subjectPreferences?.some((sp: any) =>
+          subjectSet.has(sp.subject.name)
+        )
+      );
     }
 
     if (lineConnectionList.length > 0) {
       const set = new Set(lineConnectionList);
-      filteredTeachers = filteredTeachers.filter(t => {
+      filteredTeachers = filteredTeachers.filter((t) => {
         const hasLine = !!t.lineId;
         const notificationsEnabled = t.lineNotificationsEnabled ?? true;
-        const s = !hasLine ? "not_connected" : notificationsEnabled ? "connected_enabled" : "connected_disabled";
+        const s = !hasLine
+          ? "not_connected"
+          : notificationsEnabled
+            ? "connected_enabled"
+            : "connected_disabled";
         return set.has(s);
       });
     }
@@ -118,77 +136,102 @@ export const GET = withBranchAccess(
       "subjects",
       "notes",
     ];
-    const visibleColumns = rawColumns.includes("id") ? rawColumns : ["id", ...rawColumns];
+    const visibleColumns = rawColumns.includes("id")
+      ? rawColumns
+      : ["id", ...rawColumns];
 
     // Filter out privacy/ignored columns same as student export style
-    const allowedColumns = visibleColumns.filter(col =>
-      !["lineId", "lineConnection", "lineNotificationsEnabled", "phoneNotes"].includes(col)
+    const allowedColumns = visibleColumns.filter(
+      (col) =>
+        ![
+          "lineId",
+          "lineConnection",
+          "lineNotificationsEnabled",
+          "phoneNotes",
+        ].includes(col)
     );
 
     // Build column -> header mapping from rules
-    const columnIdToHeader: Record<string, string> = { id: 'ID' };
+    const columnIdToHeader: Record<string, string> = { id: "ID" };
     for (const [key, rule] of Object.entries(TEACHER_COLUMN_RULES)) {
       columnIdToHeader[key] = rule.csvHeader;
     }
     // Accept UI alias for subjects column
-    columnIdToHeader['subjectPreferences'] = '選択科目';
+    columnIdToHeader["subjectPreferences"] = "選択科目";
 
     // Build header line
-    const headers = allowedColumns.map(col => columnIdToHeader[col] || col).join(",");
+    const headers = allowedColumns
+      .map((col) => columnIdToHeader[col] || col)
+      .join(",");
 
-    const statusLabels: Record<string, string> = { ACTIVE: '在籍', SICK: '休会', PERMANENTLY_LEFT: '退会' };
+    const statusLabels: Record<string, string> = {
+      ACTIVE: "在籍",
+      SICK: "休会",
+      PERMANENTLY_LEFT: "退会",
+    };
 
     // Row formatter
     const formatValue = (t: any, col: string): string => {
       switch (col) {
-        case 'id':
-          return t.teacherId || '';
-        case 'name':
-          return t.name || '';
-        case 'kanaName':
-          return t.kanaName || '';
-        case 'status':
-          return statusLabels[t.status || 'ACTIVE'] || t.status || '';
-        case 'birthDate':
+        case "id":
+          return t.teacherId || "";
+        case "name":
+          return t.name || "";
+        case "kanaName":
+          return t.kanaName || "";
+        case "status":
+          return statusLabels[t.status || "ACTIVE"] || t.status || "";
+        case "birthDate":
           return formatDateForCSV(t.birthDate || null);
-        case 'username':
-          return t.user?.username || '';
-        case 'email':
-          return t.user?.email || '';
-        case 'password':
-          return '';
-        case 'phoneNumber':
-          return t.phoneNumber || '';
-        case 'branches':
-          return t.user?.branches?.map((b: any) => b.branch.name).join('; ') || '';
-        case 'subjects':
-        case 'subjectPreferences':
-          return t.user?.subjectPreferences?.map((sp: any) => `${sp.subject.name} - ${sp.subjectType.name}`).join('; ') || '';
-        case 'contactEmails':
+        case "username":
+          return t.user?.username || "";
+        case "email":
+          return t.user?.email || "";
+        case "password":
+          return "";
+        case "phoneNumber":
+          return t.phoneNumber || "";
+        case "branches":
+          return (
+            t.user?.branches?.map((b: any) => b.branch.name).join("; ") || ""
+          );
+        case "subjects":
+        case "subjectPreferences":
+          return (
+            t.user?.subjectPreferences
+              ?.map((sp: any) => `${sp.subject.name} - ${sp.subjectType.name}`)
+              .join("; ") || ""
+          );
+        case "contactEmails":
           return (
             t.contactEmails
               ?.sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0))
               .map((e: any) => (e.notes ? `${e.email}:${e.notes}` : e.email))
-              .join('; ') || ''
+              .join("; ") || ""
           );
-        case 'contactPhones': {
+        case "contactPhones": {
           return (
             t.contactPhones
               ?.sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0))
-              .map((p: any) => (p.notes ? `${p.phoneNumber}:${p.notes}` : `${p.phoneNumber}`))
-              .join('; ') || ''
+              .map((p: any) =>
+                p.notes ? `${p.phoneNumber}:${p.notes}` : `${p.phoneNumber}`
+              )
+              .join("; ") || ""
           );
         }
-        case 'notes':
-          return t.notes || '';
+        case "notes":
+          return t.notes || "";
         default:
-          return '';
+          return "";
       }
     };
 
     // Streaming export for large datasets (mirrors student style)
     if (streamMode) {
-      const pageSize = Number.parseInt(process.env.EXPORT_PAGE_SIZE || "1000", 10);
+      const pageSize = Number.parseInt(
+        process.env.EXPORT_PAGE_SIZE || "1000",
+        10
+      );
       const filename = `teachers_${formatLocalYMD(new Date())}.csv`;
       const encoder = new TextEncoder();
 
@@ -204,14 +247,18 @@ export const GET = withBranchAccess(
                 user: {
                   include: {
                     branches: { include: { branch: true } },
-                    subjectPreferences: { include: { subject: true, subjectType: true } },
+                    subjectPreferences: {
+                      include: { subject: true, subjectType: true },
+                    },
                   },
                 },
                 contactEmails: true,
                 contactPhones: true,
               },
-              orderBy: { teacherId: 'asc' },
-              ...(cursor ? { cursor: { teacherId: cursor }, skip: 1, take: pageSize } : { take: pageSize }),
+              orderBy: { teacherId: "asc" },
+              ...(cursor
+                ? { cursor: { teacherId: cursor }, skip: 1, take: pageSize }
+                : { take: pageSize }),
             });
 
             if (!chunk.length) break;
@@ -219,7 +266,9 @@ export const GET = withBranchAccess(
             for (const t of chunk) {
               const cols = allowedColumns.map((col) => {
                 const v = formatValue(t as any, col);
-                return v.includes(",") || v.includes("\n") || v.includes('"') ? `"${v.replace(/"/g, '""')}"` : v;
+                return v.includes(",") || v.includes("\n") || v.includes('"')
+                  ? `"${v.replace(/"/g, '""')}"`
+                  : v;
               });
               controller.enqueue(encoder.encode(cols.join(",") + "\n"));
             }
@@ -243,7 +292,11 @@ export const GET = withBranchAccess(
     const rows = filteredTeachers.map((t) => {
       const row = allowedColumns.map((col) => {
         const value = formatValue(t as any, col);
-        if (value.includes(",") || value.includes("\n") || value.includes('"')) {
+        if (
+          value.includes(",") ||
+          value.includes("\n") ||
+          value.includes('"')
+        ) {
           return `"${value.replace(/"/g, '""')}"`;
         }
         return value;

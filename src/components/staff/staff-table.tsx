@@ -48,7 +48,10 @@ export function StaffTable() {
 
   const totalCount = staffs?.pagination.total || 0;
   const deleteStaffMutation = useStaffDelete();
-  const { exportToCSV, isExporting } = useGenericExport("/api/staff/export", "staff");
+  const { exportToCSV, isExporting } = useGenericExport(
+    "/api/staff/export",
+    "staff"
+  );
 
   const [staffToEdit, setStaffToEdit] = useState<Staff | null>(null);
   const [staffToDelete, setStaffToDelete] = useState<Staff | null>(null);
@@ -152,9 +155,9 @@ export function StaffTable() {
   const handleExport = () => {
     // Get visible columns (all columns except actions)
     const visibleColumns = columns
-      .filter(col => col.id !== "actions")
-      .map(col => (col as any).accessorKey)
-      .filter(key => key) as string[];
+      .filter((col) => col.id !== "actions")
+      .map((col) => (col as any).accessorKey)
+      .filter((key) => key) as string[];
     exportToCSV({ columns: visibleColumns });
   };
 

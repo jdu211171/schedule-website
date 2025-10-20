@@ -1,11 +1,13 @@
 # Quickstart — Validate instant day calendar update
 
 ## Prereqs
+
 - Run dev: `bun dev`
 - Ensure timezone utilities use Asia/Tokyo (default)
 - Seed data available (optional) via `npx prisma studio` or existing seed
 
 ## Steps
+
 1. Open the admin Day Calendar for date D.
 2. Create a regular class session for date D via the calendar dialog.
    - Expectation: New session tile appears in correct slot within 1s; no full reload.
@@ -19,6 +21,6 @@
    - Expectation: Error toast; no tile inserted.
 
 ## Notes
+
 - Scroll/zoom state remains unchanged; no auto-scroll after creation.
 - Cross-user updates are out of scope.
-

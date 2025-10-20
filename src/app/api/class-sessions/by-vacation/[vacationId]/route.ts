@@ -37,7 +37,9 @@ export const DELETE = withBranchAccess(
 
       // Access control: non-admins can act if they are assigned to the vacation's branch
       if (session.user?.role !== "ADMIN") {
-        const userBranches = (session.user?.branches || []).map((b: any) => b.branchId);
+        const userBranches = (session.user?.branches || []).map(
+          (b: any) => b.branchId
+        );
         if (!userBranches.includes(vacation.branchId)) {
           return NextResponse.json(
             { error: "この休日にアクセスする権限がありません" },
@@ -59,7 +61,10 @@ export const DELETE = withBranchAccess(
       });
 
       if (sessions.length === 0) {
-        return NextResponse.json({ deleted: 0, message: "キャンセル対象の授業はありません" }, { status: 200 });
+        return NextResponse.json(
+          { deleted: 0, message: "キャンセル対象の授業はありません" },
+          { status: 200 }
+        );
       }
 
       const classIds = sessions.map((s) => s.classId);

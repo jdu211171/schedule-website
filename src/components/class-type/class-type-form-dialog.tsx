@@ -36,7 +36,16 @@ import {
   useClassTypeUpdate,
 } from "@/hooks/useClassTypeMutation";
 import { ClassType, useAllClassTypes } from "@/hooks/useClassTypeQuery";
-import { CLASS_TYPE_DEFAULT_COLORS, classTypeColorClasses, classTypeColorJaLabels, ClassTypeColor, isHexColor, rgba, getContrastText, getHexForClassTypeColor } from "@/lib/class-type-colors";
+import {
+  CLASS_TYPE_DEFAULT_COLORS,
+  classTypeColorClasses,
+  classTypeColorJaLabels,
+  ClassTypeColor,
+  isHexColor,
+  rgba,
+  getContrastText,
+  getHexForClassTypeColor,
+} from "@/lib/class-type-colors";
 import { Switch } from "@/components/ui/switch";
 
 // Helper function to check if a class type is a root class type (通常授業, 特別授業)
@@ -55,10 +64,10 @@ interface ClassTypeFormDialogProps {
 }
 
 export function ClassTypeFormDialog({
-                                      open,
-                                      onOpenChange,
-                                      classType,
-                                    }: ClassTypeFormDialogProps) {
+  open,
+  onOpenChange,
+  classType,
+}: ClassTypeFormDialogProps) {
   const createClassTypeMutation = useClassTypeCreate();
   const updateClassTypeMutation = useClassTypeUpdate();
   const isEditing = !!classType;
@@ -89,7 +98,9 @@ export function ClassTypeFormDialog({
 
   // Fetch all class types for parent selection
   const { data: allClassTypes } = useAllClassTypes();
-  const [colorEnabled, setColorEnabled] = React.useState<boolean>(() => !!classType?.color);
+  const [colorEnabled, setColorEnabled] = React.useState<boolean>(
+    () => !!classType?.color
+  );
 
   const form = useForm<z.infer<typeof dynamicSchema>>({
     resolver: zodResolver(dynamicSchema),
@@ -161,24 +172,23 @@ export function ClassTypeFormDialog({
   }
 
   // Keep a single source of truth for current hex reflecting palette or custom value
-  const selectedColor = form.watch('color');
+  const selectedColor = form.watch("color");
   const selectedHex = isHexColor(selectedColor)
     ? selectedColor
     : getHexForClassTypeColor(selectedColor);
   // UI control default swatch for the native color input when nothing selected
-  const currentHex = selectedHex || '#409eff';
+  const currentHex = selectedHex || "#409eff";
 
   // Get available parent options - only show root class types (通常授業 and 特別授業)
   // and exclude current item when editing
-  const parentOptions = (allClassTypes || []).filter(
-    (type) => {
-      // Only include root class types (those without a parent) - these should be 通常授業 and 特別授業
-      const isRoot = !type.parentId;
-      // Exclude current item when editing to prevent circular references
-      const isNotCurrentItem = !isEditing || type.classTypeId !== classType?.classTypeId;
-      return isRoot && isNotCurrentItem;
-    }
-  );
+  const parentOptions = (allClassTypes || []).filter((type) => {
+    // Only include root class types (those without a parent) - these should be 通常授業 and 特別授業
+    const isRoot = !type.parentId;
+    // Exclude current item when editing to prevent circular references
+    const isNotCurrentItem =
+      !isEditing || type.classTypeId !== classType?.classTypeId;
+    return isRoot && isNotCurrentItem;
+  });
 
   return (
     <Dialog
@@ -207,8 +217,12 @@ export function ClassTypeFormDialog({
                 const allTypes = allClassTypes || [];
                 const usedColors = new Set(
                   allTypes
-                    .filter(t => t.color && (!isEditing || t.classTypeId !== classType?.classTypeId))
-                    .map(t => t.color as string)
+                    .filter(
+                      (t) =>
+                        t.color &&
+                        (!isEditing || t.classTypeId !== classType?.classTypeId)
+                    )
+                    .map((t) => t.color as string)
                 );
                 // removed: reserved slate for cancelled; now isCancelled uses fixed HEX color
                 return (
@@ -216,7 +230,9 @@ export function ClassTypeFormDialog({
                     <div className="flex items-center justify-between mb-2">
                       <FormLabel>色</FormLabel>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground">色を設定する</span>
+                        <span className="text-xs text-muted-foreground">
+                          色を設定する
+                        </span>
                         <Switch
                           checked={colorEnabled}
                           onCheckedChange={(v) => {
@@ -227,27 +243,38 @@ export function ClassTypeFormDialog({
                       </div>
                     </div>
                     <FormControl>
-                      <div className={`grid grid-cols-2 gap-2 ${(!colorEnabled) ? 'opacity-50 pointer-events-none' : ''}`}>
+                      <div
+                        className={`grid grid-cols-2 gap-2 ${!colorEnabled ? "opacity-50 pointer-events-none" : ""}`}
+                      >
                         {/* Exclude 'red' from selectable defaults (reserved for conflicts) */}
-                        {CLASS_TYPE_DEFAULT_COLORS.filter((c) => c !== 'red').map((c) => {
+                        {CLASS_TYPE_DEFAULT_COLORS.filter(
+                          (c) => c !== "red"
+                        ).map((c) => {
                           const disabled = usedColors.has(c);
                           const selected = field.value === c;
-                          const cls = classTypeColorClasses[c as ClassTypeColor];
+                          const cls =
+                            classTypeColorClasses[c as ClassTypeColor];
                           return (
                             <button
                               key={c}
                               type="button"
-                              className={`h-9 rounded-md border px-2 flex items-center gap-2 ${cls.chipBg} ${cls.chipBorder} ${cls.chipText} ${selected ? 'ring-2 ring-offset-1 ring-primary' : ''} ${(disabled) ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90'}`}
+                              className={`h-9 rounded-md border px-2 flex items-center gap-2 ${cls.chipBg} ${cls.chipBorder} ${cls.chipText} ${selected ? "ring-2 ring-offset-1 ring-primary" : ""} ${disabled ? "opacity-50 cursor-not-allowed" : "hover:opacity-90"}`}
                               aria-pressed={selected}
                               onClick={() => {
                                 if (disabled || !colorEnabled) return;
                                 field.onChange(selected ? null : c);
                               }}
-                              title={classTypeColorJaLabels[c as ClassTypeColor]}
+                              title={
+                                classTypeColorJaLabels[c as ClassTypeColor]
+                              }
                               disabled={disabled || !colorEnabled}
                             >
-                              <span className={`inline-block h-4 w-4 rounded-full border ${cls.dot} ${cls.chipBorder}`} />
-                              <span className="text-sm">{classTypeColorJaLabels[c as ClassTypeColor]}</span>
+                              <span
+                                className={`inline-block h-4 w-4 rounded-full border ${cls.dot} ${cls.chipBorder}`}
+                              />
+                              <span className="text-sm">
+                                {classTypeColorJaLabels[c as ClassTypeColor]}
+                              </span>
                             </button>
                           );
                         })}
@@ -267,14 +294,18 @@ export function ClassTypeFormDialog({
                 <FormItem>
                   <FormLabel>カスタムカラー（HEX）</FormLabel>
                   <FormControl>
-                    <div className={`flex flex-col gap-2 ${!colorEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
+                    <div
+                      className={`flex flex-col gap-2 ${!colorEnabled ? "opacity-50 pointer-events-none" : ""}`}
+                    >
                       <div className="flex items-center gap-2">
                         <input
                           type="color"
                           aria-label="カスタムカラー"
                           className="h-9 w-9 rounded border"
                           value={currentHex}
-                          onChange={(e) => colorEnabled && field.onChange(e.target.value)}
+                          onChange={(e) =>
+                            colorEnabled && field.onChange(e.target.value)
+                          }
                         />
                         <input
                           type="text"
@@ -282,13 +313,23 @@ export function ClassTypeFormDialog({
                           placeholder="例: #4f46e5"
                           className="flex-1 h-9 rounded-md border px-2 bg-background"
                           value={currentHex}
-                          onChange={(e) => colorEnabled && field.onChange(e.target.value)}
+                          onChange={(e) =>
+                            colorEnabled && field.onChange(e.target.value)
+                          }
                         />
                       </div>
                       {/* Preview chip showing current selection; hide when no selection */}
-                      <CustomColorPreview hex={selectedHex || null} label={
-                        (typeof field.value === 'string' && !field.value.startsWith('#') && classTypeColorJaLabels[field.value as ClassTypeColor]) || '選択中の色'
-                      } />
+                      <CustomColorPreview
+                        hex={selectedHex || null}
+                        label={
+                          (typeof field.value === "string" &&
+                            !field.value.startsWith("#") &&
+                            classTypeColorJaLabels[
+                              field.value as ClassTypeColor
+                            ]) ||
+                          "選択中の色"
+                        }
+                      />
                     </div>
                   </FormControl>
                   <FormMessage />
@@ -307,7 +348,11 @@ export function ClassTypeFormDialog({
                     <Input
                       placeholder="授業タイプ名を入力してください"
                       disabled={isRoot}
-                      className={isRoot ? "bg-muted text-muted-foreground cursor-not-allowed" : ""}
+                      className={
+                        isRoot
+                          ? "bg-muted text-muted-foreground cursor-not-allowed"
+                          : ""
+                      }
                       {...field}
                     />
                   </FormControl>
@@ -342,7 +387,10 @@ export function ClassTypeFormDialog({
                       </FormControl>
                       <SelectContent>
                         {parentOptions.map((type) => (
-                          <SelectItem key={type.classTypeId} value={type.classTypeId}>
+                          <SelectItem
+                            key={type.classTypeId}
+                            value={type.classTypeId}
+                          >
                             {type.name}
                           </SelectItem>
                         ))}
@@ -383,15 +431,23 @@ export function ClassTypeFormDialog({
   );
 }
 
-function CustomColorPreview({ hex, label }: { hex: string | null | undefined; label?: string }) {
+function CustomColorPreview({
+  hex,
+  label,
+}: {
+  hex: string | null | undefined;
+  label?: string;
+}) {
   if (!hex || !isHexColor(hex)) {
     return (
-      <div className="text-xs text-muted-foreground">カスタム色を選択するとここにプレビューが表示されます</div>
+      <div className="text-xs text-muted-foreground">
+        カスタム色を選択するとここにプレビューが表示されます
+      </div>
     );
   }
   const bg = rgba(hex, 0.18) || undefined;
   const border = rgba(hex, 0.5) || undefined;
-  const textColor = getContrastText(hex) === 'white' ? '#f8fafc' : '#0f172a';
+  const textColor = getContrastText(hex) === "white" ? "#f8fafc" : "#0f172a";
   return (
     <div
       className="inline-flex items-center gap-2 h-8 rounded-md border px-2"
@@ -401,7 +457,7 @@ function CustomColorPreview({ hex, label }: { hex: string | null | undefined; la
         className="inline-block h-4 w-4 rounded-full border"
         style={{ backgroundColor: hex, borderColor: border }}
       />
-      <span className="text-sm">{label || '選択中の色'}</span>
+      <span className="text-sm">{label || "選択中の色"}</span>
       <span className="text-xs text-muted-foreground">{hex}</span>
     </div>
   );

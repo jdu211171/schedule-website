@@ -43,9 +43,12 @@ describe("useColumnOrder", () => {
   });
 
   it("appends newly added columns at the end", () => {
-    const { result, rerender } = renderHook(({ ids }) => useColumnOrder(KEY, ids), {
-      initialProps: { ids: initial },
-    });
+    const { result, rerender } = renderHook(
+      ({ ids }) => useColumnOrder(KEY, ids),
+      {
+        initialProps: { ids: initial },
+      }
+    );
 
     act(() => result.current.setOrder(["b", "a", "d", "c"]));
     expect(result.current.order).toEqual(["b", "a", "d", "c"]);

@@ -1,6 +1,6 @@
-import { prisma } from '@/lib/prisma';
-import { NotificationStatus } from '@prisma/client';
-import { format } from 'date-fns';
+import { prisma } from "@/lib/prisma";
+import { NotificationStatus } from "@prisma/client";
+import { format } from "date-fns";
 
 export interface BackupConfig {
   includeStatuses: NotificationStatus[];
@@ -9,7 +9,7 @@ export interface BackupConfig {
     endDate: Date;
   };
   branchId?: string;
-  format: 'json' | 'csv';
+  format: "json" | "csv";
   includeRelatedData: boolean;
 }
 
@@ -17,7 +17,7 @@ export interface BackupResult {
   success: boolean;
   totalRecords: number;
   backupData: any;
-  format: 'json' | 'csv';
+  format: "json" | "csv";
   timestamp: Date;
   config: BackupConfig;
   error?: string;
@@ -48,22 +48,24 @@ export const createNotificationBackup = async (
     // Fetch notifications
     const notifications = await prisma.notification.findMany({
       where,
-      include: config.includeRelatedData ? {
-        branch: {
-          select: {
-            name: true,
-            branchId: true,
-          },
-        },
-      } : undefined,
+      include: config.includeRelatedData
+        ? {
+            branch: {
+              select: {
+                name: true,
+                branchId: true,
+              },
+            },
+          }
+        : undefined,
       orderBy: {
-        createdAt: 'desc',
+        createdAt: "desc",
       },
     });
 
     let backupData: any;
 
-    if (config.format === 'json') {
+    if (config.format === "json") {
       backupData = {
         metadata: {
           exportDate: new Date().toISOString(),
@@ -93,7 +95,7 @@ export const createNotificationBackup = async (
       format: config.format,
       timestamp: new Date(),
       config,
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: error instanceof Error ? error.message : "Unknown error",
     };
   }
 };
@@ -112,7 +114,7 @@ export const createPreCleanupBackup = async (
       endDate: new Date(),
     },
     branchId,
-    format: 'json',
+    format: "json",
     includeRelatedData: true,
   };
 
@@ -123,10 +125,10 @@ export const createPreCleanupBackup = async (
   for (const [status, days] of Object.entries(retentionDays)) {
     if (days && days > 0) {
       eligibleStatuses.push(status as NotificationStatus);
-      
+
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - days);
-      
+
       if (cutoffDate < oldestCutoffDate) {
         oldestCutoffDate = cutoffDate;
       }
@@ -144,57 +146,61 @@ export const createPreCleanupBackup = async (
  */
 function convertNotificationsToCSV(notifications: any[]): string {
   if (notifications.length === 0) {
-    return 'No notifications to export';
+    return "No notifications to export";
   }
 
   const headers = [
-    'notificationId',
-    'recipientType',
-    'recipientId',
-    'notificationType',
-    'message',
-    'relatedClassId',
-    'branchId',
-    'branchName',
-    'sentVia',
-    'sentAt',
-    'readAt',
-    'status',
-    'notes',
-    'createdAt',
-    'updatedAt',
-    'scheduledAt',
-    'processingAttempts',
-    'logs',
+    "notificationId",
+    "recipientType",
+    "recipientId",
+    "notificationType",
+    "message",
+    "relatedClassId",
+    "branchId",
+    "branchName",
+    "sentVia",
+    "sentAt",
+    "readAt",
+    "status",
+    "notes",
+    "createdAt",
+    "updatedAt",
+    "scheduledAt",
+    "processingAttempts",
+    "logs",
   ];
 
-  const csvRows = [headers.join(',')];
+  const csvRows = [headers.join(",")];
 
-  notifications.forEach(notification => {
+  notifications.forEach((notification) => {
     const row = [
       notification.notificationId,
-      notification.recipientType || '',
-      notification.recipientId || '',
-      notification.notificationType || '',
-      `"${(notification.message || '').replace(/"/g, '""')}"`,
-      notification.relatedClassId || '',
-      notification.branchId || '',
-      notification.branch?.name || '',
-      notification.sentVia || '',
-      notification.sentAt ? format(notification.sentAt, 'yyyy-MM-dd HH:mm:ss') : '',
-      notification.readAt ? format(notification.readAt, 'yyyy-MM-dd HH:mm:ss') : '',
+      notification.recipientType || "",
+      notification.recipientId || "",
+      notification.notificationType || "",
+      `"${(notification.message || "").replace(/"/g, '""')}"`,
+      notification.relatedClassId || "",
+      notification.branchId || "",
+      notification.branch?.name || "",
+      notification.sentVia || "",
+      notification.sentAt
+        ? format(notification.sentAt, "yyyy-MM-dd HH:mm:ss")
+        : "",
+      notification.readAt
+        ? format(notification.readAt, "yyyy-MM-dd HH:mm:ss")
+        : "",
       notification.status,
-      `"${(notification.notes || '').replace(/"/g, '""')}"`,
-      format(notification.createdAt, 'yyyy-MM-dd HH:mm:ss'),
-      format(notification.updatedAt, 'yyyy-MM-dd HH:mm:ss'),
-      format(notification.scheduledAt, 'yyyy-MM-dd HH:mm:ss'),
+      `"${(notification.notes || "").replace(/"/g, '""')}"`,
+      format(notification.createdAt, "yyyy-MM-dd HH:mm:ss"),
+      format(notification.updatedAt, "yyyy-MM-dd HH:mm:ss"),
+      format(notification.scheduledAt, "yyyy-MM-dd HH:mm:ss"),
       notification.processingAttempts.toString(),
       `"${JSON.stringify(notification.logs || {}).replace(/"/g, '""')}"`,
     ];
-    csvRows.push(row.join(','));
+    csvRows.push(row.join(","));
   });
 
-  return csvRows.join('\n');
+  return csvRows.join("\n");
 }
 
 /**
@@ -218,7 +224,9 @@ export const validateCleanupOperation = async (
     Object.entries(retentionDays).forEach(([status, days]) => {
       if (days && days > 0) {
         if (days < 7) {
-          warnings.push(`Very short retention period for ${status}: ${days} days`);
+          warnings.push(
+            `Very short retention period for ${status}: ${days} days`
+          );
         }
         if (days < 1) {
           errors.push(`Invalid retention period for ${status}: ${days} days`);
@@ -246,11 +254,15 @@ export const validateCleanupOperation = async (
 
     // Check for large deletion operations
     if (estimatedDeletions > 10000) {
-      warnings.push(`Large deletion operation: ${estimatedDeletions} notifications will be deleted`);
+      warnings.push(
+        `Large deletion operation: ${estimatedDeletions} notifications will be deleted`
+      );
     }
 
     if (estimatedDeletions > 50000) {
-      errors.push(`Extremely large deletion operation: ${estimatedDeletions} notifications. Consider running in smaller batches.`);
+      errors.push(
+        `Extremely large deletion operation: ${estimatedDeletions} notifications. Consider running in smaller batches.`
+      );
     }
 
     // Check for recent notifications being deleted
@@ -260,9 +272,10 @@ export const validateCleanupOperation = async (
           gte: new Date(Date.now() - 24 * 60 * 60 * 1000), // Last 24 hours
         },
         status: {
-          in: Object.keys(retentionDays).filter(status => 
-            retentionDays[status as NotificationStatus] && 
-            retentionDays[status as NotificationStatus]! < 2
+          in: Object.keys(retentionDays).filter(
+            (status) =>
+              retentionDays[status as NotificationStatus] &&
+              retentionDays[status as NotificationStatus]! < 2
           ) as NotificationStatus[],
         },
         ...(branchId && { branchId }),
@@ -270,7 +283,9 @@ export const validateCleanupOperation = async (
     });
 
     if (recentNotifications > 0) {
-      warnings.push(`${recentNotifications} recent notifications (last 24h) will be deleted`);
+      warnings.push(
+        `${recentNotifications} recent notifications (last 24h) will be deleted`
+      );
     }
 
     return {
@@ -283,7 +298,10 @@ export const validateCleanupOperation = async (
     return {
       isValid: false,
       warnings,
-      errors: [...errors, `Validation failed: ${error instanceof Error ? error.message : 'Unknown error'}`],
+      errors: [
+        ...errors,
+        `Validation failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+      ],
       estimatedDeletions: 0,
     };
   }
@@ -306,10 +324,14 @@ export const safeCleanupWithBackup = async (
   canProceed: boolean;
   requiresForce: boolean;
 }> => {
-  const { createBackup = true, skipValidation = false, force = false } = options;
+  const {
+    createBackup = true,
+    skipValidation = false,
+    force = false,
+  } = options;
 
   // Validate the cleanup operation
-  const validation = skipValidation 
+  const validation = skipValidation
     ? { isValid: true, warnings: [], errors: [], estimatedDeletions: 0 }
     : await validateCleanupOperation(retentionDays, branchId);
 
@@ -325,7 +347,8 @@ export const safeCleanupWithBackup = async (
   }
 
   // Determine if operation can proceed
-  const requiresForce = validation.estimatedDeletions > 10000 || validation.warnings.length > 0;
+  const requiresForce =
+    validation.estimatedDeletions > 10000 || validation.warnings.length > 0;
   const canProceed = validation.isValid && (!requiresForce || force);
 
   return {

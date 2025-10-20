@@ -12,7 +12,8 @@ export const studentImportSchema = z.object({
       const upper = s.toUpperCase();
       if (upper === "ACTIVE" || s === "在籍") return "ACTIVE" as const;
       if (upper === "SICK" || s === "休会") return "SICK" as const;
-      if (upper === "PERMANENTLY_LEFT" || s === "退会") return "PERMANENTLY_LEFT" as const;
+      if (upper === "PERMANENTLY_LEFT" || s === "退会")
+        return "PERMANENTLY_LEFT" as const;
       return null; // unknown → null (warning will be added by importer)
     })
     .nullable()
@@ -23,25 +24,25 @@ export const studentImportSchema = z.object({
     .max(50, "ユーザー名は50文字以下で入力してください"),
   email: z
     .string()
-    .transform(val => val === "" ? null : val)
+    .transform((val) => (val === "" ? null : val))
     .nullable()
     .optional()
-    .refine(val => !val || z.string().email().safeParse(val).success, {
-      message: "有効なメールアドレスを入力してください"
+    .refine((val) => !val || z.string().email().safeParse(val).success, {
+      message: "有効なメールアドレスを入力してください",
     })
-    .refine(val => !val || val.length <= 100, {
-      message: "メールアドレスは100文字以下で入力してください"
+    .refine((val) => !val || val.length <= 100, {
+      message: "メールアドレスは100文字以下で入力してください",
     }),
   password: z
     .string()
-    .transform(val => val === "" ? null : val)
+    .transform((val) => (val === "" ? null : val))
     .nullable()
     .optional()
-    .refine(val => !val || val.length >= 8, {
-      message: "パスワードは8文字以上で入力してください"
+    .refine((val) => !val || val.length >= 8, {
+      message: "パスワードは8文字以上で入力してください",
     })
-    .refine(val => !val || val.length <= 100, {
-      message: "パスワードは100文字以下で入力してください"
+    .refine((val) => !val || val.length <= 100, {
+      message: "パスワードは100文字以下で入力してください",
     }),
   name: z
     .string()
@@ -49,27 +50,36 @@ export const studentImportSchema = z.object({
     .max(100, "名前は100文字以下で入力してください"),
   studentTypeName: z
     .string()
-    .transform(val => val === "" ? null : val)
+    .transform((val) => (val === "" ? null : val))
     .nullable()
     .optional(),
   kanaName: z
     .string()
-    .transform(val => val === "" ? null : val)
+    .transform((val) => (val === "" ? null : val))
     .nullable()
     .optional(),
   gradeYear: z
     .string()
-    .transform(val => val === "" ? null : parseInt(val, 10))
-    .pipe(z.number().int().min(1, "学年は1以上で入力してください").nullable().optional())
+    .transform((val) => (val === "" ? null : parseInt(val, 10)))
+    .pipe(
+      z
+        .number()
+        .int()
+        .min(1, "学年は1以上で入力してください")
+        .nullable()
+        .optional()
+    )
     .optional(),
   lineId: z
     .string()
-    .transform(val => val === "" ? null : val)
+    .transform((val) => (val === "" ? null : val))
     .nullable()
     .optional(),
   branches: z
     .string()
-    .transform(val => val === "" ? [] : val.split(";").map(name => name.trim()))
+    .transform((val) =>
+      val === "" ? [] : val.split(";").map((name) => name.trim())
+    )
     .pipe(z.array(z.string().min(1)))
     .optional()
     .default(""),
@@ -81,18 +91,18 @@ export const studentImportSchema = z.object({
     .transform((v) => v ?? ""),
   notes: z
     .string()
-    .transform(val => val === "" ? null : val)
+    .transform((val) => (val === "" ? null : val))
     .nullable()
     .optional(),
   // School information
   schoolName: z
     .string()
-    .transform(val => val === "" ? null : val)
+    .transform((val) => (val === "" ? null : val))
     .nullable()
     .optional(),
   schoolType: z
     .string()
-    .transform(val => {
+    .transform((val) => {
       if (val === "" || !val) return null;
       if (val.toUpperCase() === "PUBLIC" || val === "公立") return "PUBLIC";
       if (val.toUpperCase() === "PRIVATE" || val === "私立") return "PRIVATE";
@@ -103,19 +113,23 @@ export const studentImportSchema = z.object({
   // Exam information
   examCategory: z
     .string()
-    .transform(val => {
+    .transform((val) => {
       if (val === "" || !val) return null;
-      if (val.toUpperCase() === "BEGINNER" || val === "小学校") return "BEGINNER";
-      if (val.toUpperCase() === "ELEMENTARY" || val === "中学校") return "ELEMENTARY";
-      if (val.toUpperCase() === "HIGH_SCHOOL" || val === "高校") return "HIGH_SCHOOL";
-      if (val.toUpperCase() === "UNIVERSITY" || val === "大学") return "UNIVERSITY";
+      if (val.toUpperCase() === "BEGINNER" || val === "小学校")
+        return "BEGINNER";
+      if (val.toUpperCase() === "ELEMENTARY" || val === "中学校")
+        return "ELEMENTARY";
+      if (val.toUpperCase() === "HIGH_SCHOOL" || val === "高校")
+        return "HIGH_SCHOOL";
+      if (val.toUpperCase() === "UNIVERSITY" || val === "大学")
+        return "UNIVERSITY";
       return null;
     })
     .nullable()
     .optional(),
   examCategoryType: z
     .string()
-    .transform(val => {
+    .transform((val) => {
       if (val === "" || !val) return null;
       if (val.toUpperCase() === "PUBLIC" || val === "公立") return "PUBLIC";
       if (val.toUpperCase() === "PRIVATE" || val === "私立") return "PRIVATE";
@@ -125,35 +139,35 @@ export const studentImportSchema = z.object({
     .optional(),
   firstChoice: z
     .string()
-    .transform(val => val === "" ? null : val)
+    .transform((val) => (val === "" ? null : val))
     .nullable()
     .optional(),
   secondChoice: z
     .string()
-    .transform(val => val === "" ? null : val)
+    .transform((val) => (val === "" ? null : val))
     .nullable()
     .optional(),
   examDate: z
     .string()
-    .transform(val => val === "" ? null : val)
+    .transform((val) => (val === "" ? null : val))
     .pipe(z.coerce.date().nullable().optional())
     .optional(),
   // Contact information
   parentEmail: z
     .string()
-    .transform(val => val === "" ? null : val)
+    .transform((val) => (val === "" ? null : val))
     .nullable()
     .optional(),
   // Personal information
   birthDate: z
     .string()
-    .transform(val => val === "" ? null : val)
+    .transform((val) => (val === "" ? null : val))
     .pipe(z.coerce.date().nullable().optional())
     .optional(),
   // Admission date
   admissionDate: z
     .string()
-    .transform(val => val === "" ? null : val)
+    .transform((val) => (val === "" ? null : val))
     .pipe(z.coerce.date().nullable().optional())
     .optional(),
   // Contact phones aggregated column (e.g., "自宅:03-...; 父:090-...; 母:080-...")
@@ -185,7 +199,8 @@ export const studentUpdateImportSchema = z.object({
       const upper = s.toUpperCase();
       if (upper === "ACTIVE" || s === "在籍") return "ACTIVE" as const;
       if (upper === "SICK" || s === "休会") return "SICK" as const;
-      if (upper === "PERMANENTLY_LEFT" || s === "退会") return "PERMANENTLY_LEFT" as const;
+      if (upper === "PERMANENTLY_LEFT" || s === "退会")
+        return "PERMANENTLY_LEFT" as const;
       return null; // unknown → null (warning will be added by importer)
     })
     .nullable()
@@ -197,25 +212,25 @@ export const studentUpdateImportSchema = z.object({
     .optional(),
   email: z
     .string()
-    .transform(val => val === "" ? null : val)
+    .transform((val) => (val === "" ? null : val))
     .nullable()
     .optional()
-    .refine(val => !val || z.string().email().safeParse(val).success, {
-      message: "有効なメールアドレスを入力してください"
+    .refine((val) => !val || z.string().email().safeParse(val).success, {
+      message: "有効なメールアドレスを入力してください",
     })
-    .refine(val => !val || val.length <= 100, {
-      message: "メールアドレスは100文字以下で入力してください"
+    .refine((val) => !val || val.length <= 100, {
+      message: "メールアドレスは100文字以下で入力してください",
     }),
   password: z
     .string()
-    .transform(val => val === "" ? null : val)
+    .transform((val) => (val === "" ? null : val))
     .nullable()
     .optional()
-    .refine(val => !val || val.length >= 8, {
-      message: "パスワードは8文字以上で入力してください"
+    .refine((val) => !val || val.length >= 8, {
+      message: "パスワードは8文字以上で入力してください",
     })
-    .refine(val => !val || val.length <= 100, {
-      message: "パスワードは100文字以下で入力してください"
+    .refine((val) => !val || val.length <= 100, {
+      message: "パスワードは100文字以下で入力してください",
     }),
   name: z
     .string()
@@ -224,27 +239,36 @@ export const studentUpdateImportSchema = z.object({
     .optional(),
   studentTypeName: z
     .string()
-    .transform(val => val === "" ? null : val)
+    .transform((val) => (val === "" ? null : val))
     .nullable()
     .optional(),
   kanaName: z
     .string()
-    .transform(val => val === "" ? null : val)
+    .transform((val) => (val === "" ? null : val))
     .nullable()
     .optional(),
   gradeYear: z
     .string()
-    .transform(val => val === "" ? null : parseInt(val, 10))
-    .pipe(z.number().int().min(1, "学年は1以上で入力してください").nullable().optional())
+    .transform((val) => (val === "" ? null : parseInt(val, 10)))
+    .pipe(
+      z
+        .number()
+        .int()
+        .min(1, "学年は1以上で入力してください")
+        .nullable()
+        .optional()
+    )
     .optional(),
   lineId: z
     .string()
-    .transform(val => val === "" ? null : val)
+    .transform((val) => (val === "" ? null : val))
     .nullable()
     .optional(),
   branches: z
     .string()
-    .transform(val => val === "" ? [] : val.split(";").map(name => name.trim()))
+    .transform((val) =>
+      val === "" ? [] : val.split(";").map((name) => name.trim())
+    )
     .pipe(z.array(z.string().min(1)))
     .optional()
     .default(""),
@@ -256,18 +280,18 @@ export const studentUpdateImportSchema = z.object({
     .transform((v) => v ?? ""),
   notes: z
     .string()
-    .transform(val => val === "" ? null : val)
+    .transform((val) => (val === "" ? null : val))
     .nullable()
     .optional(),
   // School information
   schoolName: z
     .string()
-    .transform(val => val === "" ? null : val)
+    .transform((val) => (val === "" ? null : val))
     .nullable()
     .optional(),
   schoolType: z
     .string()
-    .transform(val => {
+    .transform((val) => {
       if (val === "" || !val) return null;
       if (val.toUpperCase() === "PUBLIC" || val === "公立") return "PUBLIC";
       if (val.toUpperCase() === "PRIVATE" || val === "私立") return "PRIVATE";
@@ -278,19 +302,23 @@ export const studentUpdateImportSchema = z.object({
   // Exam information
   examCategory: z
     .string()
-    .transform(val => {
+    .transform((val) => {
       if (val === "" || !val) return null;
-      if (val.toUpperCase() === "BEGINNER" || val === "小学校") return "BEGINNER";
-      if (val.toUpperCase() === "ELEMENTARY" || val === "中学校") return "ELEMENTARY";
-      if (val.toUpperCase() === "HIGH_SCHOOL" || val === "高校") return "HIGH_SCHOOL";
-      if (val.toUpperCase() === "UNIVERSITY" || val === "大学") return "UNIVERSITY";
+      if (val.toUpperCase() === "BEGINNER" || val === "小学校")
+        return "BEGINNER";
+      if (val.toUpperCase() === "ELEMENTARY" || val === "中学校")
+        return "ELEMENTARY";
+      if (val.toUpperCase() === "HIGH_SCHOOL" || val === "高校")
+        return "HIGH_SCHOOL";
+      if (val.toUpperCase() === "UNIVERSITY" || val === "大学")
+        return "UNIVERSITY";
       return null;
     })
     .nullable()
     .optional(),
   examCategoryType: z
     .string()
-    .transform(val => {
+    .transform((val) => {
       if (val === "" || !val) return null;
       if (val.toUpperCase() === "PUBLIC" || val === "公立") return "PUBLIC";
       if (val.toUpperCase() === "PRIVATE" || val === "私立") return "PRIVATE";
@@ -300,35 +328,35 @@ export const studentUpdateImportSchema = z.object({
     .optional(),
   firstChoice: z
     .string()
-    .transform(val => val === "" ? null : val)
+    .transform((val) => (val === "" ? null : val))
     .nullable()
     .optional(),
   secondChoice: z
     .string()
-    .transform(val => val === "" ? null : val)
+    .transform((val) => (val === "" ? null : val))
     .nullable()
     .optional(),
   examDate: z
     .string()
-    .transform(val => val === "" ? null : val)
+    .transform((val) => (val === "" ? null : val))
     .pipe(z.coerce.date().nullable().optional())
     .optional(),
   // Contact information
   parentEmail: z
     .string()
-    .transform(val => val === "" ? null : val)
+    .transform((val) => (val === "" ? null : val))
     .nullable()
     .optional(),
   // Personal information
   birthDate: z
     .string()
-    .transform(val => val === "" ? null : val)
+    .transform((val) => (val === "" ? null : val))
     .pipe(z.coerce.date().nullable().optional())
     .optional(),
   // Admission date
   admissionDate: z
     .string()
-    .transform(val => val === "" ? null : val)
+    .transform((val) => (val === "" ? null : val))
     .pipe(z.coerce.date().nullable().optional())
     .optional(),
   // Contact phones aggregated column
@@ -373,11 +401,8 @@ export const STUDENT_CSV_HEADERS = [
   "生徒電話",
   "校舎",
   "選択科目",
-  "備考"
+  "備考",
 ] as const;
 
 // Required headers that must be present in the CSV
-export const REQUIRED_STUDENT_CSV_HEADERS = [
-  "username",
-  "name"
-] as const;
+export const REQUIRED_STUDENT_CSV_HEADERS = ["username", "name"] as const;

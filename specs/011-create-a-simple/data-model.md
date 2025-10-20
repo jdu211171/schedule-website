@@ -11,11 +11,11 @@ Represents an individual with access to the system. The password change logic wi
 
 ### Relevant Fields
 
-| Field | Type | Description | Notes |
-|---|---|---|---|
-| `id` | `String` | Unique identifier for the user. | `@id @default(cuid())` |
-| `password` | `String?` | The user's password. Hashed for Admin/Staff, plaintext for others. | Optional field. |
-| `role` | `UserRole` | The user's role in the system. | Enum: `ADMIN`, `STAFF`, `TEACHER`, `STUDENT`. |
+| Field      | Type       | Description                                                        | Notes                                         |
+| ---------- | ---------- | ------------------------------------------------------------------ | --------------------------------------------- |
+| `id`       | `String`   | Unique identifier for the user.                                    | `@id @default(cuid())`                        |
+| `password` | `String?`  | The user's password. Hashed for Admin/Staff, plaintext for others. | Optional field.                               |
+| `role`     | `UserRole` | The user's role in the system.                                     | Enum: `ADMIN`, `STAFF`, `TEACHER`, `STUDENT`. |
 
 ### State Transitions
 

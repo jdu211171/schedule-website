@@ -72,7 +72,16 @@ export const GET = withBranchAccess(
       );
     }
 
-    const { page, limit, name, startDate, endDate, isRecurring, sortBy, sortOrder } = result.data;
+    const {
+      page,
+      limit,
+      name,
+      startDate,
+      endDate,
+      isRecurring,
+      sortBy,
+      sortOrder,
+    } = result.data;
 
     // Build filter conditions
     const where: any = {};
@@ -199,8 +208,12 @@ export const POST = withBranchAccess(
         }
       } else {
         // Staff/Teacher: allow specifying a branchId only if it's assigned to the user
-        const assignedBranchIds = session.user?.branches?.map((b: any) => b.branchId) || [];
-        if (result.data.branchId && assignedBranchIds.includes(result.data.branchId)) {
+        const assignedBranchIds =
+          session.user?.branches?.map((b: any) => b.branchId) || [];
+        if (
+          result.data.branchId &&
+          assignedBranchIds.includes(result.data.branchId)
+        ) {
           vacationBranchId = result.data.branchId;
         }
       }

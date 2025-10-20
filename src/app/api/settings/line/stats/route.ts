@@ -8,61 +8,67 @@ export const GET = withRole(["ADMIN"], async (req: NextRequest) => {
     const branchId = req.headers.get("X-Selected-Branch");
 
     // Build where conditions dynamically
-    const buildStudentWhere = (additional?: Prisma.StudentWhereInput): Prisma.StudentWhereInput => {
+    const buildStudentWhere = (
+      additional?: Prisma.StudentWhereInput
+    ): Prisma.StudentWhereInput => {
       const where: Prisma.StudentWhereInput = { ...additional };
-      
+
       if (branchId) {
         where.user = {
           branches: {
-            some: { branchId }
-          }
+            some: { branchId },
+          },
         };
       }
-      
+
       return where;
     };
 
-    const buildTeacherWhere = (additional?: Prisma.TeacherWhereInput): Prisma.TeacherWhereInput => {
+    const buildTeacherWhere = (
+      additional?: Prisma.TeacherWhereInput
+    ): Prisma.TeacherWhereInput => {
       const where: Prisma.TeacherWhereInput = { ...additional };
-      
+
       if (branchId) {
         where.user = {
           branches: {
-            some: { branchId }
-          }
+            some: { branchId },
+          },
         };
       }
-      
+
       return where;
     };
 
     // Get student statistics
-    const [totalStudents, linkedStudents, notificationsEnabledStudents] = await Promise.all([
-      prisma.student.count({ where: buildStudentWhere() }),
-      prisma.student.count({
-        where: buildStudentWhere({ lineId: { not: null } })
-      }),
-      prisma.student.count({
-        where: buildStudentWhere({ 
-          lineId: { not: null },
-          lineNotificationsEnabled: true 
-        })
-      })
-    ]);
+    const [totalStudents, linkedStudents, notificationsEnabledStudents] =
+      await Promise.all([
+        prisma.student.count({ where: buildStudentWhere() }),
+        prisma.student.count({
+          where: buildStudentWhere({ lineId: { not: null } }),
+        }),
+        prisma.student.count({
+          where: buildStudentWhere({
+            lineId: { not: null },
+            lineNotificationsEnabled: true,
+          }),
+        }),
+      ]);
 
     // Get teacher statistics
-    const [totalTeachers, linkedTeachers, notificationsEnabledTeachers] = await Promise.all([
-      prisma.teacher.count({ where: buildTeacherWhere() }),
-      prisma.teacher.count({
-        where: buildTeacherWhere({ lineId: { not: null } })
-      }),
-      prisma.teacher.count({
-        where: buildTeacherWhere({ 
-          lineId: { not: null },
-          lineNotificationsEnabled: true 
-        })
-      })
-    ]);
+    const [totalTeachers, linkedTeachers, notificationsEnabledTeachers] =
+      await Promise.all([
+        prisma.teacher.count({ where: buildTeacherWhere() }),
+        prisma.teacher.count({
+          where: buildTeacherWhere({ lineId: { not: null } }),
+        }),
+        prisma.teacher.count({
+          where: buildTeacherWhere({
+            lineId: { not: null },
+            lineNotificationsEnabled: true,
+          }),
+        }),
+      ]);
 
     return NextResponse.json({
       data: {
@@ -72,7 +78,7 @@ export const GET = withRole(["ADMIN"], async (req: NextRequest) => {
         totalTeachers,
         linkedTeachers,
         notificationsEnabledTeachers,
-      }
+      },
     });
   } catch (error) {
     console.error("Error fetching LINE statistics:", error);

@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { withBranchAccess } from '@/lib/auth';
-import { 
-  cleanupLogger, 
-  getCleanupMetrics, 
-  getRecentCleanupLogs 
-} from '@/lib/notification/notification-cleanup-logger';
+import { NextRequest, NextResponse } from "next/server";
+import { withBranchAccess } from "@/lib/auth";
+import {
+  cleanupLogger,
+  getCleanupMetrics,
+  getRecentCleanupLogs,
+} from "@/lib/notification/notification-cleanup-logger";
 
 // GET - Get cleanup logs and metrics
 export const GET = withBranchAccess(
@@ -12,14 +12,18 @@ export const GET = withBranchAccess(
   async (request: NextRequest, session: any, branchId: string) => {
     try {
       const { searchParams } = new URL(request.url);
-      
+
       // Query parameters
-      const metricsOnly = searchParams.get('metricsOnly') === 'true';
-      const limit = parseInt(searchParams.get('limit') || '50');
-      const action = searchParams.get('action') as 'CLEANUP' | 'DRY_RUN' | 'STATS' | undefined;
-      const success = searchParams.get('success');
-      const startDate = searchParams.get('startDate');
-      const endDate = searchParams.get('endDate');
+      const metricsOnly = searchParams.get("metricsOnly") === "true";
+      const limit = parseInt(searchParams.get("limit") || "50");
+      const action = searchParams.get("action") as
+        | "CLEANUP"
+        | "DRY_RUN"
+        | "STATS"
+        | undefined;
+      const success = searchParams.get("success");
+      const startDate = searchParams.get("startDate");
+      const endDate = searchParams.get("endDate");
 
       // Get metrics
       const metrics = getCleanupMetrics();
@@ -36,19 +40,19 @@ export const GET = withBranchAccess(
 
       // Build filter criteria
       const filters: any = { limit };
-      
+
       if (action) {
         filters.action = action;
       }
-      
+
       if (success !== null && success !== undefined) {
-        filters.success = success === 'true';
+        filters.success = success === "true";
       }
-      
+
       if (startDate) {
         filters.startDate = new Date(startDate);
       }
-      
+
       if (endDate) {
         filters.endDate = new Date(endDate);
       }
@@ -72,12 +76,12 @@ export const GET = withBranchAccess(
         },
       });
     } catch (error) {
-      console.error('Error fetching cleanup logs:', error);
+      console.error("Error fetching cleanup logs:", error);
       return NextResponse.json(
-        { 
-          success: false, 
-          error: 'クリーンアップログの取得に失敗しました',
-          details: error instanceof Error ? error.message : 'Unknown error'
+        {
+          success: false,
+          error: "クリーンアップログの取得に失敗しました",
+          details: error instanceof Error ? error.message : "Unknown error",
         },
         { status: 500 }
       );
@@ -91,9 +95,9 @@ export const DELETE = withBranchAccess(
   async (request: NextRequest, session: any, branchId: string) => {
     try {
       // Only allow full admins to clear logs
-      if (session.user.role !== 'ADMIN') {
+      if (session.user.role !== "ADMIN") {
         return NextResponse.json(
-          { success: false, error: 'Insufficient permissions' },
+          { success: false, error: "Insufficient permissions" },
           { status: 403 }
         );
       }
@@ -104,9 +108,10 @@ export const DELETE = withBranchAccess(
 
       if (!confirm) {
         return NextResponse.json(
-          { 
-            success: false, 
-            error: 'Confirmation required. Send {"confirm": true} to clear logs.' 
+          {
+            success: false,
+            error:
+              'Confirmation required. Send {"confirm": true} to clear logs.',
           },
           { status: 400 }
         );
@@ -124,19 +129,19 @@ export const DELETE = withBranchAccess(
       return NextResponse.json({
         success: true,
         data: {
-          message: 'Cleanup logs cleared successfully',
+          message: "Cleanup logs cleared successfully",
           metricsBeforeClear,
           clearedBy: session.user.email,
           timestamp: new Date().toISOString(),
         },
       });
     } catch (error) {
-      console.error('Error clearing cleanup logs:', error);
+      console.error("Error clearing cleanup logs:", error);
       return NextResponse.json(
-        { 
-          success: false, 
-          error: 'ログのクリアに失敗しました',
-          details: error instanceof Error ? error.message : 'Unknown error'
+        {
+          success: false,
+          error: "ログのクリアに失敗しました",
+          details: error instanceof Error ? error.message : "Unknown error",
         },
         { status: 500 }
       );

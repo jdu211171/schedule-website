@@ -10,15 +10,15 @@ paths:
     get:
       summary: Get hidden Class Type IDs for the current user
       responses:
-        '200':
+        "200":
           description: Successful response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ClassTypeVisibilityPreference'
-        '401':
+                $ref: "#/components/schemas/ClassTypeVisibilityPreference"
+        "401":
           description: Unauthorized
-        '500':
+        "500":
           description: Server error
     put:
       summary: Replace hidden Class Type IDs for the current user
@@ -27,19 +27,19 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ClassTypeVisibilityPreference'
+              $ref: "#/components/schemas/ClassTypeVisibilityPreference"
       responses:
-        '200':
+        "200":
           description: Updated preference
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ClassTypeVisibilityPreference'
-        '400':
+                $ref: "#/components/schemas/ClassTypeVisibilityPreference"
+        "400":
           description: Invalid payload
-        '401':
+        "401":
           description: Unauthorized
-        '500':
+        "500":
           description: Server error
 components:
   schemas:

@@ -212,16 +212,24 @@ export function EnhancedAvailabilityRegularSelector({
   }
 
   function setWeekdaysFullDay() {
-    const weekdays = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"] as const;
+    const weekdays = [
+      "MONDAY",
+      "TUESDAY",
+      "WEDNESDAY",
+      "THURSDAY",
+      "FRIDAY",
+      "SATURDAY",
+      "SUNDAY",
+    ] as const;
     const updatedAvailability = [...availability];
 
     // Remove existing weekday entries
     const filteredAvailability = updatedAvailability.filter(
-      item => !weekdays.includes(item.dayOfWeek as any)
+      (item) => !weekdays.includes(item.dayOfWeek as any)
     );
 
     // Add full day availability for all weekdays
-    weekdays.forEach(day => {
+    weekdays.forEach((day) => {
       filteredAvailability.push({
         dayOfWeek: day,
         timeSlots: [],

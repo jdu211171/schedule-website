@@ -10,7 +10,7 @@ export const POST = withBranchAccess(
   async (request: NextRequest) => {
     try {
       const body = await request.json();
-      
+
       const {
         page = 1,
         limit = 25,
@@ -97,10 +97,7 @@ export const POST = withBranchAccess(
         where,
         skip,
         take: limit,
-        orderBy: [
-          { date: "desc" },
-          { startTime: "desc" }
-        ],
+        orderBy: [{ date: "desc" }, { startTime: "desc" }],
       });
 
       // Format response
@@ -123,8 +120,8 @@ export const POST = withBranchAccess(
         archivedAt: archive.archivedAt,
         // Add derived fields
         isGroupClass: archive.enrolledStudents !== null,
-        enrolledStudentCount: archive.enrolledStudents 
-          ? (archive.enrolledStudents as any[]).length 
+        enrolledStudentCount: archive.enrolledStudents
+          ? (archive.enrolledStudents as any[]).length
           : 0,
       }));
 

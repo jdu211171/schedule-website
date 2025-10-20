@@ -63,6 +63,8 @@ export const lineChannelSetPrimarySchema = z.object({
 export type LineChannelFilter = z.infer<typeof lineChannelFilterSchema>;
 export type LineChannelCreate = z.infer<typeof lineChannelCreateSchema>;
 export type LineChannelUpdate = z.infer<typeof lineChannelUpdateSchema>;
-export type LineChannelAssignBranches = z.infer<typeof lineChannelAssignBranchesSchema>;
+export type LineChannelAssignBranches = z.infer<
+  typeof lineChannelAssignBranchesSchema
+>;
 export type LineChannelTest = z.infer<typeof lineChannelTestSchema>;
 export type LineChannelSetPrimary = z.infer<typeof lineChannelSetPrimarySchema>;

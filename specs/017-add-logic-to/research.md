@@ -7,6 +7,7 @@
 ## Decisions and Rationale
 
 ### 1) Preference persistence location
+
 - Decision: Persist per-user Class Type visibility preferences in the application database.
 - Rationale: The feature requires cross-device persistence (spec FR-007). Server-side storage ensures preferences follow the user regardless of device/browser and survive cache clears.
 - Alternatives considered:
@@ -14,6 +15,7 @@
   - Cookies: Same cross-device limitation and size constraints; privacy concerns.
 
 ### 2) Data model structure
+
 - Decision: Single table to store per-user hidden Class Type IDs as an array field with metadata.
 - Suggested schema (conceptual):
   - user_class_type_visibility_preferences
@@ -26,6 +28,7 @@
   - JSON object keyed by class type: Similar to array; arrays keep ordering simple and storage smaller.
 
 ### 3) API contract
+
 - Decision: Provide `GET /api/preferences/class-types` and `PUT /api/preferences/class-types` for reading/updating the hidden IDs.
 - Rationale: Minimal, role-agnostic interface; supports the client use cases (initial load, toggle, reset).
 - Alternatives considered:
@@ -33,18 +36,21 @@
   - Embed into unrelated endpoints: Couples concerns and complicates caching/testing.
 
 ### 4) Hidden types behavior
+
 - Decision: Hidden types are removed from Class Type filter option lists and excluded from Day Calendar rendering; a temporary “Show all” override exposes all types without altering saved preferences.
 - Rationale: Matches the user need to keep filters manageable and views uncluttered while enabling one-click full visibility for audits.
 - Alternatives considered:
   - Dim/mark hidden types but leave selectable: Adds noise back into filters; contradicts “keep manageable”.
 
 ### 5) New/removed/renamed Class Types
+
 - Decision: New Class Types default to visible. Removed/renamed types are ignored and cleaned from saved preferences upon next update/save.
 - Rationale: Prevents missed new offerings and eliminates stale IDs.
 - Alternatives considered:
   - Default new types to hidden: Users could miss them.
 
 ### 6) Identity and access
+
 - Decision: Use the existing authenticated user context to associate preferences by user ID.
 - Rationale: Keeps behavior consistent with other per-user settings.
 - Alternatives considered:
@@ -55,6 +61,7 @@
 All clarifications are resolved. No [NEEDS CLARIFICATION] remain.
 
 ## Implementation Notes (Non-binding)
+
 - UI entry points: Day Calendar and Class Type filter areas provide access to manage visibility, “Show all” toggle, and “Reset”.
 - Performance: Client applies preference filtering in memory for current view data; server limits only when explicitly requested.
 - Accessibility: Ensure controls are keyboard reachable and screen reader friendly.

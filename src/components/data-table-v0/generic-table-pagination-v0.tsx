@@ -1,21 +1,35 @@
-"use client"
+"use client";
 
-import type { Table as ReactTable } from "@tanstack/react-table"
-import { ChevronLeftIcon, ChevronRightIcon, ChevronsLeftIcon, ChevronsRightIcon } from "lucide-react"
+import type { Table as ReactTable } from "@tanstack/react-table";
+import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  ChevronsLeftIcon,
+  ChevronsRightIcon,
+} from "lucide-react";
 
-import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface GenericTablePaginationProps<TData> {
-  table: ReactTable<TData>
+  table: ReactTable<TData>;
 }
 
-export function GenericTablePagination<TData>({ table }: GenericTablePaginationProps<TData>) {
+export function GenericTablePagination<TData>({
+  table,
+}: GenericTablePaginationProps<TData>) {
   return (
     <div className="flex items-center justify-between px-4 py-2">
       <div className="hidden flex-1 text-sm text-muted-foreground lg:flex">
-        {table.getFilteredSelectedRowModel().rows.length} 件 / {table.getFilteredRowModel().rows.length} 件中を選択
+        {table.getFilteredSelectedRowModel().rows.length} 件 /{" "}
+        {table.getFilteredRowModel().rows.length} 件中を選択
       </div>
       <div className="flex w-full items-center gap-8 lg:w-fit">
         <div className="hidden items-center gap-2 lg:flex">
@@ -25,7 +39,7 @@ export function GenericTablePagination<TData>({ table }: GenericTablePaginationP
           <Select
             value={`${table.getState().pagination.pageSize}`}
             onValueChange={(value) => {
-              table.setPageSize(Number(value))
+              table.setPageSize(Number(value));
             }}
           >
             <SelectTrigger className="w-20" id="rows-per-page">
@@ -41,7 +55,8 @@ export function GenericTablePagination<TData>({ table }: GenericTablePaginationP
           </Select>
         </div>
         <div className="hidden text-sm font-medium lg:flex">
-          ページ {table.getState().pagination.pageIndex + 1} / {table.getPageCount()}
+          ページ {table.getState().pagination.pageIndex + 1} /{" "}
+          {table.getPageCount()}
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -87,5 +102,5 @@ export function GenericTablePagination<TData>({ table }: GenericTablePaginationP
         </div>
       </div>
     </div>
-  )
+  );
 }

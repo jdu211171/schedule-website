@@ -26,7 +26,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { SearchableMultiSelect } from "@/components/admin-schedule/searchable-multi-select";
-import { useCreateAdminUser, useUpdateAdminUser } from "@/hooks/useAdminUserMutation";
+import {
+  useCreateAdminUser,
+  useUpdateAdminUser,
+} from "@/hooks/useAdminUserMutation";
 import {
   adminUserFormSchema,
   adminUserCreateSchema,
@@ -50,7 +53,8 @@ export function AdminUserFormDialog({
   const createAdminUserMutation = useCreateAdminUser();
   const updateAdminUserMutation = useUpdateAdminUser();
 
-  const { data: branches = [], isLoading: isBranchesLoading } = useAllBranchesOrdered();
+  const { data: branches = [], isLoading: isBranchesLoading } =
+    useAllBranchesOrdered();
 
   const isEditing = !!adminUser;
   const isSubmitting =
@@ -71,7 +75,8 @@ export function AdminUserFormDialog({
 
   useEffect(() => {
     if (adminUser && isEditing) {
-      const branchIds = adminUser.branches?.map((branch) => branch.branchId) || [];
+      const branchIds =
+        adminUser.branches?.map((branch) => branch.branchId) || [];
       form.reset({
         id: adminUser.id,
         name: adminUser.name || "",
@@ -313,7 +318,11 @@ export function AdminUserFormDialog({
                             emptyMessage="該当する校舎が見つかりません"
                             loading={isBranchesLoading}
                             disabled={isBranchesLoading}
-                            renderSelectedBadge={(item, isDefault, onRemove) => (
+                            renderSelectedBadge={(
+                              item,
+                              isDefault,
+                              onRemove
+                            ) => (
                               <Badge
                                 key={item.value}
                                 variant={isDefault ? "default" : "secondary"}

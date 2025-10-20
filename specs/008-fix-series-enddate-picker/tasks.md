@@ -6,4 +6,3 @@
 - [x] Guard: endDate must be >= startDate on apply
 - [x] Typecheck the project (`bun run check-errors`)
 - [ ] Manual UI verification: open picker, select date, cancel/apply, clear
-

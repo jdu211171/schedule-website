@@ -44,11 +44,11 @@ export function ChannelTestDialog({
       const result = await testMutation.mutateAsync({
         channelId: channel.id,
       });
-      
+
       setTestResult({
         success: result.success,
-        message: result.success 
-          ? "チャンネルは正常に動作しています" 
+        message: result.success
+          ? "チャンネルは正常に動作しています"
           : "チャンネルのテストに失敗しました",
         details: result.botInfo,
       });
@@ -127,7 +127,9 @@ export function ChannelTestDialog({
                 {testResult.message}
                 {testResult.details && (
                   <details className="mt-2">
-                    <summary className="cursor-pointer text-sm">詳細情報</summary>
+                    <summary className="cursor-pointer text-sm">
+                      詳細情報
+                    </summary>
                     <pre className="mt-2 text-xs bg-muted p-2 rounded overflow-auto">
                       {JSON.stringify(testResult.details, null, 2)}
                     </pre>
@@ -139,17 +141,10 @@ export function ChannelTestDialog({
         </div>
 
         <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleClose}
-          >
+          <Button type="button" variant="outline" onClick={handleClose}>
             閉じる
           </Button>
-          <Button
-            onClick={handleTest}
-            disabled={testMutation.isPending}
-          >
+          <Button onClick={handleTest} disabled={testMutation.isPending}>
             {testMutation.isPending ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />

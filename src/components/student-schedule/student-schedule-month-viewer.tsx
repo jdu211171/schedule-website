@@ -184,8 +184,12 @@ export const StudentScheduleMonthViewer: React.FC<MonthViewerProps> = ({
           <span>通常授業</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className={`w-2 h-2 rounded-full ${SPECIAL_CLASS_COLOR_CLASSES.legendFill}`}></div>
-          <span className={SPECIAL_CLASS_COLOR_CLASSES.legendText}>特別授業</span>
+          <div
+            className={`w-2 h-2 rounded-full ${SPECIAL_CLASS_COLOR_CLASSES.legendFill}`}
+          ></div>
+          <span className={SPECIAL_CLASS_COLOR_CLASSES.legendText}>
+            特別授業
+          </span>
         </div>
       </div>
     </div>

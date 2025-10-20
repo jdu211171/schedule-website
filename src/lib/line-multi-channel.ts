@@ -1,9 +1,9 @@
-import { createHmac } from 'crypto';
-import axios from 'axios';
-import { prisma } from '@/lib/prisma';
-import { decrypt, isEncrypted } from '@/lib/encryption';
+import { createHmac } from "crypto";
+import axios from "axios";
+import { prisma } from "@/lib/prisma";
+import { decrypt, isEncrypted } from "@/lib/encryption";
 
-const LINE_API_BASE = 'https://api.line.me/v2/bot';
+const LINE_API_BASE = "https://api.line.me/v2/bot";
 
 export interface LineChannelCredentials {
   channelAccessToken: string;
@@ -11,7 +11,7 @@ export interface LineChannelCredentials {
 }
 
 export interface LineMessage {
-  type: 'text';
+  type: "text";
   text: string;
 }
 
@@ -43,7 +43,7 @@ export interface LineWebhookBody {
  */
 export async function getChannelCredentials(
   branchId?: string,
-  recipientType?: 'TEACHER' | 'STUDENT'
+  recipientType?: "TEACHER" | "STUDENT"
 ): Promise<LineChannelCredentials | null> {
   try {
     // If branchId is provided, try to get branch-specific channel for the recipient type
@@ -53,12 +53,12 @@ export async function getChannelCredentials(
           branchId,
           channelType: recipientType,
           lineChannel: {
-            isActive: true
-          }
+            isActive: true,
+          },
         },
         include: {
-          lineChannel: true
-        }
+          lineChannel: true,
+        },
       });
 
       if (branchChannel?.lineChannel) {
@@ -71,46 +71,57 @@ export async function getChannelCredentials(
             accessToken = decrypt(branchChannel.lineChannel.channelAccessToken);
           } else {
             accessToken = branchChannel.lineChannel.channelAccessToken;
-            console.warn(`Branch channel ${branchChannel.lineChannel.channelId} has unencrypted access token`);
+            console.warn(
+              `Branch channel ${branchChannel.lineChannel.channelId} has unencrypted access token`
+            );
           }
 
           if (isEncrypted(branchChannel.lineChannel.channelSecret)) {
             secret = decrypt(branchChannel.lineChannel.channelSecret);
           } else {
             secret = branchChannel.lineChannel.channelSecret;
-            console.warn(`Branch channel ${branchChannel.lineChannel.channelId} has unencrypted secret`);
+            console.warn(
+              `Branch channel ${branchChannel.lineChannel.channelId} has unencrypted secret`
+            );
           }
         } catch (error) {
-          console.error('Failed to decrypt branch channel credentials:', error);
+          console.error("Failed to decrypt branch channel credentials:", error);
           return null;
         }
 
         return {
           channelAccessToken: accessToken,
-          channelSecret: secret
+          channelSecret: secret,
         };
       }
 
       // If specific channel type not found, try to get the other type as fallback
-      const fallbackChannelType = recipientType === 'TEACHER' ? 'STUDENT' : 'TEACHER';
+      const fallbackChannelType =
+        recipientType === "TEACHER" ? "STUDENT" : "TEACHER";
       const fallbackBranchChannel = await prisma.branchLineChannel.findFirst({
         where: {
           branchId,
           channelType: fallbackChannelType,
           lineChannel: {
-            isActive: true
-          }
+            isActive: true,
+          },
         },
         include: {
-          lineChannel: true
-        }
+          lineChannel: true,
+        },
       });
 
       if (fallbackBranchChannel?.lineChannel) {
-        console.warn(`⚠️ Using ${fallbackChannelType} channel for ${recipientType} notification in branch ${branchId}`);
+        console.warn(
+          `⚠️ Using ${fallbackChannelType} channel for ${recipientType} notification in branch ${branchId}`
+        );
         return {
-          channelAccessToken: decrypt(fallbackBranchChannel.lineChannel.channelAccessToken),
-          channelSecret: decrypt(fallbackBranchChannel.lineChannel.channelSecret)
+          channelAccessToken: decrypt(
+            fallbackBranchChannel.lineChannel.channelAccessToken
+          ),
+          channelSecret: decrypt(
+            fallbackBranchChannel.lineChannel.channelSecret
+          ),
         };
       }
     } else if (branchId) {
@@ -119,12 +130,12 @@ export async function getChannelCredentials(
         where: {
           branchId,
           lineChannel: {
-            isActive: true
-          }
+            isActive: true,
+          },
         },
         include: {
-          lineChannel: true
-        }
+          lineChannel: true,
+        },
       });
 
       if (branchChannel?.lineChannel) {
@@ -137,23 +148,27 @@ export async function getChannelCredentials(
             accessToken = decrypt(branchChannel.lineChannel.channelAccessToken);
           } else {
             accessToken = branchChannel.lineChannel.channelAccessToken;
-            console.warn(`Branch channel ${branchChannel.lineChannel.channelId} has unencrypted access token`);
+            console.warn(
+              `Branch channel ${branchChannel.lineChannel.channelId} has unencrypted access token`
+            );
           }
 
           if (isEncrypted(branchChannel.lineChannel.channelSecret)) {
             secret = decrypt(branchChannel.lineChannel.channelSecret);
           } else {
             secret = branchChannel.lineChannel.channelSecret;
-            console.warn(`Branch channel ${branchChannel.lineChannel.channelId} has unencrypted secret`);
+            console.warn(
+              `Branch channel ${branchChannel.lineChannel.channelId} has unencrypted secret`
+            );
           }
         } catch (error) {
-          console.error('Failed to decrypt branch channel credentials:', error);
+          console.error("Failed to decrypt branch channel credentials:", error);
           return null;
         }
 
         return {
           channelAccessToken: accessToken,
-          channelSecret: secret
+          channelSecret: secret,
         };
       }
     }
@@ -162,8 +177,8 @@ export async function getChannelCredentials(
     const defaultChannel = await prisma.lineChannel.findFirst({
       where: {
         isDefault: true,
-        isActive: true
-      }
+        isActive: true,
+      },
     });
 
     if (defaultChannel) {
@@ -176,32 +191,36 @@ export async function getChannelCredentials(
           accessToken = decrypt(defaultChannel.channelAccessToken);
         } else {
           accessToken = defaultChannel.channelAccessToken;
-          console.warn(`Default channel ${defaultChannel.channelId} has unencrypted access token`);
+          console.warn(
+            `Default channel ${defaultChannel.channelId} has unencrypted access token`
+          );
         }
 
         if (isEncrypted(defaultChannel.channelSecret)) {
           secret = decrypt(defaultChannel.channelSecret);
         } else {
           secret = defaultChannel.channelSecret;
-          console.warn(`Default channel ${defaultChannel.channelId} has unencrypted secret`);
+          console.warn(
+            `Default channel ${defaultChannel.channelId} has unencrypted secret`
+          );
         }
       } catch (error) {
-        console.error('Failed to decrypt default channel credentials:', error);
+        console.error("Failed to decrypt default channel credentials:", error);
         return null;
       }
 
       return {
         channelAccessToken: accessToken,
-        channelSecret: secret
+        channelSecret: secret,
       };
     }
 
     // Log warning with more context
-    console.warn('⚠️ No LINE channel credentials found in database', {
+    console.warn("⚠️ No LINE channel credentials found in database", {
       branchId,
       recipientType,
       hasDefaultChannel: false,
-      message: 'Please configure LINE channels in the admin panel'
+      message: "Please configure LINE channels in the admin panel",
     });
 
     // Check if environment variables exist but don't use them
@@ -209,12 +228,14 @@ export async function getChannelCredentials(
     const hasEnvSecret = !!process.env.LINE_CHANNEL_SECRET;
 
     if (hasEnvToken || hasEnvSecret) {
-      console.error('❌ Environment variables detected but not used. Remove LINE_CHANNEL_ACCESS_TOKEN and LINE_CHANNEL_SECRET from environment.');
+      console.error(
+        "❌ Environment variables detected but not used. Remove LINE_CHANNEL_ACCESS_TOKEN and LINE_CHANNEL_SECRET from environment."
+      );
     }
 
     return null;
   } catch (error) {
-    console.error('Error getting channel credentials:', error);
+    console.error("Error getting channel credentials:", error);
     return null;
   }
 }
@@ -234,14 +255,18 @@ export async function getChannelCredentials(
  * @param destination - The destination field from LINE webhook body (channel's LINE user ID)
  * @returns Channel credentials if found, null otherwise
  */
-export async function getChannelByDestination(destination: string): Promise<LineChannelCredentials | null> {
+export async function getChannelByDestination(
+  destination: string
+): Promise<LineChannelCredentials | null> {
   try {
     // TODO: Implement proper destination-based channel lookup
     // This would require database schema changes to store LINE user IDs
 
     // For now, validate that destination is provided
     if (!destination) {
-      console.warn('getChannelByDestination: destination parameter is required');
+      console.warn(
+        "getChannelByDestination: destination parameter is required"
+      );
       return null;
     }
 
@@ -252,14 +277,16 @@ export async function getChannelByDestination(destination: string): Promise<Line
     const credentials = await getChannelCredentials();
 
     if (credentials) {
-      console.log('getChannelByDestination: Using default channel credentials');
+      console.log("getChannelByDestination: Using default channel credentials");
     } else {
-      console.warn('getChannelByDestination: No default channel credentials available');
+      console.warn(
+        "getChannelByDestination: No default channel credentials available"
+      );
     }
 
     return credentials;
   } catch (error) {
-    console.error('Error getting channel by destination:', error);
+    console.error("Error getting channel by destination:", error);
     return null;
   }
 }
@@ -267,10 +294,14 @@ export async function getChannelByDestination(destination: string): Promise<Line
 /**
  * Verify LINE webhook signature with specific channel secret
  */
-export function verifySignature(body: string, signature: string, channelSecret: string): boolean {
-  const hash = createHmac('sha256', channelSecret)
+export function verifySignature(
+  body: string,
+  signature: string,
+  channelSecret: string
+): boolean {
+  const hash = createHmac("sha256", channelSecret)
     .update(body)
-    .digest('base64');
+    .digest("base64");
   return hash === signature;
 }
 
@@ -287,19 +318,19 @@ export async function sendLineReply(
       `${LINE_API_BASE}/message/reply`,
       {
         replyToken,
-        messages: [{ type: 'text', text: message }]
+        messages: [{ type: "text", text: message }],
       },
       {
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${credentials.channelAccessToken}`
-        }
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${credentials.channelAccessToken}`,
+        },
       }
     );
   } catch (error) {
-    console.error('Error sending LINE reply:', error);
+    console.error("Error sending LINE reply:", error);
     if (axios.isAxiosError(error) && error.response) {
-      console.error('LINE API Response:', error.response.data);
+      console.error("LINE API Response:", error.response.data);
     }
     throw error;
   }
@@ -318,19 +349,19 @@ export async function sendLinePush(
       `${LINE_API_BASE}/message/push`,
       {
         to,
-        messages: [{ type: 'text', text: message }]
+        messages: [{ type: "text", text: message }],
       },
       {
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${credentials.channelAccessToken}`
-        }
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${credentials.channelAccessToken}`,
+        },
       }
     );
   } catch (error) {
-    console.error('Error sending LINE push message:', error);
+    console.error("Error sending LINE push message:", error);
     if (axios.isAxiosError(error) && error.response) {
-      console.error('LINE API Response:', error.response.data);
+      console.error("LINE API Response:", error.response.data);
     }
     throw error;
   }
@@ -343,7 +374,9 @@ export async function sendLinePush(
  * @returns True if the ID is valid, false otherwise.
  */
 export function isValidLineId(lineId: string): boolean {
-  return typeof lineId === 'string' && lineId.startsWith('U') && lineId.length === 33;
+  return (
+    typeof lineId === "string" && lineId.startsWith("U") && lineId.length === 33
+  );
 }
 
 /**
@@ -357,7 +390,7 @@ export async function sendLineMulticast(
   const validRecipients = to.filter(isValidLineId);
 
   if (validRecipients.length === 0) {
-    console.warn('No valid LINE IDs to send multicast message.');
+    console.warn("No valid LINE IDs to send multicast message.");
     return;
   }
 
@@ -366,19 +399,19 @@ export async function sendLineMulticast(
       `${LINE_API_BASE}/message/multicast`,
       {
         to: validRecipients,
-        messages: [{ type: 'text', text: message }]
+        messages: [{ type: "text", text: message }],
       },
       {
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${credentials.channelAccessToken}`
-        }
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${credentials.channelAccessToken}`,
+        },
       }
     );
   } catch (error) {
-    console.error('Error sending LINE multicast:', error);
+    console.error("Error sending LINE multicast:", error);
     if (axios.isAxiosError(error) && error.response) {
-      console.error('LINE API Response:', error.response.data);
+      console.error("LINE API Response:", error.response.data);
     }
     throw error;
   }
@@ -387,36 +420,35 @@ export async function sendLineMulticast(
 /**
  * Test LINE channel credentials by getting bot info
  */
-export async function testChannelCredentials(credentials: LineChannelCredentials): Promise<{
+export async function testChannelCredentials(
+  credentials: LineChannelCredentials
+): Promise<{
   success: boolean;
   botInfo?: any;
   error?: string;
 }> {
   try {
-    const response = await axios.get(
-      `${LINE_API_BASE}/info`,
-      {
-        headers: {
-          'Authorization': `Bearer ${credentials.channelAccessToken}`
-        }
-      }
-    );
+    const response = await axios.get(`${LINE_API_BASE}/info`, {
+      headers: {
+        Authorization: `Bearer ${credentials.channelAccessToken}`,
+      },
+    });
 
     return {
       success: true,
-      botInfo: response.data
+      botInfo: response.data,
     };
   } catch (error) {
-    console.error('Error testing channel credentials:', error);
+    console.error("Error testing channel credentials:", error);
     if (axios.isAxiosError(error) && error.response) {
       return {
         success: false,
-        error: error.response.data?.message || 'Invalid credentials'
+        error: error.response.data?.message || "Invalid credentials",
       };
     }
     return {
       success: false,
-      error: 'Failed to test credentials'
+      error: "Failed to test credentials",
     };
   }
 }

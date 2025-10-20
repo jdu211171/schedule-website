@@ -8,7 +8,10 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import { SortableDataTable } from "@/components/ui/sortable-data-table";
-import { useDeleteAdminUser, useUpdateAdminUserOrder } from "@/hooks/useAdminUserMutation";
+import {
+  useDeleteAdminUser,
+  useUpdateAdminUserOrder,
+} from "@/hooks/useAdminUserMutation";
 import { useGenericExport } from "@/hooks/useGenericExport";
 import {
   AlertDialog,
@@ -43,7 +46,7 @@ export function AdminUserTable() {
   const { data: session } = useSession();
   const currentUserId = session?.user?.id;
   const currentUserOrder = React.useMemo(() => {
-    const currentUser = adminUsers?.data.find(u => u.id === currentUserId);
+    const currentUser = adminUsers?.data.find((u) => u.id === currentUserId);
     return currentUser?.order ?? Number.MAX_SAFE_INTEGER;
   }, [adminUsers?.data, currentUserId]);
 
@@ -52,10 +55,17 @@ export function AdminUserTable() {
   const totalCount = adminUsers?.pagination.total || 0;
   const deleteAdminUserMutation = useDeleteAdminUser();
   const updateOrderMutation = useUpdateAdminUserOrder();
-  const { exportToCSV, isExporting } = useGenericExport("/api/admins/export", "admins");
+  const { exportToCSV, isExporting } = useGenericExport(
+    "/api/admins/export",
+    "admins"
+  );
 
-  const [adminUserToEdit, setAdminUserToEdit] = useState<AdminUser | null>(null);
-  const [adminUserToDelete, setAdminUserToDelete] = useState<AdminUser | null>(null);
+  const [adminUserToEdit, setAdminUserToEdit] = useState<AdminUser | null>(
+    null
+  );
+  const [adminUserToDelete, setAdminUserToDelete] = useState<AdminUser | null>(
+    null
+  );
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
 
@@ -109,14 +119,14 @@ export function AdminUserTable() {
       header: "作成日",
       cell: ({ row }) => {
         const date = new Date(row.original.createdAt);
-        return date.toLocaleDateString('ja-JP');
+        return date.toLocaleDateString("ja-JP");
       },
     },
   ];
 
   const handleReorder = (items: AdminUser[]) => {
     // Filter to only include admins that the current user can reorder
-    const currentUser = adminUsers?.data.find(u => u.id === currentUserId);
+    const currentUser = adminUsers?.data.find((u) => u.id === currentUserId);
 
     if (!currentUser) {
       toast.error("現在のユーザーが見つかりません");
@@ -126,20 +136,26 @@ export function AdminUserTable() {
     console.log("Reorder attempt:", {
       currentUserId,
       currentUserOrder,
-      itemsToReorder: items.map(item => ({ id: item.id, order: item.order, name: item.name }))
+      itemsToReorder: items.map((item) => ({
+        id: item.id,
+        order: item.order,
+        name: item.name,
+      })),
     });
 
     // Separate admins into those the current user can and cannot reorder
     const adminsThatCanBeReordered: AdminUser[] = [];
     const adminsThatCannotBeReordered: AdminUser[] = [];
 
-    items.forEach(item => {
+    items.forEach((item) => {
       if (item.id === currentUserId) {
         // Current user can always include themselves
         adminsThatCanBeReordered.push(item);
       } else {
         const itemOrder = item.order ?? Number.MAX_SAFE_INTEGER;
-        console.log(`Checking item ${item.name} (order: ${itemOrder}) vs current user order: ${currentUserOrder}`);
+        console.log(
+          `Checking item ${item.name} (order: ${itemOrder}) vs current user order: ${currentUserOrder}`
+        );
 
         if (itemOrder > currentUserOrder) {
           // This admin is below current user, can be reordered
@@ -151,12 +167,28 @@ export function AdminUserTable() {
       }
     });
 
-    console.log("Admins that can be reordered:", adminsThatCanBeReordered.map(item => ({ id: item.id, order: item.order, name: item.name })));
-    console.log("Admins that cannot be reordered:", adminsThatCannotBeReordered.map(item => ({ id: item.id, order: item.order, name: item.name })));
+    console.log(
+      "Admins that can be reordered:",
+      adminsThatCanBeReordered.map((item) => ({
+        id: item.id,
+        order: item.order,
+        name: item.name,
+      }))
+    );
+    console.log(
+      "Admins that cannot be reordered:",
+      adminsThatCannotBeReordered.map((item) => ({
+        id: item.id,
+        order: item.order,
+        name: item.name,
+      }))
+    );
 
     // If there are any admins that cannot be reordered, show error
     if (adminsThatCannotBeReordered.length > 0) {
-      toast.error("同じまたは上位の権限を持つ管理者の順序を変更することはできません");
+      toast.error(
+        "同じまたは上位の権限を持つ管理者の順序を変更することはできません"
+      );
       return;
     }
 
@@ -204,8 +236,8 @@ export function AdminUserTable() {
   const handleExport = () => {
     // Get visible columns (all columns except actions)
     const visibleColumns = columns
-      .map(col => (col as any).accessorKey)
-      .filter(key => key) as string[];
+      .map((col) => (col as any).accessorKey)
+      .filter((key) => key) as string[];
     exportToCSV({ columns: visibleColumns });
   };
 
@@ -261,8 +293,8 @@ export function AdminUserTable() {
                   isSelf
                     ? "自分自身を編集することはできません"
                     : !canEdit
-                    ? "同じまたは上位の権限を持つ管理者を編集することはできません"
-                    : undefined
+                      ? "同じまたは上位の権限を持つ管理者を編集することはできません"
+                      : undefined
                 }
               >
                 <Pencil className={`h-4 w-4 ${!canEdit ? "opacity-50" : ""}`} />
@@ -276,8 +308,8 @@ export function AdminUserTable() {
                   isSelf
                     ? "自分自身を削除することはできません"
                     : !canEdit
-                    ? "同じまたは上位の権限を持つ管理者を削除することはできません"
-                    : undefined
+                      ? "同じまたは上位の権限を持つ管理者を削除することはできません"
+                      : undefined
                 }
               >
                 <Trash2

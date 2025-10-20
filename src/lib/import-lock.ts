@@ -1,4 +1,6 @@
-const globalForLocks = global as unknown as { __importLocks?: Map<string, number> };
+const globalForLocks = global as unknown as {
+  __importLocks?: Map<string, number>;
+};
 
 function getLockMap() {
   if (!globalForLocks.__importLocks) {
@@ -18,4 +20,3 @@ export function releaseUserImportLock(userId: string) {
   const locks = getLockMap();
   locks.delete(userId);
 }
-

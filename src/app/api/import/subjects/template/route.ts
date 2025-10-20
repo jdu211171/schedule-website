@@ -8,16 +8,16 @@ export async function GET() {
     const sampleData = [
       {
         name: "数学",
-        notes: "基礎から応用まで"
+        notes: "基礎から応用まで",
       },
       {
         name: "英語",
-        notes: "文法・読解・リスニング"
+        notes: "文法・読解・リスニング",
       },
       {
         name: "物理",
-        notes: ""
-      }
+        notes: "",
+      },
     ];
 
     // Generate CSV with headers

@@ -7,4 +7,3 @@ export interface ClassTypeDTO {
 }
 
 export type ClassTypeOption = { value: string; label: string };
-

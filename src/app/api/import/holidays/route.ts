@@ -7,7 +7,7 @@ import {
   REQUIRED_HOLIDAY_CSV_HEADERS,
   type HolidayImportData,
   type ImportResult,
-  formatValidationErrors
+  formatValidationErrors,
 } from "@/schemas/import";
 import { z } from "zod";
 import { handleImportError } from "@/lib/import-error-handler";
@@ -26,11 +26,16 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
     }
 
     // Enforce server-side max size (hard cap)
-    const maxBytes = Number.parseInt(process.env.IMPORT_MAX_BYTES || "26214400", 10); // 25MB
+    const maxBytes = Number.parseInt(
+      process.env.IMPORT_MAX_BYTES || "26214400",
+      10
+    ); // 25MB
     const fileSize = (file as Blob).size ?? 0;
     if (fileSize > maxBytes) {
       return NextResponse.json(
-        { error: `ファイルサイズが大きすぎます。最大 ${Math.floor(maxBytes / 1024 / 1024)}MB まで対応しています` },
+        {
+          error: `ファイルサイズが大きすぎます。最大 ${Math.floor(maxBytes / 1024 / 1024)}MB まで対応しています`,
+        },
         { status: 413 }
       );
     }
@@ -38,13 +43,14 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
     const buffer = Buffer.from(await (file as Blob).arrayBuffer());
 
     // Parse CSV file
-    const parseResult = await CSVParser.parseBuffer<Record<string, string>>(buffer);
+    const parseResult =
+      await CSVParser.parseBuffer<Record<string, string>>(buffer);
 
     if (parseResult.errors.length > 0) {
       return NextResponse.json(
         {
           error: "CSVファイルの解析に失敗しました",
-          details: parseResult.errors
+          details: parseResult.errors,
         },
         { status: 400 }
       );
@@ -60,17 +66,19 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
 
     // Remap localized headers (export) to schema keys for import
     const headerMap: Record<string, string> = {
-      "ID": "id",
-      "休日名": "name",
-      "開始日": "startDate",
-      "終了日": "endDate",
-      "繰り返し": "isRecurring",
-      "備考": "description",
+      ID: "id",
+      休日名: "name",
+      開始日: "startDate",
+      終了日: "endDate",
+      繰り返し: "isRecurring",
+      備考: "description",
     };
 
     let actualHeaders = Object.keys(parseResult.data[0]);
     const requiredHeaders = [...REQUIRED_HOLIDAY_CSV_HEADERS];
-    let missingHeaders = requiredHeaders.filter((h) => !actualHeaders.includes(h));
+    let missingHeaders = requiredHeaders.filter(
+      (h) => !actualHeaders.includes(h)
+    );
 
     if (missingHeaders.length > 0) {
       const canRemap = actualHeaders.some((h) => headerMap[h]);
@@ -83,7 +91,9 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
           return out;
         }) as any;
         actualHeaders = Object.keys(parseResult.data[0]);
-        missingHeaders = requiredHeaders.filter((h) => !actualHeaders.includes(h));
+        missingHeaders = requiredHeaders.filter(
+          (h) => !actualHeaders.includes(h)
+        );
       }
     }
 
@@ -99,7 +109,7 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
     const result: ImportResult = {
       success: 0,
       errors: [],
-      warnings: []
+      warnings: [],
     };
 
     for (let i = 0; i < parseResult.data.length; i++) {
@@ -159,7 +169,11 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
         } else {
           result.errors.push({
             row: rowNumber,
-            errors: [error instanceof Error ? error.message : "データ検証中にエラーが発生しました"]
+            errors: [
+              error instanceof Error
+                ? error.message
+                : "データ検証中にエラーが発生しました",
+            ],
           });
         }
       }
@@ -182,7 +196,7 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
               isRecurring: data.isRecurring,
               notes: data.description,
               branchId,
-            }
+            },
           });
           result.success++;
         }

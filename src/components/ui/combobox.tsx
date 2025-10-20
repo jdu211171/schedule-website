@@ -129,7 +129,14 @@ export function Combobox<T extends ComboboxItemBase>({
         onOpenChange?.(false);
       }
     },
-    [clearable, closeOnSelect, isOpenControlled, onOpenChange, onValueChange, value]
+    [
+      clearable,
+      closeOnSelect,
+      isOpenControlled,
+      onOpenChange,
+      onValueChange,
+      value,
+    ]
   );
 
   const handleOpenChange = React.useCallback(
@@ -160,10 +167,14 @@ export function Combobox<T extends ComboboxItemBase>({
 
   const displayValue = renderSelectedValue
     ? renderSelectedValue(selectedItem)
-    : selectedItem?.label ?? placeholder;
+    : (selectedItem?.label ?? placeholder);
 
   return (
-    <Popover open={currentOpen} onOpenChange={handleOpenChange} modal={popoverModal}>
+    <Popover
+      open={currentOpen}
+      onOpenChange={handleOpenChange}
+      modal={popoverModal}
+    >
       <PopoverTrigger asChild>
         <Button
           type="button"
@@ -178,9 +189,7 @@ export function Combobox<T extends ComboboxItemBase>({
             triggerClassName
           )}
         >
-          <span className="truncate text-left flex-1">
-            {displayValue}
-          </span>
+          <span className="truncate text-left flex-1">{displayValue}</span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
@@ -222,22 +231,24 @@ export function Combobox<T extends ComboboxItemBase>({
                           value={item.value}
                           keywords={item.keywords}
                           disabled={item.disabled}
-                          onSelect={(currentValue) => handleSelect(currentValue)}
+                          onSelect={(currentValue) =>
+                            handleSelect(currentValue)
+                          }
                         >
-                          {renderItem
-                            ? renderItem({
-                                item,
-                                isSelected,
-                                defaultIndicator,
-                              })
-                            : (
-                                <>
-                                  <span className="flex-1 truncate">
-                                    {item.label}
-                                  </span>
-                                  {defaultIndicator}
-                                </>
-                              )}
+                          {renderItem ? (
+                            renderItem({
+                              item,
+                              isSelected,
+                              defaultIndicator,
+                            })
+                          ) : (
+                            <>
+                              <span className="flex-1 truncate">
+                                {item.label}
+                              </span>
+                              {defaultIndicator}
+                            </>
+                          )}
                         </CommandItem>
                       );
                     })}

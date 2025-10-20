@@ -4,6 +4,7 @@
 **Input**: Feature specification from `specs/014-we-should-add/spec.md`
 
 ## Execution Flow (/plan command scope)
+
 ```
 1. Load feature spec from Input path
    → If not found: ERROR "No feature spec at {path}"
@@ -26,18 +27,22 @@
 ```
 
 ## Summary
+
 Add a searchable, multi-select Class Type filter across schedule views:
+
 - Admin/Staff: Daily (日次) and Weekly (週次) tabs
 - Teacher: Week table and Month calendar
 - Student: Week table and Month calendar
 
 Behavior clarified in spec:
+
 - Multi-select, searchable options (from server API)
 - Persistence: global per role via localStorage, cross-view and across reloads; same across branches
 - Exact match only (no descendants)
 - No selection = all types (no explicit “All” option)
 
 ## Technical Context
+
 **Language/Version**: TypeScript (React 18, Next.js App Router), Bun runtime  
 **Primary Dependencies**: Next.js, React, TanStack Table, React Query, Tailwind CSS v4, Prisma  
 **Storage**: PostgreSQL via Prisma  
@@ -49,7 +54,8 @@ Behavior clarified in spec:
 **Scale/Scope**: Typical view sizes: up to a few hundred sessions per week; class type list expected O(10–100)
 
 ## Constitution Check
-*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+
+_GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
 - Simplicity first: reuse existing faceted/combobox patterns → PASS
 - Test-first posture: plan includes contract/integration tests → PASS
@@ -59,6 +65,7 @@ Behavior clarified in spec:
 ## Project Structure
 
 ### Documentation (this feature)
+
 ```
 specs/014-we-should-add/
 ├── plan.md              # This file (/plan output)
@@ -70,6 +77,7 @@ specs/014-we-should-add/
 ```
 
 ### Source Code (repository root)
+
 ```
 src/
 ├── app/
@@ -91,6 +99,7 @@ src/
 **Structure Decision**: Web application (Next.js). Modify components under `src/components/*` and, if needed, adjust API handlers under `src/app/api/*` to support multi-select `classTypeIds` in teacher/student “me” endpoints.
 
 ## Phase 0: Outline & Research
+
 1. **Extract unknowns from Technical Context** above:
    - Accessibility standard: target WCAG 2.1 AA keyboard operability for comboboxes
    - Localization coverage: prioritize JA; keep strings localizable; EN optional
@@ -109,7 +118,8 @@ src/
 **Output**: research.md with key decisions and non-blocking assumptions documented
 
 ## Phase 1: Design & Contracts
-*Prerequisites: research.md complete*
+
+_Prerequisites: research.md complete_
 
 1. **Extract entities from feature spec** → `data-model.md`:
    - ClassType, FilterState (per-role persistence), ViewVariant
@@ -128,12 +138,14 @@ src/
 5. **Update agent file incrementally**:
    - Run `.specify/scripts/bash/update-agent-context.sh codex`
 
-**Output**: data-model.md, /contracts/*, contract test stubs, quickstart.md, agent-specific file
+**Output**: data-model.md, /contracts/\*, contract test stubs, quickstart.md, agent-specific file
 
 ## Phase 2: Task Planning Approach
-*This section describes what the /tasks command will do*
+
+_This section describes what the /tasks command will do_
 
 **Task Generation Strategy**:
+
 - Load `.specify/templates/tasks-template.md` as base
 - Generate tasks from Phase 1 design docs (contracts, data model, quickstart)
 - Each contract → contract test task [P]
@@ -142,6 +154,7 @@ src/
 - Implementation tasks to make tests pass
 
 **Ordering Strategy**:
+
 - TDD order: Tests before implementation
 - Dependency order: API contracts → UI filters → wiring → persistence
 - Mark [P] for parallel execution (independent files)
@@ -149,24 +162,27 @@ src/
 **Estimated Output**: 25-30 numbered, ordered tasks in tasks.md
 
 ## Phase 3+: Future Implementation
-*These phases are beyond the scope of the /plan command*
+
+_These phases are beyond the scope of the /plan command_
 
 **Phase 3**: Task execution (/tasks command creates tasks.md)  
 **Phase 4**: Implementation (execute tasks.md following constitutional principles)  
 **Phase 5**: Validation (run tests, execute quickstart.md, performance validation)
 
 ## Complexity Tracking
-*Fill ONLY if Constitution Check has violations that must be justified*
+
+_Fill ONLY if Constitution Check has violations that must be justified_
 
 | Violation | Why Needed | Simpler Alternative Rejected Because |
-|-----------|------------|-------------------------------------|
-| (none) | — | — |
-
+| --------- | ---------- | ------------------------------------ |
+| (none)    | —          | —                                    |
 
 ## Progress Tracking
-*This checklist is updated during execution flow*
+
+_This checklist is updated during execution flow_
 
 **Phase Status**:
+
 - [x] Phase 0: Research complete (/plan command)
 - [x] Phase 1: Design complete (/plan command)
 - [x] Phase 2: Task planning complete (/plan command)
@@ -175,11 +191,12 @@ src/
 - [ ] Phase 5: Validation passed
 
 **Gate Status**:
+
 - [x] Initial Constitution Check: PASS
 - [x] Post-Design Constitution Check: PASS
 - [ ] All NEEDS CLARIFICATION resolved (remaining items non-blocking; see research)
 - [ ] Complexity deviations documented
 
 ---
-*Based on Constitution v2.1.1 - See `/memory/constitution.md`*
 
+_Based on Constitution v2.1.1 - See `/memory/constitution.md`_

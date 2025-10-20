@@ -5,4 +5,3 @@ Entity: Student
 - Constraints: NULL allowed; no default
 
 Migration: add column `admission_date DATE NULL` to `students`.
-

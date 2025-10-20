@@ -9,31 +9,30 @@
  * @returns Formatted time string in HH:MM format
  */
 export function formatToJapanTime(isoTime: string | Date | undefined): string {
-  if (!isoTime) return '';
-  
+  if (!isoTime) return "";
+
   try {
-    if (typeof isoTime === 'string' && isoTime.startsWith('1970-01-01T')) {
-      const timePart = isoTime.split('T')[1];
-      const [hours, minutes] = timePart.split(':').map(Number);
-      
+    if (typeof isoTime === "string" && isoTime.startsWith("1970-01-01T")) {
+      const timePart = isoTime.split("T")[1];
+      const [hours, minutes] = timePart.split(":").map(Number);
+
       let japanHours = hours + 9;
       if (japanHours >= 24) japanHours -= 24;
-      
-      return `${japanHours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-    } 
-    else {
+
+      return `${japanHours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
+    } else {
       const date = isoTime instanceof Date ? isoTime : new Date(isoTime);
-      const formatter = new Intl.DateTimeFormat('ja-JP', {
-        timeZone: 'Asia/Tokyo',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false
+      const formatter = new Intl.DateTimeFormat("ja-JP", {
+        timeZone: "Asia/Tokyo",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
       });
-      
-      return formatter.format(date).replace(/[^0-9:]/g, '');
+
+      return formatter.format(date).replace(/[^0-9:]/g, "");
     }
   } catch {
-    return '';
+    return "";
   }
 }
 
@@ -44,11 +43,11 @@ export function formatToJapanTime(isoTime: string | Date | undefined): string {
  */
 export function convertJapanTimeToUTC(japanTime: string): Date {
   try {
-    const [hours, minutes] = japanTime.split(':').map(Number);
-    
+    const [hours, minutes] = japanTime.split(":").map(Number);
+
     let utcHours = hours - 9;
     if (utcHours < 0) utcHours += 24;
-    
+
     return new Date(Date.UTC(1970, 0, 1, utcHours, minutes, 0));
   } catch {
     return new Date(Date.UTC(1970, 0, 1, 0, 0, 0));
@@ -61,12 +60,12 @@ export function convertJapanTimeToUTC(japanTime: string): Date {
  * @returns Boolean indicating whether time is in display range
  */
 export function isTimeInDisplayRange(japanTime: string): boolean {
-  const [hours, minutes] = japanTime.split(':').map(Number);
+  const [hours, minutes] = japanTime.split(":").map(Number);
   const totalMinutes = hours * 60 + minutes;
-  
+
   const minMinutes = 8 * 60;
   const maxMinutes = 22 * 60;
-  
+
   return totalMinutes >= minMinutes && totalMinutes <= maxMinutes;
 }
 
@@ -77,11 +76,11 @@ export function isTimeInDisplayRange(japanTime: string): boolean {
  * @returns Index of the time slot
  */
 export function calculateTimeSlotIndex(japanTime: string): number {
-  const [hours, minutes] = japanTime.split(':').map(Number);
-  
+  const [hours, minutes] = japanTime.split(":").map(Number);
+
   const hoursOffset = hours - 8;
   const minutesOffset = Math.floor(minutes / 15);
-  
+
   return hoursOffset * 4 + minutesOffset;
 }
 
@@ -115,7 +114,7 @@ export function isSameDayDate(date1: Date, date2: Date): boolean {
  * @returns Date string in YYYY-MM-DD format
  */
 export function getDateString(date: Date): string {
-  return date.toISOString().split('T')[0];
+  return date.toISOString().split("T")[0];
 }
 
 /**
@@ -127,8 +126,8 @@ export function getDateString(date: Date): string {
 export function getDateKey(date: Date): string {
   // Use local date methods instead of UTC to avoid timezone offset issues
   const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 }
 
@@ -147,14 +146,17 @@ export function getDateKeyUTC(date: Date): string {
  * @param date Date object to debug
  */
 export function debugDateConversion(date: Date): void {
-  console.log('=== Debug date conversion ===');
-  console.log('Original date:', date);
-  console.log('Local timezone offset (minutes):', date.getTimezoneOffset());
-  console.log('UTC string:', date.toISOString());
-  console.log('UTC date key:', date.toISOString().substring(0, 10));
-  console.log('Local date key:', getDateKey(date));
-  console.log('Are they equal?', getDateKey(date) === date.toISOString().substring(0, 10));
-  console.log('=============================');
+  console.log("=== Debug date conversion ===");
+  console.log("Original date:", date);
+  console.log("Local timezone offset (minutes):", date.getTimezoneOffset());
+  console.log("UTC string:", date.toISOString());
+  console.log("UTC date key:", date.toISOString().substring(0, 10));
+  console.log("Local date key:", getDateKey(date));
+  console.log(
+    "Are they equal?",
+    getDateKey(date) === date.toISOString().substring(0, 10)
+  );
+  console.log("=============================");
 }
 
 /**
@@ -164,10 +166,11 @@ export function debugDateConversion(date: Date): void {
  * @returns Boolean indicating whether day is in array
  */
 export function isDayInArray(day: Date, array: Date[]): boolean {
-  return array.some(d =>
-    d.getDate() === day.getDate() &&
-    d.getMonth() === day.getMonth() &&
-    d.getFullYear() === day.getFullYear()
+  return array.some(
+    (d) =>
+      d.getDate() === day.getDate() &&
+      d.getMonth() === day.getMonth() &&
+      d.getFullYear() === day.getFullYear()
   );
 }
 
@@ -180,7 +183,7 @@ export function isDayInArray(day: Date, array: Date[]): boolean {
 export function isSameDay(date1: string | Date, date2: string | Date): boolean {
   const d1 = date1 instanceof Date ? date1 : new Date(date1);
   const d2 = date2 instanceof Date ? date2 : new Date(date2);
-  
+
   return (
     d1.getFullYear() === d2.getFullYear() &&
     d1.getMonth() === d2.getMonth() &&

@@ -65,9 +65,8 @@ export async function PATCH(request: NextRequest) {
     });
 
     return NextResponse.json({
-      message: "パスワードが正常に更新されました" // "Password updated successfully"
+      message: "パスワードが正常に更新されました", // "Password updated successfully"
     });
-
   } catch (error) {
     console.error("Error updating student password:", error);
     return NextResponse.json(

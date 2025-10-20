@@ -1,7 +1,14 @@
 import React from "react";
 import { CheckCircle2, AlertTriangle, Users } from "lucide-react";
-import { ComboboxItemBase, ComboboxRenderItemProps } from "@/components/ui/combobox";
-import { EnhancedTeacher, EnhancedStudent, SubjectCompatibility } from "@/hooks/useSmartSelection";
+import {
+  ComboboxItemBase,
+  ComboboxRenderItemProps,
+} from "@/components/ui/combobox";
+import {
+  EnhancedTeacher,
+  EnhancedStudent,
+  SubjectCompatibility,
+} from "@/hooks/useSmartSelection";
 
 export type CompatibilityType =
   | EnhancedTeacher["compatibilityType"]
@@ -59,7 +66,9 @@ export const getCompatibilityPriority = (type?: CompatibilityType) => {
   }
 };
 
-export const renderCompatibilityComboboxItem = <T extends CompatibilityComboboxItem>({
+export const renderCompatibilityComboboxItem = <
+  T extends CompatibilityComboboxItem,
+>({
   item,
   defaultIndicator,
 }: ComboboxRenderItemProps<T>) => {
@@ -81,9 +90,10 @@ export const renderCompatibilityComboboxItem = <T extends CompatibilityComboboxI
         {defaultIndicator}
       </div>
       {item.description && (
-        <span className="text-xs text-muted-foreground">{item.description}</span>
+        <span className="text-xs text-muted-foreground">
+          {item.description}
+        </span>
       )}
     </div>
   );
 };
-

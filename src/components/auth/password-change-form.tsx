@@ -2,7 +2,10 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { passwordUpdateSchema, type PasswordUpdateValues } from "@/schemas/password.schema";
+import {
+  passwordUpdateSchema,
+  type PasswordUpdateValues,
+} from "@/schemas/password.schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -22,7 +25,11 @@ type Props = {
 export function PasswordChangeForm({ onSuccess }: Props) {
   const form = useForm<PasswordUpdateValues>({
     resolver: zodResolver(passwordUpdateSchema),
-    defaultValues: { currentPassword: "", newPassword: "", confirmPassword: "" },
+    defaultValues: {
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+    },
   });
 
   const mutation = usePasswordChange();
@@ -43,7 +50,11 @@ export function PasswordChangeForm({ onSuccess }: Props) {
             <FormItem>
               <FormLabel>現在のパスワード</FormLabel>
               <FormControl>
-                <Input type="password" autoComplete="current-password" {...field} />
+                <Input
+                  type="password"
+                  autoComplete="current-password"
+                  {...field}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -84,4 +95,3 @@ export function PasswordChangeForm({ onSuccess }: Props) {
     </Form>
   );
 }
-

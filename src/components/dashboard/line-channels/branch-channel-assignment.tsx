@@ -20,7 +20,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useLineChannels } from "@/hooks/useLineChannelQuery";
-import { useLineChannelSetType, useLineChannelUnassign } from "@/hooks/useLineChannelMutation";
+import {
+  useLineChannelSetType,
+  useLineChannelUnassign,
+} from "@/hooks/useLineChannelMutation";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface BranchChannelAssignmentProps {
@@ -42,11 +45,11 @@ export function BranchChannelAssignment({
 }: BranchChannelAssignmentProps) {
   const [teacherChannelId, setTeacherChannelId] = useState<string>("none");
   const [studentChannelId, setStudentChannelId] = useState<string>("none");
-  
+
   const { data: channelsData, isLoading } = useLineChannels({ limit: 100 });
   const setChannelTypeMutation = useLineChannelSetType();
   const unassignChannelMutation = useLineChannelUnassign();
-  
+
   // Initialize with current values when dialog opens
   useEffect(() => {
     if (open) {
@@ -54,13 +57,14 @@ export function BranchChannelAssignment({
       setStudentChannelId(currentStudentChannelId || "none");
     }
   }, [open, currentTeacherChannelId, currentStudentChannelId]);
-  
+
   // Filter active channels
-  const activeChannels = channelsData?.data.filter(channel => channel.isActive) || [];
-  
+  const activeChannels =
+    channelsData?.data.filter((channel) => channel.isActive) || [];
+
   const handleSave = async () => {
     const mutations = [];
-    
+
     // Handle teacher channel changes
     if (teacherChannelId !== currentTeacherChannelId) {
       if (teacherChannelId === "none" && currentTeacherChannelId) {
@@ -68,7 +72,7 @@ export function BranchChannelAssignment({
         mutations.push(
           unassignChannelMutation.mutateAsync({
             branchId,
-            channelType: 'TEACHER'
+            channelType: "TEACHER",
           })
         );
       } else if (teacherChannelId !== "none") {
@@ -77,12 +81,12 @@ export function BranchChannelAssignment({
           setChannelTypeMutation.mutateAsync({
             branchId,
             channelId: teacherChannelId,
-            channelType: 'TEACHER'
+            channelType: "TEACHER",
           })
         );
       }
     }
-    
+
     // Handle student channel changes
     if (studentChannelId !== currentStudentChannelId) {
       if (studentChannelId === "none" && currentStudentChannelId) {
@@ -90,7 +94,7 @@ export function BranchChannelAssignment({
         mutations.push(
           unassignChannelMutation.mutateAsync({
             branchId,
-            channelType: 'STUDENT'
+            channelType: "STUDENT",
           })
         );
       } else if (studentChannelId !== "none") {
@@ -99,12 +103,12 @@ export function BranchChannelAssignment({
           setChannelTypeMutation.mutateAsync({
             branchId,
             channelId: studentChannelId,
-            channelType: 'STUDENT'
+            channelType: "STUDENT",
           })
         );
       }
     }
-    
+
     if (mutations.length > 0) {
       try {
         await Promise.all(mutations);
@@ -116,9 +120,10 @@ export function BranchChannelAssignment({
       onOpenChange(false);
     }
   };
-  
-  const isSubmitting = setChannelTypeMutation.isPending || unassignChannelMutation.isPending;
-  
+
+  const isSubmitting =
+    setChannelTypeMutation.isPending || unassignChannelMutation.isPending;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
@@ -128,7 +133,7 @@ export function BranchChannelAssignment({
             この校舎の講師用・生徒用LINEチャンネルを設定します。
           </DialogDescription>
         </DialogHeader>
-        
+
         <div className="space-y-6 py-4">
           {/* Teacher Channel Selection */}
           <div className="space-y-2">
@@ -150,8 +155,8 @@ export function BranchChannelAssignment({
                 <SelectContent>
                   <SelectItem value="none">なし</SelectItem>
                   {activeChannels.map((channel) => (
-                    <SelectItem 
-                      key={channel.id} 
+                    <SelectItem
+                      key={channel.id}
                       value={channel.id}
                       disabled={channel.id === studentChannelId}
                     >
@@ -166,7 +171,7 @@ export function BranchChannelAssignment({
               講師への通知送信に使用されるチャンネルです
             </p>
           </div>
-          
+
           {/* Student Channel Selection */}
           <div className="space-y-2">
             <Label className="flex items-center gap-2">
@@ -187,8 +192,8 @@ export function BranchChannelAssignment({
                 <SelectContent>
                   <SelectItem value="none">なし</SelectItem>
                   {activeChannels.map((channel) => (
-                    <SelectItem 
-                      key={channel.id} 
+                    <SelectItem
+                      key={channel.id}
                       value={channel.id}
                       disabled={channel.id === teacherChannelId}
                     >
@@ -203,17 +208,20 @@ export function BranchChannelAssignment({
               生徒への通知送信に使用されるチャンネルです
             </p>
           </div>
-          
+
           {/* Warning if same channel selected for both */}
-          {teacherChannelId !== "none" && studentChannelId !== "none" && teacherChannelId === studentChannelId && (
-            <div className="rounded-md bg-yellow-50 dark:bg-yellow-900/20 p-3">
-              <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                ⚠️ 同じチャンネルを講師用と生徒用の両方に設定することはできません
-              </p>
-            </div>
-          )}
+          {teacherChannelId !== "none" &&
+            studentChannelId !== "none" &&
+            teacherChannelId === studentChannelId && (
+              <div className="rounded-md bg-yellow-50 dark:bg-yellow-900/20 p-3">
+                <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                  ⚠️
+                  同じチャンネルを講師用と生徒用の両方に設定することはできません
+                </p>
+              </div>
+            )}
         </div>
-        
+
         <DialogFooter>
           <Button
             type="button"
@@ -229,10 +237,11 @@ export function BranchChannelAssignment({
             disabled={
               isSubmitting ||
               isLoading ||
-              (teacherChannelId === (currentTeacherChannelId || "none") && 
-               studentChannelId === (currentStudentChannelId || "none")) ||
-              (teacherChannelId !== "none" && studentChannelId !== "none" && 
-               teacherChannelId === studentChannelId)
+              (teacherChannelId === (currentTeacherChannelId || "none") &&
+                studentChannelId === (currentStudentChannelId || "none")) ||
+              (teacherChannelId !== "none" &&
+                studentChannelId !== "none" &&
+                teacherChannelId === studentChannelId)
             }
           >
             {isSubmitting ? "保存中..." : "保存"}

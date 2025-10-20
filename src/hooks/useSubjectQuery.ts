@@ -41,12 +41,15 @@ export function useSubjects(params: UseSubjectsParams = {}) {
   });
 
   const searchParams = new URLSearchParams(
-    Object.entries(query).reduce((acc, [key, value]) => {
-      if (value !== undefined) {
-        acc[key] = String(value);
-      }
-      return acc;
-    }, {} as Record<string, string>)
+    Object.entries(query).reduce(
+      (acc, [key, value]) => {
+        if (value !== undefined) {
+          acc[key] = String(value);
+        }
+        return acc;
+      },
+      {} as Record<string, string>
+    )
   ).toString();
 
   return useQuery<SubjectsResponse>({

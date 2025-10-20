@@ -1,7 +1,6 @@
-
 "use client";
 
-import { NotificationDataTable } from './notification-data-table';
+import { NotificationDataTable } from "./notification-data-table";
 
 /**
  * Notifications dashboard page.

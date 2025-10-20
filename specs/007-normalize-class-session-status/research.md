@@ -38,4 +38,3 @@ Follow‑ups
 
 - UI should now reflect aligned conflict counts in the Series view. Ask users to refresh.
 - If needed, re‑run with scoped date/branch conditions per runbook.
-

@@ -7,7 +7,9 @@ import { classSessionFilterSchema } from "@/schemas/class-session.schema";
 // Helper function to create UTC date for filtering
 const createUTCDateForFilter = (dateString: string): Date => {
   const dateParts = dateString.split("-").map(Number);
-  return new Date(Date.UTC(dateParts[0], dateParts[1] - 1, dateParts[2], 0, 0, 0, 0));
+  return new Date(
+    Date.UTC(dateParts[0], dateParts[1] - 1, dateParts[2], 0, 0, 0, 0)
+  );
 };
 
 // Helper function to format class session response
@@ -67,11 +69,15 @@ export const GET = withRole(
       // Parse query parameters
       const url = new URL(request.url);
       const params = Object.fromEntries(url.searchParams.entries());
-      const classTypeIdsCsv = url.searchParams.get('classTypeIds');
+      const classTypeIdsCsv = url.searchParams.get("classTypeIds");
 
       // Remove studentId from params since we'll use session data
       // Remove unsupported params before schema validation
-      const { studentId: _, classTypeIds: _ignoredClassTypeIds, ...filteredParams } = params;
+      const {
+        studentId: _,
+        classTypeIds: _ignoredClassTypeIds,
+        ...filteredParams
+      } = params;
 
       // Validate and parse filter parameters
       const result = classSessionFilterSchema.safeParse(filteredParams);
@@ -91,7 +97,7 @@ export const GET = withRole(
         subjectId,
         classTypeId,
         boothId,
-        seriesId
+        seriesId,
       } = result.data;
 
       // Get the student record to ensure the user is a valid student
@@ -125,7 +131,10 @@ export const GET = withRole(
         where.classTypeId = classTypeId;
       }
       if (classTypeIdsCsv) {
-        const list = classTypeIdsCsv.split(',').map(s => s.trim()).filter(Boolean);
+        const list = classTypeIdsCsv
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
         if (list.length > 0) {
           where.classTypeId = { in: list };
         }
@@ -153,7 +162,9 @@ export const GET = withRole(
           const endYear = endDateParts[0];
           const endMonth = endDateParts[1] - 1;
           const endDay = endDateParts[2];
-          where.date.lte = new Date(Date.UTC(endYear, endMonth, endDay, 23, 59, 59, 999));
+          where.date.lte = new Date(
+            Date.UTC(endYear, endMonth, endDay, 23, 59, 59, 999)
+          );
         }
       }
 
@@ -204,10 +215,7 @@ export const GET = withRole(
             },
           },
         },
-        orderBy: [
-          { date: "asc" },
-          { startTime: "asc" },
-        ],
+        orderBy: [{ date: "asc" }, { startTime: "asc" }],
         skip,
         take: limit,
       });

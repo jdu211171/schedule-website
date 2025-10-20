@@ -20,11 +20,15 @@ The request body must be a JSON object matching the following Zod schema.
 ### Zod Schema (`changePasswordSchema`)
 
 ```typescript
-import { z } from 'zod';
+import { z } from "zod";
 
 export const changePasswordSchema = z.object({
-  currentPassword: z.string().min(1, { message: "Current password is required." }),
-  newPassword: z.string().min(4, { message: "New password must be at least 4 characters long." }),
+  currentPassword: z
+    .string()
+    .min(1, { message: "Current password is required." }),
+  newPassword: z
+    .string()
+    .min(4, { message: "New password must be at least 4 characters long." }),
 });
 ```
 

@@ -1,6 +1,7 @@
 # Data Model for Conflicting Class Session Resolution
 
 ## Class Session
+
 - **Description**: Represents a single class instance.
 - **Attributes**:
   - `classId`: String (PK)
@@ -14,6 +15,7 @@
   - `is_cancelled`: Boolean
 
 ## Class Series
+
 - **Description**: A collection of related Class Sessions.
 - **Attributes**:
   - `seriesId`: String (PK)

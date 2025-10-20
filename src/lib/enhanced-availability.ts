@@ -5,7 +5,7 @@ import { DayOfWeek, UserAvailability } from "@prisma/client";
 
 export interface TimeSlot {
   startTime: string; // HH:MM format
-  endTime: string;   // HH:MM format
+  endTime: string; // HH:MM format
 }
 
 export interface AvailabilityDetails {
@@ -30,57 +30,62 @@ export async function getDetailedUserAvailability(
   const dayOfWeek = getDayOfWeekFromDate(date);
 
   // Get both exception and regular availability
-  const [exceptionAvailability, regularAvailability, absenceAvailability] = await Promise.all([
-    prisma.userAvailability.findMany({
-      where: {
-        userId,
-        type: "EXCEPTION",
-        status: "APPROVED",
-        date,
-      },
-      orderBy: { startTime: "asc" },
-    }),
-    prisma.userAvailability.findMany({
-      where: {
-        userId,
-        type: "REGULAR",
-        status: "APPROVED",
-        dayOfWeek: dayOfWeek as DayOfWeek,
-      },
-      orderBy: { startTime: "asc" },
-    }),
-    prisma.userAvailability.findMany({
-      where: {
-        userId,
-        type: "ABSENCE",
-        status: "APPROVED",
-        date,
-      },
-      orderBy: { startTime: "asc" },
-    })
-  ]);
+  const [exceptionAvailability, regularAvailability, absenceAvailability] =
+    await Promise.all([
+      prisma.userAvailability.findMany({
+        where: {
+          userId,
+          type: "EXCEPTION",
+          status: "APPROVED",
+          date,
+        },
+        orderBy: { startTime: "asc" },
+      }),
+      prisma.userAvailability.findMany({
+        where: {
+          userId,
+          type: "REGULAR",
+          status: "APPROVED",
+          dayOfWeek: dayOfWeek as DayOfWeek,
+        },
+        orderBy: { startTime: "asc" },
+      }),
+      prisma.userAvailability.findMany({
+        where: {
+          userId,
+          type: "ABSENCE",
+          status: "APPROVED",
+          date,
+        },
+        orderBy: { startTime: "asc" },
+      }),
+    ]);
 
   const exceptionSlots = convertAvailabilityToTimeSlots(exceptionAvailability);
   const regularSlots = convertAvailabilityToTimeSlots(regularAvailability);
   const absenceSlots = convertAvailabilityToTimeSlots(absenceAvailability);
-  
+
   // Determine effective slots (exceptions override regular)
-  let effectiveSlots = exceptionSlots.length > 0 ? exceptionSlots : regularSlots;
+  let effectiveSlots =
+    exceptionSlots.length > 0 ? exceptionSlots : regularSlots;
 
   // Apply absences by subtracting them from effective slots
   if (absenceSlots.length > 0) {
     effectiveSlots = subtractTimeSlots(effectiveSlots, absenceSlots);
   }
-  
+
   // Check if requested time is available (if provided)
   let available = effectiveSlots.length > 0;
   let conflictType: "UNAVAILABLE" | "WRONG_TIME" | undefined;
 
   if (requestedStartTime && requestedEndTime && effectiveSlots.length > 0) {
-    const requestedStart = requestedStartTime.getUTCHours() * 60 + requestedStartTime.getUTCMinutes();
-    const requestedEnd = requestedEndTime.getUTCHours() * 60 + requestedEndTime.getUTCMinutes();
-    
-    available = effectiveSlots.some(slot => {
+    const requestedStart =
+      requestedStartTime.getUTCHours() * 60 +
+      requestedStartTime.getUTCMinutes();
+    const requestedEnd =
+      requestedEndTime.getUTCHours() * 60 + requestedEndTime.getUTCMinutes();
+
+    available = effectiveSlots.some((slot) => {
       const slotStart = timeToMinutes(slot.startTime);
       const slotEnd = timeToMinutes(slot.endTime);
       return requestedStart >= slotStart && requestedEnd <= slotEnd;
@@ -101,7 +106,7 @@ export async function getDetailedUserAvailability(
     exceptionSlots,
     regularSlots,
     effectiveSlots,
-    conflictType
+    conflictType,
   };
 }
 
@@ -128,30 +133,40 @@ export async function getDetailedSharedAvailability(
     const vacationConflict = await checkVacationConflicts(date);
     if (vacationConflict.hasConflict) {
       const emptyDetails: AvailabilityDetails = {
-      available: false,
-      hasExceptions: false,
-      hasRegular: false,
-      exceptionSlots: [],
-      regularSlots: [],
-      effectiveSlots: [],
-      conflictType: "UNAVAILABLE"
-    };
-    
+        available: false,
+        hasExceptions: false,
+        hasRegular: false,
+        exceptionSlots: [],
+        regularSlots: [],
+        effectiveSlots: [],
+        conflictType: "UNAVAILABLE",
+      };
+
       return {
         user1: emptyDetails,
         user2: emptyDetails,
         sharedSlots: [],
         available: false,
         strategy: "NONE",
-        message: vacationConflict.message
+        message: vacationConflict.message,
       };
     }
   }
 
   // Get detailed availability for both users
   const [user1Details, user2Details] = await Promise.all([
-    getDetailedUserAvailability(user1Id, date, requestedStartTime, requestedEndTime),
-    getDetailedUserAvailability(user2Id, date, requestedStartTime, requestedEndTime)
+    getDetailedUserAvailability(
+      user1Id,
+      date,
+      requestedStartTime,
+      requestedEndTime
+    ),
+    getDetailedUserAvailability(
+      user2Id,
+      date,
+      requestedStartTime,
+      requestedEndTime
+    ),
   ]);
 
   // Find intersection of effective slots
@@ -177,17 +192,21 @@ export async function getDetailedSharedAvailability(
   let message: string | undefined;
 
   if (requestedStartTime && requestedEndTime && sharedSlots.length > 0) {
-    const requestedStart = requestedStartTime.getUTCHours() * 60 + requestedStartTime.getUTCMinutes();
-    const requestedEnd = requestedEndTime.getUTCHours() * 60 + requestedEndTime.getUTCMinutes();
-    
-    available = sharedSlots.some(slot => {
+    const requestedStart =
+      requestedStartTime.getUTCHours() * 60 +
+      requestedStartTime.getUTCMinutes();
+    const requestedEnd =
+      requestedEndTime.getUTCHours() * 60 + requestedEndTime.getUTCMinutes();
+
+    available = sharedSlots.some((slot) => {
       const slotStart = timeToMinutes(slot.startTime);
       const slotEnd = timeToMinutes(slot.endTime);
       return requestedStart >= slotStart && requestedEnd <= slotEnd;
     });
 
     if (!available && sharedSlots.length > 0) {
-      message = "指定された時間は共有利用可能時間外です。利用可能な時間帯から選択してください。";
+      message =
+        "指定された時間は共有利用可能時間外です。利用可能な時間帯から選択してください。";
     }
   } else if (sharedSlots.length === 0) {
     available = false;
@@ -200,12 +219,14 @@ export async function getDetailedSharedAvailability(
     sharedSlots,
     available,
     strategy,
-    message
+    message,
   };
 }
 
 // Helper functions
-function convertAvailabilityToTimeSlots(availability: UserAvailability[]): TimeSlot[] {
+function convertAvailabilityToTimeSlots(
+  availability: UserAvailability[]
+): TimeSlot[] {
   const slots: TimeSlot[] = [];
 
   for (const slot of availability) {
@@ -219,7 +240,7 @@ function convertAvailabilityToTimeSlots(availability: UserAvailability[]): TimeS
 
       slots.push({
         startTime: `${String(startHour).padStart(2, "0")}:${String(startMin).padStart(2, "0")}`,
-        endTime: `${String(endHour).padStart(2, "0")}:${String(endMin).padStart(2, "0")}`
+        endTime: `${String(endHour).padStart(2, "0")}:${String(endMin).padStart(2, "0")}`,
       });
     }
   }
@@ -227,7 +248,10 @@ function convertAvailabilityToTimeSlots(availability: UserAvailability[]): TimeS
   return slots;
 }
 
-function findTimeSlotIntersection(slots1: TimeSlot[], slots2: TimeSlot[]): TimeSlot[] {
+function findTimeSlotIntersection(
+  slots1: TimeSlot[],
+  slots2: TimeSlot[]
+): TimeSlot[] {
   const intersection: TimeSlot[] = [];
 
   for (const slot1 of slots1) {
@@ -254,7 +278,7 @@ function getTimeSlotOverlap(slot1: TimeSlot, slot2: TimeSlot): TimeSlot | null {
   if (overlapStart < overlapEnd) {
     return {
       startTime: minutesToTime(overlapStart),
-      endTime: minutesToTime(overlapEnd)
+      endTime: minutesToTime(overlapEnd),
     };
   }
 
@@ -264,7 +288,9 @@ function getTimeSlotOverlap(slot1: TimeSlot, slot2: TimeSlot): TimeSlot | null {
 function mergeOverlappingSlots(slots: TimeSlot[]): TimeSlot[] {
   if (slots.length === 0) return [];
 
-  const sorted = slots.sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
+  const sorted = slots.sort(
+    (a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime)
+  );
   const merged: TimeSlot[] = [sorted[0]];
 
   for (let i = 1; i < sorted.length; i++) {
@@ -273,7 +299,10 @@ function mergeOverlappingSlots(slots: TimeSlot[]): TimeSlot[] {
 
     if (timeToMinutes(current.startTime) <= timeToMinutes(lastMerged.endTime)) {
       lastMerged.endTime = minutesToTime(
-        Math.max(timeToMinutes(lastMerged.endTime), timeToMinutes(current.endTime))
+        Math.max(
+          timeToMinutes(lastMerged.endTime),
+          timeToMinutes(current.endTime)
+        )
       );
     } else {
       merged.push(current);
@@ -284,7 +313,10 @@ function mergeOverlappingSlots(slots: TimeSlot[]): TimeSlot[] {
 }
 
 // Subtract `toSubtract` intervals from `base` intervals
-function subtractTimeSlots(base: TimeSlot[], toSubtract: TimeSlot[]): TimeSlot[] {
+function subtractTimeSlots(
+  base: TimeSlot[],
+  toSubtract: TimeSlot[]
+): TimeSlot[] {
   if (base.length === 0) return [];
   if (toSubtract.length === 0) return base;
 
@@ -314,20 +346,32 @@ function subtractTimeSlots(base: TimeSlot[], toSubtract: TimeSlot[]): TimeSlot[]
 
       // Overlap at start -> trim start
       if (sStart <= bStart && sEnd < bEnd) {
-        nextRemaining.push({ startTime: minutesToTime(sEnd), endTime: minutesToTime(bEnd) });
+        nextRemaining.push({
+          startTime: minutesToTime(sEnd),
+          endTime: minutesToTime(bEnd),
+        });
         continue;
       }
 
       // Overlap at end -> trim end
       if (sStart > bStart && sEnd >= bEnd) {
-        nextRemaining.push({ startTime: minutesToTime(bStart), endTime: minutesToTime(sStart) });
+        nextRemaining.push({
+          startTime: minutesToTime(bStart),
+          endTime: minutesToTime(sStart),
+        });
         continue;
       }
 
       // Middle split -> two intervals
       if (sStart > bStart && sEnd < bEnd) {
-        nextRemaining.push({ startTime: minutesToTime(bStart), endTime: minutesToTime(sStart) });
-        nextRemaining.push({ startTime: minutesToTime(sEnd), endTime: minutesToTime(bEnd) });
+        nextRemaining.push({
+          startTime: minutesToTime(bStart),
+          endTime: minutesToTime(sStart),
+        });
+        nextRemaining.push({
+          startTime: minutesToTime(sEnd),
+          endTime: minutesToTime(bEnd),
+        });
         continue;
       }
     }
@@ -340,20 +384,20 @@ function subtractTimeSlots(base: TimeSlot[], toSubtract: TimeSlot[]): TimeSlot[]
 }
 
 function timeToMinutes(time: string): number {
-  const [hours, minutes] = time.split(':').map(Number);
+  const [hours, minutes] = time.split(":").map(Number);
   return hours * 60 + minutes;
 }
 
 function minutesToTime(minutes: number): string {
   const hours = Math.floor(minutes / 60);
   const mins = minutes % 60;
-  return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+  return `${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}`;
 }
 
 function getDayOfWeekFromDate(date: Date): string {
   const days = [
     "SUNDAY",
-    "MONDAY", 
+    "MONDAY",
     "TUESDAY",
     "WEDNESDAY",
     "THURSDAY",
@@ -378,7 +422,7 @@ async function checkVacationConflicts(date: Date): Promise<{
   if (vacation) {
     return {
       hasConflict: true,
-      message: `${format(date, 'yyyy-MM-dd')}は休暇期間（${vacation.name}）です`
+      message: `${format(date, "yyyy-MM-dd")}は休暇期間（${vacation.name}）です`,
     };
   }
 

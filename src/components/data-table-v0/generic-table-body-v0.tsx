@@ -1,19 +1,23 @@
-"use client"
+"use client";
 
 import * as React from "react";
-import { flexRender, type Table as ReactTable } from "@tanstack/react-table"
-import type { UniqueIdentifier } from "@dnd-kit/core"
+import { flexRender, type Table as ReactTable } from "@tanstack/react-table";
+import type { UniqueIdentifier } from "@dnd-kit/core";
 
-import { TableBody as UITableBody, TableCell, TableRow } from "@/components/ui/table"
-import { getPinnedCellStyles } from "@/lib/data-table"
-import { cn } from "@/lib/utils"
+import {
+  TableBody as UITableBody,
+  TableCell,
+  TableRow,
+} from "@/components/ui/table";
+import { getPinnedCellStyles } from "@/lib/data-table";
+import { cn } from "@/lib/utils";
 
 interface GenericTableBodyProps<TData> {
-  table: ReactTable<TData>
-  dataIds: UniqueIdentifier[]
-  columnsLength: number
-  isDragging: boolean
-  sortableId: string
+  table: ReactTable<TData>;
+  dataIds: UniqueIdentifier[];
+  columnsLength: number;
+  isDragging: boolean;
+  sortableId: string;
 }
 
 export function GenericTableBody<TData>({
@@ -35,13 +39,13 @@ export function GenericTableBody<TData>({
             {row.getVisibleCells().map((cell) => {
               const columnMeta = cell.column.columnDef.meta as
                 | { cellClassName?: string }
-                | undefined
+                | undefined;
               const pinnedStyle = getPinnedCellStyles({
                 column: cell.column,
                 zIndex: 30,
                 withBorder: true,
-              })
-              const isPinned = cell.column.getIsPinned()
+              });
+              const isPinned = cell.column.getIsPinned();
 
               return (
                 <TableCell
@@ -53,18 +57,18 @@ export function GenericTableBody<TData>({
                     isPinned &&
                       // Solid paint layer to prevent bleed-through from scrolled cells
                       "relative isolate before:absolute before:inset-0 before:bg-background before:content-[''] before:pointer-events-none",
-                    columnMeta?.cellClassName,
+                    columnMeta?.cellClassName
                   )}
                 >
                   <div
                     className={cn(
-                      "relative flex min-h-[2.5rem] w-full items-center bg-inherit",
+                      "relative flex min-h-[2.5rem] w-full items-center bg-inherit"
                     )}
                   >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </div>
                 </TableCell>
-              )
+              );
             })}
           </TableRow>
         ))
@@ -76,5 +80,5 @@ export function GenericTableBody<TData>({
         </TableRow>
       )}
     </UITableBody>
-  )
+  );
 }

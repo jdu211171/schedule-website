@@ -27,11 +27,11 @@ interface FilterComboboxProps {
 }
 
 export function FilterCombobox({
-                                 label,
-                                 options,
-                                 value,
-                                 onChange
-                               }: FilterComboboxProps) {
+  label,
+  options,
+  value,
+  onChange,
+}: FilterComboboxProps) {
   const [open, setOpen] = React.useState(false);
 
   return (
@@ -67,26 +67,26 @@ export function FilterCombobox({
                   <span>クリア</span>
                 </div>
               </CommandItem>
-              {options.length > 0 ? options.map((option) => (
-                <CommandItem
-                  key={option.value}
-                  onSelect={() => {
-                    onChange(option.value === value ? "" : option.value);
-                    setOpen(false);
-                  }}
-                >
-                  <Check
-                    className={cn(
-                      "mr-2 h-4 w-4",
-                      value === option.value ? "opacity-100" : "opacity-0"
-                    )}
-                  />
-                  {option.label}
-                </CommandItem>
-              )) : (
-                <CommandItem disabled>
-                  データがありません
-                </CommandItem>
+              {options.length > 0 ? (
+                options.map((option) => (
+                  <CommandItem
+                    key={option.value}
+                    onSelect={() => {
+                      onChange(option.value === value ? "" : option.value);
+                      setOpen(false);
+                    }}
+                  >
+                    <Check
+                      className={cn(
+                        "mr-2 h-4 w-4",
+                        value === option.value ? "opacity-100" : "opacity-0"
+                      )}
+                    />
+                    {option.label}
+                  </CommandItem>
+                ))
+              ) : (
+                <CommandItem disabled>データがありません</CommandItem>
               )}
             </CommandGroup>
           </Command>

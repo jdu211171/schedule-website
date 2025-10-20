@@ -3,5 +3,4 @@ export type ClassTypeFilterState = {
   updatedAt: string; // ISO timestamp
 };
 
-export type ViewVariant = 'DAY' | 'WEEK' | 'MONTH';
-
+export type ViewVariant = "DAY" | "WEEK" | "MONTH";

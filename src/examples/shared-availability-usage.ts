@@ -9,18 +9,18 @@ export async function createClassSessionWithSharedAvailability(
   studentId: string,
   date: string, // YYYY-MM-DD
   startTime: string, // HH:MM
-  endTime: string, // HH:MM
+  endTime: string // HH:MM
   // ... other parameters
 ) {
   // Get teacher and student user IDs
   const teacher = await prisma.teacher.findUnique({
     where: { teacherId },
-    select: { userId: true, name: true }
+    select: { userId: true, name: true },
   });
 
   const student = await prisma.student.findUnique({
     where: { studentId },
-    select: { userId: true, name: true }
+    select: { userId: true, name: true },
   });
 
   if (!teacher || !student) {
@@ -40,7 +40,7 @@ export async function createClassSessionWithSharedAvailability(
       success: false,
       error: "No shared availability found",
       message: sharedAvailability.message,
-      suggestedAction: "Try a different date or check individual availability"
+      suggestedAction: "Try a different date or check individual availability",
     };
   }
 
@@ -48,11 +48,15 @@ export async function createClassSessionWithSharedAvailability(
   const requestedStartMinutes = timeToMinutes(startTime);
   const requestedEndMinutes = timeToMinutes(endTime);
 
-  const isTimeWithinSharedSlots = sharedAvailability.sharedSlots.some(slot => {
-    const slotStart = timeToMinutes(slot.startTime);
-    const slotEnd = timeToMinutes(slot.endTime);
-    return requestedStartMinutes >= slotStart && requestedEndMinutes <= slotEnd;
-  });
+  const isTimeWithinSharedSlots = sharedAvailability.sharedSlots.some(
+    (slot) => {
+      const slotStart = timeToMinutes(slot.startTime);
+      const slotEnd = timeToMinutes(slot.endTime);
+      return (
+        requestedStartMinutes >= slotStart && requestedEndMinutes <= slotEnd
+      );
+    }
+  );
 
   if (!isTimeWithinSharedSlots) {
     return {
@@ -60,7 +64,7 @@ export async function createClassSessionWithSharedAvailability(
       error: "Requested time is not within shared availability",
       sharedSlots: sharedAvailability.sharedSlots,
       message: `The requested time ${startTime}-${endTime} is not available for both users. Please choose from the available shared time slots.`,
-      strategy: sharedAvailability.strategy
+      strategy: sharedAvailability.strategy,
     };
   }
 
@@ -70,12 +74,12 @@ export async function createClassSessionWithSharedAvailability(
   return {
     success: true,
     message: "Class session created successfully",
-    sharedAvailabilityUsed: sharedAvailability.strategy
+    sharedAvailabilityUsed: sharedAvailability.strategy,
   };
 }
 
 function timeToMinutes(time: string): number {
-  const [hours, minutes] = time.split(':').map(Number);
+  const [hours, minutes] = time.split(":").map(Number);
   return hours * 60 + minutes;
 }
 

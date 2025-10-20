@@ -4,6 +4,7 @@ Feature dir: /Users/muhammadnurislomtukhtamishhoji-zoda/Development/schedule-web
 Plan: /Users/muhammadnurislomtukhtamishhoji-zoda/Development/schedule-website/specs/014-we-should-add/plan.md
 
 ## Phase 3.1: Setup
+
 - [ ] T001 Ensure Vitest + RTL configured for Next.js (no new deps). Verify `bun test` runs with jsdom.
   - Files: package.json, vitest.config.ts (if present)
   - Note: Use Bun for scripts; do not add npm/yarn steps.
@@ -17,18 +18,19 @@ Plan: /Users/muhammadnurislomtukhtamishhoji-zoda/Development/schedule-website/sp
   - Contents: `fetchClassTypeOptions(): Promise<Array<{value:string,label:string}>>` using `/api/class-types`.
 
 ## Phase 3.2: Tests First (TDD)
+
 Contract tests (1 per contract file) — must be written and fail before impl
 
 - [ ] T004 [P] Contract test: GET /api/class-types returns ordered items and pagination
-  - File: /Users/muhammadnurislomtukhtamishhoji-zoda/Development/schedule-website/specs/014-we-should-add/contracts/__tests__/class-types.contract.test.ts
+  - File: /Users/muhammadnurislomtukhtamishhoji-zoda/Development/schedule-website/specs/014-we-should-add/contracts/**tests**/class-types.contract.test.ts
   - Based on: contracts/class-types.yaml
 
 - [ ] T005 [P] Contract test: GET /api/teachers/me/class-sessions supports classTypeIds filter
-  - File: /Users/muhammadnurislomtukhtamishhoji-zoda/Development/schedule-website/specs/014-we-should-add/contracts/__tests__/teachers-me-class-sessions.contract.test.ts
+  - File: /Users/muhammadnurislomtukhtamishhoji-zoda/Development/schedule-website/specs/014-we-should-add/contracts/**tests**/teachers-me-class-sessions.contract.test.ts
   - Based on: contracts/teachers-me-class-sessions.yaml
 
 - [ ] T006 [P] Contract test: GET /api/students/me/class-sessions supports classTypeIds filter
-  - File: /Users/muhammadnurislomtukhtamishhoji-zoda/Development/schedule-website/specs/014-we-should-add/contracts/__tests__/students-me-class-sessions.contract.test.ts
+  - File: /Users/muhammadnurislomtukhtamishhoji-zoda/Development/schedule-website/specs/014-we-should-add/contracts/**tests**/students-me-class-sessions.contract.test.ts
   - Based on: contracts/students-me-class-sessions.yaml
 
 Integration tests (from user stories; UI-level where practical)
@@ -59,6 +61,7 @@ Integration tests (from user stories; UI-level where practical)
     - /Users/muhammadnurislomtukhtamishhoji-zoda/Development/schedule-website/src/components/student-schedule/student-schedule-month-viewer.tsx
 
 ## Phase 3.3: Core Implementation
+
 Admin filters
 
 - [ ] T012 Add Class Type multi-select to admin 日次 filters UI
@@ -129,6 +132,7 @@ Teacher and student views
 - [ ] T026 Cleanup: Remove debug logs; run `bun lint` and `bun test`
 
 ## Dependencies
+
 - T004–T006 (contract tests) before T020–T021 (endpoint support)
 - T007–T011 (integration tests) before T012–T019 (UI + hooks)
 - T012 blocks T013; T014 blocks T015; T016 blocks T017; T018 blocks T019
@@ -136,10 +140,11 @@ Teacher and student views
 - Polish (T022–T026) after core and integration
 
 ## Parallel Execution Examples
+
 Launch contract tests together:
-Task: "T004 Contract test /api/class-types in specs/014-we-should-add/contracts/__tests__/class-types.contract.test.ts"
-Task: "T005 Contract test /api/teachers/me/class-sessions in specs/014-we-should-add/contracts/__tests__/teachers-me-class-sessions.contract.test.ts"
-Task: "T006 Contract test /api/students/me/class-sessions in specs/014-we-should-add/contracts/__tests__/students-me-class-sessions.contract.test.ts"
+Task: "T004 Contract test /api/class-types in specs/014-we-should-add/contracts/**tests**/class-types.contract.test.ts"
+Task: "T005 Contract test /api/teachers/me/class-sessions in specs/014-we-should-add/contracts/**tests**/teachers-me-class-sessions.contract.test.ts"
+Task: "T006 Contract test /api/students/me/class-sessions in specs/014-we-should-add/contracts/**tests**/students-me-class-sessions.contract.test.ts"
 
 Launch UI integration tests together after setup:
 Task: "T007 Admin 日次 filter test"
@@ -148,6 +153,7 @@ Task: "T010 Teacher Week/Month filter test"
 Task: "T011 Student Week/Month filter test"
 
 ## Notes
+
 - [P] tasks = different files, no dependencies
 - Tests must fail before implementation (TDD)
 - Use Bun for scripts (e.g., `bun test`, `bun lint`)

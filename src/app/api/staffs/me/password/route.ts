@@ -14,7 +14,10 @@ export async function PATCH(request: NextRequest) {
     }
 
     if (session.user.role !== "STAFF") {
-      return NextResponse.json({ error: "スタッフのみがこの機能を使用できます" }, { status: 403 });
+      return NextResponse.json(
+        { error: "スタッフのみがこの機能を使用できます" },
+        { status: 403 }
+      );
     }
 
     const body = await request.json();
@@ -28,19 +31,30 @@ export async function PATCH(request: NextRequest) {
 
     const { currentPassword, newPassword } = result.data;
 
-    const user = await prisma.user.findUnique({ where: { id: session.user.id } });
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+    });
     if (!user) {
-      return NextResponse.json({ error: "ユーザーが見つかりません" }, { status: 404 });
+      return NextResponse.json(
+        { error: "ユーザーが見つかりません" },
+        { status: 404 }
+      );
     }
 
     // Staff uses hashed passwords
     if (!user.passwordHash) {
-      return NextResponse.json({ error: "現在のパスワードが設定されていません" }, { status: 400 });
+      return NextResponse.json(
+        { error: "現在のパスワードが設定されていません" },
+        { status: 400 }
+      );
     }
 
     const ok = await bcrypt.compare(currentPassword, user.passwordHash);
     if (!ok) {
-      return NextResponse.json({ error: "現在のパスワードが正しくありません" }, { status: 400 });
+      return NextResponse.json(
+        { error: "現在のパスワードが正しくありません" },
+        { status: 400 }
+      );
     }
 
     const hashed = await bcrypt.hash(newPassword, 10);
@@ -52,7 +66,9 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ message: "パスワードが正常に更新されました" });
   } catch (error) {
     console.error("Error updating staff password:", error);
-    return NextResponse.json({ error: "パスワードの更新に失敗しました" }, { status: 500 });
+    return NextResponse.json(
+      { error: "パスワードの更新に失敗しました" },
+      { status: 500 }
+    );
   }
 }
-

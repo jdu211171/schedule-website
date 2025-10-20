@@ -24,7 +24,9 @@ type FormattedClassType = {
   updatedAt: Date;
 };
 
-const formatClassType = (classType: ClassTypeWithRelations): FormattedClassType => ({
+const formatClassType = (
+  classType: ClassTypeWithRelations
+): FormattedClassType => ({
   classTypeId: classType.classTypeId,
   name: classType.name,
   notes: classType.notes,
@@ -45,10 +47,22 @@ export const GET = withRole(["ADMIN"], async (request: NextRequest) => {
 
   const parsed = classTypeFilterSchema.safeParse(params);
   if (!parsed.success) {
-    return NextResponse.json({ error: "フィルターパラメータが無効です" }, { status: 400 });
+    return NextResponse.json(
+      { error: "フィルターパラメータが無効です" },
+      { status: 400 }
+    );
   }
 
-  const { page, limit, name, parentId, includeChildren, includeParent, sortBy, sortOrder } = parsed.data;
+  const {
+    page,
+    limit,
+    name,
+    parentId,
+    includeChildren,
+    includeParent,
+    sortBy,
+    sortOrder,
+  } = parsed.data;
 
   const where: any = {};
   if (name) where.name = { contains: name, mode: "insensitive" };
@@ -68,7 +82,13 @@ export const GET = withRole(["ADMIN"], async (request: NextRequest) => {
 
   const skip = (page - 1) * limit;
   const total = await prisma.classType.count({ where });
-  const classTypes = await prisma.classType.findMany({ where, include, skip, take: limit, orderBy });
+  const classTypes = await prisma.classType.findMany({
+    where,
+    include,
+    skip,
+    take: limit,
+    orderBy,
+  });
   const formatted = classTypes.map(formatClassType);
 
   return NextResponse.json({
@@ -76,4 +96,3 @@ export const GET = withRole(["ADMIN"], async (request: NextRequest) => {
     pagination: { total, page, limit, pages: Math.ceil(total / limit) },
   });
 });
-

@@ -2,7 +2,13 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,7 +16,10 @@ import { Loader2, Info, AlertCircle, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { fetcher } from "@/lib/fetcher";
 import { MessageTemplateEditor } from "./message-template-editor";
-import { MessageTemplate, getDefaultTemplates } from "@/lib/line/message-templates";
+import {
+  MessageTemplate,
+  getDefaultTemplates,
+} from "@/lib/line/message-templates";
 import { BulkNotificationSettings } from "./bulk-notification-settings";
 
 interface LineStats {
@@ -29,46 +38,53 @@ export function LineSettings() {
 
   // Utility function to parse error messages
   const parseErrorMessage = (error: unknown): string => {
-    if (typeof error === 'string') return error;
-    
-    const err = error as { 
-      message?: string; 
-      info?: { 
-        details?: unknown[]; 
-        error?: string; 
-        message?: string; 
-      }; 
-      status?: number; 
+    if (typeof error === "string") return error;
+
+    const err = error as {
+      message?: string;
+      info?: {
+        details?: unknown[];
+        error?: string;
+        message?: string;
+      };
+      status?: number;
     };
-    
+
     // Handle validation errors
     if (err?.info?.details && Array.isArray(err.info.details)) {
       const validationErrors = err.info.details.map((detail: unknown) => {
         const d = detail as { path?: string[]; message?: string };
-        if (d.path && d.path.includes('content')) {
+        if (d.path && d.path.includes("content")) {
           return "メッセージ内容は必須です。";
         }
         return d.message || "入力内容を確認してください。";
       });
       return validationErrors.join(" ");
     }
-    
+
     // Handle API errors
     if (err?.info?.error) return err.info.error;
     if (err?.info?.message) return err.info.message;
     if (err?.message) return err.message;
-    
+
     // Handle network errors
-    if (err?.status === 500) return "サーバーエラーが発生しました。しばらく待ってからお試しください。";
+    if (err?.status === 500)
+      return "サーバーエラーが発生しました。しばらく待ってからお試しください。";
     if (err?.status === 403) return "この操作を実行する権限がありません。";
-    if (err?.status === 401) return "認証が必要です。再度ログインしてください。";
-    if (err?.status && err.status >= 400) return "リクエストの処理に失敗しました。";
-    
+    if (err?.status === 401)
+      return "認証が必要です。再度ログインしてください。";
+    if (err?.status && err.status >= 400)
+      return "リクエストの処理に失敗しました。";
+
     return "予期しないエラーが発生しました。";
   };
 
   // Enhanced error display component
-  const renderErrorState = (error: unknown, title: string, onRetry?: () => void) => (
+  const renderErrorState = (
+    error: unknown,
+    title: string,
+    onRetry?: () => void
+  ) => (
     <Alert variant="destructive" className="my-4">
       <AlertCircle className="h-4 w-4" />
       <AlertDescription className="flex items-center justify-between">
@@ -77,9 +93,9 @@ export function LineSettings() {
           <div className="mt-1 text-sm">{parseErrorMessage(error)}</div>
         </div>
         {onRetry && (
-          <Button 
-            variant="outline" 
-            size="sm" 
+          <Button
+            variant="outline"
+            size="sm"
             onClick={onRetry}
             className="ml-4"
           >
@@ -92,11 +108,11 @@ export function LineSettings() {
   );
 
   // Fetch message templates with enhanced error handling
-  const { 
-    data: templatesData, 
-    isLoading: templatesLoading, 
+  const {
+    data: templatesData,
+    isLoading: templatesLoading,
     error: templatesError,
-    refetch: refetchTemplates
+    refetch: refetchTemplates,
   } = useQuery({
     queryKey: ["line-templates"],
     queryFn: () => fetcher("/api/settings/line/templates"),
@@ -112,11 +128,11 @@ export function LineSettings() {
   });
 
   // Fetch LINE statistics with enhanced error handling
-  const { 
-    data: stats, 
-    isLoading: statsLoading, 
+  const {
+    data: stats,
+    isLoading: statsLoading,
     error: statsError,
-    refetch: refetchStats
+    refetch: refetchStats,
   } = useQuery({
     queryKey: ["line-stats"],
     queryFn: () => fetcher("/api/settings/line/stats"),
@@ -135,7 +151,13 @@ export function LineSettings() {
 
   // Mutation for bulk updating notification settings with enhanced error handling
   const updateNotificationSettings = useMutation({
-    mutationFn: async ({ userType, enabled }: { userType: "students" | "teachers" | "all"; enabled: boolean }) => {
+    mutationFn: async ({
+      userType,
+      enabled,
+    }: {
+      userType: "students" | "teachers" | "all";
+      enabled: boolean;
+    }) => {
       return fetcher("/api/settings/line/notifications", {
         method: "PUT",
         body: JSON.stringify({ userType, enabled }),
@@ -149,7 +171,7 @@ export function LineSettings() {
       });
     },
     onError: (error) => {
-      console.error('Failed to update notification settings:', error);
+      console.error("Failed to update notification settings:", error);
       toast({
         title: "設定更新エラー",
         description: parseErrorMessage(error),
@@ -158,7 +180,10 @@ export function LineSettings() {
     },
   });
 
-  const handleBulkUpdate = async (userType: "students" | "teachers" | "all", enabled: boolean) => {
+  const handleBulkUpdate = async (
+    userType: "students" | "teachers" | "all",
+    enabled: boolean
+  ) => {
     setIsUpdating(true);
     try {
       await updateNotificationSettings.mutateAsync({ userType, enabled });
@@ -189,9 +214,9 @@ export function LineSettings() {
               ネットワーク接続とサーバーの状態を確認してください。
             </div>
             <div className="mt-3 flex gap-2">
-              <Button 
-                variant="outline" 
-                size="sm" 
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => {
                   refetchTemplates();
                   refetchStats();
@@ -228,10 +253,17 @@ export function LineSettings() {
         </CardHeader>
         <CardContent>
           {templatesError ? (
-            renderErrorState(templatesError, "テンプレートの読み込みに失敗しました", refetchTemplates)
+            renderErrorState(
+              templatesError,
+              "テンプレートの読み込みに失敗しました",
+              refetchTemplates
+            )
           ) : (
             <MessageTemplateEditor
-              templates={(templatesData as { data: MessageTemplate[] })?.data || getDefaultTemplates()}
+              templates={
+                (templatesData as { data: MessageTemplate[] })?.data ||
+                getDefaultTemplates()
+              }
               onSave={async (templates) => {
                 try {
                   await fetcher("/api/settings/line/templates", {
@@ -239,14 +271,17 @@ export function LineSettings() {
                     body: JSON.stringify({ templates }),
                   });
 
-                  queryClient.invalidateQueries({ queryKey: ["line-templates"] });
+                  queryClient.invalidateQueries({
+                    queryKey: ["line-templates"],
+                  });
 
                   toast({
                     title: "テンプレートを保存しました",
-                    description: "メッセージテンプレートが正常に更新されました。",
+                    description:
+                      "メッセージテンプレートが正常に更新されました。",
                   });
                 } catch (error) {
-                  console.error('Failed to save LINE templates:', error);
+                  console.error("Failed to save LINE templates:", error);
                   toast({
                     title: "テンプレート保存エラー",
                     description: parseErrorMessage(error),
@@ -261,7 +296,11 @@ export function LineSettings() {
 
       {/* Statistics Overview */}
       {statsError ? (
-        renderErrorState(statsError, "統計情報の読み込みに失敗しました", refetchStats)
+        renderErrorState(
+          statsError,
+          "統計情報の読み込みに失敗しました",
+          refetchStats
+        )
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           <Card>
@@ -271,13 +310,19 @@ export function LineSettings() {
             <CardContent>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">総生徒数</span>
+                  <span className="text-sm text-muted-foreground">
+                    総生徒数
+                  </span>
                   <span className="font-medium">{lineStats.totalStudents}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">LINE連携済み</span>
+                  <span className="text-sm text-muted-foreground">
+                    LINE連携済み
+                  </span>
                   <div className="flex items-center gap-2">
-                    <span className="font-medium">{lineStats.linkedStudents}</span>
+                    <span className="font-medium">
+                      {lineStats.linkedStudents}
+                    </span>
                     <Badge variant="secondary">
                       {lineStats.totalStudents > 0
                         ? `${Math.round((lineStats.linkedStudents / lineStats.totalStudents) * 100)}%`
@@ -286,9 +331,13 @@ export function LineSettings() {
                   </div>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">通知有効</span>
+                  <span className="text-sm text-muted-foreground">
+                    通知有効
+                  </span>
                   <div className="flex items-center gap-2">
-                    <span className="font-medium">{lineStats.notificationsEnabledStudents}</span>
+                    <span className="font-medium">
+                      {lineStats.notificationsEnabledStudents}
+                    </span>
                     <Badge variant="default">
                       {lineStats.linkedStudents > 0
                         ? `${Math.round((lineStats.notificationsEnabledStudents / lineStats.linkedStudents) * 100)}%`
@@ -307,13 +356,19 @@ export function LineSettings() {
             <CardContent>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">総講師数</span>
+                  <span className="text-sm text-muted-foreground">
+                    総講師数
+                  </span>
                   <span className="font-medium">{lineStats.totalTeachers}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">LINE連携済み</span>
+                  <span className="text-sm text-muted-foreground">
+                    LINE連携済み
+                  </span>
                   <div className="flex items-center gap-2">
-                    <span className="font-medium">{lineStats.linkedTeachers}</span>
+                    <span className="font-medium">
+                      {lineStats.linkedTeachers}
+                    </span>
                     <Badge variant="secondary">
                       {lineStats.totalTeachers > 0
                         ? `${Math.round((lineStats.linkedTeachers / lineStats.totalTeachers) * 100)}%`
@@ -322,9 +377,13 @@ export function LineSettings() {
                   </div>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">通知有効</span>
+                  <span className="text-sm text-muted-foreground">
+                    通知有効
+                  </span>
                   <div className="flex items-center gap-2">
-                    <span className="font-medium">{lineStats.notificationsEnabledTeachers}</span>
+                    <span className="font-medium">
+                      {lineStats.notificationsEnabledTeachers}
+                    </span>
                     <Badge variant="default">
                       {lineStats.linkedTeachers > 0
                         ? `${Math.round((lineStats.notificationsEnabledTeachers / lineStats.linkedTeachers) * 100)}%`

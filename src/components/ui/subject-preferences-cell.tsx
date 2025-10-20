@@ -58,24 +58,28 @@ export function SubjectPreferencesCell({
         const hasTypes = pref.subjectTypeIds && pref.subjectTypeIds.length > 0;
 
         return (
-          <div key={pref.subjectId} className="flex flex-wrap gap-1 items-center">
+          <div
+            key={pref.subjectId}
+            className="flex flex-wrap gap-1 items-center"
+          >
             <Badge
               variant="secondary"
               className={hasTypes ? "cursor-pointer" : ""}
               onClick={() => hasTypes && toggleSubject(pref.subjectId)}
             >
-              {hasTypes && (
-                isExpanded ? (
+              {hasTypes &&
+                (isExpanded ? (
                   <ChevronDown className="h-3 w-3 mr-1" />
                 ) : (
                   <ChevronRight className="h-3 w-3 mr-1" />
-                )
-              )}
+                ))}
               {subject.name}
             </Badge>
             {isExpanded &&
               pref.subjectTypeIds.map((typeId) => {
-                const type = subjectTypes.find((t) => t.subjectTypeId === typeId);
+                const type = subjectTypes.find(
+                  (t) => t.subjectTypeId === typeId
+                );
                 return type ? (
                   <Badge key={typeId} variant="outline" className="text-xs">
                     {type.name}

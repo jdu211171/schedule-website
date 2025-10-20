@@ -72,7 +72,10 @@ export function VacationTable() {
 
   const deleteVacationMutation = useVacationDelete();
   const updateOrderMutation = useVacationOrderUpdate();
-  const { exportToCSV, isExporting } = useGenericExport("/api/holidays/export", "holidays");
+  const { exportToCSV, isExporting } = useGenericExport(
+    "/api/holidays/export",
+    "holidays"
+  );
 
   // Use local state during sort mode, otherwise use server data
   const typedVacations = isSortMode ? localVacations : vacations?.data || [];
@@ -227,8 +230,8 @@ export function VacationTable() {
   const handleExport = () => {
     // Get visible columns (all columns except actions)
     const exportColumns = visibleColumns
-      .map(col => (col as any).accessorKey)
-      .filter(key => key) as string[];
+      .map((col) => (col as any).accessorKey)
+      .filter((key) => key) as string[];
     exportToCSV({
       columns: exportColumns,
       query: { name: searchTerm || "", branchId: selectedBranchId || "" },

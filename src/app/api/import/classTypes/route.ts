@@ -7,7 +7,7 @@ import {
   REQUIRED_CLASS_TYPE_CSV_HEADERS,
   type ClassTypeImportData,
   type ImportResult,
-  formatValidationErrors
+  formatValidationErrors,
 } from "@/schemas/import";
 import { z } from "zod";
 import { handleImportError } from "@/lib/import-error-handler";
@@ -26,11 +26,16 @@ async function handleImport(req: NextRequest, session: any) {
     }
 
     // Enforce server-side max size (hard cap)
-    const maxBytes = Number.parseInt(process.env.IMPORT_MAX_BYTES || "26214400", 10); // 25MB
+    const maxBytes = Number.parseInt(
+      process.env.IMPORT_MAX_BYTES || "26214400",
+      10
+    ); // 25MB
     const fileSize = (file as Blob).size ?? 0;
     if (fileSize > maxBytes) {
       return NextResponse.json(
-        { error: `ファイルサイズが大きすぎます。最大 ${Math.floor(maxBytes / 1024 / 1024)}MB まで対応しています` },
+        {
+          error: `ファイルサイズが大きすぎます。最大 ${Math.floor(maxBytes / 1024 / 1024)}MB まで対応しています`,
+        },
         { status: 413 }
       );
     }
@@ -38,13 +43,14 @@ async function handleImport(req: NextRequest, session: any) {
     const buffer = Buffer.from(await (file as Blob).arrayBuffer());
 
     // Parse CSV file
-    const parseResult = await CSVParser.parseBuffer<Record<string, string>>(buffer);
+    const parseResult =
+      await CSVParser.parseBuffer<Record<string, string>>(buffer);
 
     if (parseResult.errors.length > 0) {
       return NextResponse.json(
         {
           error: "CSVファイルの解析に失敗しました",
-          details: parseResult.errors
+          details: parseResult.errors,
         },
         { status: 400 }
       );
@@ -60,17 +66,19 @@ async function handleImport(req: NextRequest, session: any) {
 
     // Remap localized headers (exported) to schema keys for import
     const headerMap: Record<string, string> = {
-      "ID": "id",
-      "授業タイプ名": "name",
-      "備考": "notes",
-      "親タイプ": "parentName",
-      "表示順": "order",
-      "フィルター表示": "visibleInFilters",
+      ID: "id",
+      授業タイプ名: "name",
+      備考: "notes",
+      親タイプ: "parentName",
+      表示順: "order",
+      フィルター表示: "visibleInFilters",
     };
 
     let actualHeaders = Object.keys(parseResult.data[0]);
     const requiredHeaders = [...REQUIRED_CLASS_TYPE_CSV_HEADERS];
-    let missingHeaders = requiredHeaders.filter((h) => !actualHeaders.includes(h));
+    let missingHeaders = requiredHeaders.filter(
+      (h) => !actualHeaders.includes(h)
+    );
 
     if (missingHeaders.length > 0) {
       const canRemap = actualHeaders.some((h) => headerMap[h]);
@@ -83,7 +91,9 @@ async function handleImport(req: NextRequest, session: any) {
           return out;
         }) as any;
         actualHeaders = Object.keys(parseResult.data[0]);
-        missingHeaders = requiredHeaders.filter((h) => !actualHeaders.includes(h));
+        missingHeaders = requiredHeaders.filter(
+          (h) => !actualHeaders.includes(h)
+        );
       }
     }
 
@@ -99,14 +109,16 @@ async function handleImport(req: NextRequest, session: any) {
     const result: ImportResult = {
       success: 0,
       errors: [],
-      warnings: []
+      warnings: [],
     };
 
     // Create a map of class type names to IDs for parent lookup
     const existingClassTypes = await prisma.classType.findMany({
-      select: { classTypeId: true, name: true }
+      select: { classTypeId: true, name: true },
     });
-    const classTypeMap = new Map(existingClassTypes.map(ct => [ct.name, ct.classTypeId]));
+    const classTypeMap = new Map(
+      existingClassTypes.map((ct) => [ct.name, ct.classTypeId])
+    );
 
     for (let i = 0; i < parseResult.data.length; i++) {
       const row = parseResult.data[i];
@@ -125,14 +137,18 @@ async function handleImport(req: NextRequest, session: any) {
           if (!parentId) {
             result.errors.push({
               row: rowNumber,
-              errors: [`親授業タイプ「${validated.parentName}」が見つかりません`]
+              errors: [
+                `親授業タイプ「${validated.parentName}」が見つかりません`,
+              ],
             });
             continue;
           }
         }
 
         if (id) {
-          const existing = await prisma.classType.findUnique({ where: { classTypeId: id } });
+          const existing = await prisma.classType.findUnique({
+            where: { classTypeId: id },
+          });
           if (existing) {
             await prisma.classType.update({
               where: { classTypeId: id },
@@ -141,7 +157,9 @@ async function handleImport(req: NextRequest, session: any) {
                 notes: validated.notes ?? null,
                 parentId: parentId ?? existing.parentId,
                 order: validated.order ?? existing.order,
-                ...(validated.visibleInFilters !== undefined ? { visibleInFilters: validated.visibleInFilters } : {}),
+                ...(validated.visibleInFilters !== undefined
+                  ? { visibleInFilters: validated.visibleInFilters }
+                  : {}),
               },
             });
             result.success++;
@@ -161,7 +179,9 @@ async function handleImport(req: NextRequest, session: any) {
               notes: validated.notes ?? existingClassType.notes,
               parentId: parentId ?? existingClassType.parentId,
               order: validated.order ?? existingClassType.order,
-              ...(validated.visibleInFilters !== undefined ? { visibleInFilters: validated.visibleInFilters } : {}),
+              ...(validated.visibleInFilters !== undefined
+                ? { visibleInFilters: validated.visibleInFilters }
+                : {}),
             },
           });
           result.success++;
@@ -175,7 +195,11 @@ async function handleImport(req: NextRequest, session: any) {
         } else {
           result.errors.push({
             row: rowNumber,
-            errors: [error instanceof Error ? error.message : "データ検証中にエラーが発生しました"]
+            errors: [
+              error instanceof Error
+                ? error.message
+                : "データ検証中にエラーが発生しました",
+            ],
           });
         }
       }
@@ -191,15 +215,17 @@ async function handleImport(req: NextRequest, session: any) {
     if (validatedData.length > 0) {
       await prisma.$transaction(async (tx) => {
         // First, create all class types without parents
-        const withoutParent = validatedData.filter(d => !d.parentId);
+        const withoutParent = validatedData.filter((d) => !d.parentId);
         for (const data of withoutParent) {
           const created = await tx.classType.create({
             data: {
               name: data.name,
               notes: data.notes,
               order: data.order,
-              ...(data.visibleInFilters !== undefined ? { visibleInFilters: data.visibleInFilters as any } : {}),
-            }
+              ...(data.visibleInFilters !== undefined
+                ? { visibleInFilters: data.visibleInFilters as any }
+                : {}),
+            },
           });
           // Update the map for subsequent parent lookups
           classTypeMap.set(created.name, created.classTypeId);
@@ -207,7 +233,7 @@ async function handleImport(req: NextRequest, session: any) {
         }
 
         // Then, create class types with parents
-        const withParent = validatedData.filter(d => d.parentId);
+        const withParent = validatedData.filter((d) => d.parentId);
         for (const data of withParent) {
           // Re-check parent ID in case it was just created
           let parentId = data.parentId;
@@ -221,8 +247,10 @@ async function handleImport(req: NextRequest, session: any) {
               notes: data.notes,
               parentId: parentId,
               order: data.order,
-              ...(data.visibleInFilters !== undefined ? { visibleInFilters: data.visibleInFilters as any } : {}),
-            }
+              ...(data.visibleInFilters !== undefined
+                ? { visibleInFilters: data.visibleInFilters as any }
+                : {}),
+            },
           });
           result.success++;
         }

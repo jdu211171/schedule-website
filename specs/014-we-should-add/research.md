@@ -1,6 +1,7 @@
 # Research: Class Type Filters Across Schedule Views
 
 ## Decisions
+
 - Persistence model: Per-role via localStorage; cross-view; across reloads; same across branches.
   - Rationale: Matches existing filters’ persistence patterns; minimal overhead.
   - Alternatives: URL params (shareable) rejected per spec; server-side profile rejected as scope creep.
@@ -23,19 +24,22 @@
   - Rationale: Discoverability; hides less capability compared to removing control.
 
 ## Accessibility & Localization (Non-blocking Assumptions)
+
 - Accessibility: Target keyboard operability and ARIA for combobox and chips. Aim for WCAG 2.1 AA.
 - Localization: Provide JA strings; keep text extractable for future EN.
 
 ## Endpoints & Data
+
 - Existing: `GET /api/class-types` returns paginated class type list (server truth).
 - Proposed: Support `classTypeIds` (CSV or repeated) for teacher/student me endpoints to allow server-side filtering for multi-select.
   - If not implemented immediately, fall back to client-side filtering on fetched results.
 
 ## Risks
+
 - Multi-select server filtering may require API changes and pagination considerations in `teachers/students me` endpoints.
 - Client-side filtering on large result sets could impact performance; mitigate with pagination or server-side support.
 
 ## Open Items (non-blocking)
+
 - Exact accessibility acceptance checklist.
 - Confirm localized copy for empty/zero-results states.
-

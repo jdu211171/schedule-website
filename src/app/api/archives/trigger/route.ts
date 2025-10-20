@@ -46,9 +46,9 @@ export const POST = withBranchAccess(
     } catch (error) {
       console.error("Error triggering archive:", error);
       return NextResponse.json(
-        { 
+        {
           error: "アーカイブ処理の開始に失敗しました", // "Failed to start archive process"
-          details: error instanceof Error ? error.message : "Unknown error"
+          details: error instanceof Error ? error.message : "Unknown error",
         },
         { status: 500 }
       );

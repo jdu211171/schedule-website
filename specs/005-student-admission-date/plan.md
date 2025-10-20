@@ -4,4 +4,3 @@
 4. Include field in API responses and types.
 5. Support CSV import/export mapping.
 6. Update docs; run typecheck and lint.
-

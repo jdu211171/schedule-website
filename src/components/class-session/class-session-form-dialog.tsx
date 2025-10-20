@@ -136,10 +136,10 @@ const DEFAULT_TIME_SLOTS = Array.from({ length: 57 }, (_, i) => {
 
   return {
     index: i,
-    start: `${hours.toString().padStart(2, '0')}:${startMinutes.toString().padStart(2, '0')}`,
-    end: `${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`,
-    display: `${hours}:${startMinutes === 0 ? '00' : startMinutes} - ${endHours}:${endMinutes === 0 ? '00' : endMinutes}`,
-    shortDisplay: i % 4 === 0 ? `${hours}:00` : ''
+    start: `${hours.toString().padStart(2, "0")}:${startMinutes.toString().padStart(2, "0")}`,
+    end: `${endHours.toString().padStart(2, "0")}:${endMinutes.toString().padStart(2, "0")}`,
+    display: `${hours}:${startMinutes === 0 ? "00" : startMinutes} - ${endHours}:${endMinutes === 0 ? "00" : endMinutes}`,
+    shortDisplay: i % 4 === 0 ? `${hours}:00` : "",
   };
 });
 
@@ -157,8 +157,8 @@ export function ClassSessionFormDialog({
     classSession?.date && typeof classSession.date === "string"
       ? parseISO(classSession.date)
       : filters.startDate && typeof filters.startDate === "string"
-      ? parseISO(filters.startDate)
-      : new Date()
+        ? parseISO(filters.startDate)
+        : new Date()
   );
 
   // Fetch reference data
@@ -166,7 +166,10 @@ export function ClassSessionFormDialog({
   const { data: studentsData } = useStudents({ limit: 100 });
   const { data: subjectsData } = useSubjects({ limit: 100 });
   // Admin form should list ALL class types, even those hidden from filters
-  const { data: classTypesData } = useClassTypes({ limit: 100, visibleOnly: false });
+  const { data: classTypesData } = useClassTypes({
+    limit: 100,
+    visibleOnly: false,
+  });
   const queryClient = useQueryClient();
 
   // Live refresh class types when admin toggles visibility
@@ -265,8 +268,8 @@ export function ClassSessionFormDialog({
       classSession?.date && typeof classSession.date === "string"
         ? parseISO(classSession.date)
         : filters.startDate && typeof filters.startDate === "string"
-        ? parseISO(filters.startDate)
-        : new Date()
+          ? parseISO(filters.startDate)
+          : new Date()
     );
 
     // Editing mode doesn't support recurring sessions
@@ -335,7 +338,7 @@ export function ClassSessionFormDialog({
       form.setError("studentId", { message: "Student is required" });
       return;
     }
-    
+
     // Close the dialog immediately for better UX
     onOpenChange(false);
 
@@ -379,11 +382,12 @@ export function ClassSessionFormDialog({
         try {
           if (formattedValues.isRecurring) {
             // Attempt to create a series blueprint; server rejects for 特別授業
-            const res = await fetch('/api/class-series', {
-              method: 'POST',
+            const res = await fetch("/api/class-series", {
+              method: "POST",
               headers: {
-                'Content-Type': 'application/json',
-                'X-Selected-Branch': localStorage.getItem('selectedBranchId') || ''
+                "Content-Type": "application/json",
+                "X-Selected-Branch":
+                  localStorage.getItem("selectedBranchId") || "",
               },
               body: JSON.stringify({
                 teacherId: formattedValues.teacherId || null,
@@ -397,23 +401,26 @@ export function ClassSessionFormDialog({
                 startTime: formattedValues.startTime,
                 endTime: formattedValues.endTime,
                 duration: formattedValues.duration ?? undefined,
-                daysOfWeek: formattedValues.daysOfWeek && formattedValues.daysOfWeek.length > 0
-                  ? formattedValues.daysOfWeek
-                  : [new Date(formattedValues.date).getDay()],
+                daysOfWeek:
+                  formattedValues.daysOfWeek &&
+                  formattedValues.daysOfWeek.length > 0
+                    ? formattedValues.daysOfWeek
+                    : [new Date(formattedValues.date).getDay()],
                 notes: formattedValues.notes ?? null,
-              })
+              }),
             });
 
             if (res.ok) {
               const { seriesId } = await res.json();
               // Extend by one month (near-term visibility)
               await fetch(`/api/class-series/${seriesId}/extend`, {
-                method: 'POST',
+                method: "POST",
                 headers: {
-                  'Content-Type': 'application/json',
-                  'X-Selected-Branch': localStorage.getItem('selectedBranchId') || ''
+                  "Content-Type": "application/json",
+                  "X-Selected-Branch":
+                    localStorage.getItem("selectedBranchId") || "",
                 },
-                body: JSON.stringify({ months: 1 })
+                body: JSON.stringify({ months: 1 }),
               });
               // Notify active calendar views to refetch (same-user tabs)
               try {

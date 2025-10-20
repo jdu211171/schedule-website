@@ -16,4 +16,3 @@ Notes
 - Non‑destructive: updates only `status`; no deletes or schema changes.
 - Idempotent: safe to re‑run.
 - Follow local policy to use psql (libpq env vars), not Prisma.
-

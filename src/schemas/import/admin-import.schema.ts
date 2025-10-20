@@ -19,14 +19,18 @@ export const adminImportSchema = z.object({
     .max(100, "名前は100文字以下で入力してください"),
   isRestrictedAdmin: z
     .string()
-    .transform(val => {
+    .transform((val) => {
       const lower = val.toLowerCase().trim();
-      return lower === "true" || lower === "yes" || lower === "1" || lower === "はい";
+      return (
+        lower === "true" || lower === "yes" || lower === "1" || lower === "はい"
+      );
     })
     .default("false"),
   branchNames: z
     .string()
-    .transform(val => val === "" ? [] : val.split(",").map(name => name.trim()))
+    .transform((val) =>
+      val === "" ? [] : val.split(",").map((name) => name.trim())
+    )
     .pipe(z.array(z.string().min(1)))
     .optional()
     .default(""),
@@ -34,12 +38,19 @@ export const adminImportSchema = z.object({
 
 export type AdminImportData = z.infer<typeof adminImportSchema>;
 
-export const ADMIN_CSV_HEADERS = ["username", "email", "password", "name", "isRestrictedAdmin", "branchNames"] as const;
+export const ADMIN_CSV_HEADERS = [
+  "username",
+  "email",
+  "password",
+  "name",
+  "isRestrictedAdmin",
+  "branchNames",
+] as const;
 
 // Required headers that must be present in the CSV
 export const REQUIRED_ADMIN_CSV_HEADERS = [
   "username",
   "email",
   "password",
-  "name"
+  "name",
 ] as const;

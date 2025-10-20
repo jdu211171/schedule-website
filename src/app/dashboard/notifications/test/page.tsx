@@ -1,12 +1,26 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, RefreshCw, Send, CheckCircle, XCircle, Zap, AlertCircle } from "lucide-react";
+import {
+  Loader2,
+  RefreshCw,
+  Send,
+  CheckCircle,
+  XCircle,
+  Zap,
+  AlertCircle,
+} from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 
@@ -35,7 +49,7 @@ export default function NotificationTestPage() {
 
       const data = await response.json();
       setPendingInfo(data);
-      
+
       toast({
         title: "✅ 取得成功",
         description: `${data.pendingCount}件の保留中の通知が見つかりました`,
@@ -44,7 +58,10 @@ export default function NotificationTestPage() {
       console.error("Error checking pending notifications:", error);
       toast({
         title: "❌ エラー",
-        description: error instanceof Error ? error.message : "保留中の通知の確認に失敗しました",
+        description:
+          error instanceof Error
+            ? error.message
+            : "保留中の通知の確認に失敗しました",
         variant: "destructive",
       });
     } finally {
@@ -55,7 +72,7 @@ export default function NotificationTestPage() {
   const processNotifications = async () => {
     setIsLoading(true);
     setProcessResult(null);
-    
+
     try {
       const response = await fetch("/api/notifications/process", {
         method: "POST",
@@ -71,12 +88,14 @@ export default function NotificationTestPage() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || `Failed to process: ${response.statusText}`);
+        throw new Error(
+          errorData.error || `Failed to process: ${response.statusText}`
+        );
       }
 
       const data = await response.json();
       setProcessResult(data);
-      
+
       toast({
         title: "✅ 処理完了",
         description: `${data.summary.successful}件の通知が送信されました`,
@@ -88,7 +107,8 @@ export default function NotificationTestPage() {
       console.error("Error processing notifications:", error);
       toast({
         title: "❌ エラー",
-        description: error instanceof Error ? error.message : "通知の処理に失敗しました",
+        description:
+          error instanceof Error ? error.message : "通知の処理に失敗しました",
         variant: "destructive",
       });
     } finally {
@@ -100,19 +120,18 @@ export default function NotificationTestPage() {
     setIsLoading(true);
     setCompleteFlowResult(null);
     setFlowStep("");
-    
+
     const results: any = {
       createResult: null,
       sendResult: null,
-      errors: []
+      errors: [],
     };
-    
-    try {
 
+    try {
       // Step 1: Create notifications (queue them)
       setFlowStep("テンプレートを取得して通知を作成中...");
       console.log("Step 1: Creating notifications...");
-      
+
       const createResponse = await fetch("/api/notifications/send", {
         method: "POST",
         headers: {
@@ -127,13 +146,15 @@ export default function NotificationTestPage() {
 
       if (!createResponse.ok) {
         const errorData = await createResponse.json();
-        throw new Error(errorData.error || `通知作成エラー: ${createResponse.statusText}`);
+        throw new Error(
+          errorData.error || `通知作成エラー: ${createResponse.statusText}`
+        );
       }
 
       const createData = await createResponse.json();
       results.createResult = createData;
       console.log("Notifications created:", createData);
-      
+
       toast({
         title: "✅ 通知作成完了",
         description: `${createData.notificationsQueued}件の通知が作成されました`,
@@ -141,12 +162,12 @@ export default function NotificationTestPage() {
 
       // Wait a moment before processing
       console.log("Waiting before processing...");
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
       // Step 2: Process notifications (send them)
       setFlowStep("作成された通知をLINEで送信中...");
       console.log("Step 2: Processing notifications...");
-      
+
       const processResponse = await fetch("/api/notifications/process", {
         method: "POST",
         headers: {
@@ -164,8 +185,10 @@ export default function NotificationTestPage() {
       if (!processResponse.ok) {
         const errorData = await processResponse.json();
         console.error("Process error:", errorData);
-        results.errors.push(`送信エラー: ${errorData.error || processResponse.statusText}`);
-        
+        results.errors.push(
+          `送信エラー: ${errorData.error || processResponse.statusText}`
+        );
+
         // Also show the error in toast
         toast({
           title: "❌ 送信エラー",
@@ -176,7 +199,7 @@ export default function NotificationTestPage() {
         const processData = await processResponse.json();
         results.sendResult = processData;
         console.log("Notifications processed:", processData);
-        
+
         toast({
           title: "✅ 送信完了",
           description: `${processData.summary.successful}件のLINEメッセージが送信されました`,
@@ -185,23 +208,26 @@ export default function NotificationTestPage() {
 
       setCompleteFlowResult(results);
       setFlowStep("");
-      
+
       // Refresh pending count
       await checkPendingNotifications();
-      
     } catch (error) {
       console.error("Error in complete notification flow:", error);
-      
+
       // Enhanced error display
-      const errorMessage = error instanceof Error ? error.message : "完全な通知フローに失敗しました";
-      const errorDetails = error instanceof Error ? error.stack : JSON.stringify(error);
-      
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "完全な通知フローに失敗しました";
+      const errorDetails =
+        error instanceof Error ? error.stack : JSON.stringify(error);
+
       setCompleteFlowResult({
         createResult: results.createResult,
         sendResult: null,
-        errors: [`フローエラー: ${errorMessage}`, `詳細: ${errorDetails}`]
+        errors: [`フローエラー: ${errorMessage}`, `詳細: ${errorDetails}`],
       });
-      
+
       toast({
         title: "❌ エラー",
         description: errorMessage,
@@ -230,7 +256,8 @@ export default function NotificationTestPage() {
             完全な通知フローテスト
           </CardTitle>
           <CardDescription>
-            テンプレート取得から LINE 送信まで、通知の全プロセスを手動で実行します
+            テンプレート取得から LINE
+            送信まで、通知の全プロセスを手動で実行します
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -259,8 +286,8 @@ export default function NotificationTestPage() {
             </Label>
           </div>
 
-          <Button 
-            onClick={runCompleteNotificationFlow} 
+          <Button
+            onClick={runCompleteNotificationFlow}
             disabled={isLoading}
             variant="default"
             size="lg"
@@ -291,14 +318,28 @@ export default function NotificationTestPage() {
                         <div className="ml-4 space-y-1 text-sm">
                           <div className="flex items-center gap-2">
                             <CheckCircle className="h-4 w-4 text-green-600" />
-                            作成された通知: {completeFlowResult.createResult.notificationsQueued}件
+                            作成された通知:{" "}
+                            {
+                              completeFlowResult.createResult
+                                .notificationsQueued
+                            }
+                            件
                           </div>
-                          <div>処理されたテンプレート: {completeFlowResult.createResult.templatesProcessed}件</div>
-                          {completeFlowResult.createResult.errors && completeFlowResult.createResult.errors.length > 0 && (
-                            <div className="text-red-600">
-                              エラー: {completeFlowResult.createResult.errors.join(", ")}
-                            </div>
-                          )}
+                          <div>
+                            処理されたテンプレート:{" "}
+                            {completeFlowResult.createResult.templatesProcessed}
+                            件
+                          </div>
+                          {completeFlowResult.createResult.errors &&
+                            completeFlowResult.createResult.errors.length >
+                              0 && (
+                              <div className="text-red-600">
+                                エラー:{" "}
+                                {completeFlowResult.createResult.errors.join(
+                                  ", "
+                                )}
+                              </div>
+                            )}
                         </div>
                       </div>
                     )}
@@ -310,30 +351,42 @@ export default function NotificationTestPage() {
                         <div className="ml-4 space-y-1 text-sm">
                           <div className="flex items-center gap-2">
                             <CheckCircle className="h-4 w-4 text-green-600" />
-                            成功: {completeFlowResult.sendResult.summary.successful}件
+                            成功:{" "}
+                            {completeFlowResult.sendResult.summary.successful}件
                           </div>
                           {completeFlowResult.sendResult.summary.failed > 0 && (
                             <div className="flex items-center gap-2">
                               <XCircle className="h-4 w-4 text-red-600" />
-                              失敗: {completeFlowResult.sendResult.summary.failed}件
+                              失敗:{" "}
+                              {completeFlowResult.sendResult.summary.failed}件
                             </div>
                           )}
-                          <div>処理時間: {completeFlowResult.sendResult.summary.executionTimeMs}ms</div>
+                          <div>
+                            処理時間:{" "}
+                            {
+                              completeFlowResult.sendResult.summary
+                                .executionTimeMs
+                            }
+                            ms
+                          </div>
                         </div>
                       </div>
                     )}
 
                     {/* Errors */}
-                    {completeFlowResult.errors && completeFlowResult.errors.length > 0 && (
-                      <div className="text-red-600">
-                        <h4 className="font-semibold mb-1">エラー:</h4>
-                        <ul className="ml-4 list-disc">
-                          {completeFlowResult.errors.map((error: string, index: number) => (
-                            <li key={index}>{error}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
+                    {completeFlowResult.errors &&
+                      completeFlowResult.errors.length > 0 && (
+                        <div className="text-red-600">
+                          <h4 className="font-semibold mb-1">エラー:</h4>
+                          <ul className="ml-4 list-disc">
+                            {completeFlowResult.errors.map(
+                              (error: string, index: number) => (
+                                <li key={index}>{error}</li>
+                              )
+                            )}
+                          </ul>
+                        </div>
+                      )}
                   </div>
                 </AlertDescription>
               </Alert>
@@ -351,8 +404,8 @@ export default function NotificationTestPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Button 
-            onClick={checkPendingNotifications} 
+          <Button
+            onClick={checkPendingNotifications}
             disabled={isLoading}
             className="w-full sm:w-auto"
           >
@@ -366,39 +419,58 @@ export default function NotificationTestPage() {
               <Alert>
                 <AlertDescription>
                   <strong>保留中の通知: </strong>
-                  <Badge variant={pendingInfo.pendingCount > 0 ? "destructive" : "default"}>
+                  <Badge
+                    variant={
+                      pendingInfo.pendingCount > 0 ? "destructive" : "default"
+                    }
+                  >
                     {pendingInfo.pendingCount}件
                   </Badge>
                 </AlertDescription>
               </Alert>
 
-              {pendingInfo.pendingSample && pendingInfo.pendingSample.length > 0 && (
-                <div className="space-y-2">
-                  <h4 className="font-semibold">サンプル（最初の5件）:</h4>
-                  {pendingInfo.pendingSample.map((notification: any) => (
-                    <div key={notification.notificationId} className="border rounded p-3 text-sm">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <Badge variant="outline" className="mr-2">
-                            {notification.recipientType}
+              {pendingInfo.pendingSample &&
+                pendingInfo.pendingSample.length > 0 && (
+                  <div className="space-y-2">
+                    <h4 className="font-semibold">サンプル（最初の5件）:</h4>
+                    {pendingInfo.pendingSample.map((notification: any) => (
+                      <div
+                        key={notification.notificationId}
+                        className="border rounded p-3 text-sm"
+                      >
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <Badge variant="outline" className="mr-2">
+                              {notification.recipientType}
+                            </Badge>
+                            <span className="font-mono text-xs">
+                              {notification.recipientId}
+                            </span>
+                          </div>
+                          <Badge
+                            variant={
+                              notification.status === "FAILED"
+                                ? "destructive"
+                                : "secondary"
+                            }
+                          >
+                            {notification.status}
                           </Badge>
-                          <span className="font-mono text-xs">{notification.recipientId}</span>
                         </div>
-                        <Badge 
-                          variant={notification.status === "FAILED" ? "destructive" : "secondary"}
-                        >
-                          {notification.status}
-                        </Badge>
+                        <div className="mt-2 text-xs text-muted-foreground">
+                          <div>種類: {notification.notificationType}</div>
+                          <div>試行回数: {notification.processingAttempts}</div>
+                          <div>
+                            予定時刻:{" "}
+                            {new Date(notification.scheduledAt).toLocaleString(
+                              "ja-JP"
+                            )}
+                          </div>
+                        </div>
                       </div>
-                      <div className="mt-2 text-xs text-muted-foreground">
-                        <div>種類: {notification.notificationType}</div>
-                        <div>試行回数: {notification.processingAttempts}</div>
-                        <div>予定時刻: {new Date(notification.scheduledAt).toLocaleString('ja-JP')}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+                    ))}
+                  </div>
+                )}
             </div>
           )}
         </CardContent>
@@ -420,8 +492,8 @@ export default function NotificationTestPage() {
               </AlertDescription>
             </Alert>
 
-            <Button 
-              onClick={processNotifications} 
+            <Button
+              onClick={processNotifications}
               disabled={isLoading}
               variant="default"
               className="w-full sm:w-auto"
@@ -445,7 +517,9 @@ export default function NotificationTestPage() {
                         <XCircle className="h-4 w-4 text-red-600" />
                         失敗: {processResult.summary.failed}件
                       </div>
-                      <div>処理時間: {processResult.summary.executionTimeMs}ms</div>
+                      <div>
+                        処理時間: {processResult.summary.executionTimeMs}ms
+                      </div>
                       <div>バッチ数: {processResult.summary.batches}</div>
                     </div>
                   </AlertDescription>
@@ -460,9 +534,7 @@ export default function NotificationTestPage() {
       <Card>
         <CardHeader>
           <CardTitle>診断情報</CardTitle>
-          <CardDescription>
-            通知システムの設定と状態
-          </CardDescription>
+          <CardDescription>通知システムの設定と状態</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-2 text-sm">
@@ -476,9 +548,18 @@ export default function NotificationTestPage() {
             <div className="mt-4">
               <strong>トラブルシューティング:</strong>
               <ul className="ml-4 mt-1 list-disc space-y-1">
-                <li>保留中の通知が0件の場合: 通知作成cronが動作していない可能性があります</li>
-                <li>保留中の通知があるが送信されない場合: 通知送信cronまたは認証に問題があります</li>
-                <li>処理が失敗する場合: LINE設定またはユーザーのLINE IDを確認してください</li>
+                <li>
+                  保留中の通知が0件の場合:
+                  通知作成cronが動作していない可能性があります
+                </li>
+                <li>
+                  保留中の通知があるが送信されない場合:
+                  通知送信cronまたは認証に問題があります
+                </li>
+                <li>
+                  処理が失敗する場合: LINE設定またはユーザーのLINE
+                  IDを確認してください
+                </li>
               </ul>
             </div>
           </div>
