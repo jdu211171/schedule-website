@@ -4,15 +4,18 @@
 - Cancelled definition: Use the cancellation flag (`isCancelled`/`is_cancelled` in data) to determine cancellation state. Status labels (e.g., `CONFLICTED`, `CONFIRMED`) do not imply cancellation.
 - Conflict computation scope: Compute conflicts among active lessons only. Cancelled lessons must not create conflicts nor be considered as neighbors in overlap checks.
 - Toggle behavior: “キャンセル授業を表示” only affects visibility (data fetch and rendering), not conflict logic.
+- Cancelled session interaction: Keep cards pointer-enabled and detect drag via an 8px pointer threshold so a quick click opens details while a drag reuses the existing range-selection flow to create replacements.
 
 ## Rationale
 - Domain alignment: `class_sessions` schema contains a boolean cancellation flag; existing docs/scripts use this for filtering conflicts.
 - UX consistency: Users expect cancelled sessions to be contextual only; conflicts should highlight actionable scheduling issues among active sessions.
+- Interaction clarity: Differentiating click from drag on the card maintains both inspection and quick replacement workflows without obscuring hit targets behind overlapping cards.
 - Safety: UI-only change avoids backend migration and preserves current APIs.
 
 ## Alternatives Considered
 - Filtering at data-fetch layer (server): Not chosen to preserve toggle flexibility and avoid changing API semantics for other screens.
 - Relying on stored `status='CONFLICTED'`: Not chosen; day view already favors live overlap computation, which is more accurate in dynamic UI.
+- Leaving cards transparent (pointer-events: none): Rejected because it breaks access to cancelled session details when another lesson partially covers the block.
 
 ## Impact
 - No backend/API changes.

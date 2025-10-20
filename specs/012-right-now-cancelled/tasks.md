@@ -16,7 +16,8 @@
 
 ## Phase 3.3: Core Implementation (ONLY after tests are failing)
 - [x] T008 Update `src/components/admin-schedule/DayCalendar/day-calendar.tsx`: In `hasBoothOverlap`, `hasTeacherOverlap`, `hasStudentOverlap` computations, skip any `s2.isCancelled === true` and skip current session if `session.isCancelled`.
- - [x] T009 Update `src/components/admin-schedule/DayCalendar/lesson-card.tsx`: Ensure `isConflictVisual` derives only from overlap props and make cancelled cards always click-through (`pointer-events: none`) so partially uncovered portions remain interactive.
+- [x] T009 Update `src/components/admin-schedule/DayCalendar/lesson-card.tsx`: Ensure `isConflictVisual` derives only from overlap props while keeping cancellation styling separate from interaction behaviour.
+- [x] T019 Update cancelled lesson interaction so a click opens details but a drag (≥8px) initiates range selection for creating replacements without relying on pointer pass-through.
 - [ ] T010 Verify `src/components/admin-schedule/DayCalendar/admin-calendar-day.tsx` continues to use `includeCancelled` for visibility only; do not alter conflict logic there.
 
 ## Phase 3.4: Integration

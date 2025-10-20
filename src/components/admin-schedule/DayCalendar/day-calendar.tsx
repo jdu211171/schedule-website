@@ -19,7 +19,7 @@ import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { ExtendedClassSessionWithRelations, DayFilters } from '@/hooks/useClassSessionQuery';
 import { getDateKey } from '../date';
-import { LessonCard, extractTime } from './lesson-card';
+import { LessonCard, extractTime, type CancelledDragPayload } from './lesson-card';
 import { DayCalendarFilters } from './day-calendar-filters';
 import { computeBoothOverlap, computeStudentOverlap, computeTeacherOverlap } from './overlap-utils';
 import { AvailabilityLayer, useAvailability } from './availability-layer';
@@ -78,7 +78,7 @@ type DayCalendarProps = {
 
 // Base values; actual pixel sizes are computed responsively below
 const DEFAULT_CELL_WIDTH = 50;
-const BOOTH_LABEL_WIDTH = 100;
+export const BOOTH_LABEL_WIDTH = 100;
 const DEFAULT_TIME_SLOT_HEIGHT = 50;
 
 interface SelectionState {
@@ -378,7 +378,17 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
   const [cellWidth, setCellWidth] = useState<number>(36);
   const [containerWidth, setContainerWidth] = useState(1200);
 
-  const [selection, setSelection] = useState<SelectionState>(initialSelectionState);
+  const [selection, setSelectionState] = useState<SelectionState>(initialSelectionState);
+  const selectionRef = useRef<SelectionState>(initialSelectionState);
+  const setSelection = useCallback((updater: SelectionState | ((prev: SelectionState) => SelectionState)) => {
+    setSelectionState((prev) => {
+      const nextValue = typeof updater === 'function'
+        ? (updater as (value: SelectionState) => SelectionState)(prev)
+        : updater;
+      selectionRef.current = nextValue;
+      return nextValue;
+    });
+  }, []);
 
   const createLessonCalledRef = useRef(false);
   const lastResizeTime = useRef(0);
@@ -634,6 +644,71 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
     createLessonCalledRef.current = false;
   }, []);
 
+  const clampTimeIndex = useCallback((index: number) => {
+    if (timeSlots.length === 0) return 0;
+    const maxIndex = timeSlots.length - 1;
+    return Math.min(Math.max(index, 0), maxIndex);
+  }, [timeSlots.length]);
+
+  const beginSelection = useCallback((boothIndex: number, timeIndex: number) => {
+    const clampedIndex = clampTimeIndex(timeIndex);
+    const start = { row: boothIndex, col: clampedIndex };
+    setSelection({
+      isSelecting: true,
+      start,
+      end: start,
+    });
+    document.body.classList.add('cursor-move');
+    createLessonCalledRef.current = false;
+  }, [clampTimeIndex, setSelection]);
+
+  const updateSelectionWithinRow = useCallback((boothIndex: number, timeIndex: number) => {
+    const clampedIndex = clampTimeIndex(timeIndex);
+    setSelection((prev) => {
+      if (!prev.isSelecting || !prev.start || prev.start.row !== boothIndex) {
+        return prev;
+      }
+      if (prev.end && prev.end.col === clampedIndex) {
+        return prev;
+      }
+      return {
+        ...prev,
+        end: { row: boothIndex, col: clampedIndex },
+      };
+    });
+  }, [clampTimeIndex, setSelection]);
+
+  const finalizeSelection = useCallback(() => {
+    const current = selectionRef.current;
+    if (!current.isSelecting || !current.start || !current.end || createLessonCalledRef.current) {
+      return false;
+    }
+
+    const startCol = Math.min(current.start.col, current.end.col);
+    const endCol = Math.max(current.start.col, current.end.col);
+    const boothIndex = current.start.row;
+
+    const isValidSelection = endCol > startCol;
+    if (isValidSelection) {
+      if (
+        startCol >= 0 && startCol < timeSlots.length &&
+        endCol >= 0 && endCol < timeSlots.length &&
+        boothIndex >= 0 && boothIndex < booths.length
+      ) {
+        const startTime = timeSlots[startCol].start;
+        const endTime = timeSlots[endCol].end;
+        const selectedBoothId = booths[boothIndex].boothId;
+
+        createLessonCalledRef.current = true;
+        onCreateLesson(date, startTime, endTime, selectedBoothId);
+        return true;
+      }
+    }
+
+    cancelSelection();
+    return false;
+  }, [selectionRef, timeSlots, booths, onCreateLesson, date, cancelSelection]);
+
   const onDragStart = useCallback((e: DragStartEvent) => {
     setDraggingId(String(e.active.id));
     const lesson = filteredSessions.find((s) => s.classId === String(e.active.id)) || classSessions.find((s) => s.classId === String(e.active.id));
@@ -821,60 +896,40 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
 
   const handleStartSelection = useCallback((boothIndex: number, timeIndex: number, e: React.MouseEvent) => {
     e.preventDefault();
-
-    // Always allow selection - no canDrag check
-    const start = { row: boothIndex, col: timeIndex };
-
-    setSelection({
-      isSelecting: true,
-      start: start,
-      end: start
-    });
-    document.body.classList.add('cursor-move');
-    createLessonCalledRef.current = false;
-  }, []);
+    beginSelection(boothIndex, timeIndex);
+  }, [beginSelection]);
 
   const handleCellHover = useCallback((boothIndex: number, timeIndex: number, e: React.MouseEvent) => {
-    if (!selection.isSelecting || !selection.start) return;
+    if (!selectionRef.current.isSelecting || !selectionRef.current.start) return;
     e.preventDefault();
 
-    if (boothIndex === selection.start.row) {
-      setSelection(prev => ({
-        ...prev,
-        end: { row: boothIndex, col: timeIndex }
-      }));
+    if (boothIndex === selectionRef.current.start.row) {
+      updateSelectionWithinRow(boothIndex, timeIndex);
     }
-  }, [selection.isSelecting, selection.start]);
+  }, [selectionRef, updateSelectionWithinRow]);
 
   const handleEndSelection = useCallback((e: React.MouseEvent) => {
-    if (selection.isSelecting && selection.start && selection.end && !createLessonCalledRef.current) {
-      e.preventDefault();
+    if (!selectionRef.current.isSelecting) return;
+    e.preventDefault();
+    finalizeSelection();
+  }, [selectionRef, finalizeSelection]);
 
-      const startCol = Math.min(selection.start.col, selection.end.col);
-      const endCol = Math.max(selection.start.col, selection.end.col);
-      const boothIndex = selection.start.row;
+  const handleCancelledDragStart = useCallback(({ boothIndex, slotIndex }: CancelledDragPayload) => {
+    beginSelection(boothIndex, slotIndex);
+  }, [beginSelection]);
 
-      const isValidSelection = endCol > startCol;
-      if (isValidSelection) {
-        if (startCol >= 0 && startCol < timeSlots.length &&
-            endCol >= 0 && endCol < timeSlots.length &&
-            boothIndex >= 0 && boothIndex < booths.length) {
+  const handleCancelledDragMove = useCallback(({ boothIndex, slotIndex }: CancelledDragPayload) => {
+    updateSelectionWithinRow(boothIndex, slotIndex);
+  }, [updateSelectionWithinRow]);
 
-          const startTime = timeSlots[startCol].start;
-          const endTime = timeSlots[endCol].end;
-          const selectedBoothId = booths[boothIndex].boothId;
+  const handleCancelledDragEnd = useCallback(({ boothIndex, slotIndex }: CancelledDragPayload) => {
+    updateSelectionWithinRow(boothIndex, slotIndex);
+    finalizeSelection();
+  }, [updateSelectionWithinRow, finalizeSelection]);
 
-          createLessonCalledRef.current = true;
-
-          onCreateLesson(date, startTime, endTime, selectedBoothId);
-
-          return;
-        }
-      }
-
-      cancelSelection();
-    }
-  }, [selection, timeSlots, booths, onCreateLesson, date, cancelSelection]);
+  const handleCancelledDragCancel = useCallback(() => {
+    cancelSelection();
+  }, [cancelSelection]);
 
   const updateContainerWidth = useCallback(() => {
     if (containerRef.current) {
@@ -1141,6 +1196,10 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
                   hasStudentOverlap={computeStudentOverlap(session, filteredSessions, sessionPos)}
                   hasAnyBoothOverlap={Boolean(boothAnyOverlapMap.get(String(session.classId)))}
                   cellWidth={cellWidth}
+                  onCancelledDragStart={handleCancelledDragStart}
+                  onCancelledDragMove={handleCancelledDragMove}
+                  onCancelledDragEnd={handleCancelledDragEnd}
+                  onCancelledDragCancel={handleCancelledDragCancel}
                 />
               ))}
             </div>

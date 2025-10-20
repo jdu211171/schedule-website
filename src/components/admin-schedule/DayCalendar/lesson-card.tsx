@@ -1,11 +1,29 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useRef, useCallback } from "react";
 import { useDraggable } from "@dnd-kit/core";
 import { ExtendedClassSessionWithRelations } from "@/hooks/useClassSessionQuery";
-import { TimeSlot } from "./day-calendar";
+import { TimeSlot, BOOTH_LABEL_WIDTH } from "./day-calendar";
 import { AlertTriangle } from "lucide-react";
 import { classTypeColorClasses, isValidClassTypeColor, isHexColor, rgba, getContrastText } from "@/lib/class-type-colors";
+
+export type CancelledDragPayload = {
+  lesson: ExtendedClassSessionWithRelations;
+  boothIndex: number;
+  slotIndex: number;
+};
+
+const DRAG_THRESHOLD_PX = 8;
+const DRAG_THRESHOLD_SQ = DRAG_THRESHOLD_PX * DRAG_THRESHOLD_PX;
+
+type PointerState = {
+  pointerId: number;
+  startX: number;
+  startY: number;
+  startSlot: number;
+  lastSlot: number;
+  dragging: boolean;
+};
 
 interface Booth {
   boothId: string;
@@ -28,6 +46,10 @@ interface LessonCardProps {
   cellWidth?: number;
   // True when this session overlaps with any other session in the same booth (ignores cancellation)
   hasAnyBoothOverlap?: boolean;
+  onCancelledDragStart?: (payload: CancelledDragPayload) => void;
+  onCancelledDragMove?: (payload: CancelledDragPayload) => void;
+  onCancelledDragEnd?: (payload: CancelledDragPayload) => void;
+  onCancelledDragCancel?: () => void;
 }
 
 export const extractTime = (timeValue: string | Date | undefined): string => {
@@ -70,6 +92,10 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
   hasStudentOverlap = false,
   cellWidth = 50,
   hasAnyBoothOverlap = false,
+  onCancelledDragStart,
+  onCancelledDragMove,
+  onCancelledDragEnd,
+  onCancelledDragCancel,
 }) => {
   const startTime = useMemo(
     () => extractTime(lesson.startTime),
@@ -132,6 +158,116 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
 
   const isValidPosition =
     startSlotIndex >= 0 && endSlotIndex > startSlotIndex && boothIndex >= 0;
+
+  const isCancelled = Boolean((lesson as any)?.isCancelled);
+
+  const totalSlots = timeSlots.length;
+  const pointerStateRef = useRef<PointerState | null>(null);
+
+  const resolveSlotFromPointer = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    if (totalSlots <= 0 || cellWidth <= 0) {
+      return 0;
+    }
+    const planeElement = event.currentTarget.parentElement as HTMLElement | null;
+    const planeRect = planeElement?.getBoundingClientRect();
+    const fallbackRect = event.currentTarget.getBoundingClientRect();
+    const gridLeft = (planeRect?.left ?? fallbackRect.left) + BOOTH_LABEL_WIDTH;
+    const relativeX = event.clientX - gridLeft;
+    const rawIndex = Math.floor(relativeX / cellWidth);
+    if (rawIndex <= 0) return 0;
+    if (rawIndex >= totalSlots) return totalSlots - 1;
+    return rawIndex;
+  }, [cellWidth, totalSlots]);
+
+  const handlePointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    if (!isCancelled) return;
+    if (!onCancelledDragStart && !onCancelledDragMove && !onCancelledDragEnd && !onCancelledDragCancel) {
+      return;
+    }
+    const slotIndex = resolveSlotFromPointer(event);
+    pointerStateRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      startSlot: slotIndex,
+      lastSlot: slotIndex,
+      dragging: false,
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+    event.preventDefault();
+    event.stopPropagation();
+  }, [isCancelled, onCancelledDragStart, onCancelledDragMove, onCancelledDragEnd, onCancelledDragCancel, resolveSlotFromPointer]);
+
+  const handlePointerMove = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    const meta = pointerStateRef.current;
+    if (!meta || event.pointerId !== meta.pointerId) return;
+
+    const dx = event.clientX - meta.startX;
+    const dy = event.clientY - meta.startY;
+
+    if (!meta.dragging) {
+      if (dx * dx + dy * dy < DRAG_THRESHOLD_SQ) {
+        return;
+      }
+      meta.dragging = true;
+      onCancelledDragStart?.({ lesson, boothIndex, slotIndex: meta.startSlot });
+      onCancelledDragMove?.({ lesson, boothIndex, slotIndex: meta.startSlot });
+    }
+
+    const slotIndex = resolveSlotFromPointer(event);
+    if (slotIndex !== meta.lastSlot) {
+      meta.lastSlot = slotIndex;
+      onCancelledDragMove?.({ lesson, boothIndex, slotIndex });
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+  }, [boothIndex, lesson, onCancelledDragStart, onCancelledDragMove, resolveSlotFromPointer]);
+
+  const handlePointerUp = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    const meta = pointerStateRef.current;
+    if (!meta || event.pointerId !== meta.pointerId) return;
+    pointerStateRef.current = null;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+
+    if (meta.dragging) {
+      const slotIndex = resolveSlotFromPointer(event);
+      if (slotIndex !== meta.lastSlot) {
+        onCancelledDragMove?.({ lesson, boothIndex, slotIndex });
+      }
+      onCancelledDragEnd?.({ lesson, boothIndex, slotIndex });
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    onClick(lesson);
+  }, [boothIndex, lesson, onCancelledDragMove, onCancelledDragEnd, onClick, resolveSlotFromPointer]);
+
+  const handlePointerCancel = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    const meta = pointerStateRef.current;
+    if (!meta || event.pointerId !== meta.pointerId) return;
+    pointerStateRef.current = null;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    if (meta.dragging) {
+      onCancelledDragCancel?.();
+    }
+    event.stopPropagation();
+  }, [onCancelledDragCancel]);
+
+  const handleKeyDown = useCallback((event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!isCancelled) return;
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      onClick(lesson);
+    }
+  }, [isCancelled, lesson, onClick]);
 
   // For Day view, prefer live overlap computation over stored status
   const isConflictVisual = Boolean(hasBoothOverlap || hasTeacherOverlap || hasStudentOverlap);
@@ -266,7 +402,7 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
     return { colorClasses: fallback, colorStyle: undefined, textClass: undefined };
   }, [isConflictVisual, lesson.seriesId, (lesson as any)?.classTypeColor, (lesson as any)?.classType?.color]);
 
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: lesson.classId });
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: lesson.classId, disabled: isCancelled });
 
   const style = useMemo(
     () => {
@@ -328,14 +464,6 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
   const studentTypeLabel =
     studentType && gradeYear ? `${studentType.charAt(0)}${gradeYear}` : "";
 
-  const isCancelled = Boolean((lesson as any)?.isCancelled);
-  // Always allow clicks to pass through cancelled lessons so users can
-  // create new sessions on top of, or beside, any remaining portion of
-  // a cancelled block. Previously this depended on whether the cancelled
-  // lesson overlapped any other session in the same booth, which made the
-  // uncovered portion non-clickable after placing a partial replacement.
-  const cancelledClickableThrough = isCancelled;
-
   // Dynamically scale font/padding to use available vertical space
   const rowHeightPx = (laneHeight ?? timeSlotHeight) - 2;
   const baseFontSize = useMemo(() => {
@@ -355,11 +483,11 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
     <div
       ref={setNodeRef}
       className={`
-        absolute rounded border shadow-sm cursor-grab active:cursor-grabbing
+        absolute rounded border shadow-sm ${isCancelled ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'}
         transition-colors duration-100 ease-in-out transform
         ring-1 ring-inset ring-black/10 dark:ring-white/10
         after:content-[''] after:absolute after:top-0 after:bottom-0 after:right-[-1px] after:w-px after:bg-black/15 dark:after:bg-white/20
-        ${cancelledClickableThrough ? 'pointer-events-none' : 'pointer-events-auto'} after:pointer-events-none
+        pointer-events-auto after:pointer-events-none
         ${colorClasses ? `${colorClasses.background} ${colorClasses.border} ${colorClasses.hover}` : ''}
         ${textClass ?? ''}
         ${isCancelled ? 'opacity-60 grayscale !text-black dark:!text-white' : ''}
@@ -368,6 +496,7 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
         overflow-hidden truncate
       `}
       data-conflict={isConflictVisual ? 'true' : 'false'}
+      data-cancelled={isCancelled ? 'true' : 'false'}
       style={{
         ...style,
         ...(colorStyle || {}),
@@ -381,9 +510,15 @@ const LessonCardComponent: React.FC<LessonCardProps> = ({
             }
           : {}),
       }}
-      onClick={() => onClick(lesson)}
-      {...attributes}
-      {...listeners}
+      {...(attributes ?? {})}
+      {...(!isCancelled ? listeners : {})}
+      tabIndex={(isCancelled ? 0 : (attributes?.tabIndex ?? 0))}
+      onClick={!isCancelled ? () => onClick(lesson) : undefined}
+      onPointerDown={isCancelled ? handlePointerDown : undefined}
+      onPointerMove={isCancelled ? handlePointerMove : undefined}
+      onPointerUp={isCancelled ? handlePointerUp : undefined}
+      onPointerCancel={isCancelled ? handlePointerCancel : undefined}
+      onKeyDown={isCancelled ? handleKeyDown : undefined}
     >
       <div
         className="flex flex-col h-full justify-center gap-1 relative"
