@@ -650,6 +650,24 @@ export const POST = withBranchAccess(
         // Cancel only for explicit ABSENCE cases (teacher or student)
         const shouldCancel = cancelForTeacherAbsence || cancelForStudentAbsence;
 
+        // Idempotency: skip if an exact non-cancelled 1:1 session already exists
+        const existsExact = await prisma.classSession.findFirst({
+          where: {
+            isCancelled: false,
+            date,
+            startTime: start,
+            endTime: end,
+            teacherId: series.teacherId ?? undefined,
+            studentId: series.studentId ?? undefined,
+          },
+          select: { classId: true },
+        });
+
+        if (existsExact) {
+          skipped.push({ date: k, reason: "ALREADY_EXISTS" });
+          continue;
+        }
+
         try {
           const cs = await prisma.classSession.create({
             data: {
