@@ -12,6 +12,7 @@ import {
   type DragStartEvent,
   type DragEndEvent,
   type DragOverEvent,
+  type DragCancelEvent,
   closestCenter,
   KeyboardSensor,
   MouseSensor,
@@ -995,6 +996,12 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
     [filteredSessions, classSessions, booths, timeSlots, updateClassSession]
   );
 
+  // Clear drag state when the user cancels (e.g., presses Escape)
+  const onDragCancel = useCallback((_: DragCancelEvent) => {
+    setDraggingId(null);
+    setGhost(null);
+  }, []);
+
   useEffect(() => {
     if (resetSelectionKey > 0) {
       cancelSelection();
@@ -1353,6 +1360,7 @@ const DayCalendarComponent: React.FC<DayCalendarProps> = ({
             onDragStart={onDragStart}
             onDragOver={onDragOver}
             onDragEnd={onDragEnd}
+            onDragCancel={onDragCancel}
             modifiers={[restrictToParentElement]}
             collisionDetection={closestCenter}
           >
