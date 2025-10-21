@@ -8,7 +8,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS ux_class_sessions_unique_1on1
 
 -- 2) Prevent duplicate ACTIVE series blueprints for the same private pair/time/days
 --    Scope by branch to allow the same pair in different branches.
---    Use jsonb uniqueness on days_of_week (array order matters by design).
+--    Use canonical JSON text for days_of_week to leverage the default btree opclass.
 CREATE UNIQUE INDEX IF NOT EXISTS ux_class_series_active_private
   ON public.class_series (
     COALESCE(branch_id, ''),
@@ -16,7 +16,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS ux_class_series_active_private
     COALESCE(student_id, ''),
     start_time,
     end_time,
-    days_of_week
+    ((days_of_week)::text)
   )
   WHERE status = 'ACTIVE' AND teacher_id IS NOT NULL AND student_id IS NOT NULL;
 
