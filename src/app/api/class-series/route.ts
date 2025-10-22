@@ -295,6 +295,29 @@ export const POST = withBranchAccess(
       }
     }
 
+    // Idempotency: prevent duplicate ACTIVE blueprints for same private pair/time/days in the same branch
+    if (input.teacherId && input.studentId) {
+      const existing = await prisma.classSeries.findFirst({
+        where: {
+          status: "ACTIVE",
+          branchId: input.branchId ?? selectedBranchId ?? undefined,
+          teacherId: input.teacherId,
+          studentId: input.studentId,
+          startTime: parseTimeToUTC(input.startTime),
+          endTime: parseTimeToUTC(input.endTime),
+          // Note: jsonb equality is order-sensitive for arrays; callers should submit normalized arrays
+          daysOfWeek: input.daysOfWeek as any,
+        },
+        select: { seriesId: true },
+      });
+      if (existing) {
+        return NextResponse.json(
+          { error: "Duplicate series exists", seriesId: existing.seriesId },
+          { status: 409 }
+        );
+      }
+    }
+
     const seriesId = crypto.randomUUID();
     const data: any = {
       seriesId,

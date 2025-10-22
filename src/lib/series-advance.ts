@@ -259,6 +259,24 @@ export async function advanceGenerateForSeries(
     let nextStatus: "CONFIRMED" | "CONFLICTED" =
       await decideNextStatusForContext(ctx);
 
+    // Idempotency: skip if an exact non-cancelled 1:1 session already exists
+    const alreadyExists = await prisma.classSession.findFirst({
+      where: {
+        isCancelled: false,
+        date,
+        startTime: start,
+        endTime: end,
+        teacherId: series.teacherId ?? undefined,
+        studentId: series.studentId ?? undefined,
+      },
+      select: { classId: true },
+    });
+
+    if (alreadyExists) {
+      skipped++;
+      continue;
+    }
+
     try {
       await prisma.classSession.create({
         data: {
