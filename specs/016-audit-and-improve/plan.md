@@ -11,7 +11,7 @@ Strengthen the cron-triggered LINE notification pipeline for reliability, effici
 
 **Language/Version**: TypeScript (Next.js App Router), Node 18+ on Vercel; Bun for scripts  
 **Primary Dependencies**: Next.js, Prisma, date-fns/date-fns-tz, axios  
-**Storage**: PostgreSQL via Prisma (existing Notification/Line* models)  
+**Storage**: PostgreSQL via Prisma (existing Notification/Line\* models)  
 **Testing**: Vitest + React Testing Library (preferred), ad-hoc route verification  
 **Target Platform**: Vercel serverless functions; local dev via `bun dev`  
 **Project Type**: web (Next.js monorepo)  
@@ -21,7 +21,7 @@ Strengthen the cron-triggered LINE notification pipeline for reliability, effici
 
 ## Constitution Check
 
-*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+_GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
 - Simplicity first: Minimal-change plan; no schema change required (PASS)
 - Testability: Deterministic idempotency and metrics enable verification (PASS)
@@ -60,6 +60,5 @@ prisma/schema.prisma                                  # Models/indices
 ## Complexity Tracking
 
 | Violation | Why Needed | Simpler Alternative Rejected Because |
-|-----------|------------|-------------------------------------|
-| None | N/A | N/A |
-
+| --------- | ---------- | ------------------------------------ |
+| None      | N/A        | N/A                                  |

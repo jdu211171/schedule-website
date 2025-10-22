@@ -8,8 +8,8 @@ Spec: specs/016-audit-and-improve/spec.md
 - Decision: Queue-level idempotency key = recipientId + recipientType + notificationType + targetDate + branchId
   - Rationale: Aligns with existing DB uniqueness; minimal change; matches daily summary semantics.
   - Alternatives considered:
-    - + templateId: complicates daily dedupe without clear value; same-category templates are already covered
-    - + content hash: brittle on minor text diffs; increases compute; unnecessary for daily summaries
+    - - templateId: complicates daily dedupe without clear value; same-category templates are already covered
+    - - content hash: brittle on minor text diffs; increases compute; unnecessary for daily summaries
     - per-channel idempotency: useful for group sends, but not for per-recipient queue identity
 
 - Decision: Group-level idempotency key = channelId + message content hash

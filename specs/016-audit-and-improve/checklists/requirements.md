@@ -32,4 +32,3 @@
 ## Notes
 
 - All checklist items pass. The spec defines user-value outcomes, measurable success criteria, and testable functional requirements while avoiding technical implementation details. Ready for `/speckit.plan`.
-

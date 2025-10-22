@@ -1,15 +1,24 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { createNotification } from '@/lib/notification/notification-service';
-import { runNotificationWorker } from '@/lib/notification/notification-worker';
-import { addDays, format, startOfDay } from 'date-fns';
-import { toZonedTime, formatInTimeZone, fromZonedTime } from 'date-fns-tz';
-import { replaceTemplateVariables, DEFAULT_CLASS_LIST_ITEM_TEMPLATE, DEFAULT_CLASS_LIST_SUMMARY_TEMPLATE } from '@/lib/line/message-templates';
-import { withRole } from '@/lib/auth';
-import getNotificationConfig from '@/lib/notification/config';
-import { newFlowId, newRunId, logEvent, consoleDev } from '@/lib/telemetry/logging';
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { createNotification } from "@/lib/notification/notification-service";
+import { runNotificationWorker } from "@/lib/notification/notification-worker";
+import { addDays, format, startOfDay } from "date-fns";
+import { toZonedTime, formatInTimeZone, fromZonedTime } from "date-fns-tz";
+import {
+  replaceTemplateVariables,
+  DEFAULT_CLASS_LIST_ITEM_TEMPLATE,
+  DEFAULT_CLASS_LIST_SUMMARY_TEMPLATE,
+} from "@/lib/line/message-templates";
+import { withRole } from "@/lib/auth";
+import getNotificationConfig from "@/lib/notification/config";
+import {
+  newFlowId,
+  newRunId,
+  logEvent,
+  consoleDev,
+} from "@/lib/telemetry/logging";
 
-const TIMEZONE = 'Asia/Tokyo';
+const TIMEZONE = "Asia/Tokyo";
 
 // Helper: check if the given date is a vacation for the branch (handles recurring)
 async function isVacationDay(
@@ -544,8 +553,16 @@ export async function GET(request: NextRequest) {
   const flowId = newFlowId();
   const runId = newRunId();
   const cfg = getNotificationConfig();
-  consoleDev.log('📬 Unified notification cron triggered at:', new Date().toISOString());
-  logEvent('unified_cron.start', { flow_id: flowId, run_id: runId, env: process.env.NODE_ENV, cfg });
+  consoleDev.log(
+    "📬 Unified notification cron triggered at:",
+    new Date().toISOString()
+  );
+  logEvent("unified_cron.start", {
+    flow_id: flowId,
+    run_id: runId,
+    env: process.env.NODE_ENV,
+    cfg,
+  });
 
   // Verify authentication
   const authHeader = request.headers.get("authorization");
@@ -572,27 +589,45 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  consoleDev.log('✅ Cron authentication passed');
+  consoleDev.log("✅ Cron authentication passed");
 
   try {
     const results = await processNotifications();
-    const body = { success: true, flow_id: flowId, run_id: runId, ...results } as const;
-    logEvent('unified_cron.end', { flow_id: flowId, run_id: runId, outcome: 'ok', summary: {
-      created: results.notificationsCreated,
-      sent: results.notificationsSent,
-      failed: results.notificationsFailed,
-      deleted: results.deletedNotifications,
-    }});
-    return NextResponse.json(body);
-  } catch (error) {
-    console.error('Error in notification service:', error);
-    logEvent('unified_cron.end', { flow_id: flowId, run_id: runId, outcome: 'error', error: error instanceof Error ? error.message : String(error) });
-    return NextResponse.json({ 
-      error: 'Internal server error', 
-      details: error instanceof Error ? error.message : String(error),
+    const body = {
+      success: true,
       flow_id: flowId,
       run_id: runId,
-    }, { status: 500 });
+      ...results,
+    } as const;
+    logEvent("unified_cron.end", {
+      flow_id: flowId,
+      run_id: runId,
+      outcome: "ok",
+      summary: {
+        created: results.notificationsCreated,
+        sent: results.notificationsSent,
+        failed: results.notificationsFailed,
+        deleted: results.deletedNotifications,
+      },
+    });
+    return NextResponse.json(body);
+  } catch (error) {
+    console.error("Error in notification service:", error);
+    logEvent("unified_cron.end", {
+      flow_id: flowId,
+      run_id: runId,
+      outcome: "error",
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return NextResponse.json(
+      {
+        error: "Internal server error",
+        details: error instanceof Error ? error.message : String(error),
+        flow_id: flowId,
+        run_id: runId,
+      },
+      { status: 500 }
+    );
   }
 }
 

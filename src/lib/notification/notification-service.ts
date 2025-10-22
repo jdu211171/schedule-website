@@ -1,7 +1,6 @@
-
-import { prisma } from '@/lib/prisma';
-import { Notification, NotificationStatus } from '@prisma/client';
-import { buildQueueIdempotencyKey } from '@/lib/notification/config';
+import { prisma } from "@/lib/prisma";
+import { Notification, NotificationStatus } from "@prisma/client";
+import { buildQueueIdempotencyKey } from "@/lib/notification/config";
 
 interface CreateNotificationParams {
   recipientId: string;

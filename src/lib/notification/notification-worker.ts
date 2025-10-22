@@ -1,11 +1,14 @@
-
-import { prisma } from '@/lib/prisma';
-import { Notification, NotificationStatus } from '@prisma/client';
-import { sendLineMulticast, isValidLineId, classifyLineApiError } from '@/lib/line-multi-channel';
-import { getChannelCredentials } from '@/lib/line-multi-channel';
-import { decrypt, isEncrypted } from '@/lib/encryption';
-import getNotificationConfig from '@/lib/notification/config';
-import { logEvent, consoleDev } from '@/lib/telemetry/logging';
+import { prisma } from "@/lib/prisma";
+import { Notification, NotificationStatus } from "@prisma/client";
+import {
+  sendLineMulticast,
+  isValidLineId,
+  classifyLineApiError,
+} from "@/lib/line-multi-channel";
+import { getChannelCredentials } from "@/lib/line-multi-channel";
+import { decrypt, isEncrypted } from "@/lib/encryption";
+import getNotificationConfig from "@/lib/notification/config";
+import { logEvent, consoleDev } from "@/lib/telemetry/logging";
 
 const MAX_ATTEMPTS = 3;
 
@@ -29,7 +32,7 @@ const DEFAULT_CONFIG: WorkerConfig = {
   ), // 1 second
 };
 
-consoleDev.log('process.env.NODE_ENV', process.env.NODE_ENV);
+consoleDev.log("process.env.NODE_ENV", process.env.NODE_ENV);
 
 interface WorkerResult {
   totalProcessed: number;
@@ -494,11 +497,15 @@ async function groupNotificationsByChannel(
         }
       }
     }
-    
+
     // Filter to valid LINE IDs first
-    const validIds = lineIds.filter(id => isValidLineId(id));
+    const validIds = lineIds.filter((id) => isValidLineId(id));
     // Skip if no valid LINE IDs or channel
-    if (validIds.length === 0 || !channelIdForDelivery || !notification?.message) {
+    if (
+      validIds.length === 0 ||
+      !channelIdForDelivery ||
+      !notification?.message
+    ) {
       continue;
     }
 
@@ -554,7 +561,7 @@ async function processBatchWithGrouping(
   let successful = 0;
   let failed = 0;
   const cfg = getNotificationConfig();
-  
+
   // First, mark all notifications as processing
   await prisma.notification.updateMany({
     where: {
@@ -569,8 +576,10 @@ async function processBatchWithGrouping(
   try {
     // Group notifications by channel and message
     const groups = await groupNotificationsByChannel(notifications);
-    consoleDev.log(`Grouped ${notifications.length} notifications into ${groups.length} channel groups`);
-    
+    consoleDev.log(
+      `Grouped ${notifications.length} notifications into ${groups.length} channel groups`
+    );
+
     // Process each group
     for (const group of groups) {
       // Track per-group delivered status at LINE ID granularity
@@ -581,7 +590,10 @@ async function processBatchWithGrouping(
       for (const r of group.recipients) {
         const notifId = r.notification.notificationId;
         const validIds = r.lineIds;
-        pendingByNotif.set(notifId, (pendingByNotif.get(notifId) || 0) + validIds.length);
+        pendingByNotif.set(
+          notifId,
+          (pendingByNotif.get(notifId) || 0) + validIds.length
+        );
         for (const id of validIds) {
           if (!lineToNotifs.has(id)) lineToNotifs.set(id, new Set());
           lineToNotifs.get(id)!.add(notifId);
@@ -595,7 +607,7 @@ async function processBatchWithGrouping(
           const openUntil = circuitOpenUntil.get(group.channelId);
           if (openUntil && Date.now() < openUntil) {
             // Reset notifications back to FAILED with a future scheduledAt so they get retried later
-            const ids = group.notifications.map(n => n.notificationId);
+            const ids = group.notifications.map((n) => n.notificationId);
             await prisma.notification.updateMany({
               where: { notificationId: { in: ids } },
               data: {
@@ -603,21 +615,28 @@ async function processBatchWithGrouping(
                 scheduledAt: new Date(openUntil),
                 logs: {
                   success: false,
-                  message: 'SKIPPED_CIRCUIT_OPEN: deferred to cooldown',
+                  message: "SKIPPED_CIRCUIT_OPEN: deferred to cooldown",
                   deliveryChannelId: group.channelId,
                   timestamp: new Date().toISOString(),
-                  errorType: 'TRANSIENT',
-                  errorCode: 'CIRCUIT_OPEN',
+                  errorType: "TRANSIENT",
+                  errorCode: "CIRCUIT_OPEN",
                   httpStatus: 429,
-                }
-              }
+                },
+              },
             });
             // Undo the attempts increment for these, so skipped runs don't consume retry budget
             await prisma.notification.updateMany({
-              where: { notificationId: { in: ids }, processingAttempts: { gt: 0 } },
-              data: { processingAttempts: { decrement: 1 } }
+              where: {
+                notificationId: { in: ids },
+                processingAttempts: { gt: 0 },
+              },
+              data: { processingAttempts: { decrement: 1 } },
             });
-            logEvent('worker.circuit_open.skip', { channel_id: group.channelId, open_until: new Date(openUntil).toISOString(), deferred: group.notifications.length });
+            logEvent("worker.circuit_open.skip", {
+              channel_id: group.channelId,
+              open_until: new Date(openUntil).toISOString(),
+              deferred: group.notifications.length,
+            });
             failed += group.notifications.length; // Not delivered in this run
             continue;
           }
@@ -636,7 +655,7 @@ async function processBatchWithGrouping(
         for (let i = 0; i < chunks.length; i++) {
           const chunk = chunks[i];
           await sendLineMulticast(chunk, group.message, group.credentials);
-          logEvent('worker.send_multicast', {
+          logEvent("worker.send_multicast", {
             channel_id: group.channelId,
             recipients: chunk.length,
             chunk_index: i,
@@ -666,17 +685,18 @@ async function processBatchWithGrouping(
                   message: `All linked accounts delivered via chunks`,
                   deliveryChannelId: group.channelId,
                   timestamp: new Date().toISOString(),
-                }
-              }
+                },
+              },
             });
-            newlyComplete.forEach(id => deliveredNotifIds.add(id));
+            newlyComplete.forEach((id) => deliveredNotifIds.add(id));
           }
         }
 
         // Group completed; ensure any remaining fully delivered are marked
         const remainingToMark: string[] = [];
         for (const [notifId, remain] of pendingByNotif.entries()) {
-          if (remain === 0 && !deliveredNotifIds.has(notifId)) remainingToMark.push(notifId);
+          if (remain === 0 && !deliveredNotifIds.has(notifId))
+            remainingToMark.push(notifId);
         }
         if (remainingToMark.length > 0) {
           await prisma.notification.updateMany({
@@ -689,20 +709,22 @@ async function processBatchWithGrouping(
                 message: `Delivered via prior chunk(s)`,
                 deliveryChannelId: group.channelId,
                 timestamp: new Date().toISOString(),
-              }
-            }
+              },
+            },
           });
-          remainingToMark.forEach(id => deliveredNotifIds.add(id));
+          remainingToMark.forEach((id) => deliveredNotifIds.add(id));
         }
 
         successful += group.notifications.length;
         // Reset consecutive transient failure counter on success
         if (circuitFailCount) circuitFailCount.set(group.channelId, 0);
-        consoleDev.log(`✅ Sent multicast to ${uniqueLineIds.length} recipients for channel ${group.channelId}`);
-        
+        consoleDev.log(
+          `✅ Sent multicast to ${uniqueLineIds.length} recipients for channel ${group.channelId}`
+        );
       } catch (error) {
         // Mark all notifications in this group as failed
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        const errorMessage =
+          error instanceof Error ? error.message : "Unknown error";
         const classification = classifyLineApiError(error);
         const now = Date.now();
         const updates: any = {
@@ -715,23 +737,28 @@ async function processBatchWithGrouping(
             errorType: classification.type,
             errorCode: classification.code,
             httpStatus: classification.status,
-          }
+          },
         };
         // Exponential backoff for transient errors
-        if (classification.type === 'TRANSIENT') {
+        if (classification.type === "TRANSIENT") {
           // Use next attempt number based on increment earlier
           const maxNextAttempt = group.notifications.reduce(
             (max, n) => Math.max(max, (n.processingAttempts || 0) + 1),
             -Infinity
           );
-          const backoffMs = maxNextAttempt === 1 ? 10_000 : maxNextAttempt === 2 ? 30_000 : 120_000;
+          const backoffMs =
+            maxNextAttempt === 1
+              ? 10_000
+              : maxNextAttempt === 2
+                ? 30_000
+                : 120_000;
           updates.scheduledAt = new Date(now + backoffMs);
         } else {
           // Mark as terminal by setting attempts to MAX_ATTEMPTS
           updates.processingAttempts = MAX_ATTEMPTS;
         }
         // Open circuit only after threshold of consecutive transient errors
-        if (classification.type === 'TRANSIENT') {
+        if (classification.type === "TRANSIENT") {
           if (circuitFailCount) {
             const threshold = cfg.circuitOpenThreshold;
             const current = (circuitFailCount.get(group.channelId) || 0) + 1;
@@ -740,9 +767,17 @@ async function processBatchWithGrouping(
               const cooldown = cfg.circuitCooldownMs;
               circuitOpenUntil.set(group.channelId, now + cooldown);
               circuitFailCount.set(group.channelId, 0);
-              logEvent('worker.circuit_open', { channel_id: group.channelId, cooldown_ms: cooldown, threshold });
+              logEvent("worker.circuit_open", {
+                channel_id: group.channelId,
+                cooldown_ms: cooldown,
+                threshold,
+              });
             } else {
-              logEvent('worker.circuit_failure_count', { channel_id: group.channelId, count: current, threshold });
+              logEvent("worker.circuit_failure_count", {
+                channel_id: group.channelId,
+                count: current,
+                threshold,
+              });
             }
           }
         } else {
@@ -751,12 +786,12 @@ async function processBatchWithGrouping(
         }
         // Only mark undelivered notifications as FAILED; preserve SENT ones
         const undeliveredIds = group.notifications
-          .map(n => n.notificationId)
-          .filter(id => (pendingByNotif.get(id) || 0) > 0);
+          .map((n) => n.notificationId)
+          .filter((id) => (pendingByNotif.get(id) || 0) > 0);
         if (undeliveredIds.length > 0) {
           await prisma.notification.updateMany({
             where: { notificationId: { in: undeliveredIds } },
-            data: updates
+            data: updates,
           });
         }
         // Additionally, handle notifications with zero valid LINE IDs (they were grouped but have no deliverable recipients)
@@ -771,27 +806,33 @@ async function processBatchWithGrouping(
               processingAttempts: MAX_ATTEMPTS,
               logs: {
                 success: false,
-                message: 'SKIPPED_NO_LINK: No valid LINE recipients',
+                message: "SKIPPED_NO_LINK: No valid LINE recipients",
                 deliveryChannelId: group.channelId,
                 timestamp: new Date().toISOString(),
-                errorType: 'PERMANENT',
-                errorCode: 'NO_VALID_RECIPIENTS',
-              }
-            }
+                errorType: "PERMANENT",
+                errorCode: "NO_VALID_RECIPIENTS",
+              },
+            },
           });
         }
-        
-        const deliveredCount = group.notifications.length - undeliveredIds.length - zeroValidIds.length;
+
+        const deliveredCount =
+          group.notifications.length -
+          undeliveredIds.length -
+          zeroValidIds.length;
         if (deliveredCount > 0) {
           successful += deliveredCount;
-          logEvent('worker.group.partial_success', {
+          logEvent("worker.group.partial_success", {
             channel_id: group.channelId,
             delivered: deliveredCount,
             failed: undeliveredIds.length + zeroValidIds.length,
           });
         }
         failed += undeliveredIds.length + zeroValidIds.length;
-        console.error(`❌ Failed to send multicast for channel ${group.channelId}:`, errorMessage);
+        console.error(
+          `❌ Failed to send multicast for channel ${group.channelId}:`,
+          errorMessage
+        );
       }
     }
 
@@ -897,8 +938,12 @@ export const runNotificationWorker = async (
   const startTime = Date.now();
   const workerConfig = { ...DEFAULT_CONFIG, ...config };
   const cfg = getNotificationConfig();
-  const circuitOpenUntil = cfg.circuitEnabled ? new Map<string, number>() : undefined;
-  const circuitFailCount = cfg.circuitEnabled ? new Map<string, number>() : undefined;
+  const circuitOpenUntil = cfg.circuitEnabled
+    ? new Map<string, number>()
+    : undefined;
+  const circuitFailCount = cfg.circuitEnabled
+    ? new Map<string, number>()
+    : undefined;
 
   let totalProcessed = 0;
   let totalSuccessful = 0;
@@ -932,17 +977,26 @@ export const runNotificationWorker = async (
 
       // If no notifications to process, break
       if (pendingNotifications.length === 0) {
-        consoleDev.log('No pending notifications found. Worker completed.');
-        consoleDev.log(`Query criteria: status IN [PENDING, FAILED], attempts < ${MAX_ATTEMPTS}, scheduledAt <= ${new Date().toISOString()}`);
+        consoleDev.log("No pending notifications found. Worker completed.");
+        consoleDev.log(
+          `Query criteria: status IN [PENDING, FAILED], attempts < ${MAX_ATTEMPTS}, scheduledAt <= ${new Date().toISOString()}`
+        );
         break;
       }
 
-      consoleDev.log(`Processing batch ${batches + 1} with ${pendingNotifications.length} notifications`);
-      logEvent('worker.batch.start', { batch: batches + 1, size: pendingNotifications.length });
+      consoleDev.log(
+        `Processing batch ${batches + 1} with ${pendingNotifications.length} notifications`
+      );
+      logEvent("worker.batch.start", {
+        batch: batches + 1,
+        size: pendingNotifications.length,
+      });
 
       // Log details of notifications being processed
       pendingNotifications.forEach((notif, idx) => {
-        consoleDev.log(`  ${idx + 1}. ${notif.recipientType} ${notif.recipientId} - Status: ${notif.status}, Attempts: ${notif.processingAttempts}`);
+        consoleDev.log(
+          `  ${idx + 1}. ${notif.recipientType} ${notif.recipientId} - Status: ${notif.status}, Attempts: ${notif.processingAttempts}`
+        );
       });
 
       // Process batch with channel grouping for efficient multicast
@@ -950,7 +1004,7 @@ export const runNotificationWorker = async (
         pendingNotifications,
         workerConfig.maxConcurrency,
         circuitOpenUntil,
-        circuitFailCount,
+        circuitFailCount
       );
 
       totalProcessed += pendingNotifications.length;
@@ -958,8 +1012,14 @@ export const runNotificationWorker = async (
       totalFailed += batchResult.failed;
       batches++;
 
-      consoleDev.log(`Batch ${batches} completed: ${batchResult.successful} successful, ${batchResult.failed} failed`);
-      logEvent('worker.batch.end', { batch: batches, successful: batchResult.successful, failed: batchResult.failed });
+      consoleDev.log(
+        `Batch ${batches} completed: ${batchResult.successful} successful, ${batchResult.failed} failed`
+      );
+      logEvent("worker.batch.end", {
+        batch: batches,
+        successful: batchResult.successful,
+        failed: batchResult.failed,
+      });
 
       // Delay between batches to avoid overwhelming the system
       if (pendingNotifications.length === workerConfig.batchSize) {
@@ -979,7 +1039,7 @@ export const runNotificationWorker = async (
     };
 
     consoleDev.log(`Notification worker completed:`, result);
-    logEvent('worker.end', result as unknown as Record<string, unknown>);
+    logEvent("worker.end", result as unknown as Record<string, unknown>);
     return result;
   } catch (error) {
     // Enhanced error logging for worker-level failures

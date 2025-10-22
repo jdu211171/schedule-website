@@ -1,11 +1,11 @@
-import { createHash, randomUUID } from 'crypto';
+import { createHash, randomUUID } from "crypto";
 
 export const newFlowId = (): string => `flow_${randomUUID()}`;
 export const newRunId = (): string => `run_${randomUUID()}`;
 
 export const hashRecipientId = (id: string | null | undefined): string => {
-  if (!id) return 'anon';
-  const h = createHash('sha256').update(id).digest('hex');
+  if (!id) return "anon";
+  const h = createHash("sha256").update(id).digest("hex");
   return `u_${h.slice(0, 16)}`;
 };
 
@@ -36,13 +36,13 @@ export default {
 
 export const consoleDev = {
   log: (...args: unknown[]) => {
-    if (process.env.NODE_ENV !== 'production') console.log(...args as []);
+    if (process.env.NODE_ENV !== "production") console.log(...(args as []));
   },
   warn: (...args: unknown[]) => {
-    if (process.env.NODE_ENV !== 'production') console.warn(...args as []);
+    if (process.env.NODE_ENV !== "production") console.warn(...(args as []));
   },
   error: (...args: unknown[]) => {
     // Always print errors
-    console.error(...args as []);
+    console.error(...(args as []));
   },
 };

@@ -21,13 +21,13 @@ paths:
           required: false
           description: Bearer {CRON_SECRET} (required in production)
       responses:
-        '200':
+        "200":
           description: Run summary
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UnifiedRunResult'
-        '401':
+                $ref: "#/components/schemas/UnifiedRunResult"
+        "401":
           description: Unauthorized
     post:
       summary: Manual trigger by admin
@@ -43,12 +43,12 @@ paths:
                 templateId:
                   type: string
       responses:
-        '200':
+        "200":
           description: Run summary
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UnifiedRunResult'
+                $ref: "#/components/schemas/UnifiedRunResult"
 components:
   schemas:
     UnifiedRunResult:

@@ -8,9 +8,10 @@
 ## Clarifications
 
 ### Session 2025-10-10
+
 - Q: Which fields should define the idempotency key for at‑most‑once delivery? → A: recipientId + recipientType + notificationType + targetDate + branchId
 
-## User Scenarios & Testing *(mandatory)*
+## User Scenarios & Testing _(mandatory)_
 
 ### User Story 1 - Reliable, on-time delivery with visibility (Priority: P1)
 
@@ -21,6 +22,7 @@ As an operations owner, I need scheduled notifications to be created and deliver
 **Independent Test**: Trigger one scheduled cycle with representative volume; verify creation, grouping, and delivery complete within target time; verify dashboards/logs report consistent counts and trace a sample notification end-to-end.
 
 **Acceptance Scenarios**:
+
 1. Given a scheduled window and eligible recipients, When a cycle runs, Then notifications are created and delivered within the defined target time window and totals match instrumentation (created = sent + failed + skipped).
 2. Given transient connectivity issues during delivery, When the system retries, Then no recipient receives a duplicate message and the cycle finishes within the overall time budget with accurate failure categorization and audit logs.
 
@@ -35,6 +37,7 @@ As a branch administrator, I need message retries that prevent duplicate deliver
 **Independent Test**: Inject failures for a subset of recipients; re-run processing multiple times; verify no recipient gets a duplicate delivery while failures are retried according to policy.
 
 **Acceptance Scenarios**:
+
 1. Given a previously failed delivery, When the system retries, Then delivery occurs at most once per recipient for that notification.
 2. Given the same content/date/recipient appears more than once in the queue, When processing occurs, Then duplicates are detected and suppressed without emitting extra deliveries.
 
@@ -49,6 +52,7 @@ As a release owner, I need a step-by-step rollout with guardrails and a rollback
 **Independent Test**: Enable improvements in a small scope first; validate metrics and outcomes; expand scope; confirm that disabling toggles reverts to prior behavior without data loss.
 
 **Acceptance Scenarios**:
+
 1. Given guarded rollout stages, When a stage is enabled, Then only that stage’s changes apply and can be disabled independently.
 2. Given a rollback is requested, When rollback is executed, Then prior behavior resumes immediately and queued work remains intact for normal processing.
 
@@ -62,7 +66,7 @@ As a release owner, I need a step-by-step rollout with guardrails and a rollback
 - Prolonged external service slowdown: backoff extends retries across cycles without exceeding overall time budgets; circuit breaker prevents thrashing.
 - Repeated process restarts: idempotency prevents duplicate deliveries; in-flight work can resume safely.
 
-## Requirements *(mandatory)*
+## Requirements _(mandatory)_
 
 ### Functional Requirements
 
@@ -83,14 +87,14 @@ As a release owner, I need a step-by-step rollout with guardrails and a rollback
 - **FR-015: Minimal-change posture** — The improvements MUST preserve existing user-visible behavior and data shape while strengthening reliability and performance.
 - **FR-016: Rollout & rollback** — The system MUST provide a staged rollout plan (observability-only → guarded idempotency/dedupe → tuned batching/concurrency → backoff/circuit breaker) and a documented rollback that restores the prior behavior promptly.
 
-### Key Entities *(include if feature involves data)*
+### Key Entities _(include if feature involves data)_
 
 - **Notification**: Business event to deliver to one recipient for a given date/category/site; attributes include identity (recipient, date, category, site), status, attempts, scheduled time, and audit log.
 - **Delivery Group**: A set of recipients sharing identical content and channel/site; carries a group-level idempotency key and size limits.
 - **Delivery Run**: One processing cycle with a unique flow_id/run_id that correlates creation, grouping, and delivery logs.
 - **Idempotency Key**: Deterministic token for at‑most‑once semantics. Queue-level key: recipientId + recipientType + notificationType + targetDate + branchId. Group-level key: channelId + message content hash.
 
-## Success Criteria *(mandatory)*
+## Success Criteria _(mandatory)_
 
 ### Measurable Outcomes
 
