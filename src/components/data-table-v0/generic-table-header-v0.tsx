@@ -1,21 +1,35 @@
-"use client"
+"use client";
 
 import * as React from "react";
-import { flexRender, type Header as TanHeader, type Table as ReactTable } from "@tanstack/react-table"
+import {
+  flexRender,
+  type Header as TanHeader,
+  type Table as ReactTable,
+} from "@tanstack/react-table";
 import { GripVertical } from "lucide-react";
 import { SortableItemHandle } from "@/components/ui/sortable";
 
-import { TableHead, TableHeader as UITableHeader, TableRow } from "@/components/ui/table"
-import { getPinnedCellStyles } from "@/lib/data-table"
-import { cn } from "@/lib/utils"
-import { Sortable, SortableContent, SortableItem } from "@/components/ui/sortable"
-import { arrayMove } from "@dnd-kit/sortable"
+import {
+  TableHead,
+  TableHeader as UITableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { getPinnedCellStyles } from "@/lib/data-table";
+import { cn } from "@/lib/utils";
+import {
+  Sortable,
+  SortableContent,
+  SortableItem,
+} from "@/components/ui/sortable";
+import { arrayMove } from "@dnd-kit/sortable";
 
 interface GenericTableHeaderProps<TData> {
-  table: ReactTable<TData>
+  table: ReactTable<TData>;
 }
 
-export function GenericTableHeader<TData>({ table }: GenericTableHeaderProps<TData>) {
+export function GenericTableHeader<TData>({
+  table,
+}: GenericTableHeaderProps<TData>) {
   const headerGroups = table.getHeaderGroups();
   if (headerGroups.length === 0) return null as any;
 
@@ -24,24 +38,24 @@ export function GenericTableHeader<TData>({ table }: GenericTableHeaderProps<TDa
   // Only leaf headers are draggable
   const leafHeaders = headerGroup.headers.filter((h) => h.colSpan === 1);
 
-  const byPinned = (p: ReturnType<TanHeader<TData, unknown>["column"]["getIsPinned"]>) =>
-    leafHeaders.filter((h) => h.column.getIsPinned() === p);
+  const byPinned = (
+    p: ReturnType<TanHeader<TData, unknown>["column"]["getIsPinned"]>
+  ) => leafHeaders.filter((h) => h.column.getIsPinned() === p);
 
   const left = byPinned("left");
   const center = leafHeaders.filter((h) => !h.column.getIsPinned());
   const right = byPinned("right");
 
-  const currentOrder: string[] =
-    table.getState().columnOrder?.length
-      ? (table.getState().columnOrder as string[])
-      : table.getAllLeafColumns().map((c) => c.id);
+  const currentOrder: string[] = table.getState().columnOrder?.length
+    ? (table.getState().columnOrder as string[])
+    : table.getAllLeafColumns().map((c) => c.id);
 
   const visibleSet = new Set(table.getVisibleLeafColumns().map((c) => c.id));
 
   const reorderGroup = (
     group: "left" | "center" | "right",
     from: number,
-    to: number,
+    to: number
   ) => {
     // Current ids per group in this render
     const leftIds = left.map((h) => h.column.id);
@@ -49,8 +63,10 @@ export function GenericTableHeader<TData>({ table }: GenericTableHeaderProps<TDa
     const rightIds = right.map((h) => h.column.id);
 
     const newLeft = group === "left" ? arrayMove(leftIds, from, to) : leftIds;
-    const newCenter = group === "center" ? arrayMove(centerIds, from, to) : centerIds;
-    const newRight = group === "right" ? arrayMove(rightIds, from, to) : rightIds;
+    const newCenter =
+      group === "center" ? arrayMove(centerIds, from, to) : centerIds;
+    const newRight =
+      group === "right" ? arrayMove(rightIds, from, to) : rightIds;
 
     // Append any ids from current order that are not in the visible groups (hidden columns)
     const groupAllVisible = new Set([...newLeft, ...newCenter, ...newRight]);
@@ -93,7 +109,7 @@ export function GenericTableHeader<TData>({ table }: GenericTableHeaderProps<TDa
           "bg-inherit select-none",
           isPinned &&
             "relative isolate before:absolute before:inset-0 before:bg-background before:content-[''] before:pointer-events-none",
-          columnMeta?.headerClassName,
+          columnMeta?.headerClassName
         )}
       >
         <div className="relative flex min-h-[2.75rem] w-full items-center bg-inherit gap-1">
@@ -118,9 +134,11 @@ export function GenericTableHeader<TData>({ table }: GenericTableHeaderProps<TDa
   // Helper to render a sortable section
   const renderSortable = (
     items: TanHeader<TData, unknown>[],
-    group: "left" | "center" | "right",
+    group: "left" | "center" | "right"
   ) => {
-    const ids = items.map((h) => h.column.id).filter((id) => visibleSet.has(id));
+    const ids = items
+      .map((h) => h.column.id)
+      .filter((id) => visibleSet.has(id));
     if (ids.length === 0) return items.map(renderHeaderCell);
 
     return (
@@ -159,5 +177,5 @@ export function GenericTableHeader<TData>({ table }: GenericTableHeaderProps<TDa
         {renderSortable(right, "right")}
       </TableRow>
     </UITableHeader>
-  )
+  );
 }

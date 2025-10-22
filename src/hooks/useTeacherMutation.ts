@@ -38,67 +38,110 @@ export function getResolvedTeacherId(id: string): string {
 }
 
 type ExceptionalInput = Array<
-  | { date: string | Date; fullDay: boolean; reason?: string | null; notes?: string | null; timeSlots: { id: string; startTime: string; endTime: string }[] }
-  | { date: string | Date; fullDay: boolean; startTime?: string | null; endTime?: string | null; reason?: string | null; notes?: string | null }
+  | {
+      date: string | Date;
+      fullDay: boolean;
+      reason?: string | null;
+      notes?: string | null;
+      timeSlots: { id: string; startTime: string; endTime: string }[];
+    }
+  | {
+      date: string | Date;
+      fullDay: boolean;
+      startTime?: string | null;
+      endTime?: string | null;
+      reason?: string | null;
+      notes?: string | null;
+    }
 >;
 
 const convertExceptionalAvailability = (
   availability: ExceptionalInput
-): Teacher['exceptionalAvailability'] => {
+): Teacher["exceptionalAvailability"] => {
   if (!availability || !Array.isArray(availability)) return [];
 
   return availability.map((item) => {
     // If it's already in the correct format (has timeSlots), return as is
-    if ('timeSlots' in item && Array.isArray(item.timeSlots)) {
+    if ("timeSlots" in item && Array.isArray(item.timeSlots)) {
       return {
-        date: item.date instanceof Date ? item.date.toISOString().split('T')[0] : item.date,
+        date:
+          item.date instanceof Date
+            ? item.date.toISOString().split("T")[0]
+            : item.date,
         timeSlots: item.timeSlots,
         fullDay: item.fullDay,
         reason: item.reason || null,
-        notes: item.notes || null
+        notes: item.notes || null,
       };
     }
 
     // Convert from schema format (startTime/endTime) to interface format (timeSlots)
     const timeSlots = [];
-    if (!('timeSlots' in item) && !item.fullDay && item.startTime && item.endTime) {
+    if (
+      !("timeSlots" in item) &&
+      !item.fullDay &&
+      item.startTime &&
+      item.endTime
+    ) {
       timeSlots.push({
         id: crypto.randomUUID(),
         startTime: item.startTime,
-        endTime: item.endTime
+        endTime: item.endTime,
       });
     }
 
     return {
-      date: item.date instanceof Date ? item.date.toISOString().split('T')[0] : item.date,
+      date:
+        item.date instanceof Date
+          ? item.date.toISOString().split("T")[0]
+          : item.date,
       timeSlots,
       fullDay: item.fullDay || false,
       reason: item.reason || null,
-      notes: item.notes || null
+      notes: item.notes || null,
     };
   });
 };
 
 const convertAbsenceAvailability = (
   availability: ExceptionalInput
-): Teacher['absenceAvailability'] => {
+): Teacher["absenceAvailability"] => {
   if (!availability || !Array.isArray(availability)) return [];
   return availability.map((item) => {
-    if ('timeSlots' in item && Array.isArray(item.timeSlots)) {
+    if ("timeSlots" in item && Array.isArray(item.timeSlots)) {
       return {
-        date: item.date instanceof Date ? item.date.toISOString().split('T')[0] : item.date,
+        date:
+          item.date instanceof Date
+            ? item.date.toISOString().split("T")[0]
+            : item.date,
         timeSlots: item.timeSlots,
         fullDay: item.fullDay,
         reason: (item as any).reason || null,
         notes: (item as any).notes || null,
       };
     }
-    const timeSlots = [] as { id: string; startTime: string; endTime: string }[];
-    if (!('timeSlots' in item) && !item.fullDay && item.startTime && item.endTime) {
-      timeSlots.push({ id: crypto.randomUUID(), startTime: item.startTime, endTime: item.endTime });
+    const timeSlots = [] as {
+      id: string;
+      startTime: string;
+      endTime: string;
+    }[];
+    if (
+      !("timeSlots" in item) &&
+      !item.fullDay &&
+      item.startTime &&
+      item.endTime
+    ) {
+      timeSlots.push({
+        id: crypto.randomUUID(),
+        startTime: item.startTime,
+        endTime: item.endTime,
+      });
     }
     return {
-      date: item.date instanceof Date ? item.date.toISOString().split('T')[0] : item.date,
+      date:
+        item.date instanceof Date
+          ? item.date.toISOString().split("T")[0]
+          : item.date,
       timeSlots,
       fullDay: item.fullDay || false,
       reason: (item as any).reason || null,
@@ -144,14 +187,17 @@ export function useTeacherCreate() {
             email: newTeacher.email || null,
             lineId: newTeacher.lineId || null,
             lineUserId: newTeacher.lineUserId || null,
-            lineNotificationsEnabled: newTeacher.lineNotificationsEnabled ?? true,
+            lineNotificationsEnabled:
+              newTeacher.lineNotificationsEnabled ?? true,
             notes: newTeacher.notes || null,
-            birthDate: newTeacher.birthDate ? new Date(newTeacher.birthDate).toISOString() : null,
+            birthDate: newTeacher.birthDate
+              ? new Date(newTeacher.birthDate).toISOString()
+              : null,
             phoneNumber: newTeacher.phoneNumber || null,
             phoneNotes: newTeacher.phoneNotes || null,
             username: newTeacher.username,
             password: newTeacher.password || null,
-            contactPhones: (newTeacher.contactPhones || []).map(phone => ({
+            contactPhones: (newTeacher.contactPhones || []).map((phone) => ({
               id: phone.id || `temp-${Date.now()}-${Math.random()}`,
               phoneNumber: phone.phoneNumber,
               notes: phone.notes || null,
@@ -166,8 +212,12 @@ export function useTeacherCreate() {
             branches: [],
             subjectPreferences: newTeacher.subjectPreferences || [],
             regularAvailability: newTeacher.regularAvailability || [],
-            exceptionalAvailability: convertExceptionalAvailability(newTeacher.exceptionalAvailability || []),
-            absenceAvailability: convertAbsenceAvailability((newTeacher as any).absenceAvailability || []),
+            exceptionalAvailability: convertExceptionalAvailability(
+              newTeacher.exceptionalAvailability || []
+            ),
+            absenceAvailability: convertAbsenceAvailability(
+              (newTeacher as any).absenceAvailability || []
+            ),
             createdAt: new Date(),
             updatedAt: new Date(),
             _optimistic: true,
@@ -288,25 +338,33 @@ export function useTeacherUpdate() {
                     ...teacher,
                     ...updatedTeacher,
                     name: updatedTeacher.name || teacher.name,
-                    birthDate: updatedTeacher.birthDate !== undefined
-                      ? (updatedTeacher.birthDate ? new Date(updatedTeacher.birthDate).toISOString() : null)
-                      : teacher.birthDate,
-          contactPhones: updatedTeacher.contactPhones !== undefined
-            ? (updatedTeacher.contactPhones || []).map(phone => ({
-                id: phone.id || `temp-${Date.now()}-${Math.random()}`,
-                phoneNumber: phone.phoneNumber,
-                notes: phone.notes || null,
-                order: phone.order ?? 0,
-              }))
-            : teacher.contactPhones,
-                    contactEmails: updatedTeacher.contactEmails !== undefined
-                      ? (updatedTeacher.contactEmails || []).map((e, index) => ({
-                          id: e.id || `temp-${Date.now()}-${Math.random()}`,
-                          email: e.email,
-                          notes: e.notes || null,
-                          order: e.order ?? index,
-                        }))
-                      : teacher.contactEmails,
+                    birthDate:
+                      updatedTeacher.birthDate !== undefined
+                        ? updatedTeacher.birthDate
+                          ? new Date(updatedTeacher.birthDate).toISOString()
+                          : null
+                        : teacher.birthDate,
+                    contactPhones:
+                      updatedTeacher.contactPhones !== undefined
+                        ? (updatedTeacher.contactPhones || []).map((phone) => ({
+                            id:
+                              phone.id || `temp-${Date.now()}-${Math.random()}`,
+                            phoneNumber: phone.phoneNumber,
+                            notes: phone.notes || null,
+                            order: phone.order ?? 0,
+                          }))
+                        : teacher.contactPhones,
+                    contactEmails:
+                      updatedTeacher.contactEmails !== undefined
+                        ? (updatedTeacher.contactEmails || []).map(
+                            (e, index) => ({
+                              id: e.id || `temp-${Date.now()}-${Math.random()}`,
+                              email: e.email,
+                              notes: e.notes || null,
+                              order: e.order ?? index,
+                            })
+                          )
+                        : teacher.contactEmails,
                     subjectPreferences:
                       updatedTeacher.subjectPreferences !== undefined
                         ? updatedTeacher.subjectPreferences
@@ -317,11 +375,15 @@ export function useTeacherUpdate() {
                         : teacher.regularAvailability,
                     exceptionalAvailability:
                       updatedTeacher.exceptionalAvailability !== undefined
-                        ? convertExceptionalAvailability(updatedTeacher.exceptionalAvailability)
+                        ? convertExceptionalAvailability(
+                            updatedTeacher.exceptionalAvailability
+                          )
                         : teacher.exceptionalAvailability,
                     absenceAvailability:
                       (updatedTeacher as any).absenceAvailability !== undefined
-                        ? convertAbsenceAvailability((updatedTeacher as any).absenceAvailability)
+                        ? convertAbsenceAvailability(
+                            (updatedTeacher as any).absenceAvailability
+                          )
                         : (teacher as any).absenceAvailability,
                     updatedAt: new Date(),
                   }
@@ -335,25 +397,30 @@ export function useTeacherUpdate() {
           ...previousTeacher,
           ...updatedTeacher,
           name: updatedTeacher.name || previousTeacher.name,
-          birthDate: updatedTeacher.birthDate !== undefined
-            ? (updatedTeacher.birthDate ? new Date(updatedTeacher.birthDate).toISOString() : null)
-            : previousTeacher.birthDate,
-          contactPhones: updatedTeacher.contactPhones !== undefined
-            ? (updatedTeacher.contactPhones || []).map(phone => ({
-                id: phone.id || `temp-${Date.now()}-${Math.random()}`,
-                phoneNumber: phone.phoneNumber,
-                notes: phone.notes || null,
-                order: phone.order ?? 0,
-              }))
-            : previousTeacher.contactPhones,
-          contactEmails: updatedTeacher.contactEmails !== undefined
-            ? (updatedTeacher.contactEmails || []).map((e, index) => ({
-                id: e.id || `temp-${Date.now()}-${Math.random()}`,
-                email: e.email,
-                notes: e.notes || null,
-                order: e.order ?? index,
-              }))
-            : previousTeacher.contactEmails,
+          birthDate:
+            updatedTeacher.birthDate !== undefined
+              ? updatedTeacher.birthDate
+                ? new Date(updatedTeacher.birthDate).toISOString()
+                : null
+              : previousTeacher.birthDate,
+          contactPhones:
+            updatedTeacher.contactPhones !== undefined
+              ? (updatedTeacher.contactPhones || []).map((phone) => ({
+                  id: phone.id || `temp-${Date.now()}-${Math.random()}`,
+                  phoneNumber: phone.phoneNumber,
+                  notes: phone.notes || null,
+                  order: phone.order ?? 0,
+                }))
+              : previousTeacher.contactPhones,
+          contactEmails:
+            updatedTeacher.contactEmails !== undefined
+              ? (updatedTeacher.contactEmails || []).map((e, index) => ({
+                  id: e.id || `temp-${Date.now()}-${Math.random()}`,
+                  email: e.email,
+                  notes: e.notes || null,
+                  order: e.order ?? index,
+                }))
+              : previousTeacher.contactEmails,
           subjectPreferences:
             updatedTeacher.subjectPreferences !== undefined
               ? updatedTeacher.subjectPreferences
@@ -364,11 +431,15 @@ export function useTeacherUpdate() {
               : previousTeacher.regularAvailability,
           exceptionalAvailability:
             updatedTeacher.exceptionalAvailability !== undefined
-              ? convertExceptionalAvailability(updatedTeacher.exceptionalAvailability)
+              ? convertExceptionalAvailability(
+                  updatedTeacher.exceptionalAvailability
+                )
               : previousTeacher.exceptionalAvailability,
           absenceAvailability:
             (updatedTeacher as any).absenceAvailability !== undefined
-              ? convertAbsenceAvailability((updatedTeacher as any).absenceAvailability)
+              ? convertAbsenceAvailability(
+                  (updatedTeacher as any).absenceAvailability
+                )
               : (previousTeacher as any).absenceAvailability,
           updatedAt: new Date(),
         });

@@ -3,13 +3,13 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useArchiveStats } from "@/hooks/useArchiveQuery";
-import { 
-  Archive, 
-  Calendar, 
-  Database, 
+import {
+  Archive,
+  Calendar,
+  Database,
   Building2,
   TrendingUp,
-  HardDrive
+  HardDrive,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ja } from "date-fns/locale";
@@ -51,10 +51,13 @@ export function ArchiveStats() {
   if (!archiveStats) return null;
 
   // Find the month with the most archives
-  const peakMonth = archiveStats.archivesByMonth.reduce<{ month: string; count: number }>(
-    (max, current) => (current.count > max.count ? current : max),
-    { month: "", count: 0 }
-  );
+  const peakMonth = archiveStats.archivesByMonth.reduce<{
+    month: string;
+    count: number;
+  }>((max, current) => (current.count > max.count ? current : max), {
+    month: "",
+    count: 0,
+  });
 
   return (
     <div className="space-y-6">
@@ -79,9 +82,7 @@ export function ArchiveStats() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              データ期間
-            </CardTitle>
+            <CardTitle className="text-sm font-medium">データ期間</CardTitle>
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -127,9 +128,10 @@ export function ArchiveStats() {
           <CardContent>
             <div className="space-y-2">
               {archiveStats.archivesByMonth.map((month) => {
-                const percentage = archiveStats.totalArchived > 0
-                  ? (month.count / archiveStats.totalArchived) * 100
-                  : 0;
+                const percentage =
+                  archiveStats.totalArchived > 0
+                    ? (month.count / archiveStats.totalArchived) * 100
+                    : 0;
                 const isPeak = month.month === peakMonth.month;
 
                 return (

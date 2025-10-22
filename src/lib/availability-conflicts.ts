@@ -10,7 +10,7 @@ export const checkAdvancedTimeConflicts = async (
   date: Date | null,
   startTime: Date | null,
   endTime: Date | null,
-  type: 'REGULAR' | 'EXCEPTION',
+  type: "REGULAR" | "EXCEPTION",
   fullDay: boolean = false,
   excludeId?: string
 ): Promise<{
@@ -31,7 +31,7 @@ export const checkAdvancedTimeConflicts = async (
     exactDuplicateWhere.id = { not: excludeId };
   }
 
-  if (type === 'REGULAR') {
+  if (type === "REGULAR") {
     exactDuplicateWhere.dayOfWeek = dayOfWeek as DayOfWeek;
     exactDuplicateWhere.date = null;
   } else {
@@ -53,7 +53,7 @@ export const checkAdvancedTimeConflicts = async (
   if (exactDuplicates.length > 0) {
     return {
       hasConflict: true,
-      conflictType: 'EXACT_DUPLICATE',
+      conflictType: "EXACT_DUPLICATE",
       conflictingRecords: exactDuplicates,
     };
   }
@@ -72,7 +72,7 @@ export const checkAdvancedTimeConflicts = async (
       overlapWhere.id = { not: excludeId };
     }
 
-    if (type === 'REGULAR') {
+    if (type === "REGULAR") {
       overlapWhere.dayOfWeek = dayOfWeek as DayOfWeek;
       overlapWhere.date = null;
     } else {
@@ -96,7 +96,7 @@ export const checkAdvancedTimeConflicts = async (
       if (newStart < existingEnd && newEnd > existingStart) {
         conflicts.push({
           ...existing,
-          conflictType: 'TIME_OVERLAP',
+          conflictType: "TIME_OVERLAP",
         });
       }
     }
@@ -116,7 +116,7 @@ export const checkAdvancedTimeConflicts = async (
       timeSpecificWhere.id = { not: excludeId };
     }
 
-    if (type === 'REGULAR') {
+    if (type === "REGULAR") {
       timeSpecificWhere.dayOfWeek = dayOfWeek as DayOfWeek;
       timeSpecificWhere.date = null;
     } else {
@@ -129,10 +129,12 @@ export const checkAdvancedTimeConflicts = async (
     });
 
     if (timeSpecificAvailability.length > 0) {
-      conflicts.push(...timeSpecificAvailability.map(record => ({
-        ...record,
-        conflictType: 'FULLDAY_VS_TIMESPECIFIC',
-      })));
+      conflicts.push(
+        ...timeSpecificAvailability.map((record) => ({
+          ...record,
+          conflictType: "FULLDAY_VS_TIMESPECIFIC",
+        }))
+      );
     }
   }
 
@@ -169,7 +171,7 @@ export const batchResolveExceptionConflicts = async (
       exception.date,
       exception.startTime || null,
       exception.endTime || null,
-      'EXCEPTION',
+      "EXCEPTION",
       exception.fullDay || false
     );
 
@@ -178,13 +180,13 @@ export const batchResolveExceptionConflicts = async (
         // Delete conflicting records
         await prisma.userAvailability.deleteMany({
           where: {
-            id: { in: conflictCheck.conflictingRecords.map(r => r.id) },
+            id: { in: conflictCheck.conflictingRecords.map((r) => r.id) },
           },
         });
 
         resolutions.push({
           date: exception.date,
-          action: 'OVERWRITTEN',
+          action: "OVERWRITTEN",
           deletedRecords: conflictCheck.conflictingRecords.length,
         });
 

@@ -5,7 +5,14 @@ export async function GET() {
   try {
     // Align template with export CSV shape (localized headers)
     // Export columns: ID, ブース名, 校舎, ステータス, 備考, 表示順
-    const columns = ["ID", "ブース名", "校舎", "ステータス", "備考", "表示順"] as const;
+    const columns = [
+      "ID",
+      "ブース名",
+      "校舎",
+      "ステータス",
+      "備考",
+      "表示順",
+    ] as const;
 
     // Sample data for template (ID left empty for new rows)
     const sampleData = [

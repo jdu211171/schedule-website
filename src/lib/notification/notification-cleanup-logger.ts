@@ -1,10 +1,10 @@
-import { prisma } from '@/lib/prisma';
-import { CleanupResult } from './notification-cleanup';
+import { prisma } from "@/lib/prisma";
+import { CleanupResult } from "./notification-cleanup";
 
 export interface CleanupLog {
   id: string;
   timestamp: Date;
-  action: 'CLEANUP' | 'DRY_RUN' | 'STATS';
+  action: "CLEANUP" | "DRY_RUN" | "STATS";
   branchId?: string;
   userId?: string;
   userEmail?: string;
@@ -47,7 +47,7 @@ export class CleanupLogger {
    * Log a cleanup operation
    */
   log(
-    action: 'CLEANUP' | 'DRY_RUN' | 'STATS',
+    action: "CLEANUP" | "DRY_RUN" | "STATS",
     result: CleanupResult,
     config: any,
     options: {
@@ -73,25 +73,27 @@ export class CleanupLogger {
 
     // Add to in-memory logs
     this.logs.push(logEntry);
-    
+
     // Keep only the most recent logs in memory
     if (this.logs.length > this.maxLogsInMemory) {
       this.logs = this.logs.slice(-this.maxLogsInMemory);
     }
 
     // Log to console with appropriate level
-    const logLevel = result.success ? 'info' : 'error';
+    const logLevel = result.success ? "info" : "error";
     const message = this.formatLogMessage(logEntry);
-    
+
     console[logLevel](message);
 
     // Log detailed information if needed
     if (result.totalDeleted > 0) {
-      console.info(`Cleanup details: ${JSON.stringify(result.deletedByStatus)}`);
+      console.info(
+        `Cleanup details: ${JSON.stringify(result.deletedByStatus)}`
+      );
     }
-    
+
     if (result.errors.length > 0) {
-      console.error(`Cleanup errors: ${result.errors.join(', ')}`);
+      console.error(`Cleanup errors: ${result.errors.join(", ")}`);
     }
   }
 
@@ -100,15 +102,17 @@ export class CleanupLogger {
    */
   private formatLogMessage(log: CleanupLog): string {
     const { action, result, branchId, userEmail, timestamp } = log;
-    
-    const branchInfo = branchId ? `[Branch: ${branchId}]` : '[All Branches]';
-    const userInfo = userEmail ? `[User: ${userEmail}]` : '[System]';
-    const statusInfo = result.success ? '✓' : '✗';
-    const dryRunInfo = result.dryRun ? '[DRY RUN]' : '';
-    
-    return `${statusInfo} NOTIFICATION_CLEANUP ${action} ${dryRunInfo} ${branchInfo} ${userInfo} - ` +
-           `Processed: ${result.totalProcessed}, Deleted: ${result.totalDeleted}, ` +
-           `Time: ${result.executionTimeMs}ms - ${timestamp.toISOString()}`;
+
+    const branchInfo = branchId ? `[Branch: ${branchId}]` : "[All Branches]";
+    const userInfo = userEmail ? `[User: ${userEmail}]` : "[System]";
+    const statusInfo = result.success ? "✓" : "✗";
+    const dryRunInfo = result.dryRun ? "[DRY RUN]" : "";
+
+    return (
+      `${statusInfo} NOTIFICATION_CLEANUP ${action} ${dryRunInfo} ${branchInfo} ${userInfo} - ` +
+      `Processed: ${result.totalProcessed}, Deleted: ${result.totalDeleted}, ` +
+      `Time: ${result.executionTimeMs}ms - ${timestamp.toISOString()}`
+    );
   }
 
   /**
@@ -123,26 +127,28 @@ export class CleanupLogger {
    */
   getMetrics(): CleanupMetrics {
     const totalRuns = this.logs.length;
-    const successfulRuns = this.logs.filter(log => log.success).length;
+    const successfulRuns = this.logs.filter((log) => log.success).length;
     const failedRuns = totalRuns - successfulRuns;
-    
+
     const totalNotificationsDeleted = this.logs.reduce(
-      (sum, log) => sum + log.result.totalDeleted, 0
+      (sum, log) => sum + log.result.totalDeleted,
+      0
     );
-    
-    const averageExecutionTime = totalRuns > 0 
-      ? this.logs.reduce((sum, log) => sum + log.executionTimeMs, 0) / totalRuns 
-      : 0;
-    
-    const lastRunTime = totalRuns > 0 ? this.logs[this.logs.length - 1].timestamp : null;
-    
-    const lastSuccessfulRun = this.logs
-      .filter(log => log.success)
-      .pop()?.timestamp || null;
-    
-    const lastFailedRun = this.logs
-      .filter(log => !log.success)
-      .pop()?.timestamp || null;
+
+    const averageExecutionTime =
+      totalRuns > 0
+        ? this.logs.reduce((sum, log) => sum + log.executionTimeMs, 0) /
+          totalRuns
+        : 0;
+
+    const lastRunTime =
+      totalRuns > 0 ? this.logs[this.logs.length - 1].timestamp : null;
+
+    const lastSuccessfulRun =
+      this.logs.filter((log) => log.success).pop()?.timestamp || null;
+
+    const lastFailedRun =
+      this.logs.filter((log) => !log.success).pop()?.timestamp || null;
 
     return {
       totalRuns,
@@ -167,7 +173,7 @@ export class CleanupLogger {
    * Get logs filtered by criteria
    */
   getFilteredLogs(filters: {
-    action?: 'CLEANUP' | 'DRY_RUN' | 'STATS';
+    action?: "CLEANUP" | "DRY_RUN" | "STATS";
     branchId?: string;
     userId?: string;
     success?: boolean;
@@ -178,27 +184,39 @@ export class CleanupLogger {
     let filteredLogs = this.logs;
 
     if (filters.action) {
-      filteredLogs = filteredLogs.filter(log => log.action === filters.action);
+      filteredLogs = filteredLogs.filter(
+        (log) => log.action === filters.action
+      );
     }
 
     if (filters.branchId) {
-      filteredLogs = filteredLogs.filter(log => log.branchId === filters.branchId);
+      filteredLogs = filteredLogs.filter(
+        (log) => log.branchId === filters.branchId
+      );
     }
 
     if (filters.userId) {
-      filteredLogs = filteredLogs.filter(log => log.userId === filters.userId);
+      filteredLogs = filteredLogs.filter(
+        (log) => log.userId === filters.userId
+      );
     }
 
     if (filters.success !== undefined) {
-      filteredLogs = filteredLogs.filter(log => log.success === filters.success);
+      filteredLogs = filteredLogs.filter(
+        (log) => log.success === filters.success
+      );
     }
 
     if (filters.startDate) {
-      filteredLogs = filteredLogs.filter(log => log.timestamp >= filters.startDate!);
+      filteredLogs = filteredLogs.filter(
+        (log) => log.timestamp >= filters.startDate!
+      );
     }
 
     if (filters.endDate) {
-      filteredLogs = filteredLogs.filter(log => log.timestamp <= filters.endDate!);
+      filteredLogs = filteredLogs.filter(
+        (log) => log.timestamp <= filters.endDate!
+      );
     }
 
     // Sort by timestamp (newest first)
@@ -225,7 +243,7 @@ export const logCleanupOperation = (
     userEmail?: string;
   } = {}
 ) => {
-  const action = result.dryRun ? 'DRY_RUN' : 'CLEANUP';
+  const action = result.dryRun ? "DRY_RUN" : "CLEANUP";
   cleanupLogger.log(action, result, config, options);
 };
 
@@ -238,9 +256,10 @@ export const logCleanupStats = (
     userEmail?: string;
   } = {}
 ) => {
-  cleanupLogger.log('STATS', result, config, options);
+  cleanupLogger.log("STATS", result, config, options);
 };
 
 export const getCleanupMetrics = () => cleanupLogger.getMetrics();
 
-export const getRecentCleanupLogs = (limit?: number) => cleanupLogger.getRecentLogs(limit);
+export const getRecentCleanupLogs = (limit?: number) =>
+  cleanupLogger.getRecentLogs(limit);

@@ -6,11 +6,11 @@ export interface ClassSessionBase {
   subjectId: string;
   boothId: string;
   classTypeId: string;
-  
+
   date: string | Date;
   startTime: string;
   endTime: string;
-  
+
   notes?: string | null;
 }
 
@@ -22,7 +22,8 @@ export interface CreateClassSessionPayload extends ClassSessionBase {
 }
 
 // Расширенный тип с поддержкой флагов конфликтов
-export interface CreateClassSessionWithConflictsPayload extends CreateClassSessionPayload {
+export interface CreateClassSessionWithConflictsPayload
+  extends CreateClassSessionPayload {
   skipConflicts?: boolean;
   forceCreate?: boolean;
   sessionActions?: SessionAction[];
@@ -43,7 +44,7 @@ export interface UpdateClassSessionPayload {
   startTime?: string;
   endTime?: string;
   notes?: string | null;
-  
+
   isRecurring?: boolean;
   startDate?: string;
   endDate?: string;
@@ -59,30 +60,30 @@ export interface NewClassSessionData {
 
 export interface SessionAction {
   date: string;
-  action: 'SKIP' | 'FORCE_CREATE' | 'USE_ALTERNATIVE' | 'RESET';
+  action: "SKIP" | "FORCE_CREATE" | "USE_ALTERNATIVE" | "RESET";
   alternativeStartTime?: string;
   alternativeEndTime?: string;
 }
 
 // Типы для обработки конфликтов
-export type ConflictType = 
-  | 'STUDENT_UNAVAILABLE' 
-  | 'TEACHER_UNAVAILABLE' 
-  | 'TEACHER_WRONG_TIME' 
-  | 'STUDENT_WRONG_TIME' 
-  | 'VACATION' 
-  | 'BOOTH_CONFLICT'
-  | 'NO_SHARED_AVAILABILITY';
+export type ConflictType =
+  | "STUDENT_UNAVAILABLE"
+  | "TEACHER_UNAVAILABLE"
+  | "TEACHER_WRONG_TIME"
+  | "STUDENT_WRONG_TIME"
+  | "VACATION"
+  | "BOOTH_CONFLICT"
+  | "NO_SHARED_AVAILABILITY";
 
 export interface ConflictParticipant {
   id: string;
   name: string;
-  role: 'student' | 'teacher';
+  role: "student" | "teacher";
 }
 
 export interface ConflictAvailableSlot {
   startTime: string; // "HH:MM" format
-  endTime: string;   // "HH:MM" format
+  endTime: string; // "HH:MM" format
 }
 
 export interface ConflictData {
@@ -112,7 +113,7 @@ export interface ConflictResponse {
   summary: ConflictSummary;
 }
 
-export type ConflictResolutionAction = 'CANCEL' | 'SKIP' | 'FORCE';
+export type ConflictResolutionAction = "CANCEL" | "SKIP" | "FORCE";
 
 export interface ConflictResolutionState {
   conflicts: ConflictData[];
@@ -124,23 +125,23 @@ export function formatDateToString(date: Date | string): string {
   if (date instanceof Date) {
     // Format the date using local time to avoid timezone conversion issues
     const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
-  } else if (typeof date === 'string') {
+  } else if (typeof date === "string") {
     if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
       return date;
     }
     try {
       const parsedDate = new Date(date);
       const year = parsedDate.getFullYear();
-      const month = String(parsedDate.getMonth() + 1).padStart(2, '0');
-      const day = String(parsedDate.getDate()).padStart(2, '0');
+      const month = String(parsedDate.getMonth() + 1).padStart(2, "0");
+      const day = String(parsedDate.getDate()).padStart(2, "0");
       return `${year}-${month}-${day}`;
     } catch (e) {
       console.error("Ошибка преобразования даты:", e);
-      return '';
+      return "";
     }
   }
-  return '';
+  return "";
 }

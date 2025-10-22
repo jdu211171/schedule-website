@@ -17,9 +17,11 @@ import { Label } from "@/components/ui/label";
 
 const StudentSettingsChangePassword: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [showCurrentPassword, setShowCurrentPassword] = useState<boolean>(false);
+  const [showCurrentPassword, setShowCurrentPassword] =
+    useState<boolean>(false);
   const [showNewPassword, setShowNewPassword] = useState<boolean>(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false);
+  const [showConfirmPassword, setShowConfirmPassword] =
+    useState<boolean>(false);
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -105,7 +107,9 @@ const StudentSettingsChangePassword: React.FC = () => {
                       <Eye className="h-4 w-4 text-muted-foreground" />
                     )}
                     <span className="sr-only">
-                      {showCurrentPassword ? "パスワードを隠す" : "パスワードを表示"}
+                      {showCurrentPassword
+                        ? "パスワードを隠す"
+                        : "パスワードを表示"}
                     </span>
                   </Button>
                 </div>
@@ -138,7 +142,9 @@ const StudentSettingsChangePassword: React.FC = () => {
                       <Eye className="h-4 w-4 text-muted-foreground" />
                     )}
                     <span className="sr-only">
-                      {showNewPassword ? "パスワードを隠す" : "パスワードを表示"}
+                      {showNewPassword
+                        ? "パスワードを隠す"
+                        : "パスワードを表示"}
                     </span>
                   </Button>
                 </div>
@@ -147,7 +153,8 @@ const StudentSettingsChangePassword: React.FC = () => {
               {/* Confirm Password */}
               <div className="space-y-2">
                 <Label htmlFor="confirmPassword">
-                  新しいパスワード（確認） <span className="text-red-500">*</span>
+                  新しいパスワード（確認）{" "}
+                  <span className="text-red-500">*</span>
                 </Label>
                 <div className="relative">
                   <Input
@@ -163,9 +170,7 @@ const StudentSettingsChangePassword: React.FC = () => {
                     variant="ghost"
                     size="icon"
                     className="absolute right-0 top-0 h-full px-3"
-                    onClick={() =>
-                      setShowConfirmPassword(!showConfirmPassword)
-                    }
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   >
                     {showConfirmPassword ? (
                       <EyeOff className="h-4 w-4 text-muted-foreground" />

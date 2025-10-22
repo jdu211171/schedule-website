@@ -6,27 +6,32 @@
 
 ## Unknowns → Research Tasks → Decisions
 
-1) How to cancel “from this point” using existing APIs?
+1. How to cancel “from this point” using existing APIs?
+
 - Decision: Use POST `/api/class-sessions/cancel` with `{ seriesId, fromDate }`, where `fromDate` is the selected occurrence’s date (YYYY-MM-DD). For “single”, use `{ classIds: [classId] }`.
 - Rationale: Endpoint supports seriesId + fromDate and batch via classIds. It updates `isCancelled` and recomputes neighbors.
 - Alternatives considered: New combined endpoint to cancel and pause; rejected to maximize reuse and minimize backend changes.
 
-2) How to stop future generation after cancel “from this point”?
+2. How to stop future generation after cancel “from this point”?
+
 - Decision: PATCH `/api/class-series/{seriesId}` with `{ status: "PAUSED" }` after successful cancel-from.
 - Rationale: Advance generation cron explicitly includes only ACTIVE series; PAUSED excludes series from generation.
 - Alternatives considered: Set endDate to the previous occurrence; rejected due to higher migration risk and copy ambiguity.
 
-3) Where to integrate UI affordance in 授業の編集?
+3. Where to integrate UI affordance in 授業の編集?
+
 - Decision: Add a キャンセル button in edit mode next to 削除; when recurring, show a radio group mirroring delete (single vs series). Reuse existing `ConfirmDeleteDialog` for confirmation and copy.
 - Rationale: Maintains established patterns used by 削除; reduces cognitive load and code surface area.
 - Alternatives considered: Keep cancel only in view mode; rejected per requirement to match delete scope affordances.
 
-4) Notification behavior?
+4. Notification behavior?
+
 - Decision: Mirror delete notifications for cancellations (same audience, channels, timing).
 - Rationale: Aligns with spec decision and existing user expectations; avoids fragmentation in comms.
 - Alternatives considered: Custom cancellation copy/channels; can be added later if needed.
 
-5) Idempotency and error handling?
+5. Idempotency and error handling?
+
 - Decision: Rely on cancel route safeguards (`isCancelled: false` in updateMany). UI: show success/toast messages and no-op gracefully when nothing changes.
 - Rationale: Endpoint prevents bumping timestamps for pre-cancelled items; minimizes race side-effects.
 - Alternatives considered: Client-side filtering before request; unnecessary duplication.
@@ -48,4 +53,3 @@
   - Mitigation: Still set PAUSED; show success with message that only current was canceled.
 - Risk: Race with concurrent edits.
   - Mitigation: Server idempotency; client toasts and background invalidation via React Query.
-

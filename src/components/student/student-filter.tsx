@@ -40,7 +40,10 @@ interface StudentFilterProps {
     branch: string[];
     subject: string[];
   };
-  onFilterChange: (field: keyof StudentFilterProps["filters"], value: string | string[] | undefined) => void;
+  onFilterChange: (
+    field: keyof StudentFilterProps["filters"],
+    value: string | string[] | undefined
+  ) => void;
   onResetFilters: () => void;
 }
 
@@ -51,7 +54,7 @@ export function StudentFilter({
   onFilterChange,
   onResetFilters,
 }: StudentFilterProps) {
-  const hasActiveFilters = 
+  const hasActiveFilters =
     filters.name ||
     filters.status.length > 0 ||
     filters.studentType.length > 0 ||
@@ -60,10 +63,12 @@ export function StudentFilter({
     filters.subject.length > 0;
 
   // Status options
-  const statusOptions = Object.entries(userStatusLabels).map(([value, label]) => ({
-    value,
-    label,
-  }));
+  const statusOptions = Object.entries(userStatusLabels).map(
+    ([value, label]) => ({
+      value,
+      label,
+    })
+  );
 
   // Student type options
   const studentTypeOptions = studentTypes.map((type) => ({
@@ -168,7 +173,10 @@ function MultiSelectFilter({
   selectedValues,
   onSelectionChange,
 }: MultiSelectFilterProps) {
-  const selectedSet = React.useMemo(() => new Set(selectedValues), [selectedValues]);
+  const selectedSet = React.useMemo(
+    () => new Set(selectedValues),
+    [selectedValues]
+  );
 
   const toggleOption = (value: string) => {
     const newSelectedValues = selectedSet.has(value)

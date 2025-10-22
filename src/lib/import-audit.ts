@@ -16,4 +16,3 @@ export function auditImportSummary(summary: ImportSummary) {
   // eslint-disable-next-line no-console
   console.info("import.summary", JSON.stringify(summary));
 }
-

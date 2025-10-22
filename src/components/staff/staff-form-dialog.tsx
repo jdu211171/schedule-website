@@ -52,10 +52,12 @@ export function StaffFormDialog({
   const { data: session } = useSession();
 
   // Use ordered branches from API
-  const { data: branches = [], isLoading: isBranchesLoading } = useAllBranchesOrdered();
+  const { data: branches = [], isLoading: isBranchesLoading } =
+    useAllBranchesOrdered();
 
   // Use the selected branch from session instead of first branch
-  const defaultBranchId = session?.user?.selectedBranchId || branches?.[0]?.branchId;
+  const defaultBranchId =
+    session?.user?.selectedBranchId || branches?.[0]?.branchId;
 
   const isEditing = !!staff;
   const isSubmitting =
@@ -297,8 +299,14 @@ export function StaffFormDialog({
                             emptyMessage="該当する校舎が見つかりません"
                             loading={isBranchesLoading}
                             disabled={isBranchesLoading}
-                            defaultValues={defaultBranchId ? [defaultBranchId] : []}
-                            renderSelectedBadge={(item, isDefault, onRemove) => (
+                            defaultValues={
+                              defaultBranchId ? [defaultBranchId] : []
+                            }
+                            renderSelectedBadge={(
+                              item,
+                              isDefault,
+                              onRemove
+                            ) => (
                               <Badge
                                 key={item.value}
                                 variant={isDefault ? "default" : "secondary"}

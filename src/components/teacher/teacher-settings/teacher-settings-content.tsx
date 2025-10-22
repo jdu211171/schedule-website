@@ -1,16 +1,32 @@
-"use client"
+"use client";
 
-import { SidebarInset, SidebarTrigger } from "@/components/ui/sidebar"
-import TeacherSettingsChangePassword from "./teacher-settings-change-password"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Separator } from "@/components/ui/separator"
-import { Badge } from "@/components/ui/badge"
-import { Switch } from "@/components/ui/switch"
-import { User, KeyRound, Bell, Shield, Palette, HelpCircle, Mail, Phone, Calendar } from "lucide-react"
-import { useTeacherSettingsStore } from "./teacher-settings-store"
+import { SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
+import TeacherSettingsChangePassword from "./teacher-settings-change-password";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import {
+  User,
+  KeyRound,
+  Bell,
+  Shield,
+  Palette,
+  HelpCircle,
+  Mail,
+  Phone,
+  Calendar,
+} from "lucide-react";
+import { useTeacherSettingsStore } from "./teacher-settings-store";
 
 const sectionConfig = {
   profile: {
@@ -43,7 +59,7 @@ const sectionConfig = {
     description: "ヘルプを取得し、サポートに連絡します",
     icon: HelpCircle,
   },
-}
+};
 
 function ProfileSection() {
   return (
@@ -51,7 +67,9 @@ function ProfileSection() {
       <Card>
         <CardHeader>
           <CardTitle>個人情報</CardTitle>
-          <CardDescription>個人の詳細情報と連絡先情報を更新します</CardDescription>
+          <CardDescription>
+            個人の詳細情報と連絡先情報を更新します
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -68,14 +86,22 @@ function ProfileSection() {
             <Label htmlFor="email">メールアドレス</Label>
             <div className="flex items-center gap-2">
               <Mail className="h-4 w-4 text-muted-foreground" />
-              <Input id="email" type="email" placeholder="メールアドレスを入力してください" />
+              <Input
+                id="email"
+                type="email"
+                placeholder="メールアドレスを入力してください"
+              />
             </div>
           </div>
           <div className="space-y-2">
             <Label htmlFor="phone">電話番号</Label>
             <div className="flex items-center gap-2">
               <Phone className="h-4 w-4 text-muted-foreground" />
-              <Input id="phone" type="tel" placeholder="電話番号を入力してください" />
+              <Input
+                id="phone"
+                type="tel"
+                placeholder="電話番号を入力してください"
+              />
             </div>
           </div>
           <div className="space-y-2">
@@ -89,7 +115,7 @@ function ProfileSection() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
 
 function NotificationsSection() {
@@ -98,7 +124,9 @@ function NotificationsSection() {
       <Card>
         <CardHeader>
           <CardTitle>メール通知</CardTitle>
-          <CardDescription>受信したいメール通知を選択してください</CardDescription>
+          <CardDescription>
+            受信したいメール通知を選択してください
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
@@ -114,7 +142,9 @@ function NotificationsSection() {
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label>スケジュール変更</Label>
-              <p className="text-sm text-muted-foreground">授業スケジュールの変更についてリマインダーを受け取る</p>
+              <p className="text-sm text-muted-foreground">
+                授業スケジュールの変更についてリマインダーを受け取る
+              </p>
             </div>
             <Switch defaultChecked />
           </div>
@@ -122,14 +152,16 @@ function NotificationsSection() {
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label>生徒の出席</Label>
-              <p className="text-sm text-muted-foreground">生徒の出席状況に関する通知を受け取る</p>
+              <p className="text-sm text-muted-foreground">
+                生徒の出席状況に関する通知を受け取る
+              </p>
             </div>
             <Switch defaultChecked />
           </div>
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
 
 function PrivacySection() {
@@ -138,13 +170,17 @@ function PrivacySection() {
       <Card>
         <CardHeader>
           <CardTitle>プライバシー制御</CardTitle>
-          <CardDescription>プライバシー設定とデータ共有設定を管理します</CardDescription>
+          <CardDescription>
+            プライバシー設定とデータ共有設定を管理します
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label>プロフィール表示</Label>
-              <p className="text-sm text-muted-foreground">他の講師や生徒にプロフィールの表示を許可する</p>
+              <p className="text-sm text-muted-foreground">
+                他の講師や生徒にプロフィールの表示を許可する
+              </p>
             </div>
             <Switch />
           </div>
@@ -152,7 +188,9 @@ function PrivacySection() {
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label>アクティビティ状態</Label>
-              <p className="text-sm text-muted-foreground">オンライン状態やアクティブ状態を表示する</p>
+              <p className="text-sm text-muted-foreground">
+                オンライン状態やアクティブ状態を表示する
+              </p>
             </div>
             <Switch />
           </div>
@@ -160,14 +198,16 @@ function PrivacySection() {
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label>データ分析</Label>
-              <p className="text-sm text-muted-foreground">プラットフォーム改善のための使用データを許可する</p>
+              <p className="text-sm text-muted-foreground">
+                プラットフォーム改善のための使用データを許可する
+              </p>
             </div>
             <Switch defaultChecked />
           </div>
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
 
 function AppearanceSection() {
@@ -176,7 +216,9 @@ function AppearanceSection() {
       <Card>
         <CardHeader>
           <CardTitle>テーマ設定</CardTitle>
-          <CardDescription>アカウントの外観をカスタマイズします</CardDescription>
+          <CardDescription>
+            アカウントの外観をカスタマイズします
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
@@ -204,7 +246,7 @@ function AppearanceSection() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
 
 function HelpSection() {
@@ -213,7 +255,9 @@ function HelpSection() {
       <Card>
         <CardHeader>
           <CardTitle>ヘルプとサポート</CardTitle>
-          <CardDescription>アカウントのヘルプを取得するか、サポートチームに連絡してください</CardDescription>
+          <CardDescription>
+            アカウントのヘルプを取得するか、サポートチームに連絡してください
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <Button variant="outline" className="w-full justify-start">
@@ -233,31 +277,31 @@ function HelpSection() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
 
 export function TeacherSettingsContent() {
-  const { activeSection } = useTeacherSettingsStore()
-  const config = sectionConfig[activeSection as keyof typeof sectionConfig]
+  const { activeSection } = useTeacherSettingsStore();
+  const config = sectionConfig[activeSection as keyof typeof sectionConfig];
 
   const renderContent = () => {
     switch (activeSection) {
       case "profile":
-        return <ProfileSection />
+        return <ProfileSection />;
       case "password":
-        return <TeacherSettingsChangePassword />
+        return <TeacherSettingsChangePassword />;
       case "notifications":
-        return <NotificationsSection />
+        return <NotificationsSection />;
       case "privacy":
-        return <PrivacySection />
+        return <PrivacySection />;
       case "appearance":
-        return <AppearanceSection />
+        return <AppearanceSection />;
       case "help":
-        return <HelpSection />
+        return <HelpSection />;
       default:
-        return <ProfileSection />
+        return <ProfileSection />;
     }
-  }
+  };
 
   return (
     <SidebarInset className="flex-1">
@@ -278,5 +322,5 @@ export function TeacherSettingsContent() {
         </div>
       </main>
     </SidebarInset>
-  )
+  );
 }

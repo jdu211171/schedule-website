@@ -25,7 +25,14 @@ export const GET = withFullAdminRole(
       );
     }
 
-    const { page, limit, search, branchId, sortBy = "order", sortOrder = "asc" } = result.data;
+    const {
+      page,
+      limit,
+      search,
+      branchId,
+      sortBy = "order",
+      sortOrder = "asc",
+    } = result.data;
 
     // Build filter conditions
     const where: Prisma.UserWhereInput = {
@@ -118,15 +125,13 @@ export const POST = withFullAdminRole(
         );
       }
 
-      const { name, email, username, password, branchIds, isRestrictedAdmin } = result.data;
+      const { name, email, username, password, branchIds, isRestrictedAdmin } =
+        result.data;
 
       // Check if username or email already exists
       const existingUser = await prisma.user.findFirst({
         where: {
-          OR: [
-            { username },
-            { email },
-          ],
+          OR: [{ username }, { email }],
         },
       });
 

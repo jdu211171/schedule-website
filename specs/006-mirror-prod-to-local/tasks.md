@@ -2,4 +2,3 @@
 - [x] Add mirror script with confirmation, dry-run, skip-backup
 - [ ] Smoke test with dry-run and real local DB
 - [ ] Add brief docs under `docs/`
-

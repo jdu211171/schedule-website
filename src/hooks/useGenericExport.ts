@@ -11,14 +11,14 @@ interface ExportOptions {
 
 // Entity name mapping for Japanese display
 const ENTITY_NAME_MAP: Record<string, string> = {
-  "teachers": "講師",
-  "students": "生徒",
-  "subjects": "科目",
-  "subject_types": "科目タイプ",
-  "student_types": "生徒タイプ",
-  "booths": "ブース",
-  "class_types": "授業タイプ",
-  "holidays": "休日"
+  teachers: "講師",
+  students: "生徒",
+  subjects: "科目",
+  subject_types: "科目タイプ",
+  student_types: "生徒タイプ",
+  booths: "ブース",
+  class_types: "授業タイプ",
+  holidays: "休日",
 };
 
 export function useGenericExport(endpoint: string, entityName: string) {
@@ -43,7 +43,9 @@ export function useGenericExport(endpoint: string, entityName: string) {
         }
       }
 
-      const response = await fetcherWithAuth(`${endpoint}?${params.toString()}`);
+      const response = await fetcherWithAuth(
+        `${endpoint}?${params.toString()}`
+      );
 
       // Check if response is ok
       if (!response.ok) {
@@ -65,7 +67,9 @@ export function useGenericExport(endpoint: string, entityName: string) {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
 
-      toast.success(`${ENTITY_NAME_MAP[entityName] || entityName}データをエクスポートしました`);
+      toast.success(
+        `${ENTITY_NAME_MAP[entityName] || entityName}データをエクスポートしました`
+      );
     } catch (error) {
       console.error("Export error:", error);
       toast.error("エクスポートに失敗しました");

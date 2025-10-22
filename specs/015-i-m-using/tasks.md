@@ -1,11 +1,13 @@
 # Tasks: Production CSV Import Reliability
 
 ## Ordering
+
 - TDD-first, then implementation
 - Models/services before UI
 - [P] = parallelizable
 
 ## Tasks
+
 - [x] Create/import Zod schemas for CSV rows (use existing `src/schemas/import/*`)
 - [x] Add encoding detection and decoding (covered by `src/lib/csv-parser.ts`; auto-detect enabled)
 - [x] Add CSV importer (reuse `src/lib/csv-parser.ts` with row objects)
@@ -35,12 +37,13 @@
 - [~] Run `bun lint` and fix TS errors (repo has unrelated warnings; new code is clean)
 - [ ] Verify production limits/timeouts; adjust batching/streaming if needed
 - [x] Add observability metrics (duration, rows/sec) to logs
- - [x] Add performance validation script (scripts/perf-import.ts)
+- [x] Add performance validation script (scripts/perf-import.ts)
 
 ## Acceptance Checklist
+
 - [ ] Typical import (≤10 MB or ≤10k rows) completes ≤60s locally
 - [x] Invalid rows are skipped and reported with row numbers + reasons
 - [x] Encodings UTF-8 and Shift_JIS supported; others rejected with guidance
 - [x] Upsert by internal database ID or tolerant update works
 - [~] Localized errors JP present; EN pending
- - [x] Audit logs record attempts, outcomes, counts, and durations
+- [x] Audit logs record attempts, outcomes, counts, and durations

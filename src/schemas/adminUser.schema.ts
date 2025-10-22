@@ -6,7 +6,9 @@ export const adminUserBaseSchema = z.object({
   email: z.string().email("有効なメールアドレスを入力してください"),
   username: z.string().min(3, "ユーザー名は3文字以上である必要があります"),
   password: z.string().optional(),
-  branchIds: z.array(z.string()).min(1, "少なくとも1つの支店を選択してください"),
+  branchIds: z
+    .array(z.string())
+    .min(1, "少なくとも1つの支店を選択してください"),
   isRestrictedAdmin: z.boolean().default(false),
 });
 
@@ -21,7 +23,9 @@ export const adminUserCreateSchema = z.object({
   email: z.string().email("有効なメールアドレスを入力してください"),
   username: z.string().min(3, "ユーザー名は3文字以上である必要があります"),
   password: z.string().min(6, "パスワードは6文字以上である必要があります"),
-  branchIds: z.array(z.string()).min(1, "少なくとも1つの支店を選択してください"),
+  branchIds: z
+    .array(z.string())
+    .min(1, "少なくとも1つの支店を選択してください"),
   isRestrictedAdmin: z.boolean().default(false),
 });
 
@@ -40,15 +44,20 @@ export const adminUserFilterSchema = z.object({
 });
 
 // For updating admin user order with permission constraints
-export const adminUserOrderUpdateSchema = z.object({
-  userIds: z.array(z.string()).min(1),
-}).refine((data) => {
-  // Additional client-side validation can be added here
-  // The main permission validation is done server-side
-  return data.userIds.length > 0;
-}, {
-  message: "少なくとも1つの管理者IDが必要です"
-});
+export const adminUserOrderUpdateSchema = z
+  .object({
+    userIds: z.array(z.string()).min(1),
+  })
+  .refine(
+    (data) => {
+      // Additional client-side validation can be added here
+      // The main permission validation is done server-side
+      return data.userIds.length > 0;
+    },
+    {
+      message: "少なくとも1つの管理者IDが必要です",
+    }
+  );
 
 export type AdminUserFormInput = z.infer<typeof adminUserFormSchema>;
 export type AdminUserCreateInput = z.infer<typeof adminUserCreateSchema>;

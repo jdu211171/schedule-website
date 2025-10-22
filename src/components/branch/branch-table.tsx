@@ -33,12 +33,16 @@ import { Badge } from "@/components/ui/badge";
 import { MessageSquare } from "lucide-react";
 
 // Component to display LINE channels for a branch
-function BranchLineChannels({ lineChannels }: { lineChannels?: Branch['lineChannels'] }) {
+function BranchLineChannels({
+  lineChannels,
+}: {
+  lineChannels?: Branch["lineChannels"];
+}) {
   if (!lineChannels || lineChannels.length === 0) {
     return <span className="text-muted-foreground">-</span>;
   }
 
-  const primaryChannel = lineChannels.find(ch => ch.isPrimary);
+  const primaryChannel = lineChannels.find((ch) => ch.isPrimary);
 
   return (
     <div className="flex flex-wrap gap-1">
@@ -49,7 +53,7 @@ function BranchLineChannels({ lineChannels }: { lineChannels?: Branch['lineChann
         </Badge>
       )}
       {lineChannels
-        .filter(ch => ch.channelId !== primaryChannel?.channelId)
+        .filter((ch) => ch.channelId !== primaryChannel?.channelId)
         .slice(0, 2)
         .map((channel) => (
           <Badge key={channel.channelId} variant="outline" className="text-xs">
@@ -83,7 +87,10 @@ export function BranchTable() {
   const updateBranchMutation = useBranchUpdate();
   const deleteBranchMutation = useBranchDelete();
   const updateOrderMutation = useBranchOrderUpdate();
-  const { exportToCSV, isExporting } = useGenericExport("/api/branches/export", "branches");
+  const { exportToCSV, isExporting } = useGenericExport(
+    "/api/branches/export",
+    "branches"
+  );
 
   const currentBranch = localStorage.getItem("selectedBranchId");
 
@@ -122,7 +129,9 @@ export function BranchTable() {
     {
       accessorKey: "lineChannels",
       header: "LINEチャンネル",
-      cell: ({ row }) => <BranchLineChannels lineChannels={row.original.lineChannels} />,
+      cell: ({ row }) => (
+        <BranchLineChannels lineChannels={row.original.lineChannels} />
+      ),
     },
   ];
 
@@ -148,7 +157,6 @@ export function BranchTable() {
     }
     setIsSortMode(enabled);
   };
-
 
   const renderActions = (branch: Branch) => {
     // Type-safe check for _optimistic property
@@ -192,8 +200,8 @@ export function BranchTable() {
   const handleExport = () => {
     // Get visible columns (all columns except actions)
     const visibleColumns = columns
-      .map(col => (col as any).accessorKey)
-      .filter(key => key) as string[];
+      .map((col) => (col as any).accessorKey)
+      .filter((key) => key) as string[];
     exportToCSV({ columns: visibleColumns });
   };
 

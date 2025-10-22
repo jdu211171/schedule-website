@@ -96,7 +96,7 @@ export function DataTableSliderFilter<TData>({
         column.setFilterValue([numValue, range[1]]);
       }
     },
-    [column, min, range],
+    [column, min, range]
   );
 
   const onToInputChange = React.useCallback(
@@ -106,7 +106,7 @@ export function DataTableSliderFilter<TData>({
         column.setFilterValue([range[0], numValue]);
       }
     },
-    [column, max, range],
+    [column, max, range]
   );
 
   const onSliderValueChange = React.useCallback(
@@ -115,7 +115,7 @@ export function DataTableSliderFilter<TData>({
         column.setFilterValue(value);
       }
     },
-    [column],
+    [column]
   );
 
   const onReset = React.useCallback(
@@ -125,7 +125,7 @@ export function DataTableSliderFilter<TData>({
       }
       column.setFilterValue(undefined);
     },
-    [column],
+    [column]
   );
 
   return (

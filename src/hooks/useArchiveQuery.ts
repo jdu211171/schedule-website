@@ -69,7 +69,7 @@ interface ArchivesResponse {
 // Hook for fetching archives with filters
 export function useArchiveQuery(filters: ArchiveFilters = {}) {
   const queryParams = new URLSearchParams();
-  
+
   Object.entries(filters).forEach(([key, value]) => {
     if (value !== undefined && value !== null && value !== "") {
       queryParams.append(key, String(value));
@@ -133,7 +133,7 @@ export function useArchiveTrigger() {
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["archives"] });
       queryClient.invalidateQueries({ queryKey: ["archive-stats"] });
-      
+
       const result = data?.data;
       if (result) {
         toast.success(

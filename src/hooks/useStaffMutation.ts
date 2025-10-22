@@ -56,252 +56,237 @@ export function getResolvedStaffId(id: string): string {
 
 export function useStaffCreate() {
   const queryClient = useQueryClient();
-  return useMutation<
-  StaffsResponse,
-    Error,
-    StaffCreate,
-    StaffMutationContext >
-      ({
-        mutationFn: (data) =>
-          fetcher("/api/staffs", {
-            method: "POST",
-            body: JSON.stringify(data),
-          }),
-        onMutate: async (newStaff) => {
-          await queryClient.cancelQueries({ queryKey: ["staffs"] });
-          const queries = queryClient.getQueriesData<StaffsResponse>({
-            queryKey: ["staffs"],
-          });
-          const previousStaffs: Record<string, StaffsResponse> = {};
-          queries.forEach(([queryKey, data]) => {
-            if (data) {
-              previousStaffs[JSON.stringify(queryKey)] = data;
-            }
-          });
-          const tempId = `temp-${Date.now()}`;
-          queries.forEach(([queryKey]) => {
-            const currentData =
-              queryClient.getQueryData<StaffsResponse>(queryKey);
-            if (currentData) {
-              // Create optimistic staff
-              const optimisticStaff: Staff = {
-                id: tempId,
-                name: newStaff.name || null,
-                username: newStaff.username,
-                email: newStaff.email || null,
-                role: "STAFF",
-                branches: [],
-                createdAt: new Date(),
-                updatedAt: new Date(),
-                _optimistic: true, // Flag to identify optimistic entries
-              } as Staff & { _optimistic?: boolean };
-
-              queryClient.setQueryData<StaffsResponse>(queryKey, {
-                ...currentData,
-                data: [optimisticStaff, ...currentData.data],
-                pagination: {
-                  ...currentData.pagination,
-                  total: currentData.pagination.total + 1,
-                },
-              });
-            }
-          });
-          return { previousStaffs, tempId };
-        },
-        onError: (error, _, context) => {
-          if (context?.previousStaffs) {
-            Object.entries(context.previousStaffs).forEach(
-              ([queryKeyStr, data]) => {
-                const queryKey = JSON.parse(queryKeyStr);
-                queryClient.setQueryData(queryKey, data);
-              }
-            );
-          }
-
-          // Clean up the ID mapping if we created one
-          if (context?.tempId) {
-            tempToServerIdMap.delete(context.tempId);
-          }
-
-          toast.error("スタッフの追加に失敗しました", {
-            id: "staff-create-error",
-            description: getErrorMessage(error),
-          });
-        },
-        onSuccess: (response, _, context) => {
-          if (!context?.tempId) return;
-
-          // Store the mapping between temporary ID and server ID
-          const newStaff = response.data[0];
-          tempToServerIdMap.set(context.tempId, newStaff.id);
-
-          // Update all staff queries
-          const queries = queryClient.getQueriesData<StaffsResponse>({
-            queryKey: ["staffs"],
-          });
-
-          queries.forEach(([queryKey]) => {
-            const currentData =
-              queryClient.getQueryData<StaffsResponse>(queryKey);
-            if (currentData?.data) {
-              queryClient.setQueryData<StaffsResponse>(queryKey, {
-                ...currentData,
-                data: currentData.data.map((staff) =>
-                  staff.id === context.tempId ? newStaff : staff
-                ),
-              });
-            }
-          });
-
-          toast.success("スタッフを追加しました", {
-            id: "staff-create-success",
-          });
-        },
-        onSettled: () => {
-          queryClient.invalidateQueries({
-            queryKey: ["staffs"],
-            refetchType: "none",
-          });
-        },
+  return useMutation<StaffsResponse, Error, StaffCreate, StaffMutationContext>({
+    mutationFn: (data) =>
+      fetcher("/api/staffs", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    onMutate: async (newStaff) => {
+      await queryClient.cancelQueries({ queryKey: ["staffs"] });
+      const queries = queryClient.getQueriesData<StaffsResponse>({
+        queryKey: ["staffs"],
       });
+      const previousStaffs: Record<string, StaffsResponse> = {};
+      queries.forEach(([queryKey, data]) => {
+        if (data) {
+          previousStaffs[JSON.stringify(queryKey)] = data;
+        }
+      });
+      const tempId = `temp-${Date.now()}`;
+      queries.forEach(([queryKey]) => {
+        const currentData = queryClient.getQueryData<StaffsResponse>(queryKey);
+        if (currentData) {
+          // Create optimistic staff
+          const optimisticStaff: Staff = {
+            id: tempId,
+            name: newStaff.name || null,
+            username: newStaff.username,
+            email: newStaff.email || null,
+            role: "STAFF",
+            branches: [],
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            _optimistic: true, // Flag to identify optimistic entries
+          } as Staff & { _optimistic?: boolean };
+
+          queryClient.setQueryData<StaffsResponse>(queryKey, {
+            ...currentData,
+            data: [optimisticStaff, ...currentData.data],
+            pagination: {
+              ...currentData.pagination,
+              total: currentData.pagination.total + 1,
+            },
+          });
+        }
+      });
+      return { previousStaffs, tempId };
+    },
+    onError: (error, _, context) => {
+      if (context?.previousStaffs) {
+        Object.entries(context.previousStaffs).forEach(
+          ([queryKeyStr, data]) => {
+            const queryKey = JSON.parse(queryKeyStr);
+            queryClient.setQueryData(queryKey, data);
+          }
+        );
+      }
+
+      // Clean up the ID mapping if we created one
+      if (context?.tempId) {
+        tempToServerIdMap.delete(context.tempId);
+      }
+
+      toast.error("スタッフの追加に失敗しました", {
+        id: "staff-create-error",
+        description: getErrorMessage(error),
+      });
+    },
+    onSuccess: (response, _, context) => {
+      if (!context?.tempId) return;
+
+      // Store the mapping between temporary ID and server ID
+      const newStaff = response.data[0];
+      tempToServerIdMap.set(context.tempId, newStaff.id);
+
+      // Update all staff queries
+      const queries = queryClient.getQueriesData<StaffsResponse>({
+        queryKey: ["staffs"],
+      });
+
+      queries.forEach(([queryKey]) => {
+        const currentData = queryClient.getQueryData<StaffsResponse>(queryKey);
+        if (currentData?.data) {
+          queryClient.setQueryData<StaffsResponse>(queryKey, {
+            ...currentData,
+            data: currentData.data.map((staff) =>
+              staff.id === context.tempId ? newStaff : staff
+            ),
+          });
+        }
+      });
+
+      toast.success("スタッフを追加しました", {
+        id: "staff-create-success",
+      });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["staffs"],
+        refetchType: "none",
+      });
+    },
+  });
 }
 
 export function useStaffUpdate() {
   const queryClient = useQueryClient();
-  return useMutation<
-  StaffsResponse,
-    Error,
-    StaffUpdate,
-    StaffMutationContext >
-      ({
-        mutationFn: ({ id, ...data }) => {
-          // Resolve the ID before sending to the server
-          const resolvedId = getResolvedStaffId(id);
+  return useMutation<StaffsResponse, Error, StaffUpdate, StaffMutationContext>({
+    mutationFn: ({ id, ...data }) => {
+      // Resolve the ID before sending to the server
+      const resolvedId = getResolvedStaffId(id);
 
-          return fetcher(`/api/staffs/${resolvedId}`, {
-            method: "PATCH",
-            body: JSON.stringify(data),
-          });
-        },
-        onMutate: async (updatedStaff) => {
-          await queryClient.cancelQueries({ queryKey: ["staffs"] });
-
-          // Resolve ID for any potential temporary ID
-          const resolvedId = getResolvedStaffId(updatedStaff.id);
-
-          await queryClient.cancelQueries({
-            queryKey: ["staff", resolvedId],
-          });
-          const queries = queryClient.getQueriesData<StaffsResponse>({
-            queryKey: ["staffs"],
-          });
-          const previousStaffs: Record<string, StaffsResponse> = {};
-          queries.forEach(([queryKey, data]) => {
-            if (data) {
-              previousStaffs[JSON.stringify(queryKey)] = data;
-            }
-          });
-          const previousStaff = queryClient.getQueryData<Staff>([
-            "staff",
-            resolvedId,
-          ]);
-          queries.forEach(([queryKey]) => {
-            const currentData =
-              queryClient.getQueryData<StaffsResponse>(queryKey);
-            if (currentData?.data) {
-              queryClient.setQueryData<StaffsResponse>(queryKey, {
-                ...currentData,
-                data: currentData.data.map((staff) =>
-                  staff.id === updatedStaff.id
-                    ? {
-                        ...staff,
-                        ...updatedStaff,
-                        name: updatedStaff.name ?? staff.name,
-                        username: updatedStaff.username ?? staff.username,
-                        email: updatedStaff.email ?? staff.email,
-                        updatedAt: new Date(),
-                      }
-                    : staff
-                ),
-              });
-            }
-          });
-          if (previousStaff) {
-            queryClient.setQueryData<Staff>(["staff", resolvedId], {
-              ...previousStaff,
-              ...updatedStaff,
-              name: updatedStaff.name ?? previousStaff.name,
-              username: updatedStaff.username ?? previousStaff.username,
-              email: updatedStaff.email ?? previousStaff.email,
-              updatedAt: new Date(),
-            });
-          }
-          return { previousStaffs, previousStaff };
-        },
-        onError: (error, variables, context) => {
-          if (context?.previousStaffs) {
-            Object.entries(context.previousStaffs).forEach(
-              ([queryKeyStr, data]) => {
-                const queryKey = JSON.parse(queryKeyStr);
-                queryClient.setQueryData(queryKey, data);
-              }
-            );
-          }
-
-          // Resolve the ID for restoring the single staff query
-          const resolvedId = getResolvedStaffId(variables.id);
-
-          if (context?.previousStaff) {
-            queryClient.setQueryData(
-              ["staff", resolvedId],
-              context.previousStaff
-            );
-          }
-          toast.error("スタッフの更新に失敗しました", {
-            id: "staff-update-error",
-            description: getErrorMessage(error),
-          });
-        },
-        onSuccess: (data) => {
-          // Find the updated staff from the response
-          const updatedStaff = data?.data?.[0];
-          if (updatedStaff) {
-            // Update all staff queries to replace the staff with the updated one
-            const queries = queryClient.getQueriesData<StaffsResponse>({
-              queryKey: ["staffs"],
-            });
-            queries.forEach(([queryKey]) => {
-              const currentData = queryClient.getQueryData<StaffsResponse>(queryKey);
-              if (currentData?.data) {
-                queryClient.setQueryData<StaffsResponse>(queryKey, {
-                  ...currentData,
-                  data: currentData.data.map((staff) =>
-                    staff.id === updatedStaff.id ? updatedStaff : staff
-                  ),
-                });
-              }
-            });
-            // Also update the single staff query if it exists
-            queryClient.setQueryData(["staff", updatedStaff.id], updatedStaff);
-          }
-          toast.success("スタッフを更新しました", {
-            id: "staff-update-success",
-          });
-        },
-        onSettled: (_, __, variables) => {
-          // Resolve ID for proper invalidation
-          const resolvedId = getResolvedStaffId(variables.id);
-
-          queryClient.invalidateQueries({
-            queryKey: ["staffs"],
-            refetchType: "none",
-          });
-          queryClient.invalidateQueries({
-            queryKey: ["staff", resolvedId],
-            refetchType: "none",
-          });
-        },
+      return fetcher(`/api/staffs/${resolvedId}`, {
+        method: "PATCH",
+        body: JSON.stringify(data),
       });
+    },
+    onMutate: async (updatedStaff) => {
+      await queryClient.cancelQueries({ queryKey: ["staffs"] });
+
+      // Resolve ID for any potential temporary ID
+      const resolvedId = getResolvedStaffId(updatedStaff.id);
+
+      await queryClient.cancelQueries({
+        queryKey: ["staff", resolvedId],
+      });
+      const queries = queryClient.getQueriesData<StaffsResponse>({
+        queryKey: ["staffs"],
+      });
+      const previousStaffs: Record<string, StaffsResponse> = {};
+      queries.forEach(([queryKey, data]) => {
+        if (data) {
+          previousStaffs[JSON.stringify(queryKey)] = data;
+        }
+      });
+      const previousStaff = queryClient.getQueryData<Staff>([
+        "staff",
+        resolvedId,
+      ]);
+      queries.forEach(([queryKey]) => {
+        const currentData = queryClient.getQueryData<StaffsResponse>(queryKey);
+        if (currentData?.data) {
+          queryClient.setQueryData<StaffsResponse>(queryKey, {
+            ...currentData,
+            data: currentData.data.map((staff) =>
+              staff.id === updatedStaff.id
+                ? {
+                    ...staff,
+                    ...updatedStaff,
+                    name: updatedStaff.name ?? staff.name,
+                    username: updatedStaff.username ?? staff.username,
+                    email: updatedStaff.email ?? staff.email,
+                    updatedAt: new Date(),
+                  }
+                : staff
+            ),
+          });
+        }
+      });
+      if (previousStaff) {
+        queryClient.setQueryData<Staff>(["staff", resolvedId], {
+          ...previousStaff,
+          ...updatedStaff,
+          name: updatedStaff.name ?? previousStaff.name,
+          username: updatedStaff.username ?? previousStaff.username,
+          email: updatedStaff.email ?? previousStaff.email,
+          updatedAt: new Date(),
+        });
+      }
+      return { previousStaffs, previousStaff };
+    },
+    onError: (error, variables, context) => {
+      if (context?.previousStaffs) {
+        Object.entries(context.previousStaffs).forEach(
+          ([queryKeyStr, data]) => {
+            const queryKey = JSON.parse(queryKeyStr);
+            queryClient.setQueryData(queryKey, data);
+          }
+        );
+      }
+
+      // Resolve the ID for restoring the single staff query
+      const resolvedId = getResolvedStaffId(variables.id);
+
+      if (context?.previousStaff) {
+        queryClient.setQueryData(["staff", resolvedId], context.previousStaff);
+      }
+      toast.error("スタッフの更新に失敗しました", {
+        id: "staff-update-error",
+        description: getErrorMessage(error),
+      });
+    },
+    onSuccess: (data) => {
+      // Find the updated staff from the response
+      const updatedStaff = data?.data?.[0];
+      if (updatedStaff) {
+        // Update all staff queries to replace the staff with the updated one
+        const queries = queryClient.getQueriesData<StaffsResponse>({
+          queryKey: ["staffs"],
+        });
+        queries.forEach(([queryKey]) => {
+          const currentData =
+            queryClient.getQueryData<StaffsResponse>(queryKey);
+          if (currentData?.data) {
+            queryClient.setQueryData<StaffsResponse>(queryKey, {
+              ...currentData,
+              data: currentData.data.map((staff) =>
+                staff.id === updatedStaff.id ? updatedStaff : staff
+              ),
+            });
+          }
+        });
+        // Also update the single staff query if it exists
+        queryClient.setQueryData(["staff", updatedStaff.id], updatedStaff);
+      }
+      toast.success("スタッフを更新しました", {
+        id: "staff-update-success",
+      });
+    },
+    onSettled: (_, __, variables) => {
+      // Resolve ID for proper invalidation
+      const resolvedId = getResolvedStaffId(variables.id);
+
+      queryClient.invalidateQueries({
+        queryKey: ["staffs"],
+        refetchType: "none",
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["staff", resolvedId],
+        refetchType: "none",
+      });
+    },
+  });
 }
 
 export function useStaffDelete() {

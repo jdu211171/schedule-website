@@ -177,7 +177,7 @@ export function useStudents(params: UseStudentsParams = {}) {
     studentTypeId,
     studentTypeIds,
     gradeYear: gradeYear?.toString(),
-    gradeYears: gradeYears?.map(y => y.toString()),
+    gradeYears: gradeYears?.map((y) => y.toString()),
     status,
     statuses,
     branchIds,
@@ -207,7 +207,7 @@ export function useStudents(params: UseStudentsParams = {}) {
     if (value !== undefined) {
       if (Array.isArray(value)) {
         // For arrays, add multiple parameters with the same key
-        value.forEach(v => searchParams.append(key, v));
+        value.forEach((v) => searchParams.append(key, v));
       } else {
         searchParams.append(key, value);
       }
@@ -215,9 +215,39 @@ export function useStudents(params: UseStudentsParams = {}) {
   });
 
   return useQuery<StudentsResponse>({
-    queryKey: ["students", page, limit, name, studentTypeId, studentTypeIds, gradeYear, gradeYears, status, statuses, branchIds, subjectIds, lineConnection, schoolType, schoolTypes, examCategory, examCategories, examCategoryType, examCategoryTypes, birthDateFrom, birthDateTo, examDateFrom, examDateTo, sortBy, sortOrder, studentTypeOrder, gradeYearOrder],
+    queryKey: [
+      "students",
+      page,
+      limit,
+      name,
+      studentTypeId,
+      studentTypeIds,
+      gradeYear,
+      gradeYears,
+      status,
+      statuses,
+      branchIds,
+      subjectIds,
+      lineConnection,
+      schoolType,
+      schoolTypes,
+      examCategory,
+      examCategories,
+      examCategoryType,
+      examCategoryTypes,
+      birthDateFrom,
+      birthDateTo,
+      examDateFrom,
+      examDateTo,
+      sortBy,
+      sortOrder,
+      studentTypeOrder,
+      gradeYearOrder,
+    ],
     queryFn: async () =>
-      await fetcher<StudentsResponse>(`/api/students?${searchParams.toString()}`),
+      await fetcher<StudentsResponse>(
+        `/api/students?${searchParams.toString()}`
+      ),
     placeholderData: keepPreviousData,
     staleTime: 15_000,
     refetchOnWindowFocus: false,

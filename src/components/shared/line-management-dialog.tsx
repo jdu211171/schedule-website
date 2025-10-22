@@ -54,7 +54,6 @@ interface LineManagementDialogProps {
     parentLineId1?: string | null;
     parentLineUserId1?: string | null;
     parent1LineNotificationsEnabled?: boolean | null;
-    
   };
   onConnectionUnbound?: (accountType: "teacher" | "student" | "parent") => void;
 }
@@ -146,10 +145,16 @@ export function LineManagementDialog({
     try {
       setLoadingLinks(true);
       if (userType === "teacher") {
-        const res: any = await fetcher(`/api/teachers/${userId}/line-links?r=${Date.now()}`, { cache: "no-store" });
+        const res: any = await fetcher(
+          `/api/teachers/${userId}/line-links?r=${Date.now()}`,
+          { cache: "no-store" }
+        );
         setTeacherLinks(res?.data || []);
       } else {
-        const res: any = await fetcher(`/api/students/${userId}/line-links?r=${Date.now()}`, { cache: "no-store" });
+        const res: any = await fetcher(
+          `/api/students/${userId}/line-links?r=${Date.now()}`,
+          { cache: "no-store" }
+        );
         setStudentLinks(res?.data || []);
       }
     } finally {
@@ -214,10 +219,14 @@ export function LineManagementDialog({
     // Optimistically remove from UI
     if (userType === "teacher") {
       setPrevTeacherLinks(teacherLinks);
-      setTeacherLinks((links) => links.filter((l) => l.id !== linkConfirm.linkId));
+      setTeacherLinks((links) =>
+        links.filter((l) => l.id !== linkConfirm.linkId)
+      );
     } else {
       setPrevStudentLinks(studentLinks);
-      setStudentLinks((links) => links.filter((l) => l.id !== linkConfirm.linkId));
+      setStudentLinks((links) =>
+        links.filter((l) => l.id !== linkConfirm.linkId)
+      );
     }
 
     // Close confirm immediately for better UX
@@ -257,7 +266,8 @@ export function LineManagementDialog({
 
   const isUnbinding =
     teacherUnbindMutation.isPending || studentUnbindMutation.isPending;
-  const isDeletingLink = deleteTeacherLink.isPending || deleteStudentLink.isPending;
+  const isDeletingLink =
+    deleteTeacherLink.isPending || deleteStudentLink.isPending;
 
   // Prepare connection data
   const connections = [];
@@ -294,18 +304,27 @@ export function LineManagementDialog({
         label: "生徒アカウント",
         icon: <User className="h-4 w-4" />,
         // Treat as linked when there is an active per-channel link; otherwise fall back to legacy field
-        lineId: activeStudentSlotLink ? "linked" : currentConnections.lineId || (anyStudentSlotLink ? "linked" : null),
+        lineId: activeStudentSlotLink
+          ? "linked"
+          : currentConnections.lineId || (anyStudentSlotLink ? "linked" : null),
         // Prefer showing the current active link's LINE User ID if available
-        lineUserId: activeStudentSlotLink?.lineUserId ?? currentConnections.lineUserId,
+        lineUserId:
+          activeStudentSlotLink?.lineUserId ?? currentConnections.lineUserId,
         notificationsEnabled: currentConnections.lineNotificationsEnabled,
       },
       {
         type: "parent",
         label: "保護者アカウント",
         icon: <Users className="h-4 w-4" />,
-        lineId: activeParentSlotLink ? "linked" : currentConnections.parentLineId1 || (anyParentSlotLink ? "linked" : null),
-        lineUserId: activeParentSlotLink?.lineUserId ?? currentConnections.parentLineUserId1,
-        notificationsEnabled: currentConnections.parent1LineNotificationsEnabled,
+        lineId: activeParentSlotLink
+          ? "linked"
+          : currentConnections.parentLineId1 ||
+            (anyParentSlotLink ? "linked" : null),
+        lineUserId:
+          activeParentSlotLink?.lineUserId ??
+          currentConnections.parentLineUserId1,
+        notificationsEnabled:
+          currentConnections.parent1LineNotificationsEnabled,
       }
     );
   }
@@ -328,54 +347,49 @@ export function LineManagementDialog({
             <div className="space-y-2">
               <p className="font-medium text-sm">チャネル連携</p>
               {loadingLinks ? (
-                <div className="text-sm text-muted-foreground">読み込み中...</div>
+                <div className="text-sm text-muted-foreground">
+                  読み込み中...
+                </div>
               ) : userType === "teacher" ? (
                 teacherLinks.length === 0 ? (
-                  <div className="text-sm text-muted-foreground">チャネル連携がありません</div>
+                  <div className="text-sm text-muted-foreground">
+                    チャネル連携がありません
+                  </div>
                 ) : (
                   teacherLinks.map((link) => (
-                    <div key={link.id} className="flex items-center justify-between gap-3 p-3 border rounded-lg">
+                    <div
+                      key={link.id}
+                      className="flex items-center justify-between gap-3 p-3 border rounded-lg"
+                    >
                       <div className="text-sm min-w-0">
-                        <div className="font-medium truncate" title={link.channelName}>{link.channelName}</div>
-                        <div className="text-xs text-muted-foreground break-all">LINE ID: {link.lineUserId}</div>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <Badge variant={link.enabled ? "default" : "secondary"} className="text-xs">
-                          {link.enabled ? "有効" : "無効"}
-                        </Badge>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setLinkConfirm({ open: true, linkId: link.id, channelId: link.channelId, channelName: link.channelName })}
-                          disabled={isDeletingLink}
+                        <div
+                          className="font-medium truncate"
+                          title={link.channelName}
                         >
-                          <Unlink className="h-4 w-4" />
-                          解除
-                        </Button>
-                      </div>
-                    </div>
-                  ))
-                )
-              ) : (
-                studentLinks.length === 0 ? (
-                  <div className="text-sm text-muted-foreground">チャネル連携がありません</div>
-                ) : (
-                  studentLinks.map((link) => (
-                    <div key={link.id} className="flex items-center justify-between gap-3 p-3 border rounded-lg">
-                      <div className="text-sm min-w-0">
-                        <div className="font-medium truncate" title={`${link.channelName}（${link.accountSlot}）`}>
-                          {link.channelName}（{link.accountSlot}）
+                          {link.channelName}
                         </div>
-                        <div className="text-xs text-muted-foreground break-all">LINE ID: {link.lineUserId}</div>
+                        <div className="text-xs text-muted-foreground break-all">
+                          LINE ID: {link.lineUserId}
+                        </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        <Badge variant={link.enabled ? "default" : "secondary"} className="text-xs">
+                        <Badge
+                          variant={link.enabled ? "default" : "secondary"}
+                          className="text-xs"
+                        >
                           {link.enabled ? "有効" : "無効"}
                         </Badge>
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => setLinkConfirm({ open: true, linkId: link.id, channelId: link.channelId, accountSlot: link.accountSlot, channelName: link.channelName })}
+                          onClick={() =>
+                            setLinkConfirm({
+                              open: true,
+                              linkId: link.id,
+                              channelId: link.channelId,
+                              channelName: link.channelName,
+                            })
+                          }
                           disabled={isDeletingLink}
                         >
                           <Unlink className="h-4 w-4" />
@@ -385,6 +399,54 @@ export function LineManagementDialog({
                     </div>
                   ))
                 )
+              ) : studentLinks.length === 0 ? (
+                <div className="text-sm text-muted-foreground">
+                  チャネル連携がありません
+                </div>
+              ) : (
+                studentLinks.map((link) => (
+                  <div
+                    key={link.id}
+                    className="flex items-center justify-between gap-3 p-3 border rounded-lg"
+                  >
+                    <div className="text-sm min-w-0">
+                      <div
+                        className="font-medium truncate"
+                        title={`${link.channelName}（${link.accountSlot}）`}
+                      >
+                        {link.channelName}（{link.accountSlot}）
+                      </div>
+                      <div className="text-xs text-muted-foreground break-all">
+                        LINE ID: {link.lineUserId}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Badge
+                        variant={link.enabled ? "default" : "secondary"}
+                        className="text-xs"
+                      >
+                        {link.enabled ? "有効" : "無効"}
+                      </Badge>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() =>
+                          setLinkConfirm({
+                            open: true,
+                            linkId: link.id,
+                            channelId: link.channelId,
+                            accountSlot: link.accountSlot,
+                            channelName: link.channelName,
+                          })
+                        }
+                        disabled={isDeletingLink}
+                      >
+                        <Unlink className="h-4 w-4" />
+                        解除
+                      </Button>
+                    </div>
+                  </div>
+                ))
               )}
             </div>
             {connections.map((connection) => {

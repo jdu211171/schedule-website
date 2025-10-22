@@ -2,14 +2,17 @@
 import { fetcher, CustomError } from "@/lib/fetcher";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { 
-  LineChannelCreate, 
-  LineChannelUpdate, 
+import {
+  LineChannelCreate,
+  LineChannelUpdate,
   LineChannelAssignBranches,
   LineChannelTest,
-  LineChannelSetPrimary
+  LineChannelSetPrimary,
 } from "@/schemas/line-channel.schema";
-import { LineChannelResponse, LineChannelListResponse } from "@/types/line-channel";
+import {
+  LineChannelResponse,
+  LineChannelListResponse,
+} from "@/types/line-channel";
 
 // Helper function to extract error message from CustomError or regular Error
 const getErrorMessage = (error: Error): string => {
@@ -29,7 +32,7 @@ type LineChannelMutationContext = {
 // Create a new LINE channel
 export function useLineChannelCreate() {
   const queryClient = useQueryClient();
-  
+
   return useMutation<
     { data: LineChannelResponse; message?: string },
     Error,
@@ -43,23 +46,24 @@ export function useLineChannelCreate() {
       }),
     onMutate: async (newChannel) => {
       await queryClient.cancelQueries({ queryKey: ["line-channels"] });
-      
+
       const queries = queryClient.getQueriesData<LineChannelListResponse>({
         queryKey: ["line-channels"],
       });
-      
+
       const previousChannels: Record<string, LineChannelListResponse> = {};
       queries.forEach(([queryKey, data]) => {
         if (data) {
           previousChannels[JSON.stringify(queryKey)] = data;
         }
       });
-      
+
       const tempId = `temp-${Date.now()}`;
-      
+
       // Optimistic update for all line-channels queries
       queries.forEach(([queryKey]) => {
-        const currentData = queryClient.getQueryData<LineChannelListResponse>(queryKey);
+        const currentData =
+          queryClient.getQueryData<LineChannelListResponse>(queryKey);
         if (currentData) {
           const optimisticChannel: LineChannelResponse = {
             id: tempId,
@@ -75,7 +79,7 @@ export function useLineChannelCreate() {
             branches: [],
             _optimistic: true,
           } as LineChannelResponse & { _optimistic?: boolean };
-          
+
           queryClient.setQueryData<LineChannelListResponse>(queryKey, {
             ...currentData,
             data: [optimisticChannel, ...currentData.data],
@@ -86,7 +90,7 @@ export function useLineChannelCreate() {
           });
         }
       });
-      
+
       return { previousChannels, tempId };
     },
     onError: (error, _, context) => {
@@ -98,7 +102,7 @@ export function useLineChannelCreate() {
           }
         );
       }
-      
+
       toast.error("LINEチャンネルの追加に失敗しました", {
         id: "line-channel-create-error",
         description: getErrorMessage(error),
@@ -106,16 +110,17 @@ export function useLineChannelCreate() {
     },
     onSuccess: (response, _, context) => {
       if (!context?.tempId) return;
-      
+
       const newChannel = response.data;
-      
+
       // Update all line-channels queries with the real data
       const queries = queryClient.getQueriesData<LineChannelListResponse>({
         queryKey: ["line-channels"],
       });
-      
+
       queries.forEach(([queryKey]) => {
-        const currentData = queryClient.getQueryData<LineChannelListResponse>(queryKey);
+        const currentData =
+          queryClient.getQueryData<LineChannelListResponse>(queryKey);
         if (currentData?.data) {
           queryClient.setQueryData<LineChannelListResponse>(queryKey, {
             ...currentData,
@@ -125,7 +130,7 @@ export function useLineChannelCreate() {
           });
         }
       });
-      
+
       toast.success("LINEチャンネルを追加しました", {
         id: "line-channel-create-success",
       });
@@ -146,7 +151,7 @@ export function useLineChannelCreate() {
 // Update an existing LINE channel
 export function useLineChannelUpdate() {
   const queryClient = useQueryClient();
-  
+
   return useMutation<
     { data: LineChannelResponse; message?: string },
     Error,
@@ -160,27 +165,30 @@ export function useLineChannelUpdate() {
       }),
     onMutate: async ({ channelId, ...updatedChannel }) => {
       await queryClient.cancelQueries({ queryKey: ["line-channels"] });
-      await queryClient.cancelQueries({ queryKey: ["line-channel", channelId] });
-      
+      await queryClient.cancelQueries({
+        queryKey: ["line-channel", channelId],
+      });
+
       const queries = queryClient.getQueriesData<LineChannelListResponse>({
         queryKey: ["line-channels"],
       });
-      
+
       const previousChannels: Record<string, LineChannelListResponse> = {};
       queries.forEach(([queryKey, data]) => {
         if (data) {
           previousChannels[JSON.stringify(queryKey)] = data;
         }
       });
-      
+
       const previousChannel = queryClient.getQueryData<LineChannelResponse>([
         "line-channel",
         channelId,
       ]);
-      
+
       // Optimistic update for list queries
       queries.forEach(([queryKey]) => {
-        const currentData = queryClient.getQueryData<LineChannelListResponse>(queryKey);
+        const currentData =
+          queryClient.getQueryData<LineChannelListResponse>(queryKey);
         if (currentData?.data) {
           queryClient.setQueryData<LineChannelListResponse>(queryKey, {
             ...currentData,
@@ -196,16 +204,19 @@ export function useLineChannelUpdate() {
           });
         }
       });
-      
+
       // Optimistic update for single channel query
       if (previousChannel) {
-        queryClient.setQueryData<LineChannelResponse>(["line-channel", channelId], {
-          ...previousChannel,
-          ...updatedChannel,
-          updatedAt: new Date().toISOString(),
-        });
+        queryClient.setQueryData<LineChannelResponse>(
+          ["line-channel", channelId],
+          {
+            ...previousChannel,
+            ...updatedChannel,
+            updatedAt: new Date().toISOString(),
+          }
+        );
       }
-      
+
       return { previousChannels, previousChannel };
     },
     onError: (error, variables, context) => {
@@ -217,14 +228,14 @@ export function useLineChannelUpdate() {
           }
         );
       }
-      
+
       if (context?.previousChannel) {
         queryClient.setQueryData(
           ["line-channel", variables.channelId],
           context.previousChannel
         );
       }
-      
+
       toast.error("LINEチャンネルの更新に失敗しました", {
         id: "line-channel-update-error",
         description: getErrorMessage(error),
@@ -255,7 +266,7 @@ export function useLineChannelUpdate() {
 // Delete a LINE channel
 export function useLineChannelDelete() {
   const queryClient = useQueryClient();
-  
+
   return useMutation<
     { message: string },
     Error,
@@ -268,21 +279,23 @@ export function useLineChannelDelete() {
       }),
     onMutate: async (channelId) => {
       await queryClient.cancelQueries({ queryKey: ["line-channels"] });
-      await queryClient.cancelQueries({ queryKey: ["line-channel", channelId] });
-      
+      await queryClient.cancelQueries({
+        queryKey: ["line-channel", channelId],
+      });
+
       const queries = queryClient.getQueriesData<LineChannelListResponse>({
         queryKey: ["line-channels"],
       });
-      
+
       const previousChannels: Record<string, LineChannelListResponse> = {};
-      
+
       // Save all channel queries for potential rollback
       queries.forEach(([queryKey, data]) => {
         if (data) {
           previousChannels[JSON.stringify(queryKey)] = data;
         }
       });
-      
+
       // Save the channel being deleted
       let deletedChannel: LineChannelResponse | undefined;
       for (const [, data] of queries) {
@@ -294,15 +307,18 @@ export function useLineChannelDelete() {
           }
         }
       }
-      
+
       // Optimistically update all channel queries
       queries.forEach(([queryKey]) => {
-        const currentData = queryClient.getQueryData<LineChannelListResponse>(queryKey);
-        
+        const currentData =
+          queryClient.getQueryData<LineChannelListResponse>(queryKey);
+
         if (currentData?.data) {
           queryClient.setQueryData<LineChannelListResponse>(queryKey, {
             ...currentData,
-            data: currentData.data.filter((channel) => channel.id !== channelId),
+            data: currentData.data.filter(
+              (channel) => channel.id !== channelId
+            ),
             pagination: {
               ...currentData.pagination,
               total: Math.max(0, currentData.pagination.total - 1),
@@ -310,10 +326,10 @@ export function useLineChannelDelete() {
           });
         }
       });
-      
+
       // Remove the individual channel query
       queryClient.removeQueries({ queryKey: ["line-channel", channelId] });
-      
+
       return { previousChannels, deletedChannel };
     },
     onError: (error, channelId, context) => {
@@ -326,12 +342,15 @@ export function useLineChannelDelete() {
           }
         );
       }
-      
+
       // Restore individual channel query if it existed
       if (context?.deletedChannel) {
-        queryClient.setQueryData(["line-channel", channelId], context.deletedChannel);
+        queryClient.setQueryData(
+          ["line-channel", channelId],
+          context.deletedChannel
+        );
       }
-      
+
       toast.error("LINEチャンネルの削除に失敗しました", {
         id: "line-channel-delete-error",
         description: getErrorMessage(error),
@@ -358,7 +377,7 @@ export function useLineChannelDelete() {
 // Assign branches to a LINE channel
 export function useLineChannelAssignBranches() {
   const queryClient = useQueryClient();
-  
+
   return useMutation<
     { message: string },
     Error,
@@ -464,12 +483,8 @@ export function useLineChannelTestExisting() {
 // Set a channel as primary for a branch
 export function useLineChannelSetPrimary() {
   const queryClient = useQueryClient();
-  
-  return useMutation<
-    { message: string },
-    Error,
-    LineChannelSetPrimary
-  >({
+
+  return useMutation<{ message: string }, Error, LineChannelSetPrimary>({
     mutationFn: (data) =>
       fetcher("/api/admin/line-channels/set-primary", {
         method: "POST",
@@ -500,11 +515,11 @@ export function useLineChannelSetPrimary() {
 // Set channel type (TEACHER/STUDENT) for a branch
 export function useLineChannelSetType() {
   const queryClient = useQueryClient();
-  
+
   return useMutation<
     { message: string },
     Error,
-    { branchId: string; channelId: string; channelType: 'TEACHER' | 'STUDENT' }
+    { branchId: string; channelId: string; channelType: "TEACHER" | "STUDENT" }
   >({
     mutationFn: (data) =>
       fetcher("/api/admin/line-channels/set-primary", {
@@ -518,7 +533,8 @@ export function useLineChannelSetType() {
       });
     },
     onSuccess: (_, variables) => {
-      const typeLabel = variables.channelType === 'TEACHER' ? '講師用' : '生徒用';
+      const typeLabel =
+        variables.channelType === "TEACHER" ? "講師用" : "生徒用";
       toast.success(`チャンネルを${typeLabel}に設定しました`, {
         id: "line-channel-type-success",
       });
@@ -537,11 +553,11 @@ export function useLineChannelSetType() {
 // Unassign channel type from a branch
 export function useLineChannelUnassign() {
   const queryClient = useQueryClient();
-  
+
   return useMutation<
     { message: string },
     Error,
-    { branchId: string; channelType: 'TEACHER' | 'STUDENT' }
+    { branchId: string; channelType: "TEACHER" | "STUDENT" }
   >({
     mutationFn: (data) =>
       fetcher("/api/admin/line-channels/unassign", {
@@ -555,7 +571,8 @@ export function useLineChannelUnassign() {
       });
     },
     onSuccess: (_, variables) => {
-      const typeLabel = variables.channelType === 'TEACHER' ? '講師用' : '生徒用';
+      const typeLabel =
+        variables.channelType === "TEACHER" ? "講師用" : "生徒用";
       toast.success(`${typeLabel}チャンネルの割り当てを解除しました`, {
         id: "line-channel-unassign-success",
       });
@@ -574,7 +591,7 @@ export function useLineChannelUnassign() {
 // Migrate from environment variables to database
 export function useLineChannelMigrate() {
   const queryClient = useQueryClient();
-  
+
   return useMutation<
     { data: LineChannelResponse; message: string },
     Error,

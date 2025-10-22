@@ -1,36 +1,36 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
+import * as React from "react";
+import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
-type SortDirection = "ascending" | "descending" | null
+type SortDirection = "ascending" | "descending" | null;
 
 type EnhancedTableHeaderProps = {
-  label: string
-  sortKey?: string
-  currentSortKey?: string
-  currentSortDirection?: SortDirection
-  onSort?: (key: string) => void
-  className?: string
-}
+  label: string;
+  sortKey?: string;
+  currentSortKey?: string;
+  currentSortDirection?: SortDirection;
+  onSort?: (key: string) => void;
+  className?: string;
+};
 
 export function EnhancedTableHeader({
-                                      label,
-                                      sortKey,
-                                      currentSortKey,
-                                      currentSortDirection,
-                                      onSort,
-                                      className,
-                                    }: EnhancedTableHeaderProps) {
-  const isSorted = sortKey && currentSortKey === sortKey
+  label,
+  sortKey,
+  currentSortKey,
+  currentSortDirection,
+  onSort,
+  className,
+}: EnhancedTableHeaderProps) {
+  const isSorted = sortKey && currentSortKey === sortKey;
 
   const handleSort = React.useCallback(() => {
     if (sortKey && onSort) {
-      onSort(sortKey)
+      onSort(sortKey);
     }
-  }, [sortKey, onSort])
+  }, [sortKey, onSort]);
 
   return (
     <Button
@@ -39,7 +39,7 @@ export function EnhancedTableHeader({
       className={cn(
         "h-8 px-2 text-left font-medium text-muted-foreground hover:text-foreground",
         !sortKey && "cursor-default",
-        className,
+        className
       )}
       disabled={!sortKey}
     >
@@ -56,5 +56,5 @@ export function EnhancedTableHeader({
         </span>
       )}
     </Button>
-  )
+  );
 }

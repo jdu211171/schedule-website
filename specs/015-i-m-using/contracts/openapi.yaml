@@ -27,19 +27,19 @@ paths:
                   type: boolean
                   description: When true, validate only; do not write changes.
       responses:
-        '200':
+        "200":
           description: Import completed with summary
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ImportResult'
-        '400':
+                $ref: "#/components/schemas/ImportResult"
+        "400":
           description: Invalid request (unsupported encoding, missing columns, etc.)
-        '413':
+        "413":
           description: File too large
-        '422':
+        "422":
           description: Validation errors
-        '500':
+        "500":
           description: Unexpected error
   /api/import/sessions/{id}:
     get:
@@ -51,19 +51,19 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        "200":
           description: Session details
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ImportSession'
-        '404':
+                $ref: "#/components/schemas/ImportSession"
+        "404":
           description: Session not found
   /api/import/template.csv:
     get:
       summary: Download CSV template
       responses:
-        '200':
+        "200":
           description: CSV template
           content:
             text/csv:

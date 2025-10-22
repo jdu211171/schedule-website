@@ -191,14 +191,14 @@ export function StudentFormDialog({
     createStudentMutation.isPending || updateStudentMutation.isPending;
 
   // Keep dialog open setting - shared across student and teacher forms
-//   const KEEP_OPEN_STORAGE_KEY = "form-keep-open";
-//   const [keepDialogOpen, setKeepDialogOpen] = useState(() => {
-//   if (typeof window !== "undefined") {
-//     const savedKeepOpen = localStorage.getItem(KEEP_OPEN_STORAGE_KEY);
-//     return savedKeepOpen ? JSON.parse(savedKeepOpen) : true;
-//   }
-//   return true;
-// });
+  //   const KEEP_OPEN_STORAGE_KEY = "form-keep-open";
+  //   const [keepDialogOpen, setKeepDialogOpen] = useState(() => {
+  //   if (typeof window !== "undefined") {
+  //     const savedKeepOpen = localStorage.getItem(KEEP_OPEN_STORAGE_KEY);
+  //     return savedKeepOpen ? JSON.parse(savedKeepOpen) : true;
+  //   }
+  //   return true;
+  // });
   // Keep dialog open only when editing, close on create
   const keepDialogOpen = isEditing;
 
@@ -217,7 +217,8 @@ export function StudentFormDialog({
   const generateUsername = () => {
     const letters = "abcdefghijkmnpqrstuvwxyz"; // exclude l, o
     const digits = "23456789"; // exclude 0, 1
-    const pick = (pool: string) => pool[Math.floor(Math.random() * pool.length)];
+    const pick = (pool: string) =>
+      pool[Math.floor(Math.random() * pool.length)];
     return (
       Array.from({ length: 3 }, () => pick(letters)).join("") +
       Array.from({ length: 3 }, () => pick(digits)).join("")
@@ -229,14 +230,13 @@ export function StudentFormDialog({
     const letters = "abcdefghijkmnpqrstuvwxyz"; // no l, o
     const digits = "23456789"; // no 0, 1
     const all = letters + digits;
-    const pick = (pool: string) => pool[Math.floor(Math.random() * pool.length)];
+    const pick = (pool: string) =>
+      pool[Math.floor(Math.random() * pool.length)];
     const base = [pick(letters), pick(digits)];
     const rest = Array.from({ length: Math.max(0, length - base.length) }, () =>
       pick(all)
     );
-    return [...base, ...rest]
-      .sort(() => Math.random() - 0.5)
-      .join("");
+    return [...base, ...rest].sort(() => Math.random() - 0.5).join("");
   };
 
   // Fetch teachers based on selected subject and types
@@ -257,9 +257,8 @@ export function StudentFormDialog({
   const [irregularAvailability, setIrregularAvailability] = useState<
     IrregularAvailability[]
   >([]);
-  const [absenceIrregularAvailability, setAbsenceIrregularAvailability] = useState<
-    IrregularAvailability[]
-  >([]);
+  const [absenceIrregularAvailability, setAbsenceIrregularAvailability] =
+    useState<IrregularAvailability[]>([]);
   const [availabilityErrors, setAvailabilityErrors] = useState<string[]>([]);
 
   // Create dynamic schema using student types data for grade year validation
@@ -303,21 +302,21 @@ export function StudentFormDialog({
       admissionDate: new Date(),
       // Contact phones
       contactPhones: [],
-     // Contact emails (non-login informational emails)
-     contactEmails: [],
+      // Contact emails (non-login informational emails)
+      contactEmails: [],
     },
   });
 
   // Load keep dialog open setting from localStorage when dialog opens
-//   useEffect(() => {
-//   if (open) {
-//     const savedKeepOpen = localStorage.getItem(KEEP_OPEN_STORAGE_KEY);
-//     if (savedKeepOpen !== null) {
-//       const parsed = JSON.parse(savedKeepOpen);
-//       setKeepDialogOpen(parsed);
-//     }
-//   }
-// }, [open]);
+  //   useEffect(() => {
+  //   if (open) {
+  //     const savedKeepOpen = localStorage.getItem(KEEP_OPEN_STORAGE_KEY);
+  //     if (savedKeepOpen !== null) {
+  //       const parsed = JSON.parse(savedKeepOpen);
+  //       setKeepDialogOpen(parsed);
+  //     }
+  //   }
+  // }, [open]);
 
   // // Save keep dialog open setting to localStorage
   // useEffect(() => {
@@ -363,10 +362,10 @@ export function StudentFormDialog({
         branchIds: branchIdsWithDefault,
         // School information
         schoolName: student.schoolName || "",
-        schoolType: student.schoolType as any || undefined,
+        schoolType: (student.schoolType as any) || undefined,
         // Exam information
-        examCategory: student.examCategory as any || undefined,
-        examCategoryType: student.examCategoryType as any || undefined,
+        examCategory: (student.examCategory as any) || undefined,
+        examCategoryType: (student.examCategoryType as any) || undefined,
         firstChoice: student.firstChoice || "",
         secondChoice: student.secondChoice || "",
         examDate: student.examDate ? new Date(student.examDate) : undefined,
@@ -374,19 +373,23 @@ export function StudentFormDialog({
         parentEmail: student.parentEmail || "",
         // Personal information
         birthDate: student.birthDate ? new Date(student.birthDate) : undefined,
-        admissionDate: student.admissionDate ? new Date(student.admissionDate) : undefined,
+        admissionDate: student.admissionDate
+          ? new Date(student.admissionDate)
+          : undefined,
         // Contact phones
-        contactPhones: student.contactPhones?.map(phone => ({
-          ...phone,
-          phoneType: phone.phoneType as "HOME" | "DAD" | "MOM" | "OTHER",
-        })) || [],
-       // Contact emails
-       contactEmails: student.contactEmails?.map((e, index) => ({
-         id: e.id,
-         email: e.email,
-         notes: e.notes || "",
-         order: e.order ?? index,
-       })) || [],
+        contactPhones:
+          student.contactPhones?.map((phone) => ({
+            ...phone,
+            phoneType: phone.phoneType as "HOME" | "DAD" | "MOM" | "OTHER",
+          })) || [],
+        // Contact emails
+        contactEmails:
+          student.contactEmails?.map((e, index) => ({
+            id: e.id,
+            email: e.email,
+            notes: e.notes || "",
+            order: e.order ?? index,
+          })) || [],
       });
 
       // Initialize subject preferences if they exist
@@ -454,11 +457,13 @@ export function StudentFormDialog({
         studentWithAvailability.absenceAvailability &&
         studentWithAvailability.absenceAvailability.length > 0
       ) {
-        const absenceData = studentWithAvailability.absenceAvailability.map((ea) => ({
-          date: parseYMDToLocalDate(ea.date),
-          timeSlots: ea.timeSlots,
-          fullDay: ea.fullDay,
-        }));
+        const absenceData = studentWithAvailability.absenceAvailability.map(
+          (ea) => ({
+            date: parseYMDToLocalDate(ea.date),
+            timeSlots: ea.timeSlots,
+            fullDay: ea.fullDay,
+          })
+        );
         setAbsenceIrregularAvailability(absenceData);
       } else {
         setAbsenceIrregularAvailability([]);
@@ -506,8 +511,6 @@ export function StudentFormDialog({
       });
     }
   }, [student, form, defaultBranchId]);
-
-
 
   // Validate availability data
   useEffect(() => {
@@ -574,10 +577,14 @@ export function StudentFormDialog({
 
     const submissionData = { ...values };
     if (submissionData.birthDate) {
-      submissionData.birthDate = toUTCDateOnly(submissionData.birthDate as Date);
+      submissionData.birthDate = toUTCDateOnly(
+        submissionData.birthDate as Date
+      );
     }
     if (submissionData.admissionDate) {
-      submissionData.admissionDate = toUTCDateOnly(submissionData.admissionDate as Date);
+      submissionData.admissionDate = toUTCDateOnly(
+        submissionData.admissionDate as Date
+      );
     }
 
     if (
@@ -639,33 +646,35 @@ export function StudentFormDialog({
 
     // Prepare absence availability data for submission
     if (absenceIrregularAvailability.length > 0) {
-      const absenceAvailabilityData = absenceIrregularAvailability.flatMap((item) => {
-        if (item.fullDay) {
-          return [
-            {
+      const absenceAvailabilityData = absenceIrregularAvailability.flatMap(
+        (item) => {
+          if (item.fullDay) {
+            return [
+              {
+                userId: submissionData.studentId || undefined,
+                date: toUTCDateOnly(item.date),
+                fullDay: true,
+                type: "ABSENCE" as const,
+                startTime: null as string | null,
+                endTime: null as string | null,
+                reason: null as string | null,
+                notes: null as string | null,
+              },
+            ];
+          } else {
+            return item.timeSlots.map((slot) => ({
               userId: submissionData.studentId || undefined,
               date: toUTCDateOnly(item.date),
-              fullDay: true,
+              fullDay: false,
               type: "ABSENCE" as const,
-              startTime: null as string | null,
-              endTime: null as string | null,
+              startTime: slot.startTime as string | null,
+              endTime: slot.endTime as string | null,
               reason: null as string | null,
               notes: null as string | null,
-            },
-          ];
-        } else {
-          return item.timeSlots.map((slot) => ({
-            userId: submissionData.studentId || undefined,
-            date: toUTCDateOnly(item.date),
-            fullDay: false,
-            type: "ABSENCE" as const,
-            startTime: slot.startTime as string | null,
-            endTime: slot.endTime as string | null,
-            reason: null as string | null,
-            notes: null as string | null,
-          }));
+            }));
+          }
         }
-      });
+      );
       (submissionData as any).absenceAvailability = absenceAvailabilityData;
     }
 
@@ -725,14 +734,18 @@ export function StudentFormDialog({
       });
 
       if (errorMessages.length > 0) {
-        throw new Error(`フォームの入力内容に問題があります:\n${errorMessages.join('\n')}`);
+        throw new Error(
+          `フォームの入力内容に問題があります:\n${errorMessages.join("\n")}`
+        );
       } else {
         throw new Error("フォームの入力内容に問題があります");
       }
     }
 
     if (availabilityErrors.length > 0) {
-      throw new Error(`利用可能時間にエラーがあります:\n${availabilityErrors.join('\n')}`);
+      throw new Error(
+        `利用可能時間にエラーがあります:\n${availabilityErrors.join("\n")}`
+      );
     }
 
     return new Promise<void>((resolve, reject) => {
@@ -740,10 +753,14 @@ export function StudentFormDialog({
       console.log("Form values before submission:", values);
       const submissionData = { ...values };
       if (submissionData.birthDate) {
-        submissionData.birthDate = toUTCDateOnly(submissionData.birthDate as Date);
+        submissionData.birthDate = toUTCDateOnly(
+          submissionData.birthDate as Date
+        );
       }
       if (submissionData.admissionDate) {
-        submissionData.admissionDate = toUTCDateOnly(submissionData.admissionDate as Date);
+        submissionData.admissionDate = toUTCDateOnly(
+          submissionData.admissionDate as Date
+        );
       }
 
       if (
@@ -805,33 +822,35 @@ export function StudentFormDialog({
 
       // Prepare absence availability data for submission
       if (absenceIrregularAvailability.length > 0) {
-        const absenceAvailabilityData = absenceIrregularAvailability.flatMap((item) => {
-          if (item.fullDay) {
-            return [
-              {
+        const absenceAvailabilityData = absenceIrregularAvailability.flatMap(
+          (item) => {
+            if (item.fullDay) {
+              return [
+                {
+                  userId: submissionData.studentId || undefined,
+                  date: toUTCDateOnly(item.date),
+                  fullDay: true,
+                  type: "ABSENCE" as const,
+                  startTime: null as string | null,
+                  endTime: null as string | null,
+                  reason: null as string | null,
+                  notes: null as string | null,
+                },
+              ];
+            } else {
+              return item.timeSlots.map((slot) => ({
                 userId: submissionData.studentId || undefined,
                 date: toUTCDateOnly(item.date),
-                fullDay: true,
+                fullDay: false,
                 type: "ABSENCE" as const,
-                startTime: null as string | null,
-                endTime: null as string | null,
+                startTime: slot.startTime as string | null,
+                endTime: slot.endTime as string | null,
                 reason: null as string | null,
                 notes: null as string | null,
-              },
-            ];
-          } else {
-            return item.timeSlots.map((slot) => ({
-              userId: submissionData.studentId || undefined,
-              date: toUTCDateOnly(item.date),
-              fullDay: false,
-              type: "ABSENCE" as const,
-              startTime: slot.startTime as string | null,
-              endTime: slot.endTime as string | null,
-              reason: null as string | null,
-              notes: null as string | null,
-            }));
+              }));
+            }
           }
-        });
+        );
         (submissionData as any).absenceAvailability = absenceAvailabilityData;
       }
 
@@ -1110,10 +1129,7 @@ export function StudentFormDialog({
                     <User className="h-4 w-4" />
                     基本情報
                   </TabsTrigger>
-                  <TabsTrigger
-                    value="line"
-                    className="flex items-center gap-2"
-                  >
+                  <TabsTrigger value="line" className="flex items-center gap-2">
                     <MessageSquare className="h-4 w-4" />
                     メッセージ
                   </TabsTrigger>
@@ -1248,14 +1264,20 @@ export function StudentFormDialog({
                                       size="icon"
                                       className="absolute right-1.5 top-1.5"
                                       onClick={() => setShowPassword((s) => !s)}
-                                      title={showPassword ? "パスワードを隠す" : "パスワードを表示"}
+                                      title={
+                                        showPassword
+                                          ? "パスワードを隠す"
+                                          : "パスワードを表示"
+                                      }
                                     >
                                       {showPassword ? (
                                         <EyeOff className="h-4 w-4" />
                                       ) : (
                                         <Eye className="h-4 w-4" />
                                       )}
-                                      <span className="sr-only">パスワード表示切替</span>
+                                      <span className="sr-only">
+                                        パスワード表示切替
+                                      </span>
                                     </Button>
                                   </div>
                                 </div>
@@ -1386,8 +1408,8 @@ export function StudentFormDialog({
                                             !selectedStudentTypeId
                                               ? "まず生徒タイプを選択してください"
                                               : maxYears === 0
-                                              ? "利用可能な学年がありません"
-                                              : "学年を選択"
+                                                ? "利用可能な学年がありません"
+                                                : "学年を選択"
                                           }
                                         />
                                       </SelectTrigger>
@@ -1488,7 +1510,6 @@ export function StudentFormDialog({
                               </FormItem>
                             )}
                           />
-
                         </div>
 
                         <FormField
@@ -1712,9 +1733,19 @@ export function StudentFormDialog({
                                   type="date"
                                   className="h-11"
                                   {...field}
-                                  value={field.value ? (typeof field.value === 'string' ? field.value : (formatLocalYMD(new Date(field.value)))) : ""}
+                                  value={
+                                    field.value
+                                      ? typeof field.value === "string"
+                                        ? field.value
+                                        : formatLocalYMD(new Date(field.value))
+                                      : ""
+                                  }
                                   onChange={(e) => {
-                                    field.onChange(e.target.value ? parseYMDToLocalDate(e.target.value) : undefined);
+                                    field.onChange(
+                                      e.target.value
+                                        ? parseYMDToLocalDate(e.target.value)
+                                        : undefined
+                                    );
                                   }}
                                 />
                               </FormControl>
@@ -1742,7 +1773,10 @@ export function StudentFormDialog({
                             <FormItem>
                               <div className="space-y-4">
                                 {(field.value || []).map((phone, index) => (
-                                  <div key={index} className="flex gap-4 items-start">
+                                  <div
+                                    key={index}
+                                    className="flex gap-4 items-start"
+                                  >
                                     <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-4">
                                       <FormField
                                         control={form.control}
@@ -1764,8 +1798,13 @@ export function StudentFormDialog({
                                                 </SelectTrigger>
                                               </FormControl>
                                               <SelectContent>
-                                                {Object.entries(phoneTypeLabels).map(([value, label]) => (
-                                                  <SelectItem key={value} value={value}>
+                                                {Object.entries(
+                                                  phoneTypeLabels
+                                                ).map(([value, label]) => (
+                                                  <SelectItem
+                                                    key={value}
+                                                    value={value}
+                                                  >
                                                     {label}
                                                   </SelectItem>
                                                 ))}
@@ -1826,7 +1865,9 @@ export function StudentFormDialog({
                                       size="icon"
                                       className={index === 0 ? "mt-9" : ""}
                                       onClick={() => {
-                                        const newPhones = (field.value || []).filter((_, i) => i !== index);
+                                        const newPhones = (
+                                          field.value || []
+                                        ).filter((_, i) => i !== index);
                                         field.onChange(newPhones);
                                       }}
                                     >
@@ -1866,7 +1907,10 @@ export function StudentFormDialog({
                             <FormItem>
                               <div className="space-y-4">
                                 {(field.value || []).map((email, index) => (
-                                  <div key={index} className="flex gap-4 items-start">
+                                  <div
+                                    key={index}
+                                    className="flex gap-4 items-start"
+                                  >
                                     <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4">
                                       <FormField
                                         control={form.control}
@@ -1920,7 +1964,9 @@ export function StudentFormDialog({
                                       size="icon"
                                       className={index === 0 ? "mt-9" : ""}
                                       onClick={() => {
-                                        const newEmails = (field.value || []).filter((_, i) => i !== index);
+                                        const newEmails = (
+                                          field.value || []
+                                        ).filter((_, i) => i !== index);
                                         field.onChange(newEmails);
                                       }}
                                     >
@@ -1997,9 +2043,19 @@ export function StudentFormDialog({
                                   type="date"
                                   className="h-11"
                                   {...field}
-                                  value={field.value ? (typeof field.value === 'string' ? field.value : (formatLocalYMD(new Date(field.value)))) : ""}
+                                  value={
+                                    field.value
+                                      ? typeof field.value === "string"
+                                        ? field.value
+                                        : formatLocalYMD(new Date(field.value))
+                                      : ""
+                                  }
                                   onChange={(e) => {
-                                    field.onChange(e.target.value ? parseYMDToLocalDate(e.target.value) : undefined);
+                                    field.onChange(
+                                      e.target.value
+                                        ? parseYMDToLocalDate(e.target.value)
+                                        : undefined
+                                    );
                                   }}
                                 />
                               </FormControl>
@@ -2020,9 +2076,19 @@ export function StudentFormDialog({
                                   type="date"
                                   className="h-11"
                                   {...field}
-                                  value={field.value ? new Date(field.value).toISOString().split('T')[0] : ""}
+                                  value={
+                                    field.value
+                                      ? new Date(field.value)
+                                          .toISOString()
+                                          .split("T")[0]
+                                      : ""
+                                  }
                                   onChange={(e) => {
-                                    field.onChange(e.target.value ? new Date(e.target.value) : undefined);
+                                    field.onChange(
+                                      e.target.value
+                                        ? new Date(e.target.value)
+                                        : undefined
+                                    );
                                   }}
                                 />
                               </FormControl>
@@ -2037,9 +2103,14 @@ export function StudentFormDialog({
                   {/* Regular vs Exceptional Summary */}
                   <TabsContent value="commute" className="space-y-4 mt-0">
                     {student?.studentId ? (
-                      <StudentRegularExceptionalSummary studentId={student.studentId} days={90} />
+                      <StudentRegularExceptionalSummary
+                        studentId={student.studentId}
+                        days={90}
+                      />
                     ) : (
-                      <div className="text-sm text-muted-foreground">作成モードでは通塾まとめは表示されません</div>
+                      <div className="text-sm text-muted-foreground">
+                        作成モードでは通塾まとめは表示されません
+                      </div>
                     )}
                   </TabsContent>
 
@@ -2054,11 +2125,16 @@ export function StudentFormDialog({
                         lineId={lineState.lineId}
                         parentLineId1={lineState.parentLineId1}
                         lineUserId={lineState.lineUserId ?? undefined}
-                        lineNotificationsEnabled={lineState.lineNotificationsEnabled}
+                        lineNotificationsEnabled={
+                          lineState.lineNotificationsEnabled
+                        }
                         username={student.username || ""}
                         onNotificationToggle={(enabled) => {
                           form.setValue("lineNotificationsEnabled", enabled);
-                          setLineState((s) => ({ ...s, lineNotificationsEnabled: enabled }));
+                          setLineState((s) => ({
+                            ...s,
+                            lineNotificationsEnabled: enabled,
+                          }));
                         }}
                       />
                     )}
@@ -2071,7 +2147,11 @@ export function StudentFormDialog({
                           </CardTitle>
                         </CardHeader>
                         <CardContent>
-                          <Button type="button" variant="outline" onClick={() => setOpenLineManage(true)}>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setOpenLineManage(true)}
+                          >
                             チャネル連携を管理する
                           </Button>
                         </CardContent>
@@ -2173,9 +2253,13 @@ export function StudentFormDialog({
                                   variant="outline"
                                   className="h-11 w-full justify-between"
                                 >
-                                  {selectedSubjectTypes.length > 0
-                                    ? `${selectedSubjectTypes.length}件選択中`
-                                    : <span className="text-muted-foreground">科目タイプを選択</span>}
+                                  {selectedSubjectTypes.length > 0 ? (
+                                    `${selectedSubjectTypes.length}件選択中`
+                                  ) : (
+                                    <span className="text-muted-foreground">
+                                      科目タイプを選択
+                                    </span>
+                                  )}
                                   <Check
                                     className={`ml-2 h-4 w-4 ${
                                       selectedSubjectTypes.length > 0
@@ -2292,9 +2376,13 @@ export function StudentFormDialog({
                                     variant="outline"
                                     className="h-11 w-full justify-between"
                                   >
-                                    {selectedTeacherIds.length > 0
-                                      ? `${selectedTeacherIds.length}名選択中`
-                                      : <span className="text-muted-foreground">希望講師を選択（任意）</span>}
+                                    {selectedTeacherIds.length > 0 ? (
+                                      `${selectedTeacherIds.length}名選択中`
+                                    ) : (
+                                      <span className="text-muted-foreground">
+                                        希望講師を選択（任意）
+                                      </span>
+                                    )}
                                     <Users
                                       className={`ml-2 h-4 w-4 ${
                                         selectedTeacherIds.length > 0
@@ -2519,30 +2607,31 @@ export function StudentFormDialog({
                         )}
                       </CardContent>
                     </Card>
-                </TabsContent>
+                  </TabsContent>
 
-                {student && (
-                  <LineManagementDialog
-                    open={openLineManage}
-                    onOpenChange={setOpenLineManage}
-                    userType="student"
-                    userId={student.studentId}
-                    userName={student.name}
-                    lineConnections={{
-                      lineId: lineState.lineId,
-                      lineUserId: lineState.lineUserId,
-                      lineNotificationsEnabled: lineState.lineNotificationsEnabled,
-                      parentLineId1: lineState.parentLineId1,
-                    }}
-                    onConnectionUnbound={(accountType) => {
-                      if (accountType === "student") {
-                        setLineState((s) => ({ ...s, lineId: null }));
-                      } else if (accountType === "parent") {
-                        setLineState((s) => ({ ...s, parentLineId1: null }));
-                      }
-                    }}
-                  />
-                )}
+                  {student && (
+                    <LineManagementDialog
+                      open={openLineManage}
+                      onOpenChange={setOpenLineManage}
+                      userType="student"
+                      userId={student.studentId}
+                      userName={student.name}
+                      lineConnections={{
+                        lineId: lineState.lineId,
+                        lineUserId: lineState.lineUserId,
+                        lineNotificationsEnabled:
+                          lineState.lineNotificationsEnabled,
+                        parentLineId1: lineState.parentLineId1,
+                      }}
+                      onConnectionUnbound={(accountType) => {
+                        if (accountType === "student") {
+                          setLineState((s) => ({ ...s, lineId: null }));
+                        } else if (accountType === "parent") {
+                          setLineState((s) => ({ ...s, parentLineId1: null }));
+                        }
+                      }}
+                    />
+                  )}
 
                   <TabsContent
                     value="availabilityRegular"
@@ -2559,8 +2648,8 @@ export function StudentFormDialog({
                           特別な日付の希望は、次のタブ「特別日程」で設定できます。
                         </p>
                       </CardHeader>
-                  <CardContent>
-                    {availabilityErrors.length > 0 && (
+                      <CardContent>
+                        {availabilityErrors.length > 0 && (
                           <Alert variant="destructive" className="mb-4">
                             <AlertTriangle className="h-4 w-4" />
                             <AlertDescription>
@@ -2573,7 +2662,7 @@ export function StudentFormDialog({
                           </Alert>
                         )}
 
-                        {activeTab === 'availabilityRegular' && (
+                        {activeTab === "availabilityRegular" && (
                           <EnhancedAvailabilityRegularSelector
                             availability={regularAvailability}
                             onChange={setRegularAvailability}
@@ -2585,8 +2674,12 @@ export function StudentFormDialog({
                             <div className="flex items-start gap-2">
                               <Calendar className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5" />
                               <div className="text-sm">
-                                <p className="font-medium text-blue-900 dark:text-blue-100">ヒント</p>
-                                <p className="text-blue-700 dark:text-blue-300 mt-1">特別な日付の希望は次のタブ「特別日程」で設定できます。</p>
+                                <p className="font-medium text-blue-900 dark:text-blue-100">
+                                  ヒント
+                                </p>
+                                <p className="text-blue-700 dark:text-blue-300 mt-1">
+                                  特別な日付の希望は次のタブ「特別日程」で設定できます。
+                                </p>
                               </div>
                             </div>
                           </div>
@@ -2623,7 +2716,7 @@ export function StudentFormDialog({
                           </Alert>
                         )}
 
-                        {activeTab === 'availabilityIrregular' && (
+                        {activeTab === "availabilityIrregular" && (
                           <EnhancedAvailabilityIrregularSelector
                             availability={irregularAvailability}
                             onChange={setIrregularAvailability}
@@ -2635,8 +2728,12 @@ export function StudentFormDialog({
                             <div className="flex items-start gap-2">
                               <Calendar className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5" />
                               <div className="text-sm">
-                                <p className="font-medium text-blue-900 dark:text-blue-100">ヒント</p>
-                                <p className="text-blue-700 dark:text-blue-300 mt-1">欠席の設定は次のタブ「欠席日程」で行えます。</p>
+                                <p className="font-medium text-blue-900 dark:text-blue-100">
+                                  ヒント
+                                </p>
+                                <p className="text-blue-700 dark:text-blue-300 mt-1">
+                                  欠席の設定は次のタブ「欠席日程」で行えます。
+                                </p>
                               </div>
                             </div>
                           </div>
@@ -2660,7 +2757,7 @@ export function StudentFormDialog({
                         </p>
                       </CardHeader>
                       <CardContent>
-                        {activeTab === 'availabilityAbsence' && (
+                        {activeTab === "availabilityAbsence" && (
                           <EnhancedAvailabilityIrregularSelector
                             availability={absenceIrregularAvailability}
                             onChange={setAbsenceIrregularAvailability}
@@ -2793,14 +2890,19 @@ export function StudentFormDialog({
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>フォームをリセットしますか？</AlertDialogTitle>
+                    <AlertDialogTitle>
+                      フォームをリセットしますか？
+                    </AlertDialogTitle>
                     <AlertDialogDescription>
                       この操作により、入力されたすべての情報が削除され、フォームが初期状態に戻ります。この操作は元に戻すことができません。
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>キャンセル</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleReset} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    <AlertDialogAction
+                      onClick={handleReset}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
                       リセット
                     </AlertDialogAction>
                   </AlertDialogFooter>

@@ -18,7 +18,7 @@
    - Immediate visibility within 1s (current tab).
    - Filtered-out creation shows generic success toast only.
    - Cross-tab propagation updates same-date views; no auto-scroll.
-   Note: Added contract-level test for BroadcastChannel payload in `src/lib/calendar-broadcast.test.ts`. UI tests can be added next.
+     Note: Added contract-level test for BroadcastChannel payload in `src/lib/calendar-broadcast.test.ts`. UI tests can be added next.
 
 6. [x] Update documentation.
    - Quickstart validation steps confirmed.
@@ -26,7 +26,7 @@
 
 7. [~] TypeScript & lint pass.
    - `bun lint`; fix TS errors.
-   Note: Typecheck passes. Lint has pre-existing warnings/unrelated error; no new errors from this change.
+     Note: Typecheck passes. Lint has pre-existing warnings/unrelated error; no new errors from this change.
 
 8. [x] Optional: Error handling polish.
    - Ensure create failure produces clear error toast; no ghost tiles.

@@ -13,7 +13,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { signOut, useSession } from "next-auth/react";
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { PasswordChangeForm } from "@/components/auth/password-change-form";
 
 export default function UserProfileMenu() {
@@ -41,8 +46,8 @@ export default function UserProfileMenu() {
     session.user?.role === "STUDENT"
       ? "/student"
       : session.user?.role === "TEACHER"
-      ? "/teacher"
-      : "/dashboard";
+        ? "/teacher"
+        : "/dashboard";
 
   return (
     <>

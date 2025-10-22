@@ -1,0 +1,43 @@
+openapi: 3.0.3
+info:
+  title: Class Types Visibility API
+  version: "1.0.0"
+paths:
+  /api/admin/masterdata/class-types/{id}:
+    patch:
+      summary: Update class type fields (includes visibleInFilters)
+      description: Admin-only. Updates one or more fields on a class type. The server must enforce Admin authorization.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                visibleInFilters:
+                  type: boolean
+              additionalProperties: true
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  visibleInFilters:
+                    type: boolean
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden (non-admin)
+        "404":
+          description: ClassType not found

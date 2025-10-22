@@ -68,7 +68,10 @@ async function getBranchVacations(prisma: PrismaClient, branchId: string) {
   });
 }
 
-function hasVacationConflictCached(date: Date, vacations: BranchVacation[]): boolean {
+function hasVacationConflictCached(
+  date: Date,
+  vacations: BranchVacation[]
+): boolean {
   const md = (d: Date) => (d.getUTCMonth() + 1) * 100 + d.getUTCDate();
   const targetMD = md(date);
   for (const v of vacations) {
@@ -140,7 +143,9 @@ export async function advanceGenerateForSeries(
 
   if (series.endDate && from > series.endDate) {
     // Already beyond hard end → delete the blueprint, keep generated sessions
-    await prisma.classSeries.delete({ where: { seriesId: series.seriesId } }).catch(() => {});
+    await prisma.classSeries
+      .delete({ where: { seriesId: series.seriesId } })
+      .catch(() => {});
     return {
       seriesId,
       fromDate: fmtYMD(from),
@@ -224,7 +229,9 @@ export async function advanceGenerateForSeries(
         0
       )
     );
-    const duration = series.duration ?? Math.round((end.getTime() - start.getTime()) / (1000 * 60));
+    const duration =
+      series.duration ??
+      Math.round((end.getTime() - start.getTime()) / (1000 * 60));
 
     const k = fmtYMD(date);
     const vacationConflict = series.branchId
@@ -232,7 +239,10 @@ export async function advanceGenerateForSeries(
       : false;
 
     // Align with extend route behavior: skip vacation days
-    if (vacationConflict) { skipped++; continue; }
+    if (vacationConflict) {
+      skipped++;
+      continue;
+    }
 
     // Decide status using centralized policy (hard overlaps + availability policy)
     // Use a temporary classId placeholder to avoid self-exclusion issues (new row not yet in DB)
@@ -246,7 +256,8 @@ export async function advanceGenerateForSeries(
       studentId: series.studentId ?? null,
       boothId: series.boothId ?? null,
     } as const;
-    let nextStatus: "CONFIRMED" | "CONFLICTED" = await decideNextStatusForContext(ctx);
+    let nextStatus: "CONFIRMED" | "CONFLICTED" =
+      await decideNextStatusForContext(ctx);
 
     try {
       await prisma.classSession.create({
@@ -268,7 +279,8 @@ export async function advanceGenerateForSeries(
           isCancelled: false,
         },
       });
-      if (nextStatus === "CONFLICTED") createdConflicted++; else createdConfirmed++;
+      if (nextStatus === "CONFLICTED") createdConflicted++;
+      else createdConfirmed++;
     } catch (_) {
       // Unique constraint or other DB guard; count as skipped
       skipped++;
@@ -278,9 +290,14 @@ export async function advanceGenerateForSeries(
   // Update lastGeneratedThrough; if we reached hard end, delete the blueprint
   const last = candidateDates[candidateDates.length - 1];
   if (series.endDate && last.getTime() >= series.endDate.getTime()) {
-    await prisma.classSeries.delete({ where: { seriesId: series.seriesId } }).catch(() => {});
+    await prisma.classSeries
+      .delete({ where: { seriesId: series.seriesId } })
+      .catch(() => {});
   } else {
-    await prisma.classSeries.update({ where: { seriesId: series.seriesId }, data: { lastGeneratedThrough: last } });
+    await prisma.classSeries.update({
+      where: { seriesId: series.seriesId },
+      data: { lastGeneratedThrough: last },
+    });
   }
 
   return {
@@ -293,5 +310,3 @@ export async function advanceGenerateForSeries(
     skipped,
   };
 }
-
- 

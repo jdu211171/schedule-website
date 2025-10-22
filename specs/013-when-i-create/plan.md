@@ -4,6 +4,7 @@
 **Input**: Feature specification from `/specs/013-when-i-create/spec.md`
 
 ## Execution Flow (/plan command scope)
+
 ```
 1. Load feature spec from Input path
    → If not found: ERROR "No feature spec at {path}"
@@ -28,11 +29,13 @@
 **IMPORTANT**: The /plan command STOPS at step 7. Phases 2-4 are executed by other commands, but per instructions we also generated tasks.md in this run.
 
 ## Summary
+
 - Primary requirement: Newly created regular class sessions appear immediately in the day calendar without a page refresh, within 1 second, preserving view state.
 - Clarified scope: Same-user tabs auto-update; Asia/Tokyo display timezone; generic success toast if filtered; creation occurs via same-page popup; do not auto-scroll after creation.
 - Non-goals: Cross-user real-time updates; route navigation or quick-jump; modifying filters automatically.
 
 ## Technical Context
+
 **Language/Version**: TypeScript (strict) + React 18 + Next.js App Router  
 **Primary Dependencies**: Next.js, Tailwind CSS v4, sonner (toasts), next-auth, Prisma (existing), PostgreSQL  
 **Storage**: PostgreSQL via Prisma (no schema changes expected)  
@@ -46,7 +49,8 @@
 Technical Context (from arguments): No additional details provided.
 
 ## Constitution Check
-*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+
+_GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
 - Simplicity first: Local optimistic UI + same-user tab sync; no new services. PASS
 - Test-first: Add UI interaction tests around calendar update and filter behavior. PASS
@@ -56,6 +60,7 @@ Technical Context (from arguments): No additional details provided.
 ## Project Structure
 
 ### Documentation (this feature)
+
 ```
 specs/013-when-i-create/
 ├── plan.md              # This file (/plan command output)
@@ -67,6 +72,7 @@ specs/013-when-i-create/
 ```
 
 ### Source Code (repository root)
+
 ```
 src/
 ├── app/
@@ -94,6 +100,7 @@ src/
 **Structure Decision**: Single Next.js web app. Changes are limited to admin DayCalendar components and related hooks. No backend/schema changes required.
 
 ## Phase 0: Outline & Research
+
 1. Extract unknowns from Technical Context above:
    - Performance baseline definition; secondary summaries in scope; quick-jump UX.
 2. Consolidate findings in `research.md` using format:
@@ -102,6 +109,7 @@ src/
 **Output**: research.md capturing decisions/assumptions (remaining non-critical items documented as deferred)
 
 ## Phase 1: Design & Contracts
+
 1. Extract entities from feature spec → `data-model.md`:
    - Class Session; Day Calendar View; Class Series. No schema changes.
 2. Generate contracts from functional requirements:
@@ -110,20 +118,25 @@ src/
 3. Extract test scenarios into `quickstart.md` for manual verification.
 4. Update agent file incrementally via `.specify/scripts/bash/update-agent-context.sh codex`.
 
-**Output**: data-model.md, /contracts/*, quickstart.md, agent-specific file
+**Output**: data-model.md, /contracts/\*, quickstart.md, agent-specific file
 
 ## Phase 2: Task Planning Approach
+
 Plan the tasks (see tasks.md) to implement optimistic UI update, cache/state update in current tab, cross-tab sync for same user, and filter-aware success messaging.
 
 ## Phase 3+: Future Implementation
+
 Beyond the scope of /plan.
 
 ## Complexity Tracking
+
 | Violation | Why Needed | Simpler Alternative Rejected Because |
-|-----------|------------|-------------------------------------|
+| --------- | ---------- | ------------------------------------ |
 
 ## Progress Tracking
+
 **Phase Status**:
+
 - [x] Phase 0: Research complete (/plan command)
 - [x] Phase 1: Design complete (/plan command)
 - [x] Phase 2: Task planning complete (/plan command)
@@ -132,10 +145,12 @@ Beyond the scope of /plan.
 - [ ] Phase 5: Validation passed
 
 **Gate Status**:
+
 - [x] Initial Constitution Check: PASS
 - [x] Post-Design Constitution Check: PASS
 - [ ] All NEEDS CLARIFICATION resolved
 - [ ] Complexity deviations documented
 
 ---
-*Based on Constitution v2.1.1 - See `/memory/constitution.md`*
+
+_Based on Constitution v2.1.1 - See `/memory/constitution.md`_

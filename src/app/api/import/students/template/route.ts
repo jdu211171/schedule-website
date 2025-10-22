@@ -6,26 +6,28 @@ export async function GET() {
   try {
     // Align template with student export default columns
     const defaultKeys: (keyof typeof STUDENT_COLUMN_RULES)[] = [
-      'name',
-      'kanaName',
-      'status',
-      'studentTypeName',
-      'gradeYear',
-      'birthDate',
-      'schoolName',
-      'schoolType',
-      'examCategory',
-      'examCategoryType',
-      'firstChoice',
-      'secondChoice',
-      'examDate',
-      'username',
-      'email',
-      'parentEmail',
-      'branches',
-      'notes',
+      "name",
+      "kanaName",
+      "status",
+      "studentTypeName",
+      "gradeYear",
+      "birthDate",
+      "schoolName",
+      "schoolType",
+      "examCategory",
+      "examCategoryType",
+      "firstChoice",
+      "secondChoice",
+      "examDate",
+      "username",
+      "email",
+      "parentEmail",
+      "branches",
+      "notes",
     ];
-    const exportHeaders = defaultKeys.map(key => STUDENT_COLUMN_RULES[key].csvHeader);
+    const exportHeaders = defaultKeys.map(
+      (key) => STUDENT_COLUMN_RULES[key].csvHeader
+    );
     const columns = ["ID", ...exportHeaders] as const;
 
     // Sample data for template using localized headers

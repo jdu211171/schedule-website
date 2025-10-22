@@ -15,12 +15,7 @@ export const classTypeCreateSchema = z.object({
   notes: z.string().max(255).optional().nullable(),
   parentId: z.string().optional().nullable(),
   order: z.number().int().min(1).optional().nullable(),
-  color: z
-    .string()
-    .trim()
-    .max(30)
-    .optional()
-    .nullable(),
+  color: z.string().trim().max(30).optional().nullable(),
 });
 
 export const classTypeUpdateSchema = z.object({
@@ -29,12 +24,7 @@ export const classTypeUpdateSchema = z.object({
   notes: z.string().max(255).optional().nullable(),
   parentId: z.string().optional().nullable(),
   order: z.number().int().min(1).optional().nullable(),
-  color: z
-    .string()
-    .trim()
-    .max(30)
-    .optional()
-    .nullable(),
+  color: z.string().trim().max(30).optional().nullable(),
 });
 
 export const classTypeFilterSchema = z.object({
@@ -44,6 +34,7 @@ export const classTypeFilterSchema = z.object({
   parentId: z.string().optional().nullable(), // Filter by parent ID
   includeChildren: z.coerce.boolean().default(false), // Include children in response
   includeParent: z.coerce.boolean().default(false), // Include parent in response
+  visibleOnly: z.coerce.boolean().default(true), // When true, only include class types visible in filters
   sortBy: z.enum(CLASS_TYPE_SORT_FIELDS).default("order"),
   sortOrder: z.enum(["asc", "desc"]).default("asc"),
 });

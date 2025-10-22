@@ -6,39 +6,39 @@
 
 ## Phase 1: Setup
 
-- [X] T001 [P] Ensure feature branch is checked out (`017-add-logic-to`) and dependencies are installed with Bun
+- [x] T001 [P] Ensure feature branch is checked out (`017-add-logic-to`) and dependencies are installed with Bun
   - Files: n/a
   - Notes: Use `bun install`; copy `.env.example` → `.env` and set `DATABASE_URL`/`DIRECT_URL`.
-- [X] T002 [P] Confirm Spec Kit docs present; link plan/spec/research/contracts/data-model/quickstart in PR description
-  - Files: specs/017-add-logic-to/*
+- [x] T002 [P] Confirm Spec Kit docs present; link plan/spec/research/contracts/data-model/quickstart in PR description
+  - Files: specs/017-add-logic-to/\*
 
 ## Phase 2: Foundational (blocks all stories)
 
-- [X] T003 Define Prisma model for per-user class type visibility preferences
+- [x] T003 Define Prisma model for per-user class type visibility preferences
   - Files: prisma/schema.prisma
   - Add model (conceptual): `UserClassTypeVisibilityPreference { userId String @id, hiddenClassTypeIds String[] @default([]), updatedAt DateTime @updatedAt }`
-- [X] T004 Create migration and generate Prisma client
+- [x] T004 Create migration and generate Prisma client
   - Commands: `npx prisma migrate dev -n "user-class-type-visibility" && bun postinstall`
-- [X] T005 Create Zod schemas for API payloads and responses
+- [x] T005 Create Zod schemas for API payloads and responses
   - Files: src/schemas/user-preferences.schema.ts
   - Schemas: `{ hiddenClassTypeIds: z.array(z.string()).max(100) }`
-- [X] T006 Implement API route for preferences (GET/PUT)
+- [x] T006 Implement API route for preferences (GET/PUT)
   - Files: src/app/api/preferences/class-types/route.ts
   - GET: returns `{ hiddenClassTypeIds: string[] }` for current user
   - PUT: replaces with validated array, prunes unknown IDs
-- [X] T007 Add server-side service for reading/writing preferences
+- [x] T007 Add server-side service for reading/writing preferences
   - Files: src/services/user-preferences.ts
   - Functions: `getUserHiddenClassTypeIds(userId)`, `setUserHiddenClassTypeIds(userId, ids)`
-- [X] T008 Add shared types for preferences
+- [x] T008 Add shared types for preferences
   - Files: src/types/user-preferences.ts
   - Types: `UserClassTypeVisibilityPreferenceDTO`, `SetUserClassTypeVisibilityRequest`
-- [X] T009 Create client hook to load and update hidden class type IDs
+- [x] T009 Create client hook to load and update hidden class type IDs
   - Files: src/hooks/useClassTypeVisibility.ts
   - Expose: `useHiddenClassTypes()`, `useSetHiddenClassTypes()` using React Query
-- [X] T010 Add broadcast utility for cross-tab updates
+- [x] T010 Add broadcast utility for cross-tab updates
   - Files: src/lib/class-type-visibility-broadcast.ts
   - Channel: `class-type-visibility`; message `{ type: 'hiddenClassTypesChanged', ids: string[] }`
-- [X] T011 Add utility to filter options by hidden IDs
+- [x] T011 Add utility to filter options by hidden IDs
   - Files: src/lib/filter-class-type-options.ts
   - Function: `applyHiddenClassTypes(options, hiddenIds)` returns filtered options
 
@@ -48,18 +48,18 @@ Goal: Users choose which Class Types are visible so Day Calendar and filter cont
 
 Independent Test: Hide a type → it disappears from Day Calendar and from all Class Type selection controls.
 
-- [X] T012 Add "表示管理" button and dialog to manage Class Type visibility in Day Calendar filters
+- [x] T012 Add "表示管理" button and dialog to manage Class Type visibility in Day Calendar filters
   - Files: src/components/admin-schedule/DayCalendar/day-calendar-filters.tsx, src/components/admin-schedule/DayCalendar/manage-class-type-visibility-dialog.tsx
   - Use `useHiddenClassTypes`/`useSetHiddenClassTypes` to load/save
-- [X] T013 Exclude hidden types from Day Calendar filter options
+- [x] T013 Exclude hidden types from Day Calendar filter options
   - Files: src/components/admin-schedule/DayCalendar/day-calendar-filters.tsx
   - After `fetchClassTypeOptions()`, call `applyHiddenClassTypes(options, hiddenIds)`
-- [X] T014 Update: Ensure Day Calendar rendering is NOT affected by hidden class types (visibility affects filters only)
+- [x] T014 Update: Ensure Day Calendar rendering is NOT affected by hidden class types (visibility affects filters only)
   - Files: src/components/admin-schedule/DayCalendar/day-calendar.tsx
   - Before rendering, filter sessions where `session.classTypeId` NOT IN hiddenIds
-- [X] T015 Show clear empty state when all types hidden (with link to open visibility dialog)
+- [x] T015 Show clear empty state when all types hidden (with link to open visibility dialog)
   - Files: src/components/admin-schedule/DayCalendar/day-calendar.tsx
-- [X] T016 Emit/handle broadcast on save so other open calendar views update immediately
+- [x] T016 Emit/handle broadcast on save so other open calendar views update immediately
   - Files: src/lib/class-type-visibility-broadcast.ts, src/components/admin-schedule/DayCalendar/day-calendar-filters.tsx
 
 Checkpoint: US1 independently delivers value; Day Calendar and its controls reflect hidden types.
@@ -147,6 +147,7 @@ Checkpoint: US5 validated through add/remove type scenarios.
 - Setup (Phase 1) → Foundational (Phase 2) → US1 (P1) → US2 (P2) + US3 (P2) in parallel → US4 (P3) + US5 (P3) in parallel → Polish
 
 ### Story Dependencies
+
 - US1 depends on Foundational
 - US2 depends on Foundational; independent of US1 but benefits from shared UI patterns
 - US3 depends on Foundational; independent of US1/US2
@@ -154,6 +155,7 @@ Checkpoint: US5 validated through add/remove type scenarios.
 - US5 depends on Foundational
 
 ### Task Parallelization Examples
+
 - Parallel after Phase 2:
   - US2 tasks T018 and T019 can run in parallel ([P])
   - US3 tasks T020 and T022 can run in parallel ([P])

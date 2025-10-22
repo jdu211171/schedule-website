@@ -9,10 +9,7 @@ export const DELETE = withBranchAccess(
     const notificationId = request.url.split("/").pop();
 
     if (!notificationId) {
-      return NextResponse.json(
-        { error: "通知IDが必要です" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "通知IDが必要です" }, { status: 400 });
     }
 
     try {
@@ -42,7 +39,7 @@ export const DELETE = withBranchAccess(
 
       // Delete the notification
       await prisma.notification.delete({
-        where: { notificationId }
+        where: { notificationId },
       });
 
       return NextResponse.json(

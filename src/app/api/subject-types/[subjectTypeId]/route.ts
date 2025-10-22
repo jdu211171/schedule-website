@@ -182,23 +182,24 @@ export const DELETE = withBranchAccess(
 
       // Check for dependencies
       const userPreferenceCount = await prisma.userSubjectPreference.count({
-        where: { subjectTypeId }
+        where: { subjectTypeId },
       });
 
-      const studentPreferenceCount = await prisma.studentTeacherPreference.count({
-        where: { subjectTypeId }
-      });
+      const studentPreferenceCount =
+        await prisma.studentTeacherPreference.count({
+          where: { subjectTypeId },
+        });
 
       const totalDependencies = userPreferenceCount + studentPreferenceCount;
 
       if (totalDependencies > 0) {
         return NextResponse.json(
-          { 
+          {
             error: `この科目タイプは使用されているため削除できません。`,
             details: {
               userPreferences: userPreferenceCount,
-              studentPreferences: studentPreferenceCount
-            }
+              studentPreferences: studentPreferenceCount,
+            },
           },
           { status: 400 }
         );

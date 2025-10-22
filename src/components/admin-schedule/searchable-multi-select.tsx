@@ -21,7 +21,11 @@ interface SearchableMultiSelectProps {
   className?: string;
   loading?: boolean;
   defaultValues?: string[]; // Values that cannot be removed
-  renderSelectedBadge?: (item: SearchableMultiSelectItem, isDefault: boolean, onRemove?: () => void) => React.ReactNode;
+  renderSelectedBadge?: (
+    item: SearchableMultiSelectItem,
+    isDefault: boolean,
+    onRemove?: () => void
+  ) => React.ReactNode;
 }
 
 export function SearchableMultiSelect({
@@ -48,9 +52,10 @@ export function SearchableMultiSelect({
     if (!searchQuery.trim()) return items;
 
     const query = searchQuery.toLowerCase();
-    return items.filter(item =>
-      item.label.toLowerCase().includes(query) ||
-      (item.description && item.description.toLowerCase().includes(query))
+    return items.filter(
+      (item) =>
+        item.label.toLowerCase().includes(query) ||
+        (item.description && item.description.toLowerCase().includes(query))
     );
   }, [items, searchQuery]);
 
@@ -64,14 +69,18 @@ export function SearchableMultiSelect({
   // Handle outside clicks
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
         setOpen(false);
       }
     };
 
     if (open) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
+      document.addEventListener("mousedown", handleClickOutside);
+      return () =>
+        document.removeEventListener("mousedown", handleClickOutside);
     }
   }, [open]);
 
@@ -91,7 +100,7 @@ export function SearchableMultiSelect({
 
   const handleSelect = (itemValue: string) => {
     const newValue = value.includes(itemValue)
-      ? value.filter(v => v !== itemValue)
+      ? value.filter((v) => v !== itemValue)
       : [...value, itemValue];
     onValueChange(newValue);
     // Keep the dropdown open and maintain search state for better UX
@@ -102,12 +111,12 @@ export function SearchableMultiSelect({
     if (defaultValues.includes(itemValue)) {
       return; // Cannot remove default values
     }
-    const newValue = value.filter(v => v !== itemValue);
+    const newValue = value.filter((v) => v !== itemValue);
     onValueChange(newValue);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (!open && e.key === 'Enter') {
+    if (!open && e.key === "Enter") {
       e.preventDefault();
       setOpen(true);
       return;
@@ -116,32 +125,34 @@ export function SearchableMultiSelect({
     if (!open) return;
 
     switch (e.key) {
-      case 'ArrowDown':
+      case "ArrowDown":
         e.preventDefault();
-        setHighlightedIndex(prev =>
+        setHighlightedIndex((prev) =>
           prev < filteredItems.length - 1 ? prev + 1 : 0
         );
         break;
-      case 'ArrowUp':
+      case "ArrowUp":
         e.preventDefault();
-        setHighlightedIndex(prev =>
+        setHighlightedIndex((prev) =>
           prev > 0 ? prev - 1 : filteredItems.length - 1
         );
         break;
-      case 'Enter':
+      case "Enter":
         e.preventDefault();
         if (filteredItems[highlightedIndex]) {
           handleSelect(filteredItems[highlightedIndex].value);
         }
         break;
-      case 'Escape':
+      case "Escape":
         e.preventDefault();
         setOpen(false);
         break;
     }
   };
 
-  const selectedItems = value.map(val => items.find(item => item.value === val)).filter(Boolean) as SearchableMultiSelectItem[];
+  const selectedItems = value
+    .map((val) => items.find((item) => item.value === val))
+    .filter(Boolean) as SearchableMultiSelectItem[];
 
   return (
     <div ref={containerRef} className="relative w-full">
@@ -152,7 +163,11 @@ export function SearchableMultiSelect({
             const isDefault = defaultValues.includes(item.value);
 
             if (renderSelectedBadge) {
-              return renderSelectedBadge(item, isDefault, isDefault ? undefined : () => handleRemove(item.value));
+              return renderSelectedBadge(
+                item,
+                isDefault,
+                isDefault ? undefined : () => handleRemove(item.value)
+              );
             }
 
             return (
@@ -162,9 +177,7 @@ export function SearchableMultiSelect({
                 className="flex items-center gap-1 px-3 py-1"
               >
                 <span>{item.label}</span>
-                {isDefault && (
-                  <span className="text-xs">(デフォルト)</span>
-                )}
+                {isDefault && <span className="text-xs">(デフォルト)</span>}
                 {!isDefault && (
                   <Button
                     type="button"
@@ -200,7 +213,11 @@ export function SearchableMultiSelect({
         aria-haspopup="listbox"
       >
         <span className="truncate">
-          {loading ? "..." : selectedItems.length > 0 ? `${selectedItems.length}個選択済み` : placeholder}
+          {loading
+            ? "..."
+            : selectedItems.length > 0
+              ? `${selectedItems.length}個選択済み`
+              : placeholder}
         </span>
         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
       </button>
@@ -270,11 +287,15 @@ export function SearchableMultiSelect({
                       className={cn(
                         "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors",
                         // Hover state (только если не выбран)
-                        !isSelected && isHighlighted && "bg-accent text-accent-foreground",
+                        !isSelected &&
+                          isHighlighted &&
+                          "bg-accent text-accent-foreground",
                         // Selected state (приоритетнее hover)
                         isSelected && "bg-primary/10 text-primary font-medium",
                         // Selected + highlighted state
-                        isSelected && isHighlighted && "bg-primary/20 text-primary"
+                        isSelected &&
+                          isHighlighted &&
+                          "bg-primary/20 text-primary"
                       )}
                       role="option"
                       aria-selected={isSelected}

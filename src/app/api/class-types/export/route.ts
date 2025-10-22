@@ -32,8 +32,11 @@ export const GET = withRole(
       "notes",
       "order",
       "childrenCount",
+      "visibleInFilters",
     ];
-    const visibleColumns = rawColumns.includes("id") ? rawColumns : ["id", ...rawColumns];
+    const visibleColumns = rawColumns.includes("id")
+      ? rawColumns
+      : ["id", ...rawColumns];
 
     // Column headers mapping
     const columnHeaders: Record<string, string> = {
@@ -43,6 +46,7 @@ export const GET = withRole(
       notes: "備考",
       order: "表示順",
       childrenCount: "子タイプ数",
+      visibleInFilters: "フィルター表示",
     };
 
     // Build CSV header
@@ -66,20 +70,30 @@ export const GET = withRole(
             return classType.order?.toString() || "";
           case "childrenCount":
             return classType.children.length.toString();
+          case "visibleInFilters":
+            return (classType as any).visibleInFilters === false
+              ? "false"
+              : "true";
           default:
             return "";
         }
       });
 
       // Escape CSV values
-      return row.map((value) => {
-        // If value contains comma, newline, or quotes, wrap in quotes
-        if (value.includes(",") || value.includes("\n") || value.includes('"')) {
-          // Escape quotes by doubling them
-          return `"${value.replace(/"/g, '""')}"`;
-        }
-        return value;
-      }).join(",");
+      return row
+        .map((value) => {
+          // If value contains comma, newline, or quotes, wrap in quotes
+          if (
+            value.includes(",") ||
+            value.includes("\n") ||
+            value.includes('"')
+          ) {
+            // Escape quotes by doubling them
+            return `"${value.replace(/"/g, '""')}"`;
+          }
+          return value;
+        })
+        .join(",");
     });
 
     // Combine header and rows

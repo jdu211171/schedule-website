@@ -2,7 +2,13 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Bell, BellOff, AlertTriangle } from "lucide-react";
 import {
@@ -21,11 +27,17 @@ import {
 } from "@/components/ui/dialog";
 
 interface BulkNotificationSettingsProps {
-  onBulkUpdate: (userType: "students" | "teachers" | "all", enabled: boolean) => Promise<void>;
+  onBulkUpdate: (
+    userType: "students" | "teachers" | "all",
+    enabled: boolean
+  ) => Promise<void>;
   isUpdating: boolean;
 }
 
-export function BulkNotificationSettings({ onBulkUpdate, isUpdating }: BulkNotificationSettingsProps) {
+export function BulkNotificationSettings({
+  onBulkUpdate,
+  isUpdating,
+}: BulkNotificationSettingsProps) {
   const [confirmationDialog, setConfirmationDialog] = useState<{
     open: boolean;
     userType: "students" | "teachers" | "all";
@@ -40,7 +52,10 @@ export function BulkNotificationSettings({ onBulkUpdate, isUpdating }: BulkNotif
     description: "",
   });
 
-  const handleBulkUpdateClick = (userType: "students" | "teachers" | "all", enabled: boolean) => {
+  const handleBulkUpdateClick = (
+    userType: "students" | "teachers" | "all",
+    enabled: boolean
+  ) => {
     const userTypeLabels = {
       students: "生徒",
       teachers: "講師",
@@ -61,17 +76,20 @@ export function BulkNotificationSettings({ onBulkUpdate, isUpdating }: BulkNotif
 
   const handleConfirm = async () => {
     try {
-      await onBulkUpdate(confirmationDialog.userType, confirmationDialog.enabled);
-      setConfirmationDialog(prev => ({ ...prev, open: false }));
+      await onBulkUpdate(
+        confirmationDialog.userType,
+        confirmationDialog.enabled
+      );
+      setConfirmationDialog((prev) => ({ ...prev, open: false }));
     } catch (error) {
-      console.error('一括通知設定の更新に失敗しました:', error);
+      console.error("一括通知設定の更新に失敗しました:", error);
       // Keep dialog open to allow retry
       // In a real implementation, you might want to show a toast notification here
     }
   };
 
   const handleCancel = () => {
-    setConfirmationDialog(prev => ({ ...prev, open: false }));
+    setConfirmationDialog((prev) => ({ ...prev, open: false }));
   };
 
   return (
@@ -82,7 +100,9 @@ export function BulkNotificationSettings({ onBulkUpdate, isUpdating }: BulkNotif
             <AlertTriangle className="h-5 w-5 text-orange-500" />
             一括通知設定
           </CardTitle>
-          <CardDescription>LINE連携済みユーザーの通知設定を一括管理</CardDescription>
+          <CardDescription>
+            LINE連携済みユーザーの通知設定を一括管理
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <Accordion type="single" collapsible>
@@ -188,7 +208,10 @@ export function BulkNotificationSettings({ onBulkUpdate, isUpdating }: BulkNotif
         </CardContent>
       </Card>
 
-      <Dialog open={confirmationDialog.open} onOpenChange={(open) => !open && handleCancel()}>
+      <Dialog
+        open={confirmationDialog.open}
+        onOpenChange={(open) => !open && handleCancel()}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -200,7 +223,11 @@ export function BulkNotificationSettings({ onBulkUpdate, isUpdating }: BulkNotif
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={handleCancel} disabled={isUpdating}>
+            <Button
+              variant="outline"
+              onClick={handleCancel}
+              disabled={isUpdating}
+            >
               キャンセル
             </Button>
             <Button

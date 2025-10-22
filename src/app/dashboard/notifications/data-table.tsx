@@ -1,9 +1,8 @@
+"use client";
 
-'use client';
-
-import { DataTable as BaseDataTable } from '@/components/data-table';
-import { useDataTable } from '@/hooks/use-data-table';
-import { ColumnDef } from '@tanstack/react-table';
+import { DataTable as BaseDataTable } from "@/components/data-table";
+import { useDataTable } from "@/hooks/use-data-table";
+import { ColumnDef } from "@tanstack/react-table";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];

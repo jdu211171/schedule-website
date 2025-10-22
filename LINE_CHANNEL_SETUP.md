@@ -13,6 +13,7 @@ This guide explains how to set up and configure LINE channels for branch-specifi
 The system supports dual LINE channels per branch, enabling role-based notification routing for optimal communication management.
 
 ### Dual Channel Concept:
+
 Each branch can be configured with up to **two LINE channels**:
 
 1. **TEACHER Channel** - For staff and teacher communications:
@@ -26,6 +27,7 @@ Each branch can be configured with up to **two LINE channels**:
    - General student communications
 
 ### Key Features:
+
 - **Dual-channel support**: Each branch can have separate TEACHER and STUDENT channels
 - **Smart routing**: Notifications automatically use the appropriate channel based on recipient type
 - **Encrypted credentials**: All LINE tokens and secrets are encrypted in the database
@@ -87,13 +89,16 @@ NEXTAUTH_URL=https://your-actual-domain.com  # CRITICAL: Replace with your actua
 ## Webhook URL Verification
 
 ### Method 1: Browser Verification
+
 Open the webhook URL in your browser. You should see:
+
 - Channel information
 - Active status
 - Assigned branches
 - Setup instructions
 
 ### Method 2: Admin Verification Endpoint
+
 Use the verification endpoint to simulate LINE's webhook verification:
 
 ```bash
@@ -101,6 +106,7 @@ POST /api/admin/line-channels/{channelId}/verify
 ```
 
 This will:
+
 1. Generate a test payload
 2. Sign it with the channel secret
 3. Send it to the webhook endpoint
@@ -109,23 +115,27 @@ This will:
 ## Troubleshooting
 
 ### Webhook URL Returns 404
+
 - **Cause**: `NEXTAUTH_URL` not set or incorrect
 - **Solution**: Set `NEXTAUTH_URL` in `.env` to your actual domain
 
 ### Webhook Verification Fails
+
 - **Cause**: Invalid credentials or signature mismatch
-- **Solution**: 
+- **Solution**:
   1. Verify Channel Secret is correct
   2. Check if channel is active
   3. Use the admin verification endpoint to debug
 
 ### "Channel not found" Error
+
 - **Cause**: Channel not registered in database
 - **Solution**: Create the channel through admin interface first
 
 ### Cannot Connect to Webhook
+
 - **Cause**: Server not accessible or wrong domain
-- **Solution**: 
+- **Solution**:
   1. Verify `NEXTAUTH_URL` points to accessible domain
   2. Check server is running
   3. Verify no firewall blocking LINE's servers
@@ -133,7 +143,9 @@ This will:
 ## Testing
 
 ### 1. Test Channel Connection
+
 Use the admin test endpoint:
+
 ```bash
 POST /api/admin/line-channels/{channelId}/test
 {
@@ -142,11 +154,13 @@ POST /api/admin/line-channels/{channelId}/test
 ```
 
 ### 2. Test User Linking
+
 1. Add the LINE Official Account as friend
 2. Send `> username` or `/ username` to link account
 3. System will confirm successful linking
 
 ### 3. Test Notifications
+
 Create a test notification through the admin panel to verify delivery.
 
 ## Security Considerations
@@ -161,46 +175,52 @@ Create a test notification through the admin panel to verify delivery.
 1. **Dual Channel Setup**: Configure both TEACHER and STUDENT channels for each branch:
    - **TEACHER Channel**: For staff communications, schedule changes, administrative announcements
    - **STUDENT Channel**: For student/parent notifications, class reminders, homework notifications
-   
 2. **Channel Naming Convention**: Use descriptive names that include location and type:
    - "Main Campus - Teachers"
-   - "Main Campus - Students" 
+   - "Main Campus - Students"
    - "Shibuya Branch - Teachers"
-   
 3. **Regular Testing**: Periodically test both channel types to ensure they're working correctly
 
-4. **Credential Security**: 
+4. **Credential Security**:
    - Update access tokens periodically for security
    - Never share channel credentials
    - Use the built-in encryption features
 
-5. **Monitoring**: 
+5. **Monitoring**:
    - Check the admin dashboard for channel coverage status
    - Monitor server logs for webhook errors or delivery issues
    - Use the branch channel overview to identify gaps in coverage
 
-6. **Fallback Strategy**: 
+6. **Fallback Strategy**:
    - If only one channel type is configured, the system will gracefully fall back
    - However, dual channels provide better organization and user experience
 
 ## Common Commands
 
 ### Link User Account
+
 Users send to LINE:
+
 ```
 > username
 ```
+
 or
+
 ```
 / username
 ```
 
 ### Unlink Account
+
 Users send to LINE:
+
 ```
 exit
 ```
+
 or
+
 ```
 quit
 ```
@@ -208,10 +228,12 @@ quit
 ## API Reference
 
 ### Webhook Endpoint
+
 - **URL**: `/api/line/webhook/{channelId}`
 - **Methods**: GET (info), POST (webhook)
 
 ### Admin Endpoints
+
 - **List Channels**: GET `/api/admin/line-channels`
 - **Create Channel**: POST `/api/admin/line-channels`
 - **Update Channel**: PATCH `/api/admin/line-channels/{channelId}`

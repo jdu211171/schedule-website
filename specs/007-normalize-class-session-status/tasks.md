@@ -8,4 +8,3 @@
 - [x] Verify counts; confirm blanks reduced to 0
 - [ ] Optional: spot‑check a target day
 - [x] Record results in research.md
-

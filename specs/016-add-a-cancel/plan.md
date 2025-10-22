@@ -20,6 +20,7 @@ Add a キャンセル action to 授業の編集 (LessonDialog) alongside 削除 
 **Scale/Scope**: Series commonly include dozens to hundreds of future sessions
 
 Unknowns converted to research tasks (resolved in research.md):
+
 - Compute “from this point” boundary from the selected occurrence date in LessonDialog.
 - Confirm idempotency and neighbor recomputation behavior for cancel API.
 - Confirm PAUSED series are excluded from advance generation.
@@ -27,6 +28,7 @@ Unknowns converted to research tasks (resolved in research.md):
 ## Constitution Check
 
 Gates derived from repository standards and mandatory rules:
+
 - Use Bun for packages (no npm/yarn) — PASS (no new packages planned)
 - Fix TypeScript errors after changes — PASS (plan includes strict TS adherence)
 - Use local PostgreSQL via psql for ops — PASS (no direct DB ops required for planning; validate via API/UI)

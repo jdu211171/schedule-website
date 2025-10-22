@@ -7,7 +7,7 @@ import {
   REQUIRED_BOOTH_CSV_HEADERS,
   type BoothImportData,
   type ImportResult,
-  formatValidationErrors
+  formatValidationErrors,
 } from "@/schemas/import";
 import { z } from "zod";
 import { handleImportError } from "@/lib/import-error-handler";
@@ -26,11 +26,16 @@ async function handleImport(req: NextRequest, session: any) {
     }
 
     // Enforce server-side max size (hard cap)
-    const maxBytes = Number.parseInt(process.env.IMPORT_MAX_BYTES || "26214400", 10); // 25MB
+    const maxBytes = Number.parseInt(
+      process.env.IMPORT_MAX_BYTES || "26214400",
+      10
+    ); // 25MB
     const fileSize = (file as Blob).size ?? 0;
     if (fileSize > maxBytes) {
       return NextResponse.json(
-        { error: `ファイルサイズが大きすぎます。最大 ${Math.floor(maxBytes / 1024 / 1024)}MB まで対応しています` },
+        {
+          error: `ファイルサイズが大きすぎます。最大 ${Math.floor(maxBytes / 1024 / 1024)}MB まで対応しています`,
+        },
         { status: 413 }
       );
     }
@@ -38,13 +43,14 @@ async function handleImport(req: NextRequest, session: any) {
     const buffer = Buffer.from(await (file as Blob).arrayBuffer());
 
     // Parse CSV file
-    const parseResult = await CSVParser.parseBuffer<Record<string, string>>(buffer);
+    const parseResult =
+      await CSVParser.parseBuffer<Record<string, string>>(buffer);
 
     if (parseResult.errors.length > 0) {
       return NextResponse.json(
         {
           error: "CSVファイルの解析に失敗しました",
-          details: parseResult.errors
+          details: parseResult.errors,
         },
         { status: 400 }
       );
@@ -60,16 +66,18 @@ async function handleImport(req: NextRequest, session: any) {
 
     // Remap localized headers (export) to schema keys for import
     const headerMap: Record<string, string> = {
-      "ID": "id",
-      "ブース名": "name",
-      "校舎": "branchName",
-      "ステータス": "status",
-      "表示順": "order",
+      ID: "id",
+      ブース名: "name",
+      校舎: "branchName",
+      ステータス: "status",
+      表示順: "order",
     };
 
     let actualHeaders = Object.keys(parseResult.data[0]);
     const requiredHeaders = [...REQUIRED_BOOTH_CSV_HEADERS];
-    let missingHeaders = requiredHeaders.filter((h) => !actualHeaders.includes(h));
+    let missingHeaders = requiredHeaders.filter(
+      (h) => !actualHeaders.includes(h)
+    );
 
     if (missingHeaders.length > 0) {
       const canRemap = actualHeaders.some((h) => headerMap[h]);
@@ -82,7 +90,9 @@ async function handleImport(req: NextRequest, session: any) {
           return out;
         }) as any;
         actualHeaders = Object.keys(parseResult.data[0]);
-        missingHeaders = requiredHeaders.filter((h) => !actualHeaders.includes(h));
+        missingHeaders = requiredHeaders.filter(
+          (h) => !actualHeaders.includes(h)
+        );
       }
     }
 
@@ -98,14 +108,14 @@ async function handleImport(req: NextRequest, session: any) {
     const result: ImportResult = {
       success: 0,
       errors: [],
-      warnings: []
+      warnings: [],
     };
 
     // Create a map of branch names to IDs for efficiency
     const branches = await prisma.branch.findMany({
-      select: { branchId: true, name: true }
+      select: { branchId: true, name: true },
     });
-    const branchMap = new Map(branches.map(b => [b.name, b.branchId]));
+    const branchMap = new Map(branches.map((b) => [b.name, b.branchId]));
 
     for (let i = 0; i < parseResult.data.length; i++) {
       const row = parseResult.data[i];
@@ -122,13 +132,15 @@ async function handleImport(req: NextRequest, session: any) {
         if (!branchId) {
           result.errors.push({
             row: rowNumber,
-            errors: [`支店「${validated.branchName}」が見つかりません`]
+            errors: [`支店「${validated.branchName}」が見つかりません`],
           });
           continue;
         }
 
         if (id) {
-          const existing = await prisma.booth.findUnique({ where: { boothId: id } });
+          const existing = await prisma.booth.findUnique({
+            where: { boothId: id },
+          });
           if (existing) {
             await prisma.booth.update({
               where: { boothId: id },
@@ -167,7 +179,11 @@ async function handleImport(req: NextRequest, session: any) {
         } else {
           result.errors.push({
             row: rowNumber,
-            errors: [error instanceof Error ? error.message : "データ検証中にエラーが発生しました"]
+            errors: [
+              error instanceof Error
+                ? error.message
+                : "データ検証中にエラーが発生しました",
+            ],
           });
         }
       }
@@ -187,8 +203,8 @@ async function handleImport(req: NextRequest, session: any) {
               name: data.name,
               status: data.status,
               branchId: data.branchId,
-              order: data.order
-            }
+              order: data.order,
+            },
           });
           result.success++;
         }

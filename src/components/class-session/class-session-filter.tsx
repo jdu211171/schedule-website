@@ -16,9 +16,17 @@ import {
 } from "@/components/ui/collapsible";
 import { SimpleDateRangePicker } from "../fix-date-range-picker/simple-date-range-picker";
 import { Combobox } from "@/components/ui/combobox";
-import { useSmartSelection, EnhancedTeacher, EnhancedStudent } from "@/hooks/useSmartSelection";
+import {
+  useSmartSelection,
+  EnhancedTeacher,
+  EnhancedStudent,
+} from "@/hooks/useSmartSelection";
 import { useDebounce } from "@/hooks/use-debounce";
-import { CompatibilityComboboxItem, getCompatibilityPriority, renderCompatibilityComboboxItem } from "@/components/admin-schedule/compatibility-combobox-utils";
+import {
+  CompatibilityComboboxItem,
+  getCompatibilityPriority,
+  renderCompatibilityComboboxItem,
+} from "@/components/admin-schedule/compatibility-combobox-utils";
 import type {
   Teacher,
   Student,
@@ -43,7 +51,18 @@ interface ClassSessionFilterProps {
     endDate?: string;
     isCancelled?: boolean;
   };
-  onFilterChange: (field: "teacherId" | "studentId" | "subjectId" | "classTypeId" | "boothId" | "startDate" | "endDate" | "isCancelled", value: string | boolean | undefined) => void;
+  onFilterChange: (
+    field:
+      | "teacherId"
+      | "studentId"
+      | "subjectId"
+      | "classTypeId"
+      | "boothId"
+      | "startDate"
+      | "endDate"
+      | "isCancelled",
+    value: string | boolean | undefined
+  ) => void;
   onDateRangeChange: (range: DateRange | undefined) => void;
   onResetFilters: () => void;
 }
@@ -174,7 +193,12 @@ export function ClassSessionFilter({
         description = "生徒の設定なし（全対応可）";
       }
 
-      const keywords = [teacher.name, teacher.kanaName, teacher.email, teacher.username]
+      const keywords = [
+        teacher.name,
+        teacher.kanaName,
+        teacher.email,
+        teacher.username,
+      ]
         .filter((k): k is string => Boolean(k))
         .map((k) => k.toLowerCase());
 
@@ -189,10 +213,14 @@ export function ClassSessionFilter({
       } as CompatibilityComboboxItem;
     })
     .sort((a, b) => {
-      const priorityDiff = getCompatibilityPriority(b.compatibilityType) - getCompatibilityPriority(a.compatibilityType);
+      const priorityDiff =
+        getCompatibilityPriority(b.compatibilityType) -
+        getCompatibilityPriority(a.compatibilityType);
       if (priorityDiff !== 0) return priorityDiff;
-      const labelA = typeof a.label === "string" ? a.label : String(a.label ?? "");
-      const labelB = typeof b.label === "string" ? b.label : String(b.label ?? "");
+      const labelA =
+        typeof a.label === "string" ? a.label : String(a.label ?? "");
+      const labelB =
+        typeof b.label === "string" ? b.label : String(b.label ?? "");
       return labelA.localeCompare(labelB, "ja");
     });
 
@@ -220,7 +248,12 @@ export function ClassSessionFilter({
         description = "講師の設定なし（全対応可）";
       }
 
-      const keywords = [student.name, student.kanaName, student.email, student.username]
+      const keywords = [
+        student.name,
+        student.kanaName,
+        student.email,
+        student.username,
+      ]
         .filter((k): k is string => Boolean(k))
         .map((k) => k.toLowerCase());
 
@@ -235,34 +268,46 @@ export function ClassSessionFilter({
       } as CompatibilityComboboxItem;
     })
     .sort((a, b) => {
-      const priorityDiff = getCompatibilityPriority(b.compatibilityType) - getCompatibilityPriority(a.compatibilityType);
+      const priorityDiff =
+        getCompatibilityPriority(b.compatibilityType) -
+        getCompatibilityPriority(a.compatibilityType);
       if (priorityDiff !== 0) return priorityDiff;
-      const labelA = typeof a.label === "string" ? a.label : String(a.label ?? "");
-      const labelB = typeof b.label === "string" ? b.label : String(b.label ?? "");
+      const labelA =
+        typeof a.label === "string" ? a.label : String(a.label ?? "");
+      const labelB =
+        typeof b.label === "string" ? b.label : String(b.label ?? "");
       return labelA.localeCompare(labelB, "ja");
     });
 
   // Simple searchable combobox items for Subject / ClassType / Booth
-  const subjectComboItems: CompatibilityComboboxItem[] = (subjects || []).map((subject) => ({
-    value: (subject as any).subjectId,
-    label: (subject as any).name,
-    keywords: [String((subject as any).name || '').toLowerCase()],
-  }));
+  const subjectComboItems: CompatibilityComboboxItem[] = (subjects || []).map(
+    (subject) => ({
+      value: (subject as any).subjectId,
+      label: (subject as any).name,
+      keywords: [String((subject as any).name || "").toLowerCase()],
+    })
+  );
 
   const classTypeComboItems: CompatibilityComboboxItem[] = [
-    { value: "__CANCELLED__", label: "キャンセル", keywords: ["キャンセル", "cancelled", "canceled"] },
-    ...((classTypes || []).map((ct) => ({
+    {
+      value: "__CANCELLED__",
+      label: "キャンセル",
+      keywords: ["キャンセル", "cancelled", "canceled"],
+    },
+    ...(classTypes || []).map((ct) => ({
       value: (ct as any).classTypeId,
       label: (ct as any).name,
-      keywords: [String((ct as any).name || '').toLowerCase()],
-    })))
+      keywords: [String((ct as any).name || "").toLowerCase()],
+    })),
   ];
 
-  const boothComboItems: CompatibilityComboboxItem[] = (booths || []).map((b) => ({
-    value: (b as any).boothId,
-    label: (b as any).name,
-    keywords: [String((b as any).name || '').toLowerCase()],
-  }));
+  const boothComboItems: CompatibilityComboboxItem[] = (booths || []).map(
+    (b) => ({
+      value: (b as any).boothId,
+      label: (b as any).name,
+      keywords: [String((b as any).name || "").toLowerCase()],
+    })
+  );
 
   if (!isInitialized) {
     return null; // Show nothing during initial render to prevent flicker
@@ -335,7 +380,9 @@ export function ClassSessionFilter({
             <Combobox<CompatibilityComboboxItem>
               items={teacherComboItems}
               value={filters.teacherId || ""}
-              onValueChange={(val) => onFilterChange("teacherId", val || undefined)}
+              onValueChange={(val) =>
+                onFilterChange("teacherId", val || undefined)
+              }
               placeholder="講師を選択"
               searchPlaceholder="講師を検索..."
               emptyMessage="講師が見つかりません"
@@ -345,7 +392,9 @@ export function ClassSessionFilter({
               onSearchChange={setTeacherSearch}
               loading={isLoadingTeachersSmart || isFetchingTeachers}
               triggerClassName="h-9"
-              onOpenChange={(open) => { if (!open) setTeacherSearch("") }}
+              onOpenChange={(open) => {
+                if (!open) setTeacherSearch("");
+              }}
               renderItem={renderCompatibilityComboboxItem}
             />
           </div>
@@ -356,7 +405,9 @@ export function ClassSessionFilter({
             <Combobox<CompatibilityComboboxItem>
               items={studentComboItems}
               value={filters.studentId || ""}
-              onValueChange={(val) => onFilterChange("studentId", val || undefined)}
+              onValueChange={(val) =>
+                onFilterChange("studentId", val || undefined)
+              }
               placeholder="生徒を選択"
               searchPlaceholder="生徒を検索..."
               emptyMessage="生徒が見つかりません"
@@ -366,7 +417,9 @@ export function ClassSessionFilter({
               onSearchChange={setStudentSearch}
               loading={isLoadingStudentsSmart || isFetchingStudents}
               triggerClassName="h-9"
-              onOpenChange={(open) => { if (!open) setStudentSearch("") }}
+              onOpenChange={(open) => {
+                if (!open) setStudentSearch("");
+              }}
               renderItem={renderCompatibilityComboboxItem}
             />
           </div>
@@ -377,7 +430,9 @@ export function ClassSessionFilter({
             <Combobox<CompatibilityComboboxItem>
               items={subjectComboItems}
               value={filters.subjectId || ""}
-              onValueChange={(val) => onFilterChange("subjectId", val || undefined)}
+              onValueChange={(val) =>
+                onFilterChange("subjectId", val || undefined)
+              }
               placeholder="科目を選択"
               searchPlaceholder="科目を検索..."
               emptyMessage="科目が見つかりません"
@@ -392,7 +447,11 @@ export function ClassSessionFilter({
             <label className="text-xs font-medium">授業タイプ</label>
             <Combobox<CompatibilityComboboxItem>
               items={classTypeComboItems}
-              value={filters.isCancelled ? "__CANCELLED__" : (filters.classTypeId || "")}
+              value={
+                filters.isCancelled
+                  ? "__CANCELLED__"
+                  : filters.classTypeId || ""
+              }
               onValueChange={(val) => {
                 if (val === "__CANCELLED__") {
                   onFilterChange("isCancelled", true);
@@ -417,7 +476,9 @@ export function ClassSessionFilter({
             <Combobox<CompatibilityComboboxItem>
               items={boothComboItems}
               value={filters.boothId || ""}
-              onValueChange={(val) => onFilterChange("boothId", val || undefined)}
+              onValueChange={(val) =>
+                onFilterChange("boothId", val || undefined)
+              }
               placeholder="ブースを選択"
               searchPlaceholder="ブースを検索..."
               emptyMessage="ブースが見つかりません"

@@ -53,7 +53,9 @@ export async function isSpecialClassType(
   return false;
 }
 
-export async function applySpecialClassColor<T extends { classTypeId: string | null }>(
+export async function applySpecialClassColor<
+  T extends { classTypeId: string | null },
+>(
   rawSessions: T[],
   formattedSessions: Array<{ classTypeColor?: string | null }>
 ): Promise<void> {

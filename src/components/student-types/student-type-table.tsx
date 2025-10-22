@@ -50,7 +50,10 @@ export function StudentTypeTable() {
 
   const deleteStudentTypeMutation = useStudentTypeDelete();
   const updateOrderMutation = useStudentTypeOrderUpdate();
-  const { exportToCSV, isExporting } = useGenericExport("/api/student-types/export", "student_types");
+  const { exportToCSV, isExporting } = useGenericExport(
+    "/api/student-types/export",
+    "student_types"
+  );
 
   // Use local state during sort mode, otherwise use server data
   const typedStudentTypes = isSortMode
@@ -169,8 +172,8 @@ export function StudentTypeTable() {
   const handleExport = () => {
     // Get visible columns (all columns except actions)
     const visibleColumns = columns
-      .map(col => (col as any).accessorKey)
-      .filter(key => key) as string[];
+      .map((col) => (col as any).accessorKey)
+      .filter((key) => key) as string[];
     exportToCSV({ columns: visibleColumns, query: { name: searchTerm || "" } });
   };
 

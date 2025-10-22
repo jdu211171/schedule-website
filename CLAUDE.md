@@ -24,6 +24,7 @@ bun prisma db seed   # Seed database (uses ts-node)
 ## High-Level Architecture
 
 ### Authentication System
+
 - **NextAuth v5 (beta)** with JWT session strategy
 - **Providers**: Credentials (username/email + password) and Google OAuth
 - **Google OAuth**: Restricted to existing users only - no new signups via OAuth
@@ -36,6 +37,7 @@ bun prisma db seed   # Seed database (uses ts-node)
   - Branch context passed via `X-Selected-Branch` header
 
 ### Database Design
+
 - **Prisma ORM** with PostgreSQL (Supabase)
 - **Connection pooling**: Uses `DATABASE_URL` for pooled connections, `DIRECT_URL` for migrations
 - **Multi-tenant architecture**: Branch-based data isolation
@@ -47,6 +49,7 @@ bun prisma db seed   # Seed database (uses ts-node)
 - **Order management**: Most entities have an `order` field for custom sorting
 
 ### API Architecture
+
 - **RESTful routes** under `/app/api/`
 - **Standard response format**:
   ```typescript
@@ -65,6 +68,7 @@ bun prisma db seed   # Seed database (uses ts-node)
 - **Error handling**: Custom error class with status codes
 
 ### Frontend Patterns
+
 - **State Management**:
   - Zustand for local UI state
   - TanStack Query for server state with custom hooks
@@ -74,6 +78,7 @@ bun prisma db seed   # Seed database (uses ts-node)
 - **Layouts**: Role-based layouts that correspond to user roles
 
 ### Role-Based Access
+
 - **Route structure**:
   - `/dashboard/*` - ADMIN and STAFF only
   - `/teacher/*` - TEACHER only
@@ -82,6 +87,7 @@ bun prisma db seed   # Seed database (uses ts-node)
 - **Branch selection**: Stored in localStorage and passed in headers
 
 ### Key Development Patterns
+
 1. **Always use Bun** for package management (not npm or yarn)
 2. **Branch context is critical** - Most operations are branch-scoped
 3. **Order fields** - Entities support custom ordering, maintain these when updating
@@ -90,6 +96,7 @@ bun prisma db seed   # Seed database (uses ts-node)
 6. **TypeScript strict mode** - Resolve all type errors before completing work
 
 ### Environment Variables
+
 ```env
 DATABASE_URL=       # Pooled connection string
 DIRECT_URL=         # Direct connection for migrations
@@ -100,6 +107,7 @@ GOOGLE_CLIENT_SECRET=
 ```
 
 ### Code Conventions
+
 - **Modify only relevant code** - Don't change unrelated files
 - **Preserve formatting** - Keep existing code style and structure
 - **Check TypeScript errors** - Run `bun run check-errors` before finalizing
@@ -111,19 +119,16 @@ GOOGLE_CLIENT_SECRET=
 ⚠️ **CRITICAL**: These rules are FREQUENTLY IGNORED - PAY ATTENTION! ⚠️
 
 - **🔧 TOOLS - STRICT REQUIREMENTS**
-
   - 🛑 **MANDATORY**: Use Bun for package management (NOT npm, NOT yarn)
   - 🛑 **MANDATORY**: Fix TypeScript errors after ALL changes
   - 🛑 **MANDATORY**: Use the local PostgreSQL database via psql (with credentials) instead of Prisma for local DB operations, e.g.: `PGPASSWORD=postgres psql -h localhost -U postgres -d schedulewebsite -c "<your_command_here>"`
 
 - **📝 CODE CHANGES - ZERO TOLERANCE POLICY**
-
   - ✅ **ONLY modify relevant code parts** - Do NOT touch unrelated code
   - ✅ **PRESERVE ALL**: formatting, names, and documentation unless EXPLICITLY requested
   - ✅ **FOLLOW EXISTING PATTERNS**: Refer to existing similar code structure when generating new code (components, API routes, utilities, types, assets)
 
 - **📋 PROJECT MANAGEMENT - ABSOLUTELY REQUIRED**
-
   - 🔴 **MANDATORY**: Use Spec Kit specs for tasks, progress, and issues. Update `specs/<id>-<slug>/plan.md` and `tasks.md` regularly — NO EXCEPTIONS
   - 🔴 **SESSION START CHECKLIST**: review the active spec in `specs/`, run `git status`, check recent commits — DO NOT SKIP
   - Active spec by branch: use `scripts/active-spec.sh`
@@ -131,14 +136,12 @@ GOOGLE_CLIENT_SECRET=
     - Or: `. scripts/active-spec.sh` (prints and exports `ACTIVE_SPEC`)
 
 - **⚡ DEVELOPMENT PROCESS - ENFORCE STRICTLY**
-
   - 🛑 **REQUIRED**: Plan and discuss approaches before coding - NO RUSHING
   - 🛑 **REQUIRED**: Make small, testable changes - NO BIG CHANGES
   - 🛑 **REQUIRED**: Eliminate duplicates proactively
   - 🛑 **REQUIRED**: Keep spec artifacts updated (`tasks.md`, `plan.md`, `spec.md`, contracts) and log questions in `research.md` — ALWAYS DOCUMENT
 
 - **🔒 CODE QUALITY - NON-NEGOTIABLE STANDARDS**
-
   - ✅ **MANDATORY**: Handle errors and validate inputs - NO EXCEPTIONS
   - ✅ **MANDATORY**: Follow conventions and secure secrets - NEVER EXPOSE SECRETS
   - ✅ **MANDATORY**: Write clear, type-safe code - NO SHORTCUTS

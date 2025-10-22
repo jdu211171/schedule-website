@@ -10,30 +10,33 @@ export async function GET() {
         name: "高校生",
         maxYears: "3",
         description: "高校1年生から3年生まで",
-        order: "1"
+        order: "1",
       },
       {
         name: "中学生",
         maxYears: "3",
         description: "中学1年生から3年生まで",
-        order: "2"
+        order: "2",
       },
       {
         name: "小学生",
         maxYears: "6",
         description: "",
-        order: "3"
-      }
+        order: "3",
+      },
     ];
 
     // Generate CSV with headers
-    const csv = CSVParser.generateCSV(sampleData, [...STUDENT_TYPE_CSV_HEADERS]);
+    const csv = CSVParser.generateCSV(sampleData, [
+      ...STUDENT_TYPE_CSV_HEADERS,
+    ]);
 
     // Return CSV file
     return new NextResponse(csv, {
       headers: {
         "Content-Type": "text/csv; charset=utf-8",
-        "Content-Disposition": 'attachment; filename="student_types_template.csv"',
+        "Content-Disposition":
+          'attachment; filename="student_types_template.csv"',
       },
     });
   } catch (error) {

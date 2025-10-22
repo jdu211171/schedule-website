@@ -1,11 +1,12 @@
-import type { ExtendedClassSessionWithRelations } from '@/hooks/useClassSessionQuery';
+import type { ExtendedClassSessionWithRelations } from "@/hooks/useClassSessionQuery";
 
 export type Pos = { boothIndex: number; start: number; end: number };
 
 const isCancelled = (s: ExtendedClassSessionWithRelations): boolean =>
   Boolean((s as unknown as { isCancelled?: boolean })?.isCancelled);
 
-const overlaps = (a: Pos, b: Pos): boolean => !(b.end <= a.start || a.end <= b.start);
+const overlaps = (a: Pos, b: Pos): boolean =>
+  !(b.end <= a.start || a.end <= b.start);
 
 export function computeBoothOverlap(
   session: ExtendedClassSessionWithRelations,

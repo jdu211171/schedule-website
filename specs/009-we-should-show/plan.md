@@ -4,6 +4,7 @@
 **Input**: Feature specification from `/home/user/Development/schedule-website/specs/009-we-should-show/spec.md`
 
 ## Execution Flow (/plan command scope)
+
 ```
 1. Load feature spec from Input path
    → If not found: ERROR "No feature spec at {path}"
@@ -26,13 +27,16 @@
 ```
 
 **IMPORTANT**: The /plan command STOPS at step 7. Phases 2-4 are executed by other commands:
+
 - Phase 2: /tasks command creates tasks.md
 - Phase 3-4: Implementation execution (manual or via tools)
 
 ## Summary
+
 When a user clicks to edit a conflicting class session, they will be navigated to the day calendar view for that day to see the conflict in context and resolve it. This avoids showing a modal and instead leverages the existing day calendar view for conflict resolution.
 
 ## Technical Context
+
 **Language/Version**: TypeScript 5.8.3
 **Primary Dependencies**: Next.js 15.4.7, React 19.0.0, Prisma 6.8.2, TanStack Query 5.69.0, Zustand 5.0.5, shadcn/ui, Tailwind CSS
 **Storage**: PostgreSQL (via Prisma)
@@ -44,13 +48,15 @@ When a user clicks to edit a conflicting class session, they will be navigated t
 **Scale/Scope**: NEEDS CLARIFICATION
 
 ## Constitution Check
-*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+
+_GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
 - **PASS**: No constitutional violations detected.
 
 ## Project Structure
 
 ### Documentation (this feature)
+
 ```
 specs/009-we-should-show/
 ├── plan.md              # This file (/plan command output)
@@ -62,6 +68,7 @@ specs/009-we-should-show/
 ```
 
 ### Source Code (repository root)
+
 ```
 # Option 2: Web application (when "frontend" + "backend" detected)
 backend/
@@ -82,6 +89,7 @@ frontend/
 **Structure Decision**: The project is a Next.js application, which combines frontend and backend. The existing structure under `src/` will be used.
 
 ## Phase 0: Outline & Research
+
 1. **Extract unknowns from Technical Context** above:
    - For each NEEDS CLARIFICATION → research task
 
@@ -93,7 +101,8 @@ frontend/
 **Output**: `research.md` with all NEEDS CLARIFICATION resolved
 
 ## Phase 1: Design & Contracts
-*Prerequisites: research.md complete*
+
+_Prerequisites: research.md complete_
 
 1. **Extract entities from feature spec** → `data-model.md`:
    - `Class Session` and `Class Series` entities and their attributes have been documented in `data-model.md`.
@@ -110,12 +119,14 @@ frontend/
 5. **Update agent file incrementally** (O(1) operation):
    - `GEMINI.md` will be updated with the context of this feature.
 
-**Output**: data-model.md, /contracts/*, quickstart.md, GEMINI.md
+**Output**: data-model.md, /contracts/\*, quickstart.md, GEMINI.md
 
 ## Phase 2: Task Planning Approach
-*This section describes what the /tasks command will do - DO NOT execute during /plan*
+
+_This section describes what the /tasks command will do - DO NOT execute during /plan_
 
 **Task Generation Strategy**:
+
 - Load `.specify/templates/tasks-template.md` as base
 - Generate tasks from the feature specification and the design documents.
 - Create tasks for:
@@ -125,30 +136,34 @@ frontend/
   - Ensuring the standard "Edit Class" modal is shown for non-conflicting sessions.
 
 **Ordering Strategy**:
+
 - TDD order: Tests before implementation.
 - Dependency order: Implement the logic to identify conflicting sessions first, then the UI changes.
 
 **Estimated Output**: 5-10 numbered, ordered tasks in tasks.md
 
 ## Phase 3+: Future Implementation
-*These phases are beyond the scope of the /plan command*
+
+_These phases are beyond the scope of the /plan command_
 
 **Phase 3**: Task execution (/tasks command creates tasks.md)
 **Phase 4**: Implementation (execute tasks.md following constitutional principles)
 **Phase 5**: Validation (run tests, execute quickstart.md, performance validation)
 
 ## Complexity Tracking
-*Fill ONLY if Constitution Check has violations that must be justified*
+
+_Fill ONLY if Constitution Check has violations that must be justified_
 
 | Violation | Why Needed | Simpler Alternative Rejected Because |
-|-----------|------------|-------------------------------------|
-| N/A       | N/A        | N/A                                 |
-
+| --------- | ---------- | ------------------------------------ |
+| N/A       | N/A        | N/A                                  |
 
 ## Progress Tracking
-*This checklist is updated during execution flow*
+
+_This checklist is updated during execution flow_
 
 **Phase Status**:
+
 - [x] Phase 0: Research complete (/plan command)
 - [x] Phase 1: Design complete (/plan command)
 - [x] Phase 2: Task planning complete (/plan command - describe approach only)
@@ -159,10 +174,12 @@ frontend/
   - Notes: Backported guard for PATCH /api/class-series/:seriesId to prevent P2025 when blueprint missing; returns 404/403 pre-update.
 
 **Gate Status**:
+
 - [x] Initial Constitution Check: PASS
 - [x] Post-Design Constitution Check: PASS
 - [x] All NEEDS CLARIFICATION resolved
 - [ ] Complexity deviations documented
 
 ---
-*Based on Constitution v2.1.1 - See `/.specify/memory/constitution.md`*
+
+_Based on Constitution v2.1.1 - See `/.specify/memory/constitution.md`_

@@ -26,8 +26,8 @@ This runbook explains why some sessions look conflicted in the Day Calendar but 
 
 ## What This Procedure Does
 
-1) Detects all current hard overlaps (same date, overlapping time range) on any of: teacher, student, or booth (excluding cancelled), and marks them `CONFLICTED`.
-2) Marks all remaining active sessions with blank status as `CONFIRMED`.
+1. Detects all current hard overlaps (same date, overlapping time range) on any of: teacher, student, or booth (excluding cancelled), and marks them `CONFLICTED`.
+2. Marks all remaining active sessions with blank status as `CONFIRMED`.
 
 Result: Day Calendar visuals and Series table counts align, without removing any session.
 
@@ -41,7 +41,7 @@ Use the project’s local policy for psql (example):
 PGPASSWORD=postgres psql -h localhost -U postgres -d schedulewebsite -c "SELECT 1;"
 ```
 
-1) Dry‑run (counts only)
+1. Dry‑run (counts only)
 
 ```
 PGPASSWORD=postgres psql -h localhost -U postgres -d schedulewebsite -v ON_ERROR_STOP=1 -c "
@@ -68,7 +68,7 @@ SELECT
 "
 ```
 
-2) Apply (single transaction, non‑destructive)
+2. Apply (single transaction, non‑destructive)
 
 ```
 PGPASSWORD=postgres psql -h localhost -U postgres -d schedulewebsite -v ON_ERROR_STOP=1 -c "
@@ -119,7 +119,7 @@ COMMIT;
 "
 ```
 
-3) Verify
+3. Verify
 
 ```
 PGPASSWORD=postgres psql -h localhost -U postgres -d schedulewebsite -c "SELECT count(*) FROM class_sessions WHERE status='CONFLICTED';"
@@ -151,13 +151,13 @@ export PGPASSWORD='<your exact password>'
 export PGSSLMODE=require
 ```
 
-1) Connectivity check
+1. Connectivity check
 
 ```
 psql -v ON_ERROR_STOP=1 -c "SELECT 1;"
 ```
 
-2) Dry‑run (counts only)
+2. Dry‑run (counts only)
 
 ```
 psql -v ON_ERROR_STOP=1 -c "
@@ -184,7 +184,7 @@ SELECT
 "
 ```
 
-3) Apply (single transaction, non‑destructive)
+3. Apply (single transaction, non‑destructive)
 
 ```
 psql -v ON_ERROR_STOP=1 -c "
@@ -235,7 +235,7 @@ COMMIT;
 "
 ```
 
-4) Verify
+4. Verify
 
 ```
 psql -c "SELECT count(*) FROM class_sessions WHERE status='CONFLICTED';"
@@ -285,4 +285,3 @@ Also add the same condition in the final `UPDATE ... WHERE` clauses, e.g. `AND c
 
 - UI: The Series table will reflect updated conflict counts automatically (it queries `status='CONFLICTED'`). Day Calendar visuals continue to stripe overlaps as before.
 - For local UI, just refresh. No Next.js build or Prisma schema changes are required.
-

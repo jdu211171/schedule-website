@@ -1,7 +1,7 @@
-import { prisma } from '@/lib/prisma';
-import { encrypt, decrypt, isEncrypted } from '@/lib/encryption';
-import { testChannelCredentials } from '@/lib/line-multi-channel';
-import { Prisma } from '@prisma/client';
+import { prisma } from "@/lib/prisma";
+import { encrypt, decrypt, isEncrypted } from "@/lib/encryption";
+import { testChannelCredentials } from "@/lib/line-multi-channel";
+import { Prisma } from "@prisma/client";
 
 export interface CreateLineChannelData {
   name: string;
@@ -42,16 +42,22 @@ export class LineChannelService {
     }
 
     // Fallback with warning
-    console.warn('BASE_URL environment variable not set. Using default fallback URL.');
-    return 'https://your-domain.com';
+    console.warn(
+      "BASE_URL environment variable not set. Using default fallback URL."
+    );
+    return "https://your-domain.com";
   }
 
   /**
    * Generate preview for sensitive credentials
    */
-  private static generateCredentialPreview(credential: string, showStart = 4, showEnd = 4): string {
+  private static generateCredentialPreview(
+    credential: string,
+    showStart = 4,
+    showEnd = 4
+  ): string {
     if (!credential || credential.length <= showStart + showEnd) {
-      return '****';
+      return "****";
     }
     return `${credential.substring(0, showStart)}...${credential.slice(-showEnd)}`;
   }
@@ -64,7 +70,7 @@ export class LineChannelService {
     // Test credentials before saving
     const testResult = await testChannelCredentials({
       channelAccessToken: data.channelAccessToken,
-      channelSecret: data.channelSecret
+      channelSecret: data.channelSecret,
     });
 
     if (!testResult.success) {
@@ -75,7 +81,7 @@ export class LineChannelService {
     if (data.isDefault) {
       await prisma.lineChannel.updateMany({
         where: { isDefault: true },
-        data: { isDefault: false }
+        data: { isDefault: false },
       });
     }
 
@@ -91,7 +97,7 @@ export class LineChannelService {
           ...channelData,
           channelAccessToken: encryptedToken,
           channelSecret: encryptedSecret,
-        }
+        },
       });
 
       // Assign branches neutrally (UNSPECIFIED) if provided. Role is set later explicitly via UI.
@@ -101,8 +107,8 @@ export class LineChannelService {
             data: {
               branchId,
               channelId: newChannel.channelId,
-              channelType: 'UNSPECIFIED'
-            }
+              channelType: "UNSPECIFIED",
+            },
           });
         }
       }
@@ -113,22 +119,26 @@ export class LineChannelService {
         include: {
           branchLineChannels: {
             include: {
-              branch: true
-            }
-          }
-        }
+              branch: true,
+            },
+          },
+        },
       });
     });
 
     if (!channel) {
-      throw new Error('Failed to create channel');
+      throw new Error("Failed to create channel");
     }
 
     // Get base URL for webhook endpoints
     const baseUrl = this.getBaseUrl();
 
     // Generate previews for credentials
-    const tokenPreview = this.generateCredentialPreview(data.channelAccessToken, 10, 10);
+    const tokenPreview = this.generateCredentialPreview(
+      data.channelAccessToken,
+      10,
+      10
+    );
     const secretPreview = this.generateCredentialPreview(data.channelSecret);
 
     // Return channel without encrypted credentials but with webhook URL and previews
@@ -143,7 +153,7 @@ export class LineChannelService {
       webhookUrl: `${baseUrl}/api/line/webhook/${channel.channelId}`,
       branches: channel.branchLineChannels,
       branchLineChannels: undefined,
-      botInfo: testResult.botInfo
+      botInfo: testResult.botInfo,
     };
   }
 
@@ -152,17 +162,19 @@ export class LineChannelService {
    */
   static async updateChannel(channelId: string, data: UpdateLineChannelData) {
     const existingChannel = await prisma.lineChannel.findUnique({
-      where: { channelId }
+      where: { channelId },
     });
 
     if (!existingChannel) {
-      throw new Error('Channel not found');
+      throw new Error("Channel not found");
     }
 
     // If updating credentials, test them first
     // Only test if non-empty credentials are provided
-    const hasNewAccessToken = data.channelAccessToken && data.channelAccessToken.trim().length > 0;
-    const hasNewSecret = data.channelSecret && data.channelSecret.trim().length > 0;
+    const hasNewAccessToken =
+      data.channelAccessToken && data.channelAccessToken.trim().length > 0;
+    const hasNewSecret =
+      data.channelSecret && data.channelSecret.trim().length > 0;
 
     if (hasNewAccessToken || hasNewSecret) {
       // Get access token - handle both encrypted and unencrypted data
@@ -193,7 +205,7 @@ export class LineChannelService {
 
       const testResult = await testChannelCredentials({
         channelAccessToken: accessToken,
-        channelSecret: secret
+        channelSecret: secret,
       });
 
       if (!testResult.success) {
@@ -206,9 +218,9 @@ export class LineChannelService {
       await prisma.lineChannel.updateMany({
         where: {
           isDefault: true,
-          NOT: { channelId }
+          NOT: { channelId },
         },
-        data: { isDefault: false }
+        data: { isDefault: false },
       });
     }
 
@@ -218,13 +230,19 @@ export class LineChannelService {
     // Prepare update data
     const updateData: Prisma.LineChannelUpdateInput = {
       ...channelUpdateData,
-      channelAccessToken: hasNewAccessToken && data.channelAccessToken ? encrypt(data.channelAccessToken) : undefined,
-      channelSecret: hasNewSecret && data.channelSecret ? encrypt(data.channelSecret) : undefined,
-      lastRotatedAt: (hasNewAccessToken || hasNewSecret) ? new Date() : undefined
+      channelAccessToken:
+        hasNewAccessToken && data.channelAccessToken
+          ? encrypt(data.channelAccessToken)
+          : undefined,
+      channelSecret:
+        hasNewSecret && data.channelSecret
+          ? encrypt(data.channelSecret)
+          : undefined,
+      lastRotatedAt: hasNewAccessToken || hasNewSecret ? new Date() : undefined,
     };
 
     // Use transaction to ensure atomicity
-    const channel = await prisma.$transaction(async (tx) => {
+    const channel = (await prisma.$transaction(async (tx) => {
       // Update channel
       const updatedChannel = await tx.lineChannel.update({
         where: { channelId },
@@ -232,17 +250,17 @@ export class LineChannelService {
         include: {
           branchLineChannels: {
             include: {
-              branch: true
-            }
-          }
-        }
+              branch: true,
+            },
+          },
+        },
       });
 
       // Update branch assignments if provided
       if (branchIds !== undefined) {
         // Remove existing assignments
         await tx.branchLineChannel.deleteMany({
-          where: { channelId }
+          where: { channelId },
         });
 
         // Create new assignments as UNSPECIFIED (type is set later explicitly via UI)
@@ -253,8 +271,8 @@ export class LineChannelService {
               data: {
                 branchId,
                 channelId,
-                channelType: 'UNSPECIFIED'
-              }
+                channelType: "UNSPECIFIED",
+              },
             });
           }
         }
@@ -265,15 +283,15 @@ export class LineChannelService {
           include: {
             branchLineChannels: {
               include: {
-                branch: true
-              }
-            }
-          }
+                branch: true,
+              },
+            },
+          },
         });
       }
 
       return updatedChannel;
-    }) as any;
+    })) as any;
 
     // Get base URL for webhook endpoints
     const baseUrl = this.getBaseUrl();
@@ -289,7 +307,9 @@ export class LineChannelService {
       } else {
         // Data is not encrypted, use as-is
         decryptedToken = channel.channelAccessToken;
-        console.warn(`LINE channel ${channel.channelId} has unencrypted access token`);
+        console.warn(
+          `LINE channel ${channel.channelId} has unencrypted access token`
+        );
       }
 
       if (isEncrypted(channel.channelSecret)) {
@@ -297,10 +317,15 @@ export class LineChannelService {
       } else {
         // Data is not encrypted, use as-is
         decryptedSecret = channel.channelSecret;
-        console.warn(`LINE channel ${channel.channelId} has unencrypted secret`);
+        console.warn(
+          `LINE channel ${channel.channelId} has unencrypted secret`
+        );
       }
     } catch (error) {
-      console.error(`Failed to decrypt credentials for channel ${channel.channelId}:`, error);
+      console.error(
+        `Failed to decrypt credentials for channel ${channel.channelId}:`,
+        error
+      );
       // If decryption fails, try using the raw value
       decryptedToken = channel.channelAccessToken;
       decryptedSecret = channel.channelSecret;
@@ -313,11 +338,15 @@ export class LineChannelService {
       channelId: undefined,
       channelAccessToken: undefined,
       channelSecret: undefined,
-      channelAccessTokenPreview: this.generateCredentialPreview(decryptedToken, 10, 10),
+      channelAccessTokenPreview: this.generateCredentialPreview(
+        decryptedToken,
+        10,
+        10
+      ),
       channelSecretPreview: this.generateCredentialPreview(decryptedSecret),
       webhookUrl: `${baseUrl}/api/line/webhook/${channel.channelId}`,
       branches: channel.branchLineChannels,
-      branchLineChannels: undefined
+      branchLineChannels: undefined,
     };
   }
 
@@ -326,7 +355,7 @@ export class LineChannelService {
    */
   static async deleteChannel(channelId: string) {
     return await prisma.lineChannel.delete({
-      where: { channelId }
+      where: { channelId },
     });
   }
 
@@ -338,21 +367,18 @@ export class LineChannelService {
       include: {
         branchLineChannels: {
           include: {
-            branch: true
-          }
-        }
+            branch: true,
+          },
+        },
       },
-      orderBy: [
-        { isDefault: 'desc' },
-        { createdAt: 'desc' }
-      ]
+      orderBy: [{ isDefault: "desc" }, { createdAt: "desc" }],
     });
 
     // Get base URL for webhook endpoints
     const baseUrl = this.getBaseUrl();
 
     // Remove encrypted credentials and add webhook URL from response
-    const processedChannels = channels.map(channel => {
+    const processedChannels = channels.map((channel) => {
       // Decrypt to generate previews - handle both encrypted and unencrypted data
       let decryptedToken: string;
       let decryptedSecret: string;
@@ -363,31 +389,42 @@ export class LineChannelService {
           try {
             decryptedToken = decrypt(channel.channelAccessToken);
           } catch (decryptError) {
-            console.warn(`LINE channel ${channel.channelId} appears encrypted but failed to decrypt access token - may be encrypted with different key`);
+            console.warn(
+              `LINE channel ${channel.channelId} appears encrypted but failed to decrypt access token - may be encrypted with different key`
+            );
             // Skip this channel if we can't decrypt it
             return null;
           }
         } else {
           // Data is not encrypted, use as-is
           decryptedToken = channel.channelAccessToken;
-          console.warn(`LINE channel ${channel.channelId} has unencrypted access token`);
+          console.warn(
+            `LINE channel ${channel.channelId} has unencrypted access token`
+          );
         }
 
         if (isEncrypted(channel.channelSecret)) {
           try {
             decryptedSecret = decrypt(channel.channelSecret);
           } catch (decryptError) {
-            console.warn(`LINE channel ${channel.channelId} appears encrypted but failed to decrypt secret - may be encrypted with different key`);
+            console.warn(
+              `LINE channel ${channel.channelId} appears encrypted but failed to decrypt secret - may be encrypted with different key`
+            );
             // Skip this channel if we can't decrypt it
             return null;
           }
         } else {
           // Data is not encrypted, use as-is
           decryptedSecret = channel.channelSecret;
-          console.warn(`LINE channel ${channel.channelId} has unencrypted secret`);
+          console.warn(
+            `LINE channel ${channel.channelId} has unencrypted secret`
+          );
         }
       } catch (error) {
-        console.error(`Failed to process credentials for channel ${channel.channelId}:`, error);
+        console.error(
+          `Failed to process credentials for channel ${channel.channelId}:`,
+          error
+        );
         // Skip this channel
         return null;
       }
@@ -398,16 +435,20 @@ export class LineChannelService {
         channelId: undefined,
         channelAccessToken: undefined,
         channelSecret: undefined,
-        channelAccessTokenPreview: this.generateCredentialPreview(decryptedToken, 10, 10),
+        channelAccessTokenPreview: this.generateCredentialPreview(
+          decryptedToken,
+          10,
+          10
+        ),
         channelSecretPreview: this.generateCredentialPreview(decryptedSecret),
         webhookUrl: `${baseUrl}/api/line/webhook/${channel.channelId}`,
         branches: channel.branchLineChannels,
-        branchLineChannels: undefined
+        branchLineChannels: undefined,
       };
     });
 
     // Filter out any channels that couldn't be processed (null values)
-    return processedChannels.filter(channel => channel !== null);
+    return processedChannels.filter((channel) => channel !== null);
   }
 
   /**
@@ -419,10 +460,10 @@ export class LineChannelService {
       include: {
         branchLineChannels: {
           include: {
-            branch: true
-          }
-        }
-      }
+            branch: true,
+          },
+        },
+      },
     });
 
     if (!channel) {
@@ -443,7 +484,9 @@ export class LineChannelService {
       } else {
         // Data is not encrypted, use as-is
         decryptedToken = channel.channelAccessToken;
-        console.warn(`LINE channel ${channel.channelId} has unencrypted access token`);
+        console.warn(
+          `LINE channel ${channel.channelId} has unencrypted access token`
+        );
       }
 
       if (isEncrypted(channel.channelSecret)) {
@@ -451,10 +494,15 @@ export class LineChannelService {
       } else {
         // Data is not encrypted, use as-is
         decryptedSecret = channel.channelSecret;
-        console.warn(`LINE channel ${channel.channelId} has unencrypted secret`);
+        console.warn(
+          `LINE channel ${channel.channelId} has unencrypted secret`
+        );
       }
     } catch (error) {
-      console.error(`Failed to decrypt credentials for channel ${channel.channelId}:`, error);
+      console.error(
+        `Failed to decrypt credentials for channel ${channel.channelId}:`,
+        error
+      );
       // If decryption fails, try using the raw value
       decryptedToken = channel.channelAccessToken;
       decryptedSecret = channel.channelSecret;
@@ -467,11 +515,15 @@ export class LineChannelService {
       channelId: undefined,
       channelAccessToken: undefined,
       channelSecret: undefined,
-      channelAccessTokenPreview: this.generateCredentialPreview(decryptedToken, 10, 10),
+      channelAccessTokenPreview: this.generateCredentialPreview(
+        decryptedToken,
+        10,
+        10
+      ),
       channelSecretPreview: this.generateCredentialPreview(decryptedSecret),
       webhookUrl: `${baseUrl}/api/line/webhook/${channel.channelId}`,
       branches: channel.branchLineChannels,
-      branchLineChannels: undefined
+      branchLineChannels: undefined,
     };
   }
 
@@ -483,7 +535,7 @@ export class LineChannelService {
     await prisma.$transaction(async (tx) => {
       // Remove existing assignments
       await tx.branchLineChannel.deleteMany({
-        where: { channelId }
+        where: { channelId },
       });
 
       // Create new assignments as UNSPECIFIED (type is set via separate UI)
@@ -493,8 +545,8 @@ export class LineChannelService {
             data: {
               branchId,
               channelId,
-              channelType: 'UNSPECIFIED'
-            }
+              channelType: "UNSPECIFIED",
+            },
           });
         }
       }
@@ -506,17 +558,21 @@ export class LineChannelService {
   /**
    * Set a specific channel type for a branch
    */
-  static async setChannelType(branchId: string, channelId: string, channelType: 'TEACHER' | 'STUDENT') {
+  static async setChannelType(
+    branchId: string,
+    channelId: string,
+    channelType: "TEACHER" | "STUDENT"
+  ) {
     // Verify the channel is assigned to the branch
     const assignment = await prisma.branchLineChannel.findFirst({
       where: {
         branchId,
-        channelId
-      }
+        channelId,
+      },
     });
 
     if (!assignment) {
-      throw new Error('この校舎にはチャンネルが割り当てられていません');
+      throw new Error("この校舎にはチャンネルが割り当てられていません");
     }
 
     // Use transaction to ensure atomicity
@@ -526,18 +582,18 @@ export class LineChannelService {
         where: {
           branchId,
           channelType,
-          id: { not: assignment.id } // Don't delete the current assignment
-        }
+          id: { not: assignment.id }, // Don't delete the current assignment
+        },
       });
 
       // Update the channel type
       await tx.branchLineChannel.update({
         where: {
-          id: assignment.id
+          id: assignment.id,
         },
         data: {
-          channelType
-        }
+          channelType,
+        },
       });
     });
 
@@ -550,25 +606,25 @@ export class LineChannelService {
    */
   static async validateChannelTypes() {
     const result = await prisma.branchLineChannel.groupBy({
-      by: ['branchId', 'channelType'],
+      by: ["branchId", "channelType"],
       _count: {
-        channelId: true
+        channelId: true,
       },
       having: {
         channelId: {
           _count: {
-            gt: 1
-          }
-        }
-      }
+            gt: 1,
+          },
+        },
+      },
     });
 
     if (result.length > 0) {
       // Get branch details for the problematic branches
-      const branchIds = result.map(r => r.branchId);
+      const branchIds = result.map((r) => r.branchId);
       const branches = await prisma.branch.findMany({
         where: {
-          branchId: { in: branchIds }
+          branchId: { in: branchIds },
         },
         include: {
           branchLineChannels: {
@@ -576,31 +632,31 @@ export class LineChannelService {
               lineChannel: {
                 select: {
                   channelId: true,
-                  name: true
-                }
-              }
-            }
-          }
-        }
+                  name: true,
+                },
+              },
+            },
+          },
+        },
       });
 
       return {
         isValid: false,
-        invalidBranches: branches.map(branch => ({
+        invalidBranches: branches.map((branch) => ({
           branchId: branch.branchId,
           branchName: branch.name,
-          channels: branch.branchLineChannels.map(blc => ({
+          channels: branch.branchLineChannels.map((blc) => ({
             channelId: blc.lineChannel.channelId,
             channelName: blc.lineChannel.name,
-            channelType: blc.channelType
-          }))
-        }))
+            channelType: blc.channelType,
+          })),
+        })),
       };
     }
 
     return {
       isValid: true,
-      invalidBranches: []
+      invalidBranches: [],
     };
   }
 
@@ -611,36 +667,35 @@ export class LineChannelService {
     const branchChannels = await prisma.branchLineChannel.findMany({
       where: { branchId },
       include: {
-        lineChannel: true
+        lineChannel: true,
       },
       orderBy: [
-        { channelType: 'asc' }, // TEACHER channels first, then STUDENT
-        { createdAt: 'asc' }
-      ]
+        { channelType: "asc" }, // TEACHER channels first, then STUDENT
+        { createdAt: "asc" },
+      ],
     });
 
     // Remove encrypted credentials from response
-    return branchChannels.map(bc => ({
+    return branchChannels.map((bc) => ({
       ...bc,
       lineChannel: {
         ...bc.lineChannel,
         channelAccessToken: undefined,
-        channelSecret: undefined
-      }
+        channelSecret: undefined,
+      },
     }));
   }
-
 
   /**
    * Test LINE channel credentials and optionally send a test message
    */
   static async testChannel(channelId: string, testUserId?: string) {
     const channel = await prisma.lineChannel.findUnique({
-      where: { channelId }
+      where: { channelId },
     });
 
     if (!channel) {
-      throw new Error('Channel not found');
+      throw new Error("Channel not found");
     }
 
     // Decrypt credentials - handle both encrypted and unencrypted data
@@ -665,20 +720,23 @@ export class LineChannelService {
         console.warn(`LINE channel ${channelId} has unencrypted secret`);
       }
     } catch (error) {
-      console.error(`Failed to decrypt credentials for channel ${channelId}:`, error);
-      throw new Error('Failed to decrypt channel credentials');
+      console.error(
+        `Failed to decrypt credentials for channel ${channelId}:`,
+        error
+      );
+      throw new Error("Failed to decrypt channel credentials");
     }
 
     const credentials = {
       channelAccessToken,
-      channelSecret
+      channelSecret,
     };
 
     // Test credentials
     const testResult = await testChannelCredentials(credentials);
 
     if (!testResult.success) {
-      throw new Error(testResult.error || 'Invalid credentials');
+      throw new Error(testResult.error || "Invalid credentials");
     }
 
     // If a test user ID is provided, send a test message
@@ -686,64 +744,69 @@ export class LineChannelService {
     if (testUserId) {
       try {
         // Create a notification record
-        const { createNotification } = await import('@/lib/notification/notification-service');
+        const { createNotification } = await import(
+          "@/lib/notification/notification-service"
+        );
         const testMessage = `🔔 テストメッセージ\n\nこれは「${channel.name}」チャンネルからのテストメッセージです。\n\n正常に受信できていれば、このチャンネルは正しく設定されています。`;
 
         const notification = await createNotification({
           recipientId: testUserId,
-          recipientType: 'TEACHER', // Assuming TEACHER for channel testing
-          notificationType: 'CHANNEL_TEST',
+          recipientType: "TEACHER", // Assuming TEACHER for channel testing
+          notificationType: "CHANNEL_TEST",
           message: testMessage,
           branchId: undefined, // Channel test is not branch-specific
-          sentVia: 'LINE',
-          targetDate: new Date(new Date().toISOString().split('T')[0] + 'T00:00:00.000Z'), // Today's date at midnight UTC
+          sentVia: "LINE",
+          targetDate: new Date(
+            new Date().toISOString().split("T")[0] + "T00:00:00.000Z"
+          ), // Today's date at midnight UTC
         });
 
         if (notification) {
           try {
             // Send the LINE message
-            const { sendLinePush } = await import('@/lib/line-multi-channel');
-            await sendLinePush(
-              testUserId,
-              testMessage,
-              credentials
-            );
+            const { sendLinePush } = await import("@/lib/line-multi-channel");
+            await sendLinePush(testUserId, testMessage, credentials);
 
             // Update notification status to SENT
             await prisma.notification.update({
               where: { notificationId: notification.notificationId },
               data: {
-                status: 'SENT',
-                sentAt: new Date()
-              }
+                status: "SENT",
+                sentAt: new Date(),
+              },
             });
 
             messageResult = {
               success: true,
-              notificationId: notification.notificationId
+              notificationId: notification.notificationId,
             };
           } catch (lineError) {
             // If LINE message fails, update notification status to FAILED
             await prisma.notification.update({
               where: { notificationId: notification.notificationId },
               data: {
-                status: 'FAILED',
-                logs: { error: (lineError as Error).message || 'Failed to send test message', timestamp: new Date().toISOString() }
-              }
+                status: "FAILED",
+                logs: {
+                  error:
+                    (lineError as Error).message ||
+                    "Failed to send test message",
+                  timestamp: new Date().toISOString(),
+                },
+              },
             });
             throw lineError;
           }
         } else {
           messageResult = {
             success: true,
-            message: 'Test message already sent (duplicate notification)'
+            message: "Test message already sent (duplicate notification)",
           };
         }
       } catch (error) {
-        console.error('Error sending test message:', error);
+        console.error("Error sending test message:", error);
         messageResult = {
           success: false,
-          error: 'Failed to send test message. Please check the LINE user ID.'
+          error: "Failed to send test message. Please check the LINE user ID.",
         };
       }
     }
@@ -751,7 +814,7 @@ export class LineChannelService {
     return {
       success: true,
       botInfo: testResult.botInfo,
-      messageResult
+      messageResult,
     };
   }
 
@@ -768,7 +831,7 @@ export class LineChannelService {
 
     // Check if already migrated
     const existingDefault = await prisma.lineChannel.findFirst({
-      where: { isDefault: true }
+      where: { isDefault: true },
     });
 
     if (existingDefault) {
@@ -777,44 +840,47 @@ export class LineChannelService {
 
     // Create default channel from environment variables
     return await this.createChannel({
-      name: 'Default Channel (Migrated)',
-      description: 'Migrated from environment variables',
+      name: "Default Channel (Migrated)",
+      description: "Migrated from environment variables",
       channelAccessToken: envToken,
       channelSecret: envSecret,
-      isDefault: true
+      isDefault: true,
     });
   }
 
   /**
    * Unassign a channel type from a branch
    */
-  static async unassignChannelType(branchId: string, channelType: 'TEACHER' | 'STUDENT') {
+  static async unassignChannelType(
+    branchId: string,
+    channelType: "TEACHER" | "STUDENT"
+  ) {
     // Verify the branch exists
     const branch = await prisma.branch.findUnique({
-      where: { branchId }
+      where: { branchId },
     });
 
     if (!branch) {
-      throw new Error('Branch not found');
+      throw new Error("Branch not found");
     }
 
     // Check if there's a channel assigned for this type
     const assignment = await prisma.branchLineChannel.findFirst({
       where: {
         branchId,
-        channelType
-      }
+        channelType,
+      },
     });
 
     if (!assignment) {
-      throw new Error('この校舎にはチャンネルが割り当てられていません');
+      throw new Error("この校舎にはチャンネルが割り当てられていません");
     }
 
     // Delete the assignment
     await prisma.branchLineChannel.delete({
       where: {
-        id: assignment.id
-      }
+        id: assignment.id,
+      },
     });
   }
 }

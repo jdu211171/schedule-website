@@ -1,7 +1,7 @@
-import { format } from 'date-fns';
-import { ja } from 'date-fns/locale';
-import { prisma } from '@/lib/prisma';
-import { replaceTemplateVariables } from './message-templates';
+import { format } from "date-fns";
+import { ja } from "date-fns/locale";
+import { prisma } from "@/lib/prisma";
+import { replaceTemplateVariables } from "./message-templates";
 
 export interface ClassSessionData {
   subjectName: string;
@@ -26,19 +26,19 @@ export async function formatClassNotificationWithTemplate(
     // Try to find a matching template based on days
     const template = await prisma.lineMessageTemplate.findFirst({
       where: {
-        templateType: 'before_class',
-        timingType: 'days',
+        templateType: "before_class",
+        timingType: "days",
         timingValue: daysBeforeClass,
         isActive: true,
         OR: [
           { branchId: branchId },
-          { branchId: null } // Fallback to global template
-        ]
+          { branchId: null }, // Fallback to global template
+        ],
       },
       orderBy: [
-        { branchId: 'desc' }, // Prefer branch-specific template
-        { updatedAt: 'desc' }
-      ]
+        { branchId: "desc" }, // Prefer branch-specific template
+        { updatedAt: "desc" },
+      ],
     });
 
     if (!template) {
@@ -50,14 +50,14 @@ export async function formatClassNotificationWithTemplate(
     // Note: This function is kept for backward compatibility but should not be used.
     // The new notification system uses daily summaries with different variables.
     const variables: Record<string, string> = {
-      currentDate: format(new Date(), 'yyyy年M月d日', { locale: ja }),
-      currentTime: format(new Date(), 'HH:mm', { locale: ja })
+      currentDate: format(new Date(), "yyyy年M月d日", { locale: ja }),
+      currentTime: format(new Date(), "HH:mm", { locale: ja }),
     };
 
     // Replace variables in template
     return replaceTemplateVariables(template.content, variables);
   } catch (error) {
-    console.error('Error formatting notification with template:', error);
+    console.error("Error formatting notification with template:", error);
     // Fallback to default templates on error
     return await formatClassNotificationFallback(minutesBeforeClass, session);
   }
@@ -73,7 +73,7 @@ const DEFAULT_TEMPLATES = {
 {{#teacherName}}講師: {{teacherName}}
 {{/teacherName}}{{#boothName}}場所: {{boothName}}
 {{/boothName}}
-本日もよろしくお願いします。`
+本日もよろしくお願いします。`,
   },
   1: {
     content: `📚 明日の授業のお知らせ
@@ -84,7 +84,7 @@ const DEFAULT_TEMPLATES = {
 {{#teacherName}}講師: {{teacherName}}
 {{/teacherName}}{{#boothName}}場所: {{boothName}}
 {{/boothName}}
-よろしくお願いします！`
+よろしくお願いします！`,
   },
   default: {
     content: `📅 授業予定のお知らせ
@@ -96,8 +96,8 @@ const DEFAULT_TEMPLATES = {
 {{#teacherName}}講師: {{teacherName}}
 {{/teacherName}}{{#boothName}}場所: {{boothName}}
 {{/boothName}}
-ご確認をお願いします。`
-  }
+ご確認をお願いします。`,
+  },
 };
 
 // Enhanced fallback function that uses default templates and could be extended to fetch from database
@@ -105,23 +105,25 @@ async function formatClassNotificationFallback(
   minutesBeforeClass: number,
   session: ClassSessionData
 ): Promise<string> {
-  const date = format(session.startTime, 'yyyy年M月d日', { locale: ja });
-  const startTime = format(session.startTime, 'HH:mm', { locale: ja });
+  const date = format(session.startTime, "yyyy年M月d日", { locale: ja });
+  const startTime = format(session.startTime, "HH:mm", { locale: ja });
   const daysBeforeClass = Math.round(minutesBeforeClass / 1440);
-  
+
   // Get appropriate template
-  const templateKey = daysBeforeClass in DEFAULT_TEMPLATES ? daysBeforeClass : 'default';
-  const template = DEFAULT_TEMPLATES[templateKey as keyof typeof DEFAULT_TEMPLATES];
-  
+  const templateKey =
+    daysBeforeClass in DEFAULT_TEMPLATES ? daysBeforeClass : "default";
+  const template =
+    DEFAULT_TEMPLATES[templateKey as keyof typeof DEFAULT_TEMPLATES];
+
   // Prepare variables for replacement
   const variables: Record<string, string> = {
     subjectName: session.subjectName,
     date,
     startTime,
-    teacherName: session.teacherName || '',
-    boothName: session.boothName || ''
+    teacherName: session.teacherName || "",
+    boothName: session.boothName || "",
   };
-  
+
   // Simple template replacement (using existing function from message-templates)
   return replaceTemplateVariables(template.content, variables);
 }

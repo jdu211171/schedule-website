@@ -188,7 +188,8 @@ export function TeacherFormDialog({
   const generateUsername = () => {
     const letters = "abcdefghijkmnpqrstuvwxyz"; // exclude l, o
     const digits = "23456789"; // exclude 0, 1
-    const pick = (pool: string) => pool[Math.floor(Math.random() * pool.length)];
+    const pick = (pool: string) =>
+      pool[Math.floor(Math.random() * pool.length)];
     return (
       Array.from({ length: 3 }, () => pick(letters)).join("") +
       Array.from({ length: 3 }, () => pick(digits)).join("")
@@ -200,15 +201,14 @@ export function TeacherFormDialog({
     const letters = "abcdefghijkmnpqrstuvwxyz"; // no l, o
     const digits = "23456789"; // no 0, 1
     const all = letters + digits;
-    const pick = (pool: string) => pool[Math.floor(Math.random() * pool.length)];
+    const pick = (pool: string) =>
+      pool[Math.floor(Math.random() * pool.length)];
     // ensure at least one letter and one digit
     const base = [pick(letters), pick(digits)];
     const rest = Array.from({ length: Math.max(0, length - base.length) }, () =>
       pick(all)
     );
-    return [...base, ...rest]
-      .sort(() => Math.random() - 0.5)
-      .join("");
+    return [...base, ...rest].sort(() => Math.random() - 0.5).join("");
   };
 
   // Enhanced regular availability state
@@ -218,9 +218,8 @@ export function TeacherFormDialog({
   const [irregularAvailability, setIrregularAvailability] = useState<
     IrregularAvailability[]
   >([]);
-  const [absenceIrregularAvailability, setAbsenceIrregularAvailability] = useState<
-    IrregularAvailability[]
-  >([]);
+  const [absenceIrregularAvailability, setAbsenceIrregularAvailability] =
+    useState<IrregularAvailability[]>([]);
   const [availabilityErrors, setAvailabilityErrors] = useState<string[]>([]);
 
   const form = useForm<TeacherFormValues>({
@@ -278,18 +277,20 @@ export function TeacherFormDialog({
         birthDate: teacher.birthDate ? new Date(teacher.birthDate) : undefined,
         phoneNumber: teacher.phoneNumber || "",
         phoneNotes: teacher.phoneNotes || "",
-        contactEmails: teacher.contactEmails?.map((e, index) => ({
-          id: e.id,
-          email: e.email,
-          notes: e.notes || "",
-          order: e.order ?? index,
-        })) || [],
-        contactPhones: teacher.contactPhones?.map((p, index) => ({
-          id: p.id,
-          phoneNumber: p.phoneNumber,
-          notes: p.notes || "",
-          order: p.order ?? index,
-        })) || [],
+        contactEmails:
+          teacher.contactEmails?.map((e, index) => ({
+            id: e.id,
+            email: e.email,
+            notes: e.notes || "",
+            order: e.order ?? index,
+          })) || [],
+        contactPhones:
+          teacher.contactPhones?.map((p, index) => ({
+            id: p.id,
+            phoneNumber: p.phoneNumber,
+            notes: p.notes || "",
+            order: p.order ?? index,
+          })) || [],
       });
 
       // Initialize subject preferences if they exist
@@ -358,11 +359,13 @@ export function TeacherFormDialog({
         teacherWithAvailability.absenceAvailability &&
         teacherWithAvailability.absenceAvailability.length > 0
       ) {
-        const absenceData = teacherWithAvailability.absenceAvailability.map((ea) => ({
-          date: parseYMDToLocalDate(ea.date),
-          timeSlots: ea.timeSlots,
-          fullDay: ea.fullDay,
-        }));
+        const absenceData = teacherWithAvailability.absenceAvailability.map(
+          (ea) => ({
+            date: parseYMDToLocalDate(ea.date),
+            timeSlots: ea.timeSlots,
+            fullDay: ea.fullDay,
+          })
+        );
         setAbsenceIrregularAvailability(absenceData);
       } else {
         setAbsenceIrregularAvailability([]);
@@ -389,7 +392,11 @@ export function TeacherFormDialog({
       setTeacherSubjects([]);
       setRegularAvailability([]);
       setIrregularAvailability([]);
-      setLineState({ lineId: null, lineUserId: null, lineNotificationsEnabled: true });
+      setLineState({
+        lineId: null,
+        lineUserId: null,
+        lineNotificationsEnabled: true,
+      });
       setAbsenceIrregularAvailability([]);
     }
   }, [teacher, form, defaultBranchId]);
@@ -468,30 +475,30 @@ export function TeacherFormDialog({
         (item) => {
           if (item.fullDay) {
             // Full day availability
-              return [
-                {
-                  userId: submissionData.teacherId || undefined,
-                  date: toUTCDateOnly(item.date),
-                  fullDay: true,
-                  type: "EXCEPTION" as const,
-                  startTime: null as string | null,
-                  endTime: null as string | null,
-                  reason: null as string | null,
-                  notes: null as string | null,
-                },
-              ];
-            } else {
-              // Time slot based availability
-              return item.timeSlots.map((slot) => ({
+            return [
+              {
                 userId: submissionData.teacherId || undefined,
                 date: toUTCDateOnly(item.date),
-                fullDay: false,
+                fullDay: true,
                 type: "EXCEPTION" as const,
-                startTime: slot.startTime as string | null,
-                endTime: slot.endTime as string | null,
+                startTime: null as string | null,
+                endTime: null as string | null,
                 reason: null as string | null,
                 notes: null as string | null,
-              }));
+              },
+            ];
+          } else {
+            // Time slot based availability
+            return item.timeSlots.map((slot) => ({
+              userId: submissionData.teacherId || undefined,
+              date: toUTCDateOnly(item.date),
+              fullDay: false,
+              type: "EXCEPTION" as const,
+              startTime: slot.startTime as string | null,
+              endTime: slot.endTime as string | null,
+              reason: null as string | null,
+              notes: null as string | null,
+            }));
           }
         }
       );
@@ -819,10 +826,7 @@ export function TeacherFormDialog({
                     基本情報
                   </TabsTrigger>
 
-                  <TabsTrigger
-                    value="line"
-                    className="flex items-center gap-2"
-                  >
+                  <TabsTrigger value="line" className="flex items-center gap-2">
                     <MessageSquare className="h-4 w-4" />
                     メッセージ
                   </TabsTrigger>
@@ -958,14 +962,20 @@ export function TeacherFormDialog({
                                       size="icon"
                                       className="absolute right-1.5 top-1.5"
                                       onClick={() => setShowPassword((s) => !s)}
-                                      title={showPassword ? "パスワードを隠す" : "パスワードを表示"}
+                                      title={
+                                        showPassword
+                                          ? "パスワードを隠す"
+                                          : "パスワードを表示"
+                                      }
                                     >
                                       {showPassword ? (
                                         <EyeOff className="h-4 w-4" />
                                       ) : (
                                         <Eye className="h-4 w-4" />
                                       )}
-                                      <span className="sr-only">パスワード表示切替</span>
+                                      <span className="sr-only">
+                                        パスワード表示切替
+                                      </span>
                                     </Button>
                                   </div>
                                 </div>
@@ -1095,7 +1105,6 @@ export function TeacherFormDialog({
                               </FormItem>
                             )}
                           />
-
                         </div>
 
                         {/* Personal Information */}
@@ -1117,9 +1126,19 @@ export function TeacherFormDialog({
                                     type="date"
                                     className="h-11"
                                     {...field}
-                                    value={field.value ? new Date(field.value).toISOString().split('T')[0] : ""}
+                                    value={
+                                      field.value
+                                        ? new Date(field.value)
+                                            .toISOString()
+                                            .split("T")[0]
+                                        : ""
+                                    }
                                     onChange={(e) => {
-                                      field.onChange(e.target.value ? new Date(e.target.value) : undefined);
+                                      field.onChange(
+                                        e.target.value
+                                          ? new Date(e.target.value)
+                                          : undefined
+                                      );
                                     }}
                                   />
                                 </FormControl>
@@ -1188,7 +1207,10 @@ export function TeacherFormDialog({
                               <FormItem>
                                 <div className="space-y-4">
                                   {(field.value || []).map((phone, index) => (
-                                    <div key={index} className="flex gap-4 items-start">
+                                    <div
+                                      key={index}
+                                      className="flex gap-4 items-start"
+                                    >
                                       <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4">
                                         <FormField
                                           control={form.control}
@@ -1241,7 +1263,9 @@ export function TeacherFormDialog({
                                         size="icon"
                                         className={index === 0 ? "mt-9" : ""}
                                         onClick={() => {
-                                          const newPhones = (field.value || []).filter((_, i) => i !== index);
+                                          const newPhones = (
+                                            field.value || []
+                                          ).filter((_, i) => i !== index);
                                           field.onChange(newPhones);
                                         }}
                                       >
@@ -1280,7 +1304,10 @@ export function TeacherFormDialog({
                               <FormItem>
                                 <div className="space-y-4">
                                   {(field.value || []).map((email, index) => (
-                                    <div key={index} className="flex gap-4 items-start">
+                                    <div
+                                      key={index}
+                                      className="flex gap-4 items-start"
+                                    >
                                       <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4">
                                         <FormField
                                           control={form.control}
@@ -1334,7 +1361,9 @@ export function TeacherFormDialog({
                                         size="icon"
                                         className={index === 0 ? "mt-9" : ""}
                                         onClick={() => {
-                                          const newEmails = (field.value || []).filter((_, i) => i !== index);
+                                          const newEmails = (
+                                            field.value || []
+                                          ).filter((_, i) => i !== index);
                                           field.onChange(newEmails);
                                         }}
                                       >
@@ -1372,9 +1401,14 @@ export function TeacherFormDialog({
                   {/* Regular vs Exceptional Summary */}
                   <TabsContent value="commute" className="space-y-4 mt-0">
                     {teacher?.teacherId ? (
-                      <TeacherRegularExceptionalSummary teacherId={teacher.teacherId} days={90} />
+                      <TeacherRegularExceptionalSummary
+                        teacherId={teacher.teacherId}
+                        days={90}
+                      />
                     ) : (
-                      <div className="text-sm text-muted-foreground">作成モードではシリーズ概要は表示されません</div>
+                      <div className="text-sm text-muted-foreground">
+                        作成モードではシリーズ概要は表示されません
+                      </div>
                     )}
                   </TabsContent>
 
@@ -1388,11 +1422,16 @@ export function TeacherFormDialog({
                         userName={teacher.name}
                         lineId={lineState.lineId}
                         lineUserId={lineState.lineUserId ?? undefined}
-                        lineNotificationsEnabled={lineState.lineNotificationsEnabled}
+                        lineNotificationsEnabled={
+                          lineState.lineNotificationsEnabled
+                        }
                         username={teacher.username || ""}
                         onNotificationToggle={(enabled) => {
                           form.setValue("lineNotificationsEnabled", enabled);
-                          setLineState((s) => ({ ...s, lineNotificationsEnabled: enabled }));
+                          setLineState((s) => ({
+                            ...s,
+                            lineNotificationsEnabled: enabled,
+                          }));
                         }}
                       />
                     )}
@@ -1405,7 +1444,11 @@ export function TeacherFormDialog({
                           </CardTitle>
                         </CardHeader>
                         <CardContent>
-                          <Button type="button" variant="outline" onClick={() => setOpenLineManage(true)}>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setOpenLineManage(true)}
+                          >
                             チャネル連携を管理する
                           </Button>
                         </CardContent>
@@ -1475,9 +1518,13 @@ export function TeacherFormDialog({
                                   variant="outline"
                                   className="h-11 w-full justify-between"
                                 >
-                                  {selectedSubjectTypes.length > 0
-                                    ? `${selectedSubjectTypes.length}件選択中`
-                                    : <span className="text-muted-foreground">科目タイプを選択</span>}
+                                  {selectedSubjectTypes.length > 0 ? (
+                                    `${selectedSubjectTypes.length}件選択中`
+                                  ) : (
+                                    <span className="text-muted-foreground">
+                                      科目タイプを選択
+                                    </span>
+                                  )}
                                   <Check
                                     className={`ml-2 h-4 w-4 ${
                                       selectedSubjectTypes.length > 0
@@ -1600,25 +1647,26 @@ export function TeacherFormDialog({
                         )}
                       </CardContent>
                     </Card>
-                </TabsContent>
+                  </TabsContent>
 
-                {teacher && (
-                  <LineManagementDialog
-                    open={openLineManage}
-                    onOpenChange={setOpenLineManage}
-                    userType="teacher"
-                    userId={teacher.teacherId}
-                    userName={teacher.name}
-                    lineConnections={{
-                      lineId: lineState.lineId,
-                      lineUserId: lineState.lineUserId,
-                      lineNotificationsEnabled: lineState.lineNotificationsEnabled,
-                    }}
-                    onConnectionUnbound={() => {
-                      setLineState((s) => ({ ...s, lineId: null }));
-                    }}
-                  />
-                )}
+                  {teacher && (
+                    <LineManagementDialog
+                      open={openLineManage}
+                      onOpenChange={setOpenLineManage}
+                      userType="teacher"
+                      userId={teacher.teacherId}
+                      userName={teacher.name}
+                      lineConnections={{
+                        lineId: lineState.lineId,
+                        lineUserId: lineState.lineUserId,
+                        lineNotificationsEnabled:
+                          lineState.lineNotificationsEnabled,
+                      }}
+                      onConnectionUnbound={() => {
+                        setLineState((s) => ({ ...s, lineId: null }));
+                      }}
+                    />
+                  )}
                   <TabsContent value="availability" className="space-y-6 mt-0">
                     <Card>
                       <CardHeader>
@@ -1645,7 +1693,7 @@ export function TeacherFormDialog({
                           </Alert>
                         )}
 
-                        {activeTab === 'availability' && (
+                        {activeTab === "availability" && (
                           <EnhancedAvailabilityRegularSelector
                             availability={regularAvailability}
                             onChange={setRegularAvailability}
@@ -1657,8 +1705,12 @@ export function TeacherFormDialog({
                             <div className="flex items-start gap-2">
                               <Calendar className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5" />
                               <div className="text-sm">
-                                <p className="font-medium text-blue-900 dark:text-blue-100">ヒント</p>
-                                <p className="text-blue-700 dark:text-blue-300 mt-1">特別な日付の希望は次のタブ「特別日程」で設定できます。</p>
+                                <p className="font-medium text-blue-900 dark:text-blue-100">
+                                  ヒント
+                                </p>
+                                <p className="text-blue-700 dark:text-blue-300 mt-1">
+                                  特別な日付の希望は次のタブ「特別日程」で設定できます。
+                                </p>
                               </div>
                             </div>
                           </div>
@@ -1683,7 +1735,7 @@ export function TeacherFormDialog({
                         </p>
                       </CardHeader>
                       <CardContent>
-                        {activeTab === 'availabilityIrregular' && (
+                        {activeTab === "availabilityIrregular" && (
                           <EnhancedAvailabilityIrregularSelector
                             availability={irregularAvailability}
                             onChange={setIrregularAvailability}
@@ -1695,8 +1747,12 @@ export function TeacherFormDialog({
                             <div className="flex items-start gap-2">
                               <Calendar className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5" />
                               <div className="text-sm">
-                                <p className="font-medium text-blue-900 dark:text-blue-100">ヒント</p>
-                                <p className="text-blue-700 dark:text-blue-300 mt-1">欠席の設定は次のタブ「欠席日程」で行えます。</p>
+                                <p className="font-medium text-blue-900 dark:text-blue-100">
+                                  ヒント
+                                </p>
+                                <p className="text-blue-700 dark:text-blue-300 mt-1">
+                                  欠席の設定は次のタブ「欠席日程」で行えます。
+                                </p>
                               </div>
                             </div>
                           </div>
@@ -1720,12 +1776,12 @@ export function TeacherFormDialog({
                         </p>
                       </CardHeader>
                       <CardContent>
-                        {activeTab === 'availabilityAbsence' && (
+                        {activeTab === "availabilityAbsence" && (
                           <EnhancedAvailabilityIrregularSelector
-                          availability={absenceIrregularAvailability}
-                          onChange={setAbsenceIrregularAvailability}
-                          variant="absence"
-                        />
+                            availability={absenceIrregularAvailability}
+                            onChange={setAbsenceIrregularAvailability}
+                            variant="absence"
+                          />
                         )}
                       </CardContent>
                     </Card>
@@ -1850,14 +1906,19 @@ export function TeacherFormDialog({
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>フォームをリセットしますか？</AlertDialogTitle>
+                    <AlertDialogTitle>
+                      フォームをリセットしますか？
+                    </AlertDialogTitle>
                     <AlertDialogDescription>
                       この操作により、入力されたすべての情報が削除され、フォームが初期状態に戻ります。この操作は元に戻すことができません。
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>キャンセル</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleReset} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    <AlertDialogAction
+                      onClick={handleReset}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
                       リセット
                     </AlertDialogAction>
                   </AlertDialogFooter>
@@ -1882,7 +1943,9 @@ export function TeacherFormDialog({
                       ? saveButtonPresets.update
                       : saveButtonPresets.create)}
                     onClick={handleEnhancedSubmit}
-                    disabled={isBranchesLoading || availabilityErrors.length > 0}
+                    disabled={
+                      isBranchesLoading || availabilityErrors.length > 0
+                    }
                     className="w-full sm:w-auto min-w-[120px]"
                     autoResetDelay={1500}
                   />

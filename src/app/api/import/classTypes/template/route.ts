@@ -10,26 +10,30 @@ export async function GET() {
         name: "通常授業",
         notes: "通常の授業形式",
         parentName: "",
-        order: "1"
+        order: "1",
+        visibleInFilters: "true",
       },
       {
         name: "個別指導",
         notes: "1対1の個別指導",
         parentName: "通常授業",
-        order: "2"
+        order: "2",
+        visibleInFilters: "true",
       },
       {
         name: "グループ授業",
         notes: "少人数グループでの授業",
         parentName: "通常授業",
-        order: "3"
+        order: "3",
+        visibleInFilters: "true",
       },
       {
         name: "特別講習",
         notes: "期間限定の特別講習",
         parentName: "",
-        order: "4"
-      }
+        order: "4",
+        visibleInFilters: "true",
+      },
     ];
 
     // Generate CSV with headers
@@ -39,7 +43,8 @@ export async function GET() {
     return new NextResponse(csv, {
       headers: {
         "Content-Type": "text/csv; charset=utf-8",
-        "Content-Disposition": 'attachment; filename="class_types_template.csv"',
+        "Content-Disposition":
+          'attachment; filename="class_types_template.csv"',
       },
     });
   } catch (error) {

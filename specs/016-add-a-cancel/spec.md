@@ -5,7 +5,7 @@
 **Status**: Draft  
 **Input**: User description: "Add a cancel all class sessions from this point functionity with キャンセル button in the 授業の編集 modal next to 削除 button この授業のみ編集 and この回以降を編集 same way as 削除 do and similar to delete all class sessions from this point. Instead of setting the class series status to DELETED, it sets the status to PAUSED, and the class series stops generating new sessions. Reference existing logic and code patterns to implement this consistently."
 
-## User Scenarios & Testing *(mandatory)*
+## User Scenarios & Testing _(mandatory)_
 
 ### User Story 1 - Cancel this and future sessions (Priority: P1)
 
@@ -58,7 +58,7 @@ As a scheduler, I should not be able to re-cancel already canceled/deleted occur
 - Attempting to cancel when permissions do not allow delete/cancel (should be hidden/disabled based on same permission model as 削除).
 - Multiple schedulers acting concurrently on the same series/occurrence (must ensure idempotency and consistent end-state).
 
-## Requirements *(mandatory)*
+## Requirements _(mandatory)_
 
 ### Functional Requirements
 
@@ -92,13 +92,13 @@ Notes/Assumptions for interpretation and testing:
 - Choosing この授業のみキャンセル does not pause the series and does not affect future occurrences.
 - Permissions and side-effects (e.g., conflict recomputations, downstream hooks) follow the same pattern as 削除.
 
-### Key Entities *(include if feature involves data)*
+### Key Entities _(include if feature involves data)_
 
 - **ClassSeries**: Represents a recurring class. Key attributes: status (e.g., ACTIVE, PAUSED, ENDED), recurrence settings, ownership.
 - **ClassSession (Occurrence)**: Represents a single scheduled occurrence. Key attributes: status (e.g., SCHEDULED, CANCELED, COMPLETED, DELETED), start/end time, assigned teacher/room.
 - **User (Scheduler/Admin/Staff)**: Actor able to initiate cancellation following the same permission constraints as 削除.
 
-## Success Criteria *(mandatory)*
+## Success Criteria _(mandatory)_
 
 ### Measurable Outcomes
 

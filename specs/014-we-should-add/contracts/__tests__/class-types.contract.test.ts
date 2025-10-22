@@ -1,16 +1,16 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import type { NextResponse } from 'next/server';
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import type { NextResponse } from "next/server";
 
 // Mock auth to allow ADMIN access
-vi.mock('@/auth', () => ({
-  auth: vi.fn().mockResolvedValue({ user: { id: 'u1', role: 'ADMIN' } }),
+vi.mock("@/auth", () => ({
+  auth: vi.fn().mockResolvedValue({ user: { id: "u1", role: "ADMIN" } }),
 }));
 
 // Capture prisma calls
 const countMock = vi.fn();
 const findManyMock = vi.fn();
 
-vi.mock('@/lib/prisma', () => ({
+vi.mock("@/lib/prisma", () => ({
   prisma: {
     classType: {
       count: (...args: any[]) => countMock(...args),
@@ -20,9 +20,9 @@ vi.mock('@/lib/prisma', () => ({
 }));
 
 // Import after mocks
-import * as route from '@/app/api/class-types/route';
+import * as route from "@/app/api/class-types/route";
 
-describe('GET /api/class-types (contract)', () => {
+describe("GET /api/class-types (contract)", () => {
   beforeEach(() => {
     countMock.mockReset();
     findManyMock.mockReset();
@@ -32,14 +32,36 @@ describe('GET /api/class-types (contract)', () => {
     vi.clearAllMocks();
   });
 
-  it('returns ordered class types with pagination', async () => {
+  it("returns ordered class types with pagination", async () => {
     countMock.mockResolvedValue(2);
     findManyMock.mockResolvedValue([
-      { classTypeId: 'b', name: '特別授業', notes: null, parentId: null, order: 2, color: null, parent: null, children: [], createdAt: new Date(), updatedAt: new Date() },
-      { classTypeId: 'a', name: '通常授業', notes: null, parentId: null, order: 1, color: null, parent: null, children: [], createdAt: new Date(), updatedAt: new Date() },
+      {
+        classTypeId: "b",
+        name: "特別授業",
+        notes: null,
+        parentId: null,
+        order: 2,
+        color: null,
+        parent: null,
+        children: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      {
+        classTypeId: "a",
+        name: "通常授業",
+        notes: null,
+        parentId: null,
+        order: 1,
+        color: null,
+        parent: null,
+        children: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
     ]);
 
-    const url = 'http://localhost/api/class-types?page=1&limit=50';
+    const url = "http://localhost/api/class-types?page=1&limit=50";
     const req: any = { url, headers: new Headers() };
     const res = (await (route.GET as any)(req)) as NextResponse;
     const json: any = await (res as any).json();
@@ -49,8 +71,7 @@ describe('GET /api/class-types (contract)', () => {
     expect(Array.isArray(json.data)).toBe(true);
     expect(json.data.length).toBe(2);
     // Ensure fields present
-    expect(json.data[0]).toHaveProperty('classTypeId');
-    expect(json.data[0]).toHaveProperty('name');
+    expect(json.data[0]).toHaveProperty("classTypeId");
+    expect(json.data[0]).toHaveProperty("name");
   });
 });
-

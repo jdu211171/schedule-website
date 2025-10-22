@@ -6,6 +6,7 @@
 **Input**: User description: "We should add a class type filter into `src/components/admin-schedule/DayCalendar/day-calendar-filters.tsx` for admin and staff users in both 日次 and 週次 view tabs. Teachers’ and students’ week class view table and monthly view should also support filtering by class types. Reference existing filter components and the searchable, selectable combobox filter. If possible, reference the シリーズ view’s table filter, which is multi-selectable and searchable, as the best implementation. Can we do that?"
 
 ## Execution Flow (main)
+
 ```
 1. Parse user description from Input
    → If empty: ERROR "No feature description provided"
@@ -28,23 +29,27 @@
 ---
 
 ## ⚡ Quick Guidelines
+
 - ✅ Focus on WHAT users need and WHY
 - ❌ Avoid HOW to implement (no tech stack, APIs, code structure)
 - 👥 Written for business stakeholders, not developers
 
 ### Section Requirements
+
 - **Mandatory sections**: Must be completed for every feature
 - **Optional sections**: Include only when relevant to the feature
 - When a section doesn't apply, remove it entirely (don't leave as "N/A")
 
 ### For AI Generation
+
 When creating this spec from a user prompt:
+
 1. **Mark all ambiguities**: Use [NEEDS CLARIFICATION: specific question] for any assumption you'd need to make
 2. **Don't guess**: If the prompt doesn't specify something (e.g., "login system" without auth method), mark it
 3. **Think like a tester**: Every vague requirement should fail the "testable and unambiguous" checklist item
 4. **Common underspecified areas**:
    - User types and permissions
-   - Data retention/deletion policies  
+   - Data retention/deletion policies
    - Performance targets and scale
    - Error handling behaviors
    - Integration requirements
@@ -55,9 +60,11 @@ When creating this spec from a user prompt:
 ## User Scenarios & Testing (mandatory)
 
 ### Primary User Story
+
 As an admin or staff member, I want to filter classes shown on both the Daily (日次) and Weekly (週次) schedule views by one or more Class Types (e.g., 通常授業, 特別授業) so that I can focus on relevant sessions. As a teacher or student, I want the Week table and Monthly calendar to support the same Class Type filtering so I can quickly find the classes that matter to me.
 
 ### Acceptance Scenarios
+
 1. Given the admin Daily (日次) view with many classes, When the user opens the Class Type filter and selects "通常授業", Then only sessions of type "通常授業" are displayed.
 2. Given the admin Daily (日次) view, When the user multi-selects "通常授業" and "特別授業", Then sessions of either type are shown.
 3. Given the admin Weekly (週次) view, When the user applies a Class Type selection in Daily view and switches to Weekly, Then the same selection remains active across the two tabs and persists globally for that role.
@@ -71,6 +78,7 @@ As an admin or staff member, I want to filter classes shown on both the Daily (�
 11. Given a user switches between school branches, When a Class Type selection exists, Then the same selection remains (not scoped per branch) to match existing filter behavior.
 
 ### Edge Cases
+
 - No available Class Types: The filter control indicates no options [NEEDS CLARIFICATION: Should the filter be hidden or disabled when no types exist?].
 - Very large number of Class Types: The filter remains performant and searchable, and supports multi-select without excessive scroll.
 - Accessibility: The filter is fully keyboard-operable and screen-reader friendly [NEEDS CLARIFICATION: Specific accessibility criteria to meet, e.g., WCAG level].
@@ -90,6 +98,7 @@ As an admin or staff member, I want to filter classes shown on both the Daily (�
 ## Requirements (mandatory)
 
 ### Functional Requirements
+
 - FR-001: Provide a Class Type filter in the admin/staff Daily (日次) schedule view.
 - FR-002: Provide a Class Type filter in the admin/staff Weekly (週次) schedule view.
 - FR-003: Provide a Class Type filter in the teacher Week view table.
@@ -102,7 +111,7 @@ As an admin or staff member, I want to filter classes shown on both the Daily (�
 - FR-009: The filter’s active state MUST be clearly visible and show the count or chips of selected Class Types.
 - FR-010: Clearing the filter MUST restore the full, unfiltered schedule.
 - FR-011: The filter behavior SHOULD be consistent across views and roles (labels, empty states, clear/reset behavior) and mirror the existing multi-select, searchable pattern used in the Series list filter.
- - FR-012: The filtering MUST operate on the same Class Type dimension used by schedules (matches the `classTypeName` users see); options and labels come from a server-provided list (API).
+- FR-012: The filtering MUST operate on the same Class Type dimension used by schedules (matches the `classTypeName` users see); options and labels come from a server-provided list (API).
 - FR-013: Active filter selection persists globally per role across views (日次↔週次, Week↔Month) and across sessions via local storage; URL parameters are not required.
 - FR-014: For teacher/student flows, the selection persists between Week and Month views, across navigation and reloads, scoped per role and stored locally.
 - FR-018: Selecting a Class Type filters by exact match only; selecting a parent type does not implicitly include descendant types.
@@ -112,6 +121,7 @@ As an admin or staff member, I want to filter classes shown on both the Daily (�
 - FR-017: The filter MUST not materially degrade schedule rendering performance at typical data sizes; interactions should remain responsive.
 
 ### Key Entities (data-related)
+
 - Class Type
   - What it represents: A categorical label for a class session (e.g., 通常授業, 特別授業).
   - Key attributes: Identifier, display name (localized), optional color/legend mapping.
@@ -126,17 +136,20 @@ As an admin or staff member, I want to filter classes shown on both the Daily (�
 ---
 
 ## Review & Acceptance Checklist
-*GATE: Automated checks run during main() execution*
+
+_GATE: Automated checks run during main() execution_
 
 ### Content Quality
+
 - [ ] No implementation details (languages, frameworks, APIs)
 - [ ] Focused on user value and business needs
 - [ ] Written for non-technical stakeholders
 - [ ] All mandatory sections completed
 
 ### Requirement Completeness
+
 - [ ] No [NEEDS CLARIFICATION] markers remain
-- [ ] Requirements are testable and unambiguous  
+- [ ] Requirements are testable and unambiguous
 - [ ] Success criteria are measurable
 - [ ] Scope is clearly bounded
 - [ ] Dependencies and assumptions identified
@@ -144,7 +157,8 @@ As an admin or staff member, I want to filter classes shown on both the Daily (�
 ---
 
 ## Execution Status
-*Updated by main() during processing*
+
+_Updated by main() during processing_
 
 - [x] User description parsed
 - [x] Key concepts extracted

@@ -16,11 +16,25 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { SPECIAL_CLASS_COLOR_CLASSES } from "@/lib/special-class-constants";
 import { X } from "lucide-react";
-import { Faceted, FacetedBadgeList, FacetedContent, FacetedEmpty, FacetedGroup, FacetedInput, FacetedItem, FacetedList, FacetedTrigger } from "@/components/ui/faceted";
+import {
+  Faceted,
+  FacetedBadgeList,
+  FacetedContent,
+  FacetedEmpty,
+  FacetedGroup,
+  FacetedInput,
+  FacetedItem,
+  FacetedList,
+  FacetedTrigger,
+} from "@/components/ui/faceted";
 import { fetchClassTypeOptions } from "@/lib/class-type-options";
+import { subscribeClassTypesChanged } from "@/lib/class-types-broadcast";
 import type { ClassTypeOption } from "@/types/class-type";
 import { useSession } from "next-auth/react";
-import { getClassTypeSelection, setClassTypeSelection } from "@/lib/class-type-filter-persistence";
+import {
+  getClassTypeSelection,
+  setClassTypeSelection,
+} from "@/lib/class-type-filter-persistence";
 
 const daysOfWeek = ["月", "火", "水", "木", "金", "土", "日"];
 const getColor = (subjecType: "通常授業" | "特別授業") => {
@@ -48,20 +62,29 @@ export default function TeacherPage() {
   const [viewType, setViewType] = useState<"WEEK" | "MONTH">("WEEK");
   const { data: session } = useSession();
   const role = session?.user?.role;
-  const [classTypeOptions, setClassTypeOptions] = useState<ClassTypeOption[]>([]);
-  const [classTypeIds, setClassTypeIds] = useState<string[] | undefined>(undefined);
+  const [classTypeOptions, setClassTypeOptions] = useState<ClassTypeOption[]>(
+    []
+  );
+  const [classTypeIds, setClassTypeIds] = useState<string[] | undefined>(
+    undefined
+  );
 
   useEffect(() => {
     let mounted = true;
-    (async () => {
+    const load = async () => {
       try {
         const opts = await fetchClassTypeOptions();
         if (mounted) setClassTypeOptions(opts);
       } catch {
         if (mounted) setClassTypeOptions([]);
       }
-    })();
-    return () => { mounted = false; };
+    };
+    load();
+    const unsubscribe = subscribeClassTypesChanged(() => load());
+    return () => {
+      mounted = false;
+      unsubscribe();
+    };
   }, []);
 
   // init from persistence
@@ -135,14 +158,13 @@ export default function TeacherPage() {
         className="w-full"
       >
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 p-4 sm:p-0">
-          
           <div className="flex items-center gap-3 order-2 sm:order-1 ml-2 sm:ml-4">
             <StudentScheduleArrows
               setCurrentDate={setCurrentDate}
               viewType={viewType}
               position="left"
             />
-            
+
             <Button
               variant="outline"
               size="sm"
@@ -153,13 +175,13 @@ export default function TeacherPage() {
             >
               今日
             </Button>
-            
+
             <StudentScheduleArrows
               setCurrentDate={setCurrentDate}
               viewType={viewType}
               position="right"
             />
-            
+
             <div className="hidden sm:block ml-2">
               <StudentScheduleCalendar
                 setCurrentDate={setCurrentDate}
@@ -167,7 +189,11 @@ export default function TeacherPage() {
               />
             </div>
             <div className="ml-2 flex items-center gap-1">
-              <Faceted multiple value={classTypeIds} onValueChange={handleClassTypesChange}>
+              <Faceted
+                multiple
+                value={classTypeIds}
+                onValueChange={handleClassTypesChange}
+              >
                 <FacetedTrigger
                   aria-label="授業タイプフィルター"
                   className="h-8 w-[220px] max-w-[240px] border border-input rounded-md px-2 bg-background text-foreground hover:bg-accent hover:text-accent-foreground text-sm flex items-center justify-between whitespace-nowrap overflow-hidden"

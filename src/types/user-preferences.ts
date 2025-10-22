@@ -7,4 +7,3 @@ export type UserClassTypeVisibilityPreferenceDTO = {
 export type SetUserClassTypeVisibilityRequest = {
   hiddenClassTypeIds: string[];
 };
-

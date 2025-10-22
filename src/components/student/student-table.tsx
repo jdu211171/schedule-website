@@ -3,7 +3,19 @@
 
 import * as React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Pencil, Eye, EyeOff, Trash2, MoreHorizontal, Download, Upload, Plus, Bell, BellOff, MessageSquare } from "lucide-react";
+import {
+  Pencil,
+  Eye,
+  EyeOff,
+  Trash2,
+  MoreHorizontal,
+  Download,
+  Upload,
+  Plus,
+  Bell,
+  BellOff,
+  MessageSquare,
+} from "lucide-react";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useStudentExport } from "@/hooks/useStudentExport";
 
@@ -122,7 +134,12 @@ function StudentTableToolbarFilter<TData>({
 
     switch (columnMeta.variant) {
       case "text":
-        return <IMETextFilter column={column} placeholder={columnMeta.placeholder ?? columnMeta.label} />;
+        return (
+          <IMETextFilter
+            column={column}
+            placeholder={columnMeta.placeholder ?? columnMeta.label}
+          />
+        );
 
       case "number":
         return (
@@ -189,9 +206,17 @@ function StudentTableToolbarFilter<TData>({
 }
 
 // IME-aware text filter to prevent mid-composition updates
-function IMETextFilter<TData>({ column, placeholder }: { column: Column<TData>; placeholder?: string }) {
+function IMETextFilter<TData>({
+  column,
+  placeholder,
+}: {
+  column: Column<TData>;
+  placeholder?: string;
+}) {
   const isComposingRef = React.useRef(false);
-  const [value, setValue] = React.useState<string>(() => (column.getFilterValue() as string) ?? "");
+  const [value, setValue] = React.useState<string>(
+    () => (column.getFilterValue() as string) ?? ""
+  );
   const debounced = useDebounce(value, 200);
 
   React.useEffect(() => {
@@ -219,13 +244,14 @@ function IMETextFilter<TData>({ column, placeholder }: { column: Column<TData>; 
       }}
       onCompositionEnd={() => {
         isComposingRef.current = false;
-        column.setFilterValue((v: any) => (typeof v === 'string' ? value : value));
+        column.setFilterValue((v: any) =>
+          typeof v === "string" ? value : value
+        );
       }}
       className="h-8 w-40 lg:w-56"
     />
   );
 }
-
 
 export function StudentTable() {
   // Inline component to render message link status using per-channel links
@@ -233,10 +259,17 @@ export function StudentTable() {
     studentId,
     legacyLineId,
     legacyNotificationsEnabled,
-  }: { studentId: string; legacyLineId: string | null; legacyNotificationsEnabled?: boolean | null }) {
+  }: {
+    studentId: string;
+    legacyLineId: string | null;
+    legacyNotificationsEnabled?: boolean | null;
+  }) {
     const { data } = useQuery<{ data: Array<{ enabled: boolean }> }>({
       queryKey: ["student-line-links", studentId],
-      queryFn: () => fetcher(`/api/students/${studentId}/line-links?r=${Date.now()}`, { cache: "no-store" }),
+      queryFn: () =>
+        fetcher(`/api/students/${studentId}/line-links?r=${Date.now()}`, {
+          cache: "no-store",
+        }),
       staleTime: 30_000,
     });
 
@@ -587,7 +620,9 @@ export function StudentTable() {
         cell: ({ row }) => (
           <GenericInlineEditableCell
             value={row.original.name}
-            onSubmit={(value) => handleCellUpdate(row.original.studentId, "name", value)}
+            onSubmit={(value) =>
+              handleCellUpdate(row.original.studentId, "name", value)
+            }
             placeholder="-"
             readOnly={true}
           />
@@ -612,7 +647,9 @@ export function StudentTable() {
         cell: ({ row }) => (
           <GenericInlineEditableCell
             value={row.original.kanaName}
-            onSubmit={(value) => handleCellUpdate(row.original.studentId, "kanaName", value)}
+            onSubmit={(value) =>
+              handleCellUpdate(row.original.studentId, "kanaName", value)
+            }
             placeholder="カナを入力"
           />
         ),
@@ -626,8 +663,12 @@ export function StudentTable() {
           return (
             <GenericSelectEditableCell
               value={status}
-              options={Object.entries(userStatusLabels).map(([value, label]) => ({ value, label }))}
-              onSubmit={(value) => handleCellUpdate(row.original.studentId, "status", value)}
+              options={Object.entries(userStatusLabels).map(
+                ([value, label]) => ({ value, label })
+              )}
+              onSubmit={(value) =>
+                handleCellUpdate(row.original.studentId, "status", value)
+              }
             />
           );
         },
@@ -872,7 +913,9 @@ export function StudentTable() {
         cell: ({ row }) => (
           <GenericInlineEditableCell
             value={row.original.email}
-            onSubmit={(value) => handleCellUpdate(row.original.studentId, "email", value)}
+            onSubmit={(value) =>
+              handleCellUpdate(row.original.studentId, "email", value)
+            }
             placeholder="-"
             readOnly={true}
           />
@@ -888,7 +931,9 @@ export function StudentTable() {
         cell: ({ row }) => (
           <GenericInlineEditableCell
             value={row.original.parentEmail}
-            onSubmit={(value) => handleCellUpdate(row.original.studentId, "parentEmail", value)}
+            onSubmit={(value) =>
+              handleCellUpdate(row.original.studentId, "parentEmail", value)
+            }
             placeholder="-"
             readOnly={true}
           />
@@ -904,7 +949,9 @@ export function StudentTable() {
         cell: ({ row }) => (
           <GenericPasswordEditableCell
             value={row.original.password}
-            onSubmit={(value) => handleCellUpdate(row.original.studentId, "password", value)}
+            onSubmit={(value) =>
+              handleCellUpdate(row.original.studentId, "password", value)
+            }
             editable={false}
           />
         ),
@@ -957,10 +1004,10 @@ export function StudentTable() {
                     {phone.phoneType === "HOME"
                       ? "自宅"
                       : phone.phoneType === "DAD"
-                      ? "父"
-                      : phone.phoneType === "MOM"
-                      ? "母"
-                      : "その他"}
+                        ? "父"
+                        : phone.phoneType === "MOM"
+                          ? "母"
+                          : "その他"}
                     :
                   </span>{" "}
                   {phone.phoneNumber}
@@ -1034,7 +1081,9 @@ export function StudentTable() {
         cell: ({ row }) => (
           <GenericInlineEditableCell
             value={row.original.notes}
-            onSubmit={(value) => handleCellUpdate(row.original.studentId, "notes", value)}
+            onSubmit={(value) =>
+              handleCellUpdate(row.original.studentId, "notes", value)
+            }
             placeholder="備考を入力"
           />
         ),
@@ -1078,7 +1127,14 @@ export function StudentTable() {
         size: 32,
       },
     ],
-    [subjects, subjectTypes, studentTypes, passwordVisibility, uniqueBranches, handleCellUpdate]
+    [
+      subjects,
+      subjectTypes,
+      studentTypes,
+      passwordVisibility,
+      uniqueBranches,
+      handleCellUpdate,
+    ]
   );
 
   // No client-side filtering needed - all filtering is done server-side
@@ -1136,9 +1192,7 @@ export function StudentTable() {
           : []),
       ],
       // Match backend default order: status asc; keep UI indicator consistent
-      sorting: [
-        { id: "status", desc: false },
-      ],
+      sorting: [{ id: "status", desc: false }],
     },
     getRowId: (row) => row.studentId,
     enableColumnFilters: true,
@@ -1156,13 +1210,20 @@ export function StudentTable() {
     const gr = sorting?.find((s) => s.id === "gradeYear");
     const kn = sorting?.find((s) => s.id === "kanaName");
     const next = {
-      studentTypeOrder: (st ? (st.desc ? "desc" : "asc") : undefined) as "asc" | "desc" | undefined,
-      gradeYearOrder: (gr ? (gr.desc ? "desc" : "asc") : undefined) as "asc" | "desc" | undefined,
+      studentTypeOrder: (st ? (st.desc ? "desc" : "asc") : undefined) as
+        | "asc"
+        | "desc"
+        | undefined,
+      gradeYearOrder: (gr ? (gr.desc ? "desc" : "asc") : undefined) as
+        | "asc"
+        | "desc"
+        | undefined,
     };
     setSortParams((prev) =>
-      prev.studentTypeOrder !== next.studentTypeOrder || prev.gradeYearOrder !== next.gradeYearOrder
+      prev.studentTypeOrder !== next.studentTypeOrder ||
+      prev.gradeYearOrder !== next.gradeYearOrder
         ? next
-        : prev,
+        : prev
     );
     if (kn) {
       const order: "asc" | "desc" = kn.desc ? "desc" : "asc";
@@ -1171,7 +1232,9 @@ export function StudentTable() {
         sortOrder: order,
       };
       setTableSort((prev) =>
-        prev.sortBy !== nextSort.sortBy || prev.sortOrder !== nextSort.sortOrder ? nextSort : prev
+        prev.sortBy !== nextSort.sortBy || prev.sortOrder !== nextSort.sortOrder
+          ? nextSort
+          : prev
       );
     } else if (tableSort.sortBy === "kanaName") {
       setTableSort({});
@@ -1181,8 +1244,11 @@ export function StudentTable() {
   // Save column visibility to localStorage whenever it changes
   React.useEffect(() => {
     const columnVisibility = table.getState().columnVisibility;
-    if (typeof window !== 'undefined' && columnVisibility) {
-      localStorage.setItem(COLUMN_VISIBILITY_STORAGE_KEY, JSON.stringify(columnVisibility));
+    if (typeof window !== "undefined" && columnVisibility) {
+      localStorage.setItem(
+        COLUMN_VISIBILITY_STORAGE_KEY,
+        JSON.stringify(columnVisibility)
+      );
     }
   }, [table.getState().columnVisibility]);
 
@@ -1228,43 +1294,46 @@ export function StudentTable() {
 
       columnFilters.forEach((filter) => {
         switch (filter.id) {
-          case 'name':
+          case "name":
             next.name = filter.value as string;
             break;
-          case 'status':
+          case "status":
             next.status = filter.value as string[];
             break;
-          case 'studentTypeName':
+          case "studentTypeName":
             next.studentType = filter.value as string[];
             break;
-          case 'gradeYear':
+          case "gradeYear":
             next.gradeYear = filter.value as string[];
             break;
-          case 'branches':
+          case "branches":
             next.branch = filter.value as string[];
             break;
-          case 'subjectPreferences':
+          case "subjectPreferences":
             next.subject = filter.value as string[];
             break;
-          case 'lineConnection':
+          case "lineConnection":
             next.lineConnection = filter.value as string[];
             break;
-          case 'schoolType':
+          case "schoolType":
             next.schoolType = filter.value as string[];
             break;
-          case 'examCategory':
+          case "examCategory":
             next.examCategory = filter.value as string[];
             break;
-          case 'examCategoryType':
+          case "examCategoryType":
             next.examCategoryType = filter.value as string[];
             break;
-          case 'birthDate':
+          case "birthDate":
             next.birthDateRange = filter.value as { from?: Date; to?: Date };
             break;
-          case 'admissionDate':
-            next.admissionDateRange = filter.value as { from?: Date; to?: Date };
+          case "admissionDate":
+            next.admissionDateRange = filter.value as {
+              from?: Date;
+              to?: Date;
+            };
             break;
-          case 'examDate':
+          case "examDate":
             next.examDateRange = filter.value as { from?: Date; to?: Date };
             break;
         }
@@ -1375,7 +1444,6 @@ export function StudentTable() {
     setPage(1);
   };
 
-
   if (isLoading && !students) {
     return (
       <div className="flex items-center justify-center p-8">読み込み中...</div>
@@ -1418,7 +1486,8 @@ export function StudentTable() {
               disabled={deleteStudentMutation.isPending}
             >
               <Trash2 className="mr-2 h-4 w-4" />
-              選択した生徒を削除 ({table.getFilteredSelectedRowModel().rows.length})
+              選択した生徒を削除 (
+              {table.getFilteredSelectedRowModel().rows.length})
             </Button>
           </div>
         )}
@@ -1426,7 +1495,7 @@ export function StudentTable() {
         <div className="rounded-md border">
           <GenericDraggableTable
             table={table}
-            dataIds={students?.data.map(s => s.studentId) || []}
+            dataIds={students?.data.map((s) => s.studentId) || []}
             onDragEnd={() => {}}
             columnsLength={columns.length}
           />

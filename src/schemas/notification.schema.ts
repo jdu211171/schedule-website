@@ -21,5 +21,7 @@ export const notificationFilterSchema = z.object({
   search: z.string().optional(),
 });
 
-export type NotificationBulkDelete = z.infer<typeof notificationBulkDeleteSchema>;
+export type NotificationBulkDelete = z.infer<
+  typeof notificationBulkDeleteSchema
+>;
 export type NotificationFilter = z.infer<typeof notificationFilterSchema>;

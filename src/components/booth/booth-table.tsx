@@ -60,7 +60,10 @@ export function BoothTable() {
   const updateOrderMutation = useBoothOrderUpdate();
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "ADMIN";
-  const { exportToCSV, isExporting } = useGenericExport("/api/booths/export", "booths");
+  const { exportToCSV, isExporting } = useGenericExport(
+    "/api/booths/export",
+    "booths"
+  );
 
   // Use local state during sort mode, otherwise use server data
   const typedBooths = isSortMode ? localBooths : booths?.data || [];
@@ -191,11 +194,13 @@ export function BoothTable() {
   const handleExport = () => {
     // Get visible columns (all columns except actions)
     let exportColumns = visibleColumns
-      .map(col => (col as any).accessorKey)
-      .filter(key => key) as string[];
+      .map((col) => (col as any).accessorKey)
+      .filter((key) => key) as string[];
 
     // Map UI accessor keys to API export columns
-    exportColumns = exportColumns.map((key) => (key === "branchName" ? "branch" : key));
+    exportColumns = exportColumns.map((key) =>
+      key === "branchName" ? "branch" : key
+    );
 
     // Ensure branch column is included in export
     if (!exportColumns.includes("branch")) {

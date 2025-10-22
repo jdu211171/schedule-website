@@ -156,23 +156,29 @@ export type ClassSeriesSummary = {
     subjectName: string | null;
     daysOfWeek: number[];
     startTime: string; // HH:mm
-    endTime: string;   // HH:mm
+    endTime: string; // HH:mm
     takenCountSoFar: number;
   }>;
 };
 
-export function useClassSeriesSummary(studentId: string | undefined, days: number = 90) {
+export function useClassSeriesSummary(
+  studentId: string | undefined,
+  days: number = 90
+) {
   return useQuery<ClassSeriesSummary>({
     enabled: !!studentId,
     queryKey: ["class-series", "summary", studentId, days],
     queryFn: async () => {
       if (!studentId) throw new Error("studentId required");
       const params = new URLSearchParams({ studentId, days: String(days) });
-      const res = await fetch(`/api/class-series/summary?${params.toString()}`, {
-        headers: {
-          "X-Selected-Branch": localStorage.getItem("selectedBranchId") || "",
-        },
-      });
+      const res = await fetch(
+        `/api/class-series/summary?${params.toString()}`,
+        {
+          headers: {
+            "X-Selected-Branch": localStorage.getItem("selectedBranchId") || "",
+          },
+        }
+      );
       if (!res.ok) throw new Error("Failed to load class series summary");
       return res.json();
     },
@@ -180,19 +186,26 @@ export function useClassSeriesSummary(studentId: string | undefined, days: numbe
   });
 }
 
-export function useClassSeriesSummaryByTeacher(teacherId: string | undefined, days: number = 90) {
+export function useClassSeriesSummaryByTeacher(
+  teacherId: string | undefined,
+  days: number = 90
+) {
   return useQuery<ClassSeriesSummary>({
     enabled: !!teacherId,
     queryKey: ["class-series", "summary", "teacher", teacherId, days],
     queryFn: async () => {
       if (!teacherId) throw new Error("teacherId required");
       const params = new URLSearchParams({ teacherId, days: String(days) });
-      const res = await fetch(`/api/class-series/summary?${params.toString()}`, {
-        headers: {
-          "X-Selected-Branch": localStorage.getItem("selectedBranchId") || "",
-        },
-      });
-      if (!res.ok) throw new Error("Failed to load class series summary (teacher)");
+      const res = await fetch(
+        `/api/class-series/summary?${params.toString()}`,
+        {
+          headers: {
+            "X-Selected-Branch": localStorage.getItem("selectedBranchId") || "",
+          },
+        }
+      );
+      if (!res.ok)
+        throw new Error("Failed to load class series summary (teacher)");
       return res.json();
     },
     staleTime: 30_000,
@@ -201,8 +214,13 @@ export function useClassSeriesSummaryByTeacher(teacherId: string | undefined, da
 
 export type SpecialSummary = { takenSoFar: number; upcomingCount: number };
 
-export function useSpecialSummary(params: { studentId?: string; teacherId?: string }) {
-  const key = params.studentId ? ["special-summary", "student", params.studentId] : ["special-summary", "teacher", params.teacherId];
+export function useSpecialSummary(params: {
+  studentId?: string;
+  teacherId?: string;
+}) {
+  const key = params.studentId
+    ? ["special-summary", "student", params.studentId]
+    : ["special-summary", "teacher", params.teacherId];
   const qs = new URLSearchParams();
   if (params.studentId) qs.set("studentId", params.studentId);
   if (params.teacherId) qs.set("teacherId", String(params.teacherId));
@@ -210,11 +228,14 @@ export function useSpecialSummary(params: { studentId?: string; teacherId?: stri
     enabled: !!(params.studentId || params.teacherId),
     queryKey: key,
     queryFn: async () => {
-      const res = await fetch(`/api/class-sessions/special-summary?${qs.toString()}`, {
-        headers: {
-          "X-Selected-Branch": localStorage.getItem("selectedBranchId") || "",
-        },
-      });
+      const res = await fetch(
+        `/api/class-sessions/special-summary?${qs.toString()}`,
+        {
+          headers: {
+            "X-Selected-Branch": localStorage.getItem("selectedBranchId") || "",
+          },
+        }
+      );
       if (!res.ok) throw new Error("Failed to load special summary");
       return res.json();
     },

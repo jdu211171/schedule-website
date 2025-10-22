@@ -40,9 +40,11 @@ export function usePasswordChange() {
       toast.success(response.message || "パスワードを変更しました");
     },
     onError: (error: any) => {
-      const msg = error?.info?.error || error?.message || "パスワードの変更に失敗しました";
+      const msg =
+        error?.info?.error ||
+        error?.message ||
+        "パスワードの変更に失敗しました";
       toast.error(String(msg));
     },
   });
 }
-

@@ -23,7 +23,10 @@ export const classSeriesConflictPolicySchema = z
     markAsConflicted: seriesMarkAsConflictedSchema.optional().default({}),
     // Optional: UI behavior knobs already used in code paths
     allowOutsideAvailability: z
-      .object({ teacher: z.boolean().optional(), student: z.boolean().optional() })
+      .object({
+        teacher: z.boolean().optional(),
+        student: z.boolean().optional(),
+      })
       .partial()
       .optional(),
   })
@@ -74,4 +77,6 @@ export const classSeriesUpdateSchema = z.object({
 
 export type ClassSeriesUpdate = z.infer<typeof classSeriesUpdateSchema>;
 export type ClassSeriesCreate = z.infer<typeof classSeriesCreateSchema>;
-export type ClassSeriesConflictPolicy = z.infer<typeof classSeriesConflictPolicySchema>;
+export type ClassSeriesConflictPolicy = z.infer<
+  typeof classSeriesConflictPolicySchema
+>;

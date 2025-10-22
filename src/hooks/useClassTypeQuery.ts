@@ -10,6 +10,7 @@ export type ClassType = {
   parentId: string | null;
   order: number | null;
   color: string | null;
+  visibleInFilters: boolean;
   parent?: ClassType | null;
   children?: ClassType[];
   createdAt: Date;
@@ -23,6 +24,7 @@ type UseClassTypesParams = {
   parentId?: string | null;
   includeChildren?: boolean;
   includeParent?: boolean;
+  visibleOnly?: boolean;
 };
 
 type ClassTypesResponse = {
@@ -47,6 +49,7 @@ export function useClassTypes(params: UseClassTypesParams = {}) {
     parentId,
     includeChildren = false,
     includeParent = false,
+    visibleOnly = true,
   } = params;
 
   const query = classTypeFilterSchema.parse({
@@ -56,15 +59,19 @@ export function useClassTypes(params: UseClassTypesParams = {}) {
     parentId,
     includeChildren,
     includeParent,
+    visibleOnly,
   });
 
   const searchParams = new URLSearchParams(
-    Object.entries(query).reduce((acc, [key, value]) => {
-      if (value !== undefined) {
-        acc[key] = String(value);
-      }
-      return acc;
-    }, {} as Record<string, string>)
+    Object.entries(query).reduce(
+      (acc, [key, value]) => {
+        if (value !== undefined) {
+          acc[key] = String(value);
+        }
+        return acc;
+      },
+      {} as Record<string, string>
+    )
   ).toString();
 
   return useQuery<ClassTypesResponse>({
@@ -76,6 +83,7 @@ export function useClassTypes(params: UseClassTypesParams = {}) {
       parentId,
       includeChildren,
       includeParent,
+      visibleOnly,
     ],
     queryFn: async () =>
       await fetcher<ClassTypesResponse>(`/api/class-types?${searchParams}`),

@@ -31,7 +31,7 @@ export class CSVParser {
     try {
       // Read file as ArrayBuffer
       const buffer = await file.arrayBuffer();
-      
+
       return this.parseBuffer(Buffer.from(buffer), options);
     } catch (error) {
       return {
@@ -39,7 +39,10 @@ export class CSVParser {
         errors: [
           {
             row: 0,
-            error: error instanceof Error ? error.message : "Failed to parse CSV file",
+            error:
+              error instanceof Error
+                ? error.message
+                : "Failed to parse CSV file",
           },
         ],
       };
@@ -68,7 +71,7 @@ export class CSVParser {
       } else if (detected === "utf-8") {
         finalEncoding = "utf-8";
       }
-      
+
       // Convert to string with proper encoding
       let csvContent: string;
       if (finalEncoding === "shift_jis") {
@@ -99,14 +102,19 @@ export class CSVParser {
         errors: [
           {
             row: 0,
-            error: error instanceof Error ? error.message : "Failed to parse CSV file",
+            error:
+              error instanceof Error
+                ? error.message
+                : "Failed to parse CSV file",
           },
         ],
       };
     }
   }
 
-  private static detectEncoding(buffer: Uint8Array): "utf-8" | "shift_jis" | null {
+  private static detectEncoding(
+    buffer: Uint8Array
+  ): "utf-8" | "shift_jis" | null {
     // Check for UTF-8 BOM
     if (buffer[0] === 0xef && buffer[1] === 0xbb && buffer[2] === 0xbf) {
       return "utf-8";
@@ -167,14 +175,14 @@ export class CSVParser {
   static generateCSV(data: any[], columns: string[]): string {
     // Add BOM for Excel compatibility
     const BOM = "\uFEFF";
-    
+
     // Create header
     const header = columns.join(",");
-    
+
     // Create rows
-    const rows = data.map(item => {
+    const rows = data.map((item) => {
       return columns
-        .map(col => {
+        .map((col) => {
           const value = item[col];
           // Escape values containing comma, quotes, or newlines
           if (value == null) return "";
@@ -190,7 +198,7 @@ export class CSVParser {
         })
         .join(",");
     });
-    
+
     return BOM + header + "\n" + rows.join("\n");
   }
 }
@@ -200,29 +208,25 @@ export function validateCSVHeaders(
   expectedHeaders: string[]
 ): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
-  
+
   // Check for missing headers
   const missingHeaders = expectedHeaders.filter(
-    header => !actualHeaders.includes(header)
+    (header) => !actualHeaders.includes(header)
   );
-  
+
   if (missingHeaders.length > 0) {
-    errors.push(
-      `Missing required columns: ${missingHeaders.join(", ")}`
-    );
+    errors.push(`Missing required columns: ${missingHeaders.join(", ")}`);
   }
-  
+
   // Check for extra headers (warning only)
   const extraHeaders = actualHeaders.filter(
-    header => !expectedHeaders.includes(header)
+    (header) => !expectedHeaders.includes(header)
   );
-  
+
   if (extraHeaders.length > 0) {
-    errors.push(
-      `Unknown columns: ${extraHeaders.join(", ")}`
-    );
+    errors.push(`Unknown columns: ${extraHeaders.join(", ")}`);
   }
-  
+
   return {
     valid: errors.length === 0,
     errors,

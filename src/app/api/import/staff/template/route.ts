@@ -11,15 +11,15 @@ export async function GET() {
         email: "staff1@example.com",
         password: "password123",
         name: "スタッフ1",
-        branchNames: "東京校"
+        branchNames: "東京校",
       },
       {
         username: "staff2",
         email: "staff2@example.com",
         password: "password456",
         name: "スタッフ2",
-        branchNames: "東京校,大阪校"
-      }
+        branchNames: "東京校,大阪校",
+      },
     ];
 
     // Generate CSV with headers

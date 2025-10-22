@@ -1,28 +1,37 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { format } from "date-fns"
-import { CalendarIcon, X } from 'lucide-react'
-import { DateRange } from "react-day-picker"
-import { Button } from "@/components/ui/button"
-import { Calendar } from "@/components/ui/calendar"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { cn } from "@/lib/utils"
+import * as React from "react";
+import { format } from "date-fns";
+import { CalendarIcon, X } from "lucide-react";
+import { DateRange } from "react-day-picker";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 
 type DateRangePickerProps = {
-  dateRange: DateRange | undefined
-  onChange: (range: DateRange | undefined) => void
-  label?: string
-  className?: string
-}
+  dateRange: DateRange | undefined;
+  onChange: (range: DateRange | undefined) => void;
+  label?: string;
+  className?: string;
+};
 
-export function DateRangePicker({ dateRange, onChange, label, className }: DateRangePickerProps) {
-  const [open, setOpen] = React.useState(false)
+export function DateRangePicker({
+  dateRange,
+  onChange,
+  label,
+  className,
+}: DateRangePickerProps) {
+  const [open, setOpen] = React.useState(false);
 
   const handleClearClick = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    onChange(undefined)
-  }
+    e.stopPropagation();
+    onChange(undefined);
+  };
 
   return (
     <div className={cn("space-y-1", className)}>
@@ -42,7 +51,8 @@ export function DateRangePicker({ dateRange, onChange, label, className }: DateR
                 {dateRange?.from ? (
                   dateRange.to ? (
                     <>
-                      {format(dateRange.from, "MM/dd")} - {format(dateRange.to, "MM/dd")}
+                      {format(dateRange.from, "MM/dd")} -{" "}
+                      {format(dateRange.to, "MM/dd")}
                     </>
                   ) : (
                     format(dateRange.from, "MM/dd")
@@ -73,5 +83,5 @@ export function DateRangePicker({ dateRange, onChange, label, className }: DateR
         </PopoverContent>
       </Popover>
     </div>
-  )
+  );
 }

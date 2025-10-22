@@ -35,13 +35,16 @@ const formatNotification = async (
 ): Promise<FormattedNotification> => {
   // Determine recipient name based on type
   let recipientName = null;
-  if (notification.recipientType === 'STUDENT' && notification.recipientId) {
+  if (notification.recipientType === "STUDENT" && notification.recipientId) {
     const student = await prisma.student.findUnique({
       where: { studentId: notification.recipientId },
       select: { name: true },
     });
     recipientName = student?.name || null;
-  } else if (notification.recipientType === 'TEACHER' && notification.recipientId) {
+  } else if (
+    notification.recipientType === "TEACHER" &&
+    notification.recipientId
+  ) {
     const teacher = await prisma.teacher.findUnique({
       where: { teacherId: notification.recipientId },
       select: { name: true },
@@ -60,13 +63,20 @@ const formatNotification = async (
     branchId: notification.branchId,
     branchName: notification.branch?.name || null,
     sentVia: notification.sentVia,
-    sentAt: notification.sentAt ? format(notification.sentAt, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'") : null,
-    readAt: notification.readAt ? format(notification.readAt, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'") : null,
+    sentAt: notification.sentAt
+      ? format(notification.sentAt, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
+      : null,
+    readAt: notification.readAt
+      ? format(notification.readAt, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
+      : null,
     status: notification.status,
     notes: notification.notes,
     createdAt: format(notification.createdAt, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"),
     updatedAt: format(notification.updatedAt, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"),
-    scheduledAt: format(notification.scheduledAt, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"),
+    scheduledAt: format(
+      notification.scheduledAt,
+      "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"
+    ),
     processingAttempts: notification.processingAttempts,
     logs: notification.logs,
   };
@@ -101,10 +111,7 @@ export const GET = withBranchAccess(
     try {
       // Build where clause - include both branch-specific and global notifications
       const where: any = {
-        OR: [
-          { branchId: branchId },
-          { branchId: null }
-        ]
+        OR: [{ branchId: branchId }, { branchId: null }],
       };
 
       // Status filter
@@ -117,7 +124,7 @@ export const GET = withBranchAccess(
         where.recipientType = recipientType;
       }
 
-      // Notification type filter  
+      // Notification type filter
       if (notificationType) {
         where.notificationType = notificationType;
       }
@@ -137,7 +144,7 @@ export const GET = withBranchAccess(
       if (search) {
         where.message = {
           contains: search,
-          mode: 'insensitive'
+          mode: "insensitive",
         };
       }
 
@@ -155,16 +162,16 @@ export const GET = withBranchAccess(
         orderBy: [
           // Primary sort: failed notifications first
           {
-            status: "asc" // This will put FAILED first alphabetically
+            status: "asc", // This will put FAILED first alphabetically
           },
           // Secondary sort: newest first
           {
-            scheduledAt: "desc"
+            scheduledAt: "desc",
           },
           // Tertiary sort: creation time
           {
-            createdAt: "desc"
-          }
+            createdAt: "desc",
+          },
         ],
         skip: offset,
         take: limit,
@@ -173,7 +180,7 @@ export const GET = withBranchAccess(
       // Custom sort to ensure proper priority: FAILED → PENDING → PROCESSING → SENT
       const statusPriority = {
         [NotificationStatus.FAILED]: 0,
-        [NotificationStatus.PENDING]: 1, 
+        [NotificationStatus.PENDING]: 1,
         [NotificationStatus.PROCESSING]: 2,
         [NotificationStatus.SENT]: 3,
       };
@@ -181,13 +188,15 @@ export const GET = withBranchAccess(
       const sortedNotifications = notifications.sort((a, b) => {
         const aPriority = statusPriority[a.status];
         const bPriority = statusPriority[b.status];
-        
+
         if (aPriority !== bPriority) {
           return aPriority - bPriority;
         }
-        
+
         // If same status, sort by scheduled date (newest first)
-        return new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime();
+        return (
+          new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime()
+        );
       });
 
       // Format response
@@ -251,7 +260,8 @@ export const DELETE = withBranchAccess(
       // Check if user has access to all notifications' branches (non-admin users)
       if (session.user?.role !== "ADMIN") {
         const unauthorizedNotifications = notificationsToDelete.filter(
-          (notification) => notification.branchId && notification.branchId !== branchId
+          (notification) =>
+            notification.branchId && notification.branchId !== branchId
         );
 
         if (unauthorizedNotifications.length > 0) {

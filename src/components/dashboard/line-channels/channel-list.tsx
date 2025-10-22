@@ -10,16 +10,19 @@ import {
   XCircle,
   Building2,
   Copy,
-  ShieldCheck
+  ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/data-table";
 import { LineChannelResponse } from "@/types/line-channel";
-import { useLineChannels, useMigrationStatus } from "@/hooks/useLineChannelQuery";
+import {
+  useLineChannels,
+  useMigrationStatus,
+} from "@/hooks/useLineChannelQuery";
 import {
   useLineChannelDelete,
-  useLineChannelMigrate
+  useLineChannelMigrate,
 } from "@/hooks/useLineChannelMutation";
 import {
   AlertDialog,
@@ -61,9 +64,12 @@ export function LineChannelTable() {
   const deleteMutation = useLineChannelDelete();
   const migrateMutation = useLineChannelMigrate();
 
-  const [channelToEdit, setChannelToEdit] = useState<LineChannelResponse | null>(null);
-  const [channelToDelete, setChannelToDelete] = useState<LineChannelResponse | null>(null);
-  const [channelToTest, setChannelToTest] = useState<LineChannelResponse | null>(null);
+  const [channelToEdit, setChannelToEdit] =
+    useState<LineChannelResponse | null>(null);
+  const [channelToDelete, setChannelToDelete] =
+    useState<LineChannelResponse | null>(null);
+  const [channelToTest, setChannelToTest] =
+    useState<LineChannelResponse | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
   const copyToClipboard = async (channelId: string, webhookUrl: string) => {
@@ -121,9 +127,13 @@ export function LineChannelTable() {
       cell: ({ row }) => (
         <Badge variant={row.original.isActive ? "default" : "secondary"}>
           {row.original.isActive ? (
-            <><BadgeCheck className="mr-1 h-3 w-3" /> 有効</>
+            <>
+              <BadgeCheck className="mr-1 h-3 w-3" /> 有効
+            </>
           ) : (
-            <><XCircle className="mr-1 h-3 w-3" /> 無効</>
+            <>
+              <XCircle className="mr-1 h-3 w-3" /> 無効
+            </>
           )}
         </Badge>
       ),
@@ -140,8 +150,8 @@ export function LineChannelTable() {
         return (
           <div className="flex flex-wrap gap-1">
             {branches.slice(0, 3).map((branch) => {
-              const isTeacher = branch.channelType === 'TEACHER';
-              const isStudent = branch.channelType === 'STUDENT';
+              const isTeacher = branch.channelType === "TEACHER";
+              const isStudent = branch.channelType === "STUDENT";
 
               return (
                 <div key={branch.id} className="flex items-center gap-1">
@@ -150,7 +160,13 @@ export function LineChannelTable() {
                     {branch.branch.name}
                   </Badge>
                   <Badge
-                    variant={isTeacher ? "default" : isStudent ? "secondary" : "outline"}
+                    variant={
+                      isTeacher
+                        ? "default"
+                        : isStudent
+                          ? "secondary"
+                          : "outline"
+                    }
                     className={`text-xs ${
                       isTeacher
                         ? "bg-blue-100 text-blue-800 border-blue-200"
@@ -178,9 +194,10 @@ export function LineChannelTable() {
       header: "Webhook URL",
       cell: ({ row }) => {
         // Generate the webhook URL using the channel ID
-        const baseUrl = typeof window !== 'undefined'
-          ? window.location.origin
-          : process.env.NEXTAUTH_URL || 'https://your-domain.com';
+        const baseUrl =
+          typeof window !== "undefined"
+            ? window.location.origin
+            : process.env.NEXTAUTH_URL || "https://your-domain.com";
         const webhookUrl = `${baseUrl}/api/line/webhook/${row.original.id}`;
         const isCopied = copiedId === row.original.id;
 
@@ -208,7 +225,8 @@ export function LineChannelTable() {
                 <div className="space-y-2">
                   <p className="font-mono text-xs">{webhookUrl}</p>
                   <p className="text-xs text-muted-foreground">
-                    クリックしてコピー • LINE Developer ConsoleでこのURLを設定してください
+                    クリックしてコピー • LINE Developer
+                    ConsoleでこのURLを設定してください
                   </p>
                 </div>
               </TooltipContent>
@@ -326,7 +344,8 @@ export function LineChannelTable() {
           <AlertDialogHeader>
             <AlertDialogTitle>チャンネルを削除しますか？</AlertDialogTitle>
             <AlertDialogDescription>
-              「{channelToDelete?.name}」を削除します。この操作は取り消せません。
+              「{channelToDelete?.name}
+              」を削除します。この操作は取り消せません。
               このチャンネルに関連付けられているブランチは影響を受けます。
             </AlertDialogDescription>
           </AlertDialogHeader>

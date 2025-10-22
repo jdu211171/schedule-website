@@ -1,4 +1,4 @@
-"use server"
+"use server";
 
 import { auth, signIn } from "@/auth";
 import { AuthError } from "next-auth";

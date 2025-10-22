@@ -236,7 +236,10 @@ export const DELETE = withBranchAccess(
     const branchId = request.url.split("/").pop();
 
     if (!branchId) {
-      return NextResponse.json({ error: "ブースIDは必須です" }, { status: 400 });
+      return NextResponse.json(
+        { error: "ブースIDは必須です" },
+        { status: 400 }
+      );
     }
 
     try {
@@ -254,47 +257,52 @@ export const DELETE = withBranchAccess(
 
       // Check for dependencies
       const boothCount = await prisma.booth.count({
-        where: { branchId }
+        where: { branchId },
       });
 
       const classSessionCount = await prisma.classSession.count({
-        where: { branchId }
+        where: { branchId },
       });
 
       const vacationCount = await prisma.vacation.count({
-        where: { branchId }
+        where: { branchId },
       });
 
       const notificationCount = await prisma.notification.count({
-        where: { branchId }
+        where: { branchId },
       });
 
       const userBranchCount = await prisma.userBranch.count({
-        where: { branchId }
+        where: { branchId },
       });
 
-      const hasAnyDependencies = boothCount > 0 || classSessionCount > 0 ||
-                                 vacationCount > 0 || notificationCount > 0 ||
-                                 userBranchCount > 0;
+      const hasAnyDependencies =
+        boothCount > 0 ||
+        classSessionCount > 0 ||
+        vacationCount > 0 ||
+        notificationCount > 0 ||
+        userBranchCount > 0;
 
       if (hasAnyDependencies) {
         const details = [];
         if (boothCount > 0) details.push(`ブース: ${boothCount}件`);
-        if (classSessionCount > 0) details.push(`授業セッション: ${classSessionCount}件`);
+        if (classSessionCount > 0)
+          details.push(`授業セッション: ${classSessionCount}件`);
         if (vacationCount > 0) details.push(`休暇: ${vacationCount}件`);
         if (notificationCount > 0) details.push(`通知: ${notificationCount}件`);
-        if (userBranchCount > 0) details.push(`ユーザー割り当て: ${userBranchCount}件`);
+        if (userBranchCount > 0)
+          details.push(`ユーザー割り当て: ${userBranchCount}件`);
 
         return NextResponse.json(
           {
-            error: `この校舎には関連するデータがあるため削除できません。（${details.join('、')}）`,
+            error: `この校舎には関連するデータがあるため削除できません。（${details.join("、")}）`,
             details: {
               booths: boothCount,
               classSessions: classSessionCount,
               vacations: vacationCount,
               notifications: notificationCount,
-              userBranches: userBranchCount
-            }
+              userBranches: userBranchCount,
+            },
           },
           { status: 400 }
         );

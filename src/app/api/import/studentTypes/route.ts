@@ -7,7 +7,7 @@ import {
   REQUIRED_STUDENT_TYPE_CSV_HEADERS,
   type StudentTypeImportData,
   type ImportResult,
-  formatValidationErrors
+  formatValidationErrors,
 } from "@/schemas/import";
 import { z } from "zod";
 import { handleImportError } from "@/lib/import-error-handler";
@@ -29,13 +29,14 @@ async function handleImport(req: NextRequest, session: any) {
     const buffer = Buffer.from(await (file as Blob).arrayBuffer());
 
     // Parse CSV file
-    const parseResult = await CSVParser.parseBuffer<Record<string, string>>(buffer);
+    const parseResult =
+      await CSVParser.parseBuffer<Record<string, string>>(buffer);
 
     if (parseResult.errors.length > 0) {
       return NextResponse.json(
         {
           error: "CSVファイルの解析に失敗しました",
-          details: parseResult.errors
+          details: parseResult.errors,
         },
         { status: 400 }
       );
@@ -51,18 +52,20 @@ async function handleImport(req: NextRequest, session: any) {
 
     // Accept localized headers by mapping to schema keys when possible
     const headerMap: Record<string, string> = {
-      "ID": "id",
+      ID: "id",
       // Japanese -> schema keys
-      "生徒タイプ名": "name",
-      "最大学年数": "maxYears",
-      "説明": "description",
-      "表示順": "order",
+      生徒タイプ名: "name",
+      最大学年数: "maxYears",
+      説明: "description",
+      表示順: "order",
     };
 
     // If required headers are missing, try remapping localized headers
     let actualHeaders = Object.keys(parseResult.data[0]);
     const requiredHeaders = [...REQUIRED_STUDENT_TYPE_CSV_HEADERS];
-    let missingHeaders = requiredHeaders.filter((h) => !actualHeaders.includes(h));
+    let missingHeaders = requiredHeaders.filter(
+      (h) => !actualHeaders.includes(h)
+    );
 
     if (missingHeaders.length > 0) {
       // Attempt header remap
@@ -77,7 +80,9 @@ async function handleImport(req: NextRequest, session: any) {
         });
         parseResult.data = remapped as any;
         actualHeaders = Object.keys(parseResult.data[0]);
-        missingHeaders = requiredHeaders.filter((h) => !actualHeaders.includes(h));
+        missingHeaders = requiredHeaders.filter(
+          (h) => !actualHeaders.includes(h)
+        );
       }
     }
 
@@ -93,7 +98,7 @@ async function handleImport(req: NextRequest, session: any) {
     const result: ImportResult = {
       success: 0,
       errors: [],
-      warnings: []
+      warnings: [],
     };
 
     for (let i = 0; i < parseResult.data.length; i++) {
@@ -106,13 +111,15 @@ async function handleImport(req: NextRequest, session: any) {
 
         // Check if student type with same name already exists
         const existingStudentType = await prisma.studentType.findFirst({
-          where: { name: validated.name }
+          where: { name: validated.name },
         });
 
         if (existingStudentType) {
           result.warnings.push({
             row: rowNumber,
-            warnings: [`学生タイプ「${validated.name}」は既に存在します。スキップしました。`]
+            warnings: [
+              `学生タイプ「${validated.name}」は既に存在します。スキップしました。`,
+            ],
           });
           continue;
         }
@@ -124,7 +131,11 @@ async function handleImport(req: NextRequest, session: any) {
         } else {
           result.errors.push({
             row: rowNumber,
-            errors: [error instanceof Error ? error.message : "データ検証中にエラーが発生しました"]
+            errors: [
+              error instanceof Error
+                ? error.message
+                : "データ検証中にエラーが発生しました",
+            ],
           });
         }
       }
@@ -144,8 +155,8 @@ async function handleImport(req: NextRequest, session: any) {
               name: data.name,
               maxYears: data.maxYears,
               description: data.description,
-              order: data.order
-            }
+              order: data.order,
+            },
           });
           result.success++;
         }

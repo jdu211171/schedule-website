@@ -2,7 +2,10 @@
 import { z } from "zod";
 
 export const staffCreateSchema = z.object({
-  name: z.string().min(1, "名前は必須です").max(100, "名前は100文字以内で入力してください"),
+  name: z
+    .string()
+    .min(1, "名前は必須です")
+    .max(100, "名前は100文字以内で入力してください"),
   username: z.string().min(3, "ユーザー名は3文字以上で入力してください"),
   password: z.string().min(6, "パスワードは6文字以上で入力してください"),
   email: z.string().email("有効なメールアドレス形式で入力してください"),
@@ -15,7 +18,10 @@ export const staffUpdateSchema = staffCreateSchema.partial().extend({
 
 // Define a base schema for the common fields.
 export const staffBaseSchema = z.object({
-  name: z.string().min(1, "名前は必須です").max(100, "名前は100文字以内で入力してください"),
+  name: z
+    .string()
+    .min(1, "名前は必須です")
+    .max(100, "名前は100文字以内で入力してください"),
   username: z.string().min(3, "ユーザー名は3文字以上で入力してください"),
   // Password is not always required in the form (e.g., when updating without changing password)
   // It will be required by staffCreateSchema for actual creation.

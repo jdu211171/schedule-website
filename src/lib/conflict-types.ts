@@ -3,7 +3,11 @@
 
 import type { ConflictInfo as SchemaConflictInfo } from "@/schemas/class-session.schema";
 
-export type ConflictType = SchemaConflictInfo["type"] | "TEACHER_CONFLICT" | "STUDENT_CONFLICT" | "BOOTH_CONFLICT";
+export type ConflictType =
+  | SchemaConflictInfo["type"]
+  | "TEACHER_CONFLICT"
+  | "STUDENT_CONFLICT"
+  | "BOOTH_CONFLICT";
 
 // Availability-derived (soft) conflicts, controlled by the UI toggle 「利用可能エラーの表示」
 export const AVAILABILITY_ERROR_TYPES = new Set<ConflictType>([
@@ -35,8 +39,14 @@ export function isAvailabilityErrorType(t: string): boolean {
   return AVAILABILITY_ERROR_TYPES.has(t as ConflictType);
 }
 
-export function hasHardConflict(conflicts: Array<AnyConflict | SchemaConflictInfo>): boolean {
-  return conflicts?.some((c) => isHardConflictType(String((c as AnyConflict).type)) ) ?? false;
+export function hasHardConflict(
+  conflicts: Array<AnyConflict | SchemaConflictInfo>
+): boolean {
+  return (
+    conflicts?.some((c) =>
+      isHardConflictType(String((c as AnyConflict).type))
+    ) ?? false
+  );
 }
 
 export function filterByAvailabilityPreference<T extends AnyConflict>(
@@ -66,10 +76,12 @@ export type MarkAsConflictedMap = Record<ConflictMarkKey, boolean>;
 export function normalizeMarkAsConflicted(
   mark?: Partial<Record<ConflictMarkKey, boolean>> | null
 ): MarkAsConflictedMap {
-  const base: MarkAsConflictedMap = { ...DEFAULT_MARK_AS_CONFLICTED } as MarkAsConflictedMap;
+  const base: MarkAsConflictedMap = {
+    ...DEFAULT_MARK_AS_CONFLICTED,
+  } as MarkAsConflictedMap;
   if (mark) {
     for (const k of Object.keys(mark) as ConflictMarkKey[]) {
-      if (typeof mark[k] === 'boolean') base[k] = mark[k] as boolean;
+      if (typeof mark[k] === "boolean") base[k] = mark[k] as boolean;
     }
   }
   return base;

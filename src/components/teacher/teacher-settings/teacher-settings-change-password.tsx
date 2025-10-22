@@ -17,9 +17,11 @@ import { Label } from "@/components/ui/label";
 
 const TeacherSettingsChangePassword: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [showCurrentPassword, setShowCurrentPassword] = useState<boolean>(false);
+  const [showCurrentPassword, setShowCurrentPassword] =
+    useState<boolean>(false);
   const [showNewPassword, setShowNewPassword] = useState<boolean>(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false);
+  const [showConfirmPassword, setShowConfirmPassword] =
+    useState<boolean>(false);
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -105,7 +107,9 @@ const TeacherSettingsChangePassword: React.FC = () => {
                     <Eye className="h-4 w-4 text-muted-foreground" />
                   )}
                   <span className="sr-only">
-                    {showCurrentPassword ? "パスワードを隠す" : "パスワードを表示"}
+                    {showCurrentPassword
+                      ? "パスワードを隠す"
+                      : "パスワードを表示"}
                   </span>
                 </Button>
               </div>
@@ -163,9 +167,7 @@ const TeacherSettingsChangePassword: React.FC = () => {
                   variant="ghost"
                   size="icon"
                   className="absolute right-0 top-0 h-full px-3"
-                  onClick={() =>
-                    setShowConfirmPassword(!showConfirmPassword)
-                  }
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                 >
                   {showConfirmPassword ? (
                     <EyeOff className="h-4 w-4 text-muted-foreground" />
@@ -173,7 +175,9 @@ const TeacherSettingsChangePassword: React.FC = () => {
                     <Eye className="h-4 w-4 text-muted-foreground" />
                   )}
                   <span className="sr-only">
-                    {showConfirmPassword ? "パスワードを隠す" : "パスワードを表示"}
+                    {showConfirmPassword
+                      ? "パスワードを隠す"
+                      : "パスワードを表示"}
                   </span>
                 </Button>
               </div>
@@ -181,9 +185,7 @@ const TeacherSettingsChangePassword: React.FC = () => {
 
             <div className="pt-4 flex gap-3">
               <Button type="submit" disabled={isLoading}>
-                {isLoading && (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                )}
+                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 パスワードを更新
               </Button>
             </div>

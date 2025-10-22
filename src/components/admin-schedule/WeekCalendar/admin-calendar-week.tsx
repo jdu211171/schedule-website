@@ -23,9 +23,23 @@ import { toast } from "sonner";
 import { broadcastClassSessionsChanged } from "@/lib/calendar-broadcast";
 import { useSession } from "next-auth/react";
 import { fetchClassTypeOptions } from "@/lib/class-type-options";
-import { getClassTypeSelection, setClassTypeSelection } from "@/lib/class-type-filter-persistence";
+import { subscribeClassTypesChanged } from "@/lib/class-types-broadcast";
+import {
+  getClassTypeSelection,
+  setClassTypeSelection,
+} from "@/lib/class-type-filter-persistence";
 import type { ClassTypeOption } from "@/types/class-type";
-import { Faceted, FacetedBadgeList, FacetedContent, FacetedEmpty, FacetedGroup, FacetedInput, FacetedItem, FacetedList, FacetedTrigger } from "@/components/ui/faceted";
+import {
+  Faceted,
+  FacetedBadgeList,
+  FacetedContent,
+  FacetedEmpty,
+  FacetedGroup,
+  FacetedInput,
+  FacetedItem,
+  FacetedList,
+  FacetedTrigger,
+} from "@/components/ui/faceted";
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
 
@@ -102,12 +116,14 @@ const AdminCalendarWeek: React.FC<AdminCalendarWeekProps> = ({
   const [filters, setFilters] = useState<DayFilters>({});
   const { data: session } = useSession();
   const role = session?.user?.role;
-  const [classTypeOptions, setClassTypeOptions] = useState<ClassTypeOption[]>([]);
+  const [classTypeOptions, setClassTypeOptions] = useState<ClassTypeOption[]>(
+    []
+  );
   const [classTypeLoading, setClassTypeLoading] = useState(false);
 
   useEffect(() => {
     let mounted = true;
-    (async () => {
+    const load = async () => {
       setClassTypeLoading(true);
       try {
         const opts = await fetchClassTypeOptions();
@@ -115,9 +131,12 @@ const AdminCalendarWeek: React.FC<AdminCalendarWeekProps> = ({
       } finally {
         if (mounted) setClassTypeLoading(false);
       }
-    })();
+    };
+    load();
+    const unsubscribe = subscribeClassTypesChanged(() => load());
     return () => {
       mounted = false;
+      unsubscribe();
     };
   }, []);
 
@@ -134,44 +153,60 @@ const AdminCalendarWeek: React.FC<AdminCalendarWeekProps> = ({
 
   // Live sync: listen for selection changes broadcast from other views
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === "undefined") return;
     const onStorage = (e: StorageEvent) => {
       if (!e.key || !role) return;
       const key = `filter:classTypes:${role}`;
       if (e.key === key) {
         const saved = getClassTypeSelection(role);
-        setFilters((prev) => ({ ...prev, classTypeIds: saved.length ? saved : undefined }));
+        setFilters((prev) => ({
+          ...prev,
+          classTypeIds: saved.length ? saved : undefined,
+        }));
       }
     };
-    window.addEventListener('storage', onStorage);
+    window.addEventListener("storage", onStorage);
 
     let ch: BroadcastChannel | null = null;
-    if (typeof BroadcastChannel !== 'undefined') {
+    if (typeof BroadcastChannel !== "undefined") {
       try {
-        ch = new BroadcastChannel('class-type-filter');
-        ch.addEventListener('message', (event: MessageEvent) => {
-          const msg = event.data as { type?: string; role?: string; ids?: string[] };
-          if (msg?.type === 'classTypeSelectionChanged' && msg.role === role) {
-            setFilters((prev) => ({ ...prev, classTypeIds: (msg.ids && msg.ids.length) ? msg.ids : undefined }));
+        ch = new BroadcastChannel("class-type-filter");
+        ch.addEventListener("message", (event: MessageEvent) => {
+          const msg = event.data as {
+            type?: string;
+            role?: string;
+            ids?: string[];
+          };
+          if (msg?.type === "classTypeSelectionChanged" && msg.role === role) {
+            setFilters((prev) => ({
+              ...prev,
+              classTypeIds: msg.ids && msg.ids.length ? msg.ids : undefined,
+            }));
           }
         });
       } catch {}
     }
     return () => {
-      window.removeEventListener('storage', onStorage);
-      try { ch?.close(); } catch {}
+      window.removeEventListener("storage", onStorage);
+      try {
+        ch?.close();
+      } catch {}
     };
   }, [role]);
 
   const handleClassTypesChange = (ids: string[] | undefined) => {
     const next = Array.isArray(ids) ? ids : [];
-    setFilters((prev) => ({ ...prev, classTypeIds: next.length ? next : undefined }));
+    setFilters((prev) => ({
+      ...prev,
+      classTypeIds: next.length ? next : undefined,
+    }));
     setClassTypeSelection(role, next);
   };
 
   // Create lesson dialog states
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [createLessonData, setCreateLessonData] = useState<NewClassSessionData | null>(null);
+  const [createLessonData, setCreateLessonData] =
+    useState<NewClassSessionData | null>(null);
 
   const { data: boothsResponse } = useBooths({ status: true });
   const { data: teachersResponse } = useTeachers();
@@ -193,12 +228,15 @@ const AdminCalendarWeek: React.FC<AdminCalendarWeekProps> = ({
   const handleBaseDateChange = useCallback((newBaseWeek: Date) => {
     const weekStart = startOfWeek(newBaseWeek, { weekStartsOn: 1 });
     setBaseWeek(weekStart);
-    
+
     // Reset selected weeks to just the first week of new base
     setSelectedWeeks([weekStart]);
-    
+
     // Clear old localStorage
-    localStorage.setItem(SELECTED_WEEKS_KEY, JSON.stringify([weekStart.toISOString()]));
+    localStorage.setItem(
+      SELECTED_WEEKS_KEY,
+      JSON.stringify([weekStart.toISOString()])
+    );
   }, []);
 
   const handleDaySelect = useCallback((date: Date, isSelected: boolean) => {
@@ -258,7 +296,7 @@ const AdminCalendarWeek: React.FC<AdminCalendarWeekProps> = ({
     const lessonData: NewClassSessionData = {
       date: date,
       startTime: "09:00",
-      endTime: "10:00", 
+      endTime: "10:00",
       boothId: "", // Empty boothId - user will select in dialog
     };
 
@@ -266,145 +304,163 @@ const AdminCalendarWeek: React.FC<AdminCalendarWeekProps> = ({
     setCreateDialogOpen(true);
   }, []);
 
-  const handleCreateLessonSave = useCallback(async (payload: CreateClassSessionWithConflictsPayload): Promise<{ success: boolean; conflicts?: ConflictResponse }> => {
-    try {
-      const dateStr = typeof payload.date === 'string' ?
-        payload.date : formatDateToString(payload.date);
-  
-      const requestBody: Record<string, unknown> = {
-        date: dateStr,
-        startTime: payload.startTime,
-        endTime: payload.endTime,
-        teacherId: payload.teacherId || "",
-        studentId: payload.studentId || "",
-        subjectId: payload.subjectId || "",
-        boothId: payload.boothId,
-        classTypeId: payload.classTypeId || "",
-        notes: payload.notes || ""
-      };
-  
-      if (payload.isRecurring) {
-        requestBody.isRecurring = true;
-        requestBody.startDate = payload.startDate;
-        if (payload.endDate) requestBody.endDate = payload.endDate;
-        if (payload.daysOfWeek && payload.daysOfWeek.length > 0) {
-          requestBody.daysOfWeek = payload.daysOfWeek;
+  const handleCreateLessonSave = useCallback(
+    async (
+      payload: CreateClassSessionWithConflictsPayload
+    ): Promise<{ success: boolean; conflicts?: ConflictResponse }> => {
+      try {
+        const dateStr =
+          typeof payload.date === "string"
+            ? payload.date
+            : formatDateToString(payload.date);
+
+        const requestBody: Record<string, unknown> = {
+          date: dateStr,
+          startTime: payload.startTime,
+          endTime: payload.endTime,
+          teacherId: payload.teacherId || "",
+          studentId: payload.studentId || "",
+          subjectId: payload.subjectId || "",
+          boothId: payload.boothId,
+          classTypeId: payload.classTypeId || "",
+          notes: payload.notes || "",
+        };
+
+        if (payload.isRecurring) {
+          requestBody.isRecurring = true;
+          requestBody.startDate = payload.startDate;
+          if (payload.endDate) requestBody.endDate = payload.endDate;
+          if (payload.daysOfWeek && payload.daysOfWeek.length > 0) {
+            requestBody.daysOfWeek = payload.daysOfWeek;
+          }
         }
-      }
-  
-      // Add conflict resolution flags
-      if (payload.skipConflicts) {
-        requestBody.skipConflicts = true;
-      }
-      if (payload.forceCreate) {
-        requestBody.forceCreate = true;
-      }
-  
-      // Add session actions for conflict resolution
-      if (payload.sessionActions && payload.sessionActions.length > 0) {
-        requestBody.sessionActions = payload.sessionActions;
-      }
-  
-      // Silent background create
-  
-      const response = await fetch('/api/class-sessions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Selected-Branch': localStorage.getItem('selectedBranchId') || ''
-        },
-        body: JSON.stringify(requestBody),
-      });
-  
-      const contentType = response.headers.get("content-type");
-      
-      if (!response.ok) {
-        let errorData: any = {};
-  
+
+        // Add conflict resolution flags
+        if (payload.skipConflicts) {
+          requestBody.skipConflicts = true;
+        }
+        if (payload.forceCreate) {
+          requestBody.forceCreate = true;
+        }
+
+        // Add session actions for conflict resolution
+        if (payload.sessionActions && payload.sessionActions.length > 0) {
+          requestBody.sessionActions = payload.sessionActions;
+        }
+
+        // Silent background create
+
+        const response = await fetch("/api/class-sessions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Selected-Branch": localStorage.getItem("selectedBranchId") || "",
+          },
+          body: JSON.stringify(requestBody),
+        });
+
+        const contentType = response.headers.get("content-type");
+
+        if (!response.ok) {
+          let errorData: any = {};
+
+          if (contentType && contentType.includes("application/json")) {
+            errorData = await response.json();
+          } else {
+            const errorText = await response.text();
+            errorData = {
+              message: errorText || `サーバーエラー: ${response.status}`,
+            };
+          }
+
+          // Check for conflicts
+          if (errorData.requiresConfirmation) {
+            return {
+              success: false,
+              conflicts: errorData as ConflictResponse,
+            };
+          }
+
+          // Regular error
+          let errorMessage = "授業の作成に失敗しました";
+
+          if (errorData.message) {
+            errorMessage = errorData.message;
+          } else if (errorData.error) {
+            errorMessage = errorData.error;
+          }
+
+          if (errorData.issues && Array.isArray(errorData.issues)) {
+            errorMessage +=
+              ": " +
+              errorData.issues.map((issue: any) => issue.message).join(", ");
+          }
+
+          throw new Error(
+            errorMessage || `エラー ${response.status}: ${response.statusText}`
+          );
+        }
+
+        // Success: parse payload if available
+        let createdPayload: any = null;
         if (contentType && contentType.includes("application/json")) {
-          errorData = await response.json();
-        } else {
-          const errorText = await response.text();
-          errorData = { message: errorText || `サーバーエラー: ${response.status}` };
+          try {
+            createdPayload = await response.json();
+          } catch (parseError) {
+            console.warn("Response parse error:", parseError);
+          }
         }
-  
-        // Check for conflicts
-        if (errorData.requiresConfirmation) {
-          return { 
-            success: false, 
-            conflicts: errorData as ConflictResponse 
+
+        // Generic success toast only (no filter-specific messaging)
+        toast.success("授業が正常に作成されました");
+
+        // Notify same-user tabs to refresh. Emit all created dates when recurring.
+        try {
+          const createdDates = Array.isArray(createdPayload?.data)
+            ? Array.from(
+                new Set(
+                  (createdPayload.data as any[])
+                    .map((s) =>
+                      typeof s?.date === "string" ? s.date.split("T")[0] : ""
+                    )
+                    .filter((d) => typeof d === "string" && d.length > 0)
+                )
+              )
+            : [];
+          if (createdDates.length > 0) {
+            broadcastClassSessionsChanged(createdDates as string[]);
+          } else {
+            const d =
+              typeof requestBody.date === "string"
+                ? requestBody.date
+                : undefined;
+            if (d) broadcastClassSessionsChanged([d]);
+            else broadcastClassSessionsChanged();
+          }
+        } catch {}
+
+        // Close dialog
+        setCreateDialogOpen(false);
+        setCreateLessonData(null);
+
+        return { success: true };
+      } catch (error) {
+        console.error("Error creating lesson:", error);
+
+        // Check if this is a conflict error
+        if (error instanceof Error && (error as any).conflicts) {
+          return {
+            success: false,
+            conflicts: (error as any).conflicts,
           };
         }
-  
-        // Regular error
-        let errorMessage = '授業の作成に失敗しました';
-  
-        if (errorData.message) {
-          errorMessage = errorData.message;
-        } else if (errorData.error) {
-          errorMessage = errorData.error;
-        }
-  
-        if (errorData.issues && Array.isArray(errorData.issues)) {
-          errorMessage += ': ' + errorData.issues.map((issue: any) => issue.message).join(', ');
-        }
-  
-        throw new Error(errorMessage || `エラー ${response.status}: ${response.statusText}`);
-      }
-  
-      // Success: parse payload if available
-      let createdPayload: any = null;
-      if (contentType && contentType.includes("application/json")) {
-        try {
-          createdPayload = await response.json();
-        } catch (parseError) {
-          console.warn("Response parse error:", parseError);
-        }
-      }
 
-      // Generic success toast only (no filter-specific messaging)
-      toast.success('授業が正常に作成されました');
-
-      // Notify same-user tabs to refresh. Emit all created dates when recurring.
-      try {
-        const createdDates = Array.isArray(createdPayload?.data)
-          ? Array.from(
-              new Set(
-                (createdPayload.data as any[])
-                  .map((s) => (typeof s?.date === 'string' ? s.date.split('T')[0] : ''))
-                  .filter((d) => typeof d === 'string' && d.length > 0)
-              )
-            )
-          : [];
-        if (createdDates.length > 0) {
-          broadcastClassSessionsChanged(createdDates as string[]);
-        } else {
-          const d = typeof requestBody.date === 'string' ? requestBody.date : undefined;
-          if (d) broadcastClassSessionsChanged([d]); else broadcastClassSessionsChanged();
-        }
-      } catch {}
-
-      // Close dialog
-      setCreateDialogOpen(false);
-      setCreateLessonData(null);
-      
-      return { success: true };
-  
-    } catch (error) {
-      console.error('Error creating lesson:', error);
-      
-      // Check if this is a conflict error
-      if (error instanceof Error && (error as any).conflicts) {
-        return { 
-          success: false, 
-          conflicts: (error as any).conflicts 
-        };
+        // Regular error - rethrow for alert display
+        throw error;
       }
-      
-      // Regular error - rethrow for alert display
-      throw error;
-    }
-  }, []);
+    },
+    []
+  );
 
   return (
     <div className="w-full flex flex-col gap-2 my-2">
@@ -418,7 +474,11 @@ const AdminCalendarWeek: React.FC<AdminCalendarWeekProps> = ({
             onBaseDateChange={handleBaseDateChange}
           />
           <div className="flex items-center gap-1">
-            <Faceted multiple value={filters.classTypeIds} onValueChange={handleClassTypesChange}>
+            <Faceted
+              multiple
+              value={filters.classTypeIds}
+              onValueChange={handleClassTypesChange}
+            >
               <FacetedTrigger
                 aria-label="授業タイプフィルター"
                 className="h-8 w-[220px] max-w-[240px] border border-input rounded-md px-2 bg-background text-foreground hover:bg-accent hover:text-accent-foreground text-sm flex items-center justify-between whitespace-nowrap overflow-hidden"
@@ -490,7 +550,7 @@ const AdminCalendarWeek: React.FC<AdminCalendarWeekProps> = ({
           onOpenChange={setCreateDialogOpen}
           lessonData={createLessonData}
           onSave={handleCreateLessonSave}
-          booths={booths.map(booth => ({
+          booths={booths.map((booth) => ({
             boothId: booth.boothId,
             name: booth.name,
           }))}

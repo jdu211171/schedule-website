@@ -1,5 +1,5 @@
-import { prisma } from '@/lib/prisma';
-import { NotificationStatus } from '@prisma/client';
+import { prisma } from "@/lib/prisma";
+import { NotificationStatus } from "@prisma/client";
 
 export interface ArchiveConfig {
   archiveCriteria: {
@@ -40,7 +40,9 @@ export const archiveNotifications = async (
 
   try {
     const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - config.archiveCriteria.olderThanDays);
+    cutoffDate.setDate(
+      cutoffDate.getDate() - config.archiveCriteria.olderThanDays
+    );
 
     // Build where clause for notifications to archive
     const where: any = {
@@ -55,7 +57,11 @@ export const archiveNotifications = async (
     // Add criteria for important notifications only
     if (config.archiveCriteria.importantOnly) {
       where.OR = [
-        { notificationType: { in: ['CLASS_CANCELLED', 'EMERGENCY', 'SYSTEM_ALERT'] } },
+        {
+          notificationType: {
+            in: ["CLASS_CANCELLED", "EMERGENCY", "SYSTEM_ALERT"],
+          },
+        },
         { relatedClassId: { not: null } },
         { processingAttempts: { gt: 1 } }, // Failed notifications that were retried
       ];
@@ -102,7 +108,7 @@ export const archiveNotifications = async (
             processingAttempts: notification.processingAttempts,
             logs: notification.logs as any,
             archivedAt: new Date(),
-            archiveReason: 'CLEANUP_ARCHIVE',
+            archiveReason: "CLEANUP_ARCHIVE",
           },
         });
 
@@ -118,7 +124,7 @@ export const archiveNotifications = async (
       await tx.notification.deleteMany({
         where: {
           notificationId: {
-            in: notificationsToArchive.map(n => n.notificationId),
+            in: notificationsToArchive.map((n) => n.notificationId),
           },
         },
       });
@@ -127,15 +133,19 @@ export const archiveNotifications = async (
     result.success = true;
     result.executionTimeMs = Date.now() - startTime;
 
-    console.log(`Archived ${result.totalArchived} notifications in ${result.executionTimeMs}ms`);
+    console.log(
+      `Archived ${result.totalArchived} notifications in ${result.executionTimeMs}ms`
+    );
     console.log(`Archived by status:`, result.archivedByStatus);
 
     return result;
   } catch (error) {
     result.success = false;
     result.executionTimeMs = Date.now() - startTime;
-    result.errors.push(`Archive failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    console.error('Notification archiving failed:', error);
+    result.errors.push(
+      `Archive failed: ${error instanceof Error ? error.message : "Unknown error"}`
+    );
+    console.error("Notification archiving failed:", error);
     return result;
   }
 };
@@ -163,20 +173,20 @@ export const cleanupArchive = async (
     if (maxRecords) {
       // If max records specified, delete oldest records beyond the limit
       const totalCount = await prisma.notificationArchive.count();
-      
+
       if (totalCount > maxRecords) {
         const recordsToDelete = totalCount - maxRecords;
-        
+
         // Get oldest records to delete
         const oldestRecords = await prisma.notificationArchive.findMany({
-          orderBy: { archivedAt: 'asc' },
+          orderBy: { archivedAt: "asc" },
           take: recordsToDelete,
           select: { id: true },
         });
 
         const deleteResult = await prisma.notificationArchive.deleteMany({
           where: {
-            id: { in: oldestRecords.map(r => r.id) },
+            id: { in: oldestRecords.map((r) => r.id) },
           },
         });
 
@@ -203,7 +213,7 @@ export const cleanupArchive = async (
       success: false,
       deletedCount: 0,
       executionTimeMs: Date.now() - startTime,
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: error instanceof Error ? error.message : "Unknown error",
     };
   }
 };
@@ -218,36 +228,33 @@ export const getArchiveStats = async (): Promise<{
   newestRecord: Date | null;
   recordsByBranch: { [key: string]: number };
 }> => {
-  const [
-    totalRecords,
-    statusStats,
-    dateStats,
-    branchStats,
-  ] = await Promise.all([
-    prisma.notificationArchive.count(),
-    prisma.notificationArchive.groupBy({
-      by: ['status'],
-      _count: true,
-    }),
-    prisma.notificationArchive.aggregate({
-      _min: { archivedAt: true },
-      _max: { archivedAt: true },
-    }),
-    prisma.notificationArchive.groupBy({
-      by: ['branchName'],
-      _count: true,
-      where: { branchName: { not: null } },
-    }),
-  ]);
+  const [totalRecords, statusStats, dateStats, branchStats] = await Promise.all(
+    [
+      prisma.notificationArchive.count(),
+      prisma.notificationArchive.groupBy({
+        by: ["status"],
+        _count: true,
+      }),
+      prisma.notificationArchive.aggregate({
+        _min: { archivedAt: true },
+        _max: { archivedAt: true },
+      }),
+      prisma.notificationArchive.groupBy({
+        by: ["branchName"],
+        _count: true,
+        where: { branchName: { not: null } },
+      }),
+    ]
+  );
 
   const recordsByStatus: { [key: string]: number } = {};
-  statusStats.forEach(stat => {
+  statusStats.forEach((stat) => {
     recordsByStatus[stat.status] = stat._count;
   });
 
   const recordsByBranch: { [key: string]: number } = {};
-  branchStats.forEach(stat => {
-    recordsByBranch[stat.branchName || 'Unknown'] = stat._count;
+  branchStats.forEach((stat) => {
+    recordsByBranch[stat.branchName || "Unknown"] = stat._count;
   });
 
   return {
@@ -301,7 +308,7 @@ export const searchArchive = async (filters: {
   const [records, total] = await Promise.all([
     prisma.notificationArchive.findMany({
       where,
-      orderBy: { archivedAt: 'desc' },
+      orderBy: { archivedAt: "desc" },
       take: filters.limit || 50,
       skip: filters.offset || 0,
     }),

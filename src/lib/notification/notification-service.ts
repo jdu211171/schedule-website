@@ -5,7 +5,7 @@ import { buildQueueIdempotencyKey } from '@/lib/notification/config';
 
 interface CreateNotificationParams {
   recipientId: string;
-  recipientType: 'STUDENT' | 'TEACHER';
+  recipientType: "STUDENT" | "TEACHER";
   notificationType: string;
   message: string;
   relatedClassId?: string;
@@ -23,15 +23,13 @@ interface CreateNotificationParams {
  * @param params - The notification details to check.
  * @returns True if a notification exists, false otherwise.
  */
-export const checkExistingNotification = async (
-  params: {
-    recipientId: string;
-    recipientType: string;
-    notificationType: string;
-    targetDate: Date;
-    branchId?: string | null;
-  }
-): Promise<boolean> => {
+export const checkExistingNotification = async (params: {
+  recipientId: string;
+  recipientType: string;
+  notificationType: string;
+  targetDate: Date;
+  branchId?: string | null;
+}): Promise<boolean> => {
   const existing = await prisma.notification.findFirst({
     where: {
       recipientId: params.recipientId,
@@ -66,7 +64,7 @@ export const createNotification = async (
           targetDate: params.targetDate,
           branchId: params.branchId,
         });
-        
+
         if (exists) {
           const key = buildQueueIdempotencyKey({
             recipientId: params.recipientId,
@@ -91,7 +89,7 @@ export const createNotification = async (
             branchId: params.branchId ?? null,
           },
         });
-        
+
         if (existing) {
           const key = buildQueueIdempotencyKey({
             recipientId: params.recipientId,
@@ -110,7 +108,7 @@ export const createNotification = async (
       console.log(
         `Skipping duplicate check for ${params.recipientType} ${params.recipientId} (manual test mode)`
       );
-      
+
       // Delete existing notifications for clean testing
       if (params.targetDate) {
         const deleted = await prisma.notification.deleteMany({
@@ -121,10 +119,10 @@ export const createNotification = async (
             targetDate: params.targetDate,
           },
         });
-        
+
         if (deleted.count > 0) {
           console.log(
-            `Deleted ${deleted.count} existing notification(s) for ${params.recipientType} ${params.recipientId} on ${params.targetDate.toISOString().split('T')[0]}`
+            `Deleted ${deleted.count} existing notification(s) for ${params.recipientType} ${params.recipientId} on ${params.targetDate.toISOString().split("T")[0]}`
           );
         }
       }
@@ -132,7 +130,7 @@ export const createNotification = async (
 
     // Extract skipDuplicateCheck from params before passing to Prisma
     const { skipDuplicateCheck, ...notificationData } = params;
-    
+
     const notification = await prisma.notification.create({
       data: {
         ...notificationData,
@@ -144,13 +142,16 @@ export const createNotification = async (
     return notification;
   } catch (error) {
     // Handle unique constraint violation
-    if (error instanceof Error && error.message.includes('unique_daily_notification')) {
+    if (
+      error instanceof Error &&
+      error.message.includes("unique_daily_notification")
+    ) {
       console.log(
         `Duplicate notification prevented (constraint) for ${params.recipientType} ${params.recipientId}`
       );
       return null;
     }
-    console.error('Failed to create notification:', error);
-    throw new Error('Could not create notification.');
+    console.error("Failed to create notification:", error);
+    throw new Error("Could not create notification.");
   }
 };

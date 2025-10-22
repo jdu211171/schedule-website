@@ -66,11 +66,15 @@ export function useClassTypeCreate() {
         }
       });
 
-      const previousAllClassTypes = queryClient.getQueryData<ClassType[]>(["classTypes", "all"]);
+      const previousAllClassTypes = queryClient.getQueryData<ClassType[]>([
+        "classTypes",
+        "all",
+      ]);
       const tempId = `temp-${Date.now()}`;
 
       queries.forEach(([queryKey]) => {
-        const currentData = queryClient.getQueryData<ClassTypesResponse>(queryKey);
+        const currentData =
+          queryClient.getQueryData<ClassTypesResponse>(queryKey);
         if (currentData?.data) {
           const optimisticClassType: ClassType & { _optimistic?: boolean } = {
             classTypeId: tempId,
@@ -79,6 +83,7 @@ export function useClassTypeCreate() {
             parentId: newClassType.parentId || null,
             order: newClassType.order || null,
             color: (newClassType as any).color ?? null,
+            visibleInFilters: true,
             createdAt: new Date(),
             updatedAt: new Date(),
             _optimistic: true,
@@ -103,15 +108,16 @@ export function useClassTypeCreate() {
           parentId: newClassType.parentId || null,
           order: newClassType.order || null,
           color: (newClassType as any).color ?? null,
+          visibleInFilters: true,
           createdAt: new Date(),
           updatedAt: new Date(),
           _optimistic: true,
         };
 
-        queryClient.setQueryData<ClassType[]>(["classTypes", "all"], [
-          optimisticClassType,
-          ...previousAllClassTypes,
-        ]);
+        queryClient.setQueryData<ClassType[]>(
+          ["classTypes", "all"],
+          [optimisticClassType, ...previousAllClassTypes]
+        );
       }
 
       return { previousClassTypes, previousAllClassTypes, tempId };
@@ -127,7 +133,10 @@ export function useClassTypeCreate() {
       }
 
       if (context?.previousAllClassTypes) {
-        queryClient.setQueryData(["classTypes", "all"], context.previousAllClassTypes);
+        queryClient.setQueryData(
+          ["classTypes", "all"],
+          context.previousAllClassTypes
+        );
       }
 
       if (context?.tempId) {
@@ -150,20 +159,27 @@ export function useClassTypeCreate() {
       });
 
       queries.forEach(([queryKey]) => {
-        const currentData = queryClient.getQueryData<ClassTypesResponse>(queryKey);
+        const currentData =
+          queryClient.getQueryData<ClassTypesResponse>(queryKey);
         if (currentData?.data) {
           queryClient.setQueryData<ClassTypesResponse>(queryKey, {
             ...currentData,
             data: currentData.data.map((classType) =>
-              classType.classTypeId === context.tempId ? newClassType : classType
+              classType.classTypeId === context.tempId
+                ? newClassType
+                : classType
             ),
           });
         }
       });
 
-      const allClassTypes = queryClient.getQueryData<ClassType[]>(["classTypes", "all"]);
+      const allClassTypes = queryClient.getQueryData<ClassType[]>([
+        "classTypes",
+        "all",
+      ]);
       if (allClassTypes) {
-        queryClient.setQueryData<ClassType[]>(["classTypes", "all"],
+        queryClient.setQueryData<ClassType[]>(
+          ["classTypes", "all"],
           allClassTypes.map((classType) =>
             classType.classTypeId === context.tempId ? newClassType : classType
           )
@@ -213,22 +229,29 @@ export function useClassTypeUpdate() {
         }
       });
 
-      const previousAllClassTypes = queryClient.getQueryData<ClassType[]>(["classTypes", "all"]);
-      const previousClassType = queryClient.getQueryData<ClassType>(["classType", resolvedId]);
+      const previousAllClassTypes = queryClient.getQueryData<ClassType[]>([
+        "classTypes",
+        "all",
+      ]);
+      const previousClassType = queryClient.getQueryData<ClassType>([
+        "classType",
+        resolvedId,
+      ]);
 
       queries.forEach(([queryKey]) => {
-        const currentData = queryClient.getQueryData<ClassTypesResponse>(queryKey);
+        const currentData =
+          queryClient.getQueryData<ClassTypesResponse>(queryKey);
         if (currentData?.data) {
           queryClient.setQueryData<ClassTypesResponse>(queryKey, {
             ...currentData,
             data: currentData.data.map((classType) =>
               classType.classTypeId === updatedClassType.classTypeId
                 ? {
-                  ...classType,
-                  ...updatedClassType,
-                  name: updatedClassType.name || classType.name,
-                  updatedAt: new Date(),
-                }
+                    ...classType,
+                    ...updatedClassType,
+                    name: updatedClassType.name || classType.name,
+                    updatedAt: new Date(),
+                  }
                 : classType
             ),
           });
@@ -236,15 +259,16 @@ export function useClassTypeUpdate() {
       });
 
       if (previousAllClassTypes) {
-        queryClient.setQueryData<ClassType[]>(["classTypes", "all"],
+        queryClient.setQueryData<ClassType[]>(
+          ["classTypes", "all"],
           previousAllClassTypes.map((classType) =>
             classType.classTypeId === updatedClassType.classTypeId
               ? {
-                ...classType,
-                ...updatedClassType,
-                name: updatedClassType.name || classType.name,
-                updatedAt: new Date(),
-              }
+                  ...classType,
+                  ...updatedClassType,
+                  name: updatedClassType.name || classType.name,
+                  updatedAt: new Date(),
+                }
               : classType
           )
         );
@@ -272,12 +296,18 @@ export function useClassTypeUpdate() {
       }
 
       if (context?.previousAllClassTypes) {
-        queryClient.setQueryData(["classTypes", "all"], context.previousAllClassTypes);
+        queryClient.setQueryData(
+          ["classTypes", "all"],
+          context.previousAllClassTypes
+        );
       }
 
       const resolvedId = getResolvedClassTypeId(variables.classTypeId);
       if (context?.previousClassType) {
-        queryClient.setQueryData(["classType", resolvedId], context.previousClassType);
+        queryClient.setQueryData(
+          ["classType", resolvedId],
+          context.previousClassType
+        );
       }
 
       toast.error("授業タイプの更新に失敗しました", {
@@ -333,7 +363,10 @@ export function useClassTypeDelete() {
         }
       });
 
-      const previousAllClassTypes = queryClient.getQueryData<ClassType[]>(["classTypes", "all"]);
+      const previousAllClassTypes = queryClient.getQueryData<ClassType[]>([
+        "classTypes",
+        "all",
+      ]);
 
       let deletedClassType: ClassType | undefined;
       for (const [, data] of queries) {
@@ -355,7 +388,8 @@ export function useClassTypeDelete() {
       }
 
       queries.forEach(([queryKey]) => {
-        const currentData = queryClient.getQueryData<ClassTypesResponse>(queryKey);
+        const currentData =
+          queryClient.getQueryData<ClassTypesResponse>(queryKey);
         if (currentData?.data) {
           queryClient.setQueryData<ClassTypesResponse>(queryKey, {
             ...currentData,
@@ -371,7 +405,8 @@ export function useClassTypeDelete() {
       });
 
       if (previousAllClassTypes) {
-        queryClient.setQueryData<ClassType[]>(["classTypes", "all"],
+        queryClient.setQueryData<ClassType[]>(
+          ["classTypes", "all"],
           previousAllClassTypes.filter(
             (classType) => classType.classTypeId !== classTypeId
           )
@@ -397,27 +432,36 @@ export function useClassTypeDelete() {
       }
 
       if (context?.previousAllClassTypes) {
-        queryClient.setQueryData(["classTypes", "all"], context.previousAllClassTypes);
+        queryClient.setQueryData(
+          ["classTypes", "all"],
+          context.previousAllClassTypes
+        );
       }
 
       if (classTypeId.startsWith("temp-") && context?.deletedClassType) {
-        tempToServerIdMap.set(classTypeId, context.deletedClassType.classTypeId);
+        tempToServerIdMap.set(
+          classTypeId,
+          context.deletedClassType.classTypeId
+        );
       }
 
       const resolvedId = getResolvedClassTypeId(classTypeId);
       if (context?.deletedClassType) {
-        queryClient.setQueryData(["classType", resolvedId], context.deletedClassType);
+        queryClient.setQueryData(
+          ["classType", resolvedId],
+          context.deletedClassType
+        );
       }
 
       let errorMessage = "予期しないエラーが発生しました";
 
       if (error instanceof CustomError && error.info) {
         const info = error.info as any;
-        if (typeof info === 'string') {
+        if (typeof info === "string") {
           errorMessage = info;
-        } else if (info?.error && typeof info.error === 'string') {
+        } else if (info?.error && typeof info.error === "string") {
           errorMessage = info.error;
-        } else if (info?.message && typeof info.message === 'string') {
+        } else if (info?.message && typeof info.message === "string") {
           errorMessage = info.message;
         }
       } else if (error.message) {
@@ -478,11 +522,15 @@ export function useClassTypeOrderUpdate() {
         }
       });
 
-      const previousAllClassTypes = queryClient.getQueryData<ClassType[]>(["classTypes", "all"]);
+      const previousAllClassTypes = queryClient.getQueryData<ClassType[]>([
+        "classTypes",
+        "all",
+      ]);
 
       // Optimistically update the order
       queries.forEach(([queryKey]) => {
-        const currentData = queryClient.getQueryData<ClassTypesResponse>(queryKey);
+        const currentData =
+          queryClient.getQueryData<ClassTypesResponse>(queryKey);
         if (currentData?.data) {
           const updatedData = {
             ...currentData,
@@ -527,7 +575,10 @@ export function useClassTypeOrderUpdate() {
           return aOrder - bOrder;
         });
 
-        queryClient.setQueryData<ClassType[]>(["classTypes", "all"], updatedAllClassTypes);
+        queryClient.setQueryData<ClassType[]>(
+          ["classTypes", "all"],
+          updatedAllClassTypes
+        );
       }
 
       return { previousClassTypes, previousAllClassTypes };
@@ -543,7 +594,10 @@ export function useClassTypeOrderUpdate() {
       }
 
       if (context?.previousAllClassTypes) {
-        queryClient.setQueryData(["classTypes", "all"], context.previousAllClassTypes);
+        queryClient.setQueryData(
+          ["classTypes", "all"],
+          context.previousAllClassTypes
+        );
       }
 
       toast.error("授業タイプの並び替えに失敗しました", {

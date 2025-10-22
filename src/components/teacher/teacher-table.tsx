@@ -3,7 +3,17 @@
 
 import * as React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Pencil, Trash2, MoreHorizontal, Download, Upload, Plus, Bell, BellOff, MessageSquare } from "lucide-react";
+import {
+  Pencil,
+  Trash2,
+  MoreHorizontal,
+  Download,
+  Upload,
+  Plus,
+  Bell,
+  BellOff,
+  MessageSquare,
+} from "lucide-react";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useTeacherExport } from "@/hooks/useTeacherExport";
 
@@ -72,7 +82,7 @@ function TeacherTableToolbar<TData>({
 }: TeacherTableToolbarProps<TData>) {
   const columns = React.useMemo(
     () => table.getAllColumns().filter((column) => column.getCanFilter()),
-    [table],
+    [table]
   );
 
   return (
@@ -81,7 +91,7 @@ function TeacherTableToolbar<TData>({
       aria-orientation="horizontal"
       className={cn(
         "flex w-full items-start justify-between gap-2 p-1",
-        className,
+        className
       )}
       {...props}
     >
@@ -113,7 +123,12 @@ function TeacherTableToolbarFilter<TData>({
     switch (columnMeta.variant) {
       case "text":
         // Handle IME composition without triggering filter updates mid-composition
-        return <IMETextFilter column={column} placeholder={columnMeta.placeholder ?? columnMeta.label} />;
+        return (
+          <IMETextFilter
+            column={column}
+            placeholder={columnMeta.placeholder ?? columnMeta.label}
+          />
+        );
 
       case "select":
       case "multiSelect":
@@ -135,9 +150,17 @@ function TeacherTableToolbarFilter<TData>({
 }
 
 // Separate component to manage IME composition for text filters
-function IMETextFilter<TData>({ column, placeholder }: { column: Column<TData>; placeholder?: string }) {
+function IMETextFilter<TData>({
+  column,
+  placeholder,
+}: {
+  column: Column<TData>;
+  placeholder?: string;
+}) {
   const isComposingRef = React.useRef(false);
-  const [value, setValue] = React.useState<string>(() => (column.getFilterValue() as string) ?? "");
+  const [value, setValue] = React.useState<string>(
+    () => (column.getFilterValue() as string) ?? ""
+  );
   const debounced = useDebounce(value, 200);
 
   // Push debounced value only when not composing
@@ -168,7 +191,9 @@ function IMETextFilter<TData>({ column, placeholder }: { column: Column<TData>; 
       }}
       onCompositionEnd={() => {
         isComposingRef.current = false;
-        column.setFilterValue((v: any) => (typeof v === 'string' ? value : value));
+        column.setFilterValue((v: any) =>
+          typeof v === "string" ? value : value
+        );
       }}
       className="h-8 w-40 lg:w-56"
     />
@@ -181,10 +206,17 @@ export function TeacherTable() {
     teacherId,
     legacyLineId,
     legacyNotificationsEnabled,
-  }: { teacherId: string; legacyLineId: string | null; legacyNotificationsEnabled?: boolean | null }) {
+  }: {
+    teacherId: string;
+    legacyLineId: string | null;
+    legacyNotificationsEnabled?: boolean | null;
+  }) {
     const { data } = useQuery<{ data: Array<{ enabled: boolean }> }>({
       queryKey: ["teacher-line-links", teacherId],
-      queryFn: () => fetcher(`/api/teachers/${teacherId}/line-links?r=${Date.now()}`, { cache: "no-store" }),
+      queryFn: () =>
+        fetcher(`/api/teachers/${teacherId}/line-links?r=${Date.now()}`, {
+          cache: "no-store",
+        }),
       staleTime: 30_000,
     });
 
@@ -236,7 +268,7 @@ export function TeacherTable() {
     subject: string[];
     lineConnection: string[];
   }>(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       const savedFilters = localStorage.getItem(FILTERS_STORAGE_KEY);
       if (savedFilters) {
         try {
@@ -253,7 +285,7 @@ export function TeacherTable() {
             lineConnection: parsed.lineConnection || [],
           };
         } catch (error) {
-          console.error('Error parsing saved filters:', error);
+          console.error("Error parsing saved filters:", error);
         }
       }
     }
@@ -268,13 +300,15 @@ export function TeacherTable() {
 
   // Load saved column visibility from localStorage
   const getSavedColumnVisibility = () => {
-    if (typeof window !== 'undefined') {
-      const savedVisibility = localStorage.getItem(COLUMN_VISIBILITY_STORAGE_KEY);
+    if (typeof window !== "undefined") {
+      const savedVisibility = localStorage.getItem(
+        COLUMN_VISIBILITY_STORAGE_KEY
+      );
       if (savedVisibility) {
         try {
           return JSON.parse(savedVisibility);
         } catch (error) {
-          console.error('Error parsing saved column visibility:', error);
+          console.error("Error parsing saved column visibility:", error);
         }
       }
     }
@@ -283,7 +317,7 @@ export function TeacherTable() {
 
   // Save filters to localStorage whenever they change
   React.useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       localStorage.setItem(FILTERS_STORAGE_KEY, JSON.stringify(filters));
     }
   }, [filters]);
@@ -364,7 +398,10 @@ export function TeacherTable() {
   }, [filters.subject, subjects]);
 
   // Optional generic sort state (e.g., kana sorting)
-  const [tableSort, setTableSort] = React.useState<{ sortBy?: "kanaName"; sortOrder?: "asc" | "desc" }>({});
+  const [tableSort, setTableSort] = React.useState<{
+    sortBy?: "kanaName";
+    sortOrder?: "asc" | "desc";
+  }>({});
 
   const { data: teachers, isLoading } = useTeachers({
     page,
@@ -439,7 +476,9 @@ export function TeacherTable() {
         cell: ({ row }) => (
           <GenericInlineEditableCell
             value={row.original.name}
-            onSubmit={(value) => handleCellUpdate(row.original.teacherId, "name", value)}
+            onSubmit={(value) =>
+              handleCellUpdate(row.original.teacherId, "name", value)
+            }
             placeholder="-"
             readOnly={true}
           />
@@ -459,7 +498,9 @@ export function TeacherTable() {
         cell: ({ row }) => (
           <GenericInlineEditableCell
             value={row.original.kanaName}
-            onSubmit={(value) => handleCellUpdate(row.original.teacherId, "kanaName", value)}
+            onSubmit={(value) =>
+              handleCellUpdate(row.original.teacherId, "kanaName", value)
+            }
             placeholder="カナを入力"
           />
         ),
@@ -471,15 +512,22 @@ export function TeacherTable() {
         meta: {
           label: "ステータス",
           variant: "multiSelect",
-          options: Object.entries(userStatusLabels).map(([value, label]) => ({ value, label })),
+          options: Object.entries(userStatusLabels).map(([value, label]) => ({
+            value,
+            label,
+          })),
         },
         cell: ({ row }) => {
           const status = row.original.status || "ACTIVE";
           return (
             <GenericSelectEditableCell
               value={status}
-              options={Object.entries(userStatusLabels).map(([value, label]) => ({ value, label }))}
-              onSubmit={(value) => handleCellUpdate(row.original.teacherId, "status", value)}
+              options={Object.entries(userStatusLabels).map(
+                ([value, label]) => ({ value, label })
+              )}
+              onSubmit={(value) =>
+                handleCellUpdate(row.original.teacherId, "status", value)
+              }
             />
           );
         },
@@ -506,7 +554,9 @@ export function TeacherTable() {
         cell: ({ row }) => (
           <GenericInlineEditableCell
             value={row.original.email}
-            onSubmit={(value) => handleCellUpdate(row.original.teacherId, "email", value)}
+            onSubmit={(value) =>
+              handleCellUpdate(row.original.teacherId, "email", value)
+            }
             placeholder="-"
             readOnly={true}
           />
@@ -522,10 +572,10 @@ export function TeacherTable() {
         cell: ({ row }) => {
           const birthDate = row.original.birthDate;
           if (!birthDate) return "-";
-          return new Date(birthDate).toLocaleDateString('ja-JP', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit'
+          return new Date(birthDate).toLocaleDateString("ja-JP", {
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
           });
         },
       },
@@ -543,12 +593,16 @@ export function TeacherTable() {
             <div className="space-y-1">
               <GenericInlineEditableCell
                 value={phoneNumber}
-                onSubmit={(value) => handleCellUpdate(row.original.teacherId, "phoneNumber", value)}
+                onSubmit={(value) =>
+                  handleCellUpdate(row.original.teacherId, "phoneNumber", value)
+                }
                 placeholder="-"
                 readOnly={true}
               />
               {phoneNotes && (
-                <div className="text-xs text-muted-foreground">{phoneNotes}</div>
+                <div className="text-xs text-muted-foreground">
+                  {phoneNotes}
+                </div>
               )}
             </div>
           );
@@ -564,7 +618,9 @@ export function TeacherTable() {
         cell: ({ row }) => (
           <GenericPasswordEditableCell
             value={row.original.password}
-            onSubmit={(value) => handleCellUpdate(row.original.teacherId, "password", value)}
+            onSubmit={(value) =>
+              handleCellUpdate(row.original.teacherId, "password", value)
+            }
             editable={false}
           />
         ),
@@ -589,7 +645,7 @@ export function TeacherTable() {
           options: [
             { value: "connected_enabled", label: "連携済み (通知有効)" },
             { value: "connected_disabled", label: "連携済み (通知無効)" },
-            { value: "not_connected", label: "未連携" }
+            { value: "not_connected", label: "未連携" },
           ],
         },
         enableColumnFilter: true,
@@ -614,7 +670,9 @@ export function TeacherTable() {
                 <div key={index} className="text-sm">
                   {phone.phoneNumber}
                   {phone.notes && (
-                    <span className="text-muted-foreground ml-1">({phone.notes})</span>
+                    <span className="text-muted-foreground ml-1">
+                      ({phone.notes})
+                    </span>
                   )}
                 </div>
               ))}
@@ -681,7 +739,9 @@ export function TeacherTable() {
         cell: ({ row }) => (
           <GenericInlineEditableCell
             value={row.original.notes}
-            onSubmit={(value) => handleCellUpdate(row.original.teacherId, "notes", value)}
+            onSubmit={(value) =>
+              handleCellUpdate(row.original.teacherId, "notes", value)
+            }
             placeholder="備考を入力"
           />
         ),
@@ -744,16 +804,24 @@ export function TeacherTable() {
       columnPinning: { left: ["select", "name"] },
       columnVisibility: getSavedColumnVisibility(),
       columnFilters: [
-        ...(filters.name ? [{ id: 'name', value: filters.name }] : []),
-        ...(filters.status.length > 0 ? [{ id: 'status', value: filters.status }] : []),
-        ...(filters.branch.length > 0 ? [{ id: 'branches', value: filters.branch }] : []),
-        ...(filters.subject.length > 0 ? [{ id: 'subjectPreferences', value: filters.subject }] : []),
-        ...(filters.lineConnection.length > 0 ? [{ id: 'lineConnection', value: filters.lineConnection }] : []),
+        ...(filters.name ? [{ id: "name", value: filters.name }] : []),
+        ...(filters.status.length > 0
+          ? [{ id: "status", value: filters.status }]
+          : []),
+        ...(filters.branch.length > 0
+          ? [{ id: "branches", value: filters.branch }]
+          : []),
+        ...(filters.subject.length > 0
+          ? [{ id: "subjectPreferences", value: filters.subject }]
+          : []),
+        ...(filters.lineConnection.length > 0
+          ? [{ id: "lineConnection", value: filters.lineConnection }]
+          : []),
       ],
       // Match backend default order: status asc, then name asc
       sorting: [
-        { id: 'status', desc: false },
-        { id: 'name', desc: false },
+        { id: "status", desc: false },
+        { id: "name", desc: false },
       ],
     },
     getRowId: (row) => row.teacherId,
@@ -772,7 +840,11 @@ export function TeacherTable() {
     if (kn) {
       const order: "asc" | "desc" = kn.desc ? "desc" : "asc";
       const next = { sortBy: "kanaName" as const, sortOrder: order };
-      setTableSort((prev) => (prev.sortBy !== next.sortBy || prev.sortOrder !== next.sortOrder ? next : prev));
+      setTableSort((prev) =>
+        prev.sortBy !== next.sortBy || prev.sortOrder !== next.sortOrder
+          ? next
+          : prev
+      );
     } else if (tableSort.sortBy === "kanaName") {
       setTableSort({});
     }
@@ -781,8 +853,11 @@ export function TeacherTable() {
   // Save column visibility to localStorage whenever it changes
   React.useEffect(() => {
     const columnVisibility = table.getState().columnVisibility;
-    if (typeof window !== 'undefined' && columnVisibility) {
-      localStorage.setItem(COLUMN_VISIBILITY_STORAGE_KEY, JSON.stringify(columnVisibility));
+    if (typeof window !== "undefined" && columnVisibility) {
+      localStorage.setItem(
+        COLUMN_VISIBILITY_STORAGE_KEY,
+        JSON.stringify(columnVisibility)
+      );
     }
   }, [table.getState().columnVisibility]);
 
@@ -800,7 +875,7 @@ export function TeacherTable() {
         lineConnection: [] as string[],
       };
       setFilters(defaults);
-      if (typeof window !== 'undefined') {
+      if (typeof window !== "undefined") {
         localStorage.removeItem(FILTERS_STORAGE_KEY);
       }
       return;
@@ -816,19 +891,19 @@ export function TeacherTable() {
 
     columnFilters.forEach((filter) => {
       switch (filter.id) {
-        case 'name':
+        case "name":
           next.name = filter.value as string;
           break;
-        case 'status':
+        case "status":
           next.status = filter.value as string[];
           break;
-        case 'branches':
+        case "branches":
           next.branch = filter.value as string[];
           break;
-        case 'subjectPreferences':
+        case "subjectPreferences":
           next.subject = filter.value as string[];
           break;
-        case 'lineConnection':
+        case "lineConnection":
           next.lineConnection = filter.value as string[];
           break;
       }
@@ -840,7 +915,13 @@ export function TeacherTable() {
   // Reset page when filters change
   React.useEffect(() => {
     setPage(1);
-  }, [debouncedName, filters.status, filters.branch, filters.subject, filters.lineConnection]);
+  }, [
+    debouncedName,
+    filters.status,
+    filters.branch,
+    filters.subject,
+    filters.lineConnection,
+  ]);
 
   // Handle pagination changes from the table
   const tablePagination = table.getState().pagination;
@@ -886,7 +967,9 @@ export function TeacherTable() {
         (col) =>
           col.id !== "select" &&
           col.id !== "actions" &&
-          !["lineConnection", "lineId", "lineNotificationsEnabled"].includes(col.id)
+          !["lineConnection", "lineId", "lineNotificationsEnabled"].includes(
+            col.id
+          )
       )
       .map((col) => col.id);
 
@@ -915,7 +998,6 @@ export function TeacherTable() {
     setPage(1);
   };
 
-
   if (isLoading && !teachers) {
     return (
       <div className="flex items-center justify-center p-8">読み込み中...</div>
@@ -928,10 +1010,7 @@ export function TeacherTable() {
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold tracking-tight">講師管理</h2>
           <div className="flex items-center gap-2">
-            <Button
-              onClick={handleImport}
-              variant="outline"
-            >
+            <Button onClick={handleImport} variant="outline">
               <Upload className="mr-2 h-4 w-4" />
               CSVインポート
             </Button>
@@ -961,7 +1040,8 @@ export function TeacherTable() {
               disabled={deleteTeacherMutation.isPending}
             >
               <Trash2 className="mr-2 h-4 w-4" />
-              選択した講師を削除 ({table.getFilteredSelectedRowModel().rows.length})
+              選択した講師を削除 (
+              {table.getFilteredSelectedRowModel().rows.length})
             </Button>
           </div>
         )}
@@ -969,7 +1049,7 @@ export function TeacherTable() {
         <div className="rounded-md border">
           <GenericDraggableTable
             table={table}
-            dataIds={teachers?.data.map(t => t.teacherId) || []}
+            dataIds={teachers?.data.map((t) => t.teacherId) || []}
             onDragEnd={() => {}}
             columnsLength={columns.length}
           />

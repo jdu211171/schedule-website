@@ -3,6 +3,7 @@
 This job promotes student grades once per year in April, based on `student_types.order` and `student_types.max_years`.
 
 Key rules:
+
 - If a student has a `student_type_id` and `grade_year`, and the current type has grades (`max_years IS NOT NULL`) and `grade_year < max_years`, increment `grade_year` by 1.
 - If `grade_year >= max_years`, promote to the next student type by ascending `order`.
   - If the next type has grades, set `grade_year = 1`.
@@ -13,19 +14,20 @@ Implementation lives in `scripts/annual-grade-promotion.sql` and uses `pg_cron` 
 
 ## Deploy / Update
 
-1) Enable cron (once per project):
+1. Enable cron (once per project):
 
 ```
 PGPASSWORD=postgres psql -h localhost -U postgres -d schedulewebsite -c "CREATE EXTENSION IF NOT EXISTS pg_cron;"
 ```
 
-2) Apply the function + schedule:
+2. Apply the function + schedule:
 
 ```
 PGPASSWORD=postgres psql -h localhost -U postgres -d schedulewebsite -f scripts/annual-grade-promotion.sql
 ```
 
 This creates:
+
 - `promote_student_grades(p_force boolean default false)` — performs promotions (no-ops if not April unless `p_force = true`).
 - `trigger_promote_student_grades(p_force boolean default false)` — convenience wrapper that returns a short message.
 - A cron job `promote-student-grades-yearly` — runs `0 0 1 4 *` (April 1, 00:00 UTC).
@@ -41,11 +43,14 @@ PGPASSWORD=postgres psql -h localhost -U postgres -d schedulewebsite -c "SELECT 
 
 ## Unschedule
 
-1) Find the job id:
+1. Find the job id:
+
 ```
 PGPASSWORD=postgres psql -h localhost -U postgres -d schedulewebsite -c "SELECT jobid, jobname, schedule FROM cron.job WHERE jobname='promote-student-grades-yearly';"
 ```
-2) Unschedule by job id (replace N):
+
+2. Unschedule by job id (replace N):
+
 ```
 PGPASSWORD=postgres psql -h localhost -U postgres -d schedulewebsite -c "SELECT cron.unschedule(N);"
 ```

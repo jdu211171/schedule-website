@@ -29,10 +29,12 @@ export function useTeacherLineUnbind() {
       }),
     onSuccess: (response, variables) => {
       toast.success(response.message || "講師のLINE連携を解除しました");
-      
+
       // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: ["teachers"] });
-      queryClient.invalidateQueries({ queryKey: ["teacher", variables.teacherId] });
+      queryClient.invalidateQueries({
+        queryKey: ["teacher", variables.teacherId],
+      });
     },
     onError: (error: any) => {
       const message = error?.message || "LINE連携の解除に失敗しました";
@@ -57,10 +59,12 @@ export function useStudentLineUnbind() {
       }),
     onSuccess: (response, variables) => {
       toast.success(response.message || "LINE連携を解除しました");
-      
+
       // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: ["students"] });
-      queryClient.invalidateQueries({ queryKey: ["student", variables.studentId] });
+      queryClient.invalidateQueries({
+        queryKey: ["student", variables.studentId],
+      });
     },
     onError: (error: any) => {
       const message = error?.message || "LINE連携の解除に失敗しました";
@@ -82,9 +86,12 @@ export function useDeleteTeacherLineLink() {
       const params = new URLSearchParams();
       if (linkId) params.set("linkId", linkId);
       if (channelId) params.set("channelId", channelId);
-      return fetcher(`/api/teachers/${teacherId}/line-links?${params.toString()}`, {
-        method: "DELETE",
-      });
+      return fetcher(
+        `/api/teachers/${teacherId}/line-links?${params.toString()}`,
+        {
+          method: "DELETE",
+        }
+      );
     },
     onSuccess: () => {
       toast.success("チャネル連携を解除しました");
@@ -104,16 +111,24 @@ export function useDeleteStudentLineLink() {
   return useMutation<
     { success: boolean },
     Error,
-    { studentId: string; linkId?: string; channelId?: string; accountSlot?: "student" | "parent" }
+    {
+      studentId: string;
+      linkId?: string;
+      channelId?: string;
+      accountSlot?: "student" | "parent";
+    }
   >({
     mutationFn: ({ studentId, linkId, channelId, accountSlot }) => {
       const params = new URLSearchParams();
       if (linkId) params.set("linkId", linkId);
       if (channelId) params.set("channelId", channelId);
       if (accountSlot) params.set("accountSlot", accountSlot);
-      return fetcher(`/api/students/${studentId}/line-links?${params.toString()}`, {
-        method: "DELETE",
-      });
+      return fetcher(
+        `/api/students/${studentId}/line-links?${params.toString()}`,
+        {
+          method: "DELETE",
+        }
+      );
     },
     onSuccess: () => {
       toast.success("チャネル連携を解除しました");

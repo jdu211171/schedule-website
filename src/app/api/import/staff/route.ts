@@ -7,7 +7,7 @@ import {
   REQUIRED_STAFF_CSV_HEADERS,
   type StaffImportData,
   type ImportResult,
-  formatValidationErrors
+  formatValidationErrors,
 } from "@/schemas/import";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
@@ -27,11 +27,16 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
     }
 
     // Enforce server-side max size (hard cap)
-    const maxBytes = Number.parseInt(process.env.IMPORT_MAX_BYTES || "26214400", 10); // 25MB
+    const maxBytes = Number.parseInt(
+      process.env.IMPORT_MAX_BYTES || "26214400",
+      10
+    ); // 25MB
     const fileSize = (file as Blob).size ?? 0;
     if (fileSize > maxBytes) {
       return NextResponse.json(
-        { error: `ファイルサイズが大きすぎます。最大 ${Math.floor(maxBytes / 1024 / 1024)}MB まで対応しています` },
+        {
+          error: `ファイルサイズが大きすぎます。最大 ${Math.floor(maxBytes / 1024 / 1024)}MB まで対応しています`,
+        },
         { status: 413 }
       );
     }
@@ -39,13 +44,14 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
     const buffer = Buffer.from(await (file as Blob).arrayBuffer());
 
     // Parse CSV file
-    const parseResult = await CSVParser.parseBuffer<Record<string, string>>(buffer);
+    const parseResult =
+      await CSVParser.parseBuffer<Record<string, string>>(buffer);
 
     if (parseResult.errors.length > 0) {
       return NextResponse.json(
         {
           error: "CSVファイルの解析に失敗しました",
-          details: parseResult.errors
+          details: parseResult.errors,
         },
         { status: 400 }
       );
@@ -61,17 +67,19 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
 
     // Remap localized headers (export) to schema keys for import
     const headerMap: Record<string, string> = {
-      "ID": "id",
-      "ユーザー名": "username",
-      "メールアドレス": "email",
-      "パスワード": "password",
-      "名前": "name",
-      "所属校舎": "branchNames",
+      ID: "id",
+      ユーザー名: "username",
+      メールアドレス: "email",
+      パスワード: "password",
+      名前: "name",
+      所属校舎: "branchNames",
     };
 
     let actualHeaders = Object.keys(parseResult.data[0]);
     const requiredHeaders = [...REQUIRED_STAFF_CSV_HEADERS];
-    let missingHeaders = requiredHeaders.filter((h) => !actualHeaders.includes(h));
+    let missingHeaders = requiredHeaders.filter(
+      (h) => !actualHeaders.includes(h)
+    );
 
     if (missingHeaders.length > 0) {
       const canRemap = actualHeaders.some((h) => headerMap[h]);
@@ -90,7 +98,9 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
           return out;
         }) as any;
         actualHeaders = Object.keys(parseResult.data[0]);
-        missingHeaders = requiredHeaders.filter((h) => !actualHeaders.includes(h));
+        missingHeaders = requiredHeaders.filter(
+          (h) => !actualHeaders.includes(h)
+        );
       }
     }
 
@@ -106,14 +116,14 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
     const result: ImportResult = {
       success: 0,
       errors: [],
-      warnings: []
+      warnings: [],
     };
 
     // Pre-fetch all branches for validation
     const allBranches = await prisma.branch.findMany({
-      select: { branchId: true, name: true }
+      select: { branchId: true, name: true },
     });
-    const branchMap = new Map(allBranches.map(b => [b.name, b.branchId]));
+    const branchMap = new Map(allBranches.map((b) => [b.name, b.branchId]));
 
     for (let i = 0; i < parseResult.data.length; i++) {
       const row = parseResult.data[i];
@@ -127,9 +137,14 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
 
         // Validate branch names if provided
         if (validated.branchNames && validated.branchNames.length > 0) {
-          const invalidBranches = validated.branchNames.filter(name => !branchMap.has(name));
+          const invalidBranches = validated.branchNames.filter(
+            (name) => !branchMap.has(name)
+          );
           if (invalidBranches.length > 0) {
-            result.errors.push({ row: rowNumber, errors: [`支店が見つかりません: ${invalidBranches.join(", ")}`] });
+            result.errors.push({
+              row: rowNumber,
+              errors: [`支店が見つかりません: ${invalidBranches.join(", ")}`],
+            });
             continue;
           }
         }
@@ -151,10 +166,12 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
             if (validated.branchNames && validated.branchNames.length > 0) {
               await prisma.userBranch.deleteMany({ where: { userId: id } });
               const branchIds = validated.branchNames
-                .map(name => branchMap.get(name))
+                .map((name) => branchMap.get(name))
                 .filter((x): x is string => !!x);
               if (branchIds.length > 0) {
-                await prisma.userBranch.createMany({ data: branchIds.map(branchId => ({ userId: id, branchId })) });
+                await prisma.userBranch.createMany({
+                  data: branchIds.map((branchId) => ({ userId: id, branchId })),
+                });
               }
             }
 
@@ -165,12 +182,19 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
 
         // No ID case: enforce uniqueness then create later
         const conflict = await prisma.user.findFirst({
-          where: { OR: [{ username: validated.username }, { email: validated.email }] },
+          where: {
+            OR: [{ username: validated.username }, { email: validated.email }],
+          },
         });
         if (conflict) {
-          result.errors.push({ row: rowNumber, errors: [
-            conflict.username === validated.username ? `ユーザー名「${validated.username}」は既に使用されています` : `メールアドレス「${validated.email}」は既に使用されています`
-          ] });
+          result.errors.push({
+            row: rowNumber,
+            errors: [
+              conflict.username === validated.username
+                ? `ユーザー名「${validated.username}」は既に使用されています`
+                : `メールアドレス「${validated.email}」は既に使用されています`,
+            ],
+          });
           continue;
         }
 
@@ -181,7 +205,11 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
         } else {
           result.errors.push({
             row: rowNumber,
-            errors: [error instanceof Error ? error.message : "データ検証中にエラーが発生しました"]
+            errors: [
+              error instanceof Error
+                ? error.message
+                : "データ検証中にエラーが発生しました",
+            ],
           });
         }
       }
@@ -207,21 +235,21 @@ async function handleImport(req: NextRequest, session: any, branchId: string) {
               passwordHash: hashedPassword,
               name: data.name,
               role: "STAFF",
-              isRestrictedAdmin: false
-            }
+              isRestrictedAdmin: false,
+            },
           });
 
           // Assign branches if provided
           if (data.branchNames && data.branchNames.length > 0) {
             const branchIds = data.branchNames
-              .map(name => branchMap.get(name))
+              .map((name) => branchMap.get(name))
               .filter((id): id is string => id !== undefined);
 
             await tx.userBranch.createMany({
-              data: branchIds.map(branchId => ({
+              data: branchIds.map((branchId) => ({
                 userId: user.id,
-                branchId
-              }))
+                branchId,
+              })),
             });
           }
 
