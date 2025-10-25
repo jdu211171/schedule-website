@@ -65,8 +65,8 @@ bun test             # Run tests with Vitest
 
 # Database
 bun postinstall      # Generate Prisma client
-npx prisma migrate dev    # Apply migrations
-npx prisma studio    # Open Prisma Studio
+bun prisma migrate dev    # Apply migrations
+bun prisma studio    # Open Prisma Studio
 PGPASSWORD=postgres psql -h localhost -U postgres -d schedulewebsite -c "SELECT 1;"  # Direct DB access
 ```
 
