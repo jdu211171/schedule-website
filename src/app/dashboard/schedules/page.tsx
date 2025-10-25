@@ -78,15 +78,15 @@ export default function ScheduleManagementPage() {
           <TabsTrigger value="series">シリーズ</TabsTrigger>
         </TabsList>
         <TabsContent value="day">
-          <AdminCalendarDay 
+          <AdminCalendarDay
             key={`day-${dayActivationCount}`}
-            selectedBranchId={selectedBranchId || undefined} 
+            selectedBranchId={selectedBranchId || undefined}
           />
         </TabsContent>
         <TabsContent value="week">
-          <AdminCalendarWeek 
+          <AdminCalendarWeek
             key={`week-${weekActivationCount}`}
-            selectedBranchId={selectedBranchId || undefined} 
+            selectedBranchId={selectedBranchId || undefined}
           />
         </TabsContent>
         <TabsContent value="list">
