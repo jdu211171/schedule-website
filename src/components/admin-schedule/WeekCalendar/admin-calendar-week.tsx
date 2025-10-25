@@ -68,19 +68,7 @@ const AdminCalendarWeek: React.FC<AdminCalendarWeekProps> = ({
     const today = getCurrentDateAdjusted();
     const todayWeekStart = startOfWeek(today, { weekStartsOn: 1 });
 
-    if (typeof window !== "undefined") {
-      const savedBaseWeek = localStorage.getItem(BASE_WEEK_KEY);
-      if (savedBaseWeek) {
-        const date = new Date(savedBaseWeek);
-        if (!isNaN(date.getTime())) {
-          const savedWeekStart = startOfWeek(date, { weekStartsOn: 1 });
-          // Only restore saved base week if it contains today or is in the future
-          if (savedWeekStart >= todayWeekStart) {
-            return savedWeekStart;
-          }
-        }
-      }
-    }
+    // Always default to current week, ignore localStorage
     return todayWeekStart;
   });
 
@@ -88,32 +76,7 @@ const AdminCalendarWeek: React.FC<AdminCalendarWeekProps> = ({
     const today = getCurrentDateAdjusted();
     const todayWeekStart = startOfWeek(today, { weekStartsOn: 1 });
 
-    if (typeof window !== "undefined") {
-      const savedWeeksJson = localStorage.getItem(SELECTED_WEEKS_KEY);
-      if (savedWeeksJson) {
-        try {
-          const savedWeeks = JSON.parse(savedWeeksJson);
-          if (Array.isArray(savedWeeks) && savedWeeks.length > 0) {
-            const parsedDates = savedWeeks
-              .map((dateStr: string) => new Date(dateStr))
-              .filter((date: Date) => !isNaN(date.getTime()));
-
-            // Only keep weeks that are current week or in the future
-            const validDates = parsedDates
-              .map((date) => startOfWeek(date, { weekStartsOn: 1 }))
-              .filter((weekStart) => weekStart >= todayWeekStart);
-
-            if (validDates.length > 0) {
-              return validDates;
-            }
-          }
-        } catch (error) {
-          console.error("Error parsing saved selected weeks:", error);
-        }
-      }
-    }
-
-    // Default to current week
+    // Always default to current week, ignore localStorage
     return [todayWeekStart];
   });
 
