@@ -67,7 +67,7 @@ const AdminCalendarWeek: React.FC<AdminCalendarWeekProps> = ({
   const [baseWeek, setBaseWeek] = useState<Date>(() => {
     const today = getCurrentDateAdjusted();
     const todayWeekStart = startOfWeek(today, { weekStartsOn: 1 });
-    
+
     if (typeof window !== "undefined") {
       const savedBaseWeek = localStorage.getItem(BASE_WEEK_KEY);
       if (savedBaseWeek) {

@@ -111,7 +111,9 @@ export default function AdminCalendarDay({
   );
 
   // Default focus on 'today' with week starting Monday
-  const [viewStartDate, setViewStartDate] = useState<Date>(() => currentWeekStart);
+  const [viewStartDate, setViewStartDate] = useState<Date>(
+    () => currentWeekStart
+  );
   const [selectedDays, setSelectedDays] = useState<Date[]>([today]);
   const [isInitialized, setIsInitialized] = useState(false);
   const qc = useQueryClient();
@@ -122,11 +124,11 @@ export default function AdminCalendarDay({
       if (saved) {
         const date = new Date(saved);
         if (!isNaN(date.getTime())) {
-          // If saved date is in the same week as today, use the week containing saved date.
-          // Otherwise, default to current week (today).
-          if (isSameWeek(date, today, { weekStartsOn: 1 })) {
+          // Only restore if saved date is today or in the future
+          if (startOfDay(date) >= today) {
             setViewStartDate(startOfWeek(date, { weekStartsOn: 1 }));
           } else {
+            // Saved date is in the past, default to current week
             setViewStartDate(currentWeekStart);
           }
         } else {
@@ -145,17 +147,17 @@ export default function AdminCalendarDay({
               .map((dateStr: string) => new Date(dateStr))
               .filter((date: Date) => !isNaN(date.getTime()));
 
-            // Only restore if at least one date is in the same week as today
-            const inSameWeek = parsedDates.filter((date) =>
-              isSameWeek(date, today, { weekStartsOn: 1 })
+            // Only restore dates that are today or in the future
+            const validDates = parsedDates.filter(
+              (date) => startOfDay(date) >= today
             );
 
-            if (inSameWeek.length > 0) {
+            if (validDates.length > 0) {
               setSelectedDays(
-                inSameWeek.sort((a, b) => a.getTime() - b.getTime())
+                validDates.sort((a, b) => a.getTime() - b.getTime())
               );
             } else {
-              // Saved days are from a different week, default to today
+              // No valid future dates, default to today
               setSelectedDays([today]);
             }
           } else {
