@@ -14,7 +14,7 @@
 - `bun dev`: run locally with Turbopack.
 - `bun build` / `bun start`: build and serve production.
 - `bun lint`: ESLint; `bun watch`: typecheck in watch mode.
-- Prisma: `bun postinstall` runs `prisma generate`. Migrate via `npx prisma migrate dev`; explore with `npx prisma studio`.
+- Prisma: `bun postinstall` runs `prisma generate`. Migrate via `bun prisma migrate dev`; explore with `bun prisma studio`.
 - Direct DB (ops): use Postgres psql, e.g. `PGPASSWORD=postgres psql -h localhost -U postgres -d schedulewebsite -c "SELECT 1;"`.
 
 ## Coding Style & Naming Conventions
@@ -39,7 +39,7 @@
 ## Security & Configuration
 
 - Copy `.env.example` to `.env`; set `DATABASE_URL` and `DIRECT_URL`. Do not commit secrets.
-- After schema changes: `npx prisma migrate dev && bun prisma generate`. Review `vercel.json` for deployment.
+- After schema changes: `bun prisma migrate dev && bun prisma generate`. Review `vercel.json` for deployment.
 
 ## Agent & Ops Notes
 
