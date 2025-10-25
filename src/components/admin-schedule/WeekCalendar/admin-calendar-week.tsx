@@ -64,7 +64,10 @@ const AdminCalendarWeek: React.FC<AdminCalendarWeekProps> = ({
   selectedBranchId,
 }) => {
   // Base week state for week selector - always default to current week
-  const currentWeekStart = startOfWeek(getCurrentDateAdjusted(), { weekStartsOn: 1 });
+  const currentWeekStart = useMemo(
+    () => startOfWeek(getCurrentDateAdjusted(), { weekStartsOn: 1 }),
+    []
+  );
   
   const [baseWeek, setBaseWeek] = useState<Date>(() => {
     const today = getCurrentDateAdjusted();
