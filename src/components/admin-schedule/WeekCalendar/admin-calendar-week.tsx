@@ -63,23 +63,32 @@ const AdminCalendarWeek: React.FC<AdminCalendarWeekProps> = ({
   onLessonSelect,
   selectedBranchId,
 }) => {
-  // Base week state for week selector
+  // Base week state for week selector - always default to current week
+  const currentWeekStart = startOfWeek(getCurrentDateAdjusted(), { weekStartsOn: 1 });
+  
   const [baseWeek, setBaseWeek] = useState<Date>(() => {
+    const today = getCurrentDateAdjusted();
+    const todayWeekStart = startOfWeek(today, { weekStartsOn: 1 });
+    
     if (typeof window !== "undefined") {
       const savedBaseWeek = localStorage.getItem(BASE_WEEK_KEY);
       if (savedBaseWeek) {
         const date = new Date(savedBaseWeek);
         if (!isNaN(date.getTime())) {
-          return startOfWeek(date, { weekStartsOn: 1 });
+          const savedWeekStart = startOfWeek(date, { weekStartsOn: 1 });
+          // Only restore saved base week if it contains today or is in the future
+          if (savedWeekStart >= todayWeekStart) {
+            return savedWeekStart;
+          }
         }
       }
     }
-    return startOfWeek(getCurrentDateAdjusted(), { weekStartsOn: 1 });
+    return todayWeekStart;
   });
 
   const [selectedWeeks, setSelectedWeeks] = useState<Date[]>(() => {
     const today = getCurrentDateAdjusted();
-    const todayDateKey = getDateKey(today);
+    const todayWeekStart = startOfWeek(today, { weekStartsOn: 1 });
 
     if (typeof window !== "undefined") {
       const savedWeeksJson = localStorage.getItem(SELECTED_WEEKS_KEY);
@@ -91,10 +100,10 @@ const AdminCalendarWeek: React.FC<AdminCalendarWeekProps> = ({
               .map((dateStr: string) => new Date(dateStr))
               .filter((date: Date) => !isNaN(date.getTime()));
 
-            const validDates = parsedDates.filter((date) => {
-              const dateKey = getDateKey(date);
-              return dateKey >= todayDateKey;
-            });
+            // Only keep weeks that are current week or in the future
+            const validDates = parsedDates
+              .map((date) => startOfWeek(date, { weekStartsOn: 1 }))
+              .filter((weekStart) => weekStart >= todayWeekStart);
 
             if (validDates.length > 0) {
               return validDates;
@@ -106,7 +115,8 @@ const AdminCalendarWeek: React.FC<AdminCalendarWeekProps> = ({
       }
     }
 
-    return [baseWeek];
+    // Default to current week
+    return [todayWeekStart];
   });
 
   const [selectedLesson, setSelectedLesson] =

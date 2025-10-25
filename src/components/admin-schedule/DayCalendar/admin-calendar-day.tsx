@@ -110,8 +110,8 @@ export default function AdminCalendarDay({
     [today]
   );
 
-  // Default focus on 'today' instead of week start
-  const [viewStartDate, setViewStartDate] = useState<Date>(() => today);
+  // Default focus on 'today' with week starting Monday
+  const [viewStartDate, setViewStartDate] = useState<Date>(() => currentWeekStart);
   const [selectedDays, setSelectedDays] = useState<Date[]>([today]);
   const [isInitialized, setIsInitialized] = useState(false);
   const qc = useQueryClient();
@@ -122,18 +122,18 @@ export default function AdminCalendarDay({
       if (saved) {
         const date = new Date(saved);
         if (!isNaN(date.getTime())) {
-          // If saved date is in the same week as today, use the saved day itself.
-          // Otherwise, focus today.
+          // If saved date is in the same week as today, use the week containing saved date.
+          // Otherwise, default to current week (today).
           if (isSameWeek(date, today, { weekStartsOn: 1 })) {
-            setViewStartDate(startOfDay(date));
+            setViewStartDate(startOfWeek(date, { weekStartsOn: 1 }));
           } else {
-            setViewStartDate(today);
+            setViewStartDate(currentWeekStart);
           }
         } else {
-          setViewStartDate(today);
+          setViewStartDate(currentWeekStart);
         }
       } else {
-        setViewStartDate(today);
+        setViewStartDate(currentWeekStart);
       }
 
       const savedDaysJson = localStorage.getItem(SELECTED_DAYS_KEY);
@@ -145,10 +145,9 @@ export default function AdminCalendarDay({
               .map((dateStr: string) => new Date(dateStr))
               .filter((date: Date) => !isNaN(date.getTime()));
 
-            // Only restore if at least one date is in the same week as the current viewStartDate
-            const base = viewStartDate;
+            // Only restore if at least one date is in the same week as today
             const inSameWeek = parsedDates.filter((date) =>
-              isSameWeek(date, base, { weekStartsOn: 1 })
+              isSameWeek(date, today, { weekStartsOn: 1 })
             );
 
             if (inSameWeek.length > 0) {
@@ -156,22 +155,23 @@ export default function AdminCalendarDay({
                 inSameWeek.sort((a, b) => a.getTime() - b.getTime())
               );
             } else {
-              setSelectedDays([base]);
+              // Saved days are from a different week, default to today
+              setSelectedDays([today]);
             }
           } else {
-            setSelectedDays([viewStartDate]);
+            setSelectedDays([today]);
           }
         } catch (error) {
           console.error("Error parsing saved selected days:", error);
-          setSelectedDays([viewStartDate]);
+          setSelectedDays([today]);
         }
       } else {
-        setSelectedDays([viewStartDate]);
+        setSelectedDays([today]);
       }
 
       setIsInitialized(true);
     }
-  }, [today, isInitialized]);
+  }, [today, currentWeekStart, isInitialized]);
 
   const [selectedClassTypeId, setSelectedClassTypeId] = useState<string>("");
   const [selectedTeacherId, setSelectedTeacherId] = useState<string>("");
