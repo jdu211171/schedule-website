@@ -2,7 +2,7 @@ import {
   ExtendedClassSessionWithRelations,
   DayFilters,
 } from "@/hooks/useClassSessionQuery";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState, useMemo } from "react";
 import { getCurrentDateAdjusted } from "../date";
 import { startOfWeek } from "date-fns";
 import CalendarWeek from "./calendar-week";
@@ -64,11 +64,6 @@ const AdminCalendarWeek: React.FC<AdminCalendarWeekProps> = ({
   selectedBranchId,
 }) => {
   // Base week state for week selector - always default to current week
-  const currentWeekStart = useMemo(
-    () => startOfWeek(getCurrentDateAdjusted(), { weekStartsOn: 1 }),
-    []
-  );
-  
   const [baseWeek, setBaseWeek] = useState<Date>(() => {
     const today = getCurrentDateAdjusted();
     const todayWeekStart = startOfWeek(today, { weekStartsOn: 1 });
