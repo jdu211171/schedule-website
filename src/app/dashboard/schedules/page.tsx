@@ -18,12 +18,21 @@ export default function ScheduleManagementPage() {
   // Initialize with a default value, will be updated after mount
   const [activeTab, setActiveTab] = useState("day");
   const [isInitialized, setIsInitialized] = useState(false);
+  // Track the number of times each tab has been activated to force remount
+  const [dayActivationCount, setDayActivationCount] = useState(0);
+  const [weekActivationCount, setWeekActivationCount] = useState(0);
 
   // On component mount, load the saved tab from localStorage
   useEffect(() => {
     const savedTab = localStorage.getItem(ACTIVE_TAB_KEY);
     if (savedTab) {
       setActiveTab(savedTab);
+      // Increment activation count for the initially loaded tab
+      if (savedTab === "day") {
+        setDayActivationCount(1);
+      } else if (savedTab === "week") {
+        setWeekActivationCount(1);
+      }
     }
     setIsInitialized(true);
   }, []);
@@ -34,6 +43,12 @@ export default function ScheduleManagementPage() {
   const handleTabChange = (value: string) => {
     setActiveTab(value);
     localStorage.setItem(ACTIVE_TAB_KEY, value);
+    // Increment activation count when switching TO a tab
+    if (value === "day") {
+      setDayActivationCount((prev) => prev + 1);
+    } else if (value === "week") {
+      setWeekActivationCount((prev) => prev + 1);
+    }
   };
 
   // Prevent rendering with default value during SSR/hydration to avoid flicker
@@ -63,10 +78,16 @@ export default function ScheduleManagementPage() {
           <TabsTrigger value="series">シリーズ</TabsTrigger>
         </TabsList>
         <TabsContent value="day">
-          <AdminCalendarDay selectedBranchId={selectedBranchId || undefined} />
+          <AdminCalendarDay
+            key={`day-${dayActivationCount}`}
+            selectedBranchId={selectedBranchId || undefined}
+          />
         </TabsContent>
         <TabsContent value="week">
-          <AdminCalendarWeek selectedBranchId={selectedBranchId || undefined} />
+          <AdminCalendarWeek
+            key={`week-${weekActivationCount}`}
+            selectedBranchId={selectedBranchId || undefined}
+          />
         </TabsContent>
         <TabsContent value="list">
           <ClassSessionTable selectedBranchId={selectedBranchId || undefined} />

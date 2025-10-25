@@ -110,8 +110,10 @@ export default function AdminCalendarDay({
     [today]
   );
 
-  // Default focus on 'today' instead of week start
-  const [viewStartDate, setViewStartDate] = useState<Date>(() => today);
+  // Default focus on 'today' with week starting Monday
+  const [viewStartDate, setViewStartDate] = useState<Date>(
+    () => currentWeekStart
+  );
   const [selectedDays, setSelectedDays] = useState<Date[]>([today]);
   const [isInitialized, setIsInitialized] = useState(false);
   const qc = useQueryClient();
@@ -122,18 +124,18 @@ export default function AdminCalendarDay({
       if (saved) {
         const date = new Date(saved);
         if (!isNaN(date.getTime())) {
-          // If saved date is in the same week as today, use the saved day itself.
-          // Otherwise, focus today.
-          if (isSameWeek(date, today, { weekStartsOn: 1 })) {
-            setViewStartDate(startOfDay(date));
+          // Only restore if saved date is today or in the future
+          if (startOfDay(date) >= today) {
+            setViewStartDate(startOfWeek(date, { weekStartsOn: 1 }));
           } else {
-            setViewStartDate(today);
+            // Saved date is in the past, default to current week
+            setViewStartDate(currentWeekStart);
           }
         } else {
-          setViewStartDate(today);
+          setViewStartDate(currentWeekStart);
         }
       } else {
-        setViewStartDate(today);
+        setViewStartDate(currentWeekStart);
       }
 
       const savedDaysJson = localStorage.getItem(SELECTED_DAYS_KEY);
@@ -145,33 +147,33 @@ export default function AdminCalendarDay({
               .map((dateStr: string) => new Date(dateStr))
               .filter((date: Date) => !isNaN(date.getTime()));
 
-            // Only restore if at least one date is in the same week as the current viewStartDate
-            const base = viewStartDate;
-            const inSameWeek = parsedDates.filter((date) =>
-              isSameWeek(date, base, { weekStartsOn: 1 })
+            // Only restore dates that are today or in the future
+            const validDates = parsedDates.filter(
+              (date) => startOfDay(date) >= today
             );
 
-            if (inSameWeek.length > 0) {
+            if (validDates.length > 0) {
               setSelectedDays(
-                inSameWeek.sort((a, b) => a.getTime() - b.getTime())
+                validDates.sort((a, b) => a.getTime() - b.getTime())
               );
             } else {
-              setSelectedDays([base]);
+              // No valid future dates, default to today
+              setSelectedDays([today]);
             }
           } else {
-            setSelectedDays([viewStartDate]);
+            setSelectedDays([today]);
           }
         } catch (error) {
           console.error("Error parsing saved selected days:", error);
-          setSelectedDays([viewStartDate]);
+          setSelectedDays([today]);
         }
       } else {
-        setSelectedDays([viewStartDate]);
+        setSelectedDays([today]);
       }
 
       setIsInitialized(true);
     }
-  }, [today, isInitialized]);
+  }, [today, currentWeekStart, isInitialized]);
 
   const [selectedClassTypeId, setSelectedClassTypeId] = useState<string>("");
   const [selectedTeacherId, setSelectedTeacherId] = useState<string>("");

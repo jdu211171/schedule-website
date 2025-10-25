@@ -2,7 +2,7 @@ import {
   ExtendedClassSessionWithRelations,
   DayFilters,
 } from "@/hooks/useClassSessionQuery";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState, useMemo } from "react";
 import { getCurrentDateAdjusted } from "../date";
 import { startOfWeek } from "date-fns";
 import CalendarWeek from "./calendar-week";
@@ -63,50 +63,21 @@ const AdminCalendarWeek: React.FC<AdminCalendarWeekProps> = ({
   onLessonSelect,
   selectedBranchId,
 }) => {
-  // Base week state for week selector
+  // Base week state for week selector - always default to current week
   const [baseWeek, setBaseWeek] = useState<Date>(() => {
-    if (typeof window !== "undefined") {
-      const savedBaseWeek = localStorage.getItem(BASE_WEEK_KEY);
-      if (savedBaseWeek) {
-        const date = new Date(savedBaseWeek);
-        if (!isNaN(date.getTime())) {
-          return startOfWeek(date, { weekStartsOn: 1 });
-        }
-      }
-    }
-    return startOfWeek(getCurrentDateAdjusted(), { weekStartsOn: 1 });
+    const today = getCurrentDateAdjusted();
+    const todayWeekStart = startOfWeek(today, { weekStartsOn: 1 });
+
+    // Always default to current week, ignore localStorage
+    return todayWeekStart;
   });
 
   const [selectedWeeks, setSelectedWeeks] = useState<Date[]>(() => {
     const today = getCurrentDateAdjusted();
-    const todayDateKey = getDateKey(today);
+    const todayWeekStart = startOfWeek(today, { weekStartsOn: 1 });
 
-    if (typeof window !== "undefined") {
-      const savedWeeksJson = localStorage.getItem(SELECTED_WEEKS_KEY);
-      if (savedWeeksJson) {
-        try {
-          const savedWeeks = JSON.parse(savedWeeksJson);
-          if (Array.isArray(savedWeeks) && savedWeeks.length > 0) {
-            const parsedDates = savedWeeks
-              .map((dateStr: string) => new Date(dateStr))
-              .filter((date: Date) => !isNaN(date.getTime()));
-
-            const validDates = parsedDates.filter((date) => {
-              const dateKey = getDateKey(date);
-              return dateKey >= todayDateKey;
-            });
-
-            if (validDates.length > 0) {
-              return validDates;
-            }
-          }
-        } catch (error) {
-          console.error("Error parsing saved selected weeks:", error);
-        }
-      }
-    }
-
-    return [baseWeek];
+    // Always default to current week, ignore localStorage
+    return [todayWeekStart];
   });
 
   const [selectedLesson, setSelectedLesson] =

@@ -3,6 +3,7 @@
 ## Project Overview
 
 This is a class schedule management system built for educational institutions. It manages:
+
 - Student and teacher schedules
 - Class sessions (regular and special)
 - Recurring class series
@@ -73,12 +74,14 @@ PGPASSWORD=postgres psql -h localhost -U postgres -d schedulewebsite -c "SELECT 
 ## Coding Standards
 
 ### TypeScript
+
 - Use strict mode
 - Prefer explicit types over `any`
 - Use type-safe patterns for API responses
 - Follow existing type patterns in `src/types/`
 
 ### Code Style
+
 - Indentation: 2 spaces
 - Use ESLint configuration (extends `next/core-web-vitals`, `next/typescript`)
 - Object destructuring spacing: `{ always }`
@@ -86,12 +89,14 @@ PGPASSWORD=postgres psql -h localhost -U postgres -d schedulewebsite -c "SELECT 
 - Use `@/*` alias for imports from `src/`
 
 ### Naming Conventions
+
 - Components: PascalCase (`StudentSchedule.tsx`)
 - Files/folders: kebab-case (`class-session-utils.ts`)
 - Constants: UPPER_SNAKE_CASE
 - Functions: camelCase
 
 ### React Patterns
+
 - Use React 19 features (Server Components, Actions)
 - Prefer composition over prop drilling
 - Use React Query for data fetching
@@ -100,10 +105,11 @@ PGPASSWORD=postgres psql -h localhost -U postgres -d schedulewebsite -c "SELECT 
 ## Common Patterns
 
 ### API Routes (Next.js App Router)
+
 ```typescript
 // src/app/api/resource/route.ts
-import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 
 const schema = z.object({
   // validation schema
@@ -116,18 +122,20 @@ export async function POST(req: NextRequest) {
     // Handle request
     return NextResponse.json({ success: true });
   } catch (error) {
-    return NextResponse.json({ error: 'Error message' }, { status: 400 });
+    return NextResponse.json({ error: "Error message" }, { status: 400 });
   }
 }
 ```
 
 ### Database Queries
+
 - Use Prisma for type-safe database access
 - For operational queries, use psql directly: `PGPASSWORD=postgres psql -h localhost -U postgres -d schedulewebsite -c "..."`
 - Always handle errors and edge cases
 - Use transactions for related operations
 
 ### Form Handling
+
 - Use React Hook Form with Zod resolvers
 - Validate on client and server
 - Provide clear error messages
@@ -162,6 +170,7 @@ This project uses Spec Kit for structured development:
   - `contracts/` — API contracts and tests
 
 **Workflow**:
+
 1. Start by reviewing active spec's `plan.md` and `tasks.md`
 2. Align code with spec requirements
 3. Update `tasks.md` as work progresses
@@ -175,35 +184,41 @@ This project uses Spec Kit for structured development:
 ⚠️ **These rules are CRITICAL - Follow them without exception**
 
 ### 🔧 Tools & Requirements
+
 - ✅ **MANDATORY**: Use Bun for package management (NOT npm/yarn)
 - ✅ **MANDATORY**: Fix TypeScript errors after ALL changes
 - ✅ **MANDATORY**: Use psql for direct DB operations (not Prisma)
   - Example: `PGPASSWORD=postgres psql -h localhost -U postgres -d schedulewebsite -c "SELECT * FROM students;"`
 
 ### 📝 Code Changes
+
 - ✅ **ONLY** modify relevant code parts
 - ✅ **PRESERVE**: existing formatting, names, documentation
 - ✅ **FOLLOW**: existing patterns when adding new code
 - ✅ Search codebase before implementing to reuse patterns
 
 ### 📋 Project Management
+
 - ✅ **USE**: Spec Kit for all tasks (update `plan.md` and `tasks.md`)
 - ✅ **START**: every session by reviewing active spec, `git status`, recent commits
 - ✅ **DOCUMENT**: questions and assumptions in `research.md`
 
 ### ⚡ Development Process
+
 - ✅ **PLAN** before coding - no rushing
 - ✅ **SMALL** testable changes - no big changes
 - ✅ **ELIMINATE** duplicates proactively
 - ✅ **UPDATE** spec artifacts regularly
 
 ### 🔒 Code Quality
+
 - ✅ Handle errors and validate inputs
 - ✅ Follow conventions and secure secrets
 - ✅ Write clear, type-safe code
 - ✅ Remove debug logs before production
 
 ### 📐 Development Standards
+
 - ✅ **PRIORITY**: Simplicity and readability
 - ✅ **APPROACH**: Minimal working functionality first
 - ✅ **CONSISTENCY**: Maintain consistent style
